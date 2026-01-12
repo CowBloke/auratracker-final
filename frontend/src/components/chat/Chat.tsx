@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../../contexts/SocketContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Send, ChevronDown, ChevronUp } from 'lucide-react';
@@ -15,6 +16,7 @@ interface ChatProps {
 }
 
 export default function Chat({ isOpen, onToggle }: ChatProps) {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { messages, onlineUsers, typingUsers, sendMessage, setTyping } = useSocket();
   const [input, setInput] = useState('');
@@ -130,12 +132,15 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                       )}
                     >
                       <div className="flex items-center gap-2 mb-1">
-                        <span className={cn(
-                          "text-xs font-medium",
-                          msg.userId === user?.id ? 'text-foreground' : 'text-muted-foreground'
-                        )}>
+                        <button
+                          onClick={() => navigate(`/profile/${msg.userId}`)}
+                          className={cn(
+                            "text-xs font-medium hover:underline cursor-pointer",
+                            msg.userId === user?.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                          )}
+                        >
                           {msg.username}
-                        </span>
+                        </button>
                         <span className="text-[10px] text-muted-foreground/60 tabular-nums">
                           {formatTime(msg.timestamp)}
                         </span>
@@ -187,13 +192,14 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                 <ScrollArea className="h-40">
                   <div className="px-4 space-y-1">
                     {onlineUsers.map((u) => (
-                      <div
+                      <button
                         key={u.userId}
-                        className="flex items-center gap-2 py-1 text-xs text-muted-foreground"
+                        onClick={() => navigate(`/profile/${u.userId}`)}
+                        className="flex items-center gap-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors w-full text-left"
                       >
                         <div className="w-1 h-1 rounded-full bg-foreground/50" />
                         <span className="truncate">{u.username}</span>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </ScrollArea>
