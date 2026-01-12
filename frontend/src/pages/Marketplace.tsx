@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { marketplaceApi } from '../services/api';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Package, Palette, Camera } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Item {
@@ -15,10 +15,52 @@ interface Item {
   effect?: string;
 }
 
+interface ItemEffect {
+  type: string;
+  value?: string;
+}
+
 const typeLabels: Record<string, string> = {
   CONSUMABLE: 'Consommable',
   COSMETIC: 'Cosmétique',
   UPGRADE: 'Amélioration',
+};
+
+const parseEffect = (effectStr?: string): ItemEffect | null => {
+  if (!effectStr) return null;
+  try {
+    return JSON.parse(effectStr);
+  } catch {
+    return null;
+  }
+};
+
+const getEffectIcon = (effect: ItemEffect | null) => {
+  if (!effect) return null;
+  switch (effect.type) {
+    case 'USERNAME_COLOR':
+      return <Palette className="w-4 h-4" />;
+    case 'PROFILE_PICTURE':
+      return <Camera className="w-4 h-4" />;
+    default:
+      return null;
+  }
+};
+
+const getEffectLabel = (effect: ItemEffect | null) => {
+  if (!effect) return '';
+  switch (effect.type) {
+    case 'USERNAME_COLOR':
+      return 'Couleur de pseudo';
+    case 'PROFILE_PICTURE':
+      return 'Photo de profil';
+    case 'BONUS_AURA':
+      return `+${effect.value || '?'} aura`;
+    case 'BONUS_MONEY':
+      return `+$${effect.value || '?'}`;
+    default:
+      return effect.type;
+  }
 };
 
 export default function Marketplace() {
@@ -136,50 +178,80 @@ export default function Marketplace() {
         </p>
       ) : (
         <div className="space-y-0">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center justify-between py-6 border-b border-border/30 last:border-0"
-            >
-              <div className="space-y-1 flex-1">
-                <div className="flex items-center gap-4">
-                  <h2 className="text-lg font-medium">{item.name}</h2>
-                  <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                    {typeLabels[item.type]}
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground max-w-md">
-                  {item.description}
-                </p>
-              </div>
-              
-              <div className="flex items-center gap-6">
-                <div className="text-right text-sm tabular-nums text-muted-foreground">
-                  {item.price > 0 && <div>${item.price}</div>}
-                  {item.auraCost > 0 && <div>{item.auraCost} aura</div>}
+          {items.map((item) => {
+            const effect = parseEffect(item.effect);
+            const effectIcon = getEffectIcon(effect);
+            const effectLabel = getEffectLabel(effect);
+            
+            return (
+              <div
+                key={item.id}
+                className="flex items-center justify-between py-6 border-b border-border/30 last:border-0"
+              >
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  {/* Item Image */}
+                  {item.imageUrl ? (
+                    <img 
+                      src={item.imageUrl} 
+                      alt={item.name}
+                      className="w-14 h-14 object-cover rounded shrink-0"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-14 h-14 bg-muted/30 flex items-center justify-center rounded shrink-0">
+                      <Package className="w-6 h-6 text-muted-foreground" />
+                    </div>
+                  )}
+                  
+                  <div className="space-y-1 flex-1 min-w-0">
+                    <div className="flex items-center gap-4">
+                      <h2 className="text-lg font-medium truncate">{item.name}</h2>
+                      <span className="text-xs text-muted-foreground uppercase tracking-wide shrink-0">
+                        {typeLabels[item.type]}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground max-w-md truncate">
+                      {item.description}
+                    </p>
+                    {effectLabel && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground/80">
+                        {effectIcon}
+                        <span>{effectLabel}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
-                <button
-                  onClick={() => handlePurchase(item)}
-                  disabled={!canAfford(item) || purchasing === item.id}
-                  className={cn(
-                    "px-4 py-2 text-sm border transition-colors",
-                    canAfford(item)
-                      ? "border-foreground text-foreground hover:bg-foreground hover:text-background"
-                      : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
-                  )}
-                >
-                  {purchasing === item.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : canAfford(item) ? (
-                    'Acheter'
-                  ) : (
-                    'Insuffisant'
-                  )}
-                </button>
+                <div className="flex items-center gap-6 ml-4 shrink-0">
+                  <div className="text-right text-sm tabular-nums text-muted-foreground">
+                    {item.price > 0 && <div>${item.price}</div>}
+                    {item.auraCost > 0 && <div>{item.auraCost} aura</div>}
+                  </div>
+                  
+                  <button
+                    onClick={() => handlePurchase(item)}
+                    disabled={!canAfford(item) || purchasing === item.id}
+                    className={cn(
+                      "px-4 py-2 text-sm border transition-colors",
+                      canAfford(item)
+                        ? "border-foreground text-foreground hover:bg-foreground hover:text-background"
+                        : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
+                    )}
+                  >
+                    {purchasing === item.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : canAfford(item) ? (
+                      'Acheter'
+                    ) : (
+                      'Insuffisant'
+                    )}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

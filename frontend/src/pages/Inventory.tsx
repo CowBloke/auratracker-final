@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { marketplaceApi } from '../services/api';
-import { Loader2, Palette, Camera } from 'lucide-react';
+import { Loader2, Palette, Camera, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -281,32 +281,50 @@ export default function Inventory() {
                 key={userItem.id}
                 className="flex items-center justify-between py-6 border-b border-border/30 last:border-0"
               >
-                <div className="space-y-1 flex-1">
-                  <div className="flex items-center gap-4">
-                    <h2 className="text-lg font-medium">{userItem.item.name}</h2>
-                    <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                      {typeLabels[userItem.item.type]}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      ×{userItem.quantity}
-                    </span>
-                  </div>
-                  <p className="text-sm text-muted-foreground max-w-md">
-                    {userItem.item.description}
-                  </p>
-                  {effectLabel && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground/80">
-                      {effectIcon}
-                      <span>{effectLabel}</span>
+                <div className="flex items-center gap-4 flex-1">
+                  {/* Item Image */}
+                  {userItem.item.imageUrl ? (
+                    <img 
+                      src={userItem.item.imageUrl} 
+                      alt={userItem.item.name}
+                      className="w-14 h-14 object-cover rounded shrink-0"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-14 h-14 bg-muted/30 flex items-center justify-center rounded shrink-0">
+                      <Package className="w-6 h-6 text-muted-foreground" />
                     </div>
                   )}
+                  
+                  <div className="space-y-1 flex-1 min-w-0">
+                    <div className="flex items-center gap-4">
+                      <h2 className="text-lg font-medium truncate">{userItem.item.name}</h2>
+                      <span className="text-xs text-muted-foreground uppercase tracking-wide shrink-0">
+                        {typeLabels[userItem.item.type]}
+                      </span>
+                      <span className="text-xs text-muted-foreground shrink-0">
+                        ×{userItem.quantity}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground max-w-md truncate">
+                      {userItem.item.description}
+                    </p>
+                    {effectLabel && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground/80">
+                        {effectIcon}
+                        <span>{effectLabel}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
                 {(userItem.item.type === 'CONSUMABLE' || userItem.item.type === 'COSMETIC') && (
                   <button
                     onClick={() => handleUseItem(userItem)}
                     disabled={using === userItem.id}
-                    className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors disabled:opacity-50"
+                    className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 ml-4 shrink-0"
                   >
                     {using === userItem.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
