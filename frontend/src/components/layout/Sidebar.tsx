@@ -35,6 +35,7 @@ const adminItems = [
 ];
 
 const gameItems = [
+  { to: '/games/aura-coin', label: 'Aura Coin' },
   { to: '/games/clash', label: 'Clash' },
   { to: '/games/doodle-jump', label: 'Doodle Jump' },
   { to: '/games/solitaire', label: 'Solitaire' },

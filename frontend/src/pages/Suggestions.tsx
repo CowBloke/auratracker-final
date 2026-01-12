@@ -144,9 +144,10 @@ export default function Suggestions() {
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button variant="outline" size="icon" className="h-12 w-12 shrink-0">
-              <Plus className="h-5 w-5" />
-            </Button>
+            <button className="flex items-center gap-2 px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors">
+              <Plus className="h-4 w-4" />
+              Créer
+            </button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
