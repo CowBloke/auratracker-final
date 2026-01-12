@@ -85,7 +85,7 @@ export const marketplaceApi = {
 export const gamesApi = {
   getStats: (gameType: string, userId: string) =>
     api.get(`/games/${gameType}/stats/${userId}`),
-  complete: (gameType: string, data: { score: number; won: boolean; duration?: number }) =>
+  complete: (gameType: string, data: { score: number; won: boolean; duration?: number; bet?: number; netGain?: number }) =>
     api.post(`/games/${gameType}/complete`, data),
   getLeaderboard: (gameType: string, limit?: number) =>
     api.get(`/games/${gameType}/leaderboard`, { params: { limit } }),

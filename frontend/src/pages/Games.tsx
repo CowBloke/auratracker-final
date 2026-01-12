@@ -49,6 +49,21 @@ const games = [
       players: 'Solo',
     },
   },
+  {
+    id: 'casino',
+    name: 'Casino Slots',
+    description: 'Spin the reels and try your luck! Win big with matching symbols. Bet money to play.',
+    image: '🎰',
+    color: 'accent-purple',
+    rewards: [
+      'Win up to 50x your bet',
+      'Aura bonus for big wins',
+    ],
+    stats: {
+      type: 'Gambling',
+      players: 'Solo',
+    },
+  },
 ];
 
 export default function Games() {

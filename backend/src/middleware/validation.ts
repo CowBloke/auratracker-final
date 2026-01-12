@@ -74,4 +74,6 @@ export const gameCompleteSchema = z.object({
   score: z.number().int().min(0),
   won: z.boolean(),
   duration: z.number().int().min(0).optional(),
+  bet: z.number().int().min(0).optional(),
+  netGain: z.number().int().optional(),
 });

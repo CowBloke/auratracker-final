@@ -17,6 +17,12 @@ const GAME_REWARDS = {
     auraForFastWin: 25, // Under 3 minutes
     fastWinThreshold: 180, // seconds
   },
+  casino: {
+    auraForBigWin: 10, // For wins >= 10x bet
+    bigWinMultiplier: 10,
+    auraForHugeWin: 50, // For wins >= 50x bet
+    hugeWinMultiplier: 50,
+  },
 };
 
 // Get game stats for a user
@@ -62,9 +68,24 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
     }
     
     const { gameType } = req.params;
-    const { score, won, duration } = req.body;
+    const { score, won, duration, bet, netGain } = req.body;
     
-    // Get current stats
+    // Get current user balance and stats
+    const currentUser = await prisma.user.findUnique({
+      where: { id: req.user.id },
+    });
+    
+    if (!currentUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // For casino, check if user has enough money for bet
+    if (gameType === 'casino' && bet) {
+      if (currentUser.money < bet) {
+        return res.status(400).json({ error: 'Insufficient funds' });
+      }
+    }
+    
     const currentStats = await prisma.gameStats.findUnique({
       where: {
         userId_gameType: {
@@ -96,6 +117,18 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
         if (isFastWin) {
           auraReward = config.auraForFastWin;
         }
+      }
+    } else if (gameType === 'casino' && bet) {
+      // Casino: score is the win amount, bet is deducted, netGain = score - bet
+      // Deduct bet first, then add winnings
+      moneyReward = netGain || (score - bet); // netGain can be negative
+      
+      // Aura rewards for big wins
+      const config = GAME_REWARDS.casino;
+      if (won && score >= bet * config.hugeWinMultiplier) {
+        auraReward = config.auraForHugeWin;
+      } else if (won && score >= bet * config.bigWinMultiplier) {
+        auraReward = config.auraForBigWin;
       }
     }
     
@@ -136,8 +169,8 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       }),
     ]);
     
-    // Emit balance update
-    if (auraReward > 0 || moneyReward > 0) {
+    // Emit balance update (always for casino, or if there are rewards)
+    if (gameType === 'casino' || auraReward > 0 || moneyReward > 0) {
       io.emit('economy:balance-update', {
         userId: req.user.id,
         aura: user.aura,
