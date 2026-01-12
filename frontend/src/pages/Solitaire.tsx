@@ -300,7 +300,7 @@ export default function Solitaire() {
 
   if (!gameState) {
     return (
-      <div className="max-w-4xl mx-auto py-12 px-4 space-y-12">
+      <div className="max-w-4xl mx-auto py-12 px-4 space-y-8">
         <Link
           to="/games"
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -310,7 +310,7 @@ export default function Solitaire() {
         </Link>
 
         <div className="text-center space-y-6">
-          <h1 className="text-4xl font-light tracking-tight">Solitaire</h1>
+          <h1 className="text-5xl md:text-7xl font-light tracking-tight">Solitaire</h1>
           <p className="text-sm text-muted-foreground">Klondike classique</p>
           <button
             onClick={initGame}
@@ -324,7 +324,7 @@ export default function Solitaire() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4 space-y-6">
+    <div className="max-w-4xl mx-auto py-12 px-4 space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <Link

@@ -272,7 +272,7 @@ export default function DoodleJump() {
   }, [started, gameOver, gameLoop]);
 
   return (
-    <div className="max-w-lg mx-auto py-12 px-4 space-y-8">
+    <div className="max-w-4xl mx-auto py-12 px-4 space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <Link
@@ -289,7 +289,7 @@ export default function DoodleJump() {
 
       {/* Title & Score */}
       <div className="text-center space-y-2">
-        <h1 className="text-4xl font-light tracking-tight">
+        <h1 className="text-5xl md:text-7xl font-light tracking-tight">
           Doodle Jump
         </h1>
         <p className="text-3xl tabular-nums">{score.toLocaleString()}</p>
