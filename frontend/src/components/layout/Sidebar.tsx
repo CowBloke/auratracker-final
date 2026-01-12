@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { ChevronRight, Bug } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -156,6 +156,24 @@ export default function AppSidebar() {
               );
             })}
 
+            {/* Bug Report Link */}
+            <SidebarMenuItem>
+              <SidebarMenuButton 
+                asChild 
+                isActive={location.pathname === '/report-bug'}
+                className={cn(
+                  "h-9 px-3 text-sm font-normal",
+                  location.pathname === '/report-bug'
+                    ? "text-foreground bg-muted/50" 
+                    : "text-muted-foreground hover:text-foreground hover:bg-transparent"
+                )}
+              >
+                <NavLink to="/report-bug">
+                  <span>Reporter un bug</span>
+                </NavLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
             {/* Admin items (only for admins) */}
             {user?.isAdmin && adminItems.map((item) => {
               const isActive = location.pathname === item.to;
@@ -179,25 +197,6 @@ export default function AppSidebar() {
                 </SidebarMenuItem>
               );
             })}
-
-            {/* Bug Report Link */}
-            <SidebarMenuItem>
-              <SidebarMenuButton 
-                asChild 
-                isActive={location.pathname === '/report-bug'}
-                className={cn(
-                  "h-9 px-3 text-sm font-normal",
-                  location.pathname === '/report-bug'
-                    ? "text-foreground bg-muted/50" 
-                    : "text-muted-foreground hover:text-foreground hover:bg-transparent"
-                )}
-              >
-                <NavLink to="/report-bug">
-                  <Bug className="h-4 w-4 mr-2" />
-                  <span>Reporter un bug</span>
-                </NavLink>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
           </SidebarMenu>
         </div>
       </SidebarContent>

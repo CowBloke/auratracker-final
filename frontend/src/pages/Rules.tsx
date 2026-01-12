@@ -81,17 +81,13 @@ export default function Rules() {
   return (
     <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
       {/* Header */}
-      <header className="space-y-4">
+      <header className="space-y-2">
         <p className="text-sm text-muted-foreground tracking-wide uppercase">
           Règles et conditions
         </p>
         <h1 className="text-5xl md:text-7xl font-light tracking-tight">
           Règlement
         </h1>
-        <p className="text-muted-foreground max-w-2xl">
-          Ce règlement définit les conditions d'utilisation de l'application Aura Tracker. 
-          En utilisant ce service, vous acceptez de respecter ces règles.
-        </p>
       </header>
 
       {/* Divider */}

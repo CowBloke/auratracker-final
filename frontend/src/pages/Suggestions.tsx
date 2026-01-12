@@ -132,14 +132,14 @@ export default function Suggestions() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4 space-y-12">
+    <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
       {/* Header */}
       <header className="flex items-center justify-between">
         <div className="space-y-2">
-          <h1 className="text-4xl md:text-5xl font-light tracking-tight">Suggestions</h1>
-          <p className="text-muted-foreground">
-            Proposez vos idées et votez pour les meilleures
+          <p className="text-sm text-muted-foreground tracking-wide uppercase">
+            Proposez vos idées
           </p>
+          <h1 className="text-5xl md:text-7xl font-light tracking-tight">Suggestions</h1>
         </div>
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

@@ -4,7 +4,7 @@ import { bugReportApi } from '../services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Bug, Send, CheckCircle2 } from 'lucide-react';
+import { Loader2, Send, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function ReportBug() {
@@ -50,7 +50,7 @@ export default function ReportBug() {
 
   if (submitted) {
     return (
-      <div className="max-w-2xl mx-auto py-12 px-4 space-y-16">
+      <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
         <header className="space-y-2">
           <p className="text-sm text-muted-foreground tracking-wide uppercase">
             Merci
@@ -91,21 +91,15 @@ export default function ReportBug() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto py-12 px-4 space-y-16">
+    <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
       {/* Header */}
       <header className="space-y-2">
-        <div className="flex items-center gap-3">
-          <Bug className="h-6 w-6 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground tracking-wide uppercase">
-            Signalement
-          </p>
-        </div>
+        <p className="text-sm text-muted-foreground tracking-wide uppercase">
+          Signalement
+        </p>
         <h1 className="text-5xl md:text-7xl font-light tracking-tight">
           Reporter un bug
         </h1>
-        <p className="text-muted-foreground text-lg mt-4">
-          Vous avez trouvé un bug ? Décrivez-le ci-dessous et nous nous en occuperons.
-        </p>
       </header>
 
       {/* Form */}
