@@ -43,6 +43,7 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
         money: true,
         usernameColor: true,
         profilePicture: true,
+        bio: true,
         createdAt: true,
         gameStats: {
           select: {
@@ -77,7 +78,7 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Not authorized' });
     }
     
-    const { username } = req.body;
+    const { username, bio } = req.body;
     
     if (username) {
       // Check if username is taken
@@ -93,9 +94,13 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
       }
     }
     
+    const updateData: { username?: string; bio?: string } = {};
+    if (username) updateData.username = username;
+    if (bio !== undefined) updateData.bio = bio?.trim() || null;
+    
     const user = await prisma.user.update({
       where: { id },
-      data: { username },
+      data: updateData,
       select: {
         id: true,
         username: true,
@@ -105,6 +110,7 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
         isAdmin: true,
         usernameColor: true,
         profilePicture: true,
+        bio: true,
         createdAt: true,
       },
     });

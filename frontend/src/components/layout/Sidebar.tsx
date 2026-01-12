@@ -188,6 +188,7 @@ export default function AppSidebar() {
               email: user.email || '',
               avatar: '',
               usernameColor: user.usernameColor,
+              profilePicture: user.profilePicture,
             }}
           />
         )}

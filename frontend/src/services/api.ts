@@ -44,7 +44,7 @@ export const authApi = {
 export const usersApi = {
   getAll: () => api.get('/users'),
   getById: (id: string) => api.get(`/users/${id}`),
-  update: (id: string, data: { username?: string }) => api.put(`/users/${id}`, data),
+  update: (id: string, data: { username?: string; bio?: string }) => api.put(`/users/${id}`, data),
 };
 
 // Economy API

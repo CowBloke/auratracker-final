@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { usersApi, leaderboardsApi } from '../services/api';
+import { Edit2, Save, X, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 
 interface ProfileUser {
   id: string;
@@ -10,6 +13,7 @@ interface ProfileUser {
   money: number;
   usernameColor?: string | null;
   profilePicture?: string | null;
+  bio?: string | null;
   createdAt: string;
   gameStats: Array<{
     gameType: string;
@@ -32,6 +36,11 @@ export default function Profile() {
   const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
   const [rankings, setRankings] = useState<Rankings | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Bio editing state
+  const [editingBio, setEditingBio] = useState(false);
+  const [bioText, setBioText] = useState('');
+  const [savingBio, setSavingBio] = useState(false);
 
   const targetUserId = userId || currentUser?.id;
   const isOwnProfile = targetUserId === currentUser?.id;
@@ -51,11 +60,32 @@ export default function Profile() {
       ]);
       setProfileUser(userRes.data.user);
       setRankings(rankingsRes.data.rankings);
+      setBioText(userRes.data.user.bio || '');
     } catch (error) {
       console.error('Failed to fetch profile:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSaveBio = async () => {
+    if (!profileUser) return;
+    
+    setSavingBio(true);
+    try {
+      await usersApi.update(profileUser.id, { bio: bioText });
+      setProfileUser({ ...profileUser, bio: bioText || null });
+      setEditingBio(false);
+    } catch (error) {
+      console.error('Failed to save bio:', error);
+    } finally {
+      setSavingBio(false);
+    }
+  };
+
+  const handleCancelBio = () => {
+    setBioText(profileUser?.bio || '');
+    setEditingBio(false);
   };
 
   if (loading) {
@@ -83,21 +113,111 @@ export default function Profile() {
     <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
       {/* Header */}
       <header className="space-y-2">
-        <div>
-          <p className="text-sm text-muted-foreground tracking-wide uppercase">
-            Profil {isOwnProfile && '(toi)'}
-          </p>
-          <h1 
-            className="text-5xl md:text-7xl font-light tracking-tight"
-            style={profileUser.usernameColor ? { color: profileUser.usernameColor } : undefined}
-          >
-            {profileUser.username}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-2">
-            Membre depuis {new Date(profileUser.createdAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
-          </p>
+        <div className="flex items-start gap-6">
+          {/* Profile Picture */}
+          {profileUser.profilePicture ? (
+            <img 
+              src={profileUser.profilePicture} 
+              alt={profileUser.username}
+              className="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover border-2 border-border shrink-0"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          ) : (
+            <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-muted/30 flex items-center justify-center border-2 border-border shrink-0">
+              <span 
+                className="text-3xl md:text-4xl font-light"
+                style={profileUser.usernameColor ? { color: profileUser.usernameColor } : undefined}
+              >
+                {profileUser.username.slice(0, 2).toUpperCase()}
+              </span>
+            </div>
+          )}
+          
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-muted-foreground tracking-wide uppercase">
+              Profil {isOwnProfile && '(toi)'}
+            </p>
+            <h1 
+              className="text-5xl md:text-7xl font-light tracking-tight truncate"
+              style={profileUser.usernameColor ? { color: profileUser.usernameColor } : undefined}
+            >
+              {profileUser.username}
+            </h1>
+            <p className="text-sm text-muted-foreground mt-2">
+              Membre depuis {new Date(profileUser.createdAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+            </p>
+          </div>
         </div>
       </header>
+
+      {/* Bio Section */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
+            À propos
+          </h2>
+          {isOwnProfile && !editingBio && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setEditingBio(true)}
+              className="h-8 text-muted-foreground hover:text-foreground"
+            >
+              <Edit2 className="h-4 w-4 mr-2" />
+              Modifier
+            </Button>
+          )}
+        </div>
+        
+        {editingBio ? (
+          <div className="space-y-3">
+            <Textarea
+              value={bioText}
+              onChange={(e) => setBioText(e.target.value)}
+              placeholder="Écris quelque chose sur toi..."
+              className="bg-transparent resize-none min-h-[100px]"
+              maxLength={500}
+            />
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {bioText.length}/500
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCancelBio}
+                  disabled={savingBio}
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Annuler
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSaveBio}
+                  disabled={savingBio}
+                >
+                  {savingBio ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-1" />
+                  )}
+                  Enregistrer
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className={profileUser.bio ? 'text-foreground' : 'text-muted-foreground italic'}>
+            {profileUser.bio || (isOwnProfile ? 'Ajoute une description pour te présenter aux autres joueurs.' : 'Aucune description.')}
+          </p>
+        )}
+      </section>
+
+      {/* Divider */}
+      <div className="h-px bg-border" />
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
