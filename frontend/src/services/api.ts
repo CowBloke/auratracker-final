@@ -167,6 +167,7 @@ export interface AdminUser {
   money: number;
   isAdmin: boolean;
   dailyAuraGiven: number;
+  dailyAuraLimit: number;
   lastDailyReset: string;
   createdAt: string;
   updatedAt: string;
@@ -174,7 +175,7 @@ export interface AdminUser {
 
 export const adminApi = {
   getUsers: () => api.get<{ users: AdminUser[] }>('/admin/users'),
-  updateUser: (id: string, data: { aura?: number; money?: number; dailyAuraGiven?: number }) =>
+  updateUser: (id: string, data: { aura?: number; money?: number; dailyAuraLimit?: number }) =>
     api.put<{ user: AdminUser }>(`/admin/users/${id}`, data),
   deleteUser: (id: string) => api.delete<{ success: boolean; message: string }>(`/admin/users/${id}`),
   clearChat: () => api.delete<{ success: boolean; message: string }>('/admin/chat'),

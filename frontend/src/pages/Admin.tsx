@@ -24,7 +24,7 @@ export default function Admin() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState<{ aura: number; money: number; dailyAuraGiven: number }>({ aura: 0, money: 0, dailyAuraGiven: 0 });
+  const [editValues, setEditValues] = useState<{ aura: number; money: number; dailyAuraLimit: number }>({ aura: 0, money: 0, dailyAuraLimit: 50 });
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [clearingChat, setClearingChat] = useState(false);
@@ -61,7 +61,7 @@ export default function Admin() {
     setEditValues({
       aura: u.aura,
       money: u.money,
-      dailyAuraGiven: u.dailyAuraGiven,
+      dailyAuraLimit: u.dailyAuraLimit,
     });
   };
 
@@ -224,14 +224,13 @@ export default function Admin() {
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs text-muted-foreground">Quota aura donné</label>
+                          <label className="text-xs text-muted-foreground">Limite aura/jour</label>
                           <Input
                             type="number"
-                            value={editValues.dailyAuraGiven}
-                            onChange={(e) => setEditValues(prev => ({ ...prev, dailyAuraGiven: parseInt(e.target.value) || 0 }))}
+                            value={editValues.dailyAuraLimit}
+                            onChange={(e) => setEditValues(prev => ({ ...prev, dailyAuraLimit: parseInt(e.target.value) || 0 }))}
                             className="h-9 bg-transparent border-border/50"
                             min={0}
-                            max={50}
                           />
                         </div>
                       </div>
@@ -260,7 +259,7 @@ export default function Admin() {
                             <p className="tabular-nums">${u.money.toLocaleString()}</p>
                           </div>
                           <div className="text-right">
-                            <p className="tabular-nums">{u.dailyAuraGiven}/50 donné</p>
+                            <p className="tabular-nums">{u.dailyAuraGiven}/{u.dailyAuraLimit} donné</p>
                           </div>
                         </div>
                         

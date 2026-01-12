@@ -16,7 +16,8 @@ model User {
   aura          Int       @default(0)
   money         Int       @default(1000)
   isAdmin       Boolean   @default(false)
-  dailyAuraGiven Int      @default(0)        // Aura given today (max 50)
+  dailyAuraGiven Int      @default(0)        // Aura given today
+  dailyAuraLimit Int      @default(50)       // Personal daily aura limit (default 50)
   lastDailyReset DateTime @default(now())    // When daily allowance was last reset
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt

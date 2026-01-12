@@ -5,14 +5,14 @@ import { validate, transferSchema, giftAuraSchema } from '../middleware/validati
 
 const router = Router();
 
-const DAILY_AURA_ALLOWANCE = 50;
+const DEFAULT_DAILY_AURA_LIMIT = 50;
 const DAY_IN_MS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
 // Helper to check and reset daily allowance
 const checkAndResetDailyAllowance = async (userId: string) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { dailyAuraGiven: true, lastDailyReset: true },
+    select: { dailyAuraGiven: true, dailyAuraLimit: true, lastDailyReset: true },
   });
   
   if (!user) return null;
@@ -21,19 +21,25 @@ const checkAndResetDailyAllowance = async (userId: string) => {
   const lastReset = new Date(user.lastDailyReset);
   const timeSinceReset = now.getTime() - lastReset.getTime();
   
-  // Reset if more than 24 hours have passed
+  // Reset if more than 24 hours have passed (both dailyAuraGiven AND dailyAuraLimit back to defaults)
   if (timeSinceReset >= DAY_IN_MS) {
     await prisma.user.update({
       where: { id: userId },
-      data: { dailyAuraGiven: 0, lastDailyReset: now },
+      data: { 
+        dailyAuraGiven: 0, 
+        dailyAuraLimit: DEFAULT_DAILY_AURA_LIMIT,
+        lastDailyReset: now 
+      },
     });
-    return { dailyAuraGiven: 0, lastDailyReset: now, remaining: DAILY_AURA_ALLOWANCE };
+    return { dailyAuraGiven: 0, dailyAuraLimit: DEFAULT_DAILY_AURA_LIMIT, lastDailyReset: now, remaining: DEFAULT_DAILY_AURA_LIMIT };
   }
   
+  const userLimit = user.dailyAuraLimit ?? DEFAULT_DAILY_AURA_LIMIT;
   return {
     dailyAuraGiven: user.dailyAuraGiven,
+    dailyAuraLimit: userLimit,
     lastDailyReset: user.lastDailyReset,
-    remaining: DAILY_AURA_ALLOWANCE - user.dailyAuraGiven,
+    remaining: Math.max(0, userLimit - user.dailyAuraGiven),
   };
 };
 
@@ -210,7 +216,7 @@ router.get('/daily-allowance', authMiddleware, async (req: AuthRequest, res: Res
     }
     
     res.json({
-      dailyLimit: DAILY_AURA_ALLOWANCE,
+      dailyLimit: allowanceInfo.dailyAuraLimit,
       used: allowanceInfo.dailyAuraGiven,
       remaining: allowanceInfo.remaining,
       lastReset: allowanceInfo.lastDailyReset,
@@ -306,7 +312,7 @@ router.post('/gift-aura', authMiddleware, validate(giftAuraSchema), async (req: 
     
     res.json({
       success: true,
-      remaining: DAILY_AURA_ALLOWANCE - updatedSender.dailyAuraGiven,
+      remaining: Math.max(0, (allowanceInfo.dailyAuraLimit ?? DEFAULT_DAILY_AURA_LIMIT) - updatedSender.dailyAuraGiven),
       transfer,
     });
   } catch (error) {

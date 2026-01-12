@@ -24,6 +24,7 @@ router.get('/users', authMiddleware, requireAdmin, async (req: AuthRequest, res:
         money: true,
         isAdmin: true,
         dailyAuraGiven: true,
+        dailyAuraLimit: true,
         lastDailyReset: true,
         createdAt: true,
         updatedAt: true,
@@ -40,14 +41,14 @@ router.get('/users', authMiddleware, requireAdmin, async (req: AuthRequest, res:
   }
 });
 
-// Update user (aura, money, dailyAuraGiven) - admin only
+// Update user (aura, money, dailyAuraLimit) - admin only
 router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { aura, money, dailyAuraGiven } = req.body;
+    const { aura, money, dailyAuraLimit } = req.body;
 
     // Build update data
-    const updateData: { aura?: number; money?: number; dailyAuraGiven?: number } = {};
+    const updateData: { aura?: number; money?: number; dailyAuraLimit?: number } = {};
     
     if (aura !== undefined) {
       updateData.aura = parseInt(aura);
@@ -55,8 +56,8 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
     if (money !== undefined) {
       updateData.money = parseInt(money);
     }
-    if (dailyAuraGiven !== undefined) {
-      updateData.dailyAuraGiven = parseInt(dailyAuraGiven);
+    if (dailyAuraLimit !== undefined) {
+      updateData.dailyAuraLimit = parseInt(dailyAuraLimit);
     }
 
     const user = await prisma.user.update({
@@ -70,6 +71,7 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
         money: true,
         isAdmin: true,
         dailyAuraGiven: true,
+        dailyAuraLimit: true,
         lastDailyReset: true,
         createdAt: true,
         updatedAt: true,
