@@ -4,7 +4,7 @@ import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
-type LeaderboardCategory = 'aura' | 'money' | 'doodle_jump' | 'solitaire' | 'games_played';
+type LeaderboardCategory = 'aura' | 'money' | 'doodle_jump' | 'solitaire' | 'casino' | 'games_played';
 
 // Get leaderboard by category
 router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response) => {
@@ -106,6 +106,28 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
           .map((r, i) => ({ ...r, rank: parseInt(offset as string) + i + 1 }));
         break;
         
+      case 'casino':
+        rankings = await prisma.gameStats.findMany({
+          where: { gameType: 'casino' },
+          select: {
+            userId: true,
+            highScore: true,
+            user: {
+              select: { username: true },
+            },
+          },
+          orderBy: { highScore: 'desc' },
+          take: parseInt(limit as string),
+          skip: parseInt(offset as string),
+        });
+        rankings = rankings.map((s, i) => ({
+          rank: parseInt(offset as string) + i + 1,
+          userId: s.userId,
+          username: s.user.username,
+          value: s.highScore,
+        }));
+        break;
+        
       case 'games_played':
         // Aggregate total games played across all game types
         const userGames = await prisma.gameStats.groupBy({
@@ -141,6 +163,44 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
       const userInRankings = rankings.find((r) => r.userId === req.user!.id);
       if (userInRankings) {
         userRank = userInRankings.rank;
+      } else if (category === 'casino') {
+        // Calculate user's rank even if not in top rankings
+        const userStats = await prisma.gameStats.findUnique({
+          where: {
+            userId_gameType: {
+              userId: req.user.id,
+              gameType: 'casino',
+            },
+          },
+        });
+        if (userStats) {
+          const higherScores = await prisma.gameStats.count({
+            where: {
+              gameType: 'casino',
+              highScore: { gt: userStats.highScore },
+            },
+          });
+          userRank = higherScores + 1;
+        }
+      } else if (category === 'doodle_jump') {
+        // Calculate user's rank even if not in top rankings
+        const userStats = await prisma.gameStats.findUnique({
+          where: {
+            userId_gameType: {
+              userId: req.user.id,
+              gameType: 'doodle_jump',
+            },
+          },
+        });
+        if (userStats) {
+          const higherScores = await prisma.gameStats.count({
+            where: {
+              gameType: 'doodle_jump',
+              highScore: { gt: userStats.highScore },
+            },
+          });
+          userRank = higherScores + 1;
+        }
       }
     }
     

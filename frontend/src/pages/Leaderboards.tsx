@@ -12,13 +12,14 @@ interface Ranking {
   totalPlayed?: number;
 }
 
-type Category = 'aura' | 'money' | 'doodle_jump' | 'solitaire' | 'games_played';
+type Category = 'aura' | 'money' | 'doodle_jump' | 'solitaire' | 'casino' | 'games_played';
 
 const categories: { id: Category; name: string; icon: React.ReactNode; valueLabel: string }[] = [
   { id: 'aura', name: 'Aura', icon: <Sparkles className="w-5 h-5" />, valueLabel: 'Aura' },
   { id: 'money', name: 'Money', icon: <Coins className="w-5 h-5" />, valueLabel: 'Money' },
   { id: 'doodle_jump', name: 'Doodle Jump', icon: <Gamepad2 className="w-5 h-5" />, valueLabel: 'High Score' },
   { id: 'solitaire', name: 'Solitaire', icon: <Medal className="w-5 h-5" />, valueLabel: 'Win Rate' },
+  { id: 'casino', name: 'Casino', icon: <span className="text-xl">🎰</span>, valueLabel: 'Best Win' },
   { id: 'games_played', name: 'Most Active', icon: <Trophy className="w-5 h-5" />, valueLabel: 'Games' },
 ];
 
@@ -49,6 +50,8 @@ export default function Leaderboards() {
   const formatValue = (ranking: Ranking) => {
     switch (category) {
       case 'money':
+        return `$${ranking.value.toLocaleString()}`;
+      case 'casino':
         return `$${ranking.value.toLocaleString()}`;
       case 'solitaire':
         return `${ranking.value}%`;
@@ -198,7 +201,7 @@ export default function Leaderboards() {
                     className={`font-mono text-lg font-bold ${
                       category === 'aura'
                         ? 'text-aura-light'
-                        : category === 'money'
+                        : category === 'money' || category === 'casino'
                         ? 'text-money-light'
                         : 'text-primary-light'
                     }`}
