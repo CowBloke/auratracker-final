@@ -28,6 +28,10 @@ const navItems = [
   { to: '/inventory', label: 'Inventaire' },
 ];
 
+const adminItems = [
+  { to: '/admin', label: 'Administration' },
+];
+
 const gameItems = [
   { to: '/games/clash', label: 'Clash' },
   { to: '/games/doodle-jump', label: 'Doodle Jump' },
@@ -143,6 +147,30 @@ export default function AppSidebar() {
                     )}
                   >
                     <NavLink to={item.to} end={item.to === '/'}>
+                      <span>{item.label}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              );
+            })}
+
+            {/* Admin items (only for admins) */}
+            {user?.isAdmin && adminItems.map((item) => {
+              const isActive = location.pathname === item.to;
+              
+              return (
+                <SidebarMenuItem key={item.to}>
+                  <SidebarMenuButton 
+                    asChild 
+                    isActive={isActive}
+                    className={cn(
+                      "h-9 px-3 text-sm font-normal",
+                      isActive 
+                        ? "text-amber-500 bg-amber-500/10" 
+                        : "text-amber-500/70 hover:text-amber-500 hover:bg-transparent"
+                    )}
+                  >
+                    <NavLink to={item.to}>
                       <span>{item.label}</span>
                     </NavLink>
                   </SidebarMenuButton>

@@ -14,6 +14,7 @@ import Leaderboards from './pages/Leaderboards';
 import Profile from './pages/Profile';
 import Inventory from './pages/Inventory';
 import Party from './pages/Party';
+import Admin from './pages/Admin';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -59,6 +60,7 @@ function App() {
         <Route path="party" element={<Party />} />
         <Route path="inventory" element={<Inventory />} />
         <Route path="profile/:userId?" element={<Profile />} />
+        <Route path="admin" element={<Admin />} />
       </Route>
     </Routes>
   );

@@ -158,4 +158,26 @@ export const clashApi = {
     api.post('/clash/building/upgrade', data),
 };
 
+// Admin API
+export interface AdminUser {
+  id: string;
+  username: string;
+  email: string;
+  aura: number;
+  money: number;
+  isAdmin: boolean;
+  dailyAuraGiven: number;
+  lastDailyReset: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const adminApi = {
+  getUsers: () => api.get<{ users: AdminUser[] }>('/admin/users'),
+  updateUser: (id: string, data: { aura?: number; money?: number; dailyAuraGiven?: number }) =>
+    api.put<{ user: AdminUser }>(`/admin/users/${id}`, data),
+  deleteUser: (id: string) => api.delete<{ success: boolean; message: string }>(`/admin/users/${id}`),
+  clearChat: () => api.delete<{ success: boolean; message: string }>('/admin/chat'),
+};
+
 export default api;

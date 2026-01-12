@@ -13,6 +13,7 @@ import gamesRoutes from './routes/games.js';
 import leaderboardsRoutes from './routes/leaderboards.js';
 import usersRoutes from './routes/users.js';
 import clashRoutes from './routes/clash.js';
+import adminRoutes from './routes/admin.js';
 
 // Socket handlers
 import { setupChatHandlers } from './socket/chat.js';
@@ -50,6 +51,7 @@ app.use('/api/games', gamesRoutes);
 app.use('/api/leaderboards', leaderboardsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/clash', clashRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
