@@ -9,12 +9,16 @@ import DoodleJump from './pages/DoodleJump';
 import Solitaire from './pages/Solitaire';
 import Clash from './pages/Clash';
 import Casino from './pages/Casino';
+import AuraCoin from './pages/AuraCoin';
 import Marketplace from './pages/Marketplace';
 import Leaderboards from './pages/Leaderboards';
 import Profile from './pages/Profile';
 import Inventory from './pages/Inventory';
 import Party from './pages/Party';
 import Admin from './pages/Admin';
+import Rules from './pages/Rules';
+import Suggestions from './pages/Suggestions';
+import ReportBug from './pages/ReportBug';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -55,12 +59,16 @@ function App() {
         <Route path="games/solitaire" element={<Solitaire />} />
         <Route path="games/clash" element={<Clash />} />
         <Route path="games/casino" element={<Casino />} />
+        <Route path="games/aura-coin" element={<AuraCoin />} />
         <Route path="marketplace" element={<Marketplace />} />
         <Route path="leaderboards" element={<Leaderboards />} />
         <Route path="party" element={<Party />} />
         <Route path="inventory" element={<Inventory />} />
         <Route path="profile/:userId?" element={<Profile />} />
         <Route path="admin" element={<Admin />} />
+        <Route path="rules" element={<Rules />} />
+        <Route path="suggestions" element={<Suggestions />} />
+        <Route path="report-bug" element={<ReportBug />} />
       </Route>
     </Routes>
   );

@@ -26,6 +26,12 @@ const games = [
     description: 'Tente ta chance aux machines à sous.',
     type: 'Chance',
   },
+  {
+    id: 'aura-coin',
+    name: 'Aura Coin',
+    description: 'Trade la cryptomonnaie virtuelle. Achète bas, vends haut.',
+    type: 'Trading',
+  },
 ];
 
 export default function Games() {

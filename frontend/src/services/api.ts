@@ -92,6 +92,67 @@ export const gamesApi = {
     api.get(`/games/${gameType}/leaderboard`, { params: { limit } }),
 };
 
+// AuraCoin API
+export interface AuraCoinPriceHistory {
+  price: number;
+  volume: number;
+  createdAt: string;
+}
+
+export interface AuraCoinTransaction {
+  id: string;
+  userId: string;
+  type: 'BUY' | 'SELL';
+  coinAmount: number;
+  moneyAmount: number;
+  price: number;
+  fee: number;
+  createdAt: string;
+  user: {
+    id: string;
+    username: string;
+    usernameColor: string | null;
+  };
+}
+
+export const auraCoinApi = {
+  getPrice: (hours?: number) =>
+    api.get<{
+      currentPrice: number;
+      feePercentage: number;
+      history: AuraCoinPriceHistory[];
+      userBalance: { auraCoin: number; money: number };
+    }>('/auracoin/price', { params: { hours } }),
+  buy: (moneyAmount: number) =>
+    api.post<{
+      success: boolean;
+      transaction: {
+        type: 'BUY';
+        coinsReceived: number;
+        moneySpent: number;
+        fee: number;
+        newPrice: number;
+      };
+      newBalance: { money: number; auraCoin: number };
+    }>('/auracoin/buy', { moneyAmount }),
+  sell: (coinAmount: number) =>
+    api.post<{
+      success: boolean;
+      transaction: {
+        type: 'SELL';
+        coinsSold: number;
+        moneyReceived: number;
+        fee: number;
+        newPrice: number;
+      };
+      newBalance: { money: number; auraCoin: number };
+    }>('/auracoin/sell', { coinAmount }),
+  getMyTransactions: (params?: { limit?: number; offset?: number }) =>
+    api.get<{ transactions: AuraCoinTransaction[] }>('/auracoin/transactions/me', { params }),
+  getAllTransactions: (params?: { limit?: number; offset?: number }) =>
+    api.get<{ transactions: AuraCoinTransaction[] }>('/auracoin/transactions/all', { params }),
+};
+
 // Leaderboards API
 export const leaderboardsApi = {
   get: (category: string, params?: { limit?: number; offset?: number; seasonId?: string }) =>
@@ -188,6 +249,51 @@ export interface ShopItem {
   createdAt: string;
 }
 
+// Bug Report Interface
+export interface BugReport {
+  id: string;
+  userId: string;
+  title: string;
+  description: string;
+  status: 'PENDING' | 'DONE';
+  createdAt: string;
+  resolvedAt: string | null;
+  user: {
+    id: string;
+    username: string;
+  };
+}
+
+// Suggestions API
+export interface Suggestion {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl: string | null;
+  createdAt: string;
+  user: {
+    id: string;
+    username: string;
+    usernameColor: string | null;
+  };
+  upvotes: number;
+  downvotes: number;
+  score: number;
+  userVote: number;
+}
+
+export const suggestionsApi = {
+  getAll: () => api.get<{ suggestions: Suggestion[] }>('/suggestions'),
+  create: (data: { title: string; description: string; imageUrl?: string }) =>
+    api.post<{ suggestion: Suggestion }>('/suggestions', data),
+  vote: (id: string, value: number) =>
+    api.post<{ upvotes: number; downvotes: number; score: number; userVote: number }>(
+      `/suggestions/${id}/vote`,
+      { value }
+    ),
+  delete: (id: string) => api.delete<{ success: boolean }>(`/suggestions/${id}`),
+};
+
 export const adminApi = {
   getUsers: () => api.get<{ users: AdminUser[] }>('/admin/users'),
   updateUser: (id: string, data: { aura?: number; money?: number; dailyAuraLimit?: number }) =>
@@ -215,6 +321,17 @@ export const adminApi = {
     effect?: string;
   }) => api.put<{ item: ShopItem }>(`/admin/items/${id}`, data),
   deleteItem: (id: string) => api.delete<{ success: boolean }>(`/admin/items/${id}`),
+  // Bug reports management
+  getBugReports: () => api.get<{ bugReports: BugReport[] }>('/admin/bugs'),
+  updateBugReport: (id: string, data: { status: 'PENDING' | 'DONE' }) =>
+    api.put<{ bugReport: BugReport }>(`/admin/bugs/${id}`, data),
+  deleteBugReport: (id: string) => api.delete<{ success: boolean }>(`/admin/bugs/${id}`),
+};
+
+// Bug report API (for regular users)
+export const bugReportApi = {
+  create: (data: { title: string; description: string }) =>
+    api.post<{ bugReport: BugReport }>('/admin/bugs', data),
 };
 
 export default api;

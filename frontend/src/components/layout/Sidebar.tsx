@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Bug } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -26,6 +26,8 @@ const navItems = [
   { to: '/marketplace', label: 'Marché' },
   { to: '/party', label: 'Party' },
   { to: '/inventory', label: 'Inventaire' },
+  { to: '/suggestions', label: 'Suggestions' },
+  { to: '/rules', label: 'Règlement' },
 ];
 
 const adminItems = [
@@ -177,6 +179,25 @@ export default function AppSidebar() {
                 </SidebarMenuItem>
               );
             })}
+
+            {/* Bug Report Link */}
+            <SidebarMenuItem>
+              <SidebarMenuButton 
+                asChild 
+                isActive={location.pathname === '/report-bug'}
+                className={cn(
+                  "h-9 px-3 text-sm font-normal",
+                  location.pathname === '/report-bug'
+                    ? "text-foreground bg-muted/50" 
+                    : "text-muted-foreground hover:text-foreground hover:bg-transparent"
+                )}
+              >
+                <NavLink to="/report-bug">
+                  <Bug className="h-4 w-4 mr-2" />
+                  <span>Reporter un bug</span>
+                </NavLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           </SidebarMenu>
         </div>
       </SidebarContent>

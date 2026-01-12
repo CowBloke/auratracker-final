@@ -14,6 +14,8 @@ import leaderboardsRoutes from './routes/leaderboards.js';
 import usersRoutes from './routes/users.js';
 import clashRoutes from './routes/clash.js';
 import adminRoutes from './routes/admin.js';
+import auraCoinRoutes, { startPriceEngine, stopPriceEngine } from './routes/auracoin.js';
+import suggestionsRoutes from './routes/suggestions.js';
 
 // Socket handlers
 import { setupChatHandlers } from './socket/chat.js';
@@ -52,6 +54,8 @@ app.use('/api/leaderboards', leaderboardsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/clash', clashRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/auracoin', auraCoinRoutes);
+app.use('/api/suggestions', suggestionsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -77,6 +81,9 @@ const start = async () => {
     await prisma.$connect();
     console.log('Connected to database');
     
+    // Start AuraCoin price engine
+    startPriceEngine();
+    
     httpServer.listen(config.port, () => {
       console.log(`Server running on port ${config.port}`);
     });
@@ -90,11 +97,13 @@ start();
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
+  stopPriceEngine();
   await prisma.$disconnect();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
+  stopPriceEngine();
   await prisma.$disconnect();
   process.exit(0);
 });

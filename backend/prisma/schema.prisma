@@ -15,6 +15,7 @@ model User {
   passwordHash  String
   aura          Int       @default(0)
   money         Int       @default(1000)
+  auraCoinBalance Float   @default(0)         // Aura Coin balance for trading game
   isAdmin       Boolean   @default(false)
   dailyAuraGiven Int      @default(0)        // Aura given today
   dailyAuraLimit Int      @default(50)       // Personal daily aura limit (default 50)
@@ -35,6 +36,10 @@ model User {
   clashBase         ClashBase?
   attacksMade       Attack[]   @relation("Attacker")
   attacksReceived   Attack[]   @relation("Defender")
+  auraCoinTransactions AuraCoinTransaction[]
+  bugReports        BugReport[]
+  suggestions       Suggestion[]
+  suggestionVotes   SuggestionVote[]
   
   @@index([aura])
   @@index([money])
@@ -194,4 +199,77 @@ model Attack {
   @@index([attackerId])
   @@index([defenderId])
   @@index([attackedAt])
+}
+
+// Aura Coin Price History
+model AuraCoinPrice {
+  id        String   @id @default(uuid())
+  price     Float
+  volume    Float    @default(0)
+  createdAt DateTime @default(now())
+  
+  @@index([createdAt])
+}
+
+// Aura Coin Transaction
+model AuraCoinTransaction {
+  id          String   @id @default(uuid())
+  userId      String
+  type        String   // "BUY" or "SELL"
+  coinAmount  Float
+  moneyAmount Int
+  price       Float
+  fee         Int
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// Bug Report
+model BugReport {
+  id          String   @id @default(uuid())
+  userId      String
+  title       String
+  description String
+  status      String   @default("PENDING") // PENDING, DONE
+  createdAt   DateTime @default(now())
+  resolvedAt  DateTime?
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([status])
+  @@index([createdAt])
+}
+
+// Suggestion
+model Suggestion {
+  id          String   @id @default(uuid())
+  userId      String
+  title       String
+  description String
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  votes       SuggestionVote[]
+  
+  @@index([createdAt])
+}
+
+// Suggestion Vote
+model SuggestionVote {
+  id           String   @id @default(uuid())
+  suggestionId String
+  userId       String
+  value        Int      // 1 for upvote, -1 for downvote
+  createdAt    DateTime @default(now())
+  
+  suggestion   Suggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([suggestionId, userId])
+  @@index([suggestionId])
 }

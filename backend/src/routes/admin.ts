@@ -217,4 +217,117 @@ router.delete('/chat', authMiddleware, requireAdmin, async (req: AuthRequest, re
   }
 });
 
+// ========== BUG REPORTS MANAGEMENT ==========
+
+// Create bug report (any authenticated user)
+router.post('/bugs', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { title, description } = req.body;
+    
+    if (!title || !description) {
+      return res.status(400).json({ error: 'Title and description are required' });
+    }
+    
+    if (title.length > 100) {
+      return res.status(400).json({ error: 'Title must be less than 100 characters' });
+    }
+    
+    if (description.length > 2000) {
+      return res.status(400).json({ error: 'Description must be less than 2000 characters' });
+    }
+    
+    const bugReport = await prisma.bugReport.create({
+      data: {
+        userId: req.user!.id,
+        title: title.trim(),
+        description: description.trim(),
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+      },
+    });
+    
+    res.status(201).json({ bugReport });
+  } catch (error) {
+    console.error('Create bug report error:', error);
+    res.status(500).json({ error: 'Failed to create bug report' });
+  }
+});
+
+// Get all bug reports (admin only)
+router.get('/bugs', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const bugReports = await prisma.bugReport.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    
+    res.json({ bugReports });
+  } catch (error) {
+    console.error('Admin get bug reports error:', error);
+    res.status(500).json({ error: 'Failed to get bug reports' });
+  }
+});
+
+// Update bug report status (admin only)
+router.put('/bugs/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    if (!['PENDING', 'DONE'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status. Must be PENDING or DONE' });
+    }
+    
+    const bugReport = await prisma.bugReport.update({
+      where: { id },
+      data: {
+        status,
+        resolvedAt: status === 'DONE' ? new Date() : null,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+      },
+    });
+    
+    res.json({ bugReport });
+  } catch (error) {
+    console.error('Admin update bug report error:', error);
+    res.status(500).json({ error: 'Failed to update bug report' });
+  }
+});
+
+// Delete bug report (admin only)
+router.delete('/bugs/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    await prisma.bugReport.delete({
+      where: { id },
+    });
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Admin delete bug report error:', error);
+    res.status(500).json({ error: 'Failed to delete bug report' });
+  }
+});
+
 export default router;
