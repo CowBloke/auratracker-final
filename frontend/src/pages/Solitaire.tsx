@@ -2,7 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
-import { ArrowLeft, RotateCcw, Trophy, Sparkles, Coins, Clock, Undo } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Trophy, Sparkles, Coins, Clock, Undo, Heart } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades';
 type Color = 'red' | 'black';
@@ -343,7 +348,7 @@ export default function Solitaire() {
     if (!card) {
       return (
         <div
-          className="w-16 h-24 rounded-lg border-2 border-dashed border-gray-700 bg-surface/50"
+          className="w-16 h-24 rounded-lg border-2 border-dashed border-muted bg-muted/50"
           onClick={onClick}
         />
       );
@@ -371,7 +376,7 @@ export default function Solitaire() {
         }`}
         onClick={onClick}
       >
-        <div className={`p-1 ${color === 'red' ? 'text-red-500' : 'text-gray-800'}`}>
+        <div className={cn("p-1", color === 'red' ? 'text-destructive' : 'text-foreground')}>
           <div className="text-sm font-bold leading-none">
             {getRankDisplay(card.rank)}
           </div>
@@ -388,19 +393,26 @@ export default function Solitaire() {
       <div className="space-y-6 animate-fade-in">
         <Link
           to="/games"
-          className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
           Back to Games
         </Link>
 
-        <div className="card p-12 text-center">
-          <h1 className="text-3xl font-bold font-display mb-4">🃏 Solitaire</h1>
-          <p className="text-gray-400 mb-6">Classic Klondike Solitaire</p>
-          <button onClick={initGame} className="btn-primary text-lg px-8 py-3">
-            Start Game
-          </button>
-        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-12">
+              <h1 className="text-3xl font-bold mb-4 flex items-center justify-center gap-2">
+                <Heart className="w-8 h-8" />
+                Solitaire
+              </h1>
+              <CardDescription className="mb-6">Classic Klondike Solitaire</CardDescription>
+              <Button onClick={initGame} size="lg">
+                Start Game
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -411,34 +423,36 @@ export default function Solitaire() {
       <div className="flex items-center justify-between">
         <Link
           to="/games"
-          className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
           Back
         </Link>
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-gray-400">
+          <div className="flex items-center gap-2 text-muted-foreground">
             <Clock className="w-4 h-4" />
-            <span className="font-mono">{formatTime(elapsedTime)}</span>
+            <span>{formatTime(elapsedTime)}</span>
           </div>
-          <div className="text-gray-400">
-            Moves: <span className="font-mono">{gameState.moves}</span>
+          <div className="text-muted-foreground">
+            Moves: <span>{gameState.moves}</span>
           </div>
-          <button
+          <Button
             onClick={undo}
             disabled={history.length === 0}
-            className="btn-secondary flex items-center gap-1 text-sm"
+            variant="secondary"
+            size="sm"
           >
             <Undo className="w-4 h-4" />
-          </button>
-          <button onClick={initGame} className="btn-secondary flex items-center gap-1 text-sm">
+          </Button>
+          <Button onClick={initGame} variant="secondary" size="sm">
             <RotateCcw className="w-4 h-4" />
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Game Board */}
-      <div className="card p-4 overflow-x-auto">
+      <Card>
+        <CardContent className="p-4 overflow-x-auto">
         {/* Top Row: Stock, Waste, Foundations */}
         <div className="flex justify-between mb-6 min-w-[600px]">
           <div className="flex gap-4">
@@ -447,8 +461,8 @@ export default function Solitaire() {
               {gameState.stock.length > 0 ? (
                 renderCard({ ...gameState.stock[0], faceUp: false })
               ) : (
-                <div className="w-16 h-24 rounded-lg border-2 border-dashed border-gray-600 flex items-center justify-center cursor-pointer hover:border-primary">
-                  <RotateCcw className="w-6 h-6 text-gray-600" />
+                <div className="w-16 h-24 rounded-lg border-2 border-dashed border-muted flex items-center justify-center cursor-pointer hover:border-primary">
+                  <RotateCcw className="w-6 h-6 text-muted-foreground" />
                 </div>
               )}
             </div>
@@ -477,7 +491,7 @@ export default function Solitaire() {
                 {foundation.length > 0 ? (
                   renderCard(foundation[foundation.length - 1])
                 ) : (
-                  <div className="w-16 h-24 rounded-lg border-2 border-dashed border-accent-green/50 bg-accent-green/10 flex items-center justify-center text-2xl text-accent-green/50">
+                  <div className="w-16 h-24 rounded-lg border-2 border-dashed border-primary/50 bg-primary/10 flex items-center justify-center text-2xl text-primary/50">
                     {SUIT_SYMBOLS[SUITS[i]]}
                   </div>
                 )}
@@ -496,7 +510,7 @@ export default function Solitaire() {
               onClick={() => pile.length === 0 && handleCardClick('tableau', pileIndex)}
             >
               {pile.length === 0 ? (
-                <div className="w-16 h-24 rounded-lg border-2 border-dashed border-gray-700 bg-surface/50" />
+                <div className="w-16 h-24 rounded-lg border-2 border-dashed border-muted bg-muted/50" />
               ) : (
                 pile.map((card, cardIndex) => (
                   <div
@@ -524,48 +538,54 @@ export default function Solitaire() {
 
         {/* Auto-move button */}
         <div className="mt-4 text-center">
-          <button
+          <Button
             onClick={autoMoveToFoundation}
-            className="btn-secondary text-sm"
+            variant="secondary"
+            size="sm"
           >
             Auto-move to Foundation
-          </button>
+          </Button>
         </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Win Modal */}
-      {gameState.won && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="card p-8 text-center animate-slide-up">
-            <Trophy className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-            <h2 className="text-3xl font-bold mb-2">You Win!</h2>
-            <p className="text-gray-400 mb-4">
-              Time: {formatTime(elapsedTime)} | Moves: {gameState.moves}
-            </p>
-            
-            {rewards && (
-              <div className="mb-6 space-y-2">
-                {rewards.money > 0 && (
-                  <div className="flex items-center justify-center gap-2 text-money-light">
-                    <Coins className="w-5 h-5" />
-                    <span>+${rewards.money}</span>
-                  </div>
-                )}
-                {rewards.aura > 0 && (
-                  <div className="flex items-center justify-center gap-2 text-aura-light">
-                    <Sparkles className="w-5 h-5" />
-                    <span>+{rewards.aura} Aura</span>
-                  </div>
-                )}
-              </div>
-            )}
+      <Dialog open={gameState.won} onOpenChange={() => {}}>
+        <DialogContent>
+          <DialogHeader>
+            <div className="text-center">
+              <Trophy className="w-16 h-16 text-primary mx-auto mb-4" />
+              <DialogTitle className="text-3xl">You Win!</DialogTitle>
+              <DialogDescription className="mt-2">
+                Time: {formatTime(elapsedTime)} | Moves: {gameState.moves}
+              </DialogDescription>
+            </div>
+          </DialogHeader>
+          
+          {rewards && (
+            <div className="space-y-2">
+              {rewards.money > 0 && (
+                <div className="flex items-center justify-center gap-2">
+                  <Coins className="w-5 h-5 text-primary" />
+                  <Badge variant="secondary">+${rewards.money}</Badge>
+                </div>
+              )}
+              {rewards.aura > 0 && (
+                <div className="flex items-center justify-center gap-2">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                  <Badge variant="secondary">+{rewards.aura} Aura</Badge>
+                </div>
+              )}
+            </div>
+          )}
 
-            <button onClick={initGame} className="btn-primary">
+          <DialogFooter>
+            <Button onClick={initGame} className="w-full">
               Play Again
-            </button>
-          </div>
-        </div>
-      )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

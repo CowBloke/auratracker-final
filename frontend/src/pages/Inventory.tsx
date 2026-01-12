@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { marketplaceApi } from '../services/api';
 import { Package, Zap, Sparkles, Check, X } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { cn } from '@/lib/utils';
 
 interface UserItem {
   id: string;
@@ -90,20 +95,20 @@ export default function Inventory() {
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'CONSUMABLE':
-        return 'text-accent-orange bg-accent-orange/20';
+        return 'text-primary bg-primary/20';
       case 'COSMETIC':
-        return 'text-accent-pink bg-accent-pink/20';
+        return 'text-secondary-foreground bg-secondary';
       case 'UPGRADE':
-        return 'text-accent-cyan bg-accent-cyan/20';
+        return 'text-primary bg-primary/20';
       default:
-        return 'text-gray-400 bg-gray-700';
+        return 'text-muted-foreground bg-muted';
     }
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-pulse text-primary text-xl font-display">
+        <div className="animate-pulse text-primary text-xl">
           Loading...
         </div>
       </div>
@@ -114,86 +119,91 @@ export default function Inventory() {
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold font-display flex items-center gap-3">
-          <Package className="w-8 h-8 text-accent-cyan" />
+        <h1 className="text-3xl font-bold flex items-center gap-3">
+          <Package className="w-8 h-8 text-primary" />
           Inventory
         </h1>
-        <p className="text-gray-400 mt-2">
+        <p className="text-muted-foreground mt-2">
           View and use your items
         </p>
       </div>
 
       {/* Message */}
       {message && (
-        <div
-          className={`p-4 rounded-lg flex items-center gap-3 ${
-            message.type === 'success'
-              ? 'bg-accent-green/10 border border-accent-green/30'
-              : 'bg-red-500/10 border border-red-500/30'
-          }`}
-        >
+        <Alert variant={message.type === 'error' ? 'destructive' : 'default'} className={cn(
+          message.type === 'success' && 'border-primary/50 bg-primary/10'
+        )}>
           {message.type === 'success' ? (
-            <Check className="w-5 h-5 text-accent-green" />
+            <Check className="w-4 h-4 text-primary" />
           ) : (
-            <X className="w-5 h-5 text-red-400" />
+            <X className="w-4 h-4" />
           )}
-          <span className={message.type === 'success' ? 'text-accent-green' : 'text-red-400'}>
+          <AlertDescription className={cn(
+            message.type === 'success' && 'text-primary'
+          )}>
             {message.text}
-          </span>
-        </div>
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Items Grid */}
       {items.length === 0 ? (
-        <div className="card p-12 text-center">
-          <Package className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-400 mb-2">Inventory Empty</h2>
-          <p className="text-gray-500">Visit the marketplace to buy items!</p>
-        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-12">
+              <Package className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+              <CardTitle className="text-xl mb-2">Inventory Empty</CardTitle>
+              <CardDescription>Visit the marketplace to buy items!</CardDescription>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {items.map((userItem) => (
-            <div key={userItem.id} className="card overflow-hidden">
+            <Card key={userItem.id} className="overflow-hidden">
               {/* Item Header */}
-              <div className="h-24 bg-gradient-to-br from-surface to-background flex items-center justify-center">
-                <div className={`w-14 h-14 rounded-xl ${getTypeColor(userItem.item.type)} flex items-center justify-center`}>
+              <div className="h-24 bg-muted flex items-center justify-center">
+                <div className={cn(
+                  "w-14 h-14 rounded-xl flex items-center justify-center",
+                  getTypeColor(userItem.item.type)
+                )}>
                   {getTypeIcon(userItem.item.type)}
                 </div>
               </div>
 
               {/* Item Info */}
-              <div className="p-6">
+              <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-lg font-bold">{userItem.item.name}</h3>
-                  <span className={`badge ${getTypeColor(userItem.item.type)}`}>
+                  <CardTitle className="text-lg">{userItem.item.name}</CardTitle>
+                  <Badge variant="secondary" className={getTypeColor(userItem.item.type)}>
                     {userItem.item.type}
-                  </span>
+                  </Badge>
                 </div>
 
-                <p className="text-gray-400 text-sm mb-4">
+                <CardDescription className="mb-4">
                   {userItem.item.description}
-                </p>
+                </CardDescription>
 
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-muted-foreground">
                     Acquired {new Date(userItem.acquiredAt).toLocaleDateString()}
                   </span>
-                  <span className="px-3 py-1 rounded-full bg-primary/20 text-primary-light font-mono">
+                  <Badge variant="outline">
                     x{userItem.quantity}
-                  </span>
+                  </Badge>
                 </div>
 
                 {userItem.item.type === 'CONSUMABLE' && (
-                  <button
+                  <Button
                     onClick={() => handleUseItem(userItem)}
                     disabled={using === userItem.id}
-                    className="btn-primary w-full"
+                    className="w-full"
                   >
                     {using === userItem.id ? 'Using...' : 'Use Item'}
-                  </button>
+                  </Button>
                 )}
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}

@@ -21,7 +21,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-primary text-xl font-display">
+        <div className="animate-pulse text-primary text-xl">
           Loading...
         </div>
       </div>

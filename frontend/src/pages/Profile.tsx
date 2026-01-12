@@ -10,6 +10,15 @@ import {
   Calendar,
   Send,
 } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { cn } from '@/lib/utils';
 
 interface ProfileUser {
   id: string;
@@ -101,7 +110,7 @@ export default function Profile() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-pulse text-primary text-xl font-display">
+        <div className="animate-pulse text-primary text-xl">
           Loading...
         </div>
       </div>
@@ -110,218 +119,224 @@ export default function Profile() {
 
   if (!profileUser) {
     return (
-      <div className="card p-12 text-center">
-        <User className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-gray-400 mb-2">User Not Found</h2>
-      </div>
+      <Card>
+        <CardContent className="pt-6">
+          <div className="text-center py-12">
+            <User className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+            <CardTitle className="text-xl mb-2">User Not Found</CardTitle>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Profile Header */}
-      <div className="card p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-aura flex items-center justify-center">
-              <span className="text-3xl font-bold text-white">
-                {profileUser.username.charAt(0).toUpperCase()}
-              </span>
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold font-display">
-                {profileUser.username}
-                {isOwnProfile && (
-                  <span className="ml-2 text-sm text-primary">(You)</span>
-                )}
-              </h1>
-              <div className="flex items-center gap-2 mt-2 text-gray-400">
-                <Calendar className="w-4 h-4" />
-                <span>Joined {new Date(profileUser.createdAt).toLocaleDateString()}</span>
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Avatar className="w-20 h-20">
+                <AvatarFallback className="text-3xl">
+                  {profileUser.username.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <CardTitle className="text-3xl">
+                  {profileUser.username}
+                  {isOwnProfile && (
+                    <Badge variant="secondary" className="ml-2">You</Badge>
+                  )}
+                </CardTitle>
+                <CardDescription className="flex items-center gap-2 mt-2">
+                  <Calendar className="w-4 h-4" />
+                  <span>Joined {new Date(profileUser.createdAt).toLocaleDateString()}</span>
+                </CardDescription>
               </div>
             </div>
-          </div>
 
-          {!isOwnProfile && (
-            <button
-              onClick={() => setShowTransferModal(true)}
-              className="btn-primary flex items-center gap-2"
-            >
-              <Send className="w-5 h-5" />
-              Send Currency
-            </button>
-          )}
-        </div>
-      </div>
+            {!isOwnProfile && (
+              <Button onClick={() => setShowTransferModal(true)}>
+                <Send className="w-4 h-4" />
+                Send Currency
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="card p-6 border-l-4 border-aura">
-          <div className="flex items-center justify-between mb-2">
-            <Sparkles className="w-6 h-6 text-aura" />
-            <span className="text-sm text-gray-400">Rank #{rankings?.aura?.rank || '—'}</span>
-          </div>
-          <p className="text-2xl font-bold font-mono text-aura-light">
-            {profileUser.aura.toLocaleString()}
-          </p>
-          <p className="text-sm text-gray-400">Aura</p>
-        </div>
+        <Card className="border-l-4 border-l-primary">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-2">
+              <Sparkles className="w-6 h-6 text-primary" />
+              <span className="text-sm text-muted-foreground">Rank #{rankings?.aura?.rank || '—'}</span>
+            </div>
+            <p className="text-2xl font-bold">
+              {profileUser.aura.toLocaleString()}
+            </p>
+            <p className="text-sm text-muted-foreground">Aura</p>
+          </CardContent>
+        </Card>
 
-        <div className="card p-6 border-l-4 border-money">
-          <div className="flex items-center justify-between mb-2">
-            <Coins className="w-6 h-6 text-money" />
-            <span className="text-sm text-gray-400">Rank #{rankings?.money?.rank || '—'}</span>
-          </div>
-          <p className="text-2xl font-bold font-mono text-money-light">
-            ${profileUser.money.toLocaleString()}
-          </p>
-          <p className="text-sm text-gray-400">Money</p>
-        </div>
+        <Card className="border-l-4 border-l-primary">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-2">
+              <Coins className="w-6 h-6 text-primary" />
+              <span className="text-sm text-muted-foreground">Rank #{rankings?.money?.rank || '—'}</span>
+            </div>
+            <p className="text-2xl font-bold">
+              ${profileUser.money.toLocaleString()}
+            </p>
+            <p className="text-sm text-muted-foreground">Money</p>
+          </CardContent>
+        </Card>
 
-        <div className="card p-6 border-l-4 border-accent-green">
-          <Trophy className="w-6 h-6 text-accent-green mb-2" />
-          <p className="text-2xl font-bold font-mono text-accent-green">
-            {profileUser.gameStats.reduce((acc, s) => acc + s.wins, 0)}
-          </p>
-          <p className="text-sm text-gray-400">Total Wins</p>
-        </div>
+        <Card className="border-l-4 border-l-primary">
+          <CardContent className="p-6">
+            <Trophy className="w-6 h-6 text-primary mb-2" />
+            <p className="text-2xl font-bold">
+              {profileUser.gameStats.reduce((acc, s) => acc + s.wins, 0)}
+            </p>
+            <p className="text-sm text-muted-foreground">Total Wins</p>
+          </CardContent>
+        </Card>
 
-        <div className="card p-6 border-l-4 border-primary">
-          <Trophy className="w-6 h-6 text-primary mb-2" />
-          <p className="text-2xl font-bold font-mono text-primary-light">
-            {profileUser.gameStats.reduce((acc, s) => acc + s.totalPlayed, 0)}
-          </p>
-          <p className="text-sm text-gray-400">Games Played</p>
-        </div>
+        <Card className="border-l-4 border-l-primary">
+          <CardContent className="p-6">
+            <Trophy className="w-6 h-6 text-primary mb-2" />
+            <p className="text-2xl font-bold">
+              {profileUser.gameStats.reduce((acc, s) => acc + s.totalPlayed, 0)}
+            </p>
+            <p className="text-sm text-muted-foreground">Games Played</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Game Stats */}
-      <div className="card p-6">
-        <h2 className="text-xl font-bold mb-4">Game Statistics</h2>
-        {profileUser.gameStats.length === 0 ? (
-          <p className="text-gray-400 text-center py-8">No games played yet</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {profileUser.gameStats.map((stat) => (
-              <div
-                key={stat.gameType}
-                className="p-4 rounded-lg bg-background/50"
-              >
-                <h3 className="font-medium capitalize mb-3">
-                  {stat.gameType.replace('_', ' ')}
-                </h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-gray-400">High Score</p>
-                    <p className="font-mono text-lg text-primary-light">
-                      {stat.highScore.toLocaleString()}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400">Win Rate</p>
-                    <p className="font-mono text-lg text-accent-green">
-                      {stat.totalPlayed > 0
-                        ? Math.round((stat.wins / stat.totalPlayed) * 100)
-                        : 0}%
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400">Wins</p>
-                    <p className="font-mono text-lg">{stat.wins}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400">Total Played</p>
-                    <p className="font-mono text-lg">{stat.totalPlayed}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Game Statistics</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {profileUser.gameStats.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">No games played yet</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {profileUser.gameStats.map((stat) => (
+                <Card key={stat.gameType}>
+                  <CardContent className="p-4">
+                    <h3 className="font-medium capitalize mb-3">
+                      {stat.gameType.replace('_', ' ')}
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">High Score</p>
+                        <p className="text-lg font-semibold">
+                          {stat.highScore.toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Win Rate</p>
+                        <p className="text-lg font-semibold">
+                          {stat.totalPlayed > 0
+                            ? Math.round((stat.wins / stat.totalPlayed) * 100)
+                            : 0}%
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Wins</p>
+                        <p className="text-lg font-semibold">{stat.wins}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Total Played</p>
+                        <p className="text-lg font-semibold">{stat.totalPlayed}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Transfer Modal */}
-      {showTransferModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="card p-6 w-full max-w-md animate-slide-up">
-            <h2 className="text-xl font-bold mb-4">
-              Send to {profileUser.username}
-            </h2>
-            
-            {transferError && (
-              <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-                {transferError}
-              </div>
-            )}
+      <Dialog open={showTransferModal} onOpenChange={setShowTransferModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send to {profileUser.username}</DialogTitle>
+            <DialogDescription>
+              Transfer currency to this user
+            </DialogDescription>
+          </DialogHeader>
+          
+          {transferError && (
+            <Alert variant="destructive">
+              <AlertDescription>{transferError}</AlertDescription>
+            </Alert>
+          )}
 
-            <div className="space-y-4">
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setTransferType('money')}
-                  className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
-                    transferType === 'money'
-                      ? 'bg-money/20 border border-money text-money-light'
-                      : 'bg-surface text-gray-400'
-                  }`}
-                >
-                  <Coins className="w-5 h-5 inline mr-2" />
-                  Money
-                </button>
-                <button
-                  onClick={() => setTransferType('aura')}
-                  className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
-                    transferType === 'aura'
-                      ? 'bg-aura/20 border border-aura text-aura-light'
-                      : 'bg-surface text-gray-400'
-                  }`}
-                >
-                  <Sparkles className="w-5 h-5 inline mr-2" />
-                  Aura
-                </button>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Amount
-                </label>
-                <input
-                  type="number"
-                  value={transferAmount}
-                  onChange={(e) => setTransferAmount(e.target.value)}
-                  className="input"
-                  placeholder="0"
-                  min="1"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Your balance: {transferType === 'money'
-                    ? `$${currentUser?.money.toLocaleString()}`
-                    : currentUser?.aura.toLocaleString()}
-                </p>
-              </div>
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setTransferType('money')}
+                variant={transferType === 'money' ? 'default' : 'outline'}
+                className="flex-1"
+              >
+                <Coins className="w-4 h-4 mr-2" />
+                Money
+              </Button>
+              <Button
+                onClick={() => setTransferType('aura')}
+                variant={transferType === 'aura' ? 'default' : 'outline'}
+                className="flex-1"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                Aura
+              </Button>
             </div>
 
-            <div className="flex items-center gap-3 mt-6">
-              <button
-                onClick={() => {
-                  setShowTransferModal(false);
-                  setTransferError('');
-                  setTransferAmount('');
-                }}
-                className="btn-secondary flex-1"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleTransfer}
-                disabled={transferLoading || !transferAmount}
-                className="btn-primary flex-1"
-              >
-                {transferLoading ? 'Sending...' : 'Send'}
-              </button>
+            <div className="space-y-2">
+              <Label htmlFor="amount">Amount</Label>
+              <Input
+                id="amount"
+                type="number"
+                value={transferAmount}
+                onChange={(e) => setTransferAmount(e.target.value)}
+                placeholder="0"
+                min="1"
+              />
+              <p className="text-xs text-muted-foreground">
+                Your balance: {transferType === 'money'
+                  ? `$${currentUser?.money.toLocaleString()}`
+                  : currentUser?.aura.toLocaleString()}
+              </p>
             </div>
           </div>
-        </div>
-      )}
+
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowTransferModal(false);
+                setTransferError('');
+                setTransferAmount('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleTransfer}
+              disabled={transferLoading || !transferAmount}
+            >
+              {transferLoading ? 'Sending...' : 'Send'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

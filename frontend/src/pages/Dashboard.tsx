@@ -15,7 +15,20 @@ import {
   Gift,
   Send,
   Users,
+  Loader2,
+  Moon,
 } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 
 interface Transfer {
   id: string;
@@ -112,7 +125,7 @@ export default function Dashboard() {
       const selectedUser = allUsers.find(u => u.id === selectedUserId);
       setGiftMessage({ 
         type: 'success', 
-        text: `🎁 ${giftAmount} aura envoyé à ${selectedUser?.username}!` 
+        text: `${giftAmount} aura envoyé à ${selectedUser?.username}!` 
       });
       
       // Refresh data
@@ -163,9 +176,12 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-pulse text-primary text-xl font-display">
-          Loading...
+      <div className="space-y-6">
+        <Skeleton className="h-32 w-full" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-32" />
+          ))}
         </div>
       </div>
     );
@@ -174,343 +190,371 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Welcome Header */}
-      <div className="card p-6">
-        <h1 className="text-3xl font-bold font-display mb-2">
-          Welcome back, <span className="text-gradient-aura">{user?.username}</span>!
-        </h1>
-        <p className="text-gray-400">
-          Ready to earn some Aura? Check out the games or see how you rank against others.
-        </p>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-3xl">
+            Welcome back, <span className="text-gradient-aura">{user?.username}</span>!
+          </CardTitle>
+          <CardDescription>
+            Ready to earn some Aura? Check out the games or see how you rank against others.
+          </CardDescription>
+        </CardHeader>
+      </Card>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Aura Card */}
-        <div className="card p-6 border-l-4 border-aura">
-          <div className="flex items-center justify-between mb-4">
-            <Sparkles className="w-8 h-8 text-aura" />
-            <span className="badge-aura">Prestige</span>
-          </div>
-          <p className="text-3xl font-bold font-mono text-aura-light">
-            {user?.aura.toLocaleString()}
-          </p>
-          <p className="text-sm text-gray-400 mt-1">Total Aura</p>
-        </div>
+        <Card className="border-l-4 border-l-primary">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <Sparkles className="h-8 w-8 text-primary" />
+            <Badge variant="outline" className="bg-primary/20 text-primary border-primary/30">
+              Prestige
+            </Badge>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-primary">
+              {user?.aura.toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Total Aura</p>
+          </CardContent>
+        </Card>
 
         {/* Money Card */}
-        <div className="card p-6 border-l-4 border-money">
-          <div className="flex items-center justify-between mb-4">
-            <Coins className="w-8 h-8 text-money" />
-            <span className="badge-money">Currency</span>
-          </div>
-          <p className="text-3xl font-bold font-mono text-money-light">
-            ${user?.money.toLocaleString()}
-          </p>
-          <p className="text-sm text-gray-400 mt-1">Total Money</p>
-        </div>
+        <Card className="border-l-4 border-l-primary">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <Coins className="h-8 w-8 text-primary" />
+            <Badge variant="outline" className="bg-primary/20 text-primary border-primary/30">
+              Currency
+            </Badge>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-primary">
+              ${user?.money.toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Total Money</p>
+          </CardContent>
+        </Card>
 
         {/* Rank Card */}
-        <div className="card p-6 border-l-4 border-primary">
-          <div className="flex items-center justify-between mb-4">
-            <Trophy className="w-8 h-8 text-primary" />
-            <span className="badge bg-primary/20 text-primary-light">Ranking</span>
-          </div>
-          <p className="text-3xl font-bold font-mono text-primary-light">
-            #{userRank || '—'}
-          </p>
-          <p className="text-sm text-gray-400 mt-1">Aura Leaderboard</p>
-        </div>
+        <Card className="border-l-4 border-l-primary">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <Trophy className="h-8 w-8 text-primary" />
+            <Badge variant="outline" className="bg-primary/20 text-primary-foreground">
+              Ranking
+            </Badge>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-primary-foreground">
+              #{userRank || '—'}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Aura Leaderboard</p>
+          </CardContent>
+        </Card>
 
         {/* Online Card */}
-        <div className="card p-6 border-l-4 border-accent-green">
-          <div className="flex items-center justify-between mb-4">
-            <Gamepad2 className="w-8 h-8 text-accent-green" />
-            <span className="badge bg-accent-green/20 text-accent-green">Live</span>
-          </div>
-          <p className="text-3xl font-bold font-mono text-accent-green">
-            {onlineUsers.length}
-          </p>
-          <p className="text-sm text-gray-400 mt-1">Players Online</p>
-        </div>
+        <Card className="border-l-4 border-l-primary">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <Gamepad2 className="h-8 w-8 text-primary" />
+            <Badge variant="outline" className="bg-primary/20 text-primary">
+              Live
+            </Badge>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-primary">
+              {onlineUsers.length}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Players Online</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Gift Aura Section */}
-      <div className="card p-6 border border-aura/30 bg-gradient-to-br from-aura/5 to-transparent">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <Gift className="w-5 h-5 text-aura" />
-            Envoyer de l'Aura
-          </h2>
+      <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Gift className="h-5 w-5 text-primary" />
+              Envoyer de l'Aura
+            </CardTitle>
+            {dailyAllowance && (
+              <div className="flex items-center gap-4 text-sm">
+                <span className="text-muted-foreground">
+                  Prochain reset: <span className="text-primary">{getTimeUntilReset()}</span>
+                </span>
+                <Badge variant="outline" className="bg-primary/20 text-primary border-primary/30">
+                  {dailyAllowance.remaining}/{dailyAllowance.dailyLimit} disponible
+                </Badge>
+              </div>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {/* Progress bar */}
           {dailyAllowance && (
-            <div className="flex items-center gap-4 text-sm">
-              <span className="text-gray-400">
-                Prochain reset: <span className="text-aura-light font-mono">{getTimeUntilReset()}</span>
-              </span>
-              <span className="badge-aura">
-                {dailyAllowance.remaining}/{dailyAllowance.dailyLimit} disponible
-              </span>
-            </div>
-          )}
-        </div>
-        
-        {/* Progress bar */}
-        {dailyAllowance && (
-          <div className="mb-4">
-            <div className="h-2 bg-background rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-aura to-aura-light transition-all duration-300"
-                style={{ width: `${(dailyAllowance.remaining / dailyAllowance.dailyLimit) * 100}%` }}
+            <div className="mb-4">
+              <Progress 
+                value={(dailyAllowance.remaining / dailyAllowance.dailyLimit) * 100} 
+                className="h-2"
               />
             </div>
-          </div>
-        )}
-        
-        <div className="flex flex-col sm:flex-row gap-4">
-          {/* User selector */}
-          <div className="flex-1">
-            <label className="block text-sm text-gray-400 mb-2">
-              <Users className="w-4 h-4 inline mr-1" />
-              Destinataire
-            </label>
-            <select
-              value={selectedUserId}
-              onChange={(e) => setSelectedUserId(e.target.value)}
-              className="input w-full"
-              disabled={!dailyAllowance || dailyAllowance.remaining === 0}
-            >
-              <option value="">Sélectionner un utilisateur...</option>
-              {allUsers
-                .filter(u => u.id !== user?.id)
-                .map(u => (
-                  <option key={u.id} value={u.id}>
-                    {u.username} ({u.aura.toLocaleString()} aura)
-                  </option>
-                ))}
-            </select>
+          )}
+          
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* User selector */}
+            <div className="flex-1">
+              <Label htmlFor="user-select" className="flex items-center gap-1 mb-2">
+                <Users className="h-4 w-4" />
+                Destinataire
+              </Label>
+              <Select
+                value={selectedUserId}
+                onValueChange={setSelectedUserId}
+                disabled={!dailyAllowance || dailyAllowance.remaining === 0}
+              >
+                <SelectTrigger id="user-select">
+                  <SelectValue placeholder="Sélectionner un utilisateur..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {allUsers
+                    .filter(u => u.id !== user?.id)
+                    .map(u => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.username} ({u.aura.toLocaleString()} aura)
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Amount input */}
+            <div className="w-full sm:w-40">
+              <Label htmlFor="gift-amount" className="flex items-center gap-1 mb-2">
+                <Sparkles className="h-4 w-4" />
+                Quantité
+              </Label>
+              <Input
+                id="gift-amount"
+                type="number"
+                value={giftAmount}
+                onChange={(e) => setGiftAmount(Math.min(Math.max(1, parseInt(e.target.value) || 0), dailyAllowance?.remaining || 50))}
+                min={1}
+                max={dailyAllowance?.remaining || 50}
+                disabled={!dailyAllowance || dailyAllowance.remaining === 0}
+              />
+            </div>
+            
+            {/* Send button */}
+            <div className="flex items-end">
+              <Button
+                onClick={handleGiftAura}
+                disabled={!selectedUserId || giftAmount <= 0 || giftLoading || !dailyAllowance || dailyAllowance.remaining === 0}
+                className="h-10"
+              >
+                {giftLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="mr-2 h-4 w-4" />
+                )}
+                Envoyer
+              </Button>
+            </div>
           </div>
           
-          {/* Amount input */}
-          <div className="w-full sm:w-40">
-            <label className="block text-sm text-gray-400 mb-2">
-              <Sparkles className="w-4 h-4 inline mr-1" />
-              Quantité
-            </label>
-            <input
-              type="number"
-              value={giftAmount}
-              onChange={(e) => setGiftAmount(Math.min(Math.max(1, parseInt(e.target.value) || 0), dailyAllowance?.remaining || 50))}
-              min={1}
-              max={dailyAllowance?.remaining || 50}
-              className="input w-full"
-              disabled={!dailyAllowance || dailyAllowance.remaining === 0}
-            />
-          </div>
-          
-          {/* Send button */}
-          <div className="flex items-end">
-            <button
-              onClick={handleGiftAura}
-              disabled={!selectedUserId || giftAmount <= 0 || giftLoading || !dailyAllowance || dailyAllowance.remaining === 0}
-              className="btn-primary h-[42px] px-6 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {giftLoading ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  Envoyer
-                </>
+          {/* Message */}
+          {giftMessage && (
+            <Alert 
+              variant={giftMessage.type === 'success' ? 'default' : 'destructive'}
+              className={cn(
+                "mt-4",
+                giftMessage.type === 'success' && "bg-primary/20 text-primary border-primary/30"
               )}
-            </button>
-          </div>
-        </div>
-        
-        {/* Message */}
-        {giftMessage && (
-          <div className={`mt-4 p-3 rounded-lg ${
-            giftMessage.type === 'success' 
-              ? 'bg-accent-green/20 text-accent-green border border-accent-green/30' 
-              : 'bg-red-500/20 text-red-400 border border-red-500/30'
-          }`}>
-            {giftMessage.text}
-          </div>
-        )}
-        
-        {dailyAllowance && dailyAllowance.remaining === 0 && (
-          <div className="mt-4 p-3 rounded-lg bg-gray-700/30 text-gray-400 text-center">
-            Tu as utilisé tout ton quota d'aura pour aujourd'hui. Reviens demain ! 🌙
-          </div>
-        )}
-      </div>
+            >
+              <AlertDescription>{giftMessage.text}</AlertDescription>
+            </Alert>
+          )}
+          
+          {dailyAllowance && dailyAllowance.remaining === 0 && (
+            <Alert className="mt-4">
+              <AlertDescription className="text-center flex items-center justify-center gap-2">
+                Tu as utilisé tout ton quota d'aura pour aujourd'hui. Reviens demain ! <Moon className="w-4 h-4" />
+              </AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Aura Leaderboard */}
-        <div className="card p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-aura" />
-              Top Aura Players
-            </h2>
-            <Link
-              to="/leaderboards"
-              className="text-sm text-primary hover:text-primary-hover flex items-center gap-1"
-            >
-              View all
-              <ArrowUpRight className="w-4 h-4" />
-            </Link>
-          </div>
-          <div className="space-y-3">
-            {auraRankings.map((ranking, index) => (
-              <div
-                key={ranking.userId}
-                className={`flex items-center justify-between p-3 rounded-lg ${
-                  ranking.userId === user?.id
-                    ? 'bg-aura/10 border border-aura/30'
-                    : 'bg-background/50'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
-                      index === 0
-                        ? 'bg-yellow-500/20 text-yellow-500'
-                        : index === 1
-                        ? 'bg-gray-400/20 text-gray-400'
-                        : index === 2
-                        ? 'bg-orange-500/20 text-orange-500'
-                        : 'bg-gray-700 text-gray-400'
-                    }`}
-                  >
-                    {ranking.rank}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                Top Aura Players
+              </CardTitle>
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/leaderboards" className="flex items-center gap-1">
+                  View all
+                  <ArrowUpRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {auraRankings.map((ranking, index) => (
+                <div
+                  key={ranking.userId}
+                  className={cn(
+                    "flex items-center justify-between p-3 rounded-lg",
+                    ranking.userId === user?.id
+                      ? 'bg-primary/10 border border-primary/30'
+                      : 'bg-muted/50'
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <Badge
+                      variant={index === 0 ? 'default' : index === 2 ? 'secondary' : 'outline'}
+                      className={cn(
+                        "w-8 h-8 rounded-full flex items-center justify-center font-bold",
+                        index === 0 && 'bg-primary/20 text-primary',
+                        index === 2 && 'bg-secondary/20 text-secondary-foreground'
+                      )}
+                    >
+                      {ranking.rank}
+                    </Badge>
+                    <span className="font-medium">{ranking.username}</span>
+                  </div>
+                  <span className="font-semibold">
+                    {ranking.value.toLocaleString()}
                   </span>
-                  <span className="font-medium">{ranking.username}</span>
                 </div>
-                <span className="font-mono text-aura-light">
-                  {ranking.value.toLocaleString()}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Recent Activity */}
-        <div className="card p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <Clock className="w-5 h-5 text-accent-cyan" />
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary" />
               Recent Transfers
-            </h2>
-          </div>
-          <div className="space-y-3">
-            {recentTransfers.length === 0 ? (
-              <p className="text-gray-400 text-center py-8">No recent transfers</p>
-            ) : (
-              recentTransfers.map((transfer) => {
-                const isSender = transfer.senderId === user?.id;
-                const otherUser = isSender ? transfer.receiver : transfer.sender;
-                const isGift = transfer.isGift;
-                
-                return (
-                  <div
-                    key={transfer.id}
-                    className={`flex items-center justify-between p-3 rounded-lg ${
-                      isGift 
-                        ? 'bg-aura/10 border border-aura/20' 
-                        : 'bg-background/50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      {isGift ? (
-                        <Gift className={`w-5 h-5 ${isSender ? 'text-aura' : 'text-aura-light'}`} />
-                      ) : isSender ? (
-                        <ArrowUpRight className="w-5 h-5 text-red-400" />
-                      ) : (
-                        <ArrowDownRight className="w-5 h-5 text-accent-green" />
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {recentTransfers.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">No recent transfers</p>
+              ) : (
+                recentTransfers.map((transfer) => {
+                  const isSender = transfer.senderId === user?.id;
+                  const otherUser = isSender ? transfer.receiver : transfer.sender;
+                  const isGift = transfer.isGift;
+                  
+                  return (
+                    <div
+                      key={transfer.id}
+                      className={cn(
+                        "flex items-center justify-between p-3 rounded-lg",
+                        isGift 
+                          ? 'bg-primary/10 border border-primary/20' 
+                          : 'bg-muted/50'
                       )}
-                      <div>
-                        <p className="font-medium">
-                          {isGift 
-                            ? (isSender ? 'Don envoyé à' : 'Don reçu de')
-                            : (isSender ? 'Envoyé à' : 'Reçu de')
-                          }{' '}
-                          <span className="text-primary">{otherUser.username}</span>
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {formatTimeAgo(transfer.createdAt)}
-                          {isGift && <span className="ml-1 text-aura">• cadeau</span>}
-                        </p>
+                    >
+                      <div className="flex items-center gap-3">
+                        {isGift ? (
+                          <Gift className={cn("h-5 w-5", isSender ? 'text-primary' : 'text-primary')} />
+                        ) : isSender ? (
+                          <ArrowUpRight className="h-5 w-5 text-destructive" />
+                        ) : (
+                          <ArrowDownRight className="h-5 w-5 text-primary" />
+                        )}
+                        <div>
+                          <p className="font-medium">
+                            {isGift 
+                              ? (isSender ? 'Don envoyé à' : 'Don reçu de')
+                              : (isSender ? 'Envoyé à' : 'Reçu de')
+                            }{' '}
+                            <span className="text-primary">{otherUser.username}</span>
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatTimeAgo(transfer.createdAt)}
+                            {isGift && <span className="ml-1 text-primary">• cadeau</span>}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      {transfer.auraAmount > 0 && (
-                        <p className={`font-mono ${
+                      <div className="text-right">
+                        {transfer.auraAmount > 0 && (
+                        <p className={cn(
                           isGift 
-                            ? (isSender ? 'text-aura' : 'text-aura-light')
-                            : (isSender ? 'text-red-400' : 'text-aura-light')
-                        }`}>
+                            ? (isSender ? 'text-primary' : 'text-primary')
+                            : (isSender ? 'text-destructive' : 'text-primary')
+                        )}>
                           {isSender && !isGift ? '-' : '+'}{transfer.auraAmount} Aura
                         </p>
-                      )}
-                      {transfer.moneyAmount > 0 && (
-                        <p className={`font-mono ${isSender ? 'text-red-400' : 'text-money-light'}`}>
+                        )}
+                        {transfer.moneyAmount > 0 && (
+                        <p className={cn(isSender ? 'text-destructive' : 'text-primary')}>
                           {isSender ? '-' : '+'}${transfer.moneyAmount}
                         </p>
-                      )}
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
+                  );
+                })
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Quick Actions */}
-      <div className="card p-6">
-        <h2 className="text-xl font-bold mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Link
-            to="/games/doodle-jump"
-            className="card-hover p-4 text-center"
-          >
-            <div className="w-12 h-12 mx-auto mb-3 rounded-lg bg-accent-green/20 flex items-center justify-center">
-              <Gamepad2 className="w-6 h-6 text-accent-green" />
-            </div>
-            <p className="font-medium">Doodle Jump</p>
-            <p className="text-xs text-gray-400">Play now</p>
-          </Link>
-          <Link
-            to="/games/solitaire"
-            className="card-hover p-4 text-center"
-          >
-            <div className="w-12 h-12 mx-auto mb-3 rounded-lg bg-accent-pink/20 flex items-center justify-center">
-              <Gamepad2 className="w-6 h-6 text-accent-pink" />
-            </div>
-            <p className="font-medium">Solitaire</p>
-            <p className="text-xs text-gray-400">Play now</p>
-          </Link>
-          <Link
-            to="/marketplace"
-            className="card-hover p-4 text-center"
-          >
-            <div className="w-12 h-12 mx-auto mb-3 rounded-lg bg-money/20 flex items-center justify-center">
-              <Coins className="w-6 h-6 text-money" />
-            </div>
-            <p className="font-medium">Marketplace</p>
-            <p className="text-xs text-gray-400">Shop items</p>
-          </Link>
-          <Link
-            to="/leaderboards"
-            className="card-hover p-4 text-center"
-          >
-            <div className="w-12 h-12 mx-auto mb-3 rounded-lg bg-primary/20 flex items-center justify-center">
-              <Trophy className="w-6 h-6 text-primary" />
-            </div>
-            <p className="font-medium">Leaderboards</p>
-            <p className="text-xs text-gray-400">View rankings</p>
-          </Link>
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Button variant="outline" className="h-auto flex-col p-4" asChild>
+              <Link to="/games/doodle-jump">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-lg bg-primary/20 flex items-center justify-center">
+                  <Gamepad2 className="h-6 w-6 text-primary" />
+                </div>
+                <p className="font-medium">Doodle Jump</p>
+                <p className="text-xs text-muted-foreground">Play now</p>
+              </Link>
+            </Button>
+            <Button variant="outline" className="h-auto flex-col p-4" asChild>
+              <Link to="/games/solitaire">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-lg bg-secondary/20 flex items-center justify-center">
+                  <Gamepad2 className="h-6 w-6 text-primary" />
+                </div>
+                <p className="font-medium">Solitaire</p>
+                <p className="text-xs text-muted-foreground">Play now</p>
+              </Link>
+            </Button>
+            <Button variant="outline" className="h-auto flex-col p-4" asChild>
+              <Link to="/marketplace">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-lg bg-primary/20 flex items-center justify-center">
+                  <Coins className="h-6 w-6 text-primary" />
+                </div>
+                <p className="font-medium">Marketplace</p>
+                <p className="text-xs text-muted-foreground">Shop items</p>
+              </Link>
+            </Button>
+            <Button variant="outline" className="h-auto flex-col p-4" asChild>
+              <Link to="/leaderboards">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-lg bg-primary/20 flex items-center justify-center">
+                  <Trophy className="h-6 w-6 text-primary" />
+                </div>
+                <p className="font-medium">Leaderboards</p>
+                <p className="text-xs text-muted-foreground">View rankings</p>
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

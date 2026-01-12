@@ -11,7 +11,15 @@ import {
   X,
   Coins,
   Sparkles,
+  Loader2,
 } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 interface Item {
   id: string;
@@ -87,13 +95,13 @@ export default function Marketplace() {
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'CONSUMABLE':
-        return 'text-accent-orange bg-accent-orange/20';
+        return 'bg-primary/20 text-primary border-primary/30';
       case 'COSMETIC':
-        return 'text-accent-pink bg-accent-pink/20';
+        return 'bg-secondary/20 text-secondary-foreground border-secondary/30';
       case 'UPGRADE':
-        return 'text-accent-cyan bg-accent-cyan/20';
+        return 'bg-primary/20 text-primary border-primary/30';
       default:
-        return 'text-gray-400 bg-gray-700';
+        return 'bg-muted text-muted-foreground border-border';
     }
   };
 
@@ -106,121 +114,108 @@ export default function Marketplace() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold font-display flex items-center gap-3">
-            <ShoppingBag className="w-8 h-8 text-money" />
+          <h1 className="text-3xl font-bold flex items-center gap-3">
+            <ShoppingBag className="w-8 h-8 text-primary" />
             Marketplace
           </h1>
-          <p className="text-gray-400 mt-2">
+          <p className="text-muted-foreground mt-2">
             Buy items, cosmetics, and upgrades
           </p>
         </div>
         
         {/* Balance Display */}
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-aura/10 border border-aura/30">
-            <Sparkles className="w-5 h-5 text-aura-light" />
-            <span className="font-mono font-semibold text-aura-light">
+          <Badge variant="outline" className="gap-2 px-4 py-2 bg-primary/10 border-primary/30">
+            <Sparkles className="w-5 h-5 text-primary" />
+            <span className="font-semibold text-primary">
               {user?.aura.toLocaleString()}
             </span>
-          </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-money/10 border border-money/30">
-            <Coins className="w-5 h-5 text-money-light" />
-            <span className="font-mono font-semibold text-money-light">
+          </Badge>
+          <Badge variant="outline" className="gap-2 px-4 py-2 bg-primary/10 border-primary/30">
+            <Coins className="w-5 h-5 text-primary" />
+            <span className="font-semibold text-primary">
               ${user?.money.toLocaleString()}
             </span>
-          </div>
+          </Badge>
         </div>
       </div>
 
       {/* Message */}
       {message && (
-        <div
-          className={`p-4 rounded-lg flex items-center gap-3 ${
-            message.type === 'success'
-              ? 'bg-accent-green/10 border border-accent-green/30'
-              : 'bg-red-500/10 border border-red-500/30'
-          }`}
-        >
+        <Alert variant={message.type === 'success' ? 'default' : 'destructive'}>
           {message.type === 'success' ? (
-            <Check className="w-5 h-5 text-accent-green" />
+            <Check className="h-4 w-4" />
           ) : (
-            <X className="w-5 h-5 text-red-400" />
+            <X className="h-4 w-4" />
           )}
-          <span className={message.type === 'success' ? 'text-accent-green' : 'text-red-400'}>
-            {message.text}
-          </span>
-        </div>
+          <AlertDescription>{message.text}</AlertDescription>
+        </Alert>
       )}
 
       {/* Filters */}
-      <div className="flex items-center gap-2">
-        <Filter className="w-5 h-5 text-gray-400" />
-        {['all', 'CONSUMABLE', 'COSMETIC', 'UPGRADE'].map((type) => (
-          <button
-            key={type}
-            onClick={() => setFilter(type)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filter === type
-                ? 'bg-primary text-white'
-                : 'bg-surface hover:bg-surface-hover text-gray-400'
-            }`}
-          >
-            {type === 'all' ? 'All' : type.charAt(0) + type.slice(1).toLowerCase()}
-          </button>
-        ))}
-      </div>
+      <Tabs value={filter} onValueChange={setFilter}>
+        <TabsList>
+          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="CONSUMABLE">Consumable</TabsTrigger>
+          <TabsTrigger value="COSMETIC">Cosmetic</TabsTrigger>
+          <TabsTrigger value="UPGRADE">Upgrade</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Items Grid */}
       {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-pulse text-primary text-xl font-display">
-            Loading...
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-64" />
+          ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="card p-12 text-center">
-          <ShoppingBag className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-400 mb-2">No Items Available</h2>
-          <p className="text-gray-500">Check back later for new items!</p>
-        </div>
+        <Card>
+          <CardContent className="p-12 text-center">
+            <ShoppingBag className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-muted-foreground mb-2">No Items Available</h2>
+            <p className="text-muted-foreground">Check back later for new items!</p>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {items.map((item) => (
-            <div key={item.id} className="card overflow-hidden group">
+            <Card key={item.id} className="overflow-hidden group">
               {/* Item Image/Icon */}
-              <div className="h-32 bg-gradient-to-br from-surface to-background flex items-center justify-center">
-                <div className={`w-16 h-16 rounded-xl ${getTypeColor(item.type)} flex items-center justify-center`}>
+              <div className="h-32 bg-gradient-to-br from-muted to-background flex items-center justify-center">
+                <div className={cn("w-16 h-16 rounded-xl flex items-center justify-center border", getTypeColor(item.type))}>
                   {getTypeIcon(item.type)}
                 </div>
               </div>
 
               {/* Item Info */}
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-lg font-bold">{item.name}</h3>
-                  <span className={`badge ${getTypeColor(item.type)}`}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">{item.name}</CardTitle>
+                  <Badge variant="outline" className={getTypeColor(item.type)}>
                     {item.type}
-                  </span>
+                  </Badge>
                 </div>
-
-                <p className="text-gray-400 text-sm mb-4 line-clamp-2">
+                <CardDescription className="line-clamp-2">
                   {item.description}
-                </p>
+                </CardDescription>
+              </CardHeader>
 
+              <CardContent>
                 {/* Price */}
                 <div className="flex items-center gap-4 mb-4">
                   {item.price > 0 && (
                     <div className="flex items-center gap-1">
-                      <Coins className="w-4 h-4 text-money" />
-                      <span className="font-mono font-semibold text-money-light">
+                      <Coins className="w-4 h-4 text-primary" />
+                      <span className="font-semibold text-primary">
                         ${item.price}
                       </span>
                     </div>
                   )}
                   {item.auraCost > 0 && (
                     <div className="flex items-center gap-1">
-                      <Sparkles className="w-4 h-4 text-aura" />
-                      <span className="font-mono font-semibold text-aura-light">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                      <span className="font-semibold text-primary">
                         {item.auraCost}
                       </span>
                     </div>
@@ -228,23 +223,25 @@ export default function Marketplace() {
                 </div>
 
                 {/* Buy Button */}
-                <button
+                <Button
                   onClick={() => handlePurchase(item)}
                   disabled={!canAfford(item) || purchasing === item.id}
-                  className={`w-full py-2 rounded-lg font-medium transition-all ${
-                    canAfford(item)
-                      ? 'btn-primary'
-                      : 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                  }`}
+                  className="w-full"
+                  variant={canAfford(item) ? 'default' : 'secondary'}
                 >
-                  {purchasing === item.id
-                    ? 'Purchasing...'
-                    : canAfford(item)
-                    ? 'Buy Now'
-                    : 'Insufficient Funds'}
-                </button>
-              </div>
-            </div>
+                  {purchasing === item.id ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Purchasing...
+                    </>
+                  ) : canAfford(item) ? (
+                    'Buy Now'
+                  ) : (
+                    'Insufficient Funds'
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}

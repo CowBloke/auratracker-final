@@ -3,6 +3,11 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
 import { ArrowLeft, RotateCcw, Trophy, Sparkles, Coins, DollarSign, TrendingUp } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 type Symbol = '🍒' | '🍋' | '🍊' | '🍇' | '🔔' | '⭐' | '💎' | '7️⃣';
 
@@ -172,61 +177,62 @@ export default function Casino() {
       <div className="flex items-center justify-between">
         <Link
           to="/games"
-          className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
           Back to Games
         </Link>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Coins className="w-5 h-5 text-money" />
-            <span className="font-mono text-lg">${user?.money.toLocaleString() || 0}</span>
+            <Coins className="w-5 h-5 text-primary" />
+            <span className="text-lg">${user?.money.toLocaleString() || 0}</span>
           </div>
         </div>
       </div>
 
       {/* Game Container */}
       <div className="flex justify-center">
-        <div className="card p-6 max-w-2xl w-full">
-          <div className="text-center mb-6">
-            <h1 className="text-3xl font-bold font-display mb-2">🎰 Casino Slots</h1>
-            <p className="text-gray-400">Spin the reels and win big!</p>
-          </div>
-
+        <Card className="max-w-2xl w-full">
+          <CardHeader>
+            <CardTitle className="text-3xl flex items-center justify-center gap-2">
+              <Coins className="w-8 h-8" />
+              Casino Slots
+            </CardTitle>
+            <CardDescription>Spin the reels and win big!</CardDescription>
+          </CardHeader>
+          <CardContent>
           {/* Bet Selection */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-300 mb-3">
+            <Label className="mb-3">
               Bet Amount: ${bet}
-            </label>
+            </Label>
             <div className="flex flex-wrap gap-2">
               {BET_STEPS.map((step) => (
-                <button
+                <Button
                   key={step}
                   onClick={() => setBet(step)}
                   disabled={spinning || (user && user.money < step)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    bet === step
-                      ? 'bg-primary text-white'
-                      : 'bg-surface border border-gray-700 text-gray-300 hover:border-primary'
-                  } ${(user && user.money < step) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  variant={bet === step ? 'default' : 'outline'}
+                  size="sm"
                 >
                   ${step}
-                </button>
+                </Button>
               ))}
             </div>
-            <div className="mt-2 flex items-center justify-between text-sm text-gray-400">
+            <div className="mt-2 flex items-center justify-between text-sm text-muted-foreground">
               <span>Min: ${MIN_BET}</span>
               <span>Max: ${MAX_BET}</span>
             </div>
           </div>
 
           {/* Slot Machine */}
-          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg p-6 border-2 border-primary/30 mb-6">
+          <Card className="mb-6 border-2 border-primary/30">
+            <CardContent className="p-6">
             <div className="grid grid-cols-3 gap-4 mb-4">
               {reels.map((reel, reelIndex) => (
                 <div
                   key={reelIndex}
-                  className="bg-background rounded-lg p-4 border-2 border-gray-700"
+                  className="bg-background rounded-lg p-4 border-2 border-border"
                 >
                   <div className="space-y-2">
                     {reel.map((symbol, rowIndex) => {
@@ -240,11 +246,12 @@ export default function Casino() {
                       return (
                         <div
                           key={`${reelIndex}-${rowIndex}`}
-                          className={`text-6xl text-center py-2 rounded transition-all ${
+                          className={cn(
+                            "text-6xl text-center py-2 rounded transition-all",
                             isWinning && !isSpinning
-                              ? 'bg-yellow-500/20 border-2 border-yellow-500 scale-110 animate-pulse'
-                              : 'bg-surface'
-                          }`}
+                              ? 'bg-primary/20 border-2 border-primary scale-110 animate-pulse'
+                              : 'bg-muted'
+                          )}
                         >
                           {symbol}
                         </div>
@@ -254,117 +261,123 @@ export default function Casino() {
                 </div>
               ))}
             </div>
+            </CardContent>
+          </Card>
 
             {/* Win/Loss Display */}
             {!isSpinning && lastResult && (
               <div className="text-center mb-4">
                 {winAmount > 0 ? (
                   <>
-                    <div className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-yellow-500/20 border-2 border-yellow-500">
-                      <TrendingUp className="w-6 h-6 text-yellow-500" />
-                      <span className="text-2xl font-bold text-yellow-500">
-                        Win: ${winAmount.toLocaleString()}!
-                      </span>
-                    </div>
+                    <Badge variant="secondary" className="px-6 py-3 text-2xl">
+                      <TrendingUp className="w-6 h-6 mr-2" />
+                      Win: ${winAmount.toLocaleString()}!
+                    </Badge>
                     {lastResult.multiplier > 0 && (
-                      <p className="text-sm text-gray-400 mt-2">
+                      <p className="text-sm text-muted-foreground mt-2">
                         {lastResult.winningLines.length} winning line{lastResult.winningLines.length > 1 ? 's' : ''} × {lastResult.multiplier}x
                       </p>
                     )}
                   </>
                 ) : (
-                  <div className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-red-500/20 border-2 border-red-500">
-                    <span className="text-xl font-bold text-red-400">
-                      Lost: ${bet.toLocaleString()}
-                    </span>
-                  </div>
+                  <Badge variant="destructive" className="px-6 py-3 text-xl">
+                    Lost: ${bet.toLocaleString()}
+                  </Badge>
                 )}
               </div>
             )}
 
             {/* Spin Button */}
-            <button
+            <Button
               onClick={spin}
               disabled={!canSpin}
-              className={`w-full py-4 rounded-lg font-bold text-lg transition-all ${
-                canSpin
-                  ? 'bg-primary hover:bg-primary-light text-white shadow-lg hover:shadow-primary/50'
-                  : 'bg-gray-700 text-gray-500 cursor-not-allowed'
-              }`}
+              size="lg"
+              className="w-full"
             >
               {spinning ? (
-                <span className="flex items-center justify-center gap-2">
+                <>
                   <RotateCcw className="w-5 h-5 animate-spin" />
                   Spinning...
-                </span>
+                </>
               ) : user && user.money < bet ? (
                 'Insufficient Funds'
               ) : (
                 'SPIN'
               )}
-            </button>
-          </div>
+            </Button>
+          </CardContent>
 
           {/* Rewards Display */}
           {rewards && (rewards.money !== 0 || rewards.aura > 0) && (
-            <div className={`mb-4 p-4 rounded-lg border ${
+            <Card className={cn(
+              "mb-4",
               rewards.money < 0 
-                ? 'bg-red-500/10 border-red-500/30' 
+                ? 'bg-destructive/10 border-destructive/30' 
                 : 'bg-primary/10 border-primary/30'
-            }`}>
-              <div className="flex items-center justify-center gap-4">
-                {rewards.money !== 0 && (
-                  <div className={`flex items-center gap-2 ${rewards.money > 0 ? 'text-money-light' : 'text-red-400'}`}>
-                    <Coins className="w-5 h-5" />
-                    <span className="font-mono">
-                      {rewards.money > 0 ? '+' : ''}${rewards.money}
-                    </span>
-                  </div>
-                )}
-                {rewards.aura > 0 && (
-                  <div className="flex items-center gap-2 text-aura-light">
-                    <Sparkles className="w-5 h-5" />
-                    <span>+{rewards.aura} Aura</span>
-                  </div>
-                )}
-              </div>
-            </div>
+            )}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-center gap-4">
+                  {rewards.money !== 0 && (
+                    <div className={cn("flex items-center gap-2", rewards.money > 0 ? 'text-primary' : 'text-destructive')}>
+                      <Coins className="w-5 h-5" />
+                      <Badge variant={rewards.money > 0 ? 'secondary' : 'destructive'}>
+                        {rewards.money > 0 ? '+' : ''}${rewards.money}
+                      </Badge>
+                    </div>
+                  )}
+                  {rewards.aura > 0 && (
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-primary" />
+                      <Badge variant="secondary">+{rewards.aura} Aura</Badge>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           {/* Stats */}
           <div className="grid grid-cols-3 gap-4">
-            <div className="bg-surface/50 rounded-lg p-4 text-center">
-              <Trophy className="w-5 h-5 text-yellow-500 mx-auto mb-2" />
-              <div className="text-2xl font-bold">{stats.wins}</div>
-              <div className="text-sm text-gray-400">Wins</div>
-            </div>
-            <div className="bg-surface/50 rounded-lg p-4 text-center">
-              <div className="text-2xl font-bold">{stats.losses}</div>
-              <div className="text-sm text-gray-400">Losses</div>
-            </div>
-            <div className="bg-surface/50 rounded-lg p-4 text-center">
-              <DollarSign className="w-5 h-5 text-money mx-auto mb-2" />
-              <div className="text-2xl font-bold text-money-light">${stats.highScore.toLocaleString()}</div>
-              <div className="text-sm text-gray-400">Best Win</div>
-            </div>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <Trophy className="w-5 h-5 text-primary mx-auto mb-2" />
+                <div className="text-2xl font-bold">{stats.wins}</div>
+                <div className="text-sm text-muted-foreground">Wins</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <div className="text-2xl font-bold">{stats.losses}</div>
+                <div className="text-sm text-muted-foreground">Losses</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <DollarSign className="w-5 h-5 text-primary mx-auto mb-2" />
+                <div className="text-2xl font-bold">${stats.highScore.toLocaleString()}</div>
+                <div className="text-sm text-muted-foreground">Best Win</div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Payout Table */}
-          <div className="mt-6 p-4 bg-surface/30 rounded-lg">
-            <h3 className="text-sm font-bold text-gray-300 mb-3">Payout Table (per line)</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-              {Object.entries(SYMBOL_VALUES).map(([symbol, multiplier]) => (
-                <div key={symbol} className="flex items-center justify-between">
-                  <span className="text-2xl">{symbol}</span>
-                  <span className="text-gray-400">{multiplier}x</span>
-                </div>
-              ))}
-            </div>
-            <p className="text-xs text-gray-500 mt-3">
-              Match 3 symbols on any line to win! Multiple lines can win simultaneously.
-            </p>
-          </div>
-        </div>
+          <Card className="mt-6">
+            <CardContent className="p-4">
+              <h3 className="text-sm font-bold mb-3">Payout Table (per line)</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                {Object.entries(SYMBOL_VALUES).map(([symbol, multiplier]) => (
+                  <div key={symbol} className="flex items-center justify-between">
+                    <span className="text-2xl">{symbol}</span>
+                    <span className="text-muted-foreground">{multiplier}x</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">
+                Match 3 symbols on any line to win! Multiple lines can win simultaneously.
+              </p>
+            </CardContent>
+          </Card>
+        </Card>
       </div>
     </div>
   );

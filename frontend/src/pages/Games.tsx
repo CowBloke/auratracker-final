@@ -1,12 +1,16 @@
 import { Link } from 'react-router-dom';
-import { Gamepad2, ArrowRight, Star, Trophy, Clock } from 'lucide-react';
+import { Gamepad2, ArrowRight, Star, Trophy, Clock, Swords, TrendingUp, Heart, Coins } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 const games = [
   {
     id: 'clash',
     name: 'Clash',
     description: 'Build your base, train troops, and raid enemies! Steal resources and climb the trophy ladder.',
-    image: '⚔️',
+    icon: Swords,
     color: 'accent-orange',
     featured: true,
     rewards: [
@@ -23,7 +27,7 @@ const games = [
     id: 'doodle-jump',
     name: 'Doodle Jump',
     description: 'Jump your way to the top! Earn money based on your score and aura for new high scores.',
-    image: '🦘',
+    icon: TrendingUp,
     color: 'accent-green',
     rewards: [
       'Money: 1 per 10 score',
@@ -38,7 +42,7 @@ const games = [
     id: 'solitaire',
     name: 'Solitaire',
     description: 'Classic Klondike solitaire. Win games to earn money and aura for fast completions.',
-    image: '🃏',
+    icon: Heart,
     color: 'accent-pink',
     rewards: [
       'Money: 100 per win',
@@ -53,7 +57,7 @@ const games = [
     id: 'casino',
     name: 'Casino Slots',
     description: 'Spin the reels and try your luck! Win big with matching symbols. Bet money to play.',
-    image: '🎰',
+    icon: Coins,
     color: 'accent-purple',
     rewards: [
       'Win up to 50x your bet',
@@ -66,17 +70,37 @@ const games = [
   },
 ];
 
+const getColorClasses = (color: string) => {
+  const colors: Record<string, string> = {
+    'accent-orange': 'from-accent-orange/20 to-accent-orange/5',
+    'accent-green': 'from-accent-green/20 to-accent-green/5',
+    'accent-pink': 'from-accent-pink/20 to-accent-pink/5',
+    'accent-purple': 'from-purple-500/20 to-purple-500/5',
+  };
+  return colors[color] || colors['accent-orange'];
+};
+
+const getBadgeColorClasses = (color: string) => {
+  const colors: Record<string, string> = {
+    'accent-orange': 'bg-primary/20 text-primary border-primary/30',
+    'accent-green': 'bg-primary/20 text-primary border-primary/30',
+    'accent-pink': 'bg-secondary/20 text-secondary-foreground border-secondary/30',
+    'accent-purple': 'bg-purple-500/20 text-purple-500 border-purple-500/30',
+  };
+  return colors[color] || colors['accent-orange'];
+};
+
 export default function Games() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold font-display flex items-center gap-3">
+          <h1 className="text-3xl font-bold flex items-center gap-3">
             <Gamepad2 className="w-8 h-8 text-primary" />
             Games
           </h1>
-          <p className="text-gray-400 mt-2">
+          <p className="text-muted-foreground mt-2">
             Play games to earn Aura and Money
           </p>
         </div>
@@ -85,35 +109,34 @@ export default function Games() {
       {/* Games Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {games.map((game) => (
-          <div key={game.id} className="card overflow-hidden group">
+          <Card key={game.id} className="overflow-hidden group">
             {/* Game Header */}
-            <div className={`h-32 bg-gradient-to-br from-${game.color}/20 to-${game.color}/5 flex items-center justify-center relative overflow-hidden`}>
-              <span className="text-7xl">{game.image}</span>
-              <div className="absolute inset-0 bg-gradient-to-t from-surface to-transparent" />
+            <div className={cn("h-32 bg-gradient-to-br flex items-center justify-center relative overflow-hidden", getColorClasses(game.color))}>
+              <game.icon className="w-20 h-20 text-foreground/80" />
+              <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
             </div>
 
             {/* Game Info */}
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-2xl font-bold">{game.name}</h2>
-                <div className="flex items-center gap-2">
-                  <span className={`badge bg-${game.color}/20 text-${game.color}`}>
-                    {game.stats.players}
-                  </span>
-                </div>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-2xl">{game.name}</CardTitle>
+                <Badge variant="outline" className={getBadgeColorClasses(game.color)}>
+                  {game.stats.players}
+                </Badge>
               </div>
+              <CardDescription>{game.description}</CardDescription>
+            </CardHeader>
 
-              <p className="text-gray-400 mb-4">{game.description}</p>
-
+            <CardContent>
               {/* Rewards */}
               <div className="space-y-2 mb-6">
-                <p className="text-sm font-medium text-gray-300 flex items-center gap-2">
-                  <Star className="w-4 h-4 text-money" />
+                <p className="text-sm font-medium flex items-center gap-2">
+                  <Star className="w-4 h-4 text-primary" />
                   Rewards
                 </p>
                 <ul className="space-y-1">
                   {game.rewards.map((reward, index) => (
-                    <li key={index} className="text-sm text-gray-400 flex items-center gap-2">
+                    <li key={index} className="text-sm text-muted-foreground flex items-center gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-primary" />
                       {reward}
                     </li>
@@ -122,7 +145,7 @@ export default function Games() {
               </div>
 
               {/* Stats */}
-              <div className="flex items-center gap-4 mb-6 text-sm text-gray-400">
+              <div className="flex items-center gap-4 mb-6 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1">
                   <Trophy className="w-4 h-4" />
                   <span>{game.stats.type}</span>
@@ -134,35 +157,38 @@ export default function Games() {
               </div>
 
               {/* Play Button */}
-              <Link
-                to={`/games/${game.id}`}
-                className="btn-primary w-full flex items-center justify-center gap-2 py-3 group-hover:shadow-lg transition-shadow"
-              >
-                Play Now
-                <ArrowRight className="w-5 h-5" />
-              </Link>
-            </div>
-          </div>
+              <Button asChild className="w-full" size="lg">
+                <Link to={`/games/${game.id}`}>
+                  Play Now
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
       {/* Coming Soon */}
-      <div className="card p-6">
-        <h2 className="text-xl font-bold mb-4 text-gray-400">Coming Soon</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {['Trivia', 'Poker', 'Racing', 'Puzzle'].map((game) => (
-            <div
-              key={game}
-              className="p-4 rounded-lg bg-background/50 border border-gray-700/50 text-center opacity-50"
-            >
-              <div className="w-12 h-12 mx-auto mb-2 rounded-lg bg-gray-700/50 flex items-center justify-center">
-                <Gamepad2 className="w-6 h-6 text-gray-500" />
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl text-muted-foreground">Coming Soon</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {['Trivia', 'Poker', 'Racing', 'Puzzle'].map((game) => (
+              <div
+                key={game}
+                className="p-4 rounded-lg bg-muted border text-center opacity-50"
+              >
+                <div className="w-12 h-12 mx-auto mb-2 rounded-lg bg-muted flex items-center justify-center">
+                  <Gamepad2 className="w-6 h-6 text-muted-foreground" />
+                </div>
+                <p className="font-medium text-muted-foreground">{game}</p>
               </div>
-              <p className="font-medium text-gray-400">{game}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

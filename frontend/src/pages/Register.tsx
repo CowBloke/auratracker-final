@@ -1,15 +1,36 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { useAuth } from '../contexts/AuthContext';
 import { Sparkles, Mail, Lock, User, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 
-interface RegisterForm {
-  username: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-}
+const registerSchema = z.object({
+  username: z.string()
+    .min(3, 'Username must be at least 3 characters')
+    .max(20, 'Username must be less than 20 characters'),
+  email: z.string().email('Invalid email address').min(1, 'Email is required'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  confirmPassword: z.string().min(1, 'Please confirm your password'),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+type RegisterForm = z.infer<typeof registerSchema>;
 
 export default function Register() {
   const navigate = useNavigate();
@@ -17,14 +38,15 @@ export default function Register() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const {
-    register,
-    handleSubmit,
-    watch,
-    formState: { errors },
-  } = useForm<RegisterForm>();
-
-  const password = watch('password');
+  const form = useForm<RegisterForm>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      username: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+    },
+  });
 
   const onSubmit = async (data: RegisterForm) => {
     try {
@@ -43,7 +65,7 @@ export default function Register() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       {/* Background Effects */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-aura/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
       </div>
 
@@ -55,140 +77,134 @@ export default function Register() {
               <Sparkles className="w-8 h-8 text-white" />
             </div>
           </div>
-          <h1 className="font-display text-3xl font-bold text-gradient-aura">
+          <h1 className="text-3xl font-bold text-gradient-aura">
             AURA TRACKER
           </h1>
-          <p className="text-gray-400 mt-2">Join the community</p>
+          <p className="text-muted-foreground mt-2">Join the community</p>
         </div>
 
         {/* Form Card */}
-        <div className="card p-8">
-          <h2 className="text-2xl font-bold mb-6">Create Account</h2>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-2xl">Create Account</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {error && (
+              <Alert variant="destructive" className="mb-6">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
-          {error && (
-            <div className="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-              <p className="text-red-400 text-sm">{error}</p>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Username
-              </label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-                <input
-                  type="text"
-                  {...register('username', {
-                    required: 'Username is required',
-                    minLength: {
-                      value: 3,
-                      message: 'Username must be at least 3 characters',
-                    },
-                    maxLength: {
-                      value: 20,
-                      message: 'Username must be less than 20 characters',
-                    },
-                  })}
-                  className="input pl-11"
-                  placeholder="CoolPlayer123"
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+                <FormField
+                  control={form.control}
+                  name="username"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Username</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                          <Input
+                            type="text"
+                            placeholder="CoolPlayer123"
+                            className="pl-11"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-              {errors.username && (
-                <p className="mt-1 text-sm text-red-400">{errors.username.message}</p>
-              )}
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Email
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-                <input
-                  type="email"
-                  {...register('email', {
-                    required: 'Email is required',
-                    pattern: {
-                      value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                      message: 'Invalid email address',
-                    },
-                  })}
-                  className="input pl-11"
-                  placeholder="you@example.com"
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                          <Input
+                            type="email"
+                            placeholder="you@example.com"
+                            className="pl-11"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-400">{errors.email.message}</p>
-              )}
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-                <input
-                  type="password"
-                  {...register('password', {
-                    required: 'Password is required',
-                    minLength: {
-                      value: 6,
-                      message: 'Password must be at least 6 characters',
-                    },
-                  })}
-                  className="input pl-11"
-                  placeholder="••••••••"
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                          <Input
+                            type="password"
+                            placeholder="••••••••"
+                            className="pl-11"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-400">{errors.password.message}</p>
-              )}
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Confirm Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-                <input
-                  type="password"
-                  {...register('confirmPassword', {
-                    required: 'Please confirm your password',
-                    validate: (value) =>
-                      value === password || 'Passwords do not match',
-                  })}
-                  className="input pl-11"
-                  placeholder="••••••••"
+                <FormField
+                  control={form.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Confirm Password</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                          <Input
+                            type="password"
+                            placeholder="••••••••"
+                            className="pl-11"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-              {errors.confirmPassword && (
-                <p className="mt-1 text-sm text-red-400">
-                  {errors.confirmPassword.message}
-                </p>
-              )}
-            </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-primary w-full py-3 text-lg font-semibold"
-            >
-              {loading ? 'Creating account...' : 'Create Account'}
-            </button>
-          </form>
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full"
+                  size="lg"
+                >
+                  {loading ? 'Creating account...' : 'Create Account'}
+                </Button>
+              </form>
+            </Form>
 
-          <p className="mt-6 text-center text-gray-400">
-            Already have an account?{' '}
-            <Link to="/login" className="text-primary hover:text-primary-hover">
-              Sign in
-            </Link>
-          </p>
-        </div>
+            <p className="mt-6 text-center text-muted-foreground">
+              Already have an account?{' '}
+              <Link to="/login" className="text-primary hover:underline">
+                Sign in
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

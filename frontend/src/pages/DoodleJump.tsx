@@ -2,7 +2,11 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
-import { ArrowLeft, Play, RotateCcw, Trophy, Sparkles, Coins } from 'lucide-react';
+import { ArrowLeft, Play, RotateCcw, Trophy, Sparkles, Coins, TrendingUp } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface Platform {
   x: number;
@@ -298,7 +302,7 @@ export default function DoodleJump() {
       <div className="flex items-center justify-between">
         <Link
           to="/games"
-          className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
           Back to Games
@@ -306,26 +310,28 @@ export default function DoodleJump() {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <Trophy className="w-5 h-5 text-yellow-500" />
-            <span className="font-mono text-lg">High: {highScore.toLocaleString()}</span>
+            <span className="text-lg">High: {highScore.toLocaleString()}</span>
           </div>
         </div>
       </div>
 
       {/* Game Container */}
       <div className="flex justify-center">
-        <div className="card p-6">
-          <div className="text-center mb-4">
-            <h1 className="text-2xl font-bold font-display mb-2">🦘 Doodle Jump</h1>
-            <p className="text-gray-400">Use arrow keys or A/D to move</p>
-          </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-2xl flex items-center justify-center gap-2">
+              <TrendingUp className="w-6 h-6" />
+              Doodle Jump
+            </CardTitle>
+            <CardDescription>Use arrow keys or A/D to move</CardDescription>
+          </CardHeader>
+          <CardContent>
 
           {/* Score Display */}
           <div className="flex justify-center mb-4">
-            <div className="px-6 py-2 rounded-lg bg-primary/20 border border-primary/30">
-              <span className="font-mono text-2xl text-primary-light">
-                {score.toLocaleString()}
-              </span>
-            </div>
+            <Badge variant="secondary" className="px-6 py-2 text-2xl">
+              {score.toLocaleString()}
+            </Badge>
           </div>
 
           {/* Canvas */}
@@ -334,7 +340,7 @@ export default function DoodleJump() {
               ref={canvasRef}
               width={CANVAS_WIDTH}
               height={CANVAS_HEIGHT}
-              className="rounded-lg border border-gray-700"
+              className="rounded-lg border border-border"
             />
 
             {/* Start Screen */}
@@ -342,10 +348,10 @@ export default function DoodleJump() {
               <div className="absolute inset-0 flex items-center justify-center bg-black/70 rounded-lg">
                 <div className="text-center">
                   <h2 className="text-3xl font-bold mb-4">Ready to Jump?</h2>
-                  <button onClick={initGame} className="btn-primary flex items-center gap-2 mx-auto">
-                    <Play className="w-5 h-5" />
+                  <Button onClick={initGame}>
+                    <Play className="w-4 h-4" />
                     Start Game
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -355,58 +361,56 @@ export default function DoodleJump() {
               <div className="absolute inset-0 flex items-center justify-center bg-black/70 rounded-lg">
                 <div className="text-center">
                   <h2 className="text-3xl font-bold mb-2">Game Over!</h2>
-                  <p className="text-xl text-gray-400 mb-4">
+                  <p className="text-xl text-muted-foreground mb-4">
                     Score: {score.toLocaleString()}
                   </p>
                   
                   {isNewHighScore && (
-                    <div className="mb-4 px-4 py-2 rounded-lg bg-yellow-500/20 border border-yellow-500/30">
-                      <Trophy className="w-6 h-6 text-yellow-500 mx-auto mb-1" />
-                      <p className="text-yellow-500 font-bold">New High Score!</p>
+                    <div className="mb-4 px-4 py-2 rounded-lg bg-primary/20 border border-primary/30">
+                      <Trophy className="w-6 h-6 text-primary mx-auto mb-1" />
+                      <p className="text-primary font-bold">New High Score!</p>
                     </div>
                   )}
 
                   {rewards && (
                     <div className="mb-4 space-y-2">
                       {rewards.money > 0 && (
-                        <div className="flex items-center justify-center gap-2 text-money-light">
-                          <Coins className="w-5 h-5" />
-                          <span>+${rewards.money}</span>
+                        <div className="flex items-center justify-center gap-2">
+                          <Coins className="w-5 h-5 text-primary" />
+                          <Badge variant="secondary">+${rewards.money}</Badge>
                         </div>
                       )}
                       {rewards.aura > 0 && (
-                        <div className="flex items-center justify-center gap-2 text-aura-light">
-                          <Sparkles className="w-5 h-5" />
-                          <span>+{rewards.aura} Aura</span>
+                        <div className="flex items-center justify-center gap-2">
+                          <Sparkles className="w-5 h-5 text-primary" />
+                          <Badge variant="secondary">+{rewards.aura} Aura</Badge>
                         </div>
                       )}
                     </div>
                   )}
 
-                  <button
-                    onClick={initGame}
-                    className="btn-primary flex items-center gap-2 mx-auto"
-                  >
-                    <RotateCcw className="w-5 h-5" />
+                  <Button onClick={initGame}>
+                    <RotateCcw className="w-4 h-4" />
                     Play Again
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
           </div>
 
           {/* Controls Info */}
-          <div className="mt-4 flex justify-center gap-8 text-sm text-gray-500">
+          <div className="mt-4 flex justify-center gap-8 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
-              <kbd className="px-2 py-1 rounded bg-surface border border-gray-700">←</kbd>
+              <kbd className="px-2 py-1 rounded bg-muted border border-border">←</kbd>
               <span>Move Left</span>
             </div>
             <div className="flex items-center gap-2">
-              <kbd className="px-2 py-1 rounded bg-surface border border-gray-700">→</kbd>
+              <kbd className="px-2 py-1 rounded bg-muted border border-border">→</kbd>
               <span>Move Right</span>
             </div>
           </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

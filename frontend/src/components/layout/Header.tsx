@@ -2,20 +2,32 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSocket } from '../../contexts/SocketContext';
 import { Sparkles, Coins, User, LogOut, Wifi, WifiOff } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 
 export default function Header() {
   const { user, logout } = useAuth();
   const { connected } = useSocket();
 
   return (
-    <header className="fixed top-0 left-0 right-0 h-16 bg-surface border-b border-gray-700/50 z-50">
+    <header className="fixed top-0 left-0 right-0 h-16 bg-card border-b z-50">
       <div className="flex items-center justify-between h-full px-6">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-aura to-aura-glow flex items-center justify-center">
             <Sparkles className="w-6 h-6 text-white" />
           </div>
-          <span className="font-display text-xl font-bold text-gradient-aura">
+          <span className="text-xl font-bold text-gradient-aura">
             AURA TRACKER
           </span>
         </Link>
@@ -27,47 +39,56 @@ export default function Header() {
             {connected ? (
               <Wifi className="w-4 h-4 text-accent-green" />
             ) : (
-              <WifiOff className="w-4 h-4 text-red-500" />
+              <WifiOff className="w-4 h-4 text-destructive" />
             )}
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-muted-foreground">
               {connected ? 'Connected' : 'Disconnected'}
             </span>
           </div>
 
           {/* Aura */}
-          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-aura/10 border border-aura/30">
-            <Sparkles className="w-5 h-5 text-aura-light" />
-            <span className="font-mono text-lg font-semibold text-aura-light">
+          <Badge variant="outline" className="gap-2 px-4 py-2 bg-aura/10 border-aura/30">
+            <Sparkles className="w-4 h-4 text-aura-light" />
+            <span className="text-lg font-semibold text-aura-light">
               {user?.aura.toLocaleString()}
             </span>
-          </div>
+          </Badge>
 
           {/* Money */}
-          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-money/10 border border-money/30">
-            <Coins className="w-5 h-5 text-money-light" />
-            <span className="font-mono text-lg font-semibold text-money-light">
+          <Badge variant="outline" className="gap-2 px-4 py-2 bg-money/10 border-money/30">
+            <Coins className="w-4 h-4 text-money-light" />
+            <span className="text-lg font-semibold text-money-light">
               ${user?.money.toLocaleString()}
             </span>
-          </div>
+          </Badge>
 
           {/* User Menu */}
           <div className="flex items-center gap-3">
-            <Link
-              to={`/profile/${user?.id}`}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-surface-hover transition-colors"
-            >
-              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                <User className="w-5 h-5 text-white" />
-              </div>
-              <span className="font-medium">{user?.username}</span>
-            </Link>
-            <button
-              onClick={logout}
-              className="p-2 rounded-lg hover:bg-surface-hover text-gray-400 hover:text-white transition-colors"
-              title="Logout"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="gap-2">
+                  <Avatar className="w-8 h-8">
+                    <AvatarFallback className="bg-primary">
+                      <User className="w-5 h-5 text-white" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="font-medium">{user?.username}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link to={`/profile/${user?.id}`} className="cursor-pointer">
+                    <User className="mr-2 h-4 w-4" />
+                    Profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={logout} className="cursor-pointer">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
