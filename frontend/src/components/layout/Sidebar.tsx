@@ -22,7 +22,6 @@ import { NavUser } from '@/components/nav-user';
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { to: '/', label: 'Dashboard' },
   { to: '/leaderboards', label: 'Classement' },
   { to: '/marketplace', label: 'Marché' },
   { to: '/party', label: 'Party' },

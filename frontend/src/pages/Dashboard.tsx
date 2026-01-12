@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import { leaderboardsApi, economyApi, usersApi } from '../services/api';
-import { ArrowRight, Loader2, Send, ChevronDown } from 'lucide-react';
+import { ArrowRight, Loader2, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 
 interface Transfer {
@@ -58,6 +59,11 @@ export default function Dashboard() {
   const [giftText, setGiftText] = useState('');
   const [giftLoading, setGiftLoading] = useState(false);
   const [giftMessage, setGiftMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [allTransfers, setAllTransfers] = useState<Transfer[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [hasMoreHistory, setHasMoreHistory] = useState(true);
 
   const fetchDailyAllowance = async () => {
     try {
@@ -65,6 +71,34 @@ export default function Dashboard() {
       setDailyAllowance(res.data);
     } catch (error) {
       console.error('Failed to fetch daily allowance:', error);
+    }
+  };
+
+  const fetchAllHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      const res = await economyApi.getTransfers({ limit: 50 });
+      setAllTransfers(res.data.transfers);
+      setHasMoreHistory(res.data.transfers.length >= 50);
+    } catch (error) {
+      console.error('Failed to fetch history:', error);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const loadMoreHistory = async () => {
+    if (historyLoading || !hasMoreHistory) return;
+    setHistoryLoading(true);
+    try {
+      const res = await economyApi.getTransfers({ limit: 50, offset: allTransfers.length });
+      const newTransfers = res.data.transfers;
+      setAllTransfers(prev => [...prev, ...newTransfers]);
+      setHasMoreHistory(newTransfers.length >= 50);
+    } catch (error) {
+      console.error('Failed to load more history:', error);
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -240,7 +274,7 @@ export default function Dashboard() {
               onClick={handleGiftAura}
               disabled={!selectedUserId || giftAmount <= 0 || giftLoading || !dailyAllowance || dailyAllowance.remaining === 0}
               variant="outline"
-              className="h-12 px-6 border-border/50"
+              className="h-12 w-12 shrink-0 border-border/50"
             >
               {giftLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -321,9 +355,81 @@ export default function Dashboard() {
 
       {/* Recent Activity */}
       <section className="space-y-6">
-        <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
-          Activité récente
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
+            Activité récente
+          </h2>
+          <Sheet open={historyOpen} onOpenChange={(open) => {
+            setHistoryOpen(open);
+            if (open && allTransfers.length === 0) {
+              fetchAllHistory();
+            }
+          }}>
+            <SheetTrigger asChild>
+              <button className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+                Voir tout <ArrowRight className="h-3 w-3" />
+              </button>
+            </SheetTrigger>
+            <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle className="text-sm text-muted-foreground tracking-wide uppercase font-normal">
+                  Historique d'activité
+                </SheetTitle>
+              </SheetHeader>
+              <div className="mt-6 space-y-0">
+                {historyLoading && allTransfers.length === 0 ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : allTransfers.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-12">Aucun transfert</p>
+                ) : (
+                  <>
+                    {allTransfers.map((transfer) => (
+                      <div
+                        key={transfer.id}
+                        className="py-3 border-b border-border/30 last:border-0"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <span className="text-xs text-muted-foreground shrink-0 w-10">
+                              {formatTimeAgo(transfer.createdAt)}
+                            </span>
+                            <span className="truncate">
+                              {transfer.sender.username} → {transfer.receiver.username}
+                            </span>
+                          </div>
+                          <span className="tabular-nums shrink-0">
+                            {transfer.auraAmount}
+                          </span>
+                        </div>
+                        {transfer.message && (
+                          <p className="text-sm text-muted-foreground mt-1 ml-[3.25rem] italic truncate">
+                            "{transfer.message}"
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                    {hasMoreHistory && (
+                      <Button
+                        variant="ghost"
+                        className="w-full mt-4"
+                        onClick={loadMoreHistory}
+                        disabled={historyLoading}
+                      >
+                        {historyLoading ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          'Charger plus'
+                        )}
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
         
         {recentTransfers.length === 0 ? (
           <p className="text-muted-foreground">Aucun transfert</p>
