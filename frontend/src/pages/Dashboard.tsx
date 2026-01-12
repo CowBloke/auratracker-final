@@ -256,7 +256,7 @@ export default function Dashboard() {
               value={giftText}
               onChange={(e) => setGiftText(e.target.value)}
               disabled={!dailyAllowance || dailyAllowance.remaining === 0}
-              className="h-10 bg-transparent border-border/50 text-sm pr-16"
+              className="h-12 bg-transparent border-border/50 text-base pr-16"
               placeholder="Message"
               maxLength={50}
             />
