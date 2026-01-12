@@ -54,6 +54,10 @@ export const economyApi = {
   getTransfers: (params?: { userId?: string; limit?: number; offset?: number }) =>
     api.get('/economy/transfers', { params }),
   getBalance: (userId: string) => api.get(`/economy/balance/${userId}`),
+  // Daily aura gift system
+  getDailyAllowance: () => api.get('/economy/daily-allowance'),
+  giftAura: (data: { receiverId: string; amount: number }) =>
+    api.post('/economy/gift-aura', data),
 };
 
 // Marketplace API

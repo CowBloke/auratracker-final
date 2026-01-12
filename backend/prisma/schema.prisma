@@ -16,6 +16,8 @@ model User {
   aura          Int       @default(0)
   money         Int       @default(1000)
   isAdmin       Boolean   @default(false)
+  dailyAuraGiven Int      @default(0)        // Aura given today (max 50)
+  lastDailyReset DateTime @default(now())    // When daily allowance was last reset
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   
@@ -72,6 +74,7 @@ model Transfer {
   receiverId  String
   auraAmount  Int       @default(0)
   moneyAmount Int       @default(0)
+  isGift      Boolean   @default(false)  // True if from daily gift allowance
   createdAt   DateTime  @default(now())
   
   sender      User      @relation("SentTransfers", fields: [senderId], references: [id], onDelete: Cascade)

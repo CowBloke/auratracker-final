@@ -43,6 +43,11 @@ export const transferSchema = z.object({
   { message: 'At least one currency must be transferred' }
 );
 
+export const giftAuraSchema = z.object({
+  receiverId: z.string().uuid(),
+  amount: z.number().int().min(1).max(50),
+});
+
 // Marketplace schemas
 export const createItemSchema = z.object({
   name: z.string().min(1).max(100),
