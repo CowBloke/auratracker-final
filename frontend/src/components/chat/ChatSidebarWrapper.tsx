@@ -1,7 +1,9 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { SidebarProvider as ShadcnSidebarProvider } from '@/components/ui/sidebar';
 import ChatSidebar from './ChatSidebar';
 import { ChatSidebarTrigger } from './ChatSidebarTrigger';
+
+const CHAT_SIDEBAR_STORAGE_KEY = 'chat-sidebar-open';
 
 // Contexte partagé pour l'état de la sidebar de chat
 const ChatSidebarContext = createContext<{
@@ -18,7 +20,14 @@ export function useChatSidebar() {
 }
 
 function ChatSidebarProvider({ children }: { children: ReactNode }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(() => {
+    const stored = localStorage.getItem(CHAT_SIDEBAR_STORAGE_KEY);
+    return stored !== null ? stored === 'true' : false;
+  });
+
+  useEffect(() => {
+    localStorage.setItem(CHAT_SIDEBAR_STORAGE_KEY, String(open));
+  }, [open]);
 
   return (
     <ChatSidebarContext.Provider value={{ open, setOpen }}>

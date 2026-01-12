@@ -240,20 +240,6 @@ export default function Casino() {
           </p>
         )}
 
-        {/* Rewards */}
-        {rewards && (rewards.money !== 0 || rewards.aura > 0) && (
-          <p className="text-center text-sm text-muted-foreground mb-6">
-            {rewards.money !== 0 && (
-              <span className={rewards.money > 0 ? 'text-foreground' : 'text-muted-foreground'}>
-                {rewards.money > 0 ? '+' : ''}${rewards.money}
-              </span>
-            )}
-            {rewards.aura > 0 && (
-              <span className="ml-2 text-foreground">+{rewards.aura} aura</span>
-            )}
-          </p>
-        )}
-
         {/* Spin Button */}
         <button
           onClick={spin}
@@ -291,20 +277,6 @@ export default function Casino() {
         </div>
       </div>
 
-      {/* Payout Table */}
-      <div className="border-t border-border/30 pt-6">
-        <h3 className="text-xs text-muted-foreground uppercase tracking-wide mb-4">
-          Table de paiement
-        </h3>
-        <div className="grid grid-cols-4 gap-4 text-center text-sm">
-          {Object.entries(SYMBOL_VALUES).map(([symbol, multiplier]) => (
-            <div key={symbol} className="space-y-1">
-              <span className="text-2xl">{symbol}</span>
-              <p className="text-muted-foreground text-xs">{multiplier}×</p>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

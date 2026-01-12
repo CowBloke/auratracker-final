@@ -106,8 +106,24 @@ export default function ChatSidebar() {
                     onClick={() => navigate(`/profile/${u.userId}`)}
                     className="flex items-center gap-2 py-1 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-left"
                   >
-                    <div className="w-1 h-1 rounded-full bg-foreground/50" />
-                    <span className="truncate">{u.username}</span>
+                    {u.profilePicture ? (
+                      <img 
+                        src={u.profilePicture} 
+                        alt={u.username}
+                        className="w-4 h-4 rounded-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <div className="w-1 h-1 rounded-full bg-foreground/50" />
+                    )}
+                    <span 
+                      className="truncate"
+                      style={u.usernameColor ? { color: u.usernameColor } : undefined}
+                    >
+                      {u.username}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -137,12 +153,23 @@ export default function ChatSidebar() {
                     )}
                   >
                     <div className="flex items-center gap-2 mb-1">
+                      {msg.profilePicture && (
+                        <img 
+                          src={msg.profilePicture} 
+                          alt={msg.username}
+                          className="w-4 h-4 rounded-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      )}
                       <button
                         onClick={() => navigate(`/profile/${msg.userId}`)}
                         className={cn(
                           "text-xs font-medium hover:underline cursor-pointer",
-                          msg.userId === user?.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                          !msg.usernameColor && (msg.userId === user?.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')
                         )}
+                        style={msg.usernameColor ? { color: msg.usernameColor } : undefined}
                       >
                         {msg.username}
                       </button>

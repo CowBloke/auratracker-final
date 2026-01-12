@@ -144,7 +144,7 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
       return res.status(401).json({ error: 'Not authenticated' });
     }
     
-    const { userItemId } = req.body;
+    const { userItemId, effectData } = req.body;
     
     const userItem = await prisma.userItem.findUnique({
       where: { id: userItemId },
@@ -159,28 +159,93 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
       return res.status(403).json({ error: 'Not your item' });
     }
     
-    if (userItem.item.type !== 'CONSUMABLE') {
-      return res.status(400).json({ error: 'Only consumable items can be used' });
-    }
-    
-    // Decrement quantity or delete if last one
-    if (userItem.quantity > 1) {
-      await prisma.userItem.update({
-        where: { id: userItemId },
-        data: { quantity: { decrement: 1 } },
-      });
-    } else {
-      await prisma.userItem.delete({
-        where: { id: userItemId },
-      });
-    }
-    
-    // Apply effect (parse from item.effect JSON)
+    // Parse effect from item
     let effect = null;
     if (userItem.item.effect) {
       try {
         effect = JSON.parse(userItem.item.effect);
-        // Apply effects like bonus aura, money, etc.
+      } catch (e) {
+        // Invalid effect JSON
+      }
+    }
+    
+    // Handle different item types
+    if (userItem.item.type === 'COSMETIC' && effect) {
+      // Cosmetic items - apply the effect with user-provided data
+      if (effect.type === 'USERNAME_COLOR' && effectData?.color) {
+        // Apply username color
+        await prisma.user.update({
+          where: { id: req.user.id },
+          data: { usernameColor: effectData.color },
+        });
+        
+        // Decrement or remove item
+        if (userItem.quantity > 1) {
+          await prisma.userItem.update({
+            where: { id: userItemId },
+            data: { quantity: { decrement: 1 } },
+          });
+        } else {
+          await prisma.userItem.delete({
+            where: { id: userItemId },
+          });
+        }
+        
+        return res.json({
+          success: true,
+          effect: { type: 'USERNAME_COLOR', color: effectData.color },
+        });
+      }
+      
+      if (effect.type === 'PROFILE_PICTURE' && effectData?.imageUrl) {
+        // Apply profile picture
+        await prisma.user.update({
+          where: { id: req.user.id },
+          data: { profilePicture: effectData.imageUrl },
+        });
+        
+        // Decrement or remove item
+        if (userItem.quantity > 1) {
+          await prisma.userItem.update({
+            where: { id: userItemId },
+            data: { quantity: { decrement: 1 } },
+          });
+        } else {
+          await prisma.userItem.delete({
+            where: { id: userItemId },
+          });
+        }
+        
+        return res.json({
+          success: true,
+          effect: { type: 'PROFILE_PICTURE', imageUrl: effectData.imageUrl },
+        });
+      }
+      
+      // Unknown cosmetic effect type - just return the effect info
+      return res.json({
+        success: false,
+        needsInput: true,
+        effect,
+      });
+    }
+    
+    // Consumable items
+    if (userItem.item.type === 'CONSUMABLE') {
+      // Decrement quantity or delete if last one
+      if (userItem.quantity > 1) {
+        await prisma.userItem.update({
+          where: { id: userItemId },
+          data: { quantity: { decrement: 1 } },
+        });
+      } else {
+        await prisma.userItem.delete({
+          where: { id: userItemId },
+        });
+      }
+      
+      // Apply effects like bonus aura, money, etc.
+      if (effect) {
         if (effect.bonusAura) {
           await prisma.user.update({
             where: { id: req.user.id },
@@ -193,11 +258,15 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
             data: { money: { increment: effect.bonusMoney } },
           });
         }
-      } catch (e) {
-        // Invalid effect JSON, ignore
       }
+      
+      return res.json({
+        success: true,
+        effect,
+      });
     }
     
+    // Other item types
     res.json({
       success: true,
       effect,

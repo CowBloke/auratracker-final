@@ -67,7 +67,8 @@ export const marketplaceApi = {
   purchase: (data: { itemId: string; quantity?: number }) =>
     api.post('/marketplace/purchase', data),
   getInventory: (userId: string) => api.get(`/marketplace/inventory/${userId}`),
-  useItem: (userItemId: string) => api.post('/marketplace/use-item', { userItemId }),
+  useItem: (userItemId: string, effectData?: { color?: string; imageUrl?: string }) => 
+    api.post('/marketplace/use-item', { userItemId, effectData }),
   // Admin
   createItem: (data: {
     name: string;
@@ -173,12 +174,47 @@ export interface AdminUser {
   updatedAt: string;
 }
 
+// Shop Item Interface
+export interface ShopItem {
+  id: string;
+  name: string;
+  description: string;
+  type: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE';
+  price: number;
+  auraCost: number;
+  imageUrl: string | null;
+  effect: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
 export const adminApi = {
   getUsers: () => api.get<{ users: AdminUser[] }>('/admin/users'),
   updateUser: (id: string, data: { aura?: number; money?: number; dailyAuraLimit?: number }) =>
     api.put<{ user: AdminUser }>(`/admin/users/${id}`, data),
   deleteUser: (id: string) => api.delete<{ success: boolean; message: string }>(`/admin/users/${id}`),
   clearChat: () => api.delete<{ success: boolean; message: string }>('/admin/chat'),
+  // Items management
+  getItems: () => api.get<{ items: ShopItem[] }>('/admin/items'),
+  createItem: (data: {
+    name: string;
+    description: string;
+    type: string;
+    price: number;
+    auraCost?: number;
+    imageUrl?: string;
+    effect?: string;
+  }) => api.post<{ item: ShopItem }>('/admin/items', data),
+  updateItem: (id: string, data: {
+    name: string;
+    description: string;
+    type: string;
+    price: number;
+    auraCost?: number;
+    imageUrl?: string;
+    effect?: string;
+  }) => api.put<{ item: ShopItem }>(`/admin/items/${id}`, data),
+  deleteItem: (id: string) => api.delete<{ success: boolean }>(`/admin/items/${id}`),
 };
 
 export default api;

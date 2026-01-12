@@ -132,12 +132,23 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                       )}
                     >
                       <div className="flex items-center gap-2 mb-1">
+                        {msg.profilePicture && (
+                          <img 
+                            src={msg.profilePicture} 
+                            alt={msg.username}
+                            className="w-5 h-5 rounded-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        )}
                         <button
                           onClick={() => navigate(`/profile/${msg.userId}`)}
                           className={cn(
                             "text-xs font-medium hover:underline cursor-pointer",
-                            msg.userId === user?.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                            !msg.usernameColor && (msg.userId === user?.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')
                           )}
+                          style={msg.usernameColor ? { color: msg.usernameColor } : undefined}
                         >
                           {msg.username}
                         </button>

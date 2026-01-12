@@ -5,6 +5,8 @@ interface OnlineUser {
   userId: string;
   username: string;
   socketId: string;
+  usernameColor?: string | null;
+  profilePicture?: string | null;
 }
 
 const onlineUsers = new Map<string, OnlineUser>();
@@ -14,17 +16,28 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
   socket.on('chat:join', async (data: { userId: string; username: string }) => {
     const { userId, username } = data;
     
+    // Fetch user cosmetics from database
+    const dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        usernameColor: true,
+        profilePicture: true,
+      },
+    });
+    
     // Store user info
     onlineUsers.set(userId, {
       userId,
       username,
       socketId: socket.id,
+      usernameColor: dbUser?.usernameColor,
+      profilePicture: dbUser?.profilePicture,
     });
     
     // Join global chat room
     socket.join('global-chat');
     
-    // Send chat history
+    // Send chat history with user cosmetics
     const messages = await prisma.chatMessage.findMany({
       take: 100,
       orderBy: { createdAt: 'desc' },
@@ -33,6 +46,8 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
           select: {
             id: true,
             username: true,
+            usernameColor: true,
+            profilePicture: true,
           },
         },
       },
@@ -43,18 +58,27 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
         id: m.id,
         userId: m.userId,
         username: m.user.username,
+        usernameColor: m.user.usernameColor,
+        profilePicture: m.user.profilePicture,
         message: m.message,
         timestamp: m.createdAt.toISOString(),
       })),
     });
     
-    // Notify others
-    socket.to('global-chat').emit('user:online', { userId, username });
+    // Notify others with cosmetics
+    socket.to('global-chat').emit('user:online', { 
+      userId, 
+      username,
+      usernameColor: dbUser?.usernameColor,
+      profilePicture: dbUser?.profilePicture,
+    });
     
-    // Send current online users to the joining user
+    // Send current online users to the joining user with cosmetics
     const onlineList = Array.from(onlineUsers.values()).map((u) => ({
       userId: u.userId,
       username: u.username,
+      usernameColor: u.usernameColor,
+      profilePicture: u.profilePicture,
     }));
     socket.emit('users:online-list', { users: onlineList });
   });
@@ -66,6 +90,21 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     const user = onlineUsers.get(userId);
     if (!user) return;
     
+    // Fetch latest cosmetics from database (in case they changed)
+    const dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        usernameColor: true,
+        profilePicture: true,
+      },
+    });
+    
+    // Update cached cosmetics
+    if (dbUser) {
+      user.usernameColor = dbUser.usernameColor;
+      user.profilePicture = dbUser.profilePicture;
+    }
+    
     // Save message to database
     const savedMessage = await prisma.chatMessage.create({
       data: {
@@ -74,11 +113,13 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
       },
     });
     
-    // Broadcast to all in chat
+    // Broadcast to all in chat with cosmetics
     io.to('global-chat').emit('chat:message', {
       id: savedMessage.id,
       userId,
       username: user.username,
+      usernameColor: dbUser?.usernameColor,
+      profilePicture: dbUser?.profilePicture,
       message,
       timestamp: savedMessage.createdAt.toISOString(),
     });

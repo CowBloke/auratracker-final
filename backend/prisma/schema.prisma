@@ -19,6 +19,8 @@ model User {
   dailyAuraGiven Int      @default(0)        // Aura given today
   dailyAuraLimit Int      @default(50)       // Personal daily aura limit (default 50)
   lastDailyReset DateTime @default(now())    // When daily allowance was last reset
+  usernameColor String?                       // Custom username color for chat (hex)
+  profilePicture String?                      // Custom profile picture URL for chat
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   

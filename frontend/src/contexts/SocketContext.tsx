@@ -7,6 +7,8 @@ interface ChatMessage {
   id: string;
   userId: string;
   username: string;
+  usernameColor?: string | null;
+  profilePicture?: string | null;
   message: string;
   timestamp: string;
 }
@@ -14,6 +16,8 @@ interface ChatMessage {
 interface OnlineUser {
   userId: string;
   username: string;
+  usernameColor?: string | null;
+  profilePicture?: string | null;
 }
 
 interface TypingUser {

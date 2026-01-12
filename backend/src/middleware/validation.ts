@@ -68,6 +68,10 @@ export const purchaseSchema = z.object({
 
 export const useItemSchema = z.object({
   userItemId: z.string().uuid(),
+  effectData: z.object({
+    color: z.string().optional(),
+    imageUrl: z.string().optional(),
+  }).optional(),
 });
 
 // Game schemas

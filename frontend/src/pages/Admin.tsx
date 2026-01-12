@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { adminApi, AdminUser } from '../services/api';
+import { adminApi, AdminUser, ShopItem } from '../services/api';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,7 +19,45 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+
+// Effect types for items
+const EFFECT_TYPES = [
+  { value: 'USERNAME_COLOR', label: 'Couleur de pseudo', description: 'Permet de choisir une couleur pour le pseudo dans le chat' },
+  { value: 'PROFILE_PICTURE', label: 'Photo de profil', description: 'Permet de téléverser une photo affichée dans le chat' },
+  { value: 'BONUS_AURA', label: 'Bonus Aura', description: 'Donne un bonus d\'aura à l\'utilisation' },
+  { value: 'BONUS_MONEY', label: 'Bonus Argent', description: 'Donne un bonus d\'argent à l\'utilisation' },
+];
+
+interface ItemFormData {
+  name: string;
+  description: string;
+  type: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE';
+  price: number;
+  auraCost: number;
+  imageUrl: string;
+  effectType: string;
+  effectValue: string;
+}
+
+const defaultItemForm: ItemFormData = {
+  name: '',
+  description: '',
+  type: 'COSMETIC',
+  price: 0,
+  auraCost: 0,
+  imageUrl: '',
+  effectType: 'USERNAME_COLOR',
+  effectValue: '',
+};
 
 export default function Admin() {
   const { user } = useAuth();
@@ -30,6 +70,15 @@ export default function Admin() {
   const [clearingChat, setClearingChat] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Items state
+  const [items, setItems] = useState<ShopItem[]>([]);
+  const [loadingItems, setLoadingItems] = useState(false);
+  const [itemDialogOpen, setItemDialogOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<ShopItem | null>(null);
+  const [itemForm, setItemForm] = useState<ItemFormData>(defaultItemForm);
+  const [savingItem, setSavingItem] = useState(false);
+  const [deletingItem, setDeletingItem] = useState<string | null>(null);
+
   // Redirect non-admin users
   if (!user?.isAdmin) {
     return <Navigate to="/" replace />;
@@ -37,6 +86,7 @@ export default function Admin() {
 
   useEffect(() => {
     fetchUsers();
+    fetchItems();
   }, []);
 
   const fetchUsers = async () => {
@@ -51,9 +101,113 @@ export default function Admin() {
     }
   };
 
+  const fetchItems = async () => {
+    try {
+      setLoadingItems(true);
+      const res = await adminApi.getItems();
+      setItems(res.data.items);
+    } catch (error) {
+      console.error('Failed to fetch items:', error);
+      showMessage('error', 'Erreur lors du chargement des objets');
+    } finally {
+      setLoadingItems(false);
+    }
+  };
+
   const showMessage = (type: 'success' | 'error', text: string) => {
     setMessage({ type, text });
     setTimeout(() => setMessage(null), 3000);
+  };
+
+  // Parse effect string to get type and value
+  const parseEffect = (effectStr: string | null): { type: string; value: string } => {
+    if (!effectStr) return { type: 'USERNAME_COLOR', value: '' };
+    try {
+      const effect = JSON.parse(effectStr);
+      return { type: effect.type || 'USERNAME_COLOR', value: effect.value || '' };
+    } catch {
+      return { type: 'USERNAME_COLOR', value: '' };
+    }
+  };
+
+  // Open dialog for creating new item
+  const openCreateItemDialog = () => {
+    setEditingItem(null);
+    setItemForm(defaultItemForm);
+    setItemDialogOpen(true);
+  };
+
+  // Open dialog for editing item
+  const openEditItemDialog = (item: ShopItem) => {
+    setEditingItem(item);
+    const { type: effectType, value: effectValue } = parseEffect(item.effect);
+    setItemForm({
+      name: item.name,
+      description: item.description,
+      type: item.type,
+      price: item.price,
+      auraCost: item.auraCost,
+      imageUrl: item.imageUrl || '',
+      effectType,
+      effectValue,
+    });
+    setItemDialogOpen(true);
+  };
+
+  // Save item (create or update)
+  const saveItem = async () => {
+    if (!itemForm.name.trim() || !itemForm.description.trim()) {
+      showMessage('error', 'Nom et description requis');
+      return;
+    }
+
+    setSavingItem(true);
+    try {
+      // Build effect JSON
+      const effect = JSON.stringify({
+        type: itemForm.effectType,
+        value: itemForm.effectValue,
+      });
+
+      const data = {
+        name: itemForm.name.trim(),
+        description: itemForm.description.trim(),
+        type: itemForm.type,
+        price: itemForm.price,
+        auraCost: itemForm.auraCost,
+        imageUrl: itemForm.imageUrl.trim() || undefined,
+        effect,
+      };
+
+      if (editingItem) {
+        const res = await adminApi.updateItem(editingItem.id, data);
+        setItems(prev => prev.map(i => i.id === editingItem.id ? res.data.item : i));
+        showMessage('success', 'Objet modifié');
+      } else {
+        const res = await adminApi.createItem(data);
+        setItems(prev => [res.data.item, ...prev]);
+        showMessage('success', 'Objet créé');
+      }
+      setItemDialogOpen(false);
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur');
+    } finally {
+      setSavingItem(false);
+    }
+  };
+
+  // Delete item
+  const deleteItem = async (id: string) => {
+    setDeletingItem(id);
+    try {
+      await adminApi.deleteItem(id);
+      setItems(prev => prev.filter(i => i.id !== id));
+      showMessage('success', 'Objet supprimé');
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur');
+    } finally {
+      setDeletingItem(null);
+    }
   };
 
   const startEditing = (u: AdminUser) => {
@@ -142,6 +296,12 @@ export default function Admin() {
             className="data-[state=active]:bg-muted/50 data-[state=active]:text-foreground text-muted-foreground"
           >
             Utilisateurs
+          </TabsTrigger>
+          <TabsTrigger 
+            value="items"
+            className="data-[state=active]:bg-muted/50 data-[state=active]:text-foreground text-muted-foreground"
+          >
+            Objets
           </TabsTrigger>
           <TabsTrigger 
             value="chat"
@@ -321,6 +481,135 @@ export default function Admin() {
           )}
         </TabsContent>
 
+        {/* Items Tab */}
+        <TabsContent value="items" className="space-y-6">
+          <div className="h-px bg-border" />
+          
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
+              Gestion des objets de la boutique
+            </h2>
+            <Button
+              onClick={openCreateItemDialog}
+              className="h-9"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nouvel objet
+            </Button>
+          </div>
+
+          {loadingItems ? (
+            <div className="flex justify-center py-12">
+              <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+            </div>
+          ) : items.length === 0 ? (
+            <p className="text-center text-muted-foreground py-12">
+              Aucun objet créé
+            </p>
+          ) : (
+            <div className="space-y-0">
+              {items.map((item) => {
+                const { type: effectType } = parseEffect(item.effect);
+                const effectLabel = EFFECT_TYPES.find(e => e.value === effectType)?.label || effectType;
+                
+                return (
+                  <div
+                    key={item.id}
+                    className="py-4 border-b border-border/30 last:border-0"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4 min-w-0 flex-1">
+                        {item.imageUrl ? (
+                          <img 
+                            src={item.imageUrl} 
+                            alt={item.name}
+                            className="w-10 h-10 object-cover rounded"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 bg-muted/30 flex items-center justify-center rounded">
+                            <Package className="w-5 h-5 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium truncate">{item.name}</span>
+                            <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                              {item.type}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {item.description}
+                          </p>
+                          <p className="text-xs text-muted-foreground/60">
+                            Effet: {effectLabel}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-6">
+                        <div className="text-right text-sm text-muted-foreground">
+                          <p className="tabular-nums">${item.price}</p>
+                          {item.auraCost > 0 && (
+                            <p className="tabular-nums text-xs">{item.auraCost} aura</p>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openEditItemDialog(item)}
+                            className="h-8 border-border/50"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10"
+                                disabled={deletingItem === item.id}
+                              >
+                                {deletingItem === item.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle className="flex items-center gap-2">
+                                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                                  Supprimer {item.name} ?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  L'objet sera supprimé de la boutique. Les utilisateurs qui le possèdent le garderont.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => deleteItem(item.id)}
+                                  className="bg-destructive hover:bg-destructive/90"
+                                >
+                                  Supprimer
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
         {/* Chat Tab */}
         <TabsContent value="chat" className="space-y-6">
           <div className="h-px bg-border" />
@@ -386,6 +675,127 @@ export default function Admin() {
           </section>
         </TabsContent>
       </Tabs>
+
+      {/* Item Create/Edit Dialog */}
+      <Dialog open={itemDialogOpen} onOpenChange={setItemDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editingItem ? 'Modifier l\'objet' : 'Créer un objet'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingItem ? 'Modifiez les propriétés de l\'objet.' : 'Créez un nouvel objet pour la boutique.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm text-muted-foreground">Nom</label>
+              <Input
+                value={itemForm.name}
+                onChange={(e) => setItemForm(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Nom de l'objet"
+                className="bg-transparent"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm text-muted-foreground">Description</label>
+              <Textarea
+                value={itemForm.description}
+                onChange={(e) => setItemForm(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Description de l'objet"
+                className="bg-transparent resize-none"
+                rows={3}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm text-muted-foreground">Type</label>
+                <Select
+                  value={itemForm.type}
+                  onValueChange={(value: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE') => 
+                    setItemForm(prev => ({ ...prev, type: value }))
+                  }
+                >
+                  <SelectTrigger className="bg-transparent">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="COSMETIC">Cosmétique</SelectItem>
+                    <SelectItem value="CONSUMABLE">Consommable</SelectItem>
+                    <SelectItem value="UPGRADE">Amélioration</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm text-muted-foreground">Prix ($)</label>
+                <Input
+                  type="number"
+                  value={itemForm.price}
+                  onChange={(e) => setItemForm(prev => ({ ...prev, price: parseInt(e.target.value) || 0 }))}
+                  className="bg-transparent"
+                  min={0}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm text-muted-foreground">Image URL (optionnel)</label>
+              <Input
+                value={itemForm.imageUrl}
+                onChange={(e) => setItemForm(prev => ({ ...prev, imageUrl: e.target.value }))}
+                placeholder="https://..."
+                className="bg-transparent"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm text-muted-foreground">Effet</label>
+              <Select
+                value={itemForm.effectType}
+                onValueChange={(value) => setItemForm(prev => ({ ...prev, effectType: value }))}
+              >
+                <SelectTrigger className="bg-transparent">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {EFFECT_TYPES.map((effect) => (
+                    <SelectItem key={effect.value} value={effect.value}>
+                      {effect.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {EFFECT_TYPES.find(e => e.value === itemForm.effectType)?.description}
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setItemDialogOpen(false)}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={saveItem}
+              disabled={savingItem}
+            >
+              {savingItem ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              {editingItem ? 'Modifier' : 'Créer'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -12,6 +12,87 @@ const requireAdmin = (req: AuthRequest, res: Response, next: Function) => {
   next();
 };
 
+// ========== ITEMS MANAGEMENT ==========
+
+// Get all items (admin view)
+router.get('/items', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const items = await prisma.item.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ items });
+  } catch (error) {
+    console.error('Admin get items error:', error);
+    res.status(500).json({ error: 'Failed to get items' });
+  }
+});
+
+// Create item
+router.post('/items', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { name, description, type, price, auraCost, imageUrl, effect } = req.body;
+    
+    const item = await prisma.item.create({
+      data: {
+        name,
+        description,
+        type: type || 'COSMETIC',
+        price: parseInt(price) || 0,
+        auraCost: parseInt(auraCost) || 0,
+        imageUrl,
+        effect: typeof effect === 'string' ? effect : JSON.stringify(effect),
+      },
+    });
+    
+    res.status(201).json({ item });
+  } catch (error) {
+    console.error('Admin create item error:', error);
+    res.status(500).json({ error: 'Failed to create item' });
+  }
+});
+
+// Update item
+router.put('/items/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name, description, type, price, auraCost, imageUrl, effect } = req.body;
+    
+    const item = await prisma.item.update({
+      where: { id },
+      data: {
+        name,
+        description,
+        type,
+        price: parseInt(price) || 0,
+        auraCost: parseInt(auraCost) || 0,
+        imageUrl,
+        effect: typeof effect === 'string' ? effect : JSON.stringify(effect),
+      },
+    });
+    
+    res.json({ item });
+  } catch (error) {
+    console.error('Admin update item error:', error);
+    res.status(500).json({ error: 'Failed to update item' });
+  }
+});
+
+// Delete item
+router.delete('/items/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    await prisma.item.delete({
+      where: { id },
+    });
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Admin delete item error:', error);
+    res.status(500).json({ error: 'Failed to delete item' });
+  }
+});
+
 // Get all users with full details (admin only)
 router.get('/users', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
