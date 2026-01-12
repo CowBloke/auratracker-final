@@ -1,58 +1,29 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { clashApi, Building, AttackTarget, Troop } from '../services/api';
-import {
-  Swords,
-  Shield,
-  Trophy,
-  Target,
-  Clock,
-  Coins,
-  Sparkles,
-  Home,
-  Edit3,
-  Eye,
-  ChevronRight,
-  X,
-  Play,
-  Star,
-  History,
-  Crown,
-  Zap,
-  Building as BuildingIcon,
-  Bomb,
-  Square,
-  Hammer,
-  Droplet,
-  Building2,
-  Sword,
-  User,
-  Users,
-} from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { X, RefreshCw, ChevronRight, Star } from 'lucide-react';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
-// Building definitions with Lucide icons
-const BUILDING_CONFIG: Record<string, { icon: React.ComponentType<{ className?: string }>; color: string; name: string }> = {
-  townhall: { icon: BuildingIcon, color: '#f59e0b', name: 'Town Hall' },
-  cannon: { icon: Bomb, color: '#ef4444', name: 'Cannon' },
-  archer_tower: { icon: Target, color: '#8b5cf6', name: 'Archer Tower' },
-  wall: { icon: Square, color: '#6b7280', name: 'Wall' },
-  gold_mine: { icon: Hammer, color: '#fbbf24', name: 'Gold Mine' },
-  elixir_collector: { icon: Droplet, color: '#ec4899', name: 'Elixir Collector' },
-  gold_storage: { icon: Building2, color: '#f59e0b', name: 'Gold Storage' },
-  elixir_storage: { icon: Droplet, color: '#d946ef', name: 'Elixir Storage' },
-  barracks: { icon: Swords, color: '#3b82f6', name: 'Barracks' },
-  mortar: { icon: Zap, color: '#dc2626', name: 'Mortar' },
+const BUILDING_CONFIG: Record<string, { emoji: string; name: string }> = {
+  townhall: { emoji: '🏛️', name: 'Town Hall' },
+  cannon: { emoji: '💣', name: 'Cannon' },
+  archer_tower: { emoji: '🏹', name: 'Archer Tower' },
+  wall: { emoji: '🧱', name: 'Wall' },
+  gold_mine: { emoji: '⛏️', name: 'Gold Mine' },
+  elixir_collector: { emoji: '💧', name: 'Elixir Collector' },
+  gold_storage: { emoji: '🏦', name: 'Gold Storage' },
+  elixir_storage: { emoji: '🧪', name: 'Elixir Storage' },
+  barracks: { emoji: '⚔️', name: 'Barracks' },
+  mortar: { emoji: '💥', name: 'Mortar' },
 };
 
-const TROOP_CONFIG: Record<string, { icon: React.ComponentType<{ className?: string }>; color: string; name: string; cost: number }> = {
-  barbarian: { icon: Sword, color: '#f59e0b', name: 'Barbarian', cost: 25 },
-  archer: { icon: Target, color: '#ec4899', name: 'Archer', cost: 50 },
-  giant: { icon: Shield, color: '#8b5cf6', name: 'Giant', cost: 100 },
-  goblin: { icon: User, color: '#22c55e', name: 'Goblin', cost: 30 },
+const TROOP_CONFIG: Record<string, { emoji: string; name: string }> = {
+  barbarian: { emoji: '⚔️', name: 'Barbarian' },
+  archer: { emoji: '🏹', name: 'Archer' },
+  giant: { emoji: '🛡️', name: 'Giant' },
+  goblin: { emoji: '👺', name: 'Goblin' },
 };
 
 const GRID_SIZE = 15;
@@ -93,7 +64,6 @@ export default function Clash() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Load user's base
   const loadBase = useCallback(async () => {
     if (!user) return;
     try {
@@ -111,7 +81,6 @@ export default function Clash() {
     }
   }, [user]);
 
-  // Load attack targets
   const loadTargets = useCallback(async () => {
     try {
       const response = await clashApi.getTargets();
@@ -121,7 +90,6 @@ export default function Clash() {
     }
   }, []);
 
-  // Load attack history
   const loadHistory = useCallback(async () => {
     try {
       const response = await clashApi.getAttacks({ limit: 20 });
@@ -136,14 +104,10 @@ export default function Clash() {
   }, [loadBase]);
 
   useEffect(() => {
-    if (viewMode === 'attack') {
-      loadTargets();
-    } else if (viewMode === 'history') {
-      loadHistory();
-    }
+    if (viewMode === 'attack') loadTargets();
+    else if (viewMode === 'history') loadHistory();
   }, [viewMode, loadTargets, loadHistory]);
 
-  // Save base layout
   const saveBase = async () => {
     setSaving(true);
     try {
@@ -157,12 +121,10 @@ export default function Clash() {
     }
   };
 
-  // Handle grid cell click
   const handleCellClick = (x: number, y: number) => {
     if (!isEditing) return;
 
     if (placingBuilding) {
-      // Place new building
       const newBuilding: Building = {
         id: `${placingBuilding}-${Date.now()}`,
         type: placingBuilding,
@@ -173,44 +135,27 @@ export default function Clash() {
       setBuildings([...buildings, newBuilding]);
       setPlacingBuilding(null);
     } else {
-      // Select existing building
       const building = buildings.find((b) => b.x === x && b.y === y);
-      if (building) {
-        setSelectedBuilding(building.id);
-      } else {
-        setSelectedBuilding(null);
-      }
+      setSelectedBuilding(building ? building.id : null);
     }
   };
 
-  // Handle troop deployment in battle
   const handleBattleCellClick = (x: number, y: number) => {
     if (viewMode !== 'battle' || !selectedTroop) return;
 
     const troopData = troops.find((t) => t.type === selectedTroop);
     if (!troopData || troopData.count <= 0) return;
 
-    const newTroop: Troop = {
-      type: selectedTroop,
-      x,
-      y,
-      deployTime: Date.now(),
-    };
-
-    setDeployedTroops([...deployedTroops, newTroop]);
-    setTroops(troops.map((t) =>
-      t.type === selectedTroop ? { ...t, count: t.count - 1 } : t
-    ));
+    setDeployedTroops([...deployedTroops, { type: selectedTroop, x, y, deployTime: Date.now() }]);
+    setTroops(troops.map((t) => t.type === selectedTroop ? { ...t, count: t.count - 1 } : t));
   };
 
-  // Delete selected building
   const deleteBuilding = () => {
     if (!selectedBuilding) return;
     setBuildings(buildings.filter((b) => b.id !== selectedBuilding));
     setSelectedBuilding(null);
   };
 
-  // Scout target before attack
   const scoutTarget = async (target: AttackTarget) => {
     try {
       const response = await clashApi.checkAttack(target.id);
@@ -226,7 +171,6 @@ export default function Clash() {
     }
   };
 
-  // Start battle
   const startBattle = () => {
     if (!selectedTarget) return;
     setDeployedTroops([]);
@@ -234,11 +178,9 @@ export default function Clash() {
     setViewMode('battle');
   };
 
-  // End battle and calculate results
   const endBattle = async () => {
     if (!selectedTarget) return;
 
-    // Calculate destruction based on deployed troops (simplified simulation)
     const totalTroops = deployedTroops.length;
     const destruction = Math.min(100, Math.floor(totalTroops * 4 + Math.random() * 20));
     const starsEarned = destruction >= 100 ? 3 : destruction >= 50 ? 2 : destruction >= 25 ? 1 : 0;
@@ -261,7 +203,6 @@ export default function Clash() {
         trophiesWon: response.data.trophiesWon,
       });
 
-      // Update user balance
       if (response.data.newBalance) {
         updateBalance(response.data.newBalance.aura, response.data.newBalance.money);
       }
@@ -272,25 +213,19 @@ export default function Clash() {
     }
   };
 
-  // Format time remaining
   const formatTimeRemaining = (date: Date | null): string => {
     if (!date) return '';
-    const now = new Date();
-    const diff = date.getTime() - now.getTime();
+    const diff = date.getTime() - Date.now();
     if (diff <= 0) return '';
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     return `${hours}h ${minutes}m`;
   };
 
-  // Render grid
   const renderGrid = (gridBuildings: Building[], clickHandler: (x: number, y: number) => void, isInteractive: boolean) => (
     <div
-      className="grid gap-px bg-gray-800/50 rounded-lg overflow-hidden border border-gray-700"
-      style={{
-        gridTemplateColumns: `repeat(${GRID_SIZE}, minmax(0, 1fr))`,
-        aspectRatio: '1/1',
-      }}
+      className="grid gap-px bg-border/20"
+      style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, minmax(0, 1fr))`, aspectRatio: '1/1' }}
     >
       {Array.from({ length: GRID_SIZE * GRID_SIZE }).map((_, index) => {
         const x = index % GRID_SIZE;
@@ -303,43 +238,22 @@ export default function Clash() {
           <div
             key={index}
             onClick={() => clickHandler(x, y)}
-              className={cn(
-              "relative aspect-square flex items-center justify-center text-xs transition-all duration-150",
-              isInteractive && "cursor-pointer hover:bg-primary/20",
-              building ? 'bg-muted' : 'bg-background/50',
-              isSelected && 'ring-2 ring-primary',
-              placingBuilding && 'hover:bg-primary/30'
+            className={cn(
+              "aspect-square flex items-center justify-center text-xs transition-all",
+              isInteractive && "cursor-pointer hover:bg-muted/50",
+              building ? 'bg-muted/30' : 'bg-background',
+              isSelected && 'ring-1 ring-foreground',
+              placingBuilding && 'hover:bg-muted/50'
             )}
           >
             {building && (
-              <div
-                className="absolute inset-0.5 rounded flex items-center justify-center"
-                style={{ backgroundColor: `${BUILDING_CONFIG[building.type]?.color}20` }}
-              >
-                {(() => {
-                  const BuildingIcon = BUILDING_CONFIG[building.type]?.icon;
-                  return BuildingIcon ? (
-                    <BuildingIcon className="w-5 h-5" style={{ color: BUILDING_CONFIG[building.type]?.color }} />
-                  ) : null;
-                })()}
-                <span className="absolute bottom-0 right-0 text-[8px] font-bold text-white bg-black/50 px-0.5 rounded">
-                  {building.level}
-                </span>
-              </div>
+              <span className="text-sm" title={BUILDING_CONFIG[building.type]?.name}>
+                {BUILDING_CONFIG[building.type]?.emoji}
+              </span>
             )}
-            {deployedHere.map((troop, i) => {
-              const TroopIcon = TROOP_CONFIG[troop.type]?.icon;
-              return TroopIcon ? (
-                <TroopIcon 
-                  key={i} 
-                  className="absolute w-4 h-4 animate-bounce" 
-                  style={{ 
-                    animationDelay: `${i * 100}ms`,
-                    color: TROOP_CONFIG[troop.type]?.color 
-                  }} 
-                />
-              ) : null;
-            })}
+            {deployedHere.length > 0 && (
+              <span className="text-xs">{TROOP_CONFIG[deployedHere[0].type]?.emoji}</span>
+            )}
           </div>
         );
       })}
@@ -348,362 +262,211 @@ export default function Clash() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-pulse text-primary text-xl">Loading base...</div>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="max-w-5xl mx-auto py-12 px-4 space-y-12">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <Swords className="w-8 h-8 text-primary" />
-            Clash
-          </h1>
-          <p className="text-muted-foreground mt-1">Build your base, raid enemies, earn glory</p>
+      <header className="space-y-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-muted-foreground tracking-wide uppercase">Stratégie</p>
+            <h1 className="text-5xl md:text-7xl font-light tracking-tight">Clash</h1>
+          </div>
+          <div className="flex items-center gap-4 text-sm text-muted-foreground tabular-nums">
+            <span>{trophies} 🏆</span>
+            <span>{defenseRating} 🛡️</span>
+            {shieldUntil && new Date() < shieldUntil && (
+              <span>Shield: {formatTimeRemaining(shieldUntil)}</span>
+            )}
+          </div>
         </div>
+      </header>
 
-        {/* Stats */}
-        <div className="flex items-center gap-4">
-          <Badge variant="secondary" className="px-4 py-2">
-            <Trophy className="w-5 h-5 mr-2" />
-            <span className="font-bold">{trophies}</span>
-          </Badge>
-          <Badge variant="secondary" className="px-4 py-2">
-            <Shield className="w-5 h-5 mr-2" />
-            <span className="font-bold">{defenseRating}</span>
-          </Badge>
-          {shieldUntil && new Date() < shieldUntil && (
-            <Badge variant="outline" className="px-4 py-2 bg-primary/20 border-primary/50">
-              <Shield className="w-5 h-5 mr-2" />
-              <span>{formatTimeRemaining(shieldUntil)}</span>
-            </Badge>
-          )}
-        </div>
-      </div>
-
-      {/* Navigation Tabs */}
-      <div className="flex gap-2 p-1 bg-muted rounded-lg border border-border">
-        {[
-          { id: 'base' as ViewMode, label: 'My Base', icon: Home },
-          { id: 'attack' as ViewMode, label: 'Attack', icon: Target },
-          { id: 'history' as ViewMode, label: 'History', icon: History },
-        ].map(({ id, label, icon: Icon }) => (
-          <Button
-            key={id}
-            onClick={() => setViewMode(id)}
-            variant={viewMode === id || (viewMode === 'scout' && id === 'attack') || (viewMode === 'battle' && id === 'attack') ? 'default' : 'ghost'}
-            className="flex-1"
+      {/* Tabs */}
+      <div className="flex gap-2">
+        {(['base', 'attack', 'history'] as ViewMode[]).map((mode) => (
+          <button
+            key={mode}
+            onClick={() => setViewMode(mode)}
+            className={cn(
+              "px-4 py-2 text-sm border transition-colors",
+              (viewMode === mode || (viewMode === 'scout' && mode === 'attack') || (viewMode === 'battle' && mode === 'attack'))
+                ? "border-foreground text-foreground"
+                : "border-border/30 text-muted-foreground hover:text-foreground"
+            )}
           >
-            <Icon className="w-4 h-4" />
-            {label}
-          </Button>
+            {mode === 'base' ? 'Base' : mode === 'attack' ? 'Attaque' : 'Historique'}
+          </button>
         ))}
       </div>
 
+      {/* Divider */}
+      <div className="h-px bg-border" />
+
       {/* Base View */}
       {viewMode === 'base' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Grid */}
-          <Card className="lg:col-span-2">
-            <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <Home className="w-5 h-5 text-primary" />
-                Base Layout
-              </h2>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-medium">Base</h2>
               <div className="flex gap-2">
                 {isEditing ? (
                   <>
-                    <Button
-                      onClick={() => {
-                        setIsEditing(false);
-                        setPlacingBuilding(null);
-                        setSelectedBuilding(null);
-                        loadBase();
-                      }}
-                      variant="secondary"
+                    <button
+                      onClick={() => { setIsEditing(false); setPlacingBuilding(null); setSelectedBuilding(null); loadBase(); }}
+                      className="px-3 py-1 text-sm border border-border/30 text-muted-foreground hover:text-foreground"
                     >
-                      <X className="w-4 h-4" />
-                      Cancel
-                    </Button>
-                    <Button
+                      Annuler
+                    </button>
+                    <button
                       onClick={saveBase}
                       disabled={saving}
+                      className="px-3 py-1 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background disabled:opacity-50"
                     >
-                      {saving ? 'Saving...' : 'Save Base'}
-                    </Button>
+                      {saving ? 'Saving...' : 'Sauvegarder'}
+                    </button>
                   </>
                 ) : (
-                  <Button
+                  <button
                     onClick={() => setIsEditing(true)}
+                    className="px-3 py-1 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background"
                   >
-                    <Edit3 className="w-4 h-4" />
-                    Edit Base
-                  </Button>
+                    Modifier
+                  </button>
                 )}
               </div>
             </div>
-
             {renderGrid(buildings, handleCellClick, isEditing)}
-            </CardContent>
-          </Card>
+          </div>
 
-          {/* Sidebar */}
-          <div className="space-y-4">
-            {/* Building Palette (when editing) */}
+          <div className="space-y-6">
             {isEditing && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Zap className="w-4 h-4 text-primary" />
-                    Buildings
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-2">
-                    {Object.entries(BUILDING_CONFIG).map(([type, config]) => {
-                      const Icon = config.icon;
-                      return (
-                        <Button
-                          key={type}
-                          onClick={() => setPlacingBuilding(type === placingBuilding ? null : type)}
-                          variant={placingBuilding === type ? 'default' : 'outline'}
-                          className="h-auto p-2 flex-col items-start"
-                        >
-                          <Icon className="w-5 h-5" style={{ color: config.color }} />
-                          <p className="text-xs mt-1 truncate">{config.name}</p>
-                        </Button>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="space-y-4">
+                <h3 className="text-sm text-muted-foreground uppercase tracking-wide">Bâtiments</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.entries(BUILDING_CONFIG).map(([type, config]) => (
+                    <button
+                      key={type}
+                      onClick={() => setPlacingBuilding(type === placingBuilding ? null : type)}
+                      className={cn(
+                        "p-2 text-left text-sm border transition-colors",
+                        placingBuilding === type
+                          ? "border-foreground"
+                          : "border-border/30 hover:border-foreground/30"
+                      )}
+                    >
+                      <span className="mr-2">{config.emoji}</span>
+                      {config.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
 
-            {/* Selected Building Info */}
             {selectedBuilding && isEditing && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Selected Building</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {(() => {
-                    const building = buildings.find((b) => b.id === selectedBuilding);
-                    if (!building) return null;
-                    const config = BUILDING_CONFIG[building.type];
-                    const BuildingIcon = config?.icon;
-                    return (
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-3">
-                          {BuildingIcon && (
-                            <BuildingIcon className="w-8 h-8" style={{ color: config?.color }} />
-                          )}
-                          <div>
-                            <p className="font-bold">{config?.name}</p>
-                            <CardDescription>Level {building.level}</CardDescription>
-                          </div>
-                        </div>
-                        <Button
-                          onClick={deleteBuilding}
-                          variant="destructive"
-                          className="w-full"
-                        >
-                          Remove Building
-                        </Button>
-                      </div>
-                    );
-                  })()}
-                </CardContent>
-              </Card>
+              <div className="space-y-4">
+                <h3 className="text-sm text-muted-foreground uppercase tracking-wide">Sélectionné</h3>
+                <button
+                  onClick={deleteBuilding}
+                  className="w-full px-3 py-2 text-sm border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                >
+                  Supprimer
+                </button>
+              </div>
             )}
 
-            {/* Base Stats */}
             {!isEditing && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-primary" />
-                    Base Stats
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Defense Rating</span>
-                      <span className="font-bold">{defenseRating}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Trophies</span>
-                      <span className="font-bold">{trophies}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Buildings</span>
-                      <span className="font-bold">{buildings.length}</span>
-                    </div>
-                    {attackCooldown && new Date() < attackCooldown && (
-                      <div className="flex justify-between">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-4 h-4" />
-                          Attack Cooldown
-                        </span>
-                        <span className="font-bold">{formatTimeRemaining(attackCooldown)}</span>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="space-y-4">
+                <h3 className="text-sm text-muted-foreground uppercase tracking-wide">Stats</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Défense</span><span>{defenseRating}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Trophées</span><span>{trophies}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Bâtiments</span><span>{buildings.length}</span></div>
+                  {attackCooldown && new Date() < attackCooldown && (
+                    <div className="flex justify-between"><span className="text-muted-foreground">Cooldown</span><span>{formatTimeRemaining(attackCooldown)}</span></div>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         </div>
       )}
 
-      {/* Attack View - Target Selection */}
+      {/* Attack View */}
       {viewMode === 'attack' && (
-        <div className="space-y-4">
+        <section className="space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <Target className="w-5 h-5 text-primary" />
-              Available Targets
-            </h2>
-            <Button onClick={loadTargets} variant="secondary">
-              Refresh Targets
-            </Button>
+            <h2 className="text-lg font-medium">Cibles</h2>
+            <button onClick={loadTargets} className="text-muted-foreground hover:text-foreground">
+              <RefreshCw className="w-4 h-4" />
+            </button>
           </div>
 
           {attackCooldown && new Date() < attackCooldown ? (
-            <Card>
-              <CardContent className="p-6 text-center">
-                <Clock className="w-12 h-12 mx-auto text-primary mb-3" />
-                <p className="text-lg font-bold">Attack on Cooldown</p>
-                <CardDescription>Time remaining: {formatTimeRemaining(attackCooldown)}</CardDescription>
-              </CardContent>
-            </Card>
+            <p className="text-center text-muted-foreground py-8">
+              Cooldown: {formatTimeRemaining(attackCooldown)}
+            </p>
           ) : targets.length === 0 ? (
-            <Card>
-              <CardContent className="p-6 text-center">
-                <Target className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
-                <CardDescription>No targets available. Try again later.</CardDescription>
-              </CardContent>
-            </Card>
+            <p className="text-center text-muted-foreground py-8">Aucune cible disponible</p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-0">
               {targets.map((target) => (
-                <Card key={target.id} className="hover:border-primary/50 transition-colors">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                          <Crown className="w-5 h-5 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-bold">{target.username}</p>
-                          <CardDescription className="flex items-center gap-1">
-                            <Trophy className="w-3 h-3" />
-                            {target.trophies} trophies
-                          </CardDescription>
-                        </div>
-                      </div>
-                      <div className="text-right text-sm">
-                        <p className="text-muted-foreground">Defense</p>
-                        <p className="font-bold">{target.defenseRating}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-4 mb-4 text-sm">
-                      <div className="flex items-center gap-1">
-                        <Coins className="w-4 h-4" />
-                        <span>{target.potentialMoney}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Sparkles className="w-4 h-4" />
-                        <span>{target.potentialAura}</span>
-                      </div>
-                    </div>
-
-                    <Button
+                <div key={target.id} className="flex items-center justify-between py-4 border-b border-border/30">
+                  <div>
+                    <p className="font-medium">{target.username}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {target.trophies} 🏆 · {target.defenseRating} 🛡️
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm text-muted-foreground tabular-nums">
+                      ${target.potentialMoney} · {target.potentialAura} aura
+                    </span>
+                    <button
                       onClick={() => scoutTarget(target)}
-                      className="w-full"
+                      className="px-3 py-1 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background"
                     >
-                      <Eye className="w-4 h-4" />
-                      Scout Base
-                    </Button>
-                  </CardContent>
-                </Card>
+                      Scout
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
           )}
-        </div>
+        </section>
       )}
 
       {/* Scout View */}
       {viewMode === 'scout' && selectedTarget && (
-        <div className="space-y-4">
+        <div className="space-y-6">
           <div className="flex items-center gap-4">
-            <Button
-              onClick={() => {
-                setViewMode('attack');
-                setSelectedTarget(null);
-              }}
-              variant="secondary"
-              size="icon"
-            >
+            <button onClick={() => { setViewMode('attack'); setSelectedTarget(null); }} className="text-muted-foreground hover:text-foreground">
               <X className="w-4 h-4" />
-            </Button>
+            </button>
             <div>
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <Eye className="w-5 h-5 text-primary" />
-                Scouting: {selectedTarget.username}
-              </h2>
-              <CardDescription>Review the base before attacking</CardDescription>
+              <h2 className="text-lg font-medium">Scout: {selectedTarget.username}</h2>
+              <p className="text-sm text-muted-foreground">
+                {selectedTarget.trophies} 🏆 · ${selectedTarget.potentialMoney} · {selectedTarget.potentialAura} aura
+              </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-2">
-              <CardContent className="p-4">
-                {renderGrid(targetBase, () => {}, false)}
-              </CardContent>
-            </Card>
-
-            <div className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Target Info</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Trophies</span>
-                      <span className="font-bold">{selectedTarget.trophies}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Defense</span>
-                      <span className="font-bold">{selectedTarget.defenseRating}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Potential Loot</span>
-                      <span className="font-bold">${selectedTarget.potentialMoney}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Potential Aura</span>
-                      <span className="font-bold">{selectedTarget.potentialAura}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Button
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2">
+              {renderGrid(targetBase, () => {}, false)}
+            </div>
+            <div>
+              <button
                 onClick={startBattle}
-                size="lg"
-                className="w-full"
+                className="w-full px-4 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background"
               >
-                <Swords className="w-4 h-4" />
-                Attack!
-              </Button>
+                Attaquer
+              </button>
             </div>
           </div>
         </div>
@@ -711,145 +474,94 @@ export default function Clash() {
 
       {/* Battle View */}
       {viewMode === 'battle' && selectedTarget && (
-        <div className="space-y-4">
+        <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <Swords className="w-5 h-5" />
-              Battle: {selectedTarget.username}
-            </h2>
+            <h2 className="text-lg font-medium">Bataille: {selectedTarget.username}</h2>
             {!battleResult && (
-              <Button
+              <button
                 onClick={endBattle}
-                variant="destructive"
+                className="px-3 py-1 text-sm border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
               >
-                <ChevronRight className="w-4 h-4" />
-                End Battle
-              </Button>
+                <ChevronRight className="w-4 h-4 inline mr-1" />
+                Terminer
+              </button>
             )}
           </div>
 
           {battleResult ? (
-            // Battle Result
-            <Card className="max-w-md mx-auto">
-              <CardContent className="p-8 text-center">
-                <div className="mb-6">
-                {battleResult.success ? (
-                  <div className="text-primary">
-                    <Trophy className="w-16 h-16 mx-auto mb-2" />
-                    <h3 className="text-2xl font-bold">Victory!</h3>
+            <Dialog open={true} onOpenChange={() => {}}>
+              <DialogContent className="sm:max-w-sm">
+                <DialogHeader>
+                  <DialogTitle className="text-center text-2xl font-light">
+                    {battleResult.success ? 'Victoire!' : 'Défaite'}
+                  </DialogTitle>
+                </DialogHeader>
+                
+                <div className="text-center space-y-4">
+                  <div className="flex justify-center gap-1">
+                    {[1, 2, 3].map((star) => (
+                      <Star
+                        key={star}
+                        className={cn("w-6 h-6", star <= battleResult.starsEarned ? 'text-foreground fill-foreground' : 'text-muted-foreground/30')}
+                      />
+                    ))}
                   </div>
-                ) : (
-                  <div className="text-destructive">
-                    <X className="w-16 h-16 mx-auto mb-2" />
-                    <h3 className="text-2xl font-bold">Defeat</h3>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-center gap-2 mb-6">
-                {[1, 2, 3].map((star) => (
-                  <Star
-                    key={star}
-                    className={cn(
-                      "w-8 h-8",
-                      star <= battleResult.starsEarned
-                        ? 'text-primary fill-primary'
-                        : 'text-muted-foreground'
-                    )}
-                  />
-                ))}
-              </div>
-
-              <div className="space-y-3 text-left mb-6">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Destruction</span>
-                  <span className="font-bold">{battleResult.destruction}%</span>
+                  
+                  <p className="text-sm text-muted-foreground">{battleResult.destruction}% destruction</p>
+                  
+                  {(battleResult.moneyTaken > 0 || battleResult.auraTaken > 0) && (
+                    <p className="text-sm">
+                      {battleResult.moneyTaken > 0 && `+$${battleResult.moneyTaken}`}
+                      {battleResult.moneyTaken > 0 && battleResult.auraTaken > 0 && ' · '}
+                      {battleResult.auraTaken > 0 && `+${battleResult.auraTaken} aura`}
+                    </p>
+                  )}
                 </div>
-                {battleResult.moneyTaken > 0 && (
-                  <div className="flex justify-between">
-                    <span>Money Looted</span>
-                    <Badge variant="secondary">+${battleResult.moneyTaken}</Badge>
-                  </div>
-                )}
-                {battleResult.auraTaken > 0 && (
-                  <div className="flex justify-between">
-                    <span>Aura Stolen</span>
-                    <Badge variant="secondary">+{battleResult.auraTaken}</Badge>
-                  </div>
-                )}
-                {battleResult.trophiesWon > 0 && (
-                  <div className="flex justify-between">
-                    <span>Trophies</span>
-                    <Badge variant="secondary">+{battleResult.trophiesWon}</Badge>
-                  </div>
-                )}
+
+                <DialogFooter>
+                  <Button
+                    onClick={() => { setViewMode('attack'); setSelectedTarget(null); setBattleResult(null); setDeployedTroops([]); loadBase(); }}
+                    variant="outline"
+                    className="w-full border-foreground"
+                  >
+                    Continuer
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2 space-y-2">
+                <p className="text-xs text-muted-foreground">Clique pour déployer des troupes</p>
+                {renderGrid(targetBase, handleBattleCellClick, true)}
               </div>
 
-              <Button
-                onClick={() => {
-                  setViewMode('attack');
-                  setSelectedTarget(null);
-                  setBattleResult(null);
-                  setDeployedTroops([]);
-                  loadBase();
-                }}
-                className="w-full"
-              >
-                Continue
-              </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            // Active Battle
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="lg:col-span-2">
-                <CardContent className="p-4">
-                  <p className="text-sm text-muted-foreground mb-2">Click on the edges to deploy troops</p>
-                  {renderGrid(targetBase, handleBattleCellClick, true)}
-                </CardContent>
-              </Card>
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <h3 className="text-sm text-muted-foreground uppercase tracking-wide">Troupes</h3>
+                  <div className="space-y-2">
+                    {troops.map((troop) => (
+                      <button
+                        key={troop.type}
+                        onClick={() => setSelectedTroop(troop.type === selectedTroop ? null : troop.type)}
+                        disabled={troop.count <= 0}
+                        className={cn(
+                          "w-full flex items-center justify-between p-2 text-sm border transition-colors",
+                          selectedTroop === troop.type ? "border-foreground" : "border-border/30",
+                          troop.count <= 0 && "opacity-30"
+                        )}
+                      >
+                        <span>{TROOP_CONFIG[troop.type]?.emoji} {TROOP_CONFIG[troop.type]?.name}</span>
+                        <span className="tabular-nums">{troop.count}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-              <div className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Swords className="w-4 h-4 text-primary" />
-                      Your Army
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      {troops.map((troop) => {
-                        const TroopIcon = TROOP_CONFIG[troop.type]?.icon;
-                        return (
-                          <Button
-                            key={troop.type}
-                            onClick={() => setSelectedTroop(troop.type === selectedTroop ? null : troop.type)}
-                            disabled={troop.count <= 0}
-                            variant={selectedTroop === troop.type ? 'default' : 'outline'}
-                            className="w-full justify-between"
-                          >
-                            <div className="flex items-center gap-2">
-                              {TroopIcon && (
-                                <TroopIcon className="w-5 h-5" style={{ color: TROOP_CONFIG[troop.type]?.color }} />
-                              )}
-                              <span>{TROOP_CONFIG[troop.type]?.name}</span>
-                            </div>
-                            <Badge variant="secondary">{troop.count}</Badge>
-                          </Button>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-4">
-                    <h3 className="font-bold mb-2">Deployed</h3>
-                    <p className="text-2xl font-bold text-primary">{deployedTroops.length}</p>
-                    <CardDescription>troops on the field</CardDescription>
-                  </CardContent>
-                </Card>
+                <div className="text-center">
+                  <p className="text-3xl font-light tabular-nums">{deployedTroops.length}</p>
+                  <p className="text-xs text-muted-foreground uppercase">déployées</p>
+                </div>
               </div>
             </div>
           )}
@@ -858,88 +570,46 @@ export default function Clash() {
 
       {/* History View */}
       {viewMode === 'history' && (
-        <div className="space-y-4">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <History className="w-5 h-5 text-muted-foreground" />
-            Attack History
-          </h2>
+        <section className="space-y-6">
+          <h2 className="text-lg font-medium">Historique</h2>
 
           {attackHistory.length === 0 ? (
-            <Card>
-              <CardContent className="p-6 text-center">
-                <History className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
-                <CardDescription>No attacks yet</CardDescription>
-              </CardContent>
-            </Card>
+            <p className="text-center text-muted-foreground py-8">Aucune attaque</p>
           ) : (
-            <div className="space-y-2">
-              {attackHistory.map((attack) => (
-                <Card
-                  key={attack.id}
-                  className={cn(
-                    "border-l-4",
-                    attack.attackerId === user?.id
-                      ? attack.success
-                        ? 'border-l-primary'
-                        : 'border-l-destructive'
-                      : attack.success
-                        ? 'border-l-destructive'
-                        : 'border-l-primary'
-                  )}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        {attack.attackerId === user?.id ? (
-                          <Swords className="w-5 h-5 text-primary" />
-                        ) : (
-                          <Shield className="w-5 h-5 text-primary" />
-                        )}
-                        <div>
-                          <p className="font-bold">
-                            {attack.attackerId === user?.id
-                              ? `Attacked ${attack.defender.username}`
-                              : `Defended against ${attack.attacker.username}`}
-                          </p>
-                          <CardDescription>
-                            {new Date(attack.attackedAt).toLocaleDateString()} •{' '}
-                            {attack.starsEarned} stars • {attack.destruction}% destruction
-                          </CardDescription>
-                        </div>
-                      </div>
-
-                      <div className="text-right">
-                        {attack.attackerId === user?.id ? (
-                          attack.success ? (
-                            <div>
-                              <Badge variant="secondary">+${attack.moneyTaken}</Badge>
-                              {attack.auraTaken > 0 && (
-                                <Badge variant="secondary" className="ml-1">+{attack.auraTaken} aura</Badge>
-                              )}
-                            </div>
-                          ) : (
-                            <Badge variant="destructive">Failed</Badge>
-                          )
-                        ) : (
-                          attack.success ? (
-                            <div>
-                              <Badge variant="destructive">-${attack.moneyTaken}</Badge>
-                              {attack.auraTaken > 0 && (
-                                <Badge variant="destructive" className="ml-1">-{attack.auraTaken} aura</Badge>
-                              )}
-                            </div>
-                          ) : (
-                            <Badge variant="secondary">Defended!</Badge>
-                          )
-                        )}
-                      </div>
+            <div className="space-y-0">
+              {attackHistory.map((attack) => {
+                const isAttacker = attack.attackerId === user?.id;
+                return (
+                  <div key={attack.id} className="flex items-center justify-between py-4 border-b border-border/30">
+                    <div>
+                      <p className="font-medium">
+                        {isAttacker ? `→ ${attack.defender.username}` : `← ${attack.attacker.username}`}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(attack.attackedAt).toLocaleDateString()} · {attack.starsEarned}★ · {attack.destruction}%
+                      </p>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    <div className="text-right text-sm">
+                      {isAttacker ? (
+                        attack.success ? (
+                          <span className="text-foreground">+${attack.moneyTaken}</span>
+                        ) : (
+                          <span className="text-muted-foreground">Échec</span>
+                        )
+                      ) : (
+                        attack.success ? (
+                          <span className="text-muted-foreground">-${attack.moneyTaken}</span>
+                        ) : (
+                          <span className="text-foreground">Défendu</span>
+                        )
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
-        </div>
+        </section>
       )}
     </div>
   );

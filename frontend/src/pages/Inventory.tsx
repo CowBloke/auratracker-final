@@ -1,11 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { marketplaceApi } from '../services/api';
-import { Package, Zap, Sparkles, Check, X } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface UserItem {
@@ -20,6 +16,12 @@ interface UserItem {
     effect?: string;
   };
 }
+
+const typeLabels: Record<string, string> = {
+  CONSUMABLE: 'Consommable',
+  COSMETIC: 'Cosmétique',
+  UPGRADE: 'Amélioration',
+};
 
 export default function Inventory() {
   const { user, refreshUser } = useAuth();
@@ -57,13 +59,13 @@ export default function Inventory() {
       await refreshUser();
       await fetchInventory();
       
-      let effectText = `Used ${userItem.item.name}!`;
+      let effectText = `${userItem.item.name} utilisé`;
       if (response.data.effect) {
         if (response.data.effect.bonusAura) {
-          effectText += ` +${response.data.effect.bonusAura} Aura`;
+          effectText += ` → +${response.data.effect.bonusAura} aura`;
         }
         if (response.data.effect.bonusMoney) {
-          effectText += ` +$${response.data.effect.bonusMoney}`;
+          effectText += ` → +$${response.data.effect.bonusMoney}`;
         }
       }
       
@@ -72,138 +74,90 @@ export default function Inventory() {
     } catch (error: any) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.error || 'Failed to use item',
+        text: error.response?.data?.error || 'Échec',
       });
     } finally {
       setUsing(null);
     }
   };
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'CONSUMABLE':
-        return <Zap className="w-5 h-5" />;
-      case 'COSMETIC':
-        return <Sparkles className="w-5 h-5" />;
-      case 'UPGRADE':
-        return <Package className="w-5 h-5" />;
-      default:
-        return <Package className="w-5 h-5" />;
-    }
-  };
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'CONSUMABLE':
-        return 'text-primary bg-primary/20';
-      case 'COSMETIC':
-        return 'text-secondary-foreground bg-secondary';
-      case 'UPGRADE':
-        return 'text-primary bg-primary/20';
-      default:
-        return 'text-muted-foreground bg-muted';
-    }
-  };
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-pulse text-primary text-xl">
-          Loading...
-        </div>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold flex items-center gap-3">
-          <Package className="w-8 h-8 text-primary" />
-          Inventory
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          View and use your items
+      <header className="space-y-2">
+        <p className="text-sm text-muted-foreground tracking-wide uppercase">
+          Objets
         </p>
-      </div>
+        <h1 className="text-5xl md:text-7xl font-light tracking-tight">
+          Inventaire
+        </h1>
+        <p className="text-muted-foreground">
+          {items.length} objet{items.length !== 1 ? 's' : ''}
+        </p>
+      </header>
 
       {/* Message */}
       {message && (
-        <Alert variant={message.type === 'error' ? 'destructive' : 'default'} className={cn(
-          message.type === 'success' && 'border-primary/50 bg-primary/10'
+        <p className={cn(
+          "text-sm",
+          message.type === 'success' ? 'text-foreground' : 'text-destructive'
         )}>
-          {message.type === 'success' ? (
-            <Check className="w-4 h-4 text-primary" />
-          ) : (
-            <X className="w-4 h-4" />
-          )}
-          <AlertDescription className={cn(
-            message.type === 'success' && 'text-primary'
-          )}>
-            {message.text}
-          </AlertDescription>
-        </Alert>
+          {message.text}
+        </p>
       )}
 
-      {/* Items Grid */}
+      {/* Divider */}
+      <div className="h-px bg-border" />
+
+      {/* Items */}
       {items.length === 0 ? (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center py-12">
-              <Package className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-              <CardTitle className="text-xl mb-2">Inventory Empty</CardTitle>
-              <CardDescription>Visit the marketplace to buy items!</CardDescription>
-            </div>
-          </CardContent>
-        </Card>
+        <p className="text-center text-muted-foreground py-12">
+          Inventaire vide
+        </p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="space-y-0">
           {items.map((userItem) => (
-            <Card key={userItem.id} className="overflow-hidden">
-              {/* Item Header */}
-              <div className="h-24 bg-muted flex items-center justify-center">
-                <div className={cn(
-                  "w-14 h-14 rounded-xl flex items-center justify-center",
-                  getTypeColor(userItem.item.type)
-                )}>
-                  {getTypeIcon(userItem.item.type)}
-                </div>
-              </div>
-
-              {/* Item Info */}
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <CardTitle className="text-lg">{userItem.item.name}</CardTitle>
-                  <Badge variant="secondary" className={getTypeColor(userItem.item.type)}>
-                    {userItem.item.type}
-                  </Badge>
-                </div>
-
-                <CardDescription className="mb-4">
-                  {userItem.item.description}
-                </CardDescription>
-
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm text-muted-foreground">
-                    Acquired {new Date(userItem.acquiredAt).toLocaleDateString()}
+            <div
+              key={userItem.id}
+              className="flex items-center justify-between py-6 border-b border-border/30 last:border-0"
+            >
+              <div className="space-y-1 flex-1">
+                <div className="flex items-center gap-4">
+                  <h2 className="text-lg font-medium">{userItem.item.name}</h2>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                    {typeLabels[userItem.item.type]}
                   </span>
-                  <Badge variant="outline">
-                    x{userItem.quantity}
-                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    ×{userItem.quantity}
+                  </span>
                 </div>
-
-                {userItem.item.type === 'CONSUMABLE' && (
-                  <Button
-                    onClick={() => handleUseItem(userItem)}
-                    disabled={using === userItem.id}
-                    className="w-full"
-                  >
-                    {using === userItem.id ? 'Using...' : 'Use Item'}
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
+                <p className="text-sm text-muted-foreground max-w-md">
+                  {userItem.item.description}
+                </p>
+              </div>
+              
+              {userItem.item.type === 'CONSUMABLE' && (
+                <button
+                  onClick={() => handleUseItem(userItem)}
+                  disabled={using === userItem.id}
+                  className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors disabled:opacity-50"
+                >
+                  {using === userItem.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    'Utiliser'
+                  )}
+                </button>
+              )}
+            </div>
           ))}
         </div>
       )}

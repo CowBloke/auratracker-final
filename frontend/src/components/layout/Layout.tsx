@@ -4,8 +4,6 @@ import { ChatSidebarWrapper, ChatSidebarTriggerWrapper } from '../chat/ChatSideb
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocket } from '@/contexts/SocketContext';
-import { Sparkles, Coins, Wifi, WifiOff } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 
 export default function Layout() {
   const { user } = useAuth();
@@ -16,48 +14,32 @@ export default function Layout() {
       <SidebarProvider className="!w-auto flex-1">
         <Sidebar />
         <SidebarInset className="flex flex-col">
-          <div className="flex items-center justify-between border-b px-4 py-2 h-16">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger />
-            </div>
+          <header className="flex items-center justify-between border-b border-border/40 px-6 py-4 h-14">
+            <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
 
-            {/* Currency Display */}
-            <div className="flex items-center gap-6">
-              {/* Connection Status */}
+            <div className="flex items-center gap-8 text-sm">
+              {/* Connection indicator */}
               <div className="flex items-center gap-2">
-                {connected ? (
-                  <Wifi className="w-4 h-4 text-accent-green" />
-                ) : (
-                  <WifiOff className="w-4 h-4 text-destructive" />
-                )}
-                <span className="text-xs text-muted-foreground">
-                  {connected ? 'Connected' : 'Disconnected'}
+                <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-foreground' : 'bg-muted-foreground'}`} />
+                <span className="text-muted-foreground">
+                  {connected ? 'online' : 'offline'}
                 </span>
               </div>
 
-              {/* Aura */}
-              <Badge variant="outline" className="gap-2 px-4 py-2 bg-aura/10 border-aura/30">
-                <Sparkles className="w-4 h-4 text-aura-light" />
-                <span className="text-lg font-semibold text-aura-light">
-                  {user?.aura.toLocaleString()}
+              {/* Stats */}
+              <div className="flex items-center gap-6 tabular-nums">
+                <span className="text-muted-foreground">
+                  {user?.aura.toLocaleString()} <span className="text-muted-foreground/60">aura</span>
                 </span>
-              </Badge>
-
-              {/* Money */}
-              <Badge variant="outline" className="gap-2 px-4 py-2 bg-money/10 border-money/30">
-                <Coins className="w-4 h-4 text-money-light" />
-                <span className="text-lg font-semibold text-money-light">
-                  ${user?.money.toLocaleString()}
+                <span className="text-muted-foreground">
+                  ${user?.money.toLocaleString()} <span className="text-muted-foreground/60">money</span>
                 </span>
-              </Badge>
-
-              {/* User Menu */}
-              <div className="flex items-center gap-3">
-                <ChatSidebarTriggerWrapper />
               </div>
+
+              <ChatSidebarTriggerWrapper />
             </div>
-          </div>
-          <main className="flex-1 p-6 min-h-[calc(100vh-4rem)] overflow-auto">
+          </header>
+          <main className="flex-1 overflow-auto">
             <Outlet />
           </main>
         </SidebarInset>

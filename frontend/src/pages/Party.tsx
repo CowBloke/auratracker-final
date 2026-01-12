@@ -2,25 +2,12 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import { usersApi } from '../services/api';
-import {
-  Users,
-  Plus,
-  LogOut,
-  Crown,
-  UserPlus,
-  X,
-  Globe,
-  Lock,
-  RefreshCw,
-} from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Plus, LogOut, UserPlus, X, RefreshCw } from 'lucide-react';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface User {
@@ -83,242 +70,217 @@ export default function Party() {
   );
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <Users className="w-8 h-8 text-primary" />
-            Party
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Team up with friends to play together
-          </p>
+      <header className="space-y-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-muted-foreground tracking-wide uppercase">
+              Multijoueur
+            </p>
+            <h1 className="text-5xl md:text-7xl font-light tracking-tight">
+              Party
+            </h1>
+          </div>
+          {!currentParty && (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              Créer
+            </button>
+          )}
         </div>
+      </header>
 
-        {!currentParty && (
-          <Button onClick={() => setShowCreateModal(true)}>
-            <Plus className="w-4 h-4" />
-            Create Party
-          </Button>
-        )}
-      </div>
-
-      {/* Party Invites */}
+      {/* Invites */}
       {partyInvites.length > 0 && (
-        <Card className="bg-primary/10 border-primary/30">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <UserPlus className="w-5 h-5 text-primary" />
-              Party Invites
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
+        <section className="space-y-4">
+          <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
+            Invitations
+          </h2>
+          <div className="space-y-0">
             {partyInvites.map((invite) => (
               <div
                 key={invite.partyId}
-                className="flex items-center justify-between p-3 rounded-lg bg-muted"
+                className="flex items-center justify-between py-4 border-b border-border/30"
               >
                 <div>
-                  <p className="font-medium">{invite.partyName || 'Unnamed Party'}</p>
+                  <p className="font-medium">{invite.partyName || 'Party sans nom'}</p>
                   <p className="text-sm text-muted-foreground">
-                    Invited by {invite.inviterUsername}
+                    de {invite.inviterUsername}
                   </p>
                 </div>
-                <Button onClick={() => joinParty(invite.partyId)} size="sm">
-                  Join
-                </Button>
+                <button
+                  onClick={() => joinParty(invite.partyId)}
+                  className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+                >
+                  Rejoindre
+                </button>
               </div>
             ))}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       )}
 
-      {/* Current Party */}
-      {currentParty ? (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-2xl">
-                  {currentParty.name || 'Your Party'}
-                </CardTitle>
-                <CardDescription className="flex items-center gap-2 mt-1">
-                  {currentParty.isPublic ? (
-                    <>
-                      <Globe className="w-4 h-4" />
-                      <span>Public</span>
-                    </>
-                  ) : (
-                    <>
-                      <Lock className="w-4 h-4" />
-                      <span>Private</span>
-                    </>
-                  )}
-                  <span>•</span>
-                  <span>{partyMembers.length}/{currentParty.maxSize} members</span>
-                </CardDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                {isLeader && (
-                  <Button
-                    onClick={() => setShowInviteModal(true)}
-                    variant="secondary"
-                  >
-                    <UserPlus className="w-4 h-4" />
-                    Invite
-                  </Button>
-                )}
-                <Button
-                  onClick={leaveParty}
-                  variant="destructive"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Leave
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
+      {/* Divider */}
+      <div className="h-px bg-border" />
 
-            {/* Members List */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                Members
-              </h3>
-              {partyMembers.map((member) => (
-                <div
-                  key={member.userId}
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+      {/* Current Party or Public Parties */}
+      {currentParty ? (
+        <section className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-light">
+                {currentParty.name || 'Ta party'}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {currentParty.isPublic ? 'Publique' : 'Privée'} · {partyMembers.length}/{currentParty.maxSize}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {isLeader && (
+                <button
+                  onClick={() => setShowInviteModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 text-sm border border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
                 >
-                  <div className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarFallback>
-                        {member.username.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium flex items-center gap-2">
-                        {member.username}
-                        {member.isLeader && (
-                          <Crown className="w-4 h-4 text-primary" />
-                        )}
-                        {member.userId === user?.id && (
-                          <Badge variant="secondary" className="text-xs">You</Badge>
-                        )}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {member.isLeader ? 'Leader' : 'Member'}
-                      </p>
-                    </div>
+                  <UserPlus className="h-4 w-4" />
+                  Inviter
+                </button>
+              )}
+              <button
+                onClick={leaveParty}
+                className="flex items-center gap-2 px-4 py-2 text-sm border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
+              >
+                <LogOut className="h-4 w-4" />
+                Quitter
+              </button>
+            </div>
+          </div>
+
+          {/* Members */}
+          <div className="space-y-0">
+            {partyMembers.map((member) => (
+              <div
+                key={member.userId}
+                className={cn(
+                  "flex items-center justify-between py-4 border-b border-border/30 last:border-0",
+                  member.userId === user?.id && "bg-muted/30 -mx-4 px-4"
+                )}
+              >
+                <div className="flex items-center gap-4">
+                  <span className="font-medium">
+                    {member.username}
+                    {member.isLeader && (
+                      <span className="ml-2 text-xs text-muted-foreground">leader</span>
+                    )}
+                    {member.userId === user?.id && (
+                      <span className="ml-2 text-xs text-muted-foreground">(toi)</span>
+                    )}
+                  </span>
+                </div>
+                {isLeader && member.userId !== user?.id && (
+                  <button
+                    onClick={() => kickFromParty(member.userId)}
+                    className="text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : (
+        <section className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
+              Parties publiques
+            </h2>
+            <button
+              onClick={fetchPublicParties}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </button>
+          </div>
+
+          {publicParties.length === 0 ? (
+            <p className="text-center text-muted-foreground py-12">
+              Aucune party publique
+            </p>
+          ) : (
+            <div className="space-y-0">
+              {publicParties.map((party) => (
+                <div
+                  key={party.id}
+                  className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
+                >
+                  <div>
+                    <p className="font-medium">{party.name || 'Party sans nom'}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {party.memberCount}/{party.maxSize} membres
+                    </p>
                   </div>
-                  {isLeader && member.userId !== user?.id && (
-                    <Button
-                      onClick={() => kickFromParty(member.userId)}
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive hover:text-destructive"
-                      title="Kick"
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  )}
+                  <button
+                    onClick={() => joinParty(party.id)}
+                    disabled={party.memberCount >= party.maxSize}
+                    className={cn(
+                      "px-4 py-2 text-sm border transition-colors",
+                      party.memberCount >= party.maxSize
+                        ? "border-border/30 text-muted-foreground/50 cursor-not-allowed"
+                        : "border-foreground text-foreground hover:bg-foreground hover:text-background"
+                    )}
+                  >
+                    {party.memberCount >= party.maxSize ? 'Pleine' : 'Rejoindre'}
+                  </button>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      ) : (
-        /* Public Parties List */
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Public Parties</CardTitle>
-              <Button
-                onClick={fetchPublicParties}
-                variant="secondary"
-                size="sm"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Refresh
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {publicParties.length === 0 ? (
-              <div className="text-center py-12">
-                <Users className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-bold text-muted-foreground mb-2">No Public Parties</h3>
-                <p className="text-muted-foreground">Create one to get started!</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {publicParties.map((party) => (
-                  <div
-                    key={party.id}
-                    className="flex items-center justify-between p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                  >
-                    <div>
-                      <p className="font-medium">{party.name || 'Unnamed Party'}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {party.memberCount}/{party.maxSize} members
-                      </p>
-                    </div>
-                    <Button
-                      onClick={() => joinParty(party.id)}
-                      disabled={party.memberCount >= party.maxSize}
-                      size="sm"
-                    >
-                      {party.memberCount >= party.maxSize ? 'Full' : 'Join'}
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          )}
+        </section>
       )}
 
       {/* Create Party Modal */}
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Create Party</DialogTitle>
-            <DialogDescription>
-              Create a new party to play with friends
-            </DialogDescription>
+            <DialogTitle className="font-normal">Créer une party</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="partyName">Party Name (optional)</Label>
-              <Input
-                id="partyName"
-                type="text"
-                value={partyName}
-                onChange={(e) => setPartyName(e.target.value)}
-                placeholder="My Awesome Party"
-              />
-            </div>
+            <Input
+              type="text"
+              value={partyName}
+              onChange={(e) => setPartyName(e.target.value)}
+              placeholder="Nom (optionnel)"
+              className="h-12 bg-transparent border-border/50"
+            />
             <div className="flex items-center gap-3">
               <Checkbox
                 id="isPublic"
                 checked={isPublic}
                 onCheckedChange={(checked) => setIsPublic(checked === true)}
               />
-              <Label htmlFor="isPublic" className="cursor-pointer">
-                Make party public (anyone can join)
+              <Label htmlFor="isPublic" className="cursor-pointer text-sm text-muted-foreground">
+                Publique
               </Label>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2">
             <Button
-              variant="secondary"
+              variant="outline"
               onClick={() => setShowCreateModal(false)}
+              className="border-border/30"
             >
-              Cancel
+              Annuler
             </Button>
-            <Button onClick={handleCreateParty}>
-              Create
+            <Button
+              onClick={handleCreateParty}
+              variant="outline"
+              className="border-foreground"
+            >
+              Créer
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -326,43 +288,34 @@ export default function Party() {
 
       {/* Invite Modal */}
       <Dialog open={showInviteModal} onOpenChange={setShowInviteModal}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Invite to Party</DialogTitle>
-            <DialogDescription>
-              Select a user to invite to your party
-            </DialogDescription>
+            <DialogTitle className="font-normal">Inviter</DialogTitle>
           </DialogHeader>
-          <div className="max-h-64 overflow-y-auto space-y-2">
+          <div className="max-h-64 overflow-y-auto space-y-0">
             {availableUsersToInvite.length === 0 ? (
               <p className="text-muted-foreground text-center py-4">
-                No users available to invite
+                Personne à inviter
               </p>
             ) : (
               availableUsersToInvite.map((u) => (
-                <Button
+                <button
                   key={u.id}
                   onClick={() => handleInvite(u.id)}
-                  variant="ghost"
-                  className="w-full justify-start"
+                  className="w-full text-left py-3 border-b border-border/30 last:border-0 text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <Avatar>
-                    <AvatarFallback>
-                      {u.username.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="font-medium ml-3">{u.username}</span>
-                </Button>
+                  {u.username}
+                </button>
               ))
             )}
           </div>
           <DialogFooter>
             <Button
-              variant="secondary"
+              variant="outline"
               onClick={() => setShowInviteModal(false)}
-              className="w-full"
+              className="w-full border-border/30"
             >
-              Close
+              Fermer
             </Button>
           </DialogFooter>
         </DialogContent>

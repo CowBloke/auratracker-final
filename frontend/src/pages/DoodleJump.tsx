@@ -2,10 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
-import { ArrowLeft, Play, RotateCcw, Trophy, Sparkles, Coins, TrendingUp } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { ArrowLeft, Play, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Platform {
@@ -68,7 +65,6 @@ export default function DoodleJump() {
   const initGame = useCallback(() => {
     const platforms: Platform[] = [];
     
-    // Generate initial platforms
     for (let i = 0; i < 10; i++) {
       platforms.push({
         x: Math.random() * (CANVAS_WIDTH - PLATFORM_WIDTH),
@@ -131,7 +127,7 @@ export default function DoodleJump() {
     if (!canvas || !ctx || !state || state.gameOver) return;
 
     // Clear canvas
-    ctx.fillStyle = '#0a0e17';
+    ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
     // Handle input
@@ -166,7 +162,6 @@ export default function DoodleJump() {
         platform.y += diff;
       });
 
-      // Remove platforms below screen and add new ones
       state.platforms = state.platforms.filter((p) => p.y < CANVAS_HEIGHT + 50);
       
       while (state.platforms.length < 10) {
@@ -186,7 +181,6 @@ export default function DoodleJump() {
 
     // Platform collision and movement
     state.platforms.forEach((platform) => {
-      // Move moving platforms
       if (platform.type === 'moving') {
         platform.x += (platform.direction || 1) * 2;
         if (platform.x <= 0 || platform.x >= CANVAS_WIDTH - platform.width) {
@@ -194,7 +188,6 @@ export default function DoodleJump() {
         }
       }
 
-      // Check collision (only when falling)
       if (state.velocityY > 0 && !platform.broken) {
         if (
           state.playerX + PLAYER_WIDTH > platform.x &&
@@ -223,27 +216,15 @@ export default function DoodleJump() {
       if (platform.broken) return;
       
       ctx.fillStyle = platform.type === 'moving' 
-        ? '#22d3ee' 
+        ? '#666' 
         : platform.type === 'breaking' 
-        ? '#f472b6' 
-        : '#6366f1';
+        ? '#444' 
+        : '#888';
       ctx.fillRect(platform.x, platform.y, platform.width, PLATFORM_HEIGHT);
-      
-      // Platform highlight
-      ctx.fillStyle = 'rgba(255,255,255,0.3)';
-      ctx.fillRect(platform.x, platform.y, platform.width, 3);
     });
 
     // Draw player
-    const gradient = ctx.createLinearGradient(
-      state.playerX,
-      state.playerY,
-      state.playerX + PLAYER_WIDTH,
-      state.playerY + PLAYER_HEIGHT
-    );
-    gradient.addColorStop(0, '#a855f7');
-    gradient.addColorStop(1, '#d946ef');
-    ctx.fillStyle = gradient;
+    ctx.fillStyle = '#fff';
     ctx.beginPath();
     ctx.arc(
       state.playerX + PLAYER_WIDTH / 2,
@@ -255,16 +236,10 @@ export default function DoodleJump() {
     ctx.fill();
 
     // Eyes
-    ctx.fillStyle = 'white';
+    ctx.fillStyle = '#0a0a0a';
     ctx.beginPath();
-    ctx.arc(state.playerX + 12, state.playerY + 15, 6, 0, Math.PI * 2);
-    ctx.arc(state.playerX + 28, state.playerY + 15, 6, 0, Math.PI * 2);
-    ctx.fill();
-    
-    ctx.fillStyle = '#0a0e17';
-    ctx.beginPath();
-    ctx.arc(state.playerX + 12 + state.velocityX * 0.3, state.playerY + 15, 3, 0, Math.PI * 2);
-    ctx.arc(state.playerX + 28 + state.velocityX * 0.3, state.playerY + 15, 3, 0, Math.PI * 2);
+    ctx.arc(state.playerX + 14, state.playerY + 15, 4, 0, Math.PI * 2);
+    ctx.arc(state.playerX + 26, state.playerY + 15, 4, 0, Math.PI * 2);
     ctx.fill();
 
     animationRef.current = requestAnimationFrame(gameLoop);
@@ -297,120 +272,94 @@ export default function DoodleJump() {
   }, [started, gameOver, gameLoop]);
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="max-w-lg mx-auto py-12 px-4 space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <Link
           to="/games"
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
         >
-          <ArrowLeft className="w-5 h-5" />
-          Back to Games
+          <ArrowLeft className="w-4 h-4" />
+          Retour
         </Link>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Trophy className="w-5 h-5 text-yellow-500" />
-            <span className="text-lg">High: {highScore.toLocaleString()}</span>
-          </div>
-        </div>
+        <span className="text-sm text-muted-foreground tabular-nums">
+          Record: {highScore.toLocaleString()}
+        </span>
       </div>
 
-      {/* Game Container */}
-      <div className="flex justify-center">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl flex items-center justify-center gap-2">
-              <TrendingUp className="w-6 h-6" />
-              Doodle Jump
-            </CardTitle>
-            <CardDescription>Use arrow keys or A/D to move</CardDescription>
-          </CardHeader>
-          <CardContent>
+      {/* Title & Score */}
+      <div className="text-center space-y-2">
+        <h1 className="text-4xl font-light tracking-tight">
+          Doodle Jump
+        </h1>
+        <p className="text-3xl tabular-nums">{score.toLocaleString()}</p>
+      </div>
 
-          {/* Score Display */}
-          <div className="flex justify-center mb-4">
-            <Badge variant="secondary" className="px-6 py-2 text-2xl">
-              {score.toLocaleString()}
-            </Badge>
+      {/* Canvas */}
+      <div className="relative flex justify-center">
+        <canvas
+          ref={canvasRef}
+          width={CANVAS_WIDTH}
+          height={CANVAS_HEIGHT}
+          className="border border-border/30"
+        />
+
+        {/* Start Screen */}
+        {!started && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/90">
+            <button
+              onClick={initGame}
+              className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+            >
+              <Play className="w-4 h-4" />
+              Jouer
+            </button>
           </div>
+        )}
 
-          {/* Canvas */}
-          <div className="relative">
-            <canvas
-              ref={canvasRef}
-              width={CANVAS_WIDTH}
-              height={CANVAS_HEIGHT}
-              className="rounded-lg border border-border"
-            />
-
-            {/* Start Screen */}
-            {!started && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/70 rounded-lg">
-                <div className="text-center">
-                  <h2 className="text-3xl font-bold mb-4">Ready to Jump?</h2>
-                  <Button onClick={initGame}>
-                    <Play className="w-4 h-4" />
-                    Start Game
-                  </Button>
-                </div>
+        {/* Game Over Screen */}
+        {gameOver && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/90">
+            <div className="text-center space-y-6">
+              <div>
+                <h2 className="text-2xl font-light mb-2">Game Over</h2>
+                <p className="text-3xl tabular-nums">{score.toLocaleString()}</p>
               </div>
-            )}
+              
+              {isNewHighScore && (
+                <p className="text-sm text-foreground">Nouveau record!</p>
+              )}
 
-            {/* Game Over Screen */}
-            {gameOver && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/70 rounded-lg">
-                <div className="text-center">
-                  <h2 className="text-3xl font-bold mb-2">Game Over!</h2>
-                  <p className="text-xl text-muted-foreground mb-4">
-                    Score: {score.toLocaleString()}
-                  </p>
-                  
-                  {isNewHighScore && (
-                    <div className="mb-4 px-4 py-2 rounded-lg bg-primary/20 border border-primary/30">
-                      <Trophy className="w-6 h-6 text-primary mx-auto mb-1" />
-                      <p className="text-primary font-bold">New High Score!</p>
-                    </div>
-                  )}
+              {rewards && (rewards.money > 0 || rewards.aura > 0) && (
+                <p className="text-sm text-muted-foreground">
+                  {rewards.money > 0 && `+$${rewards.money}`}
+                  {rewards.money > 0 && rewards.aura > 0 && ' · '}
+                  {rewards.aura > 0 && `+${rewards.aura} aura`}
+                </p>
+              )}
 
-                  {rewards && (
-                    <div className="mb-4 space-y-2">
-                      {rewards.money > 0 && (
-                        <div className="flex items-center justify-center gap-2">
-                          <Coins className="w-5 h-5 text-primary" />
-                          <Badge variant="secondary">+${rewards.money}</Badge>
-                        </div>
-                      )}
-                      {rewards.aura > 0 && (
-                        <div className="flex items-center justify-center gap-2">
-                          <Sparkles className="w-5 h-5 text-primary" />
-                          <Badge variant="secondary">+{rewards.aura} Aura</Badge>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <Button onClick={initGame}>
-                    <RotateCcw className="w-4 h-4" />
-                    Play Again
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Controls Info */}
-          <div className="mt-4 flex justify-center gap-8 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <kbd className="px-2 py-1 rounded bg-muted border border-border">←</kbd>
-              <span>Move Left</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <kbd className="px-2 py-1 rounded bg-muted border border-border">→</kbd>
-              <span>Move Right</span>
+              <button
+                onClick={initGame}
+                className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors mx-auto"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Rejouer
+              </button>
             </div>
           </div>
-          </CardContent>
-        </Card>
+        )}
+      </div>
+
+      {/* Controls */}
+      <div className="flex justify-center gap-8 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <kbd className="px-2 py-1 border border-border/50">←</kbd>
+          <span>Gauche</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <kbd className="px-2 py-1 border border-border/50">→</kbd>
+          <span>Droite</span>
+        </div>
       </div>
     </div>
   );
