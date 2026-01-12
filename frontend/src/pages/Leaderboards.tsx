@@ -7,6 +7,7 @@ interface Ranking {
   rank: number;
   userId: string;
   username: string;
+  usernameColor?: string | null;
   value: number;
   wins?: number;
   totalPlayed?: number;
@@ -125,10 +126,13 @@ export default function Leaderboards() {
                   <span className="text-muted-foreground text-sm w-8 tabular-nums">
                     {ranking.rank}
                   </span>
-                  <span className={cn(
-                    "font-medium",
-                    ranking.userId === user?.id && "text-foreground"
-                  )}>
+                  <span 
+                    className={cn(
+                      "font-medium",
+                      ranking.userId === user?.id && "text-foreground"
+                    )}
+                    style={ranking.usernameColor ? { color: ranking.usernameColor } : undefined}
+                  >
                     {ranking.username}
                     {ranking.userId === user?.id && (
                       <span className="ml-2 text-xs text-muted-foreground">(toi)</span>

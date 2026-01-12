@@ -160,10 +160,10 @@ router.get('/transfers', authMiddleware, async (req: AuthRequest, res: Response)
       },
       include: {
         sender: {
-          select: { id: true, username: true },
+          select: { id: true, username: true, usernameColor: true },
         },
         receiver: {
-          select: { id: true, username: true },
+          select: { id: true, username: true, usernameColor: true },
         },
       },
       orderBy: { createdAt: 'desc' },

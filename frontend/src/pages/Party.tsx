@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 interface User {
   id: string;
   username: string;
+  usernameColor?: string | null;
 }
 
 export default function Party() {
@@ -171,7 +172,9 @@ export default function Party() {
               >
                 <div className="flex items-center gap-4">
                   <span className="font-medium">
-                    {member.username}
+                    <span style={member.usernameColor ? { color: member.usernameColor } : undefined}>
+                      {member.username}
+                    </span>
                     {member.isLeader && (
                       <span className="ml-2 text-xs text-muted-foreground">leader</span>
                     )}

@@ -60,6 +60,8 @@ router.post('/register', validate(registerSchema), async (req, res) => {
         aura: true,
         money: true,
         isAdmin: true,
+        usernameColor: true,
+        profilePicture: true,
         createdAt: true,
       },
     });
@@ -102,6 +104,8 @@ router.post('/login', validate(loginSchema), async (req, res) => {
         aura: user.aura,
         money: user.money,
         isAdmin: user.isAdmin,
+        usernameColor: user.usernameColor,
+        profilePicture: user.profilePicture,
         createdAt: user.createdAt,
       },
       token,
@@ -143,6 +147,8 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
         aura: true,
         money: true,
         isAdmin: true,
+        usernameColor: true,
+        profilePicture: true,
         createdAt: true,
       },
     });

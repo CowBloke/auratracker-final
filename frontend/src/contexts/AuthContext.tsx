@@ -8,6 +8,8 @@ interface User {
   aura: number;
   money: number;
   isAdmin: boolean;
+  usernameColor?: string | null;
+  profilePicture?: string | null;
   createdAt: string;
 }
 

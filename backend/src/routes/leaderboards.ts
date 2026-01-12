@@ -20,6 +20,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
           select: {
             id: true,
             username: true,
+            usernameColor: true,
             aura: true,
           },
           orderBy: { aura: 'desc' },
@@ -30,6 +31,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
           rank: parseInt(offset as string) + i + 1,
           userId: u.id,
           username: u.username,
+          usernameColor: u.usernameColor,
           value: u.aura,
         }));
         break;
@@ -39,6 +41,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
           select: {
             id: true,
             username: true,
+            usernameColor: true,
             money: true,
           },
           orderBy: { money: 'desc' },
@@ -49,6 +52,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
           rank: parseInt(offset as string) + i + 1,
           userId: u.id,
           username: u.username,
+          usernameColor: u.usernameColor,
           value: u.money,
         }));
         break;
@@ -60,7 +64,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
             userId: true,
             highScore: true,
             user: {
-              select: { username: true },
+              select: { username: true, usernameColor: true },
             },
           },
           orderBy: { highScore: 'desc' },
@@ -71,6 +75,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
           rank: parseInt(offset as string) + i + 1,
           userId: s.userId,
           username: s.user.username,
+          usernameColor: s.user.usernameColor,
           value: s.highScore,
         }));
         break;
@@ -87,7 +92,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
             wins: true,
             totalPlayed: true,
             user: {
-              select: { username: true },
+              select: { username: true, usernameColor: true },
             },
           },
           take: parseInt(limit as string),
@@ -98,6 +103,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
           .map((s) => ({
             userId: s.userId,
             username: s.user.username,
+            usernameColor: s.user.usernameColor,
             value: Math.round((s.wins / s.totalPlayed) * 100),
             wins: s.wins,
             totalPlayed: s.totalPlayed,
@@ -113,7 +119,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
             userId: true,
             highScore: true,
             user: {
-              select: { username: true },
+              select: { username: true, usernameColor: true },
             },
           },
           orderBy: { highScore: 'desc' },
@@ -124,6 +130,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
           rank: parseInt(offset as string) + i + 1,
           userId: s.userId,
           username: s.user.username,
+          usernameColor: s.user.usernameColor,
           value: s.highScore,
         }));
         break;
@@ -141,14 +148,15 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
         const userIds = userGames.map((g) => g.userId);
         const users = await prisma.user.findMany({
           where: { id: { in: userIds } },
-          select: { id: true, username: true },
+          select: { id: true, username: true, usernameColor: true },
         });
-        const userMap = new Map(users.map((u) => [u.id, u.username]));
+        const userMap = new Map(users.map((u) => [u.id, { username: u.username, usernameColor: u.usernameColor }]));
         
         rankings = userGames.map((g, i) => ({
           rank: parseInt(offset as string) + i + 1,
           userId: g.userId,
-          username: userMap.get(g.userId) || 'Unknown',
+          username: userMap.get(g.userId)?.username || 'Unknown',
+          usernameColor: userMap.get(g.userId)?.usernameColor || null,
           value: g._sum.totalPlayed || 0,
         }));
         break;

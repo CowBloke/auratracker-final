@@ -13,6 +13,8 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
         username: true,
         aura: true,
         money: true,
+        usernameColor: true,
+        profilePicture: true,
         createdAt: true,
       },
       orderBy: {
@@ -39,6 +41,8 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
         username: true,
         aura: true,
         money: true,
+        usernameColor: true,
+        profilePicture: true,
         createdAt: true,
         gameStats: {
           select: {
@@ -99,6 +103,8 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
         aura: true,
         money: true,
         isAdmin: true,
+        usernameColor: true,
+        profilePicture: true,
         createdAt: true,
       },
     });

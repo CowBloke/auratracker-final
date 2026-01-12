@@ -187,6 +187,7 @@ export default function AppSidebar() {
               name: user.username,
               email: user.email || '',
               avatar: '',
+              usernameColor: user.usernameColor,
             }}
           />
         )}

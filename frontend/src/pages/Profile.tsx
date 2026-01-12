@@ -8,6 +8,8 @@ interface ProfileUser {
   username: string;
   aura: number;
   money: number;
+  usernameColor?: string | null;
+  profilePicture?: string | null;
   createdAt: string;
   gameStats: Array<{
     gameType: string;
@@ -85,7 +87,10 @@ export default function Profile() {
           <p className="text-sm text-muted-foreground tracking-wide uppercase">
             Profil {isOwnProfile && '(toi)'}
           </p>
-          <h1 className="text-5xl md:text-7xl font-light tracking-tight">
+          <h1 
+            className="text-5xl md:text-7xl font-light tracking-tight"
+            style={profileUser.usernameColor ? { color: profileUser.usernameColor } : undefined}
+          >
             {profileUser.username}
           </h1>
           <p className="text-sm text-muted-foreground mt-2">

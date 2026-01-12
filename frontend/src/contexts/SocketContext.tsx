@@ -28,6 +28,7 @@ interface TypingUser {
 interface PartyMember {
   userId: string;
   username: string;
+  usernameColor?: string | null;
   isLeader: boolean;
 }
 
@@ -153,7 +154,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setPartyMembers(data.members);
       });
 
-      s.on('party:member-joined', (member: { userId: string; username: string }) => {
+      s.on('party:member-joined', (member: { userId: string; username: string; usernameColor?: string | null }) => {
         setPartyMembers((prev) => [...prev, { ...member, isLeader: false }]);
       });
 

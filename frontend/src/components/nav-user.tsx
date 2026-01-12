@@ -38,6 +38,7 @@ export function NavUser({
     name: string
     email: string
     avatar: string
+    usernameColor?: string | null
   }
 }) {
   const { isMobile } = useSidebar()
@@ -68,7 +69,12 @@ export function NavUser({
                 </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">{user.name}</span>
+                <span 
+                  className="truncate font-semibold"
+                  style={user.usernameColor ? { color: user.usernameColor } : undefined}
+                >
+                  {user.name}
+                </span>
                 <span className="truncate text-xs">{user.email || 'Utilisateur'}</span>
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
@@ -88,7 +94,12 @@ export function NavUser({
                   </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">{user.name}</span>
+                  <span 
+                    className="truncate font-semibold"
+                    style={user.usernameColor ? { color: user.usernameColor } : undefined}
+                  >
+                    {user.name}
+                  </span>
                   <span className="truncate text-xs">{user.email || 'Utilisateur'}</span>
                 </div>
               </div>

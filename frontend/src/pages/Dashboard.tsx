@@ -19,8 +19,8 @@ interface Transfer {
   isGift?: boolean;
   message?: string | null;
   createdAt: string;
-  sender: { id: string; username: string };
-  receiver: { id: string; username: string };
+  sender: { id: string; username: string; usernameColor?: string | null };
+  receiver: { id: string; username: string; usernameColor?: string | null };
 }
 
 interface DailyAllowance {
@@ -41,6 +41,7 @@ interface Ranking {
   rank: number;
   userId: string;
   username: string;
+  usernameColor?: string | null;
   value: number;
 }
 
@@ -230,7 +231,10 @@ export default function Dashboard() {
             <p className="text-sm text-muted-foreground tracking-wide uppercase">
               {onlineUsers.length} en ligne
             </p>
-            <h1 className="text-5xl md:text-7xl font-light tracking-tight">
+            <h1 
+              className="text-5xl md:text-7xl font-light tracking-tight"
+              style={user?.usernameColor ? { color: user.usernameColor } : undefined}
+            >
               {user?.username}
             </h1>
           </div>
@@ -386,7 +390,12 @@ export default function Dashboard() {
                 <span className="text-muted-foreground text-sm w-6 tabular-nums">
                   {ranking.rank}
                 </span>
-                <span className="font-medium">{ranking.username}</span>
+                <span 
+                  className="font-medium"
+                  style={ranking.usernameColor ? { color: ranking.usernameColor } : undefined}
+                >
+                  {ranking.username}
+                </span>
               </div>
               <span className="tabular-nums text-muted-foreground">
                 {ranking.value.toLocaleString()}
@@ -441,9 +450,15 @@ export default function Dashboard() {
                             <span className="text-xs text-muted-foreground shrink-0 w-10">
                               {formatTimeAgo(transfer.createdAt)}
                             </span>
-                            <span className="truncate">
-                              {transfer.sender.username} → {transfer.receiver.username}
-                            </span>
+<span className="truncate">
+                                      <span style={transfer.sender.usernameColor ? { color: transfer.sender.usernameColor } : undefined}>
+                                        {transfer.sender.username}
+                                      </span>
+                                      {' → '}
+                                      <span style={transfer.receiver.usernameColor ? { color: transfer.receiver.usernameColor } : undefined}>
+                                        {transfer.receiver.username}
+                                      </span>
+                                    </span>
                           </div>
                           <span className="tabular-nums shrink-0">
                             {transfer.auraAmount}
@@ -492,7 +507,13 @@ export default function Dashboard() {
                       {formatTimeAgo(transfer.createdAt)}
                     </span>
                     <span>
-                      {transfer.sender.username} → {transfer.receiver.username}
+                      <span style={transfer.sender.usernameColor ? { color: transfer.sender.usernameColor } : undefined}>
+                        {transfer.sender.username}
+                      </span>
+                      {' → '}
+                      <span style={transfer.receiver.usernameColor ? { color: transfer.receiver.usernameColor } : undefined}>
+                        {transfer.receiver.username}
+                      </span>
                     </span>
                   </div>
                   <span className="tabular-nums">

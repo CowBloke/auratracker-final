@@ -50,7 +50,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
           members: {
             include: {
               user: {
-                select: { id: true, username: true },
+                select: { id: true, username: true, usernameColor: true },
               },
             },
           },
@@ -70,6 +70,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
         members: party.members.map((m) => ({
           userId: m.userId,
           username: m.user.username,
+          usernameColor: m.user.usernameColor,
           isLeader: m.isLeader,
         })),
       });
@@ -100,7 +101,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
           members: {
             include: {
               user: {
-                select: { id: true, username: true },
+                select: { id: true, username: true, usernameColor: true },
               },
             },
           },
@@ -130,7 +131,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
       // Add member
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { id: true, username: true },
+        select: { id: true, username: true, usernameColor: true },
       });
       
       await prisma.partyMember.create({
@@ -156,7 +157,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
           members: {
             include: {
               user: {
-                select: { id: true, username: true },
+                select: { id: true, username: true, usernameColor: true },
               },
             },
           },
@@ -174,6 +175,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
         members: updatedParty!.members.map((m) => ({
           userId: m.userId,
           username: m.user.username,
+          usernameColor: m.user.usernameColor,
           isLeader: m.isLeader,
         })),
       });
@@ -182,6 +184,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
       socket.to(`party:${partyId}`).emit('party:member-joined', {
         userId,
         username: user!.username,
+        usernameColor: user!.usernameColor,
       });
       
       // Clear invite
