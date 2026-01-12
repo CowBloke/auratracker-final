@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import Games from './pages/Games';
 import DoodleJump from './pages/DoodleJump';
 import Solitaire from './pages/Solitaire';
+import Clash from './pages/Clash';
 import Marketplace from './pages/Marketplace';
 import Leaderboards from './pages/Leaderboards';
 import Profile from './pages/Profile';
@@ -50,6 +51,7 @@ function App() {
         <Route path="games" element={<Games />} />
         <Route path="games/doodle-jump" element={<DoodleJump />} />
         <Route path="games/solitaire" element={<Solitaire />} />
+        <Route path="games/clash" element={<Clash />} />
         <Route path="marketplace" element={<Marketplace />} />
         <Route path="leaderboards" element={<Leaderboards />} />
         <Route path="party" element={<Party />} />

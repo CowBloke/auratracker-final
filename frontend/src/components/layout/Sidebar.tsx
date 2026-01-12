@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
   Gamepad2,
+  Swords,
   Trophy,
   ShoppingBag,
   Users,
@@ -11,6 +12,7 @@ import {
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/games', icon: Gamepad2, label: 'Games' },
+  { to: '/games/clash', icon: Swords, label: 'Clash', highlight: true },
   { to: '/leaderboards', icon: Trophy, label: 'Leaderboards' },
   { to: '/marketplace', icon: ShoppingBag, label: 'Marketplace' },
   { to: '/party', icon: Users, label: 'Party' },
@@ -30,12 +32,19 @@ export default function Sidebar() {
               `flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
                 isActive
                   ? 'bg-primary/20 text-primary-light border border-primary/30'
-                  : 'text-gray-400 hover:text-white hover:bg-surface-hover'
+                  : item.highlight
+                    ? 'text-accent-orange hover:text-white hover:bg-accent-orange/20 border border-accent-orange/30'
+                    : 'text-gray-400 hover:text-white hover:bg-surface-hover'
               }`
             }
           >
-            <item.icon className="w-5 h-5" />
+            <item.icon className={`w-5 h-5 ${item.highlight && 'text-accent-orange'}`} />
             <span>{item.label}</span>
+            {item.highlight && (
+              <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-accent-orange/20 text-accent-orange font-bold">
+                NEW
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>

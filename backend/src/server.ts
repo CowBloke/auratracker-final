@@ -12,6 +12,7 @@ import marketplaceRoutes from './routes/marketplace.js';
 import gamesRoutes from './routes/games.js';
 import leaderboardsRoutes from './routes/leaderboards.js';
 import usersRoutes from './routes/users.js';
+import clashRoutes from './routes/clash.js';
 
 // Socket handlers
 import { setupChatHandlers } from './socket/chat.js';
@@ -48,6 +49,7 @@ app.use('/api/marketplace', marketplaceRoutes);
 app.use('/api/games', gamesRoutes);
 app.use('/api/leaderboards', leaderboardsRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/clash', clashRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

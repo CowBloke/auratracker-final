@@ -94,4 +94,64 @@ export const leaderboardsApi = {
   getUserRankings: (userId: string) => api.get(`/leaderboards/user/${userId}`),
 };
 
+// Clash API
+export interface Building {
+  id: string;
+  type: string;
+  level: number;
+  x: number;
+  y: number;
+}
+
+export interface ClashBase {
+  id: string;
+  userId: string;
+  baseLayout: { buildings: Building[]; version: number };
+  defenseRating: number;
+  trophies: number;
+  shieldUntil: string | null;
+  attackCooldown: string | null;
+  user: {
+    id: string;
+    username: string;
+    aura: number;
+    money: number;
+  };
+}
+
+export interface AttackTarget {
+  id: string;
+  username: string;
+  trophies: number;
+  defenseRating: number;
+  potentialMoney: number;
+  potentialAura: number;
+}
+
+export interface Troop {
+  type: string;
+  x: number;
+  y: number;
+  deployTime: number;
+}
+
+export const clashApi = {
+  getBase: (userId: string) => api.get(`/clash/base/${userId}`),
+  saveBase: (buildings: Building[]) => api.put('/clash/base', { buildings }),
+  getTargets: () => api.get('/clash/targets'),
+  checkAttack: (defenderId: string) => api.post('/clash/attack/check', { defenderId }),
+  executeAttack: (data: {
+    defenderId: string;
+    troops: Troop[];
+    duration: number;
+    destruction: number;
+    starsEarned: number;
+  }) => api.post('/clash/attack/execute', data),
+  getAttacks: (params?: { type?: 'all' | 'made' | 'received'; limit?: number }) =>
+    api.get('/clash/attacks', { params }),
+  getLeaderboard: (limit?: number) => api.get('/clash/leaderboard', { params: { limit } }),
+  upgradeBuilding: (data: { buildingId: string; buildingType: string; currentLevel: number }) =>
+    api.post('/clash/building/upgrade', data),
+};
+
 export default api;

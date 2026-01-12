@@ -3,6 +3,23 @@ import { Gamepad2, ArrowRight, Star, Trophy, Clock } from 'lucide-react';
 
 const games = [
   {
+    id: 'clash',
+    name: 'Clash',
+    description: 'Build your base, train troops, and raid enemies! Steal resources and climb the trophy ladder.',
+    image: '⚔️',
+    color: 'accent-orange',
+    featured: true,
+    rewards: [
+      'Steal up to 20% of enemy money',
+      'Steal up to 10% of enemy aura',
+      'Earn trophies for wins',
+    ],
+    stats: {
+      type: 'PvP',
+      players: 'Async',
+    },
+  },
+  {
     id: 'doodle-jump',
     name: 'Doodle Jump',
     description: 'Jump your way to the top! Earn money based on your score and aura for new high scores.',
