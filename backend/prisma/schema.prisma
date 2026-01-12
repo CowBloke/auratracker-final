@@ -75,6 +75,7 @@ model Transfer {
   auraAmount  Int       @default(0)
   moneyAmount Int       @default(0)
   isGift      Boolean   @default(false)  // True if from daily gift allowance
+  message     String?   // Optional message (max 20 words)
   createdAt   DateTime  @default(now())
   
   sender      User      @relation("SentTransfers", fields: [senderId], references: [id], onDelete: Cascade)

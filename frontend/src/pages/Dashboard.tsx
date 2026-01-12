@@ -16,6 +16,7 @@ interface Transfer {
   auraAmount: number;
   moneyAmount: number;
   isGift?: boolean;
+  message?: string | null;
   createdAt: string;
   sender: { id: string; username: string };
   receiver: { id: string; username: string };
@@ -54,6 +55,7 @@ export default function Dashboard() {
   const [dailyAllowance, setDailyAllowance] = useState<DailyAllowance | null>(null);
   const [selectedUserId, setSelectedUserId] = useState('');
   const [giftAmount, setGiftAmount] = useState(10);
+  const [giftText, setGiftText] = useState('');
   const [giftLoading, setGiftLoading] = useState(false);
   const [giftMessage, setGiftMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -94,11 +96,22 @@ export default function Dashboard() {
   const handleGiftAura = async () => {
     if (!selectedUserId || giftAmount <= 0) return;
     
+    // Validate word count
+    const wordCount = giftText.trim() ? giftText.trim().split(/\s+/).length : 0;
+    if (wordCount > 20) {
+      setGiftMessage({ type: 'error', text: 'Maximum 20 mots' });
+      return;
+    }
+    
     setGiftLoading(true);
     setGiftMessage(null);
     
     try {
-      await economyApi.giftAura({ receiverId: selectedUserId, amount: giftAmount });
+      await economyApi.giftAura({ 
+        receiverId: selectedUserId, 
+        amount: giftAmount,
+        message: giftText.trim() || undefined,
+      });
       
       const selectedUser = allUsers.find(u => u.id === selectedUserId);
       setGiftMessage({ 
@@ -114,6 +127,7 @@ export default function Dashboard() {
       
       setSelectedUserId('');
       setGiftAmount(10);
+      setGiftText('');
       
       setTimeout(() => setGiftMessage(null), 3000);
     } catch (error: any) {
@@ -197,49 +211,66 @@ export default function Dashboard() {
           Envoyer de l'aura
         </h2>
         
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Select
-            value={selectedUserId}
-            onValueChange={setSelectedUserId}
-            disabled={!dailyAllowance || dailyAllowance.remaining === 0}
-          >
-            <SelectTrigger className="flex-1 h-12 bg-transparent border-border/50 text-base">
-              <SelectValue placeholder="Destinataire" />
-            </SelectTrigger>
-            <SelectContent>
-              {allUsers
-                .filter(u => u.id !== user?.id)
-                .map(u => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.username}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
+        <div className="space-y-3">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Select
+              value={selectedUserId}
+              onValueChange={setSelectedUserId}
+              disabled={!dailyAllowance || dailyAllowance.remaining === 0}
+            >
+              <SelectTrigger className="flex-1 h-12 bg-transparent border-border/50 text-base">
+                <SelectValue placeholder="Destinataire" />
+              </SelectTrigger>
+              <SelectContent>
+                {allUsers
+                  .filter(u => u.id !== user?.id)
+                  .map(u => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.username}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            
+            <Input
+              type="number"
+              value={giftAmount}
+              onChange={(e) => setGiftAmount(Math.min(Math.max(1, parseInt(e.target.value) || 0), dailyAllowance?.remaining || 50))}
+              min={1}
+              max={dailyAllowance?.remaining || 50}
+              disabled={!dailyAllowance || dailyAllowance.remaining === 0}
+              className="w-full sm:w-24 h-12 bg-transparent border-border/50 text-base text-center"
+              placeholder="10"
+            />
+            
+            <Button
+              onClick={handleGiftAura}
+              disabled={!selectedUserId || giftAmount <= 0 || giftLoading || !dailyAllowance || dailyAllowance.remaining === 0}
+              variant="outline"
+              className="h-12 px-6 border-border/50"
+            >
+              {giftLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
           
-          <Input
-            type="number"
-            value={giftAmount}
-            onChange={(e) => setGiftAmount(Math.min(Math.max(1, parseInt(e.target.value) || 0), dailyAllowance?.remaining || 50))}
-            min={1}
-            max={dailyAllowance?.remaining || 50}
-            disabled={!dailyAllowance || dailyAllowance.remaining === 0}
-            className="w-full sm:w-24 h-12 bg-transparent border-border/50 text-base text-center"
-            placeholder="10"
-          />
-          
-          <Button
-            onClick={handleGiftAura}
-            disabled={!selectedUserId || giftAmount <= 0 || giftLoading || !dailyAllowance || dailyAllowance.remaining === 0}
-            variant="outline"
-            className="h-12 px-6 border-border/50"
-          >
-            {giftLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
+          <div className="relative">
+            <Input
+              type="text"
+              value={giftText}
+              onChange={(e) => setGiftText(e.target.value)}
+              disabled={!dailyAllowance || dailyAllowance.remaining === 0}
+              className="h-10 bg-transparent border-border/50 text-sm pr-16"
+              placeholder="Message (optionnel, max 20 mots)"
+              maxLength={200}
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground/60 tabular-nums">
+              {giftText.trim() ? giftText.trim().split(/\s+/).length : 0}/20
+            </span>
+          </div>
         </div>
         
         {giftMessage && (
@@ -308,19 +339,26 @@ export default function Dashboard() {
             {recentTransfers.map((transfer) => (
               <div
                 key={transfer.id}
-                className="flex items-center justify-between py-3 border-b border-border/30 last:border-0"
+                className="py-3 border-b border-border/30 last:border-0"
               >
-                <div className="flex items-center gap-4">
-                  <span className="text-xs text-muted-foreground w-8">
-                    {formatTimeAgo(transfer.createdAt)}
-                  </span>
-                  <span>
-                    {transfer.sender.username} → {transfer.receiver.username}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <span className="text-xs text-muted-foreground w-8">
+                      {formatTimeAgo(transfer.createdAt)}
+                    </span>
+                    <span>
+                      {transfer.sender.username} → {transfer.receiver.username}
+                    </span>
+                  </div>
+                  <span className="tabular-nums">
+                    {transfer.auraAmount}
                   </span>
                 </div>
-                <span className="tabular-nums">
-                  {transfer.auraAmount}
-                </span>
+                {transfer.message && (
+                  <p className="text-sm text-muted-foreground mt-1 ml-12 italic">
+                    "{transfer.message}"
+                  </p>
+                )}
               </div>
             ))}
           </div>

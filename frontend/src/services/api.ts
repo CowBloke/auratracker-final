@@ -56,7 +56,7 @@ export const economyApi = {
   getBalance: (userId: string) => api.get(`/economy/balance/${userId}`),
   // Daily aura gift system
   getDailyAllowance: () => api.get('/economy/daily-allowance'),
-  giftAura: (data: { receiverId: string; amount: number }) =>
+  giftAura: (data: { receiverId: string; amount: number; message?: string }) =>
     api.post('/economy/gift-aura', data),
 };
 
