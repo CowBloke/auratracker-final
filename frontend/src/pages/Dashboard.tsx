@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import { leaderboardsApi, economyApi, usersApi } from '../services/api';
-import { ArrowRight, Loader2, Send } from 'lucide-react';
+import { ArrowRight, Loader2, Send, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -64,6 +64,38 @@ export default function Dashboard() {
   const [allTransfers, setAllTransfers] = useState<Transfer[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [hasMoreHistory, setHasMoreHistory] = useState(true);
+  const [now, setNow] = useState(new Date());
+
+  // Update time every second for countdown
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNow(new Date());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Calculate countdown to next reset
+  const resetCountdown = useMemo(() => {
+    if (!dailyAllowance?.nextReset) return null;
+    
+    const nextReset = new Date(dailyAllowance.nextReset);
+    const diff = nextReset.getTime() - now.getTime();
+    
+    if (diff <= 0) return { hours: 0, minutes: 0, seconds: 0, total: 0 };
+    
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    
+    return { hours, minutes, seconds, total: diff };
+  }, [dailyAllowance?.nextReset, now]);
+
+  // Refresh daily allowance when countdown reaches 0
+  useEffect(() => {
+    if (resetCountdown && resetCountdown.total <= 0 && dailyAllowance?.remaining === 0) {
+      fetchDailyAllowance();
+    }
+  }, [resetCountdown?.total, dailyAllowance?.remaining]);
 
   const fetchDailyAllowance = async () => {
     try {
@@ -230,6 +262,16 @@ export default function Dashboard() {
             {dailyAllowance?.remaining || 0}
           </p>
           <p className="text-sm text-muted-foreground">dons restants</p>
+          {resetCountdown && resetCountdown.total > 0 && (
+            <p className="text-xs text-muted-foreground/70 flex items-center gap-1 mt-1">
+              <Clock className="h-3 w-3" />
+              <span className="tabular-nums">
+                {String(resetCountdown.hours).padStart(2, '0')}:
+                {String(resetCountdown.minutes).padStart(2, '0')}:
+                {String(resetCountdown.seconds).padStart(2, '0')}
+              </span>
+            </p>
+          )}
         </div>
       </div>
 
