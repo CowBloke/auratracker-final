@@ -41,7 +41,7 @@ export default function AppSidebar() {
   const isOnGames = location.pathname.startsWith('/games');
 
   return (
-    <Sidebar variant="inset" className="border-r border-border/40">
+    <Sidebar variant="inset">
       <SidebarHeader className="py-6">
         <SidebarMenu>
           <SidebarMenuItem>
