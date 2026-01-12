@@ -1,23 +1,14 @@
-import { Outlet, Link } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { ChatSidebarWrapper, ChatSidebarTriggerWrapper } from '../chat/ChatSidebarWrapper';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocket } from '@/contexts/SocketContext';
-import { Sparkles, Coins, User, LogOut, Wifi, WifiOff } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Sparkles, Coins, Wifi, WifiOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 export default function Layout() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { connected } = useSocket();
 
   return (
@@ -25,17 +16,9 @@ export default function Layout() {
       <SidebarProvider className="!w-auto flex-1">
         <Sidebar />
         <SidebarInset className="flex flex-col">
-          <div className="flex items-center justify-between border-b border-t px-4 py-2 h-16">
+          <div className="flex items-center justify-between border-b px-4 py-2 h-16">
             <div className="flex items-center gap-4">
               <SidebarTrigger />
-              <Link to="/" className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-aura to-aura-glow flex items-center justify-center">
-                  <Sparkles className="w-6 h-6 text-white" />
-                </div>
-                <span className="text-xl font-bold text-gradient-aura">
-                  AURA TRACKER
-                </span>
-              </Link>
             </div>
 
             {/* Currency Display */}
@@ -70,31 +53,6 @@ export default function Layout() {
 
               {/* User Menu */}
               <div className="flex items-center gap-3">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="gap-2">
-                      <Avatar className="w-8 h-8">
-                        <AvatarFallback className="bg-primary">
-                          <User className="w-5 h-5 text-white" />
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="font-medium">{user?.username}</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem asChild>
-                      <Link to={`/profile/${user?.id}`} className="cursor-pointer">
-                        <User className="mr-2 h-4 w-4" />
-                        Profile
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={logout} className="cursor-pointer">
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Logout
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
                 <ChatSidebarTriggerWrapper />
               </div>
             </div>
