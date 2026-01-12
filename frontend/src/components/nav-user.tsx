@@ -5,8 +5,11 @@ import {
   User,
   ChevronsUpDown,
   LogOut,
+  Moon,
+  Sun,
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
+import { useTheme } from "@/contexts/ThemeContext"
 
 import {
   Avatar,
@@ -39,6 +42,7 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar()
   const { logout, user: authUser } = useAuth()
+  const { theme, toggleTheme } = useTheme()
 
   const getInitials = (name: string) => {
     return name
@@ -96,6 +100,10 @@ export function NavUser({
                   <User />
                   Profile
                 </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={toggleTheme}>
+                {theme === 'dark' ? <Sun /> : <Moon />}
+                {theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
