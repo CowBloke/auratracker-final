@@ -1,21 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSocket } from '../../contexts/SocketContext';
 import { useAuth } from '../../contexts/AuthContext';
-import {
-  MessageCircle,
-  Send,
-  ChevronDown,
-  ChevronUp,
-  Users,
-  Circle,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Send, ChevronDown, ChevronUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 
 type TimeoutRef = ReturnType<typeof setTimeout> | null;
@@ -39,7 +28,6 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Réinitialiser le compteur quand le chat s'ouvre
   useEffect(() => {
     if (isOpen) {
       setUnreadCount(0);
@@ -49,12 +37,9 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
     }
   }, [isOpen, messages]);
 
-  // Suivre les messages non lus quand le chat est fermé
   useEffect(() => {
     if (!isOpen && messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
-      
-      // Si c'est un nouveau message (pas déjà vu) et que ce n'est pas notre propre message
       if (lastMessage.id !== lastMessageIdRef.current && lastMessage.userId !== user?.id) {
         setUnreadCount((prev) => prev + 1);
         lastMessageIdRef.current = lastMessage.id;
@@ -97,79 +82,65 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
   return (
     <div
       className={cn(
-        "fixed bottom-0 left-64 right-0 bg-card border-t transition-all duration-300 z-40",
-        isOpen ? 'h-80' : 'h-14'
+        "fixed bottom-0 left-64 right-0 bg-background border-t border-border/40 transition-all duration-300 z-40",
+        isOpen ? 'h-72' : 'h-12'
       )}
     >
-      {/* Header */}
       <Collapsible open={isOpen} onOpenChange={onToggle}>
         <CollapsibleTrigger asChild>
-          <Button
-            variant="ghost"
-            className="w-full h-14 px-6 flex items-center justify-between"
-          >
+          <button className="w-full h-12 px-6 flex items-center justify-between text-sm hover:bg-muted/30 transition-colors">
             <div className="flex items-center gap-3">
-              <div className="relative">
-                <MessageCircle className="w-5 h-5 text-primary" />
-                {!isOpen && unreadCount > 0 && (
-                  <Badge 
-                    variant="destructive" 
-                    className="absolute -top-1 -right-1 min-w-[20px] h-5 rounded-full px-1"
-                  >
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </Badge>
-                )}
-              </div>
-              <span className="font-medium">Global Chat</span>
-              <Badge variant="outline" className="bg-primary/20 text-primary-foreground">
-                {onlineUsers.length} online
-              </Badge>
+              <span className="text-muted-foreground">chat</span>
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {onlineUsers.length} en ligne
+              </span>
+              {!isOpen && unreadCount > 0 && (
+                <span className="px-1.5 py-0.5 text-[10px] bg-foreground text-background">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </div>
             {isOpen ? (
-              <ChevronDown className="w-5 h-5 text-muted-foreground" />
+              <ChevronDown className="w-4 h-4 text-muted-foreground" />
             ) : (
-              <ChevronUp className="w-5 h-5 text-muted-foreground" />
+              <ChevronUp className="w-4 h-4 text-muted-foreground" />
             )}
-          </Button>
+          </button>
         </CollapsibleTrigger>
 
-        <CollapsibleContent className="flex h-[calc(100%-3.5rem)]">
+        <CollapsibleContent className="flex h-[calc(100%-3rem)]">
           {/* Messages */}
           <div className="flex-1 flex flex-col">
-            <ScrollArea className="flex-1 p-4">
-              <div className="space-y-3">
+            <ScrollArea className="flex-1 px-6">
+              <div className="space-y-3 py-3">
                 {messages.map((msg) => (
                   <div
                     key={msg.id}
                     className={cn(
-                      "flex gap-3",
-                      msg.userId === user?.id && 'flex-row-reverse'
+                      "flex flex-col",
+                      msg.userId === user?.id && 'items-end'
                     )}
                   >
                     <div
                       className={cn(
-                        "max-w-[70%] border rounded-lg px-4 py-2",
+                        "max-w-[70%] px-3 py-2",
                         msg.userId === user?.id
-                          ? 'bg-primary/20 border-primary/30'
-                          : 'bg-muted border-border'
+                          ? 'bg-foreground/10'
+                          : 'bg-muted'
                       )}
                     >
                       <div className="flex items-center gap-2 mb-1">
-                        <span
-                          className={cn(
-                            "text-sm font-medium",
-                            msg.userId === user?.id
-                              ? 'text-primary-foreground'
-                              : 'text-accent-cyan'
-                          )}
-                        >
+                        <span className={cn(
+                          "text-xs font-medium",
+                          msg.userId === user?.id ? 'text-foreground' : 'text-muted-foreground'
+                        )}>
                           {msg.username}
                         </span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-[10px] text-muted-foreground/60 tabular-nums">
                           {formatTime(msg.timestamp)}
                         </span>
                       </div>
-                      <p className="text-foreground">{msg.message}</p>
+                      <p className="text-sm">{msg.message}</p>
                     </div>
                   </div>
                 ))}
@@ -177,62 +148,51 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
               </div>
             </ScrollArea>
 
-            {/* Typing indicator */}
             {typingUsers.length > 0 && (
-              <div className="px-4 py-2 text-sm text-muted-foreground">
-                {typingUsers.map((u) => u.username).join(', ')}{' '}
-                {typingUsers.length === 1 ? 'is' : 'are'} typing...
+              <div className="px-6 py-2 text-xs text-muted-foreground">
+                {typingUsers.map((u) => u.username).join(', ')} écrit...
               </div>
             )}
 
-            {/* Input */}
-            <form onSubmit={handleSubmit} className="p-4 border-t">
+            <form onSubmit={handleSubmit} className="px-6 py-3 border-t border-border/40">
               <div className="flex gap-2">
                 <Input
                   type="text"
                   value={input}
                   onChange={handleInputChange}
-                  placeholder="Type a message..."
-                  className="flex-1"
+                  placeholder="Message..."
+                  className="flex-1 h-9 bg-transparent border-border/50"
                 />
-                <Button
+                <button
                   type="submit"
                   disabled={!input.trim()}
-                  size="icon"
+                  className="h-9 w-9 flex items-center justify-center border border-border/50 text-muted-foreground hover:text-foreground hover:border-foreground/30 disabled:opacity-30 transition-colors"
                 >
-                  <Send className="h-5 w-5" />
-                </Button>
+                  <Send className="h-4 w-4" />
+                </button>
               </div>
             </form>
           </div>
 
-          {/* Online Users Sidebar */}
-          <div className="w-48 border-l bg-muted/50">
+          {/* Online Users */}
+          <div className="w-40 border-l border-border/40">
             <Collapsible open={showUsers} onOpenChange={setShowUsers}>
               <CollapsibleTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="w-full p-3 flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">Online</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">{onlineUsers.length}</span>
-                </Button>
+                <button className="w-full px-4 py-3 flex items-center justify-between text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  <span>en ligne</span>
+                  <span className="tabular-nums">{onlineUsers.length}</span>
+                </button>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <ScrollArea className="h-[calc(100vh-20rem)]">
-                  <div className="p-2 space-y-1">
+                <ScrollArea className="h-40">
+                  <div className="px-4 space-y-1">
                     {onlineUsers.map((u) => (
                       <div
                         key={u.userId}
-                        className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent"
+                        className="flex items-center gap-2 py-1 text-xs text-muted-foreground"
                       >
-                        <Circle className="w-2 h-2 fill-accent-green text-accent-green" />
-                        <span className="text-sm text-foreground truncate">
-                          {u.username}
-                        </span>
+                        <div className="w-1 h-1 rounded-full bg-foreground/50" />
+                        <span className="truncate">{u.username}</span>
                       </div>
                     ))}
                   </div>

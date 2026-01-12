@@ -305,59 +305,28 @@ export default function Dashboard() {
           <p className="text-muted-foreground">Aucun transfert</p>
         ) : (
           <div className="space-y-0">
-            {recentTransfers.map((transfer) => {
-              const isSender = transfer.senderId === user?.id;
-              const otherUser = isSender ? transfer.receiver : transfer.sender;
-              
-              return (
-                <div
-                  key={transfer.id}
-                  className="flex items-center justify-between py-3 border-b border-border/30 last:border-0"
-                >
-                  <div className="flex items-center gap-4">
-                    <span className="text-xs text-muted-foreground w-8">
-                      {formatTimeAgo(transfer.createdAt)}
-                    </span>
-                    <span className="text-muted-foreground">
-                      {isSender ? '→' : '←'}
-                    </span>
-                    <span>{otherUser.username}</span>
-                  </div>
-                  <span className={cn(
-                    "tabular-nums",
-                    isSender ? "text-muted-foreground" : "text-foreground"
-                  )}>
-                    {isSender ? '-' : '+'}{transfer.auraAmount}
+            {recentTransfers.map((transfer) => (
+              <div
+                key={transfer.id}
+                className="flex items-center justify-between py-3 border-b border-border/30 last:border-0"
+              >
+                <div className="flex items-center gap-4">
+                  <span className="text-xs text-muted-foreground w-8">
+                    {formatTimeAgo(transfer.createdAt)}
+                  </span>
+                  <span>
+                    {transfer.sender.username} → {transfer.receiver.username}
                   </span>
                 </div>
-              );
-            })}
+                <span className="tabular-nums">
+                  {transfer.auraAmount}
+                </span>
+              </div>
+            ))}
           </div>
         )}
       </section>
 
-      {/* Divider */}
-      <div className="h-px bg-border" />
-
-      {/* Navigation */}
-      <nav className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { to: '/games', label: 'Jeux' },
-          { to: '/marketplace', label: 'Marché' },
-          { to: '/leaderboards', label: 'Classement' },
-          { to: '/profile', label: 'Profil' },
-        ].map((link) => (
-          <Link
-            key={link.to}
-            to={link.to}
-            className="group py-4 text-center border border-border/30 hover:border-foreground/30 transition-colors"
-          >
-            <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
-              {link.label}
-            </span>
-          </Link>
-        ))}
-      </nav>
     </div>
   );
 }

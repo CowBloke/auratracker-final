@@ -1,12 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSocket } from '../../contexts/SocketContext';
 import { useAuth } from '../../contexts/AuthContext';
-import {
-  MessageCircle,
-  Send,
-  Users,
-  Circle,
-} from 'lucide-react';
+import { Send, ChevronDown, ChevronUp } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -17,9 +12,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from '@/components/ui/sidebar';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
@@ -30,7 +23,7 @@ export default function ChatSidebar() {
   const { user } = useAuth();
   const { messages, onlineUsers, typingUsers, sendMessage, setTyping } = useSocket();
   const [input, setInput] = useState('');
-  const [showUsers, setShowUsers] = useState(true);
+  const [showUsers, setShowUsers] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<TimeoutRef>(null);
@@ -40,12 +33,9 @@ export default function ChatSidebar() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Suivre les messages non lus
   useEffect(() => {
     if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
-      
-      // Si c'est un nouveau message (pas déjà vu) et que ce n'est pas notre propre message
       if (lastMessage.id !== lastMessageIdRef.current && lastMessage.userId !== user?.id) {
         setUnreadCount((prev) => prev + 1);
         lastMessageIdRef.current = lastMessage.id;
@@ -86,70 +76,58 @@ export default function ChatSidebar() {
   };
 
   return (
-    <Sidebar variant="inset" side="right" collapsible="offcanvas" className="border-t">
+    <Sidebar variant="inset" side="right" collapsible="offcanvas" className="border-l border-border/40">
       <SidebarRail />
-      <SidebarHeader>
+      <SidebarHeader className="border-b border-border/40">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" className="justify-start">
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <MessageCircle className="size-4" />
+            <SidebarMenuButton size="lg" className="justify-between">
+              <span className="text-sm font-light">chat</span>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="tabular-nums">{onlineUsers.length}</span>
+                {unreadCount > 0 && (
+                  <span className="px-1.5 py-0.5 text-[10px] bg-foreground text-background">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
               </div>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">Global Chat</span>
-                <span className="truncate text-xs">
-                  {onlineUsers.length} online
-                </span>
-              </div>
-              {unreadCount > 0 && (
-                <Badge 
-                  variant="destructive" 
-                  className="ml-auto min-w-[20px] h-5 rounded-full px-1"
-                >
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </Badge>
-              )}
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
+      
       <SidebarContent className="flex flex-col">
-        {/* Messages */}
         <div className="flex-1 flex flex-col min-h-0">
-          <ScrollArea className="flex-1 px-2">
-            <div className="space-y-3 py-2">
+          <ScrollArea className="flex-1 px-3">
+            <div className="space-y-3 py-4">
               {messages.map((msg) => (
                 <div
                   key={msg.id}
                   className={cn(
-                    "flex gap-3",
-                    msg.userId === user?.id && 'flex-row-reverse'
+                    "flex flex-col",
+                    msg.userId === user?.id && 'items-end'
                   )}
                 >
                   <div
                     className={cn(
-                      "max-w-[85%] border rounded-lg px-3 py-2",
+                      "max-w-[90%] px-3 py-2",
                       msg.userId === user?.id
-                        ? 'bg-primary/20 border-primary/30'
-                        : 'bg-muted border-border'
+                        ? 'bg-foreground/10'
+                        : 'bg-muted'
                     )}
                   >
                     <div className="flex items-center gap-2 mb-1">
-                      <span
-                        className={cn(
-                          "text-xs font-medium",
-                          msg.userId === user?.id
-                            ? 'text-primary-foreground'
-                            : 'text-accent-cyan'
-                        )}
-                      >
+                      <span className={cn(
+                        "text-xs font-medium",
+                        msg.userId === user?.id ? 'text-foreground' : 'text-muted-foreground'
+                      )}>
                         {msg.username}
                       </span>
-                      <span className="text-[10px] text-muted-foreground">
+                      <span className="text-[10px] text-muted-foreground/60 tabular-nums">
                         {formatTime(msg.timestamp)}
                       </span>
                     </div>
-                    <p className="text-sm text-foreground break-words">{msg.message}</p>
+                    <p className="text-sm break-words">{msg.message}</p>
                   </div>
                 </div>
               ))}
@@ -157,61 +135,58 @@ export default function ChatSidebar() {
             </div>
           </ScrollArea>
 
-          {/* Typing indicator */}
           {typingUsers.length > 0 && (
-            <div className="px-4 py-2 text-xs text-muted-foreground border-t">
-              {typingUsers.map((u) => u.username).join(', ')}{' '}
-              {typingUsers.length === 1 ? 'is' : 'are'} typing...
+            <div className="px-3 py-2 text-xs text-muted-foreground border-t border-border/40">
+              {typingUsers.map((u) => u.username).join(', ')} écrit...
             </div>
           )}
 
-          {/* Input */}
-          <form onSubmit={handleSubmit} className="p-2 border-t">
+          <form onSubmit={handleSubmit} className="p-3 border-t border-border/40">
             <div className="flex gap-2">
               <Input
                 type="text"
                 value={input}
                 onChange={handleInputChange}
-                placeholder="Type a message..."
-                className="flex-1 h-9 text-sm"
+                placeholder="Message..."
+                className="flex-1 h-9 text-sm bg-transparent border-border/50"
               />
-              <Button
+              <button
                 type="submit"
                 disabled={!input.trim()}
-                size="icon"
-                className="h-9 w-9"
+                className="h-9 w-9 flex items-center justify-center border border-border/50 text-muted-foreground hover:text-foreground hover:border-foreground/30 disabled:opacity-30 transition-colors"
               >
-                <Send className="h-4 w-4" />
-              </Button>
+                <Send className="h-3.5 w-3.5" />
+              </button>
             </div>
           </form>
         </div>
       </SidebarContent>
-      <SidebarFooter>
+      
+      <SidebarFooter className="border-t border-border/40">
         <Collapsible open={showUsers} onOpenChange={setShowUsers}>
           <CollapsibleTrigger asChild>
-            <SidebarMenuButton className="w-full justify-between">
+            <SidebarMenuButton className="w-full justify-between text-sm">
+              <span className="text-muted-foreground">en ligne</span>
               <div className="flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                <span>Online Users</span>
+                <span className="text-xs text-muted-foreground tabular-nums">{onlineUsers.length}</span>
+                {showUsers ? (
+                  <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                ) : (
+                  <ChevronUp className="w-3 h-3 text-muted-foreground" />
+                )}
               </div>
-              <Badge variant="outline" className="text-xs">
-                {onlineUsers.length}
-              </Badge>
             </SidebarMenuButton>
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <ScrollArea className="h-48">
-              <div className="p-2 space-y-1">
+            <ScrollArea className="h-32">
+              <div className="px-3 py-2 space-y-1">
                 {onlineUsers.map((u) => (
                   <div
                     key={u.userId}
-                    className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-sidebar-accent text-sm"
+                    className="flex items-center gap-2 py-1 text-sm text-muted-foreground"
                   >
-                    <Circle className="w-2 h-2 fill-accent-green text-accent-green" />
-                    <span className="text-sidebar-foreground truncate">
-                      {u.username}
-                    </span>
+                    <div className="w-1 h-1 rounded-full bg-foreground/50" />
+                    <span className="truncate">{u.username}</span>
                   </div>
                 ))}
               </div>

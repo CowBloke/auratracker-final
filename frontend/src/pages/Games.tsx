@@ -28,8 +28,6 @@ const games = [
   },
 ];
 
-const comingSoon = ['Trivia', 'Poker', 'Racing', 'Puzzle'];
-
 export default function Games() {
   return (
     <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
@@ -70,26 +68,6 @@ export default function Games() {
             <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all" />
           </Link>
         ))}
-      </section>
-
-      {/* Divider */}
-      <div className="h-px bg-border" />
-
-      {/* Coming Soon */}
-      <section className="space-y-6">
-        <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
-          Bientôt disponible
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {comingSoon.map((game) => (
-            <div
-              key={game}
-              className="py-4 text-center border border-border/30 text-muted-foreground/50"
-            >
-              <span className="text-sm">{game}</span>
-            </div>
-          ))}
-        </div>
       </section>
     </div>
   );

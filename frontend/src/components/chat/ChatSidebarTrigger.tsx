@@ -1,22 +1,18 @@
-import { PanelRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { MessageCircle } from 'lucide-react';
 import { useSidebar } from '@/components/ui/sidebar';
-import { cn } from '@/lib/utils';
 
 export function ChatSidebarTrigger() {
   const { toggleSidebar } = useSidebar();
   
   return (
-    <Button
+    <button
       data-sidebar="trigger"
-      variant="ghost"
-      size="icon"
-      className={cn("h-7 w-7")}
       onClick={toggleSidebar}
       title="Toggle Chat"
+      className="h-7 w-7 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
     >
-      <PanelRight />
+      <MessageCircle className="h-4 w-4" />
       <span className="sr-only">Toggle Chat Sidebar</span>
-    </Button>
+    </button>
   );
 }
