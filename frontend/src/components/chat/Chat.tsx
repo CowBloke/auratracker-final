@@ -22,12 +22,37 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
   const { messages, onlineUsers, typingUsers, sendMessage, setTyping } = useSocket();
   const [input, setInput] = useState('');
   const [showUsers, setShowUsers] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<TimeoutRef>(null);
+  const lastMessageIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Réinitialiser le compteur quand le chat s'ouvre
+  useEffect(() => {
+    if (isOpen) {
+      setUnreadCount(0);
+      if (messages.length > 0) {
+        lastMessageIdRef.current = messages[messages.length - 1].id;
+      }
+    }
+  }, [isOpen, messages]);
+
+  // Suivre les messages non lus quand le chat est fermé
+  useEffect(() => {
+    if (!isOpen && messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      
+      // Si c'est un nouveau message (pas déjà vu) et que ce n'est pas notre propre message
+      if (lastMessage.id !== lastMessageIdRef.current && lastMessage.userId !== user?.id) {
+        setUnreadCount((prev) => prev + 1);
+        lastMessageIdRef.current = lastMessage.id;
+      }
+    }
+  }, [messages, isOpen, user?.id]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,7 +98,14 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
         className="w-full h-14 px-6 flex items-center justify-between hover:bg-surface-hover transition-colors"
       >
         <div className="flex items-center gap-3">
-          <MessageCircle className="w-5 h-5 text-primary" />
+          <div className="relative">
+            <MessageCircle className="w-5 h-5 text-primary" />
+            {!isOpen && unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[20px] h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold px-1">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </div>
           <span className="font-medium">Global Chat</span>
           <span className="px-2 py-0.5 rounded-full bg-primary/20 text-primary-light text-xs">
             {onlineUsers.length} online
