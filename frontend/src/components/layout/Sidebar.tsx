@@ -69,7 +69,7 @@ export default function AppSidebar() {
                 )}
               >
                 <NavLink to="/" end>
-                  <span>Dashboard</span>
+                  <span>Tableau de bord</span>
                 </NavLink>
               </SidebarMenuButton>
             </SidebarMenuItem>

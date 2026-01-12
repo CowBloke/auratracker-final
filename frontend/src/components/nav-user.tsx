@@ -69,7 +69,7 @@ export function NavUser({
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">{user.name}</span>
-                <span className="truncate text-xs">{user.email || 'User'}</span>
+                <span className="truncate text-xs">{user.email || 'Utilisateur'}</span>
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
             </SidebarMenuButton>
@@ -89,7 +89,7 @@ export function NavUser({
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">{user.name}</span>
-                  <span className="truncate text-xs">{user.email || 'User'}</span>
+                  <span className="truncate text-xs">{user.email || 'Utilisateur'}</span>
                 </div>
               </div>
             </DropdownMenuLabel>
@@ -98,7 +98,7 @@ export function NavUser({
               <DropdownMenuItem asChild>
                 <Link to={`/profile/${authUser?.id}`}>
                   <User />
-                  Profile
+                  Profil
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={toggleTheme}>
@@ -109,7 +109,7 @@ export function NavUser({
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={logout}>
               <LogOut />
-              Log out
+              Déconnexion
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

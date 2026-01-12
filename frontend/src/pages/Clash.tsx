@@ -7,23 +7,23 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 const BUILDING_CONFIG: Record<string, { emoji: string; name: string }> = {
-  townhall: { emoji: '🏛️', name: 'Town Hall' },
-  cannon: { emoji: '💣', name: 'Cannon' },
-  archer_tower: { emoji: '🏹', name: 'Archer Tower' },
-  wall: { emoji: '🧱', name: 'Wall' },
-  gold_mine: { emoji: '⛏️', name: 'Gold Mine' },
-  elixir_collector: { emoji: '💧', name: 'Elixir Collector' },
-  gold_storage: { emoji: '🏦', name: 'Gold Storage' },
-  elixir_storage: { emoji: '🧪', name: 'Elixir Storage' },
-  barracks: { emoji: '⚔️', name: 'Barracks' },
-  mortar: { emoji: '💥', name: 'Mortar' },
+  townhall: { emoji: '🏛️', name: 'Hôtel de ville' },
+  cannon: { emoji: '💣', name: 'Canon' },
+  archer_tower: { emoji: '🏹', name: 'Tour d\'archère' },
+  wall: { emoji: '🧱', name: 'Mur' },
+  gold_mine: { emoji: '⛏️', name: 'Mine d\'or' },
+  elixir_collector: { emoji: '💧', name: 'Extracteur d\'élixir' },
+  gold_storage: { emoji: '🏦', name: 'Réserve d\'or' },
+  elixir_storage: { emoji: '🧪', name: 'Réserve d\'élixir' },
+  barracks: { emoji: '⚔️', name: 'Caserne' },
+  mortar: { emoji: '💥', name: 'Mortier' },
 };
 
 const TROOP_CONFIG: Record<string, { emoji: string; name: string }> = {
-  barbarian: { emoji: '⚔️', name: 'Barbarian' },
-  archer: { emoji: '🏹', name: 'Archer' },
-  giant: { emoji: '🛡️', name: 'Giant' },
-  goblin: { emoji: '👺', name: 'Goblin' },
+  barbarian: { emoji: '⚔️', name: 'Barbare' },
+  archer: { emoji: '🏹', name: 'Archère' },
+  giant: { emoji: '🛡️', name: 'Géant' },
+  goblin: { emoji: '👺', name: 'Gobelin' },
 };
 
 const GRID_SIZE = 15;
@@ -281,7 +281,7 @@ export default function Clash() {
             <span>{trophies} 🏆</span>
             <span>{defenseRating} 🛡️</span>
             {shieldUntil && new Date() < shieldUntil && (
-              <span>Shield: {formatTimeRemaining(shieldUntil)}</span>
+              <span>Bouclier: {formatTimeRemaining(shieldUntil)}</span>
             )}
           </div>
         </div>
@@ -328,7 +328,7 @@ export default function Clash() {
                       disabled={saving}
                       className="px-3 py-1 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background disabled:opacity-50"
                     >
-                      {saving ? 'Saving...' : 'Sauvegarder'}
+                      {saving ? 'Sauvegarde...' : 'Sauvegarder'}
                     </button>
                   </>
                 ) : (

@@ -42,7 +42,7 @@ export default function Header() {
               <WifiOff className="w-4 h-4 text-destructive" />
             )}
             <span className="text-xs text-muted-foreground">
-              {connected ? 'Connected' : 'Disconnected'}
+              {connected ? 'Connecté' : 'Déconnecté'}
             </span>
           </div>
 
@@ -79,13 +79,13 @@ export default function Header() {
                 <DropdownMenuItem asChild>
                   <Link to={`/profile/${user?.id}`} className="cursor-pointer">
                     <User className="mr-2 h-4 w-4" />
-                    Profile
+                    Profil
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logout} className="cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" />
-                  Logout
+                  Déconnexion
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

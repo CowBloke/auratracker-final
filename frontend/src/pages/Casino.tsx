@@ -270,7 +270,7 @@ export default function Casino() {
           ) : user && user.money < bet ? (
             'Fonds insuffisants'
           ) : (
-            'SPIN'
+            'LANCER'
           )}
         </button>
       </div>

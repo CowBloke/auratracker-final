@@ -17,7 +17,7 @@ const games = [
   {
     id: 'solitaire',
     name: 'Solitaire',
-    description: 'Le classique Klondike. Gagne pour obtenir aura et money.',
+    description: 'Le classique Klondike. Gagne pour obtenir aura et argent.',
     type: 'Victoire',
   },
   {

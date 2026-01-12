@@ -1,12 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { usersApi, leaderboardsApi, economyApi } from '../services/api';
-import { Send, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { usersApi, leaderboardsApi } from '../services/api';
 
 interface ProfileUser {
   id: string;
@@ -31,15 +26,10 @@ interface Rankings {
 
 export default function Profile() {
   const { userId } = useParams();
-  const { user: currentUser, refreshUser } = useAuth();
+  const { user: currentUser } = useAuth();
   const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
   const [rankings, setRankings] = useState<Rankings | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showTransferModal, setShowTransferModal] = useState(false);
-  const [transferType, setTransferType] = useState<'aura' | 'money'>('money');
-  const [transferAmount, setTransferAmount] = useState('');
-  const [transferLoading, setTransferLoading] = useState(false);
-  const [transferError, setTransferError] = useState('');
 
   const targetUserId = userId || currentUser?.id;
   const isOwnProfile = targetUserId === currentUser?.id;
@@ -63,35 +53,6 @@ export default function Profile() {
       console.error('Failed to fetch profile:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleTransfer = async () => {
-    if (!transferAmount || !profileUser) return;
-    
-    try {
-      setTransferLoading(true);
-      setTransferError('');
-      
-      const amount = parseInt(transferAmount);
-      if (isNaN(amount) || amount <= 0) {
-        setTransferError('Montant invalide');
-        return;
-      }
-
-      await economyApi.transfer({
-        receiverId: profileUser.id,
-        [transferType === 'aura' ? 'auraAmount' : 'moneyAmount']: amount,
-      });
-
-      await refreshUser();
-      await fetchProfile();
-      setShowTransferModal(false);
-      setTransferAmount('');
-    } catch (error: any) {
-      setTransferError(error.response?.data?.error || 'Échec du transfert');
-    } finally {
-      setTransferLoading(false);
     }
   };
 
@@ -120,27 +81,16 @@ export default function Profile() {
     <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
       {/* Header */}
       <header className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground tracking-wide uppercase">
-              Profil {isOwnProfile && '(toi)'}
-            </p>
-            <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-              {profileUser.username}
-            </h1>
-            <p className="text-sm text-muted-foreground mt-2">
-              Membre depuis {new Date(profileUser.createdAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
-            </p>
-          </div>
-          {!isOwnProfile && (
-            <button
-              onClick={() => setShowTransferModal(true)}
-              className="flex items-center gap-2 px-4 py-2 text-sm border border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
-            >
-              <Send className="h-4 w-4" />
-              Envoyer
-            </button>
-          )}
+        <div>
+          <p className="text-sm text-muted-foreground tracking-wide uppercase">
+            Profil {isOwnProfile && '(toi)'}
+          </p>
+          <h1 className="text-5xl md:text-7xl font-light tracking-tight">
+            {profileUser.username}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-2">
+            Membre depuis {new Date(profileUser.createdAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+          </p>
         </div>
       </header>
 
@@ -198,9 +148,9 @@ export default function Profile() {
                   {stat.gameType.replace('_', ' ')}
                 </span>
                 <div className="flex items-center gap-8 text-sm text-muted-foreground tabular-nums">
-                  <span>{stat.highScore.toLocaleString()} best</span>
-                  <span>{stat.wins} W</span>
-                  <span>{stat.totalPlayed} played</span>
+                  <span>{stat.highScore.toLocaleString()} record</span>
+                  <span>{stat.wins} V</span>
+                  <span>{stat.totalPlayed} jouées</span>
                   <span>
                     {stat.totalPlayed > 0
                       ? Math.round((stat.wins / stat.totalPlayed) * 100)
@@ -212,86 +162,6 @@ export default function Profile() {
           </div>
         )}
       </section>
-
-      {/* Transfer Modal */}
-      <Dialog open={showTransferModal} onOpenChange={setShowTransferModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="font-normal">
-              Envoyer à {profileUser.username}
-            </DialogTitle>
-          </DialogHeader>
-          
-          {transferError && (
-            <p className="text-sm text-destructive">{transferError}</p>
-          )}
-
-          <div className="space-y-4">
-            <div className="flex gap-2">
-              <button
-                onClick={() => setTransferType('money')}
-                className={cn(
-                  "flex-1 px-4 py-2 text-sm border transition-colors",
-                  transferType === 'money'
-                    ? "border-foreground text-foreground"
-                    : "border-border/30 text-muted-foreground"
-                )}
-              >
-                Money
-              </button>
-              <button
-                onClick={() => setTransferType('aura')}
-                className={cn(
-                  "flex-1 px-4 py-2 text-sm border transition-colors",
-                  transferType === 'aura'
-                    ? "border-foreground text-foreground"
-                    : "border-border/30 text-muted-foreground"
-                )}
-              >
-                Aura
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              <Input
-                type="number"
-                value={transferAmount}
-                onChange={(e) => setTransferAmount(e.target.value)}
-                placeholder="Montant"
-                min="1"
-                className="h-12 bg-transparent border-border/50 text-center"
-              />
-              <p className="text-xs text-muted-foreground text-center">
-                Solde: {transferType === 'money'
-                  ? `$${currentUser?.money.toLocaleString()}`
-                  : currentUser?.aura.toLocaleString()}
-              </p>
-            </div>
-          </div>
-
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowTransferModal(false);
-                setTransferError('');
-                setTransferAmount('');
-              }}
-              className="border-border/30"
-            >
-              Annuler
-            </Button>
-            <Button
-              onClick={handleTransfer}
-              disabled={transferLoading || !transferAmount}
-              variant="outline"
-              className="border-foreground"
-            >
-              {transferLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Envoyer'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

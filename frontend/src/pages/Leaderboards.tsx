@@ -16,7 +16,7 @@ type Category = 'aura' | 'money' | 'doodle_jump' | 'solitaire' | 'casino' | 'gam
 
 const categories: { id: Category; name: string; valueLabel: string }[] = [
   { id: 'aura', name: 'Aura', valueLabel: 'aura' },
-  { id: 'money', name: 'Money', valueLabel: '$' },
+  { id: 'money', name: 'Argent', valueLabel: '$' },
   { id: 'doodle_jump', name: 'Doodle Jump', valueLabel: 'score' },
   { id: 'solitaire', name: 'Solitaire', valueLabel: '%' },
   { id: 'casino', name: 'Casino', valueLabel: '$' },

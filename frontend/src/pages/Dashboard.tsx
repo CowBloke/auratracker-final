@@ -210,7 +210,7 @@ export default function Dashboard() {
     if (days > 0) return `${days}j`;
     if (hours > 0) return `${hours}h`;
     if (minutes > 0) return `${minutes}m`;
-    return 'now';
+    return 'maint.';
   };
 
   if (loading) {
@@ -249,7 +249,7 @@ export default function Dashboard() {
           <p className="text-4xl md:text-5xl font-light tabular-nums">
             ${user?.money.toLocaleString()}
           </p>
-          <p className="text-sm text-muted-foreground">money</p>
+          <p className="text-sm text-muted-foreground">argent</p>
         </div>
         <div className="space-y-1">
           <p className="text-4xl md:text-5xl font-light tabular-nums">
