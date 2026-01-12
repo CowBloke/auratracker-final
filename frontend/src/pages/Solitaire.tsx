@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
-import { ArrowLeft, RotateCcw, Undo } from 'lucide-react';
+import { RotateCcw, Undo } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -300,58 +300,75 @@ export default function Solitaire() {
 
   if (!gameState) {
     return (
-      <div className="max-w-4xl mx-auto py-12 px-4 space-y-8">
-        <Link
-          to="/games"
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Retour
-        </Link>
+      <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
+        {/* Header */}
+        <header className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <Link
+                to="/games"
+                className="text-sm text-muted-foreground tracking-wide uppercase hover:text-foreground transition-colors"
+              >
+                ← Jeux
+              </Link>
+              <h1 className="text-5xl md:text-7xl font-light tracking-tight">
+                Solitaire
+              </h1>
+            </div>
+            <button
+              onClick={initGame}
+              className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+            >
+              Jouer
+            </button>
+          </div>
+        </header>
 
-        <div className="text-center space-y-6">
-          <h1 className="text-5xl md:text-7xl font-light tracking-tight">Solitaire</h1>
-          <p className="text-sm text-muted-foreground">Klondike classique</p>
-          <button
-            onClick={initGame}
-            className="px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-          >
-            Jouer
-          </button>
-        </div>
+        {/* Divider */}
+        <div className="h-px bg-border" />
+
+        <p className="text-center text-muted-foreground py-12">
+          Klondike classique
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4 space-y-8">
+    <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <Link
-          to="/games"
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Retour
-        </Link>
-        <div className="flex items-center gap-6 text-sm text-muted-foreground">
-          <span className="tabular-nums">{formatTime(elapsedTime)}</span>
-          <span className="tabular-nums">{gameState.moves} coups</span>
-          <button
-            onClick={undo}
-            disabled={history.length === 0}
-            className="text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
-          >
-            <Undo className="w-4 h-4" />
-          </button>
-          <button
-            onClick={initGame}
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <RotateCcw className="w-4 h-4" />
-          </button>
+      <header className="space-y-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <Link
+              to="/games"
+              className="text-sm text-muted-foreground tracking-wide uppercase hover:text-foreground transition-colors"
+            >
+              ← Jeux
+            </Link>
+            <h1 className="text-5xl md:text-7xl font-light tracking-tight">
+              Solitaire
+            </h1>
+          </div>
+          <div className="flex items-center gap-6 text-sm text-muted-foreground">
+            <span className="tabular-nums">{formatTime(elapsedTime)}</span>
+            <span className="tabular-nums">{gameState.moves} coups</span>
+            <button
+              onClick={undo}
+              disabled={history.length === 0}
+              className="text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
+            >
+              <Undo className="w-4 h-4" />
+            </button>
+            <button
+              onClick={initGame}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-      </div>
+      </header>
 
       {/* Game Board */}
       <div className="overflow-x-auto">

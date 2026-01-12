@@ -33,12 +33,16 @@ export default function Games() {
     <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
       {/* Header */}
       <header className="space-y-2">
-        <p className="text-sm text-muted-foreground tracking-wide uppercase">
-          Jouer
-        </p>
-        <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-          Jeux
-        </h1>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-muted-foreground tracking-wide uppercase">
+              Jouer
+            </p>
+            <h1 className="text-5xl md:text-7xl font-light tracking-tight">
+              Jeux
+            </h1>
+          </div>
+        </div>
       </header>
 
       {/* Divider */}

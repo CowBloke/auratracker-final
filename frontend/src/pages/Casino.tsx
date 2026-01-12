@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
-import { ArrowLeft, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type Symbol = '🍒' | '🍋' | '🍊' | '🍇' | '🔔' | '⭐' | '💎' | '7️⃣';
@@ -157,29 +157,26 @@ export default function Casino() {
   const canSpin = user && user.money >= bet && !spinning;
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4 space-y-8">
+    <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <Link
-          to="/games"
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Retour
-        </Link>
-        <span className="text-sm text-muted-foreground tabular-nums">
-          ${user?.money.toLocaleString() || 0}
-        </span>
-      </div>
-
-      {/* Title */}
-      <header className="text-center space-y-2">
-        <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-          Casino
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Mise: ${bet}
-        </p>
+      <header className="space-y-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <Link
+              to="/games"
+              className="text-sm text-muted-foreground tracking-wide uppercase hover:text-foreground transition-colors"
+            >
+              ← Jeux
+            </Link>
+            <h1 className="text-5xl md:text-7xl font-light tracking-tight">
+              Casino
+            </h1>
+          </div>
+          <div className="text-right text-sm text-muted-foreground tabular-nums">
+            <div>${user?.money.toLocaleString() || 0}</div>
+            <div>Mise: ${bet}</div>
+          </div>
+        </div>
       </header>
 
       {/* Bet Selection */}

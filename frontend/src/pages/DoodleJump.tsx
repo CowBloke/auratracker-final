@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
-import { ArrowLeft, Play, RotateCcw } from 'lucide-react';
+import { Play, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Platform {
@@ -272,28 +272,27 @@ export default function DoodleJump() {
   }, [started, gameOver, gameLoop]);
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4 space-y-8">
+    <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <Link
-          to="/games"
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Retour
-        </Link>
-        <span className="text-sm text-muted-foreground tabular-nums">
-          Record: {highScore.toLocaleString()}
-        </span>
-      </div>
-
-      {/* Title & Score */}
-      <div className="text-center space-y-2">
-        <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-          Doodle Jump
-        </h1>
-        <p className="text-3xl tabular-nums">{score.toLocaleString()}</p>
-      </div>
+      <header className="space-y-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <Link
+              to="/games"
+              className="text-sm text-muted-foreground tracking-wide uppercase hover:text-foreground transition-colors"
+            >
+              ← Jeux
+            </Link>
+            <h1 className="text-5xl md:text-7xl font-light tracking-tight">
+              Doodle Jump
+            </h1>
+          </div>
+          <div className="text-right text-sm text-muted-foreground tabular-nums">
+            <div className="text-3xl font-light text-foreground">{score.toLocaleString()}</div>
+            <div>Record: {highScore.toLocaleString()}</div>
+          </div>
+        </div>
+      </header>
 
       {/* Canvas */}
       <div className="relative flex justify-center">
