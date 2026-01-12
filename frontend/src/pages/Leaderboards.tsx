@@ -1,0 +1,216 @@
+import { useEffect, useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { leaderboardsApi } from '../services/api';
+import { Trophy, Sparkles, Coins, Gamepad2, Medal, Crown } from 'lucide-react';
+
+interface Ranking {
+  rank: number;
+  userId: string;
+  username: string;
+  value: number;
+  wins?: number;
+  totalPlayed?: number;
+}
+
+type Category = 'aura' | 'money' | 'doodle_jump' | 'solitaire' | 'games_played';
+
+const categories: { id: Category; name: string; icon: React.ReactNode; valueLabel: string }[] = [
+  { id: 'aura', name: 'Aura', icon: <Sparkles className="w-5 h-5" />, valueLabel: 'Aura' },
+  { id: 'money', name: 'Money', icon: <Coins className="w-5 h-5" />, valueLabel: 'Money' },
+  { id: 'doodle_jump', name: 'Doodle Jump', icon: <Gamepad2 className="w-5 h-5" />, valueLabel: 'High Score' },
+  { id: 'solitaire', name: 'Solitaire', icon: <Medal className="w-5 h-5" />, valueLabel: 'Win Rate' },
+  { id: 'games_played', name: 'Most Active', icon: <Trophy className="w-5 h-5" />, valueLabel: 'Games' },
+];
+
+export default function Leaderboards() {
+  const { user } = useAuth();
+  const [category, setCategory] = useState<Category>('aura');
+  const [rankings, setRankings] = useState<Ranking[]>([]);
+  const [userRank, setUserRank] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchRankings();
+  }, [category]);
+
+  const fetchRankings = async () => {
+    try {
+      setLoading(true);
+      const response = await leaderboardsApi.get(category, { limit: 50 });
+      setRankings(response.data.rankings);
+      setUserRank(response.data.userRank);
+    } catch (error) {
+      console.error('Failed to fetch rankings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatValue = (ranking: Ranking) => {
+    switch (category) {
+      case 'money':
+        return `$${ranking.value.toLocaleString()}`;
+      case 'solitaire':
+        return `${ranking.value}%`;
+      default:
+        return ranking.value.toLocaleString();
+    }
+  };
+
+  const getRankIcon = (rank: number) => {
+    switch (rank) {
+      case 1:
+        return <Crown className="w-6 h-6 text-yellow-500" />;
+      case 2:
+        return <Medal className="w-6 h-6 text-gray-400" />;
+      case 3:
+        return <Medal className="w-6 h-6 text-orange-500" />;
+      default:
+        return null;
+    }
+  };
+
+  const getRankStyle = (rank: number) => {
+    switch (rank) {
+      case 1:
+        return 'bg-yellow-500/10 border-yellow-500/30';
+      case 2:
+        return 'bg-gray-400/10 border-gray-400/30';
+      case 3:
+        return 'bg-orange-500/10 border-orange-500/30';
+      default:
+        return 'bg-background/50 border-transparent';
+    }
+  };
+
+  const currentCategory = categories.find((c) => c.id === category)!;
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold font-display flex items-center gap-3">
+          <Trophy className="w-8 h-8 text-primary" />
+          Leaderboards
+        </h1>
+        <p className="text-gray-400 mt-2">
+          See how you rank against other players
+        </p>
+      </div>
+
+      {/* Category Tabs */}
+      <div className="flex flex-wrap gap-2">
+        {categories.map((cat) => (
+          <button
+            key={cat.id}
+            onClick={() => setCategory(cat.id)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+              category === cat.id
+                ? 'bg-primary text-white shadow-glow-primary'
+                : 'bg-surface hover:bg-surface-hover text-gray-400'
+            }`}
+          >
+            {cat.icon}
+            {cat.name}
+          </button>
+        ))}
+      </div>
+
+      {/* User Rank Card */}
+      {userRank && (
+        <div className="card p-4 bg-primary/10 border-primary/30">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+                <span className="text-xl font-bold text-primary">#{userRank}</span>
+              </div>
+              <div>
+                <p className="font-medium">Your Rank</p>
+                <p className="text-sm text-gray-400">in {currentCategory.name}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rankings Table */}
+      <div className="card overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-pulse text-primary text-xl font-display">
+              Loading...
+            </div>
+          </div>
+        ) : rankings.length === 0 ? (
+          <div className="p-12 text-center">
+            <Trophy className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-gray-400 mb-2">No Rankings Yet</h2>
+            <p className="text-gray-500">Be the first to claim the top spot!</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-700/50">
+            {/* Header */}
+            <div className="grid grid-cols-12 gap-4 p-4 text-sm font-medium text-gray-400 bg-background/50">
+              <div className="col-span-1 text-center">Rank</div>
+              <div className="col-span-7">Player</div>
+              <div className="col-span-4 text-right">{currentCategory.valueLabel}</div>
+            </div>
+
+            {/* Rankings */}
+            {rankings.map((ranking) => (
+              <div
+                key={ranking.userId}
+                className={`grid grid-cols-12 gap-4 p-4 items-center border-l-4 transition-colors ${
+                  ranking.userId === user?.id
+                    ? 'bg-primary/10 border-primary'
+                    : `${getRankStyle(ranking.rank)} hover:bg-surface-hover`
+                }`}
+              >
+                <div className="col-span-1 flex items-center justify-center">
+                  {getRankIcon(ranking.rank) || (
+                    <span className="text-lg font-bold text-gray-400">
+                      {ranking.rank}
+                    </span>
+                  )}
+                </div>
+                <div className="col-span-7 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-surface flex items-center justify-center">
+                    <span className="font-bold text-primary">
+                      {ranking.username.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div>
+                    <p className={`font-medium ${ranking.userId === user?.id ? 'text-primary' : ''}`}>
+                      {ranking.username}
+                      {ranking.userId === user?.id && (
+                        <span className="ml-2 text-xs text-primary">(You)</span>
+                      )}
+                    </p>
+                    {category === 'solitaire' && ranking.wins !== undefined && (
+                      <p className="text-xs text-gray-500">
+                        {ranking.wins} wins / {ranking.totalPlayed} games
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="col-span-4 text-right">
+                  <span
+                    className={`font-mono text-lg font-bold ${
+                      category === 'aura'
+                        ? 'text-aura-light'
+                        : category === 'money'
+                        ? 'text-money-light'
+                        : 'text-primary-light'
+                    }`}
+                  >
+                    {formatValue(ranking)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

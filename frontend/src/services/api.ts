@@ -1,0 +1,97 @@
+import axios from 'axios';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+export const api = axios.create({
+  baseURL: `${API_URL}/api`,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add auth token to requests
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Handle auth errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Auth API
+export const authApi = {
+  register: (data: { username: string; email: string; password: string }) =>
+    api.post('/auth/register', data),
+  login: (data: { email: string; password: string }) =>
+    api.post('/auth/login', data),
+  refresh: () => api.post('/auth/refresh'),
+  me: () => api.get('/auth/me'),
+};
+
+// Users API
+export const usersApi = {
+  getAll: () => api.get('/users'),
+  getById: (id: string) => api.get(`/users/${id}`),
+  update: (id: string, data: { username?: string }) => api.put(`/users/${id}`, data),
+};
+
+// Economy API
+export const economyApi = {
+  transfer: (data: { receiverId: string; auraAmount?: number; moneyAmount?: number }) =>
+    api.post('/economy/transfer', data),
+  getTransfers: (params?: { userId?: string; limit?: number; offset?: number }) =>
+    api.get('/economy/transfers', { params }),
+  getBalance: (userId: string) => api.get(`/economy/balance/${userId}`),
+};
+
+// Marketplace API
+export const marketplaceApi = {
+  getItems: (params?: { type?: string; page?: number; limit?: number }) =>
+    api.get('/marketplace/items', { params }),
+  purchase: (data: { itemId: string; quantity?: number }) =>
+    api.post('/marketplace/purchase', data),
+  getInventory: (userId: string) => api.get(`/marketplace/inventory/${userId}`),
+  useItem: (userItemId: string) => api.post('/marketplace/use-item', { userItemId }),
+  // Admin
+  createItem: (data: {
+    name: string;
+    description: string;
+    type: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE';
+    price: number;
+    auraCost?: number;
+    imageUrl?: string;
+    effect?: string;
+    expiresAt?: string;
+  }) => api.post('/marketplace/admin/item', data),
+};
+
+// Games API
+export const gamesApi = {
+  getStats: (gameType: string, userId: string) =>
+    api.get(`/games/${gameType}/stats/${userId}`),
+  complete: (gameType: string, data: { score: number; won: boolean; duration?: number }) =>
+    api.post(`/games/${gameType}/complete`, data),
+  getLeaderboard: (gameType: string, limit?: number) =>
+    api.get(`/games/${gameType}/leaderboard`, { params: { limit } }),
+};
+
+// Leaderboards API
+export const leaderboardsApi = {
+  get: (category: string, params?: { limit?: number; offset?: number; seasonId?: string }) =>
+    api.get(`/leaderboards/${category}`, { params }),
+  getUserRankings: (userId: string) => api.get(`/leaderboards/user/${userId}`),
+};
+
+export default api;

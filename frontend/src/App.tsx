@@ -1,0 +1,63 @@
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from './contexts/AuthContext';
+import Layout from './components/layout/Layout';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Dashboard from './pages/Dashboard';
+import Games from './pages/Games';
+import DoodleJump from './pages/DoodleJump';
+import Solitaire from './pages/Solitaire';
+import Marketplace from './pages/Marketplace';
+import Leaderboards from './pages/Leaderboards';
+import Profile from './pages/Profile';
+import Inventory from './pages/Inventory';
+import Party from './pages/Party';
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse text-primary text-xl font-display">
+          Loading...
+        </div>
+      </div>
+    );
+  }
+  
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return <>{children}</>;
+}
+
+function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Dashboard />} />
+        <Route path="games" element={<Games />} />
+        <Route path="games/doodle-jump" element={<DoodleJump />} />
+        <Route path="games/solitaire" element={<Solitaire />} />
+        <Route path="marketplace" element={<Marketplace />} />
+        <Route path="leaderboards" element={<Leaderboards />} />
+        <Route path="party" element={<Party />} />
+        <Route path="inventory" element={<Inventory />} />
+        <Route path="profile/:userId?" element={<Profile />} />
+      </Route>
+    </Routes>
+  );
+}
+
+export default App;

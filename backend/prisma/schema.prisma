@@ -1,0 +1,144 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// User Model
+model User {
+  id            String    @id @default(uuid())
+  username      String    @unique
+  email         String    @unique
+  passwordHash  String
+  aura          Int       @default(0)
+  money         Int       @default(1000)
+  isAdmin       Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  ownedItems        UserItem[]
+  sentTransfers     Transfer[] @relation("SentTransfers")
+  receivedTransfers Transfer[] @relation("ReceivedTransfers")
+  gameStats         GameStats[]
+  partyMemberships  PartyMember[]
+  sentMessages      ChatMessage[]
+  
+  @@index([aura])
+  @@index([money])
+}
+
+// Item Model
+// type: "CONSUMABLE" | "COSMETIC" | "UPGRADE"
+model Item {
+  id          String    @id @default(uuid())
+  name        String
+  description String
+  type        String    // CONSUMABLE, COSMETIC, or UPGRADE
+  price       Int
+  auraCost    Int       @default(0)
+  imageUrl    String?
+  effect      String?   // JSON string describing the effect
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+  
+  userItems   UserItem[]
+}
+
+// User Inventory
+model UserItem {
+  id          String    @id @default(uuid())
+  userId      String
+  itemId      String
+  quantity    Int       @default(1)
+  acquiredAt  DateTime  @default(now())
+  
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item        Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, itemId])
+}
+
+// Transfer/Trade Model
+model Transfer {
+  id          String    @id @default(uuid())
+  senderId    String
+  receiverId  String
+  auraAmount  Int       @default(0)
+  moneyAmount Int       @default(0)
+  createdAt   DateTime  @default(now())
+  
+  sender      User      @relation("SentTransfers", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver    User      @relation("ReceivedTransfers", fields: [receiverId], references: [id], onDelete: Cascade)
+  
+  @@index([senderId])
+  @@index([receiverId])
+}
+
+// Game Statistics
+model GameStats {
+  id          String    @id @default(uuid())
+  userId      String
+  gameType    String    // "doodle_jump", "solitaire"
+  wins        Int       @default(0)
+  losses      Int       @default(0)
+  highScore   Int       @default(0)
+  totalPlayed Int       @default(0)
+  fastestWin  Int?      // In seconds, for solitaire
+  
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, gameType])
+}
+
+// Party System
+model Party {
+  id           String        @id @default(uuid())
+  name         String?
+  isPublic     Boolean       @default(false)
+  maxSize      Int           @default(8)
+  createdAt    DateTime      @default(now())
+  lastActivity DateTime      @default(now())
+  
+  members      PartyMember[]
+}
+
+model PartyMember {
+  id        String   @id @default(uuid())
+  partyId   String
+  userId    String
+  isLeader  Boolean  @default(false)
+  joinedAt  DateTime @default(now())
+  
+  party     Party    @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([partyId, userId])
+  @@unique([userId]) // User can only be in one party at a time
+}
+
+// Chat Messages
+model ChatMessage {
+  id        String   @id @default(uuid())
+  userId    String
+  message   String
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([createdAt])
+}
+
+// Season System
+model Season {
+  id          String    @id @default(uuid())
+  name        String
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean   @default(true)
+  
+  @@index([isActive])
+}

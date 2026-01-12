@@ -1,0 +1,279 @@
+import { Router, Response } from 'express';
+import { prisma } from '../server.js';
+import { authMiddleware, adminMiddleware, AuthRequest } from '../middleware/auth.js';
+import { validate, createItemSchema, purchaseSchema, useItemSchema } from '../middleware/validation.js';
+
+const router = Router();
+
+// Get all items
+router.get('/items', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { type, page = '1', limit = '20' } = req.query;
+    
+    const where = type ? { type: type as 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE' } : {};
+    
+    const [items, total] = await Promise.all([
+      prisma.item.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: parseInt(limit as string),
+        skip: (parseInt(page as string) - 1) * parseInt(limit as string),
+      }),
+      prisma.item.count({ where }),
+    ]);
+    
+    res.json({ items, total });
+  } catch (error) {
+    console.error('Get items error:', error);
+    res.status(500).json({ error: 'Failed to get items' });
+  }
+});
+
+// Purchase item
+router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    
+    const { itemId, quantity = 1 } = req.body;
+    
+    // Get item
+    const item = await prisma.item.findUnique({
+      where: { id: itemId },
+    });
+    
+    if (!item) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+    
+    // Check if expired
+    if (item.expiresAt && new Date(item.expiresAt) < new Date()) {
+      return res.status(400).json({ error: 'Item is no longer available' });
+    }
+    
+    // Get user
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+    });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const totalPrice = item.price * quantity;
+    const totalAuraCost = item.auraCost * quantity;
+    
+    // Check sufficient balance
+    if (user.money < totalPrice) {
+      return res.status(400).json({ error: 'Insufficient money' });
+    }
+    
+    if (user.aura < totalAuraCost) {
+      return res.status(400).json({ error: 'Insufficient aura' });
+    }
+    
+    // Purchase in transaction
+    const [updatedUser, userItem] = await prisma.$transaction([
+      prisma.user.update({
+        where: { id: req.user.id },
+        data: {
+          money: { decrement: totalPrice },
+          aura: { decrement: totalAuraCost },
+        },
+      }),
+      prisma.userItem.upsert({
+        where: {
+          userId_itemId: {
+            userId: req.user.id,
+            itemId,
+          },
+        },
+        create: {
+          userId: req.user.id,
+          itemId,
+          quantity,
+        },
+        update: {
+          quantity: { increment: quantity },
+        },
+        include: {
+          item: true,
+        },
+      }),
+    ]);
+    
+    res.json({
+      success: true,
+      item: userItem,
+      newBalance: {
+        aura: updatedUser.aura,
+        money: updatedUser.money,
+      },
+    });
+  } catch (error) {
+    console.error('Purchase error:', error);
+    res.status(500).json({ error: 'Failed to purchase item' });
+  }
+});
+
+// Get user inventory
+router.get('/inventory/:userId', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { userId } = req.params;
+    
+    const items = await prisma.userItem.findMany({
+      where: { userId },
+      include: {
+        item: true,
+      },
+      orderBy: { acquiredAt: 'desc' },
+    });
+    
+    res.json({ items });
+  } catch (error) {
+    console.error('Get inventory error:', error);
+    res.status(500).json({ error: 'Failed to get inventory' });
+  }
+});
+
+// Use item
+router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    
+    const { userItemId } = req.body;
+    
+    const userItem = await prisma.userItem.findUnique({
+      where: { id: userItemId },
+      include: { item: true },
+    });
+    
+    if (!userItem) {
+      return res.status(404).json({ error: 'Item not found in inventory' });
+    }
+    
+    if (userItem.userId !== req.user.id) {
+      return res.status(403).json({ error: 'Not your item' });
+    }
+    
+    if (userItem.item.type !== 'CONSUMABLE') {
+      return res.status(400).json({ error: 'Only consumable items can be used' });
+    }
+    
+    // Decrement quantity or delete if last one
+    if (userItem.quantity > 1) {
+      await prisma.userItem.update({
+        where: { id: userItemId },
+        data: { quantity: { decrement: 1 } },
+      });
+    } else {
+      await prisma.userItem.delete({
+        where: { id: userItemId },
+      });
+    }
+    
+    // Apply effect (parse from item.effect JSON)
+    let effect = null;
+    if (userItem.item.effect) {
+      try {
+        effect = JSON.parse(userItem.item.effect);
+        // Apply effects like bonus aura, money, etc.
+        if (effect.bonusAura) {
+          await prisma.user.update({
+            where: { id: req.user.id },
+            data: { aura: { increment: effect.bonusAura } },
+          });
+        }
+        if (effect.bonusMoney) {
+          await prisma.user.update({
+            where: { id: req.user.id },
+            data: { money: { increment: effect.bonusMoney } },
+          });
+        }
+      } catch (e) {
+        // Invalid effect JSON, ignore
+      }
+    }
+    
+    res.json({
+      success: true,
+      effect,
+    });
+  } catch (error) {
+    console.error('Use item error:', error);
+    res.status(500).json({ error: 'Failed to use item' });
+  }
+});
+
+// Admin: Create item
+router.post('/admin/item', authMiddleware, adminMiddleware, validate(createItemSchema), async (req: AuthRequest, res: Response) => {
+  try {
+    const { name, description, type, price, auraCost, imageUrl, effect, expiresAt } = req.body;
+    
+    const item = await prisma.item.create({
+      data: {
+        name,
+        description,
+        type,
+        price,
+        auraCost: auraCost || 0,
+        imageUrl,
+        effect,
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+      },
+    });
+    
+    res.status(201).json({ item });
+  } catch (error) {
+    console.error('Create item error:', error);
+    res.status(500).json({ error: 'Failed to create item' });
+  }
+});
+
+// Admin: Update item
+router.put('/admin/item/:id', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name, description, type, price, auraCost, imageUrl, effect, expiresAt } = req.body;
+    
+    const item = await prisma.item.update({
+      where: { id },
+      data: {
+        name,
+        description,
+        type,
+        price,
+        auraCost,
+        imageUrl,
+        effect,
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+      },
+    });
+    
+    res.json({ item });
+  } catch (error) {
+    console.error('Update item error:', error);
+    res.status(500).json({ error: 'Failed to update item' });
+  }
+});
+
+// Admin: Delete item
+router.delete('/admin/item/:id', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    await prisma.item.delete({
+      where: { id },
+    });
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete item error:', error);
+    res.status(500).json({ error: 'Failed to delete item' });
+  }
+});
+
+export default router;
