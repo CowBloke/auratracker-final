@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/form';
 
 const loginSchema = z.object({
-  email: z.string().email('Email invalide').min(1, 'Email requis'),
+  username: z.string().min(1, 'Pseudo requis'),
   password: z.string().min(1, 'Mot de passe requis'),
 });
 
@@ -30,7 +30,7 @@ export default function Login() {
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: '',
+      username: '',
       password: '',
     },
   });
@@ -39,7 +39,7 @@ export default function Login() {
     try {
       setError('');
       setLoading(true);
-      await login(data.email, data.password);
+      await login(data.username, data.password);
       navigate('/');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Échec de connexion');
@@ -69,13 +69,13 @@ export default function Login() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
-              name="email"
+              name="username"
               render={({ field }) => (
                 <FormItem>
                   <FormControl>
                     <Input
-                      type="email"
-                      placeholder="Email"
+                      type="text"
+                      placeholder="Pseudo"
                       className="h-12 bg-transparent border-border/50 text-center"
                       {...field}
                     />

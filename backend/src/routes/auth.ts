@@ -76,10 +76,10 @@ router.post('/register', validate(registerSchema), async (req, res) => {
 // Login
 router.post('/login', validate(loginSchema), async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { username, password } = req.body;
     
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { username },
     });
     
     if (!user) {
