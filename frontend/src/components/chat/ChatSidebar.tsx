@@ -6,11 +6,8 @@ import { Send, ChevronDown, ChevronUp } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarHeader,
-  SidebarMenu,
   SidebarMenuButton,
-  SidebarMenuItem,
   SidebarRail,
 } from '@/components/ui/sidebar';
 import { Input } from '@/components/ui/input';
@@ -81,21 +78,42 @@ export default function ChatSidebar() {
     <Sidebar variant="inset" side="right" collapsible="offcanvas" className="border-l border-border/40">
       <SidebarRail />
       <SidebarHeader className="border-b border-border/40">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" className="justify-between">
-              <span className="text-sm font-light">chat</span>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="tabular-nums">{onlineUsers.length}</span>
+        <Collapsible open={showUsers} onOpenChange={setShowUsers}>
+          <CollapsibleTrigger asChild>
+            <SidebarMenuButton size="lg" className="w-full justify-between">
+              <span className="text-sm text-muted-foreground">en ligne</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground tabular-nums">{onlineUsers.length}</span>
                 {unreadCount > 0 && (
                   <span className="px-1.5 py-0.5 text-[10px] bg-foreground text-background">
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 )}
+                {showUsers ? (
+                  <ChevronUp className="w-3 h-3 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                )}
               </div>
             </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <ScrollArea className="h-32">
+              <div className="px-3 py-2 space-y-1">
+                {onlineUsers.map((u) => (
+                  <button
+                    key={u.userId}
+                    onClick={() => navigate(`/profile/${u.userId}`)}
+                    className="flex items-center gap-2 py-1 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-left"
+                  >
+                    <div className="w-1 h-1 rounded-full bg-foreground/50" />
+                    <span className="truncate">{u.username}</span>
+                  </button>
+                ))}
+              </div>
+            </ScrollArea>
+          </CollapsibleContent>
+        </Collapsible>
       </SidebarHeader>
       
       <SidebarContent className="flex flex-col">
@@ -167,39 +185,6 @@ export default function ChatSidebar() {
         </div>
       </SidebarContent>
       
-      <SidebarFooter className="border-t border-border/40">
-        <Collapsible open={showUsers} onOpenChange={setShowUsers}>
-          <CollapsibleTrigger asChild>
-            <SidebarMenuButton className="w-full justify-between text-sm">
-              <span className="text-muted-foreground">en ligne</span>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground tabular-nums">{onlineUsers.length}</span>
-                {showUsers ? (
-                  <ChevronDown className="w-3 h-3 text-muted-foreground" />
-                ) : (
-                  <ChevronUp className="w-3 h-3 text-muted-foreground" />
-                )}
-              </div>
-            </SidebarMenuButton>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <ScrollArea className="h-32">
-              <div className="px-3 py-2 space-y-1">
-                {onlineUsers.map((u) => (
-                  <button
-                    key={u.userId}
-                    onClick={() => navigate(`/profile/${u.userId}`)}
-                    className="flex items-center gap-2 py-1 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-left"
-                  >
-                    <div className="w-1 h-1 rounded-full bg-foreground/50" />
-                    <span className="truncate">{u.username}</span>
-                  </button>
-                ))}
-              </div>
-            </ScrollArea>
-          </CollapsibleContent>
-        </Collapsible>
-      </SidebarFooter>
     </Sidebar>
   );
 }
