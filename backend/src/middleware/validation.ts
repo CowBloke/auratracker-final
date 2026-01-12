@@ -46,10 +46,7 @@ export const transferSchema = z.object({
 export const giftAuraSchema = z.object({
   receiverId: z.string().uuid(),
   amount: z.number().int().min(1).max(50),
-  message: z.string().max(200).optional().refine(
-    (val) => !val || val.trim().split(/\s+/).length <= 20,
-    { message: 'Message cannot exceed 20 words' }
-  ),
+  message: z.string().max(50).optional(),
 });
 
 // Marketplace schemas

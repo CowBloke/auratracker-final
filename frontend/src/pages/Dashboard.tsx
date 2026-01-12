@@ -96,13 +96,6 @@ export default function Dashboard() {
   const handleGiftAura = async () => {
     if (!selectedUserId || giftAmount <= 0) return;
     
-    // Validate word count
-    const wordCount = giftText.trim() ? giftText.trim().split(/\s+/).length : 0;
-    if (wordCount > 20) {
-      setGiftMessage({ type: 'error', text: 'Maximum 20 mots' });
-      return;
-    }
-    
     setGiftLoading(true);
     setGiftMessage(null);
     
@@ -264,11 +257,11 @@ export default function Dashboard() {
               onChange={(e) => setGiftText(e.target.value)}
               disabled={!dailyAllowance || dailyAllowance.remaining === 0}
               className="h-10 bg-transparent border-border/50 text-sm pr-16"
-              placeholder="Message (optionnel, max 20 mots)"
-              maxLength={200}
+              placeholder="Message"
+              maxLength={50}
             />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground/60 tabular-nums">
-              {giftText.trim() ? giftText.trim().split(/\s+/).length : 0}/20
+              {giftText.length}/50
             </span>
           </div>
         </div>
