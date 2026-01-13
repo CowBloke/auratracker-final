@@ -81,9 +81,8 @@ export default function ChatSidebar() {
         <Collapsible open={showUsers} onOpenChange={setShowUsers}>
           <CollapsibleTrigger asChild>
             <SidebarMenuButton size="lg" className="w-full justify-between">
-              <span className="text-sm text-muted-foreground">en ligne</span>
+              <span className="text-sm text-green-500">{onlineUsers.length} connectés</span>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground tabular-nums">{onlineUsers.length}</span>
                 {unreadCount > 0 && (
                   <span className="px-1.5 py-0.5 text-[10px] bg-foreground text-background">
                     {unreadCount > 99 ? '99+' : unreadCount}

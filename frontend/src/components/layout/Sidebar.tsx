@@ -1,6 +1,23 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { ChevronRight } from 'lucide-react';
+import {
+  ChevronRight,
+  LayoutDashboard,
+  Gamepad2,
+  Trophy,
+  Store,
+  Users,
+  Backpack,
+  Lightbulb,
+  BookOpen,
+  Bug,
+  Shield,
+  Coins,
+  Swords,
+  ArrowUp,
+  Spade,
+  Dices
+} from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -22,24 +39,24 @@ import { NavUser } from '@/components/nav-user';
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { to: '/leaderboards', label: 'Classement' },
-  { to: '/marketplace', label: 'Marché' },
-  { to: '/party', label: 'Party' },
-  { to: '/inventory', label: 'Inventaire' },
-  { to: '/suggestions', label: 'Suggestions' },
-  { to: '/rules', label: 'Règlement' },
+  { to: '/leaderboards', label: 'Classement', icon: Trophy },
+  { to: '/marketplace', label: 'Marché', icon: Store },
+  { to: '/party', label: 'Party', icon: Users },
+  { to: '/inventory', label: 'Inventaire', icon: Backpack },
+  { to: '/suggestions', label: 'Suggestions', icon: Lightbulb },
+  { to: '/rules', label: 'Règlement', icon: BookOpen },
 ];
 
 const adminItems = [
-  { to: '/admin', label: 'Administration' },
+  { to: '/admin', label: 'Administration', icon: Shield },
 ];
 
 const gameItems = [
-  { to: '/games/aura-coin', label: 'Aura Coin' },
-  { to: '/games/clash', label: 'Clash' },
-  { to: '/games/doodle-jump', label: 'Doodle Jump' },
-  { to: '/games/solitaire', label: 'Solitaire' },
-  { to: '/games/casino', label: 'Casino' },
+  { to: '/games/aura-coin', label: 'Aura Coin', icon: Coins },
+  { to: '/games/clash', label: 'Clash', icon: Swords },
+  { to: '/games/doodle-jump', label: 'Doodle Jump', icon: ArrowUp },
+  { to: '/games/solitaire', label: 'Solitaire', icon: Spade },
+  { to: '/games/casino', label: 'Casino', icon: Dices },
 ];
 
 export default function AppSidebar() {
@@ -65,17 +82,18 @@ export default function AppSidebar() {
           <SidebarMenu className="space-y-1">
             {/* Dashboard */}
             <SidebarMenuItem>
-              <SidebarMenuButton 
-                asChild 
+              <SidebarMenuButton
+                asChild
                 isActive={location.pathname === '/'}
                 className={cn(
                   "h-9 px-3 text-sm font-normal",
                   location.pathname === '/'
-                    ? "text-foreground bg-muted/50" 
+                    ? "text-foreground bg-muted/50"
                     : "text-muted-foreground hover:text-foreground hover:bg-transparent"
                 )}
               >
                 <NavLink to="/" end>
+                  <LayoutDashboard className="h-4 w-4" />
                   <span>Tableau de bord</span>
                 </NavLink>
               </SidebarMenuButton>
@@ -85,17 +103,18 @@ export default function AppSidebar() {
             <Collapsible asChild open={isOnGames} className="group/collapsible">
               <SidebarMenuItem>
                 <CollapsibleTrigger asChild>
-                  <SidebarMenuButton 
+                  <SidebarMenuButton
                     asChild
                     isActive={isOnGames}
                     className={cn(
                       "h-9 px-3 text-sm font-normal",
                       isOnGames
-                        ? "text-foreground bg-muted/50" 
+                        ? "text-foreground bg-muted/50"
                         : "text-muted-foreground hover:text-foreground hover:bg-transparent"
                     )}
                   >
                     <NavLink to="/games">
+                      <Gamepad2 className="h-4 w-4" />
                       <span>Jeux</span>
                       <ChevronRight className={cn(
                         "ml-auto h-4 w-4 transition-transform duration-200",
@@ -108,6 +127,7 @@ export default function AppSidebar() {
                   <SidebarMenuSub>
                     {gameItems.map((game) => {
                       const isGameActive = location.pathname === game.to;
+                      const GameIcon = game.icon;
                       return (
                         <SidebarMenuSubItem key={game.to}>
                           <SidebarMenuSubButton
@@ -116,11 +136,12 @@ export default function AppSidebar() {
                             className={cn(
                               "text-sm font-normal",
                               isGameActive
-                                ? "text-foreground" 
+                                ? "text-foreground"
                                 : "text-muted-foreground hover:text-foreground"
                             )}
                           >
                             <NavLink to={game.to}>
+                              <GameIcon className="h-4 w-4" />
                               <span>{game.label}</span>
                             </NavLink>
                           </SidebarMenuSubButton>
@@ -134,22 +155,24 @@ export default function AppSidebar() {
 
             {/* Other nav items */}
             {navItems.map((item) => {
-              const isActive = location.pathname === item.to || 
+              const isActive = location.pathname === item.to ||
                 (item.to !== '/' && location.pathname.startsWith(item.to));
-              
+              const ItemIcon = item.icon;
+
               return (
                 <SidebarMenuItem key={item.to}>
-                  <SidebarMenuButton 
-                    asChild 
+                  <SidebarMenuButton
+                    asChild
                     isActive={isActive}
                     className={cn(
                       "h-9 px-3 text-sm font-normal",
-                      isActive 
-                        ? "text-foreground bg-muted/50" 
+                      isActive
+                        ? "text-foreground bg-muted/50"
                         : "text-muted-foreground hover:text-foreground hover:bg-transparent"
                     )}
                   >
                     <NavLink to={item.to} end={item.to === '/'}>
+                      <ItemIcon className="h-4 w-4" />
                       <span>{item.label}</span>
                     </NavLink>
                   </SidebarMenuButton>
@@ -159,17 +182,18 @@ export default function AppSidebar() {
 
             {/* Bug Report Link */}
             <SidebarMenuItem>
-              <SidebarMenuButton 
-                asChild 
+              <SidebarMenuButton
+                asChild
                 isActive={location.pathname === '/report-bug'}
                 className={cn(
                   "h-9 px-3 text-sm font-normal",
                   location.pathname === '/report-bug'
-                    ? "text-foreground bg-muted/50" 
+                    ? "text-foreground bg-muted/50"
                     : "text-muted-foreground hover:text-foreground hover:bg-transparent"
                 )}
               >
                 <NavLink to="/report-bug">
+                  <Bug className="h-4 w-4" />
                   <span>Reporter un bug</span>
                 </NavLink>
               </SidebarMenuButton>
@@ -178,20 +202,22 @@ export default function AppSidebar() {
             {/* Admin items (only for admins) */}
             {user?.isAdmin && adminItems.map((item) => {
               const isActive = location.pathname === item.to;
-              
+              const AdminIcon = item.icon;
+
               return (
                 <SidebarMenuItem key={item.to}>
-                  <SidebarMenuButton 
-                    asChild 
+                  <SidebarMenuButton
+                    asChild
                     isActive={isActive}
                     className={cn(
                       "h-9 px-3 text-sm font-normal",
-                      isActive 
-                        ? "text-amber-500 bg-amber-500/10" 
+                      isActive
+                        ? "text-amber-500 bg-amber-500/10"
                         : "text-amber-500/70 hover:text-amber-500 hover:bg-transparent"
                     )}
                   >
                     <NavLink to={item.to}>
+                      <AdminIcon className="h-4 w-4" />
                       <span>{item.label}</span>
                     </NavLink>
                   </SidebarMenuButton>

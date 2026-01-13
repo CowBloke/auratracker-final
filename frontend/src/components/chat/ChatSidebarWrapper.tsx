@@ -31,9 +31,9 @@ function ChatSidebarProvider({ children }: { children: ReactNode }) {
 
   return (
     <ChatSidebarContext.Provider value={{ open, setOpen }}>
-      <ShadcnSidebarProvider 
-        className="!w-auto" 
-        open={open} 
+      <ShadcnSidebarProvider
+        className="!w-auto"
+        open={open}
         onOpenChange={setOpen}
       >
         {children}
@@ -46,7 +46,16 @@ export function ChatSidebarWrapper() {
   return (
     <ChatSidebarProvider>
       <ChatSidebar />
+      <FloatingChatTrigger />
     </ChatSidebarProvider>
+  );
+}
+
+function FloatingChatTrigger() {
+  return (
+    <div className="fixed bottom-6 right-6 z-50">
+      <ChatSidebarTrigger />
+    </div>
   );
 }
 
