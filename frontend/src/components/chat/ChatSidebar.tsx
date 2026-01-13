@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
+import { useChatSidebar } from './ChatSidebarWrapper';
 
 type TimeoutRef = ReturnType<typeof setTimeout> | null;
 
@@ -21,26 +22,15 @@ export default function ChatSidebar() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { messages, onlineUsers, typingUsers, sendMessage, setTyping } = useSocket();
+  const { unreadCount } = useChatSidebar();
   const [input, setInput] = useState('');
   const [showUsers, setShowUsers] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<TimeoutRef>(null);
-  const lastMessageIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-
-  useEffect(() => {
-    if (messages.length > 0) {
-      const lastMessage = messages[messages.length - 1];
-      if (lastMessage.id !== lastMessageIdRef.current && lastMessage.userId !== user?.id) {
-        setUnreadCount((prev) => prev + 1);
-        lastMessageIdRef.current = lastMessage.id;
-      }
-    }
-  }, [messages, user?.id]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
