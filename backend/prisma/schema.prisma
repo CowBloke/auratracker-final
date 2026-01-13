@@ -17,6 +17,7 @@ model User {
   money         Int       @default(1000)
   auraCoinBalance Float   @default(0)         // Aura Coin balance for trading game
   isAdmin       Boolean   @default(false)
+  isApproved    Boolean   @default(false)     // Account must be approved by admin before login
   dailyAuraGiven Int      @default(0)        // Aura given today
   dailyAuraLimit Int      @default(50)       // Personal daily aura limit (default 50)
   lastDailyReset DateTime @default(now())    // When daily allowance was last reset

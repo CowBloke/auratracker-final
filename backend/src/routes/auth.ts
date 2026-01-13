@@ -18,7 +18,7 @@ const generateToken = (userId: string, email: string): string => {
   );
 };
 
-// Register
+// Register - Creates a pending account that needs admin approval
 router.post('/register', validate(registerSchema), async (req, res) => {
   try {
     const { username, email, password } = req.body;
@@ -41,34 +41,29 @@ router.post('/register', validate(registerSchema), async (req, res) => {
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
     
-    // Check if this is the admin email
+    // Check if this is the admin email - auto-approve admin
     const isAdmin = email === config.adminEmail;
     
-    // Create user
-    const user = await prisma.user.create({
+    // Create user - auto-approve if admin, otherwise pending approval
+    await prisma.user.create({
       data: {
         username,
         email,
         passwordHash,
         isAdmin,
+        isApproved: isAdmin, // Admin is auto-approved
         money: 1000, // Starting money
-      },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        aura: true,
-        money: true,
-        isAdmin: true,
-        usernameColor: true,
-        profilePicture: true,
-        createdAt: true,
       },
     });
     
-    const token = generateToken(user.id, user.email);
-    
-    res.status(201).json({ user, token });
+    // Don't return token - account needs approval first (unless admin)
+    res.status(201).json({ 
+      success: true,
+      message: isAdmin 
+        ? 'Compte admin créé avec succès' 
+        : 'Demande envoyée ! Un administrateur doit approuver votre compte avant que vous puissiez vous connecter.',
+      requiresApproval: !isAdmin,
+    });
   } catch (error) {
     console.error('Register error:', error);
     res.status(500).json({ error: 'Failed to register user' });
@@ -92,6 +87,14 @@ router.post('/login', validate(loginSchema), async (req, res) => {
     
     if (!isValidPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    // Check if account is approved
+    if (!user.isApproved) {
+      return res.status(403).json({ 
+        error: 'Votre compte est en attente d\'approbation par un administrateur.',
+        pendingApproval: true,
+      });
     }
     
     const token = generateToken(user.id, user.email);

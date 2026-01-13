@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useAuth } from '../contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
+import { authApi } from '../services/api';
+import { Loader2, CheckCircle2, Send } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
   Form,
@@ -29,10 +29,9 @@ const registerSchema = z.object({
 type RegisterForm = z.infer<typeof registerSchema>;
 
 export default function Register() {
-  const navigate = useNavigate();
-  const { register: registerUser } = useAuth();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
   
   const form = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
@@ -48,14 +47,45 @@ export default function Register() {
     try {
       setError('');
       setLoading(true);
-      await registerUser(data.username, data.email, data.password);
-      navigate('/');
+      await authApi.register({
+        username: data.username,
+        email: data.email,
+        password: data.password,
+      });
+      // Account created successfully, show success message
+      setSuccess(true);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Échec de l\'inscription');
+      setError(err.response?.data?.error || 'Échec de l\'envoi de la demande');
     } finally {
       setLoading(false);
     }
   };
+
+  // Success state - show confirmation message
+  if (success) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="w-full max-w-sm space-y-8 text-center">
+          <div className="space-y-4">
+            <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto" />
+            <h1 className="text-2xl font-light tracking-tight">
+              Demande envoyée !
+            </h1>
+            <p className="text-muted-foreground">
+              Un administrateur doit approuver votre compte avant que vous puissiez vous connecter.
+            </p>
+          </div>
+          
+          <Link 
+            to="/login" 
+            className="inline-block w-full h-12 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors flex items-center justify-center"
+          >
+            Retour à la connexion
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -65,13 +95,18 @@ export default function Register() {
           <h1 className="text-4xl font-light tracking-tight">
             aura
           </h1>
-          <p className="text-sm text-muted-foreground">Inscription</p>
+          <p className="text-sm text-muted-foreground">Demande d'inscription</p>
         </div>
 
         {/* Error */}
         {error && (
           <p className="text-sm text-destructive text-center">{error}</p>
         )}
+
+        {/* Info */}
+        <p className="text-xs text-muted-foreground text-center border border-border/30 p-3 rounded">
+          Votre demande sera examinée par un administrateur avant d'être approuvée.
+        </p>
 
         {/* Form */}
         <Form {...form}>
@@ -151,9 +186,16 @@ export default function Register() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-12 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 flex items-center justify-center"
+              className="w-full h-12 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Créer un compte'}
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <Send className="h-4 w-4" />
+                  Envoyer la demande
+                </>
+              )}
             </button>
           </form>
         </Form>

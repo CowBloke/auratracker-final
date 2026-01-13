@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { adminApi, AdminUser, ShopItem, BugReport } from '../services/api';
+import { adminApi, AdminUser, ShopItem, BugReport, PendingUser } from '../services/api';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check } from 'lucide-react';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -85,6 +85,12 @@ export default function Admin() {
   const [updatingBug, setUpdatingBug] = useState<string | null>(null);
   const [deletingBug, setDeletingBug] = useState<string | null>(null);
 
+  // Pending users state
+  const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
+  const [loadingPending, setLoadingPending] = useState(false);
+  const [approvingUser, setApprovingUser] = useState<string | null>(null);
+  const [rejectingUser, setRejectingUser] = useState<string | null>(null);
+
   // Redirect non-admin users
   if (!user?.isAdmin) {
     return <Navigate to="/" replace />;
@@ -94,6 +100,7 @@ export default function Admin() {
     fetchUsers();
     fetchItems();
     fetchBugReports();
+    fetchPendingUsers();
   }, []);
 
   const fetchUsers = async () => {
@@ -131,6 +138,47 @@ export default function Admin() {
       showMessage('error', 'Erreur lors du chargement des bugs');
     } finally {
       setLoadingBugs(false);
+    }
+  };
+
+  const fetchPendingUsers = async () => {
+    try {
+      setLoadingPending(true);
+      const res = await adminApi.getPendingUsers();
+      setPendingUsers(res.data.pendingUsers);
+    } catch (error) {
+      console.error('Failed to fetch pending users:', error);
+      showMessage('error', 'Erreur lors du chargement des demandes');
+    } finally {
+      setLoadingPending(false);
+    }
+  };
+
+  const approveUser = async (id: string) => {
+    setApprovingUser(id);
+    try {
+      await adminApi.approveUser(id);
+      setPendingUsers(prev => prev.filter(u => u.id !== id));
+      showMessage('success', 'Utilisateur approuvé');
+      // Refresh users list to include newly approved user
+      fetchUsers();
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur');
+    } finally {
+      setApprovingUser(null);
+    }
+  };
+
+  const rejectUser = async (id: string) => {
+    setRejectingUser(id);
+    try {
+      await adminApi.rejectUser(id);
+      setPendingUsers(prev => prev.filter(u => u.id !== id));
+      showMessage('success', 'Demande rejetée');
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur');
+    } finally {
+      setRejectingUser(null);
     }
   };
 
@@ -336,8 +384,19 @@ export default function Admin() {
       )}
 
       {/* Tabs */}
-      <Tabs defaultValue="users" className="space-y-8">
+      <Tabs defaultValue="pending" className="space-y-8">
         <TabsList className="bg-transparent border border-border/30 p-1">
+          <TabsTrigger 
+            value="pending"
+            className="data-[state=active]:bg-muted/50 data-[state=active]:text-foreground text-muted-foreground"
+          >
+            Demandes
+            {pendingUsers.length > 0 && (
+              <span className="ml-2 px-1.5 py-0.5 text-xs bg-amber-500/20 text-amber-400 rounded">
+                {pendingUsers.length}
+              </span>
+            )}
+          </TabsTrigger>
           <TabsTrigger 
             value="users"
             className="data-[state=active]:bg-muted/50 data-[state=active]:text-foreground text-muted-foreground"
@@ -368,6 +427,125 @@ export default function Admin() {
             )}
           </TabsTrigger>
         </TabsList>
+
+        {/* Pending Users Tab */}
+        <TabsContent value="pending" className="space-y-6">
+          <div className="h-px bg-border" />
+          
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
+              Demandes d'inscription en attente
+            </h2>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <UserPlus className="h-4 w-4" />
+              <span>{pendingUsers.length} en attente</span>
+            </div>
+          </div>
+
+          {loadingPending ? (
+            <div className="flex justify-center py-12">
+              <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+            </div>
+          ) : pendingUsers.length === 0 ? (
+            <div className="text-center py-12 space-y-2">
+              <UserPlus className="h-8 w-8 mx-auto text-muted-foreground/50" />
+              <p className="text-muted-foreground">
+                Aucune demande en attente
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-0">
+              {pendingUsers.map((u) => (
+                <div
+                  key={u.id}
+                  className="py-4 border-b border-border/30 last:border-0"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium">{u.username}</span>
+                        <span className="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-400">
+                          En attente
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {u.email}
+                      </p>
+                      <p className="text-xs text-muted-foreground/60 mt-0.5">
+                        Demandé le {new Date(u.createdAt).toLocaleDateString('fr-FR', { 
+                          day: 'numeric', 
+                          month: 'short', 
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => approveUser(u.id)}
+                        disabled={approvingUser === u.id}
+                        className="h-8 border-green-500/50 text-green-500 hover:bg-green-500/10"
+                      >
+                        {approvingUser === u.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Check className="h-4 w-4 mr-1" />
+                            Approuver
+                          </>
+                        )}
+                      </Button>
+                      
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10"
+                            disabled={rejectingUser === u.id}
+                          >
+                            {rejectingUser === u.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <UserX className="h-4 w-4 mr-1" />
+                                Rejeter
+                              </>
+                            )}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="flex items-center gap-2">
+                              <AlertTriangle className="h-5 w-5 text-destructive" />
+                              Rejeter la demande de {u.username} ?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              L'utilisateur devra créer un nouveau compte s'il souhaite réessayer.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Annuler</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => rejectUser(u.id)}
+                              className="bg-destructive hover:bg-destructive/90"
+                            >
+                              Rejeter
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
 
         {/* Users Tab */}
         <TabsContent value="users" className="space-y-6">

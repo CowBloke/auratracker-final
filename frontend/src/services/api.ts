@@ -235,6 +235,14 @@ export interface AdminUser {
   updatedAt: string;
 }
 
+// Pending User Interface
+export interface PendingUser {
+  id: string;
+  username: string;
+  email: string;
+  createdAt: string;
+}
+
 // Shop Item Interface
 export interface ShopItem {
   id: string;
@@ -300,6 +308,10 @@ export const adminApi = {
     api.put<{ user: AdminUser }>(`/admin/users/${id}`, data),
   deleteUser: (id: string) => api.delete<{ success: boolean; message: string }>(`/admin/users/${id}`),
   clearChat: () => api.delete<{ success: boolean; message: string }>('/admin/chat'),
+  // Pending users management
+  getPendingUsers: () => api.get<{ pendingUsers: PendingUser[] }>('/admin/pending-users'),
+  approveUser: (id: string) => api.post<{ success: boolean; user: PendingUser; message: string }>(`/admin/users/${id}/approve`),
+  rejectUser: (id: string) => api.post<{ success: boolean; message: string }>(`/admin/users/${id}/reject`),
   // Items management
   getItems: () => api.get<{ items: ShopItem[] }>('/admin/items'),
   createItem: (data: {

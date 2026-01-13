@@ -12,6 +12,81 @@ const requireAdmin = (req: AuthRequest, res: Response, next: Function) => {
   next();
 };
 
+// ========== PENDING USERS MANAGEMENT ==========
+
+// Get pending users (awaiting approval)
+router.get('/pending-users', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const pendingUsers = await prisma.user.findMany({
+      where: { isApproved: false },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ pendingUsers });
+  } catch (error) {
+    console.error('Admin get pending users error:', error);
+    res.status(500).json({ error: 'Failed to get pending users' });
+  }
+});
+
+// Approve a user
+router.post('/users/:id/approve', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    const user = await prisma.user.update({
+      where: { id },
+      data: { isApproved: true },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        isApproved: true,
+        createdAt: true,
+      },
+    });
+    
+    res.json({ success: true, user, message: 'Utilisateur approuvé' });
+  } catch (error) {
+    console.error('Admin approve user error:', error);
+    res.status(500).json({ error: 'Failed to approve user' });
+  }
+});
+
+// Reject (delete) a pending user
+router.post('/users/:id/reject', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    // Check that user is pending
+    const user = await prisma.user.findUnique({
+      where: { id },
+    });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    if (user.isApproved) {
+      return res.status(400).json({ error: 'Cannot reject an already approved user' });
+    }
+    
+    await prisma.user.delete({
+      where: { id },
+    });
+    
+    res.json({ success: true, message: 'Demande rejetée' });
+  } catch (error) {
+    console.error('Admin reject user error:', error);
+    res.status(500).json({ error: 'Failed to reject user' });
+  }
+});
+
 // ========== ITEMS MANAGEMENT ==========
 
 // Get all items (admin view)
@@ -93,10 +168,11 @@ router.delete('/items/:id', authMiddleware, requireAdmin, async (req: AuthReques
   }
 });
 
-// Get all users with full details (admin only)
+// Get all approved users with full details (admin only)
 router.get('/users', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const users = await prisma.user.findMany({
+      where: { isApproved: true }, // Only return approved users
       select: {
         id: true,
         username: true,
