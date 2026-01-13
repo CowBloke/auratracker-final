@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
-import { Play, RotateCcw, Trophy } from 'lucide-react';
+import { Play, RotateCcw, Trophy, X } from 'lucide-react';
 
 // ============================================
 // GAME CONSTANTS (from old implementation)
@@ -120,6 +120,23 @@ export default function DoodleJump() {
       setLeaderboard(response.data.rankings || []);
     } catch (error) {
       console.error('Failed to fetch leaderboard:', error);
+    }
+  };
+
+  // Admin: Delete a user's high score
+  const handleDeleteScore = async (userId: string, username: string) => {
+    if (!confirm(`Supprimer le score de ${username} ?`)) return;
+
+    try {
+      await gamesApi.deleteStats('doodle_jump', userId);
+      // Refresh leaderboard
+      fetchLeaderboard();
+      // If it was our own score, reset our high score display
+      if (userId === user?.id) {
+        setHighScore(0);
+      }
+    } catch (error) {
+      console.error('Failed to delete score:', error);
     }
   };
 
@@ -654,7 +671,7 @@ export default function DoodleJump() {
                 {leaderboard.map((entry, index) => (
                   <div
                     key={entry.id}
-                    className={`flex items-center gap-3 px-4 py-2.5 ${
+                    className={`flex items-center gap-3 px-4 py-2.5 group ${
                       entry.user.id === user?.id ? 'bg-primary/10' : ''
                     }`}
                   >
@@ -672,6 +689,15 @@ export default function DoodleJump() {
                     <span className="font-mono text-sm tabular-nums text-muted-foreground">
                       {entry.highScore.toLocaleString()}
                     </span>
+                    {user?.isAdmin && (
+                      <button
+                        onClick={() => handleDeleteScore(entry.user.id, entry.user.username)}
+                        className="opacity-0 group-hover:opacity-100 p-1 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-all"
+                        title="Supprimer ce score"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

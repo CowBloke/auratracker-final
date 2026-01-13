@@ -90,6 +90,9 @@ export const gamesApi = {
     api.post(`/games/${gameType}/complete`, data),
   getLeaderboard: (gameType: string, limit?: number) =>
     api.get(`/games/${gameType}/leaderboard`, { params: { limit } }),
+  // Admin: Delete a user's game stats
+  deleteStats: (gameType: string, userId: string) =>
+    api.delete(`/games/${gameType}/stats/${userId}`),
 };
 
 // AuraCoin API

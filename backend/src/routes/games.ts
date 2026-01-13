@@ -195,7 +195,7 @@ router.get('/:gameType/leaderboard', authMiddleware, async (req: AuthRequest, re
   try {
     const { gameType } = req.params;
     const { limit = '20' } = req.query;
-    
+
     const rankings = await prisma.gameStats.findMany({
       where: { gameType },
       orderBy: { highScore: 'desc' },
@@ -209,11 +209,46 @@ router.get('/:gameType/leaderboard', authMiddleware, async (req: AuthRequest, re
         },
       },
     });
-    
+
     res.json({ rankings });
   } catch (error) {
     console.error('Get game leaderboard error:', error);
     res.status(500).json({ error: 'Failed to get leaderboard' });
+  }
+});
+
+// Admin: Delete a user's game stats (reset their high score)
+router.delete('/:gameType/stats/:userId', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    // Check if user is admin
+    const adminUser = await prisma.user.findUnique({
+      where: { id: req.user.id },
+    });
+
+    if (!adminUser?.isAdmin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { gameType, userId } = req.params;
+
+    // Delete the game stats record
+    await prisma.gameStats.delete({
+      where: {
+        userId_gameType: {
+          userId,
+          gameType,
+        },
+      },
+    });
+
+    res.json({ success: true, message: 'Game stats deleted successfully' });
+  } catch (error) {
+    console.error('Delete game stats error:', error);
+    res.status(500).json({ error: 'Failed to delete game stats' });
   }
 });
 
