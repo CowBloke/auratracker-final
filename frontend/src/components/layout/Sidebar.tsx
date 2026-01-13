@@ -65,13 +65,18 @@ export default function AppSidebar() {
   const isOnGames = location.pathname.startsWith('/games');
 
   return (
-    <Sidebar variant="inset">
+    <Sidebar variant="inset" collapsible="icon">
       <SidebarHeader className="py-6">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
+            <SidebarMenuButton size="lg" asChild tooltip="Aura">
               <NavLink to="/" className="flex items-center gap-3">
-                <span className="text-lg font-light tracking-tight">aura</span>
+                <span className="text-lg font-semibold tracking-tight group-data-[collapsible=icon]:inline hidden">
+                  a
+                </span>
+                <span className="text-lg font-light tracking-tight group-data-[collapsible=icon]:hidden">
+                  aura
+                </span>
               </NavLink>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -85,6 +90,7 @@ export default function AppSidebar() {
               <SidebarMenuButton
                 asChild
                 isActive={location.pathname === '/'}
+                tooltip="Tableau de bord"
                 className={cn(
                   "h-9 px-3 text-sm font-normal",
                   location.pathname === '/'
@@ -94,7 +100,7 @@ export default function AppSidebar() {
               >
                 <NavLink to="/" end>
                   <LayoutDashboard className="h-4 w-4" />
-                  <span>Tableau de bord</span>
+                  <span className="group-data-[collapsible=icon]:hidden">Tableau de bord</span>
                 </NavLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -106,6 +112,7 @@ export default function AppSidebar() {
                   <SidebarMenuButton
                     asChild
                     isActive={isOnGames}
+                    tooltip="Jeux"
                     className={cn(
                       "h-9 px-3 text-sm font-normal",
                       isOnGames
@@ -115,10 +122,11 @@ export default function AppSidebar() {
                   >
                     <NavLink to="/games">
                       <Gamepad2 className="h-4 w-4" />
-                      <span>Jeux</span>
+                      <span className="group-data-[collapsible=icon]:hidden">Jeux</span>
                       <ChevronRight className={cn(
                         "ml-auto h-4 w-4 transition-transform duration-200",
-                        isOnGames && "rotate-90"
+                        isOnGames && "rotate-90",
+                        "group-data-[collapsible=icon]:hidden"
                       )} />
                     </NavLink>
                   </SidebarMenuButton>
@@ -164,6 +172,7 @@ export default function AppSidebar() {
                   <SidebarMenuButton
                     asChild
                     isActive={isActive}
+                    tooltip={item.label}
                     className={cn(
                       "h-9 px-3 text-sm font-normal",
                       isActive
@@ -173,7 +182,7 @@ export default function AppSidebar() {
                   >
                     <NavLink to={item.to} end={item.to === '/'}>
                       <ItemIcon className="h-4 w-4" />
-                      <span>{item.label}</span>
+                      <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -185,6 +194,7 @@ export default function AppSidebar() {
               <SidebarMenuButton
                 asChild
                 isActive={location.pathname === '/report-bug'}
+                tooltip="Reporter un bug"
                 className={cn(
                   "h-9 px-3 text-sm font-normal",
                   location.pathname === '/report-bug'
@@ -194,7 +204,7 @@ export default function AppSidebar() {
               >
                 <NavLink to="/report-bug">
                   <Bug className="h-4 w-4" />
-                  <span>Reporter un bug</span>
+                  <span className="group-data-[collapsible=icon]:hidden">Reporter un bug</span>
                 </NavLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -209,6 +219,7 @@ export default function AppSidebar() {
                   <SidebarMenuButton
                     asChild
                     isActive={isActive}
+                    tooltip={item.label}
                     className={cn(
                       "h-9 px-3 text-sm font-normal",
                       isActive
@@ -218,7 +229,7 @@ export default function AppSidebar() {
                   >
                     <NavLink to={item.to}>
                       <AdminIcon className="h-4 w-4" />
-                      <span>{item.label}</span>
+                      <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
