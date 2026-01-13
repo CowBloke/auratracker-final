@@ -210,6 +210,7 @@ router.get('/targets', authMiddleware, async (req: AuthRequest, res: Response) =
     const targets = await prisma.clashBase.findMany({
       where: {
         userId: { not: req.user.id },
+        user: { isAdmin: false },
         OR: [
           { shieldUntil: null },
           { shieldUntil: { lt: now } },
@@ -226,6 +227,7 @@ router.get('/targets', authMiddleware, async (req: AuthRequest, res: Response) =
             username: true,
             aura: true,
             money: true,
+            isAdmin: true,
           },
         },
       },
@@ -284,6 +286,7 @@ router.post('/attack/check', authMiddleware, async (req: AuthRequest, res: Respo
             username: true,
             aura: true,
             money: true,
+            isAdmin: true,
           },
         },
       },
@@ -291,6 +294,10 @@ router.post('/attack/check', authMiddleware, async (req: AuthRequest, res: Respo
     
     if (!defenderBase) {
       return res.status(404).json({ error: 'Target not found' });
+    }
+
+    if (defenderBase.user.isAdmin) {
+      return res.status(403).json({ error: 'Cannot attack admin users' });
     }
     
     if (defenderBase.shieldUntil && defenderBase.shieldUntil > now) {
@@ -341,6 +348,10 @@ router.post('/attack/execute', authMiddleware, validate(executeAttackSchema), as
     
     if (!attacker || !defender || !defenderBase) {
       return res.status(404).json({ error: 'User or base not found' });
+    }
+
+    if (defender.isAdmin) {
+      return res.status(403).json({ error: 'Cannot attack admin users' });
     }
     
     // Calculate rewards based on destruction and stars
@@ -512,6 +523,7 @@ router.get('/leaderboard', authMiddleware, async (req: AuthRequest, res: Respons
     const { limit = '20' } = req.query;
     
     const rankings = await prisma.clashBase.findMany({
+      where: { user: { isAdmin: false } },
       orderBy: { trophies: 'desc' },
       take: parseInt(limit as string),
       include: {
