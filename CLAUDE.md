@@ -78,14 +78,33 @@ Frontend uses `@/*` to resolve to `src/*` (configured in tsconfig and vite.confi
 
 ## Environment Variables
 
-Backend `.env` requires:
+### Backend Configuration
+The backend uses environment-specific configuration files:
+- `.env.development` - Development environment (localhost)
+- `.env.production` - Production environment (auratracker.xyz)
+- `.env` - Active configuration (gitignored, copy from `.env.example`)
+
+Required variables:
 ```
 DATABASE_URL="postgresql://..." (or file:./dev.db for SQLite)
 JWT_SECRET="..."
 JWT_EXPIRES_IN="7d"
-CORS_ORIGIN="http://localhost:5173"
-ADMIN_EMAIL="admin@auratracker.com"
+REDIS_URL="redis://localhost:6379"
 PORT=3000
+NODE_ENV="development" (or "production")
+CORS_ORIGIN="http://localhost:5173" (dev) or "https://auratracker.xyz" (prod)
+ADMIN_EMAIL="admin@auratracker.com"
+```
+
+### Frontend Configuration
+The frontend automatically uses environment-based URLs:
+- `.env.development` - Points to `http://localhost:3000`
+- `.env.production` - Points to `https://auratracker.xyz`
+
+Variables:
+```
+VITE_API_URL - Backend API URL (auto-set by environment)
+VITE_SOCKET_URL - Socket.io URL (auto-set by environment)
 ```
 
 ## Game Reward Logic

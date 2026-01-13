@@ -87,12 +87,18 @@ A web-based social gaming platform for a private community with real-time chat, 
    npm install
    ```
 
-3. Start the development server:
+3. The frontend automatically uses environment-based URLs:
+   - Development: `npm run dev` uses localhost
+   - Production: `npm run build` uses auratracker.xyz
+
+   URLs are configured in `.env.development` and `.env.production`
+
+4. Start the development server:
    ```bash
    npm run dev
    ```
 
-4. Open http://localhost:5173 in your browser
+5. Open http://localhost:5173 in your browser
 
 ## Project Structure
 
@@ -204,13 +210,32 @@ cd frontend && npm run dev
 
 Backend:
 ```bash
-cd backend && npm run build
+cd backend
+npm run build
+# Make sure to set NODE_ENV=production and use .env.production values
 ```
 
 Frontend:
 ```bash
-cd frontend && npm run build
+cd frontend
+npm run build
+# Automatically uses .env.production for auratracker.xyz URLs
 ```
+
+### Environment Configuration
+
+The project uses environment-specific configuration:
+
+**Backend:**
+- `.env.development` - Localhost configuration
+- `.env.production` - Production configuration (auratracker.xyz)
+- `.env` - Active config (gitignored, copy from `.env.example`)
+
+**Frontend:**
+- `.env.development` - Points to `http://localhost:3000`
+- `.env.production` - Points to `https://auratracker.xyz`
+
+Vite automatically loads the correct `.env` file based on the build mode
 
 ## License
 
