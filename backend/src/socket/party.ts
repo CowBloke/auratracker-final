@@ -33,8 +33,8 @@ interface HangmanSession {
 
 const partyGames = new Map<string, HangmanSession>(); // partyId -> session
 
-// Auto-disband inactive parties (30 minutes)
-const INACTIVITY_TIMEOUT = 30 * 60 * 1000;
+// Auto-disband inactive parties (15 minutes)
+const INACTIVITY_TIMEOUT = 15 * 60 * 1000;
 
 const PARTY_GAME_RESET_DELAY_MS = 5000;
 

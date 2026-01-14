@@ -30,6 +30,7 @@ export default function Party() {
     inviteToParty,
     kickFromParty,
     fetchPublicParties,
+    syncParty,
     partyGame,
     lastPartyGameResult,
     selectPartyGame,

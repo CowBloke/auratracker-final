@@ -75,6 +75,41 @@ interface PartyGameResult {
   reason: 'guessed' | 'failed';
 }
 
+interface BombPartyPlayer {
+  userId: string;
+  username: string;
+  usernameColor?: string | null;
+  lives: number;
+  isEliminated: boolean;
+  wordsTypedCount: number;
+}
+
+interface BombPartyGameState {
+  partyId: string;
+  players: BombPartyPlayer[];
+  currentPlayerIndex: number;
+  currentPlayerId: string;
+  currentPrompt: string;
+  currentInput: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  turnDuration: number;
+  turnStartTime: number;
+  round: number;
+  usedWords: string[];
+}
+
+interface BombPartyGameOver {
+  winnerId: string | null;
+  winnerUsername: string | null;
+  players: Array<{
+    userId: string;
+    username: string;
+    wordsTypedCount: number;
+    isWinner: boolean;
+    rewards: { aura: number; money: number };
+  }>;
+}
+
 interface SocketContextType {
   socket: Socket | null;
   connected: boolean;
@@ -95,6 +130,7 @@ interface SocketContextType {
   inviteToParty: (targetUserId: string) => void;
   kickFromParty: (targetUserId: string) => void;
   fetchPublicParties: () => void;
+  syncParty: () => void;
   partyGame: PartyGame | null;
   lastPartyGameResult: PartyGameResult | null;
   selectPartyGame: (gameType: PartyGameType) => void;
@@ -456,6 +492,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     partyEvents.list();
   };
 
+  const syncParty = () => {
+    if (user) {
+      partyEvents.sync(user.id);
+    }
+  };
+
   const selectPartyGame = (gameType: PartyGameType) => {
     if (user && currentParty) {
       partyEvents.gameSelect(user.id, currentParty.id, gameType);
@@ -480,6 +522,35 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Bomb Party actions
+  const startBombParty = (lives: number, difficulty: 'easy' | 'medium' | 'hard') => {
+    if (user && currentParty) {
+      bombPartyEvents.start(user.id, currentParty.id, lives, difficulty);
+    }
+  };
+
+  const typeBombParty = (input: string) => {
+    if (user && currentParty) {
+      bombPartyEvents.type(currentParty.id, user.id, input);
+    }
+  };
+
+  const submitBombParty = (word: string) => {
+    if (user && currentParty) {
+      bombPartyEvents.submit(currentParty.id, user.id, word);
+    }
+  };
+
+  const leaveBombParty = () => {
+    if (user && currentParty) {
+      bombPartyEvents.leave(currentParty.id, user.id);
+    }
+  };
+
+  const clearBombPartyGameOver = () => {
+    setBombPartyGameOver(null);
+  };
+
   return (
     <SocketContext.Provider
       value={{
@@ -500,6 +571,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         inviteToParty,
         kickFromParty,
         fetchPublicParties,
+        syncParty,
         partyGame,
         lastPartyGameResult,
         selectPartyGame,

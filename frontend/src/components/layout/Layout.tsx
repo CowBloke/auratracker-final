@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { ChatSidebarProvider, ChatSidebarWrapper } from '../chat/ChatSidebarWrapper';
 import { ChatSidebarTrigger } from '../chat/ChatSidebarTrigger';
+import PartyBubble from '../party/PartyBubble';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocket } from '@/contexts/SocketContext';
@@ -48,6 +49,7 @@ export default function Layout() {
           </SidebarInset>
         </SidebarProvider>
         <ChatSidebarWrapper />
+        <PartyBubble />
       </div>
     </ChatSidebarProvider>
   );
