@@ -18,7 +18,8 @@ import {
   ArrowUp,
   Spade,
   Dices,
-  Search
+  Search,
+  Ticket
 } from 'lucide-react';
 import {
   Sidebar,
@@ -53,6 +54,7 @@ const navItems = [
   { to: '/marketplace', label: 'Marché', icon: Store },
   { to: '/party', label: 'Party', icon: Users },
   { to: '/inventory', label: 'Inventaire', icon: Backpack },
+  { to: '/pass', label: 'Pass', icon: Ticket },
   { to: '/suggestions', label: 'Suggestions', icon: Lightbulb },
   { to: '/rules', label: 'Règlement', icon: BookOpen },
 ];
