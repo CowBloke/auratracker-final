@@ -260,6 +260,13 @@ export interface ShopItem {
   createdAt: string;
 }
 
+export interface AdminInventoryItem {
+  id: string;
+  quantity: number;
+  acquiredAt: string;
+  item: ShopItem;
+}
+
 // Bug Report Interface
 export interface BugReport {
   id: string;
@@ -310,6 +317,14 @@ export const adminApi = {
   updateUser: (id: string, data: { aura?: number; money?: number; dailyAuraLimit?: number }) =>
     api.put<{ user: AdminUser }>(`/admin/users/${id}`, data),
   deleteUser: (id: string) => api.delete<{ success: boolean; message: string }>(`/admin/users/${id}`),
+  getUserInventory: (id: string) =>
+    api.get<{ items: AdminInventoryItem[] }>(`/admin/users/${id}/inventory`),
+  addUserInventoryItem: (id: string, data: { itemId: string; quantity?: number }) =>
+    api.post<{ item: AdminInventoryItem }>(`/admin/users/${id}/inventory`, data),
+  updateUserInventoryItem: (id: string, userItemId: string, data: { quantity: number }) =>
+    api.patch<{ item?: AdminInventoryItem; removed?: boolean }>(`/admin/users/${id}/inventory/${userItemId}`, data),
+  deleteUserInventoryItem: (id: string, userItemId: string) =>
+    api.delete<{ success: boolean }>(`/admin/users/${id}/inventory/${userItemId}`),
   clearChat: () => api.delete<{ success: boolean; message: string }>('/admin/chat'),
   // Pending users management
   getPendingUsers: () => api.get<{ pendingUsers: PendingUser[] }>('/admin/pending-users'),

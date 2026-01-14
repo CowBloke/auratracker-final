@@ -242,6 +242,149 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
   }
 });
 
+// ========== USER INVENTORY MANAGEMENT ==========
+
+// Get a user's inventory (admin only)
+router.get('/users/:id/inventory', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const items = await prisma.userItem.findMany({
+      where: { userId: id },
+      include: { item: true },
+      orderBy: { acquiredAt: 'desc' },
+    });
+
+    res.json({ items });
+  } catch (error) {
+    console.error('Admin get user inventory error:', error);
+    res.status(500).json({ error: 'Failed to get inventory' });
+  }
+});
+
+// Add an item to a user's inventory (admin only)
+router.post('/users/:id/inventory', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { itemId, quantity = 1 } = req.body;
+
+    if (!itemId) {
+      return res.status(400).json({ error: 'Item ID is required' });
+    }
+
+    if (parseInt(quantity) <= 0) {
+      return res.status(400).json({ error: 'Quantity must be greater than 0' });
+    }
+
+    const [user, item] = await Promise.all([
+      prisma.user.findUnique({ where: { id }, select: { id: true } }),
+      prisma.item.findUnique({ where: { id: itemId }, select: { id: true } }),
+    ]);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (!item) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+
+    const userItem = await prisma.userItem.upsert({
+      where: {
+        userId_itemId: {
+          userId: id,
+          itemId,
+        },
+      },
+      create: {
+        userId: id,
+        itemId,
+        quantity: parseInt(quantity),
+      },
+      update: {
+        quantity: { increment: parseInt(quantity) },
+      },
+      include: { item: true },
+    });
+
+    res.status(201).json({ item: userItem });
+  } catch (error) {
+    console.error('Admin add user inventory item error:', error);
+    res.status(500).json({ error: 'Failed to add inventory item' });
+  }
+});
+
+// Update a user's inventory item quantity (admin only)
+router.patch('/users/:id/inventory/:userItemId', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id, userItemId } = req.params;
+    const { quantity } = req.body;
+
+    if (quantity === undefined) {
+      return res.status(400).json({ error: 'Quantity is required' });
+    }
+
+    const userItem = await prisma.userItem.findUnique({
+      where: { id: userItemId },
+      select: { id: true, userId: true },
+    });
+
+    if (!userItem || userItem.userId !== id) {
+      return res.status(404).json({ error: 'Inventory item not found' });
+    }
+
+    const parsedQuantity = parseInt(quantity);
+
+    if (parsedQuantity <= 0) {
+      await prisma.userItem.delete({ where: { id: userItemId } });
+      return res.json({ removed: true });
+    }
+
+    const updatedItem = await prisma.userItem.update({
+      where: { id: userItemId },
+      data: { quantity: parsedQuantity },
+      include: { item: true },
+    });
+
+    res.json({ item: updatedItem });
+  } catch (error) {
+    console.error('Admin update user inventory item error:', error);
+    res.status(500).json({ error: 'Failed to update inventory item' });
+  }
+});
+
+// Remove an item from a user's inventory (admin only)
+router.delete('/users/:id/inventory/:userItemId', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id, userItemId } = req.params;
+
+    const userItem = await prisma.userItem.findUnique({
+      where: { id: userItemId },
+      select: { id: true, userId: true },
+    });
+
+    if (!userItem || userItem.userId !== id) {
+      return res.status(404).json({ error: 'Inventory item not found' });
+    }
+
+    await prisma.userItem.delete({ where: { id: userItemId } });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Admin delete user inventory item error:', error);
+    res.status(500).json({ error: 'Failed to delete inventory item' });
+  }
+});
+
 // Delete user completely - admin only
 router.delete('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {

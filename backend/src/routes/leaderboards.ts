@@ -17,6 +17,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
     switch (category) {
       case 'aura':
         rankings = await prisma.user.findMany({
+          where: { isAdmin: false },
           select: {
             id: true,
             username: true,
@@ -38,6 +39,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
         
       case 'money':
         rankings = await prisma.user.findMany({
+          where: { isAdmin: false },
           select: {
             id: true,
             username: true,
@@ -59,7 +61,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
         
       case 'doodle_jump':
         rankings = await prisma.gameStats.findMany({
-          where: { gameType: 'doodle_jump' },
+          where: { gameType: 'doodle_jump', user: { isAdmin: false } },
           select: {
             userId: true,
             highScore: true,
@@ -86,6 +88,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
           where: {
             gameType: 'solitaire',
             totalPlayed: { gte: 10 },
+            user: { isAdmin: false },
           },
           select: {
             userId: true,
@@ -114,7 +117,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
         
       case 'casino':
         rankings = await prisma.gameStats.findMany({
-          where: { gameType: 'casino' },
+          where: { gameType: 'casino', user: { isAdmin: false } },
           select: {
             userId: true,
             highScore: true,
@@ -139,6 +142,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
         // Aggregate total games played across all game types
         const userGames = await prisma.gameStats.groupBy({
           by: ['userId'],
+          where: { user: { isAdmin: false } },
           _sum: { totalPlayed: true },
           orderBy: { _sum: { totalPlayed: 'desc' } },
           take: parseInt(limit as string),
@@ -147,7 +151,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
         
         const userIds = userGames.map((g) => g.userId);
         const users = await prisma.user.findMany({
-          where: { id: { in: userIds } },
+          where: { id: { in: userIds }, isAdmin: false },
           select: { id: true, username: true, usernameColor: true },
         });
         const userMap = new Map(users.map((u) => [u.id, { username: u.username, usernameColor: u.usernameColor }]));
@@ -186,6 +190,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
             where: {
               gameType: 'casino',
               highScore: { gt: userStats.highScore },
+              user: { isAdmin: false },
             },
           });
           userRank = higherScores + 1;
@@ -205,6 +210,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
             where: {
               gameType: 'doodle_jump',
               highScore: { gt: userStats.highScore },
+              user: { isAdmin: false },
             },
           });
           userRank = higherScores + 1;
@@ -244,11 +250,11 @@ router.get('/user/:userId', authMiddleware, async (req: AuthRequest, res: Respon
     
     // Calculate ranks
     const auraRank = await prisma.user.count({
-      where: { aura: { gt: user.aura } },
+      where: { aura: { gt: user.aura }, isAdmin: false },
     }) + 1;
     
     const moneyRank = await prisma.user.count({
-      where: { money: { gt: user.money } },
+      where: { money: { gt: user.money }, isAdmin: false },
     }) + 1;
     
     const rankings: Record<string, any> = {
@@ -261,6 +267,7 @@ router.get('/user/:userId', authMiddleware, async (req: AuthRequest, res: Respon
         where: {
           gameType: stat.gameType,
           highScore: { gt: stat.highScore },
+          user: { isAdmin: false },
         },
       });
       
