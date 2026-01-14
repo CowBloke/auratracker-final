@@ -1,7 +1,6 @@
-import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, ReactNode, Dispatch, SetStateAction } from 'react';
 import { SidebarProvider as ShadcnSidebarProvider } from '@/components/ui/sidebar';
 import ChatSidebar from './ChatSidebar';
-import { ChatSidebarTrigger } from './ChatSidebarTrigger';
 import { useSocket } from '@/contexts/SocketContext';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -10,7 +9,7 @@ const CHAT_SIDEBAR_STORAGE_KEY = 'chat-sidebar-open';
 // Contexte partagé pour l'état de la sidebar de chat
 const ChatSidebarContext = createContext<{
   open: boolean;
-  setOpen: (open: boolean) => void;
+  setOpen: Dispatch<SetStateAction<boolean>>;
   unreadCount: number;
 } | null>(null);
 
@@ -22,7 +21,7 @@ export function useChatSidebar() {
   return context;
 }
 
-function ChatSidebarProvider({ children }: { children: ReactNode }) {
+export function ChatSidebarProvider({ children }: { children: ReactNode }) {
   const { messages } = useSocket();
   const { user } = useAuth();
   const [open, setOpen] = useState(() => {
@@ -57,38 +56,17 @@ function ChatSidebarProvider({ children }: { children: ReactNode }) {
 
   return (
     <ChatSidebarContext.Provider value={{ open, setOpen, unreadCount }}>
-      <ShadcnSidebarProvider
-        className="!w-auto"
-        open={open}
-        onOpenChange={setOpen}
-      >
-        {children}
-      </ShadcnSidebarProvider>
+      {children}
     </ChatSidebarContext.Provider>
   );
 }
 
 export function ChatSidebarWrapper() {
+  const { open, setOpen } = useChatSidebar();
+
   return (
-    <ChatSidebarProvider>
+    <ShadcnSidebarProvider className="!w-auto" open={open} onOpenChange={setOpen}>
       <ChatSidebar />
-      <FloatingChatTrigger />
-    </ChatSidebarProvider>
-  );
-}
-
-function FloatingChatTrigger() {
-  return (
-    <div className="fixed bottom-6 right-6 z-50">
-      <ChatSidebarTrigger />
-    </div>
-  );
-}
-
-export function ChatSidebarTriggerWrapper() {
-  return (
-    <ChatSidebarProvider>
-      <ChatSidebarTrigger />
-    </ChatSidebarProvider>
+    </ShadcnSidebarProvider>
   );
 }

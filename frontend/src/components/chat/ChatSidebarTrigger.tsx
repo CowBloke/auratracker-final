@@ -1,25 +1,27 @@
-import { MessageCircle } from 'lucide-react';
-import { useSidebar } from '@/components/ui/sidebar';
+import { PanelRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { useChatSidebar } from './ChatSidebarWrapper';
 
-export function ChatSidebarTrigger() {
-  const { toggleSidebar } = useSidebar();
-  const { unreadCount } = useChatSidebar();
+export function ChatSidebarTrigger({ className }: { className?: string }) {
+  const { setOpen, unreadCount } = useChatSidebar();
 
   return (
-    <button
+    <Button
       data-sidebar="trigger"
-      onClick={toggleSidebar}
+      variant="ghost"
+      size="icon"
+      onClick={() => setOpen((prev) => !prev)}
       title="Toggle Chat"
-      className="h-12 w-12 flex items-center justify-center bg-background border border-border/40 rounded-full shadow-lg hover:bg-muted transition-colors relative"
+      className={cn("relative h-7 w-7", className)}
     >
-      <MessageCircle className="h-5 w-5 text-muted-foreground" />
+      <PanelRight className="h-4 w-4" />
       {unreadCount > 0 && (
-        <span className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center text-[10px] font-medium bg-red-500 text-white rounded-full">
+        <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 flex items-center justify-center text-[9px] font-medium bg-red-500 text-white rounded-full">
           {unreadCount > 99 ? '99+' : unreadCount}
         </span>
       )}
       <span className="sr-only">Toggle Chat Sidebar</span>
-    </button>
+    </Button>
   );
 }
