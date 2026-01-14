@@ -45,6 +45,8 @@ const games = [
 
 export default function Games() {
   const { currentParty } = useSocket();
+  const multiplayerGames = games.filter((game) => game.requiresParty);
+  const soloGames = games.filter((game) => !game.requiresParty);
 
   const getGameLink = (game: typeof games[0]) => {
     if (game.id === 'bomb-party') {
@@ -73,43 +75,102 @@ export default function Games() {
       <div className="h-px bg-border" />
 
       {/* Games List */}
-      <section className="space-y-0">
-        {games.map((game) => (
-          <Link
-            key={game.id}
-            to={getGameLink(game)}
-            className="group flex items-center justify-between py-6 border-b border-border/30 hover:border-foreground/30 transition-colors"
-          >
-            <div className="space-y-1">
-              <div className="flex items-center gap-4">
-                <h2 className="text-xl font-medium group-hover:text-foreground transition-colors">
-                  {game.name}
-                </h2>
-                <span className={cn(
-                  "text-xs uppercase tracking-wide",
-                  game.requiresParty ? "text-purple-400" : "text-muted-foreground"
-                )}>
-                  {game.type}
-                </span>
-                {game.requiresParty && (
-                  <span className={cn(
-                    "flex items-center gap-1 text-xs px-2 py-0.5 rounded border",
-                    currentParty
-                      ? "border-green-500/30 text-green-500"
-                      : "border-muted-foreground/30 text-muted-foreground"
-                  )}>
-                    <Users className="h-3 w-3" />
-                    {currentParty ? 'Party' : 'Besoin party'}
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {game.description}
-              </p>
-            </div>
-            <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all" />
-          </Link>
-        ))}
+      <section className="space-y-10">
+        <div className="space-y-2">
+          <h2 className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            Multijoueur
+          </h2>
+          <div className="space-y-0">
+            {multiplayerGames.map((game) => (
+              <Link
+                key={game.id}
+                to={getGameLink(game)}
+                className="group flex items-center justify-between py-6 border-b border-border/30 hover:border-foreground/30 transition-colors"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-4">
+                    <h3 className="text-xl font-medium group-hover:text-foreground transition-colors">
+                      {game.name}
+                    </h3>
+                    <span
+                      className={cn(
+                        "text-xs uppercase tracking-wide",
+                        game.requiresParty ? "text-purple-400" : "text-muted-foreground"
+                      )}
+                    >
+                      {game.type}
+                    </span>
+                    {game.requiresParty && (
+                      <span
+                        className={cn(
+                          "flex items-center gap-1 text-xs px-2 py-0.5 rounded border",
+                          currentParty
+                            ? "border-green-500/30 text-green-500"
+                            : "border-muted-foreground/30 text-muted-foreground"
+                        )}
+                      >
+                        <Users className="h-3 w-3" />
+                        {currentParty ? 'Party' : 'Besoin party'}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {game.description}
+                  </p>
+                </div>
+                <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all" />
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <h2 className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            Solo
+          </h2>
+          <div className="space-y-0">
+            {soloGames.map((game) => (
+              <Link
+                key={game.id}
+                to={getGameLink(game)}
+                className="group flex items-center justify-between py-6 border-b border-border/30 hover:border-foreground/30 transition-colors"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-4">
+                    <h3 className="text-xl font-medium group-hover:text-foreground transition-colors">
+                      {game.name}
+                    </h3>
+                    <span
+                      className={cn(
+                        "text-xs uppercase tracking-wide",
+                        game.requiresParty ? "text-purple-400" : "text-muted-foreground"
+                      )}
+                    >
+                      {game.type}
+                    </span>
+                    {game.requiresParty && (
+                      <span
+                        className={cn(
+                          "flex items-center gap-1 text-xs px-2 py-0.5 rounded border",
+                          currentParty
+                            ? "border-green-500/30 text-green-500"
+                            : "border-muted-foreground/30 text-muted-foreground"
+                        )}
+                      >
+                        <Users className="h-3 w-3" />
+                        {currentParty ? 'Party' : 'Besoin party'}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {game.description}
+                  </p>
+                </div>
+                <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all" />
+              </Link>
+            ))}
+          </div>
+        </div>
       </section>
     </div>
   );
