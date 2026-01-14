@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { adminApi, AdminUser, ShopItem, BugReport, PendingUser } from '../services/api';
+import { adminApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem } from '../services/api';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +37,12 @@ const EFFECT_TYPES = [
   { value: 'BONUS_MONEY', label: 'Bonus Argent', description: 'Donne un bonus d\'argent à l\'utilisation' },
 ];
 
+const ITEM_TYPE_LABELS: Record<string, string> = {
+  CONSUMABLE: 'Consommable',
+  COSMETIC: 'Cosmétique',
+  UPGRADE: 'Amélioration',
+};
+
 interface ItemFormData {
   name: string;
   description: string;
@@ -69,6 +75,16 @@ export default function Admin() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [clearingChat, setClearingChat] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [inventoryDialogOpen, setInventoryDialogOpen] = useState(false);
+  const [inventoryUser, setInventoryUser] = useState<AdminUser | null>(null);
+  const [inventoryItems, setInventoryItems] = useState<AdminInventoryItem[]>([]);
+  const [loadingInventory, setLoadingInventory] = useState(false);
+  const [inventoryQuantities, setInventoryQuantities] = useState<Record<string, number>>({});
+  const [inventoryAddItemId, setInventoryAddItemId] = useState<string>('');
+  const [inventoryAddQuantity, setInventoryAddQuantity] = useState(1);
+  const [addingInventoryItem, setAddingInventoryItem] = useState(false);
+  const [updatingInventoryItem, setUpdatingInventoryItem] = useState<string | null>(null);
+  const [removingInventoryItem, setRemovingInventoryItem] = useState<string | null>(null);
 
   // Items state
   const [items, setItems] = useState<ShopItem[]>([]);
@@ -354,6 +370,125 @@ export default function Admin() {
       showMessage('error', error.response?.data?.error || 'Erreur');
     } finally {
       setClearingChat(false);
+    }
+  };
+
+  const openInventory = (u: AdminUser) => {
+    setInventoryUser(u);
+    setInventoryDialogOpen(true);
+    setInventoryAddQuantity(1);
+    setInventoryAddItemId(items[0]?.id || '');
+    fetchUserInventory(u.id);
+  };
+
+  const closeInventory = () => {
+    setInventoryDialogOpen(false);
+    setInventoryUser(null);
+    setInventoryItems([]);
+    setInventoryQuantities({});
+    setInventoryAddItemId('');
+  };
+
+  const fetchUserInventory = async (userId: string) => {
+    try {
+      setLoadingInventory(true);
+      const res = await adminApi.getUserInventory(userId);
+      setInventoryItems(res.data.items);
+      setInventoryQuantities(res.data.items.reduce((acc, item) => {
+        acc[item.id] = item.quantity;
+        return acc;
+      }, {} as Record<string, number>));
+    } catch (error) {
+      console.error('Failed to fetch inventory:', error);
+      showMessage('error', 'Erreur lors du chargement de l\'inventaire');
+    } finally {
+      setLoadingInventory(false);
+    }
+  };
+
+  const addInventoryItem = async () => {
+    if (!inventoryUser || !inventoryAddItemId) {
+      showMessage('error', 'Sélectionnez un objet');
+      return;
+    }
+    if (inventoryAddQuantity <= 0) {
+      showMessage('error', 'Quantité invalide');
+      return;
+    }
+
+    try {
+      setAddingInventoryItem(true);
+      const res = await adminApi.addUserInventoryItem(inventoryUser.id, {
+        itemId: inventoryAddItemId,
+        quantity: inventoryAddQuantity,
+      });
+      setInventoryItems((prev) => {
+        const existingIndex = prev.findIndex((item) => item.item.id === inventoryAddItemId);
+        if (existingIndex >= 0) {
+          const updated = [...prev];
+          updated[existingIndex] = res.data.item;
+          return updated;
+        }
+        return [res.data.item, ...prev];
+      });
+      setInventoryQuantities((prev) => ({
+        ...prev,
+        [res.data.item.id]: res.data.item.quantity,
+      }));
+      showMessage('success', 'Objet ajouté');
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur');
+    } finally {
+      setAddingInventoryItem(false);
+    }
+  };
+
+  const updateInventoryQuantity = async (userItemId: string) => {
+    if (!inventoryUser) return;
+    const nextQuantity = inventoryQuantities[userItemId];
+    if (nextQuantity === undefined) return;
+
+    try {
+      setUpdatingInventoryItem(userItemId);
+      const res = await adminApi.updateUserInventoryItem(inventoryUser.id, userItemId, {
+        quantity: nextQuantity,
+      });
+      if (res.data.removed) {
+        setInventoryItems((prev) => prev.filter((item) => item.id !== userItemId));
+        setInventoryQuantities((prev) => {
+          const { [userItemId]: _removed, ...rest } = prev;
+          return rest;
+        });
+      } else if (res.data.item) {
+        setInventoryItems((prev) => prev.map((item) => item.id === userItemId ? res.data.item! : item));
+        setInventoryQuantities((prev) => ({
+          ...prev,
+          [userItemId]: res.data.item!.quantity,
+        }));
+      }
+      showMessage('success', 'Inventaire mis à jour');
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur');
+    } finally {
+      setUpdatingInventoryItem(null);
+    }
+  };
+
+  const removeInventoryItem = async (userItemId: string) => {
+    if (!inventoryUser) return;
+    try {
+      setRemovingInventoryItem(userItemId);
+      await adminApi.deleteUserInventoryItem(inventoryUser.id, userItemId);
+      setInventoryItems((prev) => prev.filter((item) => item.id !== userItemId));
+      setInventoryQuantities((prev) => {
+        const { [userItemId]: _removed, ...rest } = prev;
+        return rest;
+      });
+      showMessage('success', 'Objet retiré');
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur');
+    } finally {
+      setRemovingInventoryItem(null);
     }
   };
 
@@ -667,6 +802,15 @@ export default function Admin() {
                             className="h-8 border-border/50"
                           >
                             Modifier
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openInventory(u)}
+                            className="h-8 border-border/50"
+                          >
+                            <Package className="h-4 w-4 mr-1" />
+                            Inventaire
                           </Button>
                           
                           {!u.isAdmin && (
@@ -1050,6 +1194,227 @@ export default function Admin() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* User Inventory Dialog */}
+      <Dialog
+        open={inventoryDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeInventory();
+          } else {
+            setInventoryDialogOpen(true);
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              Inventaire de {inventoryUser?.username || 'l\'utilisateur'}
+            </DialogTitle>
+            <DialogDescription>
+              Consultez et ajustez les objets détenus par l'utilisateur.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            <div className="border border-border/30 rounded p-4 space-y-3">
+              <h3 className="text-sm text-muted-foreground tracking-wide uppercase">
+                Ajouter un objet
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                <div className="space-y-2">
+                  <label className="text-xs text-muted-foreground">Objet</label>
+                  <Select
+                    value={inventoryAddItemId}
+                    onValueChange={(value) => setInventoryAddItemId(value)}
+                  >
+                    <SelectTrigger className="bg-transparent">
+                      <SelectValue placeholder="Choisir un objet" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {items.length === 0 ? (
+                        <SelectItem value="none" disabled>
+                          Aucun objet disponible
+                        </SelectItem>
+                      ) : (
+                        items.map((item) => (
+                          <SelectItem key={item.id} value={item.id}>
+                            {item.name} • {ITEM_TYPE_LABELS[item.type] || item.type}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs text-muted-foreground">Quantité</label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={inventoryAddQuantity}
+                    onChange={(e) => setInventoryAddQuantity(parseInt(e.target.value) || 1)}
+                    className="bg-transparent"
+                  />
+                </div>
+                <Button
+                  onClick={addInventoryItem}
+                  disabled={addingInventoryItem || items.length === 0 || !inventoryAddItemId}
+                  className="h-9"
+                >
+                  {addingInventoryItem ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Plus className="h-4 w-4 mr-2" />
+                  )}
+                  Ajouter
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm text-muted-foreground tracking-wide uppercase">
+                  Inventaire actuel
+                </h3>
+                <span className="text-xs text-muted-foreground">
+                  Définissez 0 pour supprimer un objet
+                </span>
+              </div>
+
+              {loadingInventory ? (
+                <div className="flex justify-center py-8">
+                  <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+                </div>
+              ) : inventoryItems.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  Aucun objet dans l'inventaire
+                </p>
+              ) : (
+                <div className="space-y-0">
+                  {inventoryItems.map((inventoryItem) => {
+                    const effect = inventoryItem.item.effect ? parseEffect(inventoryItem.item.effect) : null;
+                    const effectLabel = effect
+                      ? EFFECT_TYPES.find((effectItem) => effectItem.value === effect.type)?.label || effect.type
+                      : null;
+
+                    return (
+                      <div
+                        key={inventoryItem.id}
+                        className="py-4 border-b border-border/30 last:border-0"
+                      >
+                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                          <div className="flex items-center gap-4 min-w-0">
+                            {inventoryItem.item.imageUrl ? (
+                              <img
+                                src={inventoryItem.item.imageUrl}
+                                alt={inventoryItem.item.name}
+                                className="w-10 h-10 object-cover rounded"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 bg-muted/30 flex items-center justify-center rounded">
+                                <Package className="w-5 h-5 text-muted-foreground" />
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-medium truncate">{inventoryItem.item.name}</span>
+                                <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                                  {ITEM_TYPE_LABELS[inventoryItem.item.type] || inventoryItem.item.type}
+                                </span>
+                              </div>
+                              {effectLabel && (
+                                <p className="text-xs text-muted-foreground/70">
+                                  Effet: {effectLabel}
+                                </p>
+                              )}
+                              <p className="text-xs text-muted-foreground/60">
+                                Ajouté le {new Date(inventoryItem.acquiredAt).toLocaleDateString('fr-FR', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric',
+                                })}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              min={0}
+                              value={inventoryQuantities[inventoryItem.id] ?? inventoryItem.quantity}
+                              onChange={(e) =>
+                                setInventoryQuantities((prev) => ({
+                                  ...prev,
+                                  [inventoryItem.id]: parseInt(e.target.value) || 0,
+                                }))
+                              }
+                              className="h-9 w-24 bg-transparent"
+                            />
+                            <Button
+                              size="sm"
+                              onClick={() => updateInventoryQuantity(inventoryItem.id)}
+                              disabled={updatingInventoryItem === inventoryItem.id}
+                              className="h-9"
+                            >
+                              {updatingInventoryItem === inventoryItem.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Save className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-9 border-destructive/50 text-destructive hover:bg-destructive/10"
+                                  disabled={removingInventoryItem === inventoryItem.id}
+                                >
+                                  {removingInventoryItem === inventoryItem.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle className="flex items-center gap-2">
+                                    <AlertTriangle className="h-5 w-5 text-destructive" />
+                                    Retirer {inventoryItem.item.name} ?
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    L'objet sera supprimé de l'inventaire de l'utilisateur.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => removeInventoryItem(inventoryItem.id)}
+                                    className="bg-destructive hover:bg-destructive/90"
+                                  >
+                                    Retirer
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={closeInventory}>
+              Fermer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Item Create/Edit Dialog */}
       <Dialog open={itemDialogOpen} onOpenChange={setItemDialogOpen}>

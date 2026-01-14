@@ -11,11 +11,11 @@ const CANVAS_WIDTH = 400;
 const CANVAS_HEIGHT = 600;
 
 // Physics (exact values from old implementation)
-const GAME_SPEED = 1.3;
+const GAME_SPEED = 1.85;
 const GRAVITY = 0.4;
-const JUMP_FORCE = -12;
+const JUMP_FORCE = -13.5;
 const MOVEMENT_SPEED = 3.55;
-const TRAMPOLINE_JUMP_FORCE = -20;
+const TRAMPOLINE_JUMP_FORCE = -22;
 const CONVEYOR_SPEED = 2;
 const MOVING_PLATFORM_SPEED = 1;
 
