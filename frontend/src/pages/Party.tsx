@@ -29,6 +29,12 @@ export default function Party() {
     inviteToParty,
     kickFromParty,
     fetchPublicParties,
+    partyGame,
+    lastPartyGameResult,
+    selectPartyGame,
+    setPartyReady,
+    submitHangmanWord,
+    submitHangmanGuess,
   } = useSocket();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -36,6 +42,8 @@ export default function Party() {
   const [partyName, setPartyName] = useState('');
   const [isPublic, setIsPublic] = useState(false);
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [hangmanWord, setHangmanWord] = useState('');
+  const [hangmanGuess, setHangmanGuess] = useState('');
 
   useEffect(() => {
     fetchPublicParties();
@@ -69,6 +77,13 @@ export default function Party() {
       u.id !== user?.id &&
       !partyMembers.find((m) => m.userId === u.id)
   );
+  const isReady = partyGame?.readyUserIds.includes(user?.id || '') || false;
+  const pickerName = partyGame?.pickerId
+    ? partyMembers.find((m) => m.userId === partyGame.pickerId)?.username || 'Quelqu’un'
+    : null;
+  const currentTurnName = partyGame?.state.currentTurnUserId
+    ? partyMembers.find((m) => m.userId === partyGame.state.currentTurnUserId)?.username || 'Quelqu’un'
+    : null;
 
   return (
     <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
@@ -194,6 +209,182 @@ export default function Party() {
               </div>
             ))}
           </div>
+
+          {/* Party Games */}
+          {partyMembers.length > 1 && (
+            <section className="space-y-4 pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm text-muted-foreground tracking-wide uppercase">
+                    Jeux de party
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Le leader choisit un jeu et tout le monde doit être prêt.
+                  </p>
+                </div>
+              </div>
+
+              {!partyGame && (
+                <div className="border border-border/40 p-4 flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Pendu</p>
+                    <p className="text-sm text-muted-foreground">
+                      Un joueur choisit un mot, les autres devinent à tour de rôle.
+                    </p>
+                    {lastPartyGameResult && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Dernier mot: {lastPartyGameResult.word} ·
+                        {lastPartyGameResult.winnerId
+                          ? ` gagné par ${partyMembers.find((m) => m.userId === lastPartyGameResult.winnerId)?.username || 'Quelqu’un'}`
+                          : ' partie terminée'}
+                      </p>
+                    )}
+                  </div>
+                  {isLeader ? (
+                    <button
+                      onClick={() => selectPartyGame('hangman')}
+                      className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+                    >
+                      Choisir
+                    </button>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">En attente du leader</span>
+                  )}
+                </div>
+              )}
+
+              {partyGame?.phase === 'lobby' && (
+                <div className="border border-border/40 p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">Pendu</p>
+                      <p className="text-sm text-muted-foreground">
+                        Tout le monde doit être prêt pour commencer.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setPartyReady(!isReady)}
+                      className={cn(
+                        "px-4 py-2 text-sm border transition-colors",
+                        isReady
+                          ? "border-foreground text-foreground hover:bg-foreground hover:text-background"
+                          : "border-border/40 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                      )}
+                    >
+                      {isReady ? 'Prêt' : 'Pas prêt'}
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {partyMembers.map((member) => (
+                      <div key={member.userId} className="flex items-center justify-between text-sm">
+                        <span>{member.username}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {partyGame.readyUserIds.includes(member.userId) ? 'prêt' : 'en attente'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {partyGame?.phase === 'choose-word' && (
+                <div className="border border-border/40 p-4 space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    {pickerName ? `${pickerName} choisit un mot.` : 'Choix du mot en cours.'}
+                  </p>
+                  {partyGame.pickerId === user?.id ? (
+                    <div className="space-y-2">
+                      <Input
+                        value={hangmanWord}
+                        onChange={(e) => setHangmanWord(e.target.value)}
+                        placeholder="Entre ton mot (lettres uniquement)"
+                        className="h-11 bg-transparent border-border/50"
+                      />
+                      <Button
+                        variant="outline"
+                        className="border-foreground"
+                        onClick={() => {
+                          submitHangmanWord(hangmanWord);
+                          setHangmanWord('');
+                        }}
+                        disabled={!hangmanWord.trim()}
+                      >
+                        Valider
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">En attente du mot...</p>
+                  )}
+                </div>
+              )}
+
+              {partyGame?.phase === 'playing' && (
+                <div className="border border-border/40 p-4 space-y-4">
+                  <div className="space-y-2">
+                    <p className="text-lg tracking-[0.3em] font-mono">
+                      {partyGame.state.maskedWord}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Erreurs: {partyGame.state.wrongGuesses.join(', ') || 'aucune'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Vies restantes: {partyGame.state.remainingLives}/{partyGame.state.maxWrongGuesses}
+                    </p>
+                    {partyGame.state.word && (
+                      <p className="text-xs text-muted-foreground">
+                        Mot: {partyGame.state.word}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Tour: {currentTurnName || '...'}
+                    </p>
+                  </div>
+                  {partyGame.pickerId !== user?.id && partyGame.state.currentTurnUserId === user?.id && (
+                    <div className="space-y-2">
+                      <Input
+                        value={hangmanGuess}
+                        onChange={(e) => setHangmanGuess(e.target.value)}
+                        placeholder="Lettre ou mot"
+                        className="h-11 bg-transparent border-border/50"
+                      />
+                      <Button
+                        variant="outline"
+                        className="border-foreground"
+                        onClick={() => {
+                          submitHangmanGuess(hangmanGuess);
+                          setHangmanGuess('');
+                        }}
+                        disabled={!hangmanGuess.trim()}
+                      >
+                        Proposer
+                      </Button>
+                    </div>
+                  )}
+                  {partyGame.pickerId === user?.id && (
+                    <p className="text-xs text-muted-foreground">
+                      Tu observes, les autres devinent.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {partyGame?.phase === 'ended' && lastPartyGameResult && (
+                <div className="border border-border/40 p-4 space-y-2">
+                  <p className="font-medium">Partie terminée</p>
+                  <p className="text-sm text-muted-foreground">
+                    Mot: {lastPartyGameResult.word}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Gagnant:{' '}
+                    {lastPartyGameResult.winnerId
+                      ? partyMembers.find((m) => m.userId === lastPartyGameResult.winnerId)?.username || 'Quelqu’un'
+                      : 'Aucun'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Retour au menu...</p>
+                </div>
+              )}
+            </section>
+          )}
         </section>
       ) : (
         <section className="space-y-6">

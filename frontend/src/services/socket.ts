@@ -46,6 +46,9 @@ export const partyEvents = {
   register: (userId: string) => {
     socket?.emit('party:register', { userId });
   },
+  sync: (userId: string) => {
+    socket?.emit('party:sync', { userId });
+  },
   create: (userId: string, name?: string, isPublic: boolean = false) => {
     socket?.emit('party:create', { userId, name, isPublic });
   },
@@ -63,6 +66,18 @@ export const partyEvents = {
   },
   list: () => {
     socket?.emit('party:list');
+  },
+  gameSelect: (userId: string, partyId: string, gameType: string) => {
+    socket?.emit('party:game:select', { userId, partyId, gameType });
+  },
+  gameReady: (userId: string, partyId: string, isReady: boolean) => {
+    socket?.emit('party:game:ready', { userId, partyId, isReady });
+  },
+  gameWord: (userId: string, partyId: string, word: string) => {
+    socket?.emit('party:game:word', { userId, partyId, word });
+  },
+  gameGuess: (userId: string, partyId: string, guess: string) => {
+    socket?.emit('party:game:guess', { userId, partyId, guess });
   },
 };
 

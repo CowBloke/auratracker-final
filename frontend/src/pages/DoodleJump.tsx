@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { gamesApi } from '../services/api';
 import { Play, RotateCcw, Trophy, X } from 'lucide-react';
 
@@ -25,6 +26,7 @@ const CHARACTER_HEIGHT = 40;
 const PLATFORM_WIDTH = 80;
 const PLATFORM_HEIGHT = 15;
 const PLATFORM_COUNT = 7;
+const PLAYER_IMAGE_SRC = '/assets/doodle-player.png';
 
 // Timing
 const DISAPPEARING_PLATFORM_FADE_TIME = 1000;
@@ -57,19 +59,36 @@ interface LeaderboardEntry {
 }
 
 // ============================================
-// COLOR SCHEME (matching old CSS vars)
+// COLOR SCHEME (theme-aware)
 // ============================================
-const COLORS = {
-  background: '#0a0a0a',
-  platformNormal: '#e0e0e0',
-  platformMoving: '#888888',
-  platformConveyor: '#666666',
-  platformBounce: '#7c3aed',
-  platformDisappear: '#8b5cf6',
-  platformInstantDisappear: '#a78bfa',
-  player: '#ffffff',
-  text: '#ffffff',
-  scoreBackground: 'rgba(30, 30, 30, 0.9)',
+const getColors = (theme: 'light' | 'dark') => {
+  if (theme === 'light') {
+    return {
+      background: '#f8fafc',
+      platformNormal: '#1f2937',
+      platformMoving: '#374151',
+      platformConveyor: '#4b5563',
+      platformBounce: '#7c3aed',
+      platformDisappear: '#a855f7',
+      platformInstantDisappear: '#c084fc',
+      player: '#111827',
+      text: '#0f172a',
+      scoreBackground: 'rgba(255, 255, 255, 0.9)',
+    };
+  }
+
+  return {
+    background: '#0a0a0a',
+    platformNormal: '#e5e7eb',
+    platformMoving: '#9ca3af',
+    platformConveyor: '#6b7280',
+    platformBounce: '#7c3aed',
+    platformDisappear: '#8b5cf6',
+    platformInstantDisappear: '#a78bfa',
+    player: '#ffffff',
+    text: '#ffffff',
+    scoreBackground: 'rgba(30, 30, 30, 0.9)',
+  };
 };
 
 // ============================================
@@ -80,6 +99,9 @@ export default function DoodleJump() {
   const animationRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
 
+  const { theme } = useTheme();
+  const colors = useMemo(() => getColors(theme), [theme]);
+
   // Game state refs
   const platformsRef = useRef<Platform[]>([]);
   const scoreRef = useRef(0);
@@ -89,6 +111,7 @@ export default function DoodleJump() {
   const moveLeftRef = useRef(false);
   const moveRightRef = useRef(false);
   const facingLeftRef = useRef(false);
+  const playerImageRef = useRef<HTMLImageElement | null>(null);
 
   const { user, refreshUser } = useAuth();
   const [score, setScore] = useState(0);
@@ -98,11 +121,24 @@ export default function DoodleJump() {
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [playerImageLoaded, setPlayerImageLoaded] = useState(false);
 
   // Fetch stats and leaderboard on mount
   useEffect(() => {
     fetchStats();
     fetchLeaderboard();
+  }, []);
+
+  useEffect(() => {
+    const img = new Image();
+    img.src = PLAYER_IMAGE_SRC;
+    img.onload = () => setPlayerImageLoaded(true);
+    img.onerror = () => setPlayerImageLoaded(false);
+    playerImageRef.current = img;
+
+    return () => {
+      playerImageRef.current = null;
+    };
   }, []);
 
   const fetchStats = async () => {
@@ -443,7 +479,7 @@ export default function DoodleJump() {
 
     // ========== RENDER ==========
     // Clear canvas
-    ctx.fillStyle = COLORS.background;
+    ctx.fillStyle = colors.background;
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
     // Draw platforms
@@ -453,17 +489,17 @@ export default function DoodleJump() {
 
       // Platform color based on type
       if (platform.effect === 'bounce') {
-        ctx.fillStyle = COLORS.platformBounce;
+        ctx.fillStyle = colors.platformBounce;
       } else if (platform.effect === 'disappear') {
-        ctx.fillStyle = COLORS.platformDisappear;
+        ctx.fillStyle = colors.platformDisappear;
       } else if (platform.effect === 'instant-disappear') {
-        ctx.fillStyle = COLORS.platformInstantDisappear;
+        ctx.fillStyle = colors.platformInstantDisappear;
       } else if (platform.movement === 'moving') {
-        ctx.fillStyle = COLORS.platformMoving;
+        ctx.fillStyle = colors.platformMoving;
       } else if (platform.movement === 'conveyor-left' || platform.movement === 'conveyor-right') {
-        ctx.fillStyle = COLORS.platformConveyor;
+        ctx.fillStyle = colors.platformConveyor;
       } else {
-        ctx.fillStyle = COLORS.platformNormal;
+        ctx.fillStyle = colors.platformNormal;
       }
 
       // Draw platform (bounce is round, others are rectangular)
@@ -500,30 +536,48 @@ export default function DoodleJump() {
       ctx.restore();
     }
 
-    // Draw player (ball)
     const playerScreenY = CANVAS_HEIGHT - positionRef.current.y - CHARACTER_HEIGHT;
-    ctx.fillStyle = COLORS.player;
-    ctx.beginPath();
-    ctx.arc(
-      positionRef.current.x + CHARACTER_WIDTH / 2,
-      playerScreenY + CHARACTER_HEIGHT / 2,
-      CHARACTER_WIDTH / 2,
-      0,
-      Math.PI * 2
-    );
-    ctx.fill();
+    if (playerImageLoaded && playerImageRef.current) {
+      ctx.save();
+      if (facingLeftRef.current) {
+        ctx.translate(positionRef.current.x + CHARACTER_WIDTH, playerScreenY);
+        ctx.scale(-1, 1);
+        ctx.drawImage(playerImageRef.current, 0, 0, CHARACTER_WIDTH, CHARACTER_HEIGHT);
+      } else {
+        ctx.drawImage(
+          playerImageRef.current,
+          positionRef.current.x,
+          playerScreenY,
+          CHARACTER_WIDTH,
+          CHARACTER_HEIGHT
+        );
+      }
+      ctx.restore();
+    } else {
+      // Draw fallback player (ball)
+      ctx.fillStyle = colors.player;
+      ctx.beginPath();
+      ctx.arc(
+        positionRef.current.x + CHARACTER_WIDTH / 2,
+        playerScreenY + CHARACTER_HEIGHT / 2,
+        CHARACTER_WIDTH / 2,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
 
-    // Draw eyes
-    ctx.fillStyle = COLORS.background;
-    const eyeOffsetX = facingLeftRef.current ? -4 : 4;
-    ctx.beginPath();
-    ctx.arc(positionRef.current.x + CHARACTER_WIDTH / 2 - 6 + eyeOffsetX, playerScreenY + CHARACTER_HEIGHT / 2 - 5, 4, 0, Math.PI * 2);
-    ctx.arc(positionRef.current.x + CHARACTER_WIDTH / 2 + 6 + eyeOffsetX, playerScreenY + CHARACTER_HEIGHT / 2 - 5, 4, 0, Math.PI * 2);
-    ctx.fill();
+      // Draw eyes
+      ctx.fillStyle = colors.background;
+      const eyeOffsetX = facingLeftRef.current ? -4 : 4;
+      ctx.beginPath();
+      ctx.arc(positionRef.current.x + CHARACTER_WIDTH / 2 - 6 + eyeOffsetX, playerScreenY + CHARACTER_HEIGHT / 2 - 5, 4, 0, Math.PI * 2);
+      ctx.arc(positionRef.current.x + CHARACTER_WIDTH / 2 + 6 + eyeOffsetX, playerScreenY + CHARACTER_HEIGHT / 2 - 5, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     // Continue loop
     animationRef.current = requestAnimationFrame(gameLoop);
-  }, [handleGameOver, generateNewPlatforms]);
+  }, [handleGameOver, generateNewPlatforms, colors, playerImageLoaded]);
 
   // ============================================
   // INPUT HANDLING
@@ -721,23 +775,23 @@ export default function DoodleJump() {
       {/* Platform Legend */}
       <div className="flex justify-center gap-6 text-xs text-muted-foreground">
         <div className="flex items-center gap-2">
-          <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: COLORS.platformNormal }}></div>
+          <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: colors.platformNormal }}></div>
           <span>Normal</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: COLORS.platformMoving }}></div>
+          <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: colors.platformMoving }}></div>
           <span>Mobile</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: COLORS.platformConveyor }}></div>
+          <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: colors.platformConveyor }}></div>
           <span>Tapis</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-2 rounded-full" style={{ backgroundColor: COLORS.platformBounce }}></div>
+          <div className="w-4 h-2 rounded-full" style={{ backgroundColor: colors.platformBounce }}></div>
           <span>Trampoline</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: COLORS.platformDisappear }}></div>
+          <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: colors.platformDisappear }}></div>
           <span>Fragile</span>
         </div>
       </div>
