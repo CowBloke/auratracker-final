@@ -1,5 +1,6 @@
 import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
+import { getActiveGame, serializeGameState } from './bombparty.js';
 
 interface PartyInvite {
   partyId: string;
@@ -10,13 +11,68 @@ interface PartyInvite {
 const partyInvites = new Map<string, PartyInvite[]>(); // userId -> invites
 const userSockets = new Map<string, string>(); // oderId -> socketId
 
-// Auto-disband inactive parties (30 minutes)
-const INACTIVITY_TIMEOUT = 30 * 60 * 1000;
+// Auto-disband inactive parties (15 minutes)
+const INACTIVITY_TIMEOUT = 15 * 60 * 1000;
 
 export const setupPartyHandlers = (socket: Socket, io: Server) => {
-  // Track socket to user mapping
-  socket.on('party:register', (data: { userId: string }) => {
+  // Track socket to user mapping and restore party state if user is in a party
+  socket.on('party:register', async (data: { userId: string }) => {
     userSockets.set(data.userId, socket.id);
+
+    // Check if user is already in a party and restore state
+    try {
+      const membership = await prisma.partyMember.findUnique({
+        where: { userId: data.userId },
+        include: {
+          party: {
+            include: {
+              members: {
+                include: {
+                  user: {
+                    select: { id: true, username: true, usernameColor: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (membership) {
+        // Rejoin socket to party room
+        socket.join(`party:${membership.partyId}`);
+
+        // Send party state to user
+        socket.emit('party:restored', {
+          party: {
+            id: membership.party.id,
+            name: membership.party.name,
+            isPublic: membership.party.isPublic,
+            maxSize: membership.party.maxSize,
+          },
+          members: membership.party.members.map((m) => ({
+            userId: m.userId,
+            username: m.user.username,
+            usernameColor: m.user.usernameColor,
+            isLeader: m.isLeader,
+          })),
+        });
+
+        // Check for active bomb party game and restore it
+        const activeGame = getActiveGame(membership.partyId);
+        if (activeGame && activeGame.isActive) {
+          socket.emit('bombparty:started', serializeGameState(activeGame));
+        }
+
+        // Update party activity
+        await prisma.party.update({
+          where: { id: membership.partyId },
+          data: { lastActivity: new Date() },
+        });
+      }
+    } catch (error) {
+      console.error('Error restoring party state:', error);
+    }
   });
   
   // Create party
@@ -371,6 +427,60 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
     }
   });
   
+  // Force sync party state - clears ghost state
+  socket.on('party:sync', async (data: { userId: string }) => {
+    const { userId } = data;
+
+    try {
+      const membership = await prisma.partyMember.findUnique({
+        where: { userId },
+        include: {
+          party: {
+            include: {
+              members: {
+                include: {
+                  user: {
+                    select: { id: true, username: true, usernameColor: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (membership) {
+        // User is in a party - send full state
+        socket.join(`party:${membership.partyId}`);
+        socket.emit('party:restored', {
+          party: {
+            id: membership.party.id,
+            name: membership.party.name,
+            isPublic: membership.party.isPublic,
+            maxSize: membership.party.maxSize,
+          },
+          members: membership.party.members.map((m) => ({
+            userId: m.userId,
+            username: m.user.username,
+            usernameColor: m.user.usernameColor,
+            isLeader: m.isLeader,
+          })),
+        });
+
+        // Check for active bomb party game
+        const activeGame = getActiveGame(membership.partyId);
+        if (activeGame && activeGame.isActive) {
+          socket.emit('bombparty:started', serializeGameState(activeGame));
+        }
+      } else {
+        // User is NOT in a party - clear any ghost state
+        socket.emit('party:not-in-party');
+      }
+    } catch (error) {
+      console.error('Sync party error:', error);
+    }
+  });
+
   // Get party list (public parties)
   socket.on('party:list', async () => {
     try {

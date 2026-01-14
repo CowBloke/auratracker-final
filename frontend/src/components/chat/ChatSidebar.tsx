@@ -190,7 +190,7 @@ export default function ChatSidebar() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="p-3 border-t border-border/40">
+          <form onSubmit={handleSubmit} className="p-3 pb-16 border-t border-border/40">
             <div className="flex gap-2">
               <Input
                 type="text"

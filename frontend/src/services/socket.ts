@@ -46,6 +46,9 @@ export const partyEvents = {
   register: (userId: string) => {
     socket?.emit('party:register', { userId });
   },
+  sync: (userId: string) => {
+    socket?.emit('party:sync', { userId });
+  },
   create: (userId: string, name?: string, isPublic: boolean = false) => {
     socket?.emit('party:create', { userId, name, isPublic });
   },
@@ -85,6 +88,22 @@ export const gameEvents = {
   },
   end: (roomId: string, winnerId?: string, scores?: Record<string, number>) => {
     socket?.emit('game:end', { roomId, winnerId, scores });
+  },
+};
+
+// Bomb Party events
+export const bombPartyEvents = {
+  start: (userId: string, partyId: string, lives: number, difficulty: 'easy' | 'medium' | 'hard') => {
+    socket?.emit('bombparty:start', { userId, partyId, lives, difficulty });
+  },
+  type: (partyId: string, userId: string, input: string) => {
+    socket?.emit('bombparty:type', { partyId, userId, input });
+  },
+  submit: (partyId: string, userId: string, word: string) => {
+    socket?.emit('bombparty:submit', { partyId, userId, word });
+  },
+  leave: (partyId: string, userId: string) => {
+    socket?.emit('bombparty:leave', { partyId, userId });
   },
 };
 

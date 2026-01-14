@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Socket } from 'socket.io-client';
-import { initSocket, connectSocket, disconnectSocket, chatEvents, partyEvents, gameEvents } from '../services/socket';
+import { initSocket, connectSocket, disconnectSocket, chatEvents, partyEvents, gameEvents, bombPartyEvents } from '../services/socket';
 import { useAuth } from './AuthContext';
 
 interface ChatMessage {
@@ -46,6 +46,41 @@ interface PartyInvite {
   inviterUsername: string;
 }
 
+interface BombPartyPlayer {
+  userId: string;
+  username: string;
+  usernameColor?: string | null;
+  lives: number;
+  isEliminated: boolean;
+  wordsTypedCount: number;
+}
+
+interface BombPartyGameState {
+  partyId: string;
+  players: BombPartyPlayer[];
+  currentPlayerIndex: number;
+  currentPlayerId: string;
+  currentPrompt: string;
+  currentInput: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  turnDuration: number;
+  turnStartTime: number;
+  round: number;
+  usedWords: string[];
+}
+
+interface BombPartyGameOver {
+  winnerId: string | null;
+  winnerUsername: string | null;
+  players: Array<{
+    userId: string;
+    username: string;
+    wordsTypedCount: number;
+    isWinner: boolean;
+    rewards: { aura: number; money: number };
+  }>;
+}
+
 interface SocketContextType {
   socket: Socket | null;
   connected: boolean;
@@ -66,8 +101,18 @@ interface SocketContextType {
   inviteToParty: (targetUserId: string) => void;
   kickFromParty: (targetUserId: string) => void;
   fetchPublicParties: () => void;
+  syncParty: () => void;
   // Balance updates
   balanceUpdate: { userId: string; aura: number; money: number } | null;
+  // Bomb Party
+  bombPartyGame: BombPartyGameState | null;
+  bombPartyGameOver: BombPartyGameOver | null;
+  bombPartyRejection: string | null;
+  startBombParty: (lives: number, difficulty: 'easy' | 'medium' | 'hard') => void;
+  typeBombParty: (input: string) => void;
+  submitBombParty: (word: string) => void;
+  leaveBombParty: () => void;
+  clearBombPartyGameOver: () => void;
 }
 
 const SocketContext = createContext<SocketContextType | null>(null);
@@ -90,6 +135,11 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   
   // Balance update state
   const [balanceUpdate, setBalanceUpdate] = useState<{ userId: string; aura: number; money: number } | null>(null);
+
+  // Bomb Party state
+  const [bombPartyGame, setBombPartyGame] = useState<BombPartyGameState | null>(null);
+  const [bombPartyGameOver, setBombPartyGameOver] = useState<BombPartyGameOver | null>(null);
+  const [bombPartyRejection, setBombPartyRejection] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -154,6 +204,11 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setPartyMembers(data.members);
       });
 
+      s.on('party:restored', (data: { party: Party; members: PartyMember[] }) => {
+        setCurrentParty(data.party);
+        setPartyMembers(data.members);
+      });
+
       s.on('party:member-joined', (member: { userId: string; username: string; usernameColor?: string | null }) => {
         setPartyMembers((prev) => [...prev, { ...member, isLeader: false }]);
       });
@@ -194,12 +249,75 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         );
       });
 
+      s.on('party:not-in-party', () => {
+        // Clear any ghost party state
+        setCurrentParty(null);
+        setPartyMembers([]);
+      });
+
       // Economy events
       s.on('economy:balance-update', (data: { userId: string; aura: number; money: number }) => {
         setBalanceUpdate(data);
         if (data.userId === user.id) {
           updateBalance(data.aura, data.money);
         }
+      });
+
+      // Bomb Party events
+      s.on('bombparty:started', (game: BombPartyGameState) => {
+        setBombPartyGame(game);
+        setBombPartyGameOver(null);
+      });
+
+      s.on('bombparty:typing', (data: { input: string; userId: string }) => {
+        setBombPartyGame((prev) => prev ? { ...prev, currentInput: data.input } : null);
+      });
+
+      s.on('bombparty:word-accepted', (data: BombPartyGameState & { word: string; playerId: string }) => {
+        setBombPartyGame(data);
+      });
+
+      s.on('bombparty:word-rejected', (data: { reason: string }) => {
+        setBombPartyRejection(data.reason);
+        // Auto-clear after 2 seconds
+        setTimeout(() => setBombPartyRejection(null), 2000);
+      });
+
+      s.on('bombparty:bomb-exploded', (data: { playerId: string; username: string; livesRemaining: number }) => {
+        setBombPartyGame((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            players: prev.players.map((p) =>
+              p.userId === data.playerId ? { ...p, lives: data.livesRemaining } : p
+            ),
+          };
+        });
+      });
+
+      s.on('bombparty:player-eliminated', (data: { playerId: string; username: string; reason: string }) => {
+        setBombPartyGame((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            players: prev.players.map((p) =>
+              p.userId === data.playerId ? { ...p, isEliminated: true, lives: 0 } : p
+            ),
+          };
+        });
+      });
+
+      s.on('bombparty:turn-changed', (game: BombPartyGameState) => {
+        setBombPartyGame(game);
+      });
+
+      s.on('bombparty:game-over', (data: BombPartyGameOver) => {
+        setBombPartyGameOver(data);
+        setBombPartyGame(null);
+      });
+
+      s.on('bombparty:error', (data: { message: string }) => {
+        console.error('Bomb Party error:', data.message);
       });
 
       return () => {
@@ -256,6 +374,41 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     partyEvents.list();
   };
 
+  const syncParty = () => {
+    if (user) {
+      partyEvents.sync(user.id);
+    }
+  };
+
+  // Bomb Party actions
+  const startBombParty = (lives: number, difficulty: 'easy' | 'medium' | 'hard') => {
+    if (user && currentParty) {
+      bombPartyEvents.start(user.id, currentParty.id, lives, difficulty);
+    }
+  };
+
+  const typeBombParty = (input: string) => {
+    if (user && currentParty) {
+      bombPartyEvents.type(currentParty.id, user.id, input);
+    }
+  };
+
+  const submitBombParty = (word: string) => {
+    if (user && currentParty) {
+      bombPartyEvents.submit(currentParty.id, user.id, word);
+    }
+  };
+
+  const leaveBombParty = () => {
+    if (user && currentParty) {
+      bombPartyEvents.leave(currentParty.id, user.id);
+    }
+  };
+
+  const clearBombPartyGameOver = () => {
+    setBombPartyGameOver(null);
+  };
+
   return (
     <SocketContext.Provider
       value={{
@@ -276,7 +429,16 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         inviteToParty,
         kickFromParty,
         fetchPublicParties,
+        syncParty,
         balanceUpdate,
+        bombPartyGame,
+        bombPartyGameOver,
+        bombPartyRejection,
+        startBombParty,
+        typeBombParty,
+        submitBombParty,
+        leaveBombParty,
+        clearBombPartyGameOver,
       }}
     >
       {children}

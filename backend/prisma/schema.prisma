@@ -41,7 +41,8 @@ model User {
   bugReports        BugReport[]
   suggestions       Suggestion[]
   suggestionVotes   SuggestionVote[]
-  
+  bombPartyStats    BombPartyStats?
+
   @@index([aura])
   @@index([money])
 }
@@ -267,10 +268,34 @@ model SuggestionVote {
   userId       String
   value        Int      // 1 for upvote, -1 for downvote
   createdAt    DateTime @default(now())
-  
+
   suggestion   Suggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
   user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@unique([suggestionId, userId])
   @@index([suggestionId])
+}
+
+// Bomb Party Prompts (precomputed)
+model BombPartyPrompt {
+  id         String @id @default(uuid())
+  prompt     String @unique  // e.g., "TH", "ING", "QU"
+  wordCount  Int              // precomputed count of valid words
+  difficulty String           // "easy", "medium", "hard"
+
+  @@index([difficulty])
+  @@index([wordCount])
+}
+
+// Bomb Party Player Stats
+model BombPartyStats {
+  id           String  @id @default(uuid())
+  userId       String  @unique
+  wins         Int     @default(0)
+  losses       Int     @default(0)
+  totalPlayed  Int     @default(0)
+  wordsTyped   Int     @default(0)
+  longestWord  String?
+
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

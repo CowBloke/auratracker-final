@@ -349,4 +349,36 @@ export const bugReportApi = {
     api.post<{ bugReport: BugReport }>('/admin/bugs', data),
 };
 
+// Bomb Party API
+export interface BombPartyStats {
+  id: string;
+  userId: string;
+  wins: number;
+  losses: number;
+  totalPlayed: number;
+  wordsTyped: number;
+  longestWord: string | null;
+}
+
+export interface BombPartyLeaderboardEntry {
+  rank: number;
+  userId: string;
+  username: string;
+  usernameColor: string | null;
+  wins: number;
+  losses: number;
+  totalPlayed: number;
+  wordsTyped: number;
+  longestWord: string | null;
+}
+
+export const bombPartyApi = {
+  getStats: (userId: string) =>
+    api.get<BombPartyStats>(`/bombparty/stats/${userId}`),
+  getLeaderboard: (limit?: number) =>
+    api.get<{ rankings: BombPartyLeaderboardEntry[] }>('/bombparty/leaderboard', { params: { limit } }),
+  getPromptStats: () =>
+    api.get<{ total: number; easy: number; medium: number; hard: number }>('/bombparty/prompts/stats'),
+};
+
 export default api;

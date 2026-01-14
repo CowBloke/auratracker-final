@@ -1,7 +1,16 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Users } from 'lucide-react';
+import { useSocket } from '@/contexts/SocketContext';
+import { cn } from '@/lib/utils';
 
 const games = [
+  {
+    id: 'bomb-party',
+    name: 'Bomb Party',
+    description: 'Trouve des mots contenant les lettres avant que la bombe explose.',
+    type: 'Party',
+    requiresParty: true,
+  },
   {
     id: 'clash',
     name: 'Clash',
@@ -35,6 +44,15 @@ const games = [
 ];
 
 export default function Games() {
+  const { currentParty } = useSocket();
+
+  const getGameLink = (game: typeof games[0]) => {
+    if (game.id === 'bomb-party') {
+      return '/games/bomb-party';
+    }
+    return `/games/${game.id}`;
+  };
+
   return (
     <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
       {/* Header */}
@@ -59,7 +77,7 @@ export default function Games() {
         {games.map((game) => (
           <Link
             key={game.id}
-            to={`/games/${game.id}`}
+            to={getGameLink(game)}
             className="group flex items-center justify-between py-6 border-b border-border/30 hover:border-foreground/30 transition-colors"
           >
             <div className="space-y-1">
@@ -67,9 +85,23 @@ export default function Games() {
                 <h2 className="text-xl font-medium group-hover:text-foreground transition-colors">
                   {game.name}
                 </h2>
-                <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                <span className={cn(
+                  "text-xs uppercase tracking-wide",
+                  game.requiresParty ? "text-purple-400" : "text-muted-foreground"
+                )}>
                   {game.type}
                 </span>
+                {game.requiresParty && (
+                  <span className={cn(
+                    "flex items-center gap-1 text-xs px-2 py-0.5 rounded border",
+                    currentParty
+                      ? "border-green-500/30 text-green-500"
+                      : "border-muted-foreground/30 text-muted-foreground"
+                  )}>
+                    <Users className="h-3 w-3" />
+                    {currentParty ? 'Party' : 'Besoin party'}
+                  </span>
+                )}
               </div>
               <p className="text-sm text-muted-foreground">
                 {game.description}

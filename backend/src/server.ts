@@ -16,11 +16,13 @@ import clashRoutes from './routes/clash.js';
 import adminRoutes from './routes/admin.js';
 import auraCoinRoutes, { startPriceEngine, stopPriceEngine } from './routes/auracoin.js';
 import suggestionsRoutes from './routes/suggestions.js';
+import bombpartyRoutes from './routes/bombparty.js';
 
 // Socket handlers
 import { setupChatHandlers } from './socket/chat.js';
 import { setupPartyHandlers } from './socket/party.js';
 import { setupGameHandlers } from './socket/games.js';
+import { setupBombPartyHandlers } from './socket/bombparty.js';
 
 // Initialize Prisma
 export const prisma = new PrismaClient();
@@ -56,6 +58,7 @@ app.use('/api/clash', clashRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/auracoin', auraCoinRoutes);
 app.use('/api/suggestions', suggestionsRoutes);
+app.use('/api/bombparty', bombpartyRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -69,6 +72,7 @@ io.on('connection', (socket) => {
   setupChatHandlers(socket, io);
   setupPartyHandlers(socket, io);
   setupGameHandlers(socket, io);
+  setupBombPartyHandlers(socket, io);
   
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.id}`);
