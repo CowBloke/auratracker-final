@@ -24,18 +24,18 @@ export default function Layout() {
                   {/* Connection indicator */}
                   <div className="flex items-center gap-2">
                     <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-green-500' : 'bg-muted-foreground'}`} />
-                    <span className={connected ? 'text-green-500' : 'text-muted-foreground'}>
+                    <span className="text-muted-foreground">
                       {connected ? 'online' : 'offline'}
                     </span>
                   </div>
 
                   {/* Stats */}
                   <div className="flex items-center gap-6 tabular-nums">
-                    <span className="text-blue-400">
-                      {user?.aura.toLocaleString()} <span className="text-blue-400/60">aura</span>
+                    <span className="text-foreground">
+                      {user?.aura.toLocaleString()} <span className="text-muted-foreground">aura</span>
                     </span>
-                    <span className="text-green-400">
-                      ${user?.money.toLocaleString()} <span className="text-green-400/60">money</span>
+                    <span className="text-foreground">
+                      ${user?.money.toLocaleString()} <span className="text-muted-foreground">argent</span>
                     </span>
                   </div>
                 </div>
