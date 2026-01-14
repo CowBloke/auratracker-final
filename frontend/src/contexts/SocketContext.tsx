@@ -46,35 +46,6 @@ interface PartyInvite {
   inviterUsername: string;
 }
 
-type PartyGameType = 'hangman';
-type PartyGamePhase = 'idle' | 'lobby' | 'choose-word' | 'playing' | 'ended';
-
-interface PartyGameState {
-  maskedWord: string;
-  wrongGuesses: string[];
-  correctGuesses: string[];
-  remainingLives: number;
-  maxWrongGuesses: number;
-  currentTurnUserId: string | null;
-  turnOrder: string[];
-  word?: string;
-}
-
-interface PartyGame {
-  gameType: PartyGameType;
-  phase: PartyGamePhase;
-  pickerId: string | null;
-  readyUserIds: string[];
-  state: PartyGameState;
-}
-
-interface PartyGameResult {
-  gameType: PartyGameType;
-  winnerId: string | null;
-  word: string;
-  reason: 'guessed' | 'failed';
-}
-
 interface BombPartyPlayer {
   userId: string;
   username: string;
@@ -131,12 +102,6 @@ interface SocketContextType {
   kickFromParty: (targetUserId: string) => void;
   fetchPublicParties: () => void;
   syncParty: () => void;
-  partyGame: PartyGame | null;
-  lastPartyGameResult: PartyGameResult | null;
-  selectPartyGame: (gameType: PartyGameType) => void;
-  setPartyReady: (isReady: boolean) => void;
-  submitHangmanWord: (word: string) => void;
-  submitHangmanGuess: (guess: string) => void;
   // Balance updates
   balanceUpdate: { userId: string; aura: number; money: number } | null;
   // Bomb Party
@@ -167,8 +132,6 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [partyMembers, setPartyMembers] = useState<PartyMember[]>([]);
   const [partyInvites, setPartyInvites] = useState<PartyInvite[]>([]);
   const [publicParties, setPublicParties] = useState<Array<{ id: string; name: string | null; memberCount: number; maxSize: number }>>([]);
-  const [partyGame, setPartyGame] = useState<PartyGame | null>(null);
-  const [lastPartyGameResult, setLastPartyGameResult] = useState<PartyGameResult | null>(null);
   
   // Balance update state
   const [balanceUpdate, setBalanceUpdate] = useState<{ userId: string; aura: number; money: number } | null>(null);
@@ -235,23 +198,17 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       s.on('party:created', (data: { party: Party; members: PartyMember[] }) => {
         setCurrentParty(data.party);
         setPartyMembers(data.members);
-        setPartyGame(null);
-        setLastPartyGameResult(null);
       });
 
       s.on('party:joined', (data: { party: Party; members: PartyMember[] }) => {
         setCurrentParty(data.party);
         setPartyMembers(data.members);
-        setPartyGame(null);
-        setLastPartyGameResult(null);
         setPartyInvites((prev) => prev.filter((invite) => invite.partyId !== data.party.id));
       });
 
       s.on('party:restored', (data: { party: Party; members: PartyMember[] }) => {
         setCurrentParty(data.party);
         setPartyMembers(data.members);
-        setPartyGame(null);
-        setLastPartyGameResult(null);
         setPartyInvites((prev) => prev.filter((invite) => invite.partyId !== data.party.id));
       });
 
@@ -266,22 +223,16 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       s.on('party:disbanded', () => {
         setCurrentParty(null);
         setPartyMembers([]);
-        setPartyGame(null);
-        setLastPartyGameResult(null);
       });
 
       s.on('party:left', () => {
         setCurrentParty(null);
         setPartyMembers([]);
-        setPartyGame(null);
-        setLastPartyGameResult(null);
       });
 
       s.on('party:kicked', () => {
         setCurrentParty(null);
         setPartyMembers([]);
-        setPartyGame(null);
-        setLastPartyGameResult(null);
       });
 
       s.on('party:invite', (invite: PartyInvite) => {
@@ -299,79 +250,6 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
             isLeader: m.userId === data.newLeaderId,
           }))
         );
-      });
-
-      // Party game events
-      s.on('party:game:selected', (data: { gameType: PartyGameType; phase: PartyGamePhase; readyUserIds: string[] }) => {
-        setPartyGame({
-          gameType: data.gameType,
-          phase: data.phase,
-          pickerId: null,
-          readyUserIds: data.readyUserIds,
-          state: {
-            maskedWord: '',
-            wrongGuesses: [],
-            correctGuesses: [],
-            remainingLives: 0,
-            maxWrongGuesses: 0,
-            currentTurnUserId: null,
-            turnOrder: [],
-          },
-        });
-        setLastPartyGameResult(null);
-      });
-
-      s.on('party:game:ready-state', (data: { gameType: PartyGameType; readyUserIds: string[] }) => {
-        setPartyGame((prev) =>
-          prev
-            ? {
-                ...prev,
-                readyUserIds: data.readyUserIds,
-              }
-            : prev
-        );
-      });
-
-      s.on('party:game:picker', (data: { gameType: PartyGameType; pickerId: string; phase: PartyGamePhase }) => {
-        setPartyGame((prev) =>
-          prev
-            ? {
-                ...prev,
-                phase: data.phase,
-                pickerId: data.pickerId,
-              }
-            : prev
-        );
-      });
-
-      s.on('party:game:state', (data: { gameType: PartyGameType; phase: PartyGamePhase; pickerId: string | null; state: PartyGameState }) => {
-        setPartyGame((prev) => ({
-          gameType: data.gameType,
-          phase: data.phase,
-          pickerId: data.pickerId,
-          readyUserIds: prev?.readyUserIds || [],
-          state: data.state,
-        }));
-      });
-
-      s.on('party:game:end', (data: PartyGameResult) => {
-        setPartyGame((prev) =>
-          prev
-            ? {
-                ...prev,
-                phase: 'ended',
-              }
-            : prev
-        );
-        setLastPartyGameResult(data);
-      });
-
-      s.on('party:game:reset', () => {
-        setPartyGame(null);
-      });
-
-      s.on('party:game:error', (data: { message: string }) => {
-        console.error('Party game error:', data.message);
       });
 
       // Economy events
@@ -498,30 +376,6 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const selectPartyGame = (gameType: PartyGameType) => {
-    if (user && currentParty) {
-      partyEvents.gameSelect(user.id, currentParty.id, gameType);
-    }
-  };
-
-  const setPartyReady = (isReady: boolean) => {
-    if (user && currentParty) {
-      partyEvents.gameReady(user.id, currentParty.id, isReady);
-    }
-  };
-
-  const submitHangmanWord = (word: string) => {
-    if (user && currentParty) {
-      partyEvents.gameWord(user.id, currentParty.id, word);
-    }
-  };
-
-  const submitHangmanGuess = (guess: string) => {
-    if (user && currentParty) {
-      partyEvents.gameGuess(user.id, currentParty.id, guess);
-    }
-  };
-
   // Bomb Party actions
   const startBombParty = (lives: number, difficulty: 'easy' | 'medium' | 'hard') => {
     if (user && currentParty) {
@@ -572,12 +426,6 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         kickFromParty,
         fetchPublicParties,
         syncParty,
-        partyGame,
-        lastPartyGameResult,
-        selectPartyGame,
-        setPartyReady,
-        submitHangmanWord,
-        submitHangmanGuess,
         balanceUpdate,
         bombPartyGame,
         bombPartyGameOver,
