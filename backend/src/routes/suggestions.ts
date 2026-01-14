@@ -22,6 +22,18 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
             value: true,
           },
         },
+        comments: {
+          orderBy: { createdAt: 'asc' },
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                usernameColor: true,
+              },
+            },
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -43,6 +55,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
         downvotes,
         score: upvotes - downvotes,
         userVote: userVote?.value || 0,
+        comments: suggestion.comments,
       };
     });
 
@@ -98,11 +111,61 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
         downvotes: 0,
         score: 0,
         userVote: 0,
+        comments: [],
       },
     });
   } catch (error) {
     console.error('Create suggestion error:', error);
     res.status(500).json({ error: 'Failed to create suggestion' });
+  }
+});
+
+// Add a comment to a suggestion
+router.post('/:id/comments', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { content } = req.body;
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({ error: 'Comment content is required' });
+    }
+
+    const trimmedContent = content.trim();
+
+    if (trimmedContent.length > 500) {
+      return res.status(400).json({ error: 'Comment must be less than 500 characters' });
+    }
+
+    const suggestion = await prisma.suggestion.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!suggestion) {
+      return res.status(404).json({ error: 'Suggestion not found' });
+    }
+
+    const comment = await prisma.suggestionComment.create({
+      data: {
+        suggestionId: id,
+        userId: req.user!.id,
+        content: trimmedContent,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            usernameColor: true,
+          },
+        },
+      },
+    });
+
+    res.status(201).json({ comment });
+  } catch (error) {
+    console.error('Create suggestion comment error:', error);
+    res.status(500).json({ error: 'Failed to add comment' });
   }
 });
 
@@ -207,6 +270,34 @@ router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response) =>
   } catch (error) {
     console.error('Delete suggestion error:', error);
     res.status(500).json({ error: 'Failed to delete suggestion' });
+  }
+});
+
+// Delete a comment (only by author or admin)
+router.delete('/:id/comments/:commentId', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id, commentId } = req.params;
+
+    const comment = await prisma.suggestionComment.findUnique({
+      where: { id: commentId },
+    });
+
+    if (!comment || comment.suggestionId !== id) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+
+    if (comment.userId !== req.user!.id && !req.user!.isAdmin) {
+      return res.status(403).json({ error: 'Not authorized to delete this comment' });
+    }
+
+    await prisma.suggestionComment.delete({
+      where: { id: commentId },
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete suggestion comment error:', error);
+    res.status(500).json({ error: 'Failed to delete comment' });
   }
 });
 

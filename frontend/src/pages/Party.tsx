@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import { usersApi } from '../services/api';
-import { Plus, LogOut, UserPlus, X, RefreshCw, Bomb } from 'lucide-react';
+import { Plus, LogOut, UserPlus, X, RefreshCw, Bomb, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,7 @@ export default function Party() {
     createParty,
     joinParty,
     leaveParty,
+    deleteParty,
     inviteToParty,
     kickFromParty,
     fetchPublicParties,
@@ -152,13 +153,23 @@ export default function Party() {
                   Inviter
                 </button>
               )}
-              <button
-                onClick={leaveParty}
-                className="flex items-center gap-2 px-4 py-2 text-sm border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
-              >
-                <LogOut className="h-4 w-4" />
-                Quitter
-              </button>
+              {isLeader ? (
+                <button
+                  onClick={deleteParty}
+                  className="flex items-center gap-2 px-4 py-2 text-sm border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Supprimer la party
+                </button>
+              ) : (
+                <button
+                  onClick={leaveParty}
+                  className="flex items-center gap-2 px-4 py-2 text-sm border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Quitter
+                </button>
+              )}
             </div>
           </div>
 

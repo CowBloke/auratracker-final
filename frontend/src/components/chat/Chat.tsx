@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
+import { getPageMeta } from './presence';
 
 type TimeoutRef = ReturnType<typeof setTimeout> | null;
 
@@ -209,7 +210,19 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                         className="flex items-center gap-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors w-full text-left"
                       >
                         <div className="w-1 h-1 rounded-full bg-foreground/50" />
-                        <span className="truncate">{u.username}</span>
+                        <div className="min-w-0 flex-1">
+                          <span className="block truncate">{u.username}</span>
+                          {(() => {
+                            const pageMeta = getPageMeta(u.currentPage);
+                            const PageIcon = pageMeta.icon;
+                            return (
+                              <span className="flex items-center gap-1 text-[10px] text-muted-foreground/80">
+                                <PageIcon className="h-3 w-3" />
+                                <span className="truncate">{pageMeta.label}</span>
+                              </span>
+                            );
+                          })()}
+                        </div>
                       </button>
                     ))}
                   </div>

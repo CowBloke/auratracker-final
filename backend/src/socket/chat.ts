@@ -7,14 +7,15 @@ interface OnlineUser {
   socketId: string;
   usernameColor?: string | null;
   profilePicture?: string | null;
+  currentPage?: string | null;
 }
 
 const onlineUsers = new Map<string, OnlineUser>();
 
 export const setupChatHandlers = (socket: Socket, io: Server) => {
   // Join chat
-  socket.on('chat:join', async (data: { userId: string; username: string }) => {
-    const { userId, username } = data;
+  socket.on('chat:join', async (data: { userId: string; username: string; currentPage?: string }) => {
+    const { userId, username, currentPage } = data;
     
     // Fetch user cosmetics from database
     const dbUser = await prisma.user.findUnique({
@@ -32,6 +33,7 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
       socketId: socket.id,
       usernameColor: dbUser?.usernameColor,
       profilePicture: dbUser?.profilePicture,
+      currentPage: currentPage ?? null,
     });
     
     // Join global chat room
@@ -71,6 +73,7 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
       username,
       usernameColor: dbUser?.usernameColor,
       profilePicture: dbUser?.profilePicture,
+      currentPage: currentPage ?? null,
     });
     
     // Send current online users to the joining user with cosmetics
@@ -79,6 +82,7 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
       username: u.username,
       usernameColor: u.usernameColor,
       profilePicture: u.profilePicture,
+      currentPage: u.currentPage ?? null,
     }));
     socket.emit('users:online-list', { users: onlineList });
   });
@@ -149,6 +153,15 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
       username: user.username,
       isTyping,
     });
+  });
+
+  socket.on('chat:page', (data: { userId: string; currentPage: string }) => {
+    const { userId, currentPage } = data;
+    const user = onlineUsers.get(userId);
+    if (!user) return;
+
+    user.currentPage = currentPage;
+    io.to('global-chat').emit('user:page', { userId, currentPage });
   });
   
   // Handle disconnect

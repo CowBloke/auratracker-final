@@ -20,6 +20,9 @@ export default function Suggestions() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
+  const [commentSubmitting, setCommentSubmitting] = useState<Record<string, boolean>>({});
+  const [commentDeleting, setCommentDeleting] = useState<Record<string, boolean>>({});
 
   // Form state
   const [title, setTitle] = useState('');
@@ -115,11 +118,65 @@ export default function Suggestions() {
     }
   };
 
+  const handleCommentChange = (suggestionId: string, value: string) => {
+    setCommentInputs((prev) => ({ ...prev, [suggestionId]: value }));
+  };
+
+  const handleCommentSubmit = async (suggestionId: string) => {
+    const content = commentInputs[suggestionId]?.trim();
+    if (!content) return;
+
+    setCommentSubmitting((prev) => ({ ...prev, [suggestionId]: true }));
+    try {
+      const res = await suggestionsApi.addComment(suggestionId, { content });
+      setSuggestions((prev) =>
+        prev.map((s) =>
+          s.id === suggestionId
+            ? { ...s, comments: [...s.comments, res.data.comment] }
+            : s
+        )
+      );
+      setCommentInputs((prev) => ({ ...prev, [suggestionId]: '' }));
+    } catch (error) {
+      console.error('Failed to add comment:', error);
+    } finally {
+      setCommentSubmitting((prev) => ({ ...prev, [suggestionId]: false }));
+    }
+  };
+
+  const handleCommentDelete = async (suggestionId: string, commentId: string) => {
+    setCommentDeleting((prev) => ({ ...prev, [commentId]: true }));
+    try {
+      await suggestionsApi.deleteComment(suggestionId, commentId);
+      setSuggestions((prev) =>
+        prev.map((s) =>
+          s.id === suggestionId
+            ? { ...s, comments: s.comments.filter((c) => c.id !== commentId) }
+            : s
+        )
+      );
+    } catch (error) {
+      console.error('Failed to delete comment:', error);
+    } finally {
+      setCommentDeleting((prev) => ({ ...prev, [commentId]: false }));
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('fr-FR', {
       day: 'numeric',
       month: 'short',
+    });
+  };
+
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
     });
   };
 
@@ -318,6 +375,83 @@ export default function Suggestions() {
                       <ChevronDown className="h-3 w-3" />
                       {suggestion.downvotes}
                     </span>
+                  </div>
+
+                  {/* Comments */}
+                  <div className="mt-6 border-t border-border/30 pt-4 space-y-4">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground/60">
+                      <span>Commentaires ({suggestion.comments.length})</span>
+                    </div>
+
+                    {suggestion.comments.length > 0 && (
+                      <div className="space-y-3">
+                        {suggestion.comments.map((comment) => (
+                          <div key={comment.id} className="flex gap-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground/70">
+                                <span
+                                  style={
+                                    comment.user.usernameColor
+                                      ? { color: comment.user.usernameColor }
+                                      : undefined
+                                  }
+                                >
+                                  {comment.user.username}
+                                </span>
+                                <span>·</span>
+                                <span>{formatDateTime(comment.createdAt)}</span>
+                              </div>
+                              <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words">
+                                {comment.content}
+                              </p>
+                            </div>
+
+                            {(comment.user.id === user?.id || user?.isAdmin) && (
+                              <button
+                                onClick={() => handleCommentDelete(suggestion.id, comment.id)}
+                                className="h-7 w-7 flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
+                                disabled={commentDeleting[comment.id]}
+                                aria-label="Supprimer le commentaire"
+                              >
+                                {commentDeleting[comment.id] ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <X className="h-4 w-4" />
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <Textarea
+                        value={commentInputs[suggestion.id] || ''}
+                        onChange={(e) => handleCommentChange(suggestion.id, e.target.value)}
+                        placeholder="Ajouter un commentaire..."
+                        maxLength={500}
+                        className="min-h-[80px] bg-transparent border-border/50 resize-none"
+                      />
+                      <div className="flex items-center justify-between text-xs text-muted-foreground/60">
+                        <span>{(commentInputs[suggestion.id] || '').length}/500</span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => handleCommentSubmit(suggestion.id)}
+                          disabled={
+                            commentSubmitting[suggestion.id] ||
+                            !(commentInputs[suggestion.id] || '').trim()
+                          }
+                        >
+                          {commentSubmitting[suggestion.id] ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            'Commenter'
+                          )}
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

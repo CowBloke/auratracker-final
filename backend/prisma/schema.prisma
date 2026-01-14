@@ -41,6 +41,7 @@ model User {
   bugReports        BugReport[]
   suggestions       Suggestion[]
   suggestionVotes   SuggestionVote[]
+  suggestionComments SuggestionComment[]
   bombPartyStats    BombPartyStats?
 
   @@index([aura])
@@ -257,7 +258,23 @@ model Suggestion {
   
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   votes       SuggestionVote[]
+  comments    SuggestionComment[]
   
+  @@index([createdAt])
+}
+
+// Suggestion Comment
+model SuggestionComment {
+  id           String   @id @default(uuid())
+  suggestionId String
+  userId       String
+  content      String
+  createdAt    DateTime @default(now())
+
+  suggestion   Suggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([suggestionId])
   @@index([createdAt])
 }
 

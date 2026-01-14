@@ -18,6 +18,7 @@ interface OnlineUser {
   username: string;
   usernameColor?: string | null;
   profilePicture?: string | null;
+  currentPage?: string | null;
 }
 
 interface TypingUser {
@@ -90,6 +91,7 @@ interface SocketContextType {
   typingUsers: TypingUser[];
   sendMessage: (message: string) => void;
   setTyping: (isTyping: boolean) => void;
+  setCurrentPage: (page: string) => void;
   // Party
   currentParty: Party | null;
   partyMembers: PartyMember[];
@@ -98,6 +100,7 @@ interface SocketContextType {
   createParty: (name?: string, isPublic?: boolean) => void;
   joinParty: (partyId: string) => void;
   leaveParty: () => void;
+  deleteParty: () => void;
   inviteToParty: (targetUserId: string) => void;
   kickFromParty: (targetUserId: string) => void;
   fetchPublicParties: () => void;
@@ -149,7 +152,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
       s.on('connect', () => {
         setConnected(true);
-        chatEvents.join(user.id, user.username);
+        const initialPage = typeof window !== 'undefined' ? window.location.pathname : '/';
+        chatEvents.join(user.id, user.username, initialPage);
         partyEvents.register(user.id);
         partyEvents.sync(user.id);
         gameEvents.register(user.id);
@@ -181,6 +185,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
       s.on('user:offline', (user: { userId: string }) => {
         setOnlineUsers((prev) => prev.filter((u) => u.userId !== user.userId));
+      });
+
+      s.on('user:page', (data: { userId: string; currentPage: string }) => {
+        setOnlineUsers((prev) =>
+          prev.map((u) => (u.userId === data.userId ? { ...u, currentPage: data.currentPage } : u))
+        );
       });
 
       s.on('chat:typing', (data: TypingUser & { isTyping: boolean }) => {
@@ -336,6 +346,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const setCurrentPage = (page: string) => {
+    if (user) {
+      chatEvents.setPage(user.id, page);
+    }
+  };
+
   const createParty = (name?: string, isPublic: boolean = false) => {
     if (user) {
       partyEvents.create(user.id, name, isPublic);
@@ -351,6 +367,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const leaveParty = () => {
     if (user) {
       partyEvents.leave(user.id);
+    }
+  };
+
+  const deleteParty = () => {
+    if (user) {
+      partyEvents.delete(user.id);
     }
   };
 
@@ -415,6 +437,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         typingUsers,
         sendMessage,
         setTyping,
+        setCurrentPage,
         currentParty,
         partyMembers,
         partyInvites,
@@ -422,6 +445,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         createParty,
         joinParty,
         leaveParty,
+        deleteParty,
         inviteToParty,
         kickFromParty,
         fetchPublicParties,

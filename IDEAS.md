@@ -1,9 +1,7 @@
 ## Jeux a créer : 
 
 Party
-- Word bomb
 - Makeitmeme
-- Scoobydoo
 
 Objets :
 - boost aura
@@ -17,10 +15,6 @@ Objets :
 
 ## Idées
 
-- commentaires
 - bouton panique
 - bouton grand ecran pour les jeux
-- widgets
-- barre de recherche de joueurs
 - nft : faire des nft type epstein island pour personnaliser la page d'accueil des gens
-- page activité online

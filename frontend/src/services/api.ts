@@ -283,6 +283,18 @@ export interface BugReport {
 }
 
 // Suggestions API
+export interface SuggestionComment {
+  id: string;
+  suggestionId: string;
+  content: string;
+  createdAt: string;
+  user: {
+    id: string;
+    username: string;
+    usernameColor: string | null;
+  };
+}
+
 export interface Suggestion {
   id: string;
   title: string;
@@ -298,6 +310,7 @@ export interface Suggestion {
   downvotes: number;
   score: number;
   userVote: number;
+  comments: SuggestionComment[];
 }
 
 export const suggestionsApi = {
@@ -310,6 +323,10 @@ export const suggestionsApi = {
       { value }
     ),
   delete: (id: string) => api.delete<{ success: boolean }>(`/suggestions/${id}`),
+  addComment: (id: string, data: { content: string }) =>
+    api.post<{ comment: SuggestionComment }>(`/suggestions/${id}/comments`, data),
+  deleteComment: (id: string, commentId: string) =>
+    api.delete<{ success: boolean }>(`/suggestions/${id}/comments/${commentId}`),
 };
 
 export const adminApi = {

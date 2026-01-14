@@ -1,7 +1,8 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSocket } from '../../contexts/SocketContext';
-import { Sparkles, Coins, User, LogOut, Wifi, WifiOff } from 'lucide-react';
+import { Sparkles, Coins, User, LogOut, Wifi, WifiOff, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -14,10 +15,59 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { usersApi } from '@/services/api';
+import { Input } from '@/components/ui/input';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+
+interface SearchUser {
+  id: string;
+  username: string;
+  usernameColor?: string | null;
+}
 
 export default function Header() {
   const { user, logout } = useAuth();
   const { connected } = useSocket();
+  const navigate = useNavigate();
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [users, setUsers] = useState<SearchUser[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [hasFetchedUsers, setHasFetchedUsers] = useState(false);
+
+  useEffect(() => {
+    if (!isSearchOpen || hasFetchedUsers) return;
+
+    const fetchUsers = async () => {
+      try {
+        setIsLoadingUsers(true);
+        setLoadError(null);
+        const response = await usersApi.getAll();
+        setUsers(response.data.users || []);
+        setHasFetchedUsers(true);
+      } catch (error) {
+        console.error('Failed to fetch users:', error);
+        setLoadError('Impossible de charger les joueurs.');
+      } finally {
+        setIsLoadingUsers(false);
+      }
+    };
+
+    fetchUsers();
+  }, [isSearchOpen, hasFetchedUsers]);
+
+  const filteredUsers = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return users;
+    return users.filter((u) => u.username.toLowerCase().includes(term));
+  }, [searchTerm, users]);
+
+  const handleUserSelect = (userId: string) => {
+    setIsSearchOpen(false);
+    setSearchTerm('');
+    navigate(`/profile/${userId}`);
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 h-16 bg-card border-b z-50">
@@ -34,6 +84,61 @@ export default function Header() {
 
         {/* Currency Display */}
         <div className="flex items-center gap-6">
+          <Sheet open={isSearchOpen} onOpenChange={setIsSearchOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Search className="h-4 w-4" />
+                Rechercher un joueur
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-full sm:max-w-md">
+              <SheetHeader>
+                <SheetTitle>Rechercher un joueur</SheetTitle>
+              </SheetHeader>
+              <div className="mt-6 space-y-4">
+                <Input
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Pseudo, ID..."
+                  autoFocus
+                />
+                <Separator />
+                <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-2">
+                  {isLoadingUsers ? (
+                    <p className="text-sm text-muted-foreground">Chargement des joueurs...</p>
+                  ) : loadError ? (
+                    <p className="text-sm text-destructive">{loadError}</p>
+                  ) : filteredUsers.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Aucun joueur trouvé.</p>
+                  ) : (
+                    filteredUsers.map((u) => (
+                      <button
+                        key={u.id}
+                        type="button"
+                        onClick={() => handleUserSelect(u.id)}
+                        className={cn(
+                          "flex w-full items-center gap-3 rounded-md border border-border/60 px-3 py-2 text-left transition hover:border-aura/60 hover:bg-aura/10"
+                        )}
+                      >
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback className="bg-primary text-white">
+                            {u.username.slice(0, 1).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span
+                          className="font-medium"
+                          style={u.usernameColor ? { color: u.usernameColor } : undefined}
+                        >
+                          {u.username}
+                        </span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+
           {/* Connection Status */}
           <div className="flex items-center gap-2">
             {connected ? (

@@ -30,14 +30,17 @@ export const disconnectSocket = (): void => {
 
 // Chat events
 export const chatEvents = {
-  join: (userId: string, username: string) => {
-    socket?.emit('chat:join', { userId, username });
+  join: (userId: string, username: string, currentPage?: string) => {
+    socket?.emit('chat:join', { userId, username, currentPage });
   },
   sendMessage: (userId: string, message: string) => {
     socket?.emit('chat:message', { userId, message });
   },
   setTyping: (userId: string, isTyping: boolean) => {
     socket?.emit('chat:typing', { userId, isTyping });
+  },
+  setPage: (userId: string, currentPage: string) => {
+    socket?.emit('chat:page', { userId, currentPage });
   },
 };
 
@@ -63,6 +66,9 @@ export const partyEvents = {
   },
   kick: (userId: string, targetUserId: string) => {
     socket?.emit('party:kick', { userId, targetUserId });
+  },
+  delete: (userId: string) => {
+    socket?.emit('party:delete', { userId });
   },
   list: () => {
     socket?.emit('party:list');

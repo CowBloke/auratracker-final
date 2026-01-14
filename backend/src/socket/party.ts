@@ -336,6 +336,63 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
       socket.emit('party:error', { message: 'Failed to leave party' });
     }
   });
+
+  // Delete party (leader only)
+  socket.on('party:delete', async (data: { userId: string }) => {
+    const { userId } = data;
+
+    try {
+      const membership = await prisma.partyMember.findUnique({
+        where: { userId },
+        include: {
+          party: {
+            include: {
+              members: true,
+            },
+          },
+        },
+      });
+
+      if (!membership) {
+        socket.emit('party:error', { message: 'You are not in a party' });
+        return;
+      }
+
+      if (!membership.isLeader) {
+        socket.emit('party:error', { message: 'Only the leader can delete the party' });
+        return;
+      }
+
+      const partyId = membership.partyId;
+      const roomId = getPartyRoomId(partyId);
+
+      io.to(roomId).emit('party:disbanded');
+
+      for (const member of membership.party.members) {
+        const memberSocketId = userSockets.get(member.userId);
+        if (memberSocketId) {
+          const memberSocket = io.sockets.sockets.get(memberSocketId);
+          memberSocket?.leave(roomId);
+        }
+      }
+
+      await prisma.party.delete({
+        where: { id: partyId },
+      });
+
+      for (const [targetUserId, invites] of partyInvites.entries()) {
+        const filteredInvites = invites.filter((invite) => invite.partyId !== partyId);
+        if (filteredInvites.length === 0) {
+          partyInvites.delete(targetUserId);
+        } else if (filteredInvites.length !== invites.length) {
+          partyInvites.set(targetUserId, filteredInvites);
+        }
+      }
+    } catch (error) {
+      console.error('Delete party error:', error);
+      socket.emit('party:error', { message: 'Failed to delete party' });
+    }
+  });
   
   // Invite to party
   socket.on('party:invite', async (data: { userId: string; targetUserId: string }) => {

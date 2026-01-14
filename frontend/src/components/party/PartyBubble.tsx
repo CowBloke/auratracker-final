@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useSocket } from '@/contexts/SocketContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { Users, LogOut, Bomb, ChevronUp, ChevronDown, Gamepad2 } from 'lucide-react';
+import { Users, LogOut, Bomb, ChevronUp, ChevronDown, Gamepad2, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function PartyBubble() {
@@ -12,6 +12,7 @@ export default function PartyBubble() {
     currentParty,
     partyMembers,
     leaveParty,
+    deleteParty,
     bombPartyGame,
   } = useSocket();
 
@@ -101,14 +102,24 @@ export default function PartyBubble() {
                 </Link>
               )}
 
-              {/* Leave button */}
-              <button
-                onClick={leaveParty}
-                className="flex items-center justify-center gap-1 px-2 py-1.5 text-xs border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors rounded"
-              >
-                <LogOut className="h-3 w-3" />
-                Quitter
-              </button>
+              {/* Leave or delete */}
+              {isLeader ? (
+                <button
+                  onClick={deleteParty}
+                  className="flex items-center justify-center gap-1 px-2 py-1.5 text-xs border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors rounded"
+                >
+                  <Trash2 className="h-3 w-3" />
+                  Supprimer
+                </button>
+              ) : (
+                <button
+                  onClick={leaveParty}
+                  className="flex items-center justify-center gap-1 px-2 py-1.5 text-xs border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors rounded"
+                >
+                  <LogOut className="h-3 w-3" />
+                  Quitter
+                </button>
+              )}
             </div>
           </div>
         )}
