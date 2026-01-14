@@ -144,9 +144,12 @@ model ChatMessage {
   id        String   @id @default(uuid())
   userId    String
   message   String
+  replyToId String?
   createdAt DateTime @default(now())
   
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replyTo   ChatMessage? @relation("ChatMessageReply", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   ChatMessage[] @relation("ChatMessageReply")
   
   @@index([createdAt])
 }
