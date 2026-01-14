@@ -37,11 +37,6 @@ interface BombPartyGame {
 // Store active games by partyId
 const activeGames = new Map<string, BombPartyGame>();
 
-// Get active game for a party (exported for use in party restore)
-export function getActiveGame(partyId: string): BombPartyGame | undefined {
-  return activeGames.get(partyId);
-}
-
 // Dictionary loaded once
 let dictionary: Set<string> | null = null;
 
@@ -116,7 +111,7 @@ function getWinner(game: BombPartyGame): BombPartyPlayer | null {
 }
 
 // Serialize game state for client
-export function serializeGameState(game: BombPartyGame) {
+function serializeGameState(game: BombPartyGame) {
   return {
     partyId: game.partyId,
     players: game.players.map(p => ({

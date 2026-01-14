@@ -1,6 +1,5 @@
 import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
-import { getActiveGame, serializeGameState } from './bombparty.js';
 
 interface PartyInvite {
   partyId: string;
@@ -160,12 +159,6 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
             isLeader: m.isLeader,
           })),
         });
-
-        // Check for active bomb party game and restore it
-        const activeGame = getActiveGame(membership.partyId);
-        if (activeGame && activeGame.isActive) {
-          socket.emit('bombparty:started', serializeGameState(activeGame));
-        }
 
         // Update party activity
         await prisma.party.update({
@@ -570,12 +563,6 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
             isLeader: m.isLeader,
           })),
         });
-
-        // Check for active bomb party game
-        const activeGame = getActiveGame(membership.partyId);
-        if (activeGame && activeGame.isActive) {
-          socket.emit('bombparty:started', serializeGameState(activeGame));
-        }
       } else {
         // User is NOT in a party - clear any ghost state
         socket.emit('party:not-in-party');
