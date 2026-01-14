@@ -22,7 +22,7 @@ import bombpartyRoutes from './routes/bombparty.js';
 import { setupChatHandlers } from './socket/chat.js';
 import { setupPartyHandlers } from './socket/party.js';
 import { setupGameHandlers } from './socket/games.js';
-import { setupBombPartyHandlers } from './socket/bombparty.js';
+import { setupBombPartyHandlers, startBombPartyCleanup } from './socket/bombparty.js';
 
 // Initialize Prisma
 export const prisma = new PrismaClient();
@@ -87,7 +87,10 @@ const start = async () => {
     
     // Start AuraCoin price engine
     startPriceEngine();
-    
+
+    // Start bomb party game cleanup
+    startBombPartyCleanup(io);
+
     httpServer.listen(config.port, () => {
       console.log(`Server running on port ${config.port}`);
     });

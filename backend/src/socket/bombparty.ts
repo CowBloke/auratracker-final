@@ -527,3 +527,37 @@ export function cleanupBombPartyGames() {
   }
   activeGames.clear();
 }
+
+// Periodic cleanup for stale games (games running for more than 30 minutes)
+const GAME_MAX_DURATION = 30 * 60 * 1000; // 30 minutes
+
+export function startBombPartyCleanup(io: Server) {
+  setInterval(() => {
+    const now = Date.now();
+    for (const [partyId, game] of activeGames) {
+      // Check if game has been running too long or is inactive
+      const gameAge = now - (game.turnStartTime - game.turnDuration * game.round);
+      const isStale = gameAge > GAME_MAX_DURATION || !game.isActive;
+
+      if (isStale) {
+        console.log(`Cleaning up stale bomb party game for party ${partyId}`);
+        clearTurnTimer(game);
+
+        // Notify players the game was cleaned up
+        io.to(`party:${partyId}`).emit('bombparty:game-over', {
+          winnerId: null,
+          winnerUsername: null,
+          players: game.players.map(p => ({
+            userId: p.userId,
+            username: p.username,
+            wordsTypedCount: p.wordsTypedCount,
+            isWinner: false,
+            rewards: { aura: 0, money: 0 },
+          })),
+        });
+
+        activeGames.delete(partyId);
+      }
+    }
+  }, 60 * 1000); // Check every minute
+}
