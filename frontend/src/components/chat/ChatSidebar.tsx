@@ -135,7 +135,7 @@ export default function ChatSidebar() {
                 >
                   <div
                     className={cn(
-                      "max-w-[90%] px-3 py-2",
+                      "max-w-[90%] px-3 py-2 rounded-lg",
                       msg.userId === user?.id
                         ? 'bg-foreground/10'
                         : 'bg-muted'

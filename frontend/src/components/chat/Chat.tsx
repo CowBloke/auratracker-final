@@ -125,7 +125,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                   >
                     <div
                       className={cn(
-                        "max-w-[70%] px-3 py-2",
+                        "max-w-[70%] px-3 py-2 rounded-lg",
                         msg.userId === user?.id
                           ? 'bg-foreground/10'
                           : 'bg-muted'
