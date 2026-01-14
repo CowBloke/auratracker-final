@@ -22,7 +22,6 @@ import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -66,22 +65,6 @@ export default function AppSidebar() {
 
   return (
     <Sidebar variant="inset" collapsible="icon">
-      <SidebarHeader className="py-6">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild tooltip="Aura">
-              <NavLink to="/" className="flex items-center gap-3">
-                <span className="text-lg font-semibold tracking-tight group-data-[collapsible=icon]:inline hidden">
-                  a
-                </span>
-                <span className="text-lg font-light tracking-tight group-data-[collapsible=icon]:hidden">
-                  aura
-                </span>
-              </NavLink>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
       <SidebarContent>
         <div className="px-3 py-4">
           <SidebarMenu className="space-y-1">
