@@ -75,6 +75,7 @@ interface BombPartyGameState {
   turnStartTime: number;
   round: number;
   usedWords: string[];
+  maxLives: number;
 }
 
 interface BombPartyGameOver {
@@ -413,13 +414,16 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         gameOverData: BombPartyGameOver;
         players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
         responses?: Array<{ userId: string; playAgain: boolean }>;
+        playAgainCount?: number;
+        leaveCount?: number;
       }) => {
+        const responses = data.responses || [];
         setBombPartyPlayAgainPrompt({
           ...data,
           startTime: Date.now(),
-          responses: data.responses || [],
-          playAgainCount: 0,
-          leaveCount: 0,
+          responses,
+          playAgainCount: data.playAgainCount ?? responses.filter(r => r.playAgain).length,
+          leaveCount: data.leaveCount ?? responses.filter(r => !r.playAgain).length,
         });
         setBombPartyGame(null);
       });
