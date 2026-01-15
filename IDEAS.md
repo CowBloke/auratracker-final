@@ -17,3 +17,8 @@ Objets :
 - coffres à item
 - virer et désigner leadrr
 - clans
+- relancer party : 10 sec pour mettre pret
+- sur le profil : catégories et nombr de transactions auracoin et parties jouées/gagnées bombparty
+- mode plein écran jeux
+- par défaut mode clair
+- UI : hover panel recherche de joueur violet
