@@ -15,6 +15,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
         money: true,
         usernameColor: true,
         profilePicture: true,
+        bio: true,
         createdAt: true,
       },
       orderBy: {

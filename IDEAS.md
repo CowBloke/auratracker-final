@@ -12,7 +12,6 @@
 - objet jumpscare sur qq
 
 # Idées
-- bouton renommer le pseudo
 - bouton panique
 - nft : faire des nft type epstein island pour personnaliser la page d'accueil des gens
 - coffres à item
@@ -37,3 +36,4 @@
 - membres party peuvent suggerer jeu, redirections de page
 - voir les partys privées et demander à rejoindre
 - score lmoyen. doodle jumpxs
+- sur le profil ajoute des stats des jeux aura coin et bombparty comme pour les autres jeux sauf que ce n'est pas en victoire mais plutot pour l'auracoin,  nombre total de transaction et argent total des transaction et bomb party le nombre de parties gagnées, pourcentage, nb de parties joués
