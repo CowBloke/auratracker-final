@@ -8,3 +8,5 @@
 - pour le leader choisir jeu directement depuis la page party
 - LOGS ADMIN
 - supprimer prix aura pour les objets de la table sql
+- mettre des frais minimum 1e sinon on peut aire pleins de petites transactions
+- supprimer solitaire

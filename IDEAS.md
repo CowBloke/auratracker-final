@@ -28,7 +28,7 @@
 - toast pour tout
 - logs et stats
 - NFT
-- nb aura coin prodil avec conversion euro et total euro
+- nb aura coin profil avec conversion euro et total euro
 - couleur et pseudo parout sur le site
 - 5 coeurs marche pas bomb party
 - pb affichage coeur qd qq perd : tt le monde perd
