@@ -1,7 +1,12 @@
-## Jeux a créer : 
+## Jeux : 
 
-Party
+# Party
 - Makeitmeme
+- poker
+- bataille navale
+
+# Solo
+- Blackjack
 
 Objets :
 - slot VIP pour les partys
@@ -11,7 +16,7 @@ Objets :
 - NFT
 
 ## Idées
-
+- bouton renommer le pseudo
 - bouton panique
 - nft : faire des nft type epstein island pour personnaliser la page d'accueil des gens
 - coffres à item
@@ -22,3 +27,4 @@ Objets :
 - mode plein écran jeux
 - par défaut mode clair
 - UI : hover panel recherche de joueur violet
+- wordle du jour sélectionné par admin
