@@ -39,3 +39,4 @@
 - sur le profil ajoute des stats des jeux aura coin et bombparty comme pour les autres jeux sauf que ce n'est pas en victoire mais plutot pour l'auracoin,  nombre total de transaction et argent total des transaction et bomb party le nombre de parties gagnées, pourcentage, nb de parties joués
 - marquer des suggestions comme réalisées et demander un feedabck aux joeuurs sur une echelle de 1 à 10
 - ajouter changelog
+- temps d'écran avec graphique
