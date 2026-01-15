@@ -1,7 +1,7 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { ChatSidebarProvider, ChatSidebarWrapper } from '../chat/ChatSidebarWrapper';
-import { ChatSidebarTrigger } from '../chat/ChatSidebarTrigger';
+import ChatBubble from '../chat/ChatBubble';
 import PartyBubble from '../party/PartyBubble';
 import BombPartyJoinPrompt from '../game/BombPartyJoinPrompt';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
@@ -49,7 +49,6 @@ export default function Layout() {
                     </span>
                   </div>
                 </div>
-                <ChatSidebarTrigger className="text-muted-foreground hover:text-foreground" />
               </div>
             </header>
             <main className="flex-1 overflow-auto">
@@ -58,7 +57,10 @@ export default function Layout() {
           </SidebarInset>
         </SidebarProvider>
         <ChatSidebarWrapper />
-        <PartyBubble />
+        <div className="fixed bottom-6 right-6 z-50 flex items-end gap-3">
+          <PartyBubble />
+          <ChatBubble />
+        </div>
         <BombPartyJoinPrompt />
       </div>
     </ChatSidebarProvider>

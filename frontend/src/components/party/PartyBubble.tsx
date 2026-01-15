@@ -27,8 +27,7 @@ export default function PartyBubble() {
     : 'En attente';
 
   return (
-    <div className="fixed bottom-6 right-20 z-50">
-      <div className="bg-background border border-border rounded-lg shadow-lg overflow-hidden min-w-[200px] max-w-[280px]">
+    <div className="bg-background border border-border rounded-lg shadow-lg overflow-hidden min-w-[200px] max-w-[280px]">
         {/* Header - always visible */}
         <button
           onClick={() => setExpanded(!expanded)}
@@ -123,7 +122,6 @@ export default function PartyBubble() {
             </div>
           </div>
         )}
-      </div>
     </div>
   );
 }
