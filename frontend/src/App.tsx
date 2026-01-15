@@ -20,6 +20,7 @@ import Admin from './pages/Admin';
 import Rules from './pages/Rules';
 import Suggestions from './pages/Suggestions';
 import ReportBug from './pages/ReportBug';
+import Pass from './pages/Pass';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -69,6 +70,7 @@ function App() {
         <Route path="profile/:userId?" element={<Profile />} />
         <Route path="admin" element={<Admin />} />
         <Route path="rules" element={<Rules />} />
+        <Route path="pass" element={<Pass />} />
         <Route path="suggestions" element={<Suggestions />} />
         <Route path="report-bug" element={<ReportBug />} />
       </Route>

@@ -10,6 +10,13 @@ interface ChatMessage {
   usernameColor?: string | null;
   profilePicture?: string | null;
   message: string;
+  replyTo?: {
+    id: string;
+    userId: string;
+    username: string;
+    usernameColor?: string | null;
+    message: string;
+  } | null;
   timestamp: string;
 }
 
@@ -107,7 +114,7 @@ interface SocketContextType {
   messages: ChatMessage[];
   onlineUsers: OnlineUser[];
   typingUsers: TypingUser[];
-  sendMessage: (message: string) => void;
+  sendMessage: (message: string, replyToId?: string | null) => void;
   setTyping: (isTyping: boolean) => void;
   setCurrentPage: (page: string) => void;
   // Party
@@ -384,9 +391,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, updateBalance]);
 
-  const sendMessage = (message: string) => {
+  const sendMessage = (message: string, replyToId?: string | null) => {
     if (user) {
-      chatEvents.sendMessage(user.id, message);
+      chatEvents.sendMessage(user.id, message, replyToId);
     }
   };
 

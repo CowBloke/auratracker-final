@@ -4,10 +4,8 @@ Party
 - Makeitmeme
 
 Objets :
-- boost aura
 - slot VIP pour les partys
 - badges
-- coffre aura : animation pour objets aléatoires, pass de combat
 - toast pour tout
 - logs et stats
 - NFT
@@ -16,3 +14,4 @@ Objets :
 
 - bouton panique
 - nft : faire des nft type epstein island pour personnaliser la page d'accueil des gens
+- coffres à item

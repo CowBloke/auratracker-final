@@ -33,8 +33,8 @@ export const chatEvents = {
   join: (userId: string, username: string, currentPage?: string) => {
     socket?.emit('chat:join', { userId, username, currentPage });
   },
-  sendMessage: (userId: string, message: string) => {
-    socket?.emit('chat:message', { userId, message });
+  sendMessage: (userId: string, message: string, replyToId?: string | null) => {
+    socket?.emit('chat:message', { userId, message, replyToId });
   },
   setTyping: (userId: string, isTyping: boolean) => {
     socket?.emit('chat:typing', { userId, isTyping });

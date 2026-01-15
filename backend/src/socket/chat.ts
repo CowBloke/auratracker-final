@@ -52,6 +52,17 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
             profilePicture: true,
           },
         },
+        replyTo: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                usernameColor: true,
+              },
+            },
+          },
+        },
       },
     });
     
@@ -63,6 +74,15 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
         usernameColor: m.user.usernameColor,
         profilePicture: m.user.profilePicture,
         message: m.message,
+        replyTo: m.replyTo
+          ? {
+              id: m.replyTo.id,
+              userId: m.replyTo.userId,
+              username: m.replyTo.user.username,
+              usernameColor: m.replyTo.user.usernameColor,
+              message: m.replyTo.message,
+            }
+          : null,
         timestamp: m.createdAt.toISOString(),
       })),
     });
@@ -88,8 +108,8 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
   });
   
   // Send message
-  socket.on('chat:message', async (data: { message: string; userId: string }) => {
-    const { message, userId } = data;
+  socket.on('chat:message', async (data: { message: string; userId: string; replyToId?: string | null }) => {
+    const { message, userId, replyToId } = data;
     
     const user = onlineUsers.get(userId);
     if (!user) return;
@@ -109,11 +129,27 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
       user.profilePicture = dbUser.profilePicture;
     }
     
+    const replyTo = replyToId
+      ? await prisma.chatMessage.findUnique({
+          where: { id: replyToId },
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                usernameColor: true,
+              },
+            },
+          },
+        })
+      : null;
+
     // Save message to database
     const savedMessage = await prisma.chatMessage.create({
       data: {
         userId,
         message,
+        replyToId: replyTo?.id ?? null,
       },
     });
     
@@ -125,6 +161,15 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
       usernameColor: dbUser?.usernameColor,
       profilePicture: dbUser?.profilePicture,
       message,
+      replyTo: replyTo
+        ? {
+            id: replyTo.id,
+            userId: replyTo.userId,
+            username: replyTo.user.username,
+            usernameColor: replyTo.user.usernameColor,
+            message: replyTo.message,
+          }
+        : null,
       timestamp: savedMessage.createdAt.toISOString(),
     });
     
