@@ -1,21 +1,17 @@
-## Jeux : 
+# Jeux : 
 
-# Party
+## Party
 - Makeitmeme
 - poker
 - bataille navale
 
-# Solo
+## Solo
 - Blackjack
 
-Objets :
-- slot VIP pour les partys
-- badges
-- toast pour tout
-- logs et stats
-- NFT
+# Objets :
+- objet jumpscare sur qq
 
-## Idées
+# Idées
 - bouton renommer le pseudo
 - bouton panique
 - nft : faire des nft type epstein island pour personnaliser la page d'accueil des gens
@@ -28,3 +24,8 @@ Objets :
 - par défaut mode clair
 - UI : hover panel recherche de joueur violet
 - wordle du jour sélectionné par admin
+- slot VIP pour les partys
+- badges
+- toast pour tout
+- logs et stats
+- NFT
