@@ -171,6 +171,7 @@ function serializeGameState(game: BombPartyGame) {
     turnStartTime: game.turnStartTime,
     round: game.round,
     usedWords: Array.from(game.usedWords).slice(-20), // Last 20 words
+    maxLives: game.maxLives,
   };
 }
 
@@ -871,6 +872,53 @@ export function cleanupBombPartyGames() {
     clearTurnTimer(game);
   }
   activeGames.clear();
+}
+
+// Send pending play again prompt to a reconnecting player
+export function sendPendingPlayAgainPrompt(socket: Socket, partyId: string, userId: string) {
+  const prompt = pendingPlayAgainPrompts.get(partyId);
+  if (!prompt) return;
+
+  // Only send if this user was a player in the game
+  const isPlayer = prompt.players.some(p => p.userId === userId);
+  if (!isPlayer) return;
+
+  // Calculate time remaining
+  const elapsed = Date.now() - prompt.startTime;
+  const timeRemaining = Math.max(0, 20000 - elapsed);
+
+  if (timeRemaining <= 0) return; // Prompt already expired
+
+  // Build current responses with counts
+  const responses = Array.from(prompt.responses.entries()).map(([id, playAgain]) => ({
+    userId: id,
+    playAgain,
+  }));
+  const playAgainCount = responses.filter(r => r.playAgain).length;
+  const leaveCount = responses.filter(r => !r.playAgain).length;
+
+  socket.emit('bombparty:play-again-prompt', {
+    partyId: prompt.partyId,
+    timeLimit: timeRemaining, // Send remaining time, not original
+    gameOverData: prompt.gameOverData,
+    players: prompt.players,
+    responses,
+    playAgainCount,
+    leaveCount,
+  });
+}
+
+// Send active game state to a reconnecting player
+export function sendActiveGameState(socket: Socket, partyId: string, userId: string) {
+  const game = activeGames.get(partyId);
+  if (!game || !game.isActive) return;
+
+  // Only send if this user is a player in the game
+  const isPlayer = game.players.some(p => p.userId === userId);
+  if (!isPlayer) return;
+
+  // Send the current game state
+  socket.emit('bombparty:started', serializeGameState(game));
 }
 
 // Periodic cleanup for stale games (games running for more than 30 minutes)
