@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
-import { ArrowLeft, Play, Heart, Crown, Trophy, Users } from 'lucide-react';
+import { ArrowLeft, Play, Heart, Crown, Trophy, Users, RotateCcw, LogOut, Check, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -36,11 +36,13 @@ export default function BombParty() {
     bombPartyGame,
     bombPartyGameOver,
     bombPartyRejection,
+    bombPartyPlayAgainPrompt,
     startBombParty,
     typeBombParty,
     submitBombParty,
     leaveBombParty,
     clearBombPartyGameOver,
+    respondToPlayAgainPrompt,
   } = useSocket();
 
   const [lives, setLives] = useState(3);
@@ -48,6 +50,8 @@ export default function BombParty() {
   const [localInput, setLocalInput] = useState('');
   const [timeLeft, setTimeLeft] = useState(100);
   const [showSettings, setShowSettings] = useState(false);
+  const [playAgainTimeLeft, setPlayAgainTimeLeft] = useState(100);
+  const [hasRespondedPlayAgain, setHasRespondedPlayAgain] = useState(false);
 
   const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
   const isMyTurn = bombPartyGame?.currentPlayerId === user?.id;
@@ -80,6 +84,27 @@ export default function BombParty() {
       refreshUser();
     }
   }, [bombPartyGameOver, refreshUser]);
+
+  // Handle play again prompt - refresh user and reset response state
+  useEffect(() => {
+    if (bombPartyPlayAgainPrompt) {
+      refreshUser();
+      setHasRespondedPlayAgain(false);
+    }
+  }, [bombPartyPlayAgainPrompt, refreshUser]);
+
+  // Play again timer countdown
+  useEffect(() => {
+    if (!bombPartyPlayAgainPrompt) return;
+
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - bombPartyPlayAgainPrompt.startTime;
+      const remaining = Math.max(0, 100 - (elapsed / bombPartyPlayAgainPrompt.timeLimit) * 100);
+      setPlayAgainTimeLeft(remaining);
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, [bombPartyPlayAgainPrompt?.startTime, bombPartyPlayAgainPrompt?.timeLimit]);
 
   // Handle keyboard input (direct typing, no text box)
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -121,6 +146,20 @@ export default function BombParty() {
   const handleCloseGameOver = () => {
     clearBombPartyGameOver();
   };
+
+  const handlePlayAgain = () => {
+    respondToPlayAgainPrompt(true);
+    setHasRespondedPlayAgain(true);
+  };
+
+  const handleLeaveAfterGame = () => {
+    respondToPlayAgainPrompt(false);
+    setHasRespondedPlayAgain(true);
+  };
+
+  // Check if user has already responded to play again prompt
+  const myPlayAgainResponse = bombPartyPlayAgainPrompt?.responses.find(r => r.userId === user?.id);
+  const hasAlreadyResponded = hasRespondedPlayAgain || !!myPlayAgainResponse;
 
   // Not in a party - show message
   if (!currentParty) {
@@ -315,8 +354,132 @@ export default function BombParty() {
           </DialogContent>
         </Dialog>
 
-        {/* Game Over Modal (shown in lobby after game ends) */}
-        <Dialog open={!!bombPartyGameOver} onOpenChange={handleCloseGameOver}>
+        {/* Play Again Prompt Modal (shown after game ends) */}
+        <Dialog open={!!bombPartyPlayAgainPrompt} onOpenChange={() => {}}>
+          <DialogContent className="sm:max-w-lg" hideCloseButton>
+            <DialogHeader>
+              <DialogTitle className="font-normal flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-yellow-500" />
+                Partie terminee
+              </DialogTitle>
+            </DialogHeader>
+
+            {/* Timer bar */}
+            <div className="w-full h-2 bg-border/30 overflow-hidden rounded-full">
+              <div
+                className={cn(
+                  "h-full transition-all duration-100 rounded-full",
+                  playAgainTimeLeft > 50 ? "bg-green-500" : playAgainTimeLeft > 25 ? "bg-yellow-500" : "bg-red-500"
+                )}
+                style={{ width: `${playAgainTimeLeft}%` }}
+              />
+            </div>
+
+            <div className="space-y-6 py-2">
+              {/* Winner */}
+              {bombPartyPlayAgainPrompt?.gameOverData.winnerId && (
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Gagnant</p>
+                  <p className="text-2xl font-light">{bombPartyPlayAgainPrompt.gameOverData.winnerUsername}</p>
+                </div>
+              )}
+
+              {/* Players results */}
+              <div className="space-y-2">
+                {bombPartyPlayAgainPrompt?.gameOverData.players.map((player) => {
+                  const response = bombPartyPlayAgainPrompt.responses.find(r => r.userId === player.userId);
+                  return (
+                    <div
+                      key={player.userId}
+                      className={cn(
+                        "flex items-center justify-between py-3 px-3 border rounded",
+                        player.isWinner
+                          ? "border-yellow-500/50 bg-yellow-500/5"
+                          : "border-border/30"
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        {player.isWinner && <Trophy className="h-4 w-4 text-yellow-500" />}
+                        <span className="font-medium">{player.username}</span>
+                        <span className="text-xs text-muted-foreground">
+                          ({player.wordsTypedCount} mots)
+                        </span>
+                        {/* Show response status */}
+                        {response && (
+                          response.playAgain ? (
+                            <span className="ml-1 text-green-500"><RotateCcw className="h-3 w-3 inline" /></span>
+                          ) : (
+                            <span className="ml-1 text-red-500"><LogOut className="h-3 w-3 inline" /></span>
+                          )
+                        )}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {player.rewards.aura > 0 && (
+                          <span className="text-purple-400">+{player.rewards.aura} aura </span>
+                        )}
+                        {player.rewards.money > 0 && (
+                          <span className="text-green-400">+{player.rewards.money}$</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Play Again / Leave counts */}
+              <div className="flex justify-center gap-6 text-sm">
+                <div className="flex items-center gap-2 text-green-500">
+                  <RotateCcw className="h-4 w-4" />
+                  <span>{bombPartyPlayAgainPrompt?.playAgainCount || 0} rejoue{(bombPartyPlayAgainPrompt?.playAgainCount || 0) > 1 ? 'nt' : ''}</span>
+                </div>
+                <div className="flex items-center gap-2 text-red-500">
+                  <LogOut className="h-4 w-4" />
+                  <span>{bombPartyPlayAgainPrompt?.leaveCount || 0} quitte{(bombPartyPlayAgainPrompt?.leaveCount || 0) > 1 ? 'nt' : ''}</span>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2">
+              {!hasAlreadyResponded ? (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={handleLeaveAfterGame}
+                    className="flex-1 border-red-500/50 text-red-500 hover:bg-red-500 hover:text-white"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Quitter
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handlePlayAgain}
+                    className="flex-1 border-green-500/50 text-green-500 hover:bg-green-500 hover:text-white"
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Rejouer
+                  </Button>
+                </>
+              ) : (
+                <div className="w-full text-center text-muted-foreground py-2">
+                  {myPlayAgainResponse?.playAgain ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Check className="h-4 w-4 text-green-500" />
+                      En attente des autres joueurs...
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      <X className="h-4 w-4 text-red-500" />
+                      Tu quittes la partie
+                    </span>
+                  )}
+                </div>
+              )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Legacy Game Over Modal (for stale game cleanup) */}
+        <Dialog open={!!bombPartyGameOver && !bombPartyPlayAgainPrompt} onOpenChange={handleCloseGameOver}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="font-normal flex items-center gap-2">
@@ -517,8 +680,132 @@ export default function BombParty() {
         </section>
       )}
 
-      {/* Game Over Modal (also shown during active game in case of state issues) */}
-      <Dialog open={!!bombPartyGameOver} onOpenChange={handleCloseGameOver}>
+      {/* Play Again Prompt Modal (shown after game ends) */}
+      <Dialog open={!!bombPartyPlayAgainPrompt} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-lg" hideCloseButton>
+          <DialogHeader>
+            <DialogTitle className="font-normal flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-yellow-500" />
+              Partie terminee
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Timer bar */}
+          <div className="w-full h-2 bg-border/30 overflow-hidden rounded-full">
+            <div
+              className={cn(
+                "h-full transition-all duration-100 rounded-full",
+                playAgainTimeLeft > 50 ? "bg-green-500" : playAgainTimeLeft > 25 ? "bg-yellow-500" : "bg-red-500"
+              )}
+              style={{ width: `${playAgainTimeLeft}%` }}
+            />
+          </div>
+
+          <div className="space-y-6 py-2">
+            {/* Winner */}
+            {bombPartyPlayAgainPrompt?.gameOverData.winnerId && (
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Gagnant</p>
+                <p className="text-2xl font-light">{bombPartyPlayAgainPrompt.gameOverData.winnerUsername}</p>
+              </div>
+            )}
+
+            {/* Players results */}
+            <div className="space-y-2">
+              {bombPartyPlayAgainPrompt?.gameOverData.players.map((player) => {
+                const response = bombPartyPlayAgainPrompt.responses.find(r => r.userId === player.userId);
+                return (
+                  <div
+                    key={player.userId}
+                    className={cn(
+                      "flex items-center justify-between py-3 px-3 border rounded",
+                      player.isWinner
+                        ? "border-yellow-500/50 bg-yellow-500/5"
+                        : "border-border/30"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      {player.isWinner && <Trophy className="h-4 w-4 text-yellow-500" />}
+                      <span className="font-medium">{player.username}</span>
+                      <span className="text-xs text-muted-foreground">
+                        ({player.wordsTypedCount} mots)
+                      </span>
+                      {/* Show response status */}
+                      {response && (
+                        response.playAgain ? (
+                          <span className="ml-1 text-green-500"><RotateCcw className="h-3 w-3 inline" /></span>
+                        ) : (
+                          <span className="ml-1 text-red-500"><LogOut className="h-3 w-3 inline" /></span>
+                        )
+                      )}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {player.rewards.aura > 0 && (
+                        <span className="text-purple-400">+{player.rewards.aura} aura </span>
+                      )}
+                      {player.rewards.money > 0 && (
+                        <span className="text-green-400">+{player.rewards.money}$</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Play Again / Leave counts */}
+            <div className="flex justify-center gap-6 text-sm">
+              <div className="flex items-center gap-2 text-green-500">
+                <RotateCcw className="h-4 w-4" />
+                <span>{bombPartyPlayAgainPrompt?.playAgainCount || 0} rejoue{(bombPartyPlayAgainPrompt?.playAgainCount || 0) > 1 ? 'nt' : ''}</span>
+              </div>
+              <div className="flex items-center gap-2 text-red-500">
+                <LogOut className="h-4 w-4" />
+                <span>{bombPartyPlayAgainPrompt?.leaveCount || 0} quitte{(bombPartyPlayAgainPrompt?.leaveCount || 0) > 1 ? 'nt' : ''}</span>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            {!hasAlreadyResponded ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={handleLeaveAfterGame}
+                  className="flex-1 border-red-500/50 text-red-500 hover:bg-red-500 hover:text-white"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Quitter
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handlePlayAgain}
+                  className="flex-1 border-green-500/50 text-green-500 hover:bg-green-500 hover:text-white"
+                >
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Rejouer
+                </Button>
+              </>
+            ) : (
+              <div className="w-full text-center text-muted-foreground py-2">
+                {myPlayAgainResponse?.playAgain ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Check className="h-4 w-4 text-green-500" />
+                    En attente des autres joueurs...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    <X className="h-4 w-4 text-red-500" />
+                    Tu quittes la partie
+                  </span>
+                )}
+              </div>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Legacy Game Over Modal (for stale game cleanup) */}
+      <Dialog open={!!bombPartyGameOver && !bombPartyPlayAgainPrompt} onOpenChange={handleCloseGameOver}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="font-normal flex items-center gap-2">

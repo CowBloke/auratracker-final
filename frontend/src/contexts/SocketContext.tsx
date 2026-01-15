@@ -107,6 +107,24 @@ interface BombPartyJoinPrompt {
   }>;
 }
 
+interface BombPartyPlayAgainPrompt {
+  partyId: string;
+  timeLimit: number;
+  startTime: number;
+  gameOverData: BombPartyGameOver;
+  players: Array<{
+    userId: string;
+    username: string;
+    usernameColor?: string | null;
+  }>;
+  responses: Array<{
+    userId: string;
+    playAgain: boolean;
+  }>;
+  playAgainCount: number;
+  leaveCount: number;
+}
+
 interface SocketContextType {
   socket: Socket | null;
   connected: boolean;
@@ -137,8 +155,10 @@ interface SocketContextType {
   bombPartyGameOver: BombPartyGameOver | null;
   bombPartyRejection: string | null;
   bombPartyJoinPrompt: BombPartyJoinPrompt | null;
+  bombPartyPlayAgainPrompt: BombPartyPlayAgainPrompt | null;
   startBombParty: (lives: number, difficulty: 'easy' | 'medium' | 'hard') => void;
   respondToJoinPrompt: (accepted: boolean) => void;
+  respondToPlayAgainPrompt: (playAgain: boolean) => void;
   typeBombParty: (input: string) => void;
   submitBombParty: (word: string) => void;
   leaveBombParty: () => void;
@@ -171,6 +191,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [bombPartyGameOver, setBombPartyGameOver] = useState<BombPartyGameOver | null>(null);
   const [bombPartyRejection, setBombPartyRejection] = useState<string | null>(null);
   const [bombPartyJoinPrompt, setBombPartyJoinPrompt] = useState<BombPartyJoinPrompt | null>(null);
+  const [bombPartyPlayAgainPrompt, setBombPartyPlayAgainPrompt] = useState<BombPartyPlayAgainPrompt | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -303,6 +324,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setBombPartyGame(game);
         setBombPartyGameOver(null);
         setBombPartyJoinPrompt(null);
+        setBombPartyPlayAgainPrompt(null);
       });
 
       s.on('bombparty:typing', (data: { input: string; userId: string }) => {
@@ -382,6 +404,42 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
       s.on('bombparty:join-cancelled', () => {
         setBombPartyJoinPrompt(null);
+      });
+
+      // Bomb Party play again prompt events
+      s.on('bombparty:play-again-prompt', (data: {
+        partyId: string;
+        timeLimit: number;
+        gameOverData: BombPartyGameOver;
+        players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+        responses?: Array<{ userId: string; playAgain: boolean }>;
+      }) => {
+        setBombPartyPlayAgainPrompt({
+          ...data,
+          startTime: Date.now(),
+          responses: data.responses || [],
+          playAgainCount: 0,
+          leaveCount: 0,
+        });
+        setBombPartyGame(null);
+      });
+
+      s.on('bombparty:play-again-response-update', (data: {
+        partyId: string;
+        responses: Array<{ userId: string; playAgain: boolean }>;
+        playAgainCount: number;
+        leaveCount: number;
+      }) => {
+        setBombPartyPlayAgainPrompt((prev) => prev ? {
+          ...prev,
+          responses: data.responses,
+          playAgainCount: data.playAgainCount,
+          leaveCount: data.leaveCount,
+        } : null);
+      });
+
+      s.on('bombparty:play-again-cancelled', () => {
+        setBombPartyPlayAgainPrompt(null);
       });
 
       return () => {
@@ -468,6 +526,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const respondToPlayAgainPrompt = (playAgain: boolean) => {
+    if (user && bombPartyPlayAgainPrompt) {
+      bombPartyEvents.respondToPlayAgain(bombPartyPlayAgainPrompt.partyId, user.id, playAgain);
+    }
+  };
+
   const typeBombParty = (input: string) => {
     if (user && currentParty) {
       bombPartyEvents.type(currentParty.id, user.id, input);
@@ -521,8 +585,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         bombPartyGameOver,
         bombPartyRejection,
         bombPartyJoinPrompt,
+        bombPartyPlayAgainPrompt,
         startBombParty,
         respondToJoinPrompt,
+        respondToPlayAgainPrompt,
         typeBombParty,
         submitBombParty,
         leaveBombParty,
