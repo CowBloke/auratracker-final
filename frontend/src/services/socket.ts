@@ -102,6 +102,9 @@ export const bombPartyEvents = {
   start: (userId: string, partyId: string, lives: number, difficulty: 'easy' | 'medium' | 'hard') => {
     socket?.emit('bombparty:start', { userId, partyId, lives, difficulty });
   },
+  respondToJoin: (partyId: string, userId: string, accepted: boolean) => {
+    socket?.emit('bombparty:join-response', { partyId, userId, accepted });
+  },
   type: (partyId: string, userId: string, input: string) => {
     socket?.emit('bombparty:type', { partyId, userId, input });
   },

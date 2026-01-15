@@ -82,6 +82,24 @@ interface BombPartyGameOver {
   }>;
 }
 
+interface BombPartyJoinPrompt {
+  partyId: string;
+  leaderId: string;
+  lives: number;
+  difficulty: 'easy' | 'medium' | 'hard';
+  timeLimit: number;
+  startTime: number;
+  members: Array<{
+    userId: string;
+    username: string;
+    usernameColor?: string | null;
+  }>;
+  responses: Array<{
+    userId: string;
+    accepted: boolean;
+  }>;
+}
+
 interface SocketContextType {
   socket: Socket | null;
   connected: boolean;
@@ -111,7 +129,9 @@ interface SocketContextType {
   bombPartyGame: BombPartyGameState | null;
   bombPartyGameOver: BombPartyGameOver | null;
   bombPartyRejection: string | null;
+  bombPartyJoinPrompt: BombPartyJoinPrompt | null;
   startBombParty: (lives: number, difficulty: 'easy' | 'medium' | 'hard') => void;
+  respondToJoinPrompt: (accepted: boolean) => void;
   typeBombParty: (input: string) => void;
   submitBombParty: (word: string) => void;
   leaveBombParty: () => void;
@@ -143,6 +163,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [bombPartyGame, setBombPartyGame] = useState<BombPartyGameState | null>(null);
   const [bombPartyGameOver, setBombPartyGameOver] = useState<BombPartyGameOver | null>(null);
   const [bombPartyRejection, setBombPartyRejection] = useState<string | null>(null);
+  const [bombPartyJoinPrompt, setBombPartyJoinPrompt] = useState<BombPartyJoinPrompt | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -274,6 +295,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       s.on('bombparty:started', (game: BombPartyGameState) => {
         setBombPartyGame(game);
         setBombPartyGameOver(null);
+        setBombPartyJoinPrompt(null);
       });
 
       s.on('bombparty:typing', (data: { input: string; userId: string }) => {
@@ -325,6 +347,34 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
       s.on('bombparty:error', (data: { message: string }) => {
         console.error('Bomb Party error:', data.message);
+      });
+
+      // Bomb Party join prompt events
+      s.on('bombparty:join-prompt', (data: {
+        partyId: string;
+        leaderId: string;
+        lives: number;
+        difficulty: 'easy' | 'medium' | 'hard';
+        timeLimit: number;
+        members: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+        responses?: Array<{ userId: string; accepted: boolean }>;
+      }) => {
+        setBombPartyJoinPrompt({
+          ...data,
+          startTime: Date.now(),
+          responses: data.responses || [],
+        });
+      });
+
+      s.on('bombparty:join-response-update', (data: {
+        partyId: string;
+        responses: Array<{ userId: string; accepted: boolean }>;
+      }) => {
+        setBombPartyJoinPrompt((prev) => prev ? { ...prev, responses: data.responses } : null);
+      });
+
+      s.on('bombparty:join-cancelled', () => {
+        setBombPartyJoinPrompt(null);
       });
 
       return () => {
@@ -405,6 +455,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const respondToJoinPrompt = (accepted: boolean) => {
+    if (user && bombPartyJoinPrompt) {
+      bombPartyEvents.respondToJoin(bombPartyJoinPrompt.partyId, user.id, accepted);
+    }
+  };
+
   const typeBombParty = (input: string) => {
     if (user && currentParty) {
       bombPartyEvents.type(currentParty.id, user.id, input);
@@ -421,10 +477,13 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     if (user && currentParty) {
       bombPartyEvents.leave(currentParty.id, user.id);
     }
+    // Always clear local game state to allow user to exit even if backend doesn't respond
+    setBombPartyGame(null);
   };
 
   const clearBombPartyGameOver = () => {
     setBombPartyGameOver(null);
+    setBombPartyGame(null); // Also clear game state to return to lobby
   };
 
   return (
@@ -454,7 +513,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         bombPartyGame,
         bombPartyGameOver,
         bombPartyRejection,
+        bombPartyJoinPrompt,
         startBombParty,
+        respondToJoinPrompt,
         typeBombParty,
         submitBombParty,
         leaveBombParty,

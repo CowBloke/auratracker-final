@@ -373,6 +373,7 @@ export default function BombParty() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
       </div>
     );
   }
@@ -516,6 +517,64 @@ export default function BombParty() {
         </section>
       )}
 
+      {/* Game Over Modal (also shown during active game in case of state issues) */}
+      <Dialog open={!!bombPartyGameOver} onOpenChange={handleCloseGameOver}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-normal flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-yellow-500" />
+              Partie terminee
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            {bombPartyGameOver?.winnerId && (
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Gagnant</p>
+                <p className="text-2xl font-light">{bombPartyGameOver.winnerUsername}</p>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              {bombPartyGameOver?.players.map((player) => (
+                <div
+                  key={player.userId}
+                  className={cn(
+                    "flex items-center justify-between py-3 px-3 border rounded",
+                    player.isWinner
+                      ? "border-yellow-500/50 bg-yellow-500/5"
+                      : "border-border/30"
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    {player.isWinner && <Trophy className="h-4 w-4 text-yellow-500" />}
+                    <span className="font-medium">{player.username}</span>
+                    <span className="text-xs text-muted-foreground">
+                      ({player.wordsTypedCount} mots)
+                    </span>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {player.rewards.aura > 0 && (
+                      <span className="text-purple-400">+{player.rewards.aura} aura </span>
+                    )}
+                    {player.rewards.money > 0 && (
+                      <span className="text-green-400">+{player.rewards.money}$</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleCloseGameOver}
+              className="w-full border-foreground"
+            >
+              Fermer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

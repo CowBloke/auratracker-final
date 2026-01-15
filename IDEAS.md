@@ -15,5 +15,4 @@ Objets :
 ## Idées
 
 - bouton panique
-- bouton grand ecran pour les jeux
 - nft : faire des nft type epstein island pour personnaliser la page d'accueil des gens

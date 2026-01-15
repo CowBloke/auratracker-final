@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import { usersApi } from '../services/api';
-import { Plus, LogOut, UserPlus, X, RefreshCw, Bomb, Trash2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Plus, LogOut, UserPlus, X, RefreshCw, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -37,7 +36,7 @@ export default function Party() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [partyName, setPartyName] = useState('');
-  const [isPublic, setIsPublic] = useState(false);
+  const [isPublic, setIsPublic] = useState(true);
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
   useEffect(() => {
@@ -171,17 +170,6 @@ export default function Party() {
                 </button>
               )}
             </div>
-          </div>
-
-          {/* Party Games */}
-          <div className="flex flex-wrap gap-3 py-4 border-b border-border/30">
-            <Link
-              to="/games/bomb-party"
-              className="flex items-center gap-2 px-4 py-2 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-            >
-              <Bomb className="h-4 w-4" />
-              Bomb Party
-            </Link>
           </div>
 
           {/* Members */}

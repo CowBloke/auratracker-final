@@ -95,10 +95,16 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
         return;
       }
       
+      // Get creator's username for default party name
+      const creator = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { username: true },
+      });
+
       // Create party with user as leader
       const party = await prisma.party.create({
         data: {
-          name: name || null,
+          name: name || `${creator?.username || 'Unknown'}'s party`,
           isPublic,
           members: {
             create: {
@@ -301,7 +307,6 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
         await prisma.party.delete({
           where: { id: partyId },
         });
-        partyGames.delete(partyId);
         socket.emit('party:disbanded');
       } else {
         // Notify others

@@ -37,6 +37,19 @@ interface BombPartyGame {
 // Store active games by partyId
 const activeGames = new Map<string, BombPartyGame>();
 
+// Store pending join prompts by partyId
+interface PendingJoinPrompt {
+  partyId: string;
+  leaderId: string;
+  lives: number;
+  difficulty: 'easy' | 'medium' | 'hard';
+  responses: Map<string, boolean>; // userId -> accepted
+  memberIds: string[];
+  timer: NodeJS.Timeout | null;
+  startTime: number;
+}
+const pendingJoinPrompts = new Map<string, PendingJoinPrompt>();
+
 // Dictionary loaded once
 let dictionary: Set<string> | null = null;
 
@@ -135,7 +148,7 @@ function serializeGameState(game: BombPartyGame) {
 }
 
 export const setupBombPartyHandlers = (socket: Socket, io: Server) => {
-  // Start game
+  // Start game (initiates join prompt for all party members)
   socket.on('bombparty:start', async (data: {
     userId: string;
     partyId: string;
@@ -164,9 +177,14 @@ export const setupBombPartyHandlers = (socket: Socket, io: Server) => {
         return;
       }
 
-      // Check if game already active
+      // Check if game already active or join prompt pending
       if (activeGames.has(partyId)) {
         socket.emit('bombparty:error', { message: 'A game is already in progress' });
+        return;
+      }
+
+      if (pendingJoinPrompts.has(partyId)) {
+        socket.emit('bombparty:error', { message: 'A game is already being started' });
         return;
       }
 
@@ -185,54 +203,89 @@ export const setupBombPartyHandlers = (socket: Socket, io: Server) => {
         return;
       }
 
-      // Load dictionary
-      loadDictionary();
-
-      // Get initial prompt
-      const prompt = await getRandomPrompt(difficulty);
-
-      // Create game state
-      const game: BombPartyGame = {
+      // Create pending join prompt
+      const memberIds = partyMembers.map(m => m.user.id);
+      const pendingPrompt: PendingJoinPrompt = {
         partyId,
-        players: partyMembers.map(m => ({
+        leaderId: userId,
+        lives: validLives,
+        difficulty,
+        responses: new Map(),
+        memberIds,
+        timer: null,
+        startTime: Date.now(),
+      };
+
+      // Leader auto-accepts
+      pendingPrompt.responses.set(userId, true);
+
+      pendingJoinPrompts.set(partyId, pendingPrompt);
+
+      // Set 10-second timer
+      pendingPrompt.timer = setTimeout(() => {
+        resolveJoinPrompt(partyId, io);
+      }, 10000);
+
+      // Emit join prompt to all party members (include leader's auto-accept in initial responses)
+      io.to(`party:${partyId}`).emit('bombparty:join-prompt', {
+        partyId,
+        leaderId: userId,
+        lives: validLives,
+        difficulty,
+        timeLimit: 10000,
+        members: partyMembers.map(m => ({
           userId: m.user.id,
           username: m.user.username,
           usernameColor: m.user.usernameColor,
-          lives: validLives,
-          wordsUsed: [],
-          isEliminated: false,
-          wordsTypedCount: 0,
         })),
-        currentPlayerIndex: 0,
-        currentPrompt: prompt,
-        currentInput: '',
-        difficulty,
-        turnStartTime: Date.now(),
-        turnDuration: getTurnDuration(0),
-        usedWords: new Set(),
-        round: 0,
-        isActive: true,
-        turnTimer: null,
-        maxLives: validLives,
-        roundsWithoutLifeLoss: 0,
-      };
-
-      // Shuffle player order
-      for (let i = game.players.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [game.players[i], game.players[j]] = [game.players[j], game.players[i]];
-      }
-
-      activeGames.set(partyId, game);
-
-      // Start turn timer
-      startTurnTimer(game, io);
-
-      // Emit game started to party room
-      io.to(`party:${partyId}`).emit('bombparty:started', serializeGameState(game));
+        responses: [{ userId, accepted: true }], // Leader auto-accepts
+      });
     } catch (error) {
       console.error('Start bomb party error:', error);
       socket.emit('bombparty:error', { message: 'Failed to start game' });
+    }
+  });
+
+  // Handle join prompt response
+  socket.on('bombparty:join-response', async (data: {
+    partyId: string;
+    userId: string;
+    accepted: boolean;
+  }) => {
+    const { partyId, userId, accepted } = data;
+    const pendingPrompt = pendingJoinPrompts.get(partyId);
+
+    if (!pendingPrompt) {
+      return;
+    }
+
+    // Check if user is part of this prompt
+    if (!pendingPrompt.memberIds.includes(userId)) {
+      return;
+    }
+
+    // Record response
+    pendingPrompt.responses.set(userId, accepted);
+
+    // Broadcast response to party
+    io.to(`party:${partyId}`).emit('bombparty:join-response-update', {
+      partyId,
+      userId,
+      accepted,
+      responses: Array.from(pendingPrompt.responses.entries()).map(([id, acc]) => ({
+        userId: id,
+        accepted: acc,
+      })),
+    });
+
+    // Check if all responses received
+    if (pendingPrompt.responses.size === pendingPrompt.memberIds.length) {
+      // Clear timer and resolve immediately
+      if (pendingPrompt.timer) {
+        clearTimeout(pendingPrompt.timer);
+        pendingPrompt.timer = null;
+      }
+      resolveJoinPrompt(partyId, io);
     }
   });
 
@@ -364,6 +417,93 @@ export const setupBombPartyHandlers = (socket: Socket, io: Server) => {
     // This is handled by party:leave which calls bombparty:leave
   });
 };
+
+// Resolve join prompt and start game if enough players accepted
+async function resolveJoinPrompt(partyId: string, io: Server) {
+  const pendingPrompt = pendingJoinPrompts.get(partyId);
+  if (!pendingPrompt) return;
+
+  // Clear timer if still running
+  if (pendingPrompt.timer) {
+    clearTimeout(pendingPrompt.timer);
+    pendingPrompt.timer = null;
+  }
+
+  // Count accepted players
+  const acceptedUserIds = Array.from(pendingPrompt.responses.entries())
+    .filter(([_, accepted]) => accepted)
+    .map(([userId]) => userId);
+
+  // Remove pending prompt
+  pendingJoinPrompts.delete(partyId);
+
+  // Need at least 2 players to start
+  if (acceptedUserIds.length < 2) {
+    io.to(`party:${partyId}`).emit('bombparty:join-cancelled', {
+      reason: 'Not enough players accepted (need at least 2)',
+    });
+    return;
+  }
+
+  // Get accepted party members
+  const partyMembers = await prisma.partyMember.findMany({
+    where: {
+      partyId,
+      userId: { in: acceptedUserIds },
+    },
+    include: {
+      user: {
+        select: { id: true, username: true, usernameColor: true },
+      },
+    },
+  });
+
+  // Load dictionary
+  loadDictionary();
+
+  // Get initial prompt
+  const prompt = await getRandomPrompt(pendingPrompt.difficulty);
+
+  // Create game state with only accepted players
+  const game: BombPartyGame = {
+    partyId,
+    players: partyMembers.map(m => ({
+      userId: m.user.id,
+      username: m.user.username,
+      usernameColor: m.user.usernameColor,
+      lives: pendingPrompt.lives,
+      wordsUsed: [],
+      isEliminated: false,
+      wordsTypedCount: 0,
+    })),
+    currentPlayerIndex: 0,
+    currentPrompt: prompt,
+    currentInput: '',
+    difficulty: pendingPrompt.difficulty,
+    turnStartTime: Date.now(),
+    turnDuration: getTurnDuration(0),
+    usedWords: new Set(),
+    round: 0,
+    isActive: true,
+    turnTimer: null,
+    maxLives: pendingPrompt.lives,
+    roundsWithoutLifeLoss: 0,
+  };
+
+  // Shuffle player order
+  for (let i = game.players.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [game.players[i], game.players[j]] = [game.players[j], game.players[i]];
+  }
+
+  activeGames.set(partyId, game);
+
+  // Start turn timer
+  startTurnTimer(game, io);
+
+  // Emit game started to party room
+  io.to(`party:${partyId}`).emit('bombparty:started', serializeGameState(game));
+}
 
 // Turn timer logic
 function startTurnTimer(game: BombPartyGame, io: Server) {
