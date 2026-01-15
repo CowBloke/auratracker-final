@@ -7,3 +7,4 @@
 - coueurs bombparty
 - pour le leader choisir jeu directement depuis la page party
 - LOGS ADMIN
+- supprimer prix aura pour les objets de la table sql
