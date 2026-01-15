@@ -1,17 +1,18 @@
-## Jeux a créer : 
+# Jeux : 
 
-Party
+## Party
 - Makeitmeme
+- poker
+- bataille navale
 
-Objets :
-- slot VIP pour les partys
-- badges
-- toast pour tout
-- logs et stats
-- NFT
+## Solo
+- Blackjack
 
-## Idées
+# Objets :
+- objet jumpscare sur qq
 
+# Idées
+- bouton renommer le pseudo
 - bouton panique
 - nft : faire des nft type epstein island pour personnaliser la page d'accueil des gens
 - coffres à item
@@ -22,6 +23,12 @@ Objets :
 - mode plein écran jeux
 - par défaut mode clair
 - UI : hover panel recherche de joueur violet
+- wordle du jour sélectionné par admin
+- slot VIP pour les partys
+- badges
+- toast pour tout
+- logs et stats
+- NFT
 - nb aura coin prodil avec conversion euro et total euro
 - couleur et pseudo parout sur le site
 - 5 coeurs marche pas bomb party
