@@ -15,3 +15,5 @@ Objets :
 - bouton panique
 - nft : faire des nft type epstein island pour personnaliser la page d'accueil des gens
 - coffres à item
+- virer et désigner leadrr
+- clans
