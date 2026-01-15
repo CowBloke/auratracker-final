@@ -22,3 +22,11 @@ Objets :
 - mode plein écran jeux
 - par défaut mode clair
 - UI : hover panel recherche de joueur violet
+- nb aura coin prodil avec conversion euro et total euro
+- couleur et pseudo parout sur le site
+- 5 coeurs marche pas bomb party
+- pb affichage coeur qd qq perd : tt le monde perd
+- bouton max aura coin et ajouter un minimum
+- membres party peuvent suggerer jeu, redirections de page
+- voir les partys privées et demander à rejoindre
+- score lmoyen. doodle jumpxs
