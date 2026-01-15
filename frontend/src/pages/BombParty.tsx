@@ -585,7 +585,7 @@ export default function BombParty() {
                 {player.username}
               </span>
               <div className="flex gap-1">
-                {Array.from({ length: bombPartyGame.players[0]?.lives || 3 }).map((_, i) => (
+                {Array.from({ length: bombPartyGame.maxLives }).map((_, i) => (
                   <Heart
                     key={i}
                     className={cn(

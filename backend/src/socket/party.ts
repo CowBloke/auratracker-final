@@ -1,5 +1,6 @@
 import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
+import { sendPendingPlayAgainPrompt, sendActiveGameState } from './bombparty.js';
 
 interface PartyInvite {
   partyId: string;
@@ -68,6 +69,10 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
             isLeader: m.isLeader,
           })),
         });
+
+        // Send any active game state or pending play again prompt to the reconnecting player
+        sendActiveGameState(socket, membership.partyId, data.userId);
+        sendPendingPlayAgainPrompt(socket, membership.partyId, data.userId);
 
         // Update party activity
         await prisma.party.update({
