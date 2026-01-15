@@ -70,7 +70,12 @@ export default function Admin() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState<{ aura: number; money: number; dailyAuraLimit: number }>({ aura: 0, money: 0, dailyAuraLimit: 50 });
+  const [editValues, setEditValues] = useState<{ username: string; aura: number; money: number; dailyAuraLimit: number }>({
+    username: '',
+    aura: 0,
+    money: 0,
+    dailyAuraLimit: 50,
+  });
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [clearingChat, setClearingChat] = useState(false);
@@ -324,6 +329,7 @@ export default function Admin() {
   const startEditing = (u: AdminUser) => {
     setEditingUser(u.id);
     setEditValues({
+      username: u.username,
       aura: u.aura,
       money: u.money,
       dailyAuraLimit: u.dailyAuraLimit,
@@ -735,6 +741,16 @@ export default function Admin() {
                         </div>
                       </div>
                       
+                      <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">Pseudo</label>
+                        <Input
+                          type="text"
+                          value={editValues.username}
+                          onChange={(e) => setEditValues(prev => ({ ...prev, username: e.target.value }))}
+                          className="h-9 bg-transparent border-border/50"
+                        />
+                      </div>
+
                       <div className="grid grid-cols-3 gap-4">
                         <div className="space-y-1">
                           <label className="text-xs text-muted-foreground">Aura</label>

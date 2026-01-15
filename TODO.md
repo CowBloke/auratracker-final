@@ -5,3 +5,5 @@
 - on ne voit que ses propres envois d'aura dans les activités
 - recherche de joueur : PDP
 - coueurs bombparty
+- pour le leader choisir jeu directement depuis la page party
+- LOGS ADMIN

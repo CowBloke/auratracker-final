@@ -5,7 +5,7 @@ import { useSocket } from '../../contexts/SocketContext';
 import { Sparkles, Coins, User, LogOut, Wifi, WifiOff, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +23,8 @@ interface SearchUser {
   id: string;
   username: string;
   usernameColor?: string | null;
+  profilePicture?: string | null;
+  bio?: string | null;
 }
 
 export default function Header() {
@@ -67,6 +69,13 @@ export default function Header() {
     setIsSearchOpen(false);
     setSearchTerm('');
     navigate(`/profile/${userId}`);
+  };
+
+  const getBioPreview = (bio?: string | null, maxLength = 80) => {
+    const trimmed = bio?.trim();
+    if (!trimmed) return 'Aucune description.';
+    if (trimmed.length <= maxLength) return trimmed;
+    return `${trimmed.slice(0, maxLength)}...`;
   };
 
   return (
@@ -120,17 +129,25 @@ export default function Header() {
                           "flex w-full items-center gap-3 rounded-md border border-border/60 px-3 py-2 text-left transition hover:border-aura/60 hover:bg-aura/10"
                         )}
                       >
-                        <Avatar className="h-8 w-8">
+                        <Avatar className="h-9 w-9">
+                          {u.profilePicture ? (
+                            <AvatarImage src={u.profilePicture} alt={u.username} />
+                          ) : null}
                           <AvatarFallback className="bg-primary text-white">
                             {u.username.slice(0, 1).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                        <span
-                          className="font-medium"
-                          style={u.usernameColor ? { color: u.usernameColor } : undefined}
-                        >
-                          {u.username}
-                        </span>
+                        <div className="min-w-0 flex-1">
+                          <span
+                            className="block font-medium"
+                            style={u.usernameColor ? { color: u.usernameColor } : undefined}
+                          >
+                            {u.username}
+                          </span>
+                          <span className="block text-xs text-muted-foreground">
+                            {getBioPreview(u.bio)}
+                          </span>
+                        </div>
                       </button>
                     ))
                   )}

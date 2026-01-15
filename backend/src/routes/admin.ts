@@ -202,10 +202,31 @@ router.get('/users', authMiddleware, requireAdmin, async (req: AuthRequest, res:
 router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { aura, money, dailyAuraLimit } = req.body;
+    const { aura, money, dailyAuraLimit, username } = req.body;
 
     // Build update data
-    const updateData: { aura?: number; money?: number; dailyAuraLimit?: number } = {};
+    const updateData: { aura?: number; money?: number; dailyAuraLimit?: number; username?: string } = {};
+
+    if (username !== undefined) {
+      if (typeof username !== 'string') {
+        return res.status(400).json({ error: 'Invalid username' });
+      }
+      const trimmedUsername = username.trim();
+      if (trimmedUsername.length < 3 || trimmedUsername.length > 20) {
+        return res.status(400).json({ error: 'Username must be between 3 and 20 characters' });
+      }
+      const existing = await prisma.user.findFirst({
+        where: {
+          username: trimmedUsername,
+          NOT: { id },
+        },
+        select: { id: true },
+      });
+      if (existing) {
+        return res.status(400).json({ error: 'Username already taken' });
+      }
+      updateData.username = trimmedUsername;
+    }
     
     if (aura !== undefined) {
       updateData.aura = parseInt(aura);

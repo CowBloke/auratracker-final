@@ -42,11 +42,14 @@ import { cn } from '@/lib/utils';
 import { usersApi } from '@/services/api';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface SearchUser {
   id: string;
   username: string;
   usernameColor?: string | null;
+  profilePicture?: string | null;
+  bio?: string | null;
 }
 
 const navItems = [
@@ -116,6 +119,13 @@ export default function AppSidebar() {
     navigate(`/profile/${userId}`);
   };
 
+  const getBioPreview = (bio?: string | null, maxLength = 80) => {
+    const trimmed = bio?.trim();
+    if (!trimmed) return 'Aucune description.';
+    if (trimmed.length <= maxLength) return trimmed;
+    return `${trimmed.slice(0, maxLength)}...`;
+  };
+
   return (
     <Sidebar variant="inset" collapsible="icon">
       <SidebarContent>
@@ -160,15 +170,25 @@ export default function AppSidebar() {
                               "flex w-full items-center gap-3 rounded-md border border-border/60 px-3 py-2 text-left transition hover:border-aura/60 hover:bg-aura/10"
                             )}
                           >
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white">
-                              {u.username.slice(0, 1).toUpperCase()}
+                            <Avatar className="h-9 w-9">
+                              {u.profilePicture ? (
+                                <AvatarImage src={u.profilePicture} alt={u.username} />
+                              ) : null}
+                              <AvatarFallback className="bg-primary text-white">
+                                {u.username.slice(0, 1).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0 flex-1">
+                              <span
+                                className="block font-medium"
+                                style={u.usernameColor ? { color: u.usernameColor } : undefined}
+                              >
+                                {u.username}
+                              </span>
+                              <span className="block text-xs text-muted-foreground">
+                                {getBioPreview(u.bio)}
+                              </span>
                             </div>
-                            <span
-                              className="font-medium"
-                              style={u.usernameColor ? { color: u.usernameColor } : undefined}
-                            >
-                              {u.username}
-                            </span>
                           </button>
                         ))
                       )}
