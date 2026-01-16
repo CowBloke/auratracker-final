@@ -340,3 +340,23 @@ model Ban {
   @@index([isActive])
   @@index([expiresAt])
 }
+
+// Activity Log
+model Log {
+  id          String    @id @default(uuid())
+  type        String    // AUTH, CHAT, GAME, ECONOMY, PARTY, SUGGESTION, MARKETPLACE, ADMIN, BAN
+  action      String    // login, logout, register, message, game_complete, transfer, etc.
+  userId      String?   // User who performed the action (nullable for system events)
+  username    String?   // Cached username for display
+  targetId    String?   // Target user/entity ID (for transfers, bans, etc.)
+  targetName  String?   // Cached target name for display
+  details     String?   // JSON string with additional details
+  metadata    String?   // JSON string with extra metadata (amounts, scores, etc.)
+  ipAddress   String?   // IP address if available
+  createdAt   DateTime  @default(now())
+
+  @@index([type])
+  @@index([action])
+  @@index([userId])
+  @@index([createdAt])
+}
