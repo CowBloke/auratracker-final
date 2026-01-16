@@ -1273,4 +1273,103 @@ router.put('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, r
   }
 });
 
+// ========== RESET EXTREME AURA VALUES ==========
+
+// Reset users with extreme aura values (for overflow/corruption fixes)
+router.post('/reset-extreme-aura', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { threshold = 1000000000 } = req.body; // Default 1 billion threshold
+
+    // Find users with aura above threshold
+    const usersToReset = await prisma.user.findMany({
+      where: {
+        aura: { gt: BigInt(threshold) }
+      },
+      select: {
+        id: true,
+        username: true,
+        aura: true,
+      },
+    });
+
+    if (usersToReset.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No users found with extreme aura values',
+        usersReset: 0,
+        users: []
+      });
+    }
+
+    // Reset their aura to 0
+    await prisma.user.updateMany({
+      where: {
+        aura: { gt: BigInt(threshold) }
+      },
+      data: {
+        aura: BigInt(0)
+      }
+    });
+
+    // Log the reset action
+    logAdmin('extreme_aura_reset', req.user!.id, undefined, undefined, undefined, {
+      threshold,
+      usersReset: usersToReset.length,
+      users: usersToReset.map(u => ({ id: u.id, username: u.username, oldAura: u.aura.toString() })),
+    });
+
+    res.json({
+      success: true,
+      message: `Reset aura for ${usersToReset.length} user(s) with values above ${threshold.toLocaleString()}`,
+      usersReset: usersToReset.length,
+      users: usersToReset.map(u => ({
+        id: u.id,
+        username: u.username,
+        oldAura: u.aura.toString()
+      }))
+    });
+  } catch (error) {
+    console.error('Admin reset extreme aura error:', error);
+    res.status(500).json({ error: 'Failed to reset extreme aura values' });
+  }
+});
+
+// ========== SERVER DEPLOYMENT ==========
+
+// Run deploy script (admin only)
+router.post('/deploy', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { exec } = await import('child_process');
+    const { promisify } = await import('util');
+    const execAsync = promisify(exec);
+
+    // Log deployment attempt
+    logAdmin('deploy_trigger', req.user!.id, req.user!.username, undefined, undefined, {
+      timestamp: new Date().toISOString(),
+    });
+
+    // Execute the deploy script
+    const { stdout, stderr } = await execAsync('/var/scripts/deploy.sh', {
+      timeout: 120000, // 2 minute timeout
+      cwd: '/',
+    });
+
+    res.json({
+      success: true,
+      message: 'Deploy script executed successfully',
+      stdout: stdout || '',
+      stderr: stderr || '',
+    });
+  } catch (error: unknown) {
+    console.error('Deploy script error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorOutput = (error as { stderr?: string })?.stderr || '';
+    res.status(500).json({
+      error: 'Deploy script failed',
+      message: errorMessage,
+      stderr: errorOutput,
+    });
+  }
+});
+
 export default router;
