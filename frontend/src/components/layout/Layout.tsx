@@ -1,4 +1,4 @@
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { ChatSidebarProvider, ChatSidebarWrapper } from '../chat/ChatSidebarWrapper';
 import ChatBubble from '../chat/ChatBubble';
@@ -7,12 +7,18 @@ import BombPartyJoinPrompt from '../game/BombPartyJoinPrompt';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocket } from '@/contexts/SocketContext';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { getPageMeta } from '@/components/chat/presence';
 
 export default function Layout() {
   const { user } = useAuth();
-  const { connected, setCurrentPage } = useSocket();
+  const { connected, setCurrentPage, onlineUsers } = useSocket();
   const location = useLocation();
+  const navigate = useNavigate();
+  const [showUsers, setShowUsers] = useState(false);
 
   useEffect(() => {
     if (connected) {
@@ -32,11 +38,79 @@ export default function Layout() {
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-8 text-sm">
                   {/* Connection indicator */}
-                  <div className="flex items-center gap-2">
-                    <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-green-500' : 'bg-muted-foreground'}`} />
-                    <span className="text-muted-foreground">
-                      {connected ? 'online' : 'offline'}
-                    </span>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-green-500' : 'bg-muted-foreground'}`} />
+                      <span className="text-muted-foreground">
+                        {connected ? 'online' : 'offline'}
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <Collapsible open={showUsers} onOpenChange={setShowUsers}>
+                        <CollapsibleTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+                          >
+                            <span className="text-green-500">{onlineUsers.length} connectés</span>
+                            {showUsers ? (
+                              <ChevronUp className="h-3 w-3" />
+                            ) : (
+                              <ChevronDown className="h-3 w-3" />
+                            )}
+                          </button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="absolute left-0 top-full z-50 mt-2 w-64">
+                          <div className="rounded-md border border-border/60 bg-background/95 shadow-lg">
+                            <ScrollArea className="h-48">
+                              <div className="px-3 py-2 space-y-1">
+                                {onlineUsers.map((u) => (
+                                  <button
+                                    key={u.userId}
+                                    onClick={() => {
+                                      setShowUsers(false);
+                                      navigate(`/profile/${u.userId}`);
+                                    }}
+                                    className="flex items-center gap-2 py-1 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-left"
+                                  >
+                                    {u.profilePicture ? (
+                                      <img
+                                        src={u.profilePicture}
+                                        alt={u.username}
+                                        className="w-4 h-4 rounded-full object-cover"
+                                        onError={(e) => {
+                                          (e.target as HTMLImageElement).style.display = 'none';
+                                        }}
+                                      />
+                                    ) : (
+                                      <div className="w-1 h-1 rounded-full bg-foreground/50" />
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                      <span
+                                        className="block truncate"
+                                        style={u.usernameColor ? { color: u.usernameColor } : undefined}
+                                      >
+                                        {u.username}
+                                      </span>
+                                      {(() => {
+                                        const pageMeta = getPageMeta(u.currentPage);
+                                        const PageIcon = pageMeta.icon;
+                                        return (
+                                          <span className="flex items-center gap-1 text-[10px] text-muted-foreground/80">
+                                            <PageIcon className="h-3 w-3" />
+                                            <span className="truncate">{pageMeta.label}</span>
+                                          </span>
+                                        );
+                                      })()}
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            </ScrollArea>
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </div>
                   </div>
 
                   {/* Stats */}
