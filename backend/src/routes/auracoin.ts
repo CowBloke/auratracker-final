@@ -8,6 +8,7 @@ const router = Router();
 // Configuration
 const INITIAL_PRICE = 100;
 const FEE_PERCENTAGE = 0.02; // 2% fee
+const MIN_FEE = 1; // Minimum fee in money units
 const PRICE_IMPACT_PER_100 = 0.001; // 0.1% per 100$ traded
 const RANDOM_VARIATION_PERCENTAGE = 0.005; // +/- 0.5%
 const PRICE_UPDATE_INTERVAL = 5000; // 5 seconds
@@ -147,8 +148,11 @@ router.post('/buy', authMiddleware, async (req: AuthRequest, res: Response) => {
     }
     
     // Calculate fee and coins received
-    const fee = Math.floor(moneyAmount * FEE_PERCENTAGE);
+    const fee = Math.max(MIN_FEE, Math.floor(moneyAmount * FEE_PERCENTAGE));
     const netAmount = moneyAmount - fee;
+    if (netAmount <= 0) {
+      return res.status(400).json({ error: 'Amount too low to cover minimum fee' });
+    }
     const coinsReceived = netAmount / currentPrice;
     
     // Apply price impact (buying increases price)
@@ -241,8 +245,11 @@ router.post('/sell', authMiddleware, async (req: AuthRequest, res: Response) => 
     
     // Calculate money received (before fee)
     const grossAmount = Math.floor(coinAmount * currentPrice);
-    const fee = Math.floor(grossAmount * FEE_PERCENTAGE);
+    const fee = Math.max(MIN_FEE, Math.floor(grossAmount * FEE_PERCENTAGE));
     const netAmount = grossAmount - fee;
+    if (netAmount <= 0) {
+      return res.status(400).json({ error: 'Amount too low to cover minimum fee' });
+    }
     
     // Apply price impact (selling decreases price)
     const priceImpact = (grossAmount / 100) * PRICE_IMPACT_PER_100;
