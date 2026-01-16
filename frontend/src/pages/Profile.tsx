@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { usersApi, leaderboardsApi } from '../services/api';
+import { usersApi, leaderboardsApi, auraCoinApi, bombPartyApi, BombPartyStats } from '../services/api';
 import { Edit2, Save, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,10 +12,18 @@ interface ProfileUser {
   username: string;
   aura: number;
   money: number;
+  auraCoinBalance: number;
   usernameColor?: string | null;
   profilePicture?: string | null;
   bio?: string | null;
   createdAt: string;
+  badges: Array<{
+    id: string;
+    name: string;
+    color: string;
+    assignedAt: string;
+    userBadgeId: string;
+  }>;
   gameStats: Array<{
     gameType: string;
     wins: number;
@@ -37,6 +45,8 @@ export default function Profile() {
   const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
   const [rankings, setRankings] = useState<Rankings | null>(null);
   const [loading, setLoading] = useState(true);
+  const [auraCoinPrice, setAuraCoinPrice] = useState<number | null>(null);
+  const [bombPartyStats, setBombPartyStats] = useState<BombPartyStats | null>(null);
   
   // Bio editing state
   const [editingBio, setEditingBio] = useState(false);
@@ -55,6 +65,7 @@ export default function Profile() {
   const fetchProfile = async () => {
     try {
       setLoading(true);
+      setBombPartyStats(null);
       const [userRes, rankingsRes] = await Promise.all([
         usersApi.getById(targetUserId!),
         leaderboardsApi.getUserRankings(targetUserId!),
@@ -62,6 +73,22 @@ export default function Profile() {
       setProfileUser(userRes.data.user);
       setRankings(rankingsRes.data.rankings);
       setBioText(userRes.data.user.bio || '');
+
+      try {
+        const bombPartyRes = await bombPartyApi.getStats(targetUserId!);
+        setBombPartyStats(bombPartyRes.data);
+      } catch (error) {
+        console.error('Failed to fetch Bomb Party stats:', error);
+        setBombPartyStats(null);
+      }
+      
+      try {
+        const priceRes = await auraCoinApi.getPrice();
+        setAuraCoinPrice(priceRes.data.currentPrice);
+      } catch (error) {
+        console.error('Failed to fetch AuraCoin price:', error);
+        setAuraCoinPrice(null);
+      }
     } catch (error) {
       console.error('Failed to fetch profile:', error);
     } finally {
@@ -107,8 +134,17 @@ export default function Profile() {
     );
   }
 
-  const totalWins = profileUser.gameStats.reduce((acc, s) => acc + s.wins, 0);
-  const totalGames = profileUser.gameStats.reduce((acc, s) => acc + s.totalPlayed, 0);
+  const bombPartyWins = bombPartyStats?.wins ?? 0;
+  const bombPartyGames = bombPartyStats?.totalPlayed ?? 0;
+  const totalWins = profileUser.gameStats.reduce((acc, s) => acc + s.wins, 0) + bombPartyWins;
+  const totalGames = profileUser.gameStats.reduce((acc, s) => acc + s.totalPlayed, 0) + bombPartyGames;
+  const hasBombPartyStats = (bombPartyStats?.totalPlayed ?? 0) > 0;
+  const auraCoinValue = auraCoinPrice !== null
+    ? profileUser.auraCoinBalance * auraCoinPrice
+    : null;
+  const totalMoneyValue = auraCoinValue !== null
+    ? profileUser.money + auraCoinValue
+    : null;
 
   return (
     <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
@@ -146,6 +182,19 @@ export default function Profile() {
             >
               {profileUser.username}
             </h1>
+            {profileUser.badges?.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {profileUser.badges.map((badge) => (
+                  <span
+                    key={badge.userBadgeId || badge.id}
+                    className="text-xs uppercase tracking-wide px-2.5 py-1 rounded-full border"
+                    style={{ color: badge.color, borderColor: badge.color }}
+                  >
+                    {badge.name}
+                  </span>
+                ))}
+              </div>
+            )}
             <p className="text-sm text-muted-foreground mt-2">
               Membre depuis {new Date(profileUser.createdAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
             </p>
@@ -221,7 +270,7 @@ export default function Profile() {
       <div className="h-px bg-border" />
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-8 md:gap-12">
         <div className="space-y-1">
           <p className="text-4xl md:text-5xl font-light tabular-nums">
             {profileUser.aura.toLocaleString()}
@@ -236,6 +285,25 @@ export default function Profile() {
           </p>
           <p className="text-sm text-muted-foreground">
             money <span className="text-muted-foreground/60">#{rankings?.money?.rank || '—'}</span>
+          </p>
+        </div>
+        <div className="space-y-1">
+          <p className="text-4xl md:text-5xl font-light tabular-nums">
+            {profileUser.auraCoinBalance.toFixed(4)} AC
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Aura Coin
+          </p>
+          <p className="text-xs text-muted-foreground tabular-nums">
+            ≈ ${auraCoinValue !== null ? auraCoinValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
+          </p>
+        </div>
+        <div className="space-y-1">
+          <p className="text-4xl md:text-5xl font-light tabular-nums">
+            ${totalMoneyValue !== null ? totalMoneyValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            total money
           </p>
         </div>
         <div className="space-y-1">
@@ -261,7 +329,7 @@ export default function Profile() {
           Statistiques par jeu
         </h2>
         
-        {profileUser.gameStats.length === 0 ? (
+        {profileUser.gameStats.length === 0 && !hasBombPartyStats ? (
           <p className="text-muted-foreground">Aucune partie jouée</p>
         ) : (
           <div className="space-y-0">
@@ -285,6 +353,22 @@ export default function Profile() {
                 </div>
               </div>
             ))}
+            {hasBombPartyStats && bombPartyStats && (
+              <div className="flex items-center justify-between py-4 border-b border-border/30 last:border-0">
+                <span className="font-medium capitalize">bomb party</span>
+                <div className="flex items-center gap-8 text-sm text-muted-foreground tabular-nums">
+                  <span>{bombPartyStats.longestWord || '—'} record</span>
+                  <span>{bombPartyStats.wordsTyped.toLocaleString()} mots</span>
+                  <span>{bombPartyStats.wins} V</span>
+                  <span>{bombPartyStats.totalPlayed} jouées</span>
+                  <span>
+                    {bombPartyStats.totalPlayed > 0
+                      ? Math.round((bombPartyStats.wins / bombPartyStats.totalPlayed) * 100)
+                      : 0}%
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </section>

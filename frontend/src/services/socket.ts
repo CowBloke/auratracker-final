@@ -58,6 +58,12 @@ export const partyEvents = {
   join: (userId: string, partyId: string) => {
     socket?.emit('party:join', { userId, partyId });
   },
+  requestJoin: (userId: string, partyId: string) => {
+    socket?.emit('party:request-join', { userId, partyId });
+  },
+  respondToJoinRequest: (userId: string, targetUserId: string, accepted: boolean) => {
+    socket?.emit('party:join-request-response', { userId, targetUserId, accepted });
+  },
   leave: (userId: string) => {
     socket?.emit('party:leave', { userId });
   },

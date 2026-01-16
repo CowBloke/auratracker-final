@@ -54,6 +54,23 @@ interface PartyInvite {
   inviterUsername: string;
 }
 
+interface PartyJoinRequest {
+  partyId: string;
+  partyName: string | null;
+  userId: string;
+  username: string;
+  usernameColor?: string | null;
+  requestedAt: number;
+}
+
+interface PartyDirectoryItem {
+  id: string;
+  name: string | null;
+  memberCount: number;
+  maxSize: number;
+  isPublic: boolean;
+}
+
 interface BombPartyPlayer {
   userId: string;
   username: string;
@@ -141,9 +158,13 @@ interface SocketContextType {
   currentParty: Party | null;
   partyMembers: PartyMember[];
   partyInvites: PartyInvite[];
-  publicParties: Array<{ id: string; name: string | null; memberCount: number; maxSize: number }>;
+  partyJoinRequests: PartyJoinRequest[];
+  pendingJoinRequests: string[];
+  publicParties: PartyDirectoryItem[];
   createParty: (name?: string, isPublic?: boolean, maxSize?: number) => void;
   joinParty: (partyId: string) => void;
+  requestJoinParty: (partyId: string) => void;
+  respondToJoinRequest: (targetUserId: string, accepted: boolean) => void;
   leaveParty: () => void;
   deleteParty: () => void;
   inviteToParty: (targetUserId: string) => void;
@@ -184,7 +205,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [currentParty, setCurrentParty] = useState<Party | null>(null);
   const [partyMembers, setPartyMembers] = useState<PartyMember[]>([]);
   const [partyInvites, setPartyInvites] = useState<PartyInvite[]>([]);
-  const [publicParties, setPublicParties] = useState<Array<{ id: string; name: string | null; memberCount: number; maxSize: number }>>([]);
+  const [partyJoinRequests, setPartyJoinRequests] = useState<PartyJoinRequest[]>([]);
+  const [pendingJoinRequests, setPendingJoinRequests] = useState<string[]>([]);
+  const [publicParties, setPublicParties] = useState<PartyDirectoryItem[]>([]);
   
   // Balance update state
   const [balanceUpdate, setBalanceUpdate] = useState<{ userId: string; aura: number; money: number } | null>(null);
@@ -264,18 +287,21 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       s.on('party:created', (data: { party: Party; members: PartyMember[] }) => {
         setCurrentParty(data.party);
         setPartyMembers(data.members);
+        setPendingJoinRequests([]);
       });
 
       s.on('party:joined', (data: { party: Party; members: PartyMember[] }) => {
         setCurrentParty(data.party);
         setPartyMembers(data.members);
         setPartyInvites((prev) => prev.filter((invite) => invite.partyId !== data.party.id));
+        setPendingJoinRequests([]);
       });
 
       s.on('party:restored', (data: { party: Party; members: PartyMember[] }) => {
         setCurrentParty(data.party);
         setPartyMembers(data.members);
         setPartyInvites((prev) => prev.filter((invite) => invite.partyId !== data.party.id));
+        setPendingJoinRequests([]);
       });
 
       s.on('party:member-joined', (member: { userId: string; username: string; usernameColor?: string | null }) => {
@@ -289,16 +315,22 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       s.on('party:disbanded', () => {
         setCurrentParty(null);
         setPartyMembers([]);
+        setPartyJoinRequests([]);
+        setPendingJoinRequests([]);
       });
 
       s.on('party:left', () => {
         setCurrentParty(null);
         setPartyMembers([]);
+        setPartyJoinRequests([]);
+        setPendingJoinRequests([]);
       });
 
       s.on('party:kicked', () => {
         setCurrentParty(null);
         setPartyMembers([]);
+        setPartyJoinRequests([]);
+        setPendingJoinRequests([]);
       });
 
       s.on('party:invite', (invite: PartyInvite) => {
@@ -322,7 +354,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         }
       });
 
-      s.on('party:list', (data: { parties: typeof publicParties }) => {
+      s.on('party:list', (data: { parties: PartyDirectoryItem[] }) => {
         setPublicParties(data.parties);
       });
 
@@ -333,6 +365,27 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
             isLeader: m.userId === data.newLeaderId,
           }))
         );
+      });
+
+      s.on('party:join-request', (request: PartyJoinRequest) => {
+        setPartyJoinRequests((prev) => {
+          if (prev.some((entry) => entry.userId === request.userId && entry.partyId === request.partyId)) {
+            return prev;
+          }
+          return [...prev, request];
+        });
+      });
+
+      s.on('party:join-request-list', (data: { requests: PartyJoinRequest[] }) => {
+        setPartyJoinRequests(data.requests);
+      });
+
+      s.on('party:join-requested', (data: { partyId: string }) => {
+        setPendingJoinRequests((prev) => (prev.includes(data.partyId) ? prev : [...prev, data.partyId]));
+      });
+
+      s.on('party:join-request-resolved', (data: { partyId: string; accepted: boolean }) => {
+        setPendingJoinRequests((prev) => prev.filter((partyId) => partyId !== data.partyId));
       });
 
       // Economy events
@@ -512,6 +565,20 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const requestJoinParty = (partyId: string) => {
+    if (user) {
+      partyEvents.requestJoin(user.id, partyId);
+      setPendingJoinRequests((prev) => (prev.includes(partyId) ? prev : [...prev, partyId]));
+    }
+  };
+
+  const respondToJoinRequest = (targetUserId: string, accepted: boolean) => {
+    if (user) {
+      partyEvents.respondToJoinRequest(user.id, targetUserId, accepted);
+      setPartyJoinRequests((prev) => prev.filter((request) => request.userId !== targetUserId));
+    }
+  };
+
   const leaveParty = () => {
     if (user) {
       partyEvents.leave(user.id);
@@ -612,9 +679,13 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         currentParty,
         partyMembers,
         partyInvites,
+        partyJoinRequests,
+        pendingJoinRequests,
         publicParties,
         createParty,
         joinParty,
+        requestJoinParty,
+        respondToJoinRequest,
         leaveParty,
         deleteParty,
         inviteToParty,

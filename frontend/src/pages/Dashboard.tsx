@@ -265,8 +265,8 @@ export default function Dashboard() {
         <div className="space-y-1">
           <p className="text-4xl md:text-5xl font-light tabular-nums">
             {publicParties.length}
-          </p>
-          <p className="text-sm text-muted-foreground">parties en cours</p>
+            </p>
+          <p className="text-sm text-muted-foreground">parties actives</p>
         </div>
         <div className="space-y-1">
           <p className="text-4xl md:text-5xl font-light tabular-nums">

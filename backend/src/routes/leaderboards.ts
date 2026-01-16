@@ -4,7 +4,7 @@ import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
-type LeaderboardCategory = 'aura' | 'money' | 'doodle_jump' | 'solitaire' | 'casino' | 'games_played';
+type LeaderboardCategory = 'aura' | 'money' | 'doodle_jump' | 'solitaire' | 'casino' | 'games_played' | 'bombparty';
 
 // Get leaderboard by category
 router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response) => {
@@ -164,6 +164,34 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
           value: g._sum.totalPlayed || 0,
         }));
         break;
+
+      case 'bombparty':
+        rankings = await prisma.bombPartyStats.findMany({
+          where: { user: { isAdmin: false } },
+          select: {
+            userId: true,
+            wins: true,
+            losses: true,
+            totalPlayed: true,
+            user: {
+              select: { username: true, usernameColor: true },
+            },
+          },
+          orderBy: { wins: 'desc' },
+          take: parseInt(limit as string),
+          skip: parseInt(offset as string),
+        });
+        rankings = rankings.map((s, i) => ({
+          rank: parseInt(offset as string) + i + 1,
+          userId: s.userId,
+          username: s.user.username,
+          usernameColor: s.user.usernameColor,
+          value: s.wins,
+          wins: s.wins,
+          losses: s.losses,
+          totalPlayed: s.totalPlayed,
+        }));
+        break;
         
       default:
         return res.status(400).json({ error: 'Invalid category' });
@@ -214,6 +242,19 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
             },
           });
           userRank = higherScores + 1;
+        }
+      } else if (category === 'bombparty') {
+        const userStats = await prisma.bombPartyStats.findUnique({
+          where: { userId: req.user.id },
+        });
+        if (userStats) {
+          const higherWins = await prisma.bombPartyStats.count({
+            where: {
+              wins: { gt: userStats.wins },
+              user: { isAdmin: false },
+            },
+          });
+          userRank = higherWins + 1;
         }
       }
     }
@@ -277,6 +318,28 @@ router.get('/user/:userId', authMiddleware, async (req: AuthRequest, res: Respon
         wins: stat.wins,
         losses: stat.losses,
         totalPlayed: stat.totalPlayed,
+      };
+    }
+
+    const bombPartyStats = await prisma.bombPartyStats.findUnique({
+      where: { userId },
+    });
+
+    if (bombPartyStats) {
+      const higherWins = await prisma.bombPartyStats.count({
+        where: {
+          wins: { gt: bombPartyStats.wins },
+          user: { isAdmin: false },
+        },
+      });
+
+      rankings.bombparty = {
+        wins: bombPartyStats.wins,
+        losses: bombPartyStats.losses,
+        totalPlayed: bombPartyStats.totalPlayed,
+        wordsTyped: bombPartyStats.wordsTyped,
+        longestWord: bombPartyStats.longestWord,
+        rank: higherWins + 1,
       };
     }
     

@@ -243,6 +243,19 @@ export interface AdminUser {
   updatedAt: string;
 }
 
+export interface Badge {
+  id: string;
+  name: string;
+  color: string;
+  createdAt: string;
+}
+
+export interface UserBadge {
+  id: string;
+  assignedAt: string;
+  badge: Badge;
+}
+
 // Pending User Interface
 export interface PendingUser {
   id: string;
@@ -324,7 +337,9 @@ export interface Suggestion {
   title: string;
   description: string;
   imageUrl: string | null;
+  status: 'PENDING' | 'DONE';
   createdAt: string;
+  resolvedAt: string | null;
   user: {
     id: string;
     username: string;
@@ -334,6 +349,9 @@ export interface Suggestion {
   downvotes: number;
   score: number;
   userVote: number;
+  averageRating: number | null;
+  ratingCount: number;
+  userRating: number | null;
   comments: SuggestionComment[];
 }
 
@@ -345,6 +363,19 @@ export const suggestionsApi = {
     api.post<{ upvotes: number; downvotes: number; score: number; userVote: number }>(
       `/suggestions/${id}/vote`,
       { value }
+    ),
+  updateStatus: (id: string, status: 'PENDING' | 'DONE') =>
+    api.patch<{
+      status: 'PENDING' | 'DONE';
+      resolvedAt: string | null;
+      averageRating: number | null;
+      ratingCount: number;
+      userRating: number | null;
+    }>(`/suggestions/${id}/status`, { status }),
+  rate: (id: string, rating: number) =>
+    api.post<{ averageRating: number | null; ratingCount: number; userRating: number | null }>(
+      `/suggestions/${id}/rating`,
+      { rating }
     ),
   delete: (id: string) => api.delete<{ success: boolean }>(`/suggestions/${id}`),
   addComment: (id: string, data: { content: string }) =>
@@ -378,6 +409,15 @@ export const adminApi = {
   updateUser: (id: string, data: { username?: string; aura?: number; money?: number; dailyAuraLimit?: number }) =>
     api.put<{ user: AdminUser }>(`/admin/users/${id}`, data),
   deleteUser: (id: string) => api.delete<{ success: boolean; message: string }>(`/admin/users/${id}`),
+  getBadges: () => api.get<{ badges: Badge[] }>('/admin/badges'),
+  createBadge: (data: { name: string; color: string }) =>
+    api.post<{ badge: Badge }>('/admin/badges', data),
+  getUserBadges: (id: string) =>
+    api.get<{ badges: UserBadge[] }>(`/admin/users/${id}/badges`),
+  addUserBadge: (id: string, data: { badgeId: string }) =>
+    api.post<{ userBadge: UserBadge; alreadyAssigned?: boolean }>(`/admin/users/${id}/badges`, data),
+  removeUserBadge: (id: string, badgeId: string) =>
+    api.delete<{ success: boolean }>(`/admin/users/${id}/badges/${badgeId}`),
   getUserInventory: (id: string) =>
     api.get<{ items: AdminInventoryItem[] }>(`/admin/users/${id}/inventory`),
   addUserInventoryItem: (id: string, data: { itemId: string; quantity?: number }) =>

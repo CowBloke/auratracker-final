@@ -9,6 +9,15 @@ interface PartyInvite {
   inviterUsername: string;
 }
 
+interface PartyJoinRequest {
+  partyId: string;
+  partyName: string | null;
+  userId: string;
+  username: string;
+  usernameColor?: string | null;
+  requestedAt: number;
+}
+
 interface InviteCooldown {
   inviterId: string;
   targetUserId: string;
@@ -16,6 +25,7 @@ interface InviteCooldown {
 }
 
 const partyInvites = new Map<string, PartyInvite[]>(); // userId -> invites
+const partyJoinRequests = new Map<string, PartyJoinRequest[]>(); // partyId -> join requests
 const userSockets = new Map<string, string>(); // userId -> socketId
 const inviteCooldowns = new Map<string, InviteCooldown>(); // key: `${inviterId}:${targetUserId}` -> cooldown
 
@@ -35,6 +45,48 @@ const getPartyMembers = async (partyId: string) => {
   });
   const leader = members.find((m) => m.isLeader);
   return { members, leaderId: leader?.userId || null };
+};
+
+const serializePartyPayload = (party: {
+  id: string;
+  name: string | null;
+  isPublic: boolean;
+  maxSize: number;
+  members: Array<{ userId: string; isLeader: boolean; user: { username: string; usernameColor?: string | null } }>;
+}) => ({
+  party: {
+    id: party.id,
+    name: party.name,
+    isPublic: party.isPublic,
+    maxSize: party.maxSize,
+  },
+  members: party.members.map((m) => ({
+    userId: m.userId,
+    username: m.user.username,
+    usernameColor: m.user.usernameColor,
+    isLeader: m.isLeader,
+  })),
+});
+
+const removeJoinRequest = (partyId: string, userId: string) => {
+  const requests = partyJoinRequests.get(partyId) || [];
+  const updated = requests.filter((request) => request.userId !== userId);
+  if (updated.length === 0) {
+    partyJoinRequests.delete(partyId);
+  } else {
+    partyJoinRequests.set(partyId, updated);
+  }
+};
+
+const clearJoinRequestsForUser = (userId: string) => {
+  for (const [partyId, requests] of partyJoinRequests.entries()) {
+    const updated = requests.filter((request) => request.userId !== userId);
+    if (updated.length === 0) {
+      partyJoinRequests.delete(partyId);
+    } else if (updated.length !== requests.length) {
+      partyJoinRequests.set(partyId, updated);
+    }
+  }
 };
 
 export const setupPartyHandlers = (socket: Socket, io: Server) => {
@@ -90,6 +142,13 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
           where: { id: membership.partyId },
           data: { lastActivity: new Date() },
         });
+
+        if (membership.isLeader) {
+          const joinRequests = partyJoinRequests.get(membership.partyId) || [];
+          if (joinRequests.length > 0) {
+            socket.emit('party:join-request-list', { requests: joinRequests });
+          }
+        }
       }
     } catch (error) {
       console.error('Error restoring party state:', error);
@@ -255,22 +314,15 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
           },
         },
       });
+
+      logParty('party_join', targetUserId, request.username, {
+        partyId,
+        partyName: updatedParty!.name,
+        source: 'join_request',
+      });
       
       // Notify the joining user
-      socket.emit('party:joined', {
-        party: {
-          id: updatedParty!.id,
-          name: updatedParty!.name,
-          isPublic: updatedParty!.isPublic,
-          maxSize: updatedParty!.maxSize,
-        },
-        members: updatedParty!.members.map((m) => ({
-          userId: m.userId,
-          username: m.user.username,
-          usernameColor: m.user.usernameColor,
-          isLeader: m.isLeader,
-        })),
-      });
+      socket.emit('party:joined', serializePartyPayload(updatedParty!));
       
       // Log party join
       logParty('party_join', userId, user!.username, {
@@ -291,9 +343,216 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
         userId,
         invites.filter((i) => i.partyId !== partyId)
       );
+
+      removeJoinRequest(partyId, userId);
+      clearJoinRequestsForUser(userId);
     } catch (error) {
       console.error('Join party error:', error);
       socket.emit('party:error', { message: 'Failed to join party' });
+    }
+  });
+
+  // Request to join a private party
+  socket.on('party:request-join', async (data: { userId: string; partyId: string }) => {
+    const { userId, partyId } = data;
+
+    try {
+      const existingMembership = await prisma.partyMember.findUnique({
+        where: { userId },
+      });
+
+      if (existingMembership) {
+        socket.emit('party:error', { message: 'You are already in a party' });
+        return;
+      }
+
+      const party = await prisma.party.findUnique({
+        where: { id: partyId },
+        include: {
+          members: true,
+        },
+      });
+
+      if (!party) {
+        socket.emit('party:error', { message: 'Party not found' });
+        return;
+      }
+
+      if (party.isPublic) {
+        socket.emit('party:error', { message: 'This party is public' });
+        return;
+      }
+
+      if (party.members.length >= party.maxSize) {
+        socket.emit('party:error', { message: 'Party is full' });
+        return;
+      }
+
+      const requests = partyJoinRequests.get(partyId) || [];
+      if (requests.some((request) => request.userId === userId)) {
+        socket.emit('party:error', { message: 'Join request already sent' });
+        return;
+      }
+
+      const requester = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, username: true, usernameColor: true },
+      });
+
+      if (!requester) {
+        socket.emit('party:error', { message: 'User not found' });
+        return;
+      }
+
+      const joinRequest: PartyJoinRequest = {
+        partyId,
+        partyName: party.name,
+        userId,
+        username: requester.username,
+        usernameColor: requester.usernameColor,
+        requestedAt: Date.now(),
+      };
+
+      requests.push(joinRequest);
+      partyJoinRequests.set(partyId, requests);
+
+      const { leaderId } = await getPartyMembers(partyId);
+      if (leaderId) {
+        const leaderSocketId = userSockets.get(leaderId);
+        if (leaderSocketId) {
+          io.to(leaderSocketId).emit('party:join-request', joinRequest);
+        }
+      }
+
+      socket.emit('party:join-requested', { partyId });
+    } catch (error) {
+      console.error('Join request error:', error);
+      socket.emit('party:error', { message: 'Failed to request join' });
+    }
+  });
+
+  // Respond to join request (leader only)
+  socket.on('party:join-request-response', async (data: { userId: string; targetUserId: string; accepted: boolean }) => {
+    const { userId, targetUserId, accepted } = data;
+
+    try {
+      const membership = await prisma.partyMember.findUnique({
+        where: { userId },
+        include: { party: true },
+      });
+
+      if (!membership || !membership.isLeader) {
+        socket.emit('party:error', { message: 'Only the leader can respond to join requests' });
+        return;
+      }
+
+      const partyId = membership.partyId;
+      const requests = partyJoinRequests.get(partyId) || [];
+      const request = requests.find((entry) => entry.userId === targetUserId);
+
+      if (!request) {
+        socket.emit('party:error', { message: 'Join request not found' });
+        return;
+      }
+
+      removeJoinRequest(partyId, targetUserId);
+
+      const targetSocketId = userSockets.get(targetUserId);
+      if (!accepted) {
+        if (targetSocketId) {
+          io.to(targetSocketId).emit('party:join-request-resolved', {
+            partyId,
+            accepted: false,
+          });
+        }
+        return;
+      }
+
+      const existingMembership = await prisma.partyMember.findUnique({
+        where: { userId: targetUserId },
+      });
+
+      if (existingMembership) {
+        socket.emit('party:error', { message: 'User is already in a party' });
+        return;
+      }
+
+      const party = await prisma.party.findUnique({
+        where: { id: partyId },
+        include: {
+          members: {
+            include: {
+              user: {
+                select: { id: true, username: true, usernameColor: true },
+              },
+            },
+          },
+        },
+      });
+
+      if (!party) {
+        socket.emit('party:error', { message: 'Party not found' });
+        return;
+      }
+
+      if (party.members.length >= party.maxSize) {
+        socket.emit('party:error', { message: 'Party is full' });
+        return;
+      }
+
+      await prisma.partyMember.create({
+        data: {
+          partyId,
+          userId: targetUserId,
+        },
+      });
+
+      await prisma.party.update({
+        where: { id: partyId },
+        data: { lastActivity: new Date() },
+      });
+
+      const updatedParty = await prisma.party.findUnique({
+        where: { id: partyId },
+        include: {
+          members: {
+            include: {
+              user: {
+                select: { id: true, username: true, usernameColor: true },
+              },
+            },
+          },
+        },
+      });
+
+      const targetSocket = targetSocketId ? io.sockets.sockets.get(targetSocketId) : undefined;
+      if (targetSocket) {
+        targetSocket.join(`party:${partyId}`);
+        targetSocket.emit('party:joined', serializePartyPayload(updatedParty!));
+        targetSocket.emit('party:join-request-resolved', {
+          partyId,
+          accepted: true,
+        });
+      }
+
+      if (targetSocket) {
+        targetSocket.to(`party:${partyId}`).emit('party:member-joined', {
+          userId: targetUserId,
+          username: request.username,
+          usernameColor: request.usernameColor,
+        });
+      } else {
+        io.to(`party:${partyId}`).emit('party:member-joined', {
+          userId: targetUserId,
+          username: request.username,
+          usernameColor: request.usernameColor,
+        });
+      }
+
+      clearJoinRequestsForUser(targetUserId);
+    } catch (error) {
+      console.error('Join request response error:', error);
+      socket.emit('party:error', { message: 'Failed to respond to join request' });
     }
   });
   
@@ -351,6 +610,18 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
           reason: 'last_member_left',
         });
 
+        const requests = partyJoinRequests.get(partyId) || [];
+        for (const request of requests) {
+          const requesterSocketId = userSockets.get(request.userId);
+          if (requesterSocketId) {
+            io.to(requesterSocketId).emit('party:join-request-resolved', {
+              partyId,
+              accepted: false,
+            });
+          }
+        }
+        partyJoinRequests.delete(partyId);
+
         socket.emit('party:disbanded');
       } else {
         // Notify others
@@ -375,6 +646,14 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
             io.to(`party:${partyId}`).emit('party:leader-changed', {
               newLeaderId: newLeader.userId,
             });
+
+            const joinRequests = partyJoinRequests.get(partyId) || [];
+            const newLeaderSocketId = userSockets.get(newLeader.userId);
+            if (newLeaderSocketId && joinRequests.length > 0) {
+              io.to(newLeaderSocketId).emit('party:join-request-list', {
+                requests: joinRequests,
+              });
+            }
           }
         }
         
@@ -436,6 +715,18 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
       await prisma.party.delete({
         where: { id: partyId },
       });
+
+      const requests = partyJoinRequests.get(partyId) || [];
+      for (const request of requests) {
+        const requesterSocketId = userSockets.get(request.userId);
+        if (requesterSocketId) {
+          io.to(requesterSocketId).emit('party:join-request-resolved', {
+            partyId,
+            accepted: false,
+          });
+        }
+      }
+      partyJoinRequests.delete(partyId);
 
       for (const [targetUserId, invites] of partyInvites.entries()) {
         const filteredInvites = invites.filter((invite) => invite.partyId !== partyId);
@@ -639,6 +930,13 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
             isLeader: m.isLeader,
           })),
         });
+
+        if (membership.isLeader) {
+          const joinRequests = partyJoinRequests.get(membership.partyId) || [];
+          if (joinRequests.length > 0) {
+            socket.emit('party:join-request-list', { requests: joinRequests });
+          }
+        }
       } else {
         // User is NOT in a party - clear any ghost state
         socket.emit('party:not-in-party');
@@ -652,14 +950,9 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
   socket.on('party:list', async () => {
     try {
       const parties = await prisma.party.findMany({
-        where: { isPublic: true },
         include: {
           members: {
-            include: {
-              user: {
-                select: { username: true },
-              },
-            },
+            select: { id: true },
           },
         },
         orderBy: { lastActivity: 'desc' },
@@ -670,12 +963,9 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
         parties: parties.map((p) => ({
           id: p.id,
           name: p.name,
+          isPublic: p.isPublic,
           memberCount: p.members.length,
           maxSize: p.maxSize,
-          members: p.members.map((m) => ({
-            username: m.user.username,
-            isLeader: m.isLeader,
-          })),
         })),
       });
     } catch (error) {

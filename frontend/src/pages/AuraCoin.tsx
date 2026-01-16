@@ -24,6 +24,9 @@ export default function AuraCoin() {
   const [activeTab, setActiveTab] = useState<'my' | 'all'>('my');
   const [myTransactions, setMyTransactions] = useState<AuraCoinTransaction[]>([]);
   const [allTransactions, setAllTransactions] = useState<AuraCoinTransaction[]>([]);
+
+  const MIN_FEE = 1;
+  const MIN_TRADE_GROSS = MIN_FEE + 1;
   
   const fetchData = useCallback(async () => {
     try {
@@ -126,6 +129,11 @@ export default function AuraCoin() {
   const sellGrossAmount = Math.floor(sellCoinAmount * currentPrice);
   const sellFee = Math.floor(sellGrossAmount * feePercentage);
   const sellNetAmount = sellGrossAmount - sellFee;
+
+  const minBuyAmount = MIN_TRADE_GROSS;
+  const minSellAmount = Math.ceil((MIN_TRADE_GROSS / currentPrice) * 10000) / 10000;
+  const canUseMinBuy = moneyBalance >= minBuyAmount;
+  const canUseMinSell = auraCoinBalance >= minSellAmount;
   
   // Mini chart SVG
   const chartWidth = 400;
@@ -252,7 +260,37 @@ export default function AuraCoin() {
           </div>
           
           <div>
-            <label className="text-sm text-muted-foreground">Montant ($)</label>
+            <div className="flex items-center justify-between">
+              <label className="text-sm text-muted-foreground">Montant ($)</label>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBuyAmount(minBuyAmount.toString())}
+                  disabled={loading || !canUseMinBuy}
+                  className={cn(
+                    "px-2 py-1 border text-[10px] uppercase tracking-widest transition-colors",
+                    !loading && canUseMinBuy
+                      ? "border-emerald-500/60 text-emerald-500 hover:bg-emerald-500 hover:text-background"
+                      : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
+                  )}
+                >
+                  Min
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBuyAmount(moneyBalance.toString())}
+                  disabled={loading || moneyBalance <= 0}
+                  className={cn(
+                    "px-2 py-1 border text-[10px] uppercase tracking-widest transition-colors",
+                    !loading && moneyBalance > 0
+                      ? "border-emerald-500/60 text-emerald-500 hover:bg-emerald-500 hover:text-background"
+                      : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
+                  )}
+                >
+                  Max
+                </button>
+              </div>
+            </div>
             <input
               type="number"
               value={buyAmount}
@@ -297,7 +335,37 @@ export default function AuraCoin() {
           </div>
           
           <div>
-            <label className="text-sm text-muted-foreground">Quantité (AC)</label>
+            <div className="flex items-center justify-between">
+              <label className="text-sm text-muted-foreground">Quantité (AC)</label>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSellAmount(minSellAmount.toFixed(4))}
+                  disabled={loading || !canUseMinSell}
+                  className={cn(
+                    "px-2 py-1 border text-[10px] uppercase tracking-widest transition-colors",
+                    !loading && canUseMinSell
+                      ? "border-red-500/60 text-red-500 hover:bg-red-500 hover:text-background"
+                      : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
+                  )}
+                >
+                  Min
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSellAmount(auraCoinBalance.toFixed(4))}
+                  disabled={loading || auraCoinBalance <= 0}
+                  className={cn(
+                    "px-2 py-1 border text-[10px] uppercase tracking-widest transition-colors",
+                    !loading && auraCoinBalance > 0
+                      ? "border-red-500/60 text-red-500 hover:bg-red-500 hover:text-background"
+                      : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
+                  )}
+                >
+                  Max
+                </button>
+              </div>
+            </div>
             <input
               type="number"
               value={sellAmount}

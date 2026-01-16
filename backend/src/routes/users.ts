@@ -13,6 +13,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
         username: true,
         aura: true,
         money: true,
+        auraCoinBalance: true,
         usernameColor: true,
         profilePicture: true,
         bio: true,
@@ -42,10 +43,25 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
         username: true,
         aura: true,
         money: true,
+        auraCoinBalance: true,
         usernameColor: true,
         profilePicture: true,
         bio: true,
         createdAt: true,
+        userBadges: {
+          select: {
+            id: true,
+            assignedAt: true,
+            badge: {
+              select: {
+                id: true,
+                name: true,
+                color: true,
+              },
+            },
+          },
+          orderBy: { assignedAt: 'desc' },
+        },
         gameStats: {
           select: {
             gameType: true,
@@ -62,7 +78,16 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'User not found' });
     }
     
-    res.json({ user });
+    const { userBadges, ...userData } = user;
+    const badges = userBadges.map((userBadge) => ({
+      id: userBadge.badge.id,
+      name: userBadge.badge.name,
+      color: userBadge.badge.color,
+      assignedAt: userBadge.assignedAt,
+      userBadgeId: userBadge.id,
+    }));
+
+    res.json({ user: { ...userData, badges } });
   } catch (error) {
     console.error('Get user error:', error);
     res.status(500).json({ error: 'Failed to get user' });
@@ -108,6 +133,7 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
         email: true,
         aura: true,
         money: true,
+        auraCoinBalance: true,
         isAdmin: true,
         usernameColor: true,
         profilePicture: true,

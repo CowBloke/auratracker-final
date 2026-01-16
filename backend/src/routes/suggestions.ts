@@ -24,6 +24,12 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
             value: true,
           },
         },
+        ratings: {
+          select: {
+            userId: true,
+            rating: true,
+          },
+        },
         comments: {
           orderBy: { createdAt: 'asc' },
           include: {
@@ -45,18 +51,28 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
       const upvotes = suggestion.votes.filter((v) => v.value === 1).length;
       const downvotes = suggestion.votes.filter((v) => v.value === -1).length;
       const userVote = suggestion.votes.find((v) => v.userId === req.user!.id);
+      const ratingCount = suggestion.ratings.length;
+      const averageRating = ratingCount
+        ? suggestion.ratings.reduce((sum, rating) => sum + rating.rating, 0) / ratingCount
+        : null;
+      const userRating = suggestion.ratings.find((r) => r.userId === req.user!.id);
 
       return {
         id: suggestion.id,
         title: suggestion.title,
         description: suggestion.description,
         imageUrl: suggestion.imageUrl,
+        status: suggestion.status,
         createdAt: suggestion.createdAt,
+        resolvedAt: suggestion.resolvedAt,
         user: suggestion.user,
         upvotes,
         downvotes,
         score: upvotes - downvotes,
         userVote: userVote?.value || 0,
+        averageRating,
+        ratingCount,
+        userRating: userRating?.rating ?? null,
         comments: suggestion.comments,
       };
     });
@@ -119,10 +135,15 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
     res.status(201).json({
       suggestion: {
         ...suggestion,
+        status: suggestion.status,
+        resolvedAt: suggestion.resolvedAt,
         upvotes: 0,
         downvotes: 0,
         score: 0,
         userVote: 0,
+        averageRating: null,
+        ratingCount: 0,
+        userRating: null,
         comments: [],
       },
     });
@@ -269,6 +290,125 @@ router.post('/:id/vote', authMiddleware, async (req: AuthRequest, res: Response)
   } catch (error) {
     console.error('Vote on suggestion error:', error);
     res.status(500).json({ error: 'Failed to vote' });
+  }
+});
+
+// Update suggestion status (admin only)
+router.patch('/:id/status', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user?.isAdmin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!['PENDING', 'DONE'].includes(status)) {
+      return res.status(400).json({ error: 'Status must be PENDING or DONE' });
+    }
+
+    const updated = await prisma.suggestion.update({
+      where: { id },
+      data: {
+        status,
+        resolvedAt: status === 'DONE' ? new Date() : null,
+      },
+      include: {
+        ratings: {
+          select: {
+            userId: true,
+            rating: true,
+          },
+        },
+      },
+    });
+
+    const ratingCount = updated.ratings.length;
+    const averageRating = ratingCount
+      ? updated.ratings.reduce((sum, rating) => sum + rating.rating, 0) / ratingCount
+      : null;
+    const userRating = updated.ratings.find((r) => r.userId === req.user!.id);
+
+    logSuggestion('suggestion_status', req.user!.id, req.user!.username, {
+      suggestionId: id,
+      status,
+    });
+
+    res.json({
+      status: updated.status,
+      resolvedAt: updated.resolvedAt,
+      averageRating,
+      ratingCount,
+      userRating: userRating?.rating ?? null,
+    });
+  } catch (error) {
+    console.error('Update suggestion status error:', error);
+    res.status(500).json({ error: 'Failed to update suggestion status' });
+  }
+});
+
+// Rate a suggestion update (only when done)
+router.post('/:id/rating', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { rating } = req.body;
+
+    if (!Number.isInteger(rating) || rating < 1 || rating > 10) {
+      return res.status(400).json({ error: 'Rating must be an integer between 1 and 10' });
+    }
+
+    const suggestion = await prisma.suggestion.findUnique({
+      where: { id },
+      select: { id: true, status: true },
+    });
+
+    if (!suggestion) {
+      return res.status(404).json({ error: 'Suggestion not found' });
+    }
+
+    if (suggestion.status !== 'DONE') {
+      return res.status(400).json({ error: 'Suggestion must be marked as done before rating' });
+    }
+
+    await prisma.suggestionRating.upsert({
+      where: {
+        suggestionId_userId: {
+          suggestionId: id,
+          userId: req.user!.id,
+        },
+      },
+      update: { rating },
+      create: {
+        suggestionId: id,
+        userId: req.user!.id,
+        rating,
+      },
+    });
+
+    const ratings = await prisma.suggestionRating.findMany({
+      where: { suggestionId: id },
+      select: { rating: true, userId: true },
+    });
+
+    const ratingCount = ratings.length;
+    const averageRating = ratingCount
+      ? ratings.reduce((sum, entry) => sum + entry.rating, 0) / ratingCount
+      : null;
+    const userRating = ratings.find((entry) => entry.userId === req.user!.id)?.rating ?? null;
+
+    logSuggestion('suggestion_rating', req.user!.id, req.user!.username, {
+      suggestionId: id,
+      rating,
+    });
+
+    res.json({
+      averageRating,
+      ratingCount,
+      userRating,
+    });
+  } catch (error) {
+    console.error('Rate suggestion error:', error);
+    res.status(500).json({ error: 'Failed to rate suggestion' });
   }
 });
 

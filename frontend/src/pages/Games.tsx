@@ -32,7 +32,7 @@ const games = [
   {
     id: 'casino',
     name: 'Casino',
-    description: 'Tente ta chance aux machines à sous.',
+    description: 'Choisis entre machine à sous et roulette animée.',
     type: 'Chance',
   },
   {

@@ -1,13 +1,13 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { adminApi, uploadsApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats } from '../services/api';
+import { adminApi, uploadsApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, Badge, UserBadge } from '../services/api';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Swords } from 'lucide-react';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Swords, Award } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -108,6 +108,9 @@ const ACTION_LABELS: Record<string, string> = {
   inventory_remove: 'Inventaire retiré',
   chat_clear: 'Chat vidé',
   stats_delete: 'Stats supprimées',
+  badge_create: 'Badge créé',
+  badge_assign: 'Badge attribué',
+  badge_remove: 'Badge retiré',
   // Ban
   ban_create: 'Bannissement créé',
   ban_remove: 'Bannissement levé',
@@ -144,6 +147,8 @@ const METADATA_LABELS: Record<string, string> = {
   content: 'Contenu',
   status: 'Statut',
   votes: 'Votes',
+  badgeId: 'Badge',
+  badgeName: 'Badge',
 };
 
 // Game type filters
@@ -208,6 +213,18 @@ export default function Admin() {
   const [itemImageDataUrl, setItemImageDataUrl] = useState('');
   const [savingItem, setSavingItem] = useState(false);
   const [deletingItem, setDeletingItem] = useState<string | null>(null);
+
+  // Badge management state
+  const [badges, setBadges] = useState<Badge[]>([]);
+  const [loadingBadges, setLoadingBadges] = useState(false);
+  const [creatingBadge, setCreatingBadge] = useState(false);
+  const [badgeForm, setBadgeForm] = useState({ name: '', color: '#f59e0b' });
+  const [badgeUserId, setBadgeUserId] = useState('');
+  const [badgeAssignId, setBadgeAssignId] = useState('');
+  const [userBadges, setUserBadges] = useState<UserBadge[]>([]);
+  const [loadingUserBadges, setLoadingUserBadges] = useState(false);
+  const [assigningBadge, setAssigningBadge] = useState(false);
+  const [removingBadgeId, setRemovingBadgeId] = useState<string | null>(null);
 
   // Bug reports state
   const [bugReports, setBugReports] = useState<BugReport[]>([]);
@@ -282,12 +299,21 @@ export default function Admin() {
   useEffect(() => {
     fetchUsers();
     fetchItems();
+    fetchBadges();
     fetchBugReports();
     fetchPendingUsers();
     fetchBans();
     fetchLogs();
     fetchLogStats();
   }, []);
+
+  useEffect(() => {
+    if (badgeUserId) {
+      fetchUserBadges(badgeUserId);
+    } else {
+      setUserBadges([]);
+    }
+  }, [badgeUserId]);
 
   const fetchUsers = async () => {
     try {
@@ -311,6 +337,19 @@ export default function Admin() {
       showMessage('error', 'Erreur lors du chargement des objets');
     } finally {
       setLoadingItems(false);
+    }
+  };
+
+  const fetchBadges = async () => {
+    try {
+      setLoadingBadges(true);
+      const res = await adminApi.getBadges();
+      setBadges(res.data.badges);
+    } catch (error) {
+      console.error('Failed to fetch badges:', error);
+      showMessage('error', 'Erreur lors du chargement des badges');
+    } finally {
+      setLoadingBadges(false);
     }
   };
 
@@ -765,6 +804,70 @@ export default function Admin() {
     }
   };
 
+  const createBadge = async () => {
+    const name = badgeForm.name.trim();
+    if (!name) {
+      showMessage('error', 'Nom du badge requis');
+      return;
+    }
+    try {
+      setCreatingBadge(true);
+      const res = await adminApi.createBadge({ name, color: badgeForm.color });
+      setBadges((prev) => [res.data.badge, ...prev]);
+      setBadgeForm({ name: '', color: badgeForm.color });
+      showMessage('success', 'Badge créé');
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur');
+    } finally {
+      setCreatingBadge(false);
+    }
+  };
+
+  const fetchUserBadges = async (userId: string) => {
+    try {
+      setLoadingUserBadges(true);
+      const res = await adminApi.getUserBadges(userId);
+      setUserBadges(res.data.badges);
+    } catch (error) {
+      console.error('Failed to fetch user badges:', error);
+      showMessage('error', 'Erreur lors du chargement des badges utilisateur');
+    } finally {
+      setLoadingUserBadges(false);
+    }
+  };
+
+  const assignBadgeToUser = async () => {
+    if (!badgeUserId || !badgeAssignId) return;
+    try {
+      setAssigningBadge(true);
+      const res = await adminApi.addUserBadge(badgeUserId, { badgeId: badgeAssignId });
+      if (res.data.userBadge && !res.data.alreadyAssigned) {
+        setUserBadges((prev) => [res.data.userBadge, ...prev]);
+        showMessage('success', 'Badge attribué');
+      } else {
+        showMessage('error', 'Badge déjà attribué');
+      }
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur');
+    } finally {
+      setAssigningBadge(false);
+    }
+  };
+
+  const removeBadgeFromUser = async (badgeId: string) => {
+    if (!badgeUserId) return;
+    try {
+      setRemovingBadgeId(badgeId);
+      await adminApi.removeUserBadge(badgeUserId, badgeId);
+      setUserBadges((prev) => prev.filter((userBadge) => userBadge.badge.id !== badgeId));
+      showMessage('success', 'Badge retiré');
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur');
+    } finally {
+      setRemovingBadgeId(null);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto py-12 px-4 space-y-8">
       {/* Message */}
@@ -802,6 +905,13 @@ export default function Admin() {
             className="data-[state=active]:bg-muted/50 data-[state=active]:text-foreground text-muted-foreground"
           >
             Objets
+          </TabsTrigger>
+          <TabsTrigger
+            value="badges"
+            className="data-[state=active]:bg-muted/50 data-[state=active]:text-foreground text-muted-foreground"
+          >
+            <Award className="h-4 w-4 mr-1" />
+            Badges
           </TabsTrigger>
           <TabsTrigger 
             value="chat"
@@ -1288,6 +1398,170 @@ export default function Admin() {
               })}
             </div>
           )}
+        </TabsContent>
+
+        {/* Badges Tab */}
+        <TabsContent value="badges" className="space-y-6">
+          <div className="h-px bg-border" />
+
+          <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <div className="space-y-4 border border-border/40 p-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
+                  Creer un badge
+                </h2>
+                <span className="text-xs text-muted-foreground">
+                  {badges.length} existants
+                </span>
+              </div>
+              <div className="space-y-3">
+                <Input
+                  value={badgeForm.name}
+                  onChange={(e) => setBadgeForm((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="Nom du badge"
+                />
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={badgeForm.color}
+                    onChange={(e) => setBadgeForm((prev) => ({ ...prev, color: e.target.value }))}
+                    className="h-10 w-16 rounded border border-border/40 bg-transparent"
+                    aria-label="Couleur du badge"
+                  />
+                  <Input
+                    value={badgeForm.color}
+                    onChange={(e) => setBadgeForm((prev) => ({ ...prev, color: e.target.value }))}
+                    placeholder="#F59E0B"
+                  />
+                  <Button onClick={createBadge} disabled={creatingBadge}>
+                    {creatingBadge ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                    <span className="ml-2">Ajouter</span>
+                  </Button>
+                </div>
+                {badgeForm.name && (
+                  <span
+                    className="inline-flex text-xs uppercase tracking-wide px-2.5 py-1 rounded-full border"
+                    style={{ color: badgeForm.color, borderColor: badgeForm.color }}
+                  >
+                    {badgeForm.name}
+                  </span>
+                )}
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-xs text-muted-foreground uppercase tracking-wide">
+                  Badges disponibles
+                </h3>
+                {loadingBadges ? (
+                  <div className="flex justify-center py-6">
+                    <div className="w-1 h-6 bg-foreground/20 animate-pulse" />
+                  </div>
+                ) : badges.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Aucun badge cree.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {badges.map((badge) => (
+                      <span
+                        key={badge.id}
+                        className="text-xs uppercase tracking-wide px-2.5 py-1 rounded-full border"
+                        style={{ color: badge.color, borderColor: badge.color }}
+                      >
+                        {badge.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-4 border border-border/40 p-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
+                  Attribuer un badge
+                </h2>
+                <span className="text-xs text-muted-foreground">
+                  {users.length} utilisateurs
+                </span>
+              </div>
+              <div className="space-y-3">
+                <Select value={badgeUserId} onValueChange={(value) => {
+                  setBadgeUserId(value);
+                  setBadgeAssignId('');
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choisir un utilisateur" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.username}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="flex items-center gap-3">
+                  <Select value={badgeAssignId} onValueChange={setBadgeAssignId} disabled={!badgeUserId || badges.length === 0}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choisir un badge" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {badges.map((badge) => (
+                        <SelectItem key={badge.id} value={badge.id}>
+                          {badge.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    onClick={assignBadgeToUser}
+                    disabled={!badgeUserId || !badgeAssignId || assigningBadge}
+                  >
+                    {assigningBadge ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                    <span className="ml-2">Attribuer</span>
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-xs text-muted-foreground uppercase tracking-wide">
+                  Badges de l'utilisateur
+                </h3>
+                {!badgeUserId ? (
+                  <p className="text-sm text-muted-foreground">Selectionne un utilisateur.</p>
+                ) : loadingUserBadges ? (
+                  <div className="flex justify-center py-6">
+                    <div className="w-1 h-6 bg-foreground/20 animate-pulse" />
+                  </div>
+                ) : userBadges.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Aucun badge attribue.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {userBadges.map((userBadge) => (
+                      <div key={userBadge.id} className="flex items-center justify-between border border-border/30 px-3 py-2">
+                        <span
+                          className="text-xs uppercase tracking-wide px-2.5 py-1 rounded-full border"
+                          style={{ color: userBadge.badge.color, borderColor: userBadge.badge.color }}
+                        >
+                          {userBadge.badge.name}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeBadgeFromUser(userBadge.badge.id)}
+                          disabled={removingBadgeId === userBadge.badge.id}
+                        >
+                          {removingBadgeId === userBadge.badge.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <X className="h-4 w-4" />
+                          )}
+                          <span className="ml-2">Retirer</span>
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </TabsContent>
 
         {/* Chat Tab */}
