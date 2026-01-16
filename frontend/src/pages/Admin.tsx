@@ -263,6 +263,17 @@ export default function Admin() {
   const logsPerPage = 50;
   const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Game settings state
+  const [gameSettings, setGameSettings] = useState<Record<string, string>>({});
+  const [loadingSettings, setLoadingSettings] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsForm, setSettingsForm] = useState({
+    bombparty_wpp_easy: '500',
+    bombparty_wpp_medium: '200',
+    bombparty_wpp_hard: '100',
+    bombparty_3letter_start_round: '10',
+  });
+
   const toggleLogExpand = (logId: string) => {
     setExpandedLogIds(prev => {
       const next = new Set(prev);
@@ -304,6 +315,7 @@ export default function Admin() {
     fetchBans();
     fetchLogs();
     fetchLogStats();
+    fetchSettings();
   }, []);
 
   useEffect(() => {
@@ -420,6 +432,68 @@ export default function Admin() {
       setLogStats(res.data);
     } catch (error) {
       console.error('Failed to fetch log stats:', error);
+    }
+  };
+
+  const fetchSettings = async () => {
+    try {
+      setLoadingSettings(true);
+      const res = await adminApi.getSettings();
+      setGameSettings(res.data.settings);
+      // Update form with loaded values
+      setSettingsForm({
+        bombparty_wpp_easy: res.data.settings.bombparty_wpp_easy || '500',
+        bombparty_wpp_medium: res.data.settings.bombparty_wpp_medium || '200',
+        bombparty_wpp_hard: res.data.settings.bombparty_wpp_hard || '100',
+        bombparty_3letter_start_round: res.data.settings.bombparty_3letter_start_round || '10',
+      });
+    } catch (error) {
+      console.error('Failed to fetch settings:', error);
+      showMessage('error', 'Erreur lors du chargement des paramètres');
+    } finally {
+      setLoadingSettings(false);
+    }
+  };
+
+  const saveSettings = async () => {
+    try {
+      setSavingSettings(true);
+
+      // Validate values
+      const easy = parseInt(settingsForm.bombparty_wpp_easy);
+      const medium = parseInt(settingsForm.bombparty_wpp_medium);
+      const hard = parseInt(settingsForm.bombparty_wpp_hard);
+      const startRound = parseInt(settingsForm.bombparty_3letter_start_round);
+
+      if (isNaN(easy) || easy < 1 || isNaN(medium) || medium < 1 || isNaN(hard) || hard < 1) {
+        showMessage('error', 'Les seuils WPP doivent être des entiers positifs');
+        return;
+      }
+
+      if (isNaN(startRound) || startRound < 0) {
+        showMessage('error', 'Le round de début doit être un entier positif ou zéro');
+        return;
+      }
+
+      if (easy <= medium || medium <= hard) {
+        showMessage('error', 'Les seuils doivent être: Facile > Moyen > Difficile');
+        return;
+      }
+
+      await adminApi.updateSettings({
+        bombparty_wpp_easy: easy,
+        bombparty_wpp_medium: medium,
+        bombparty_wpp_hard: hard,
+        bombparty_3letter_start_round: startRound,
+      });
+
+      showMessage('success', 'Paramètres sauvegardés');
+      fetchSettings();
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+      showMessage('error', 'Erreur lors de la sauvegarde');
+    } finally {
+      setSavingSettings(false);
     }
   };
 
@@ -951,6 +1025,12 @@ export default function Admin() {
                 {logStats.total.toLocaleString()}
               </span>
             )}
+          </TabsTrigger>
+          <TabsTrigger
+            value="settings"
+            className="data-[state=active]:bg-muted/50 data-[state=active]:text-foreground text-muted-foreground"
+          >
+            Paramètres
           </TabsTrigger>
         </TabsList>
 
@@ -2120,6 +2200,123 @@ export default function Admin() {
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
+              </div>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Settings Tab */}
+        <TabsContent value="settings" className="space-y-6">
+          <div className="h-px bg-border" />
+
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
+              Paramètres de jeu
+            </h2>
+          </div>
+
+          {loadingSettings ? (
+            <div className="flex justify-center py-12">
+              <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+            </div>
+          ) : (
+            <div className="space-y-8">
+              {/* Word Bomb Settings */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Word Bomb - Seuils WPP (Words Per Prompt)</h3>
+                <p className="text-sm text-muted-foreground">
+                  Les seuils déterminent la difficulté des prompts en fonction du nombre de mots valides.
+                  Un prompt avec plus de mots est plus facile car il y a plus de réponses possibles.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2 p-4 border border-border/30 rounded-lg bg-green-500/5">
+                    <label className="text-sm font-medium text-green-400">Facile (mots minimum)</label>
+                    <Input
+                      type="number"
+                      value={settingsForm.bombparty_wpp_easy}
+                      onChange={(e) => setSettingsForm(prev => ({ ...prev, bombparty_wpp_easy: e.target.value }))}
+                      className="bg-transparent"
+                      min={1}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Prompts avec {settingsForm.bombparty_wpp_easy}+ mots valides
+                    </p>
+                  </div>
+
+                  <div className="space-y-2 p-4 border border-border/30 rounded-lg bg-yellow-500/5">
+                    <label className="text-sm font-medium text-yellow-400">Moyen (mots minimum)</label>
+                    <Input
+                      type="number"
+                      value={settingsForm.bombparty_wpp_medium}
+                      onChange={(e) => setSettingsForm(prev => ({ ...prev, bombparty_wpp_medium: e.target.value }))}
+                      className="bg-transparent"
+                      min={1}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Prompts avec {settingsForm.bombparty_wpp_medium}-{parseInt(settingsForm.bombparty_wpp_easy) - 1 || '?'} mots
+                    </p>
+                  </div>
+
+                  <div className="space-y-2 p-4 border border-border/30 rounded-lg bg-red-500/5">
+                    <label className="text-sm font-medium text-red-400">Difficile (mots minimum)</label>
+                    <Input
+                      type="number"
+                      value={settingsForm.bombparty_wpp_hard}
+                      onChange={(e) => setSettingsForm(prev => ({ ...prev, bombparty_wpp_hard: e.target.value }))}
+                      className="bg-transparent"
+                      min={1}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Prompts avec {settingsForm.bombparty_wpp_hard}-{parseInt(settingsForm.bombparty_wpp_medium) - 1 || '?'} mots
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3-Letter Start Round */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Apparition des prompts à 3 lettres</h3>
+                <p className="text-sm text-muted-foreground">
+                  Les prompts à 3 lettres sont plus difficiles. Définissez à partir de quel round ils commencent à apparaître.
+                </p>
+
+                <div className="space-y-2 max-w-xs p-4 border border-border/30 rounded-lg">
+                  <label className="text-sm font-medium">Round de début</label>
+                  <Input
+                    type="number"
+                    value={settingsForm.bombparty_3letter_start_round}
+                    onChange={(e) => setSettingsForm(prev => ({ ...prev, bombparty_3letter_start_round: e.target.value }))}
+                    className="bg-transparent"
+                    min={0}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Les prompts à 3 lettres apparaissent à partir du round {settingsForm.bombparty_3letter_start_round}
+                  </p>
+                </div>
+              </div>
+
+              {/* Save Button */}
+              <div className="flex justify-end pt-4 border-t border-border/30">
+                <Button
+                  onClick={saveSettings}
+                  disabled={savingSettings}
+                >
+                  {savingSettings ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  Sauvegarder les paramètres
+                </Button>
+              </div>
+
+              {/* Info Note */}
+              <div className="p-4 border border-border/30 rounded-lg bg-muted/20">
+                <p className="text-sm text-muted-foreground">
+                  <strong>Note:</strong> Les modifications des seuils WPP prendront effet immédiatement pour les nouvelles parties.
+                  Pour régénérer les prompts avec les nouveaux seuils, exécutez <code className="bg-muted px-1 rounded">npm run db:seed-bombparty</code> dans le backend.
+                </p>
               </div>
             </div>
           )}

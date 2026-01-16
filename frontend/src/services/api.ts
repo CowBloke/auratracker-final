@@ -472,6 +472,12 @@ export const adminApi = {
     endDate?: string;
   }) => api.get<{ logs: ActivityLog[]; total: number }>('/admin/logs', { params }),
   getLogStats: () => api.get<LogStats>('/admin/logs/stats'),
+  // Game settings management
+  getSettings: () => api.get<{ settings: Record<string, string> }>('/admin/settings'),
+  updateSettings: (settings: Record<string, string | number>) =>
+    api.put<{ settings: Record<string, string> }>('/admin/settings', { settings }),
+  updateSetting: (key: string, value: string | number) =>
+    api.put<{ setting: { key: string; value: string } }>(`/admin/settings/${key}`, { value }),
 };
 
 // Bug report API (for regular users)
