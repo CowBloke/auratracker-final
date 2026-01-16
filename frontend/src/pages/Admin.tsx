@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Swords, Award } from 'lucide-react';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Swords, Award, Rocket } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -274,6 +274,14 @@ export default function Admin() {
     bombparty_3letter_start_round: '10',
   });
 
+  // Deploy state
+  const [deploying, setDeploying] = useState(false);
+  const [deployResult, setDeployResult] = useState<{ success: boolean; message: string; stdout?: string; stderr?: string } | null>(null);
+
+  // Reset extreme aura state
+  const [resettingAura, setResettingAura] = useState(false);
+  const [resetAuraResult, setResetAuraResult] = useState<{ success: boolean; message: string; usersReset: number; users: { id: string; username: string; oldAura: string }[] } | null>(null);
+
   const toggleLogExpand = (logId: string) => {
     setExpandedLogIds(prev => {
       const next = new Set(prev);
@@ -494,6 +502,54 @@ export default function Admin() {
       showMessage('error', 'Erreur lors de la sauvegarde');
     } finally {
       setSavingSettings(false);
+    }
+  };
+
+  const runDeploy = async () => {
+    try {
+      setDeploying(true);
+      setDeployResult(null);
+      const res = await adminApi.deploy();
+      setDeployResult(res.data);
+      showMessage('success', 'Déploiement lancé avec succès');
+    } catch (error: unknown) {
+      console.error('Deploy failed:', error);
+      const errorData = (error as { response?: { data?: { message?: string; stderr?: string } } })?.response?.data;
+      setDeployResult({
+        success: false,
+        message: errorData?.message || 'Erreur lors du déploiement',
+        stderr: errorData?.stderr,
+      });
+      showMessage('error', 'Erreur lors du déploiement');
+    } finally {
+      setDeploying(false);
+    }
+  };
+
+  const resetExtremeAura = async () => {
+    try {
+      setResettingAura(true);
+      setResetAuraResult(null);
+      const res = await adminApi.resetExtremeAura();
+      setResetAuraResult(res.data);
+      if (res.data.usersReset > 0) {
+        showMessage('success', `${res.data.usersReset} utilisateur(s) réinitialisé(s)`);
+        fetchUsers();
+      } else {
+        showMessage('success', 'Aucun utilisateur avec des valeurs extrêmes');
+      }
+    } catch (error: unknown) {
+      console.error('Reset extreme aura failed:', error);
+      const errorData = (error as { response?: { data?: { message?: string } } })?.response?.data;
+      setResetAuraResult({
+        success: false,
+        message: errorData?.message || 'Erreur lors de la réinitialisation',
+        usersReset: 0,
+        users: []
+      });
+      showMessage('error', 'Erreur lors de la réinitialisation');
+    } finally {
+      setResettingAura(false);
     }
   };
 
@@ -2317,6 +2373,168 @@ export default function Admin() {
                   <strong>Note:</strong> Les modifications des seuils WPP prendront effet immédiatement pour les nouvelles parties.
                   Pour régénérer les prompts avec les nouveaux seuils, exécutez <code className="bg-muted px-1 rounded">npm run db:seed-bombparty</code> dans le backend.
                 </p>
+              </div>
+
+              {/* Reset Extreme Aura Section */}
+              <div className="space-y-4 pt-8 border-t border-border/30">
+                <h3 className="text-lg font-medium">Réinitialiser les valeurs d'aura extrêmes</h3>
+                <p className="text-sm text-muted-foreground">
+                  Réinitialise à 0 l'aura des utilisateurs ayant des valeurs supérieures à 1 milliard (valeurs corrompues ou overflow).
+                </p>
+
+                <div className="flex items-center gap-4">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        disabled={resettingAura}
+                        className="border-orange-500/50 text-orange-500 hover:bg-orange-500/10"
+                      >
+                        {resettingAura ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Réinitialisation en cours...
+                          </>
+                        ) : (
+                          <>
+                            <AlertTriangle className="h-4 w-4 mr-2" />
+                            Réinitialiser les valeurs extrêmes
+                          </>
+                        )}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                          <AlertTriangle className="h-5 w-5 text-orange-500" />
+                          Réinitialiser les valeurs d'aura extrêmes ?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Cette action va réinitialiser à 0 l'aura de tous les utilisateurs ayant des valeurs supérieures à 1 milliard. Cette action est irréversible.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={resetExtremeAura}
+                          className="bg-orange-500 hover:bg-orange-600"
+                        >
+                          Réinitialiser
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+
+                {resetAuraResult && (
+                  <div className={cn(
+                    "p-4 border rounded-lg space-y-2",
+                    resetAuraResult.success
+                      ? "border-green-500/50 bg-green-500/10"
+                      : "border-red-500/50 bg-red-500/10"
+                  )}>
+                    <p className={cn(
+                      "text-sm font-medium",
+                      resetAuraResult.success ? "text-green-400" : "text-red-400"
+                    )}>
+                      {resetAuraResult.success ? 'Réinitialisation réussie' : 'Échec de la réinitialisation'}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{resetAuraResult.message}</p>
+                    {resetAuraResult.users.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        <p className="text-xs text-muted-foreground">Utilisateurs réinitialisés:</p>
+                        <ul className="text-xs space-y-1">
+                          {resetAuraResult.users.map(u => (
+                            <li key={u.id} className="flex items-center gap-2">
+                              <span className="font-medium">{u.username}</span>
+                              <span className="text-muted-foreground">-</span>
+                              <span className="text-red-400">{BigInt(u.oldAura).toLocaleString()} aura</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Server Deployment Section */}
+              <div className="space-y-4 pt-8 border-t border-border/30">
+                <h3 className="text-lg font-medium">Déploiement serveur</h3>
+                <p className="text-sm text-muted-foreground">
+                  Exécute le script de déploiement sur le serveur (<code className="bg-muted px-1 rounded">/var/scripts/deploy.sh</code>).
+                </p>
+
+                <div className="flex items-center gap-4">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        disabled={deploying}
+                        className="border-blue-500/50 text-blue-500 hover:bg-blue-500/10"
+                      >
+                        {deploying ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Déploiement en cours...
+                          </>
+                        ) : (
+                          <>
+                            <Rocket className="h-4 w-4 mr-2" />
+                            Déployer
+                          </>
+                        )}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                          <Rocket className="h-5 w-5 text-blue-500" />
+                          Lancer le déploiement ?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Cette action va exécuter le script de déploiement sur le serveur. Le site pourrait être temporairement indisponible pendant le processus.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={runDeploy}
+                          className="bg-blue-500 hover:bg-blue-600"
+                        >
+                          Déployer
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+
+                {deployResult && (
+                  <div className={cn(
+                    "p-4 border rounded-lg space-y-2",
+                    deployResult.success
+                      ? "border-green-500/50 bg-green-500/10"
+                      : "border-red-500/50 bg-red-500/10"
+                  )}>
+                    <p className={cn(
+                      "text-sm font-medium",
+                      deployResult.success ? "text-green-400" : "text-red-400"
+                    )}>
+                      {deployResult.success ? 'Déploiement réussi' : 'Échec du déploiement'}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{deployResult.message}</p>
+                    {deployResult.stdout && (
+                      <pre className="text-xs bg-black/30 p-2 rounded overflow-x-auto max-h-40 overflow-y-auto">
+                        {deployResult.stdout}
+                      </pre>
+                    )}
+                    {deployResult.stderr && (
+                      <pre className="text-xs bg-black/30 p-2 rounded overflow-x-auto max-h-40 overflow-y-auto text-red-400">
+                        {deployResult.stderr}
+                      </pre>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}

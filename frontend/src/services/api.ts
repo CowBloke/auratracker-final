@@ -478,6 +478,12 @@ export const adminApi = {
     api.put<{ settings: Record<string, string> }>('/admin/settings', { settings }),
   updateSetting: (key: string, value: string | number) =>
     api.put<{ setting: { key: string; value: string } }>(`/admin/settings/${key}`, { value }),
+  // Server deployment
+  deploy: () =>
+    api.post<{ success: boolean; message: string; stdout?: string; stderr?: string }>('/admin/deploy'),
+  // Reset extreme aura values
+  resetExtremeAura: (threshold?: number) =>
+    api.post<{ success: boolean; message: string; usersReset: number; users: { id: string; username: string; oldAura: string }[] }>('/admin/reset-extreme-aura', { threshold }),
 };
 
 // Bug report API (for regular users)
