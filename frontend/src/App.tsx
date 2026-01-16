@@ -15,6 +15,7 @@ import Profile from './pages/Profile';
 import Inventory from './pages/Inventory';
 import Party from './pages/Party';
 import BombParty from './pages/BombParty';
+import MarioKart from './pages/MarioKart';
 import Admin from './pages/Admin';
 import Rules from './pages/Rules';
 import Suggestions from './pages/Suggestions';
@@ -62,6 +63,7 @@ function App() {
         <Route path="games/casino" element={<Casino />} />
         <Route path="games/aura-coin" element={<AuraCoin />} />
         <Route path="games/bomb-party" element={<BombParty />} />
+        <Route path="games/mario-kart" element={<MarioKart />} />
         <Route path="marketplace" element={<Marketplace />} />
         <Route path="leaderboards" element={<Leaderboards />} />
         <Route path="party" element={<Party />} />

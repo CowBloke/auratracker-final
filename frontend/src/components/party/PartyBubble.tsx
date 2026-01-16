@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useSocket } from '@/contexts/SocketContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { Users, LogOut, Bomb, ChevronUp, ChevronDown, Gamepad2, Trash2 } from 'lucide-react';
+import { Users, LogOut, Bomb, ChevronUp, ChevronDown, Gamepad2, Trash2, Flag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function PartyBubble() {
@@ -14,6 +14,7 @@ export default function PartyBubble() {
     leaveParty,
     deleteParty,
     bombPartyGame,
+    marioKartState,
   } = useSocket();
 
   const [expanded, setExpanded] = useState(true);
@@ -22,9 +23,12 @@ export default function PartyBubble() {
   if (!currentParty) return null;
 
   const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
-  const gameStatus = bombPartyGame
-    ? `En jeu - Round ${bombPartyGame.round}`
-    : 'En attente';
+  const kartLap = marioKartState ? Math.min(marioKartState.lapCount, Math.max(...marioKartState.players.map(p => p.lap)) + 1) : null;
+  const gameStatus = marioKartState
+    ? (marioKartState.status === 'finished' ? 'Mario Kart - Resultats' : `Mario Kart - Tour ${kartLap ?? 1}`)
+    : bombPartyGame
+      ? `Bomb Party - Round ${bombPartyGame.round}`
+      : 'En attente';
 
   return (
     <div className="bg-background border border-border rounded-lg shadow-lg overflow-hidden min-w-[200px] max-w-[280px]">
@@ -98,6 +102,15 @@ export default function PartyBubble() {
                 >
                   <Bomb className="h-3 w-3" />
                   Rejoindre
+                </Link>
+              )}
+              {marioKartState && location.pathname !== '/games/mario-kart' && (
+                <Link
+                  to="/games/mario-kart"
+                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors rounded"
+                >
+                  <Flag className="h-3 w-3" />
+                  Course
                 </Link>
               )}
 

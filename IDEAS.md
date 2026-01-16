@@ -55,3 +55,4 @@
 - plus d'effets objets, objets en quantité limité
 - complet clash
 - candy crush palier
+- chat interne party
