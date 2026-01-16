@@ -440,7 +440,7 @@ export const setupBombPartyHandlers = (socket: Socket, io: Server) => {
   });
 
   // Handle play again response
-  socket.on('bombparty:play-again-response', async (data: {
+  socket.on('bombparty:play-again-response', (data: {
     partyId: string;
     userId: string;
     playAgain: boolean;
@@ -452,22 +452,12 @@ export const setupBombPartyHandlers = (socket: Socket, io: Server) => {
       return;
     }
 
-    // Check if user is in the eligible players list
+    // Check if user was in the game
     if (!prompt.players.find(p => p.userId === userId)) {
       return;
     }
 
-    // Verify user is still in the party (they might have left)
-    const membership = await prisma.partyMember.findUnique({
-      where: { userId },
-    });
-
-    if (!membership || membership.partyId !== partyId) {
-      // User left the party - ignore their response
-      return;
-    }
-
-    // Record response (Map automatically handles duplicates)
+    // Record response
     prompt.responses.set(userId, playAgain);
 
     // Build response array with counts
@@ -748,27 +738,16 @@ async function endGame(game: BombPartyGame, io: Server) {
   // Remove game from active games
   activeGames.delete(game.partyId);
 
-  // Get ALL current party members (including anyone who joined during the game)
-  // This ensures mid-game joiners can vote on playing again
-  const allPartyMembers = await prisma.partyMember.findMany({
-    where: { partyId: game.partyId },
-    include: {
-      user: {
-        select: { id: true, username: true, usernameColor: true },
-      },
-    },
-  });
-
-  // Create play again prompt with ALL current party members
+  // Create play again prompt
   const playAgainPrompt: PendingPlayAgainPrompt = {
     partyId: game.partyId,
     lives: game.maxLives,
     difficulty: game.difficulty,
     responses: new Map(),
-    players: allPartyMembers.map(m => ({
-      userId: m.user.id,
-      username: m.user.username,
-      usernameColor: m.user.usernameColor,
+    players: game.players.map(p => ({
+      userId: p.userId,
+      username: p.username,
+      usernameColor: p.usernameColor,
     })),
     gameOverData,
     timer: null,
@@ -789,8 +768,6 @@ async function endGame(game: BombPartyGame, io: Server) {
     gameOverData,
     players: playAgainPrompt.players,
     responses: [],
-    playAgainCount: 0,
-    leaveCount: 0,
   });
 }
 
@@ -805,16 +782,9 @@ async function resolvePlayAgainPrompt(partyId: string, io: Server) {
     prompt.timer = null;
   }
 
-  // Get all current party members to verify who's still in the party
-  const currentPartyMembers = await prisma.partyMember.findMany({
-    where: { partyId },
-    select: { userId: true },
-  });
-  const currentMemberIds = new Set(currentPartyMembers.map(m => m.userId));
-
-  // Count players who want to play again AND are still in the party
+  // Count players who want to play again
   const playAgainUserIds = Array.from(prompt.responses.entries())
-    .filter(([userId, playAgain]) => playAgain && currentMemberIds.has(userId))
+    .filter(([_, playAgain]) => playAgain)
     .map(([userId]) => userId);
 
   // Remove pending prompt
@@ -828,7 +798,7 @@ async function resolvePlayAgainPrompt(partyId: string, io: Server) {
     return;
   }
 
-  // Get players who want to play again with their full data
+  // Get players who want to play again (they must still be in the party)
   const partyMembers = await prisma.partyMember.findMany({
     where: {
       partyId,
@@ -841,7 +811,7 @@ async function resolvePlayAgainPrompt(partyId: string, io: Server) {
     },
   });
 
-  // Final validation - ensure we still have enough players
+  // Double-check we still have enough players in the party
   if (partyMembers.length < 2) {
     io.to(`party:${partyId}`).emit('bombparty:play-again-cancelled', {
       reason: 'Not enough players in party to play again',
