@@ -7,7 +7,7 @@ import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 const router = Router();
 
 const UPLOAD_ROOT = path.resolve('uploads');
-const MAX_BYTES = 5 * 1024 * 1024;
+const MAX_BYTES = 10 * 1024 * 1024;
 const PURPOSE_DIR: Record<string, string> = {
   suggestion: 'suggestions',
   item: 'items',
