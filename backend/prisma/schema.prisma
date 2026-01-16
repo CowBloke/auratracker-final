@@ -347,9 +347,19 @@ model BombPartyPrompt {
   prompt     String @unique  // e.g., "TH", "ING", "QU"
   wordCount  Int              // precomputed count of valid words
   difficulty String           // "easy", "medium", "hard"
+  length     Int    @default(2) // prompt length (2 or 3)
 
   @@index([difficulty])
   @@index([wordCount])
+  @@index([length])
+}
+
+// Game Settings (configurable values for admin panel)
+model GameSettings {
+  id         String @id @default(uuid())
+  key        String @unique  // e.g., "bombparty_wpp_easy", "bombparty_wpp_medium"
+  value      String          // stored as string, parsed as needed
+  updatedAt  DateTime @updatedAt
 }
 
 // Bomb Party Player Stats
