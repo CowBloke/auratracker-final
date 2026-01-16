@@ -188,6 +188,7 @@ export default function Admin() {
     money: 0,
     dailyAuraLimit: 50,
   });
+  const [editPassword, setEditPassword] = useState('');
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [clearingChat, setClearingChat] = useState(false);
@@ -719,18 +720,25 @@ export default function Admin() {
       money: u.money,
       dailyAuraLimit: u.dailyAuraLimit,
     });
+    setEditPassword('');
   };
 
   const cancelEditing = () => {
     setEditingUser(null);
+    setEditPassword('');
   };
 
   const saveUser = async (id: string) => {
     setSaving(true);
     try {
-      const res = await adminApi.updateUser(id, editValues);
+      const payload = { ...editValues } as Parameters<typeof adminApi.updateUser>[1];
+      if (editPassword.trim()) {
+        payload.password = editPassword.trim();
+      }
+      const res = await adminApi.updateUser(id, payload);
       setUsers(prev => prev.map(u => u.id === id ? res.data.user : u));
       setEditingUser(null);
+      setEditPassword('');
       showMessage('success', 'Utilisateur mis à jour');
     } catch (error: any) {
       showMessage('error', error.response?.data?.error || 'Erreur');
@@ -1251,6 +1259,17 @@ export default function Admin() {
                             min={0}
                           />
                         </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">Nouveau mot de passe</label>
+                        <Input
+                          type="password"
+                          value={editPassword}
+                          onChange={(e) => setEditPassword(e.target.value)}
+                          className="h-9 bg-transparent border-border/50"
+                          placeholder="Laisser vide pour ne pas changer"
+                        />
                       </div>
                     </div>
                   ) : (
