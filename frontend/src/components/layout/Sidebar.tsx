@@ -16,7 +16,6 @@ import {
   Coins,
   Swords,
   ArrowUp,
-  Spade,
   Dices,
   Search,
   Ticket,
@@ -73,7 +72,6 @@ const gameItems = [
   { to: '/games/aura-coin', label: 'Aura Coin', icon: Coins },
   { to: '/games/clash', label: 'Clash', icon: Swords },
   { to: '/games/doodle-jump', label: 'Doodle Jump', icon: ArrowUp },
-  { to: '/games/solitaire', label: 'Solitaire', icon: Spade },
   { to: '/games/casino', label: 'Casino', icon: Dices },
 ];
 

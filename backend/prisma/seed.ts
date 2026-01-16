@@ -82,7 +82,7 @@ async function main() {
       isApproved: true,
       usernameColor: '#22C55E',
       profilePicture: null,
-      bio: 'Speedrun solitaire, vibes chill.',
+      bio: 'Speedrun Doodle Jump, vibes chill.',
     },
     {
       username: 'salma',
@@ -239,7 +239,7 @@ async function main() {
     });
   }
 
-  const gameTypes = ['doodle_jump', 'solitaire'];
+  const gameTypes = ['doodle_jump'];
   await Promise.all(
     users.map((user) =>
       Promise.all(
@@ -247,20 +247,18 @@ async function main() {
           prisma.gameStats.upsert({
             where: { userId_gameType: { userId: user.id, gameType } },
             update: {
-              wins: gameType === 'doodle_jump' ? 14 : 9,
-              losses: gameType === 'doodle_jump' ? 6 : 4,
-              highScore: gameType === 'doodle_jump' ? 12800 : 3600,
-              totalPlayed: gameType === 'doodle_jump' ? 20 : 13,
-              fastestWin: gameType === 'solitaire' ? 87 : null,
+              wins: 14,
+              losses: 6,
+              highScore: 12800,
+              totalPlayed: 20,
             },
             create: {
               userId: user.id,
               gameType,
-              wins: gameType === 'doodle_jump' ? 14 : 9,
-              losses: gameType === 'doodle_jump' ? 6 : 4,
-              highScore: gameType === 'doodle_jump' ? 12800 : 3600,
-              totalPlayed: gameType === 'doodle_jump' ? 20 : 13,
-              fastestWin: gameType === 'solitaire' ? 87 : null,
+              wins: 14,
+              losses: 6,
+              highScore: 12800,
+              totalPlayed: 20,
             },
           })
         )
@@ -284,7 +282,7 @@ async function main() {
         },
         {
           userId: userByName.get('milo')!.id,
-          message: 'Record battu sur solitaire en 87s.',
+          message: 'Record battu sur Doodle Jump !',
           createdAt: new Date(Date.now() - 1000 * 60 * 35),
         },
         {

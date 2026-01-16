@@ -154,7 +154,6 @@ const METADATA_LABELS: Record<string, string> = {
 // Game type filters
 const GAME_TYPES = [
   { value: 'doodle_jump', label: 'Doodle Jump' },
-  { value: 'solitaire', label: 'Solitaire' },
   { value: 'casino', label: 'Casino' },
 ];
 

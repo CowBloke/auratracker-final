@@ -13,7 +13,7 @@ Aura Tracker is a web-based social gaming platform designed for a closed communi
 **Core Features:**
 - Global real-time chat
 - Party system for multiplayer gaming
-- Multiple mini-games (Doodle Jump, Solitaire, etc.)
+- Multiple mini-games (Doodle Jump, etc.)
 - Clash of Clans-style base-building PvP
 - Dual currency economy (Aura + Money)
 - Global leaderboards with multiple categories
@@ -210,7 +210,7 @@ model Attack {
 model GameStats {
   id          String    @id @default(uuid())
   userId      String
-  gameType    String    // "doodle_jump", "solitaire", "clash"
+  gameType    String    // "doodle_jump", "clash"
   wins        Int       @default(0)
   losses      Int       @default(0)
   highScore   Int       @default(0)
@@ -457,9 +457,8 @@ socket.on('party:list', { parties[] })
 1. **Total Aura** (primary)
 2. **Total Money**
 3. **Best at Doodle Jump** (high score)
-4. **Best at Solitaire** (win rate)
-5. **Best at Clash** (defense rating + attack success)
-6. **Most Games Played**
+4. **Best at Clash** (defense rating + attack success)
+5. **Most Games Played**
 
 **API Endpoints:**
 ```
@@ -534,7 +533,7 @@ GET /api/clash/available-targets
 - Client-side simulation, server validation
 - Replay system for attack logs
 
-#### 4.7.2 Mini-Games (Doodle Jump, Solitaire, etc.)
+#### 4.7.2 Mini-Games (Doodle Jump, etc.)
 
 **General Mini-Game Structure:**
 
@@ -543,12 +542,6 @@ GET /api/clash/available-targets
 - High score tracking
 - Rewards: Money based on score, Aura for personal bests
 - Leaderboard integration
-
-**Solitaire:**
-- Solo game
-- Win/loss tracking
-- Rewards: Money for wins, Aura bonus for fast completions
-- Statistics: Win rate, fastest time
 
 **Future Mini-Games:**
 - Multiplayer support via party system
@@ -590,7 +583,6 @@ GET /api/games/:gameType/leaderboard
 │  │ • Games          │  │                              │    │
 │  │   - Clash        │  │                              │    │
 │  │   - Doodle Jump  │  │                              │    │
-│  │   - Solitaire    │  │                              │    │
 │  │ • Leaderboards   │  │                              │    │
 │  │ • Marketplace    │  │                              │    │
 │  │ • Party          │  │                              │    │
@@ -775,7 +767,6 @@ GET /api/games/:gameType/leaderboard
 
 ### Phase 5: Mini-Games (Week 7-8)
 - [ ] Doodle Jump implementation
-- [ ] Solitaire implementation
 - [ ] Game statistics tracking
 - [ ] Rewards integration
 

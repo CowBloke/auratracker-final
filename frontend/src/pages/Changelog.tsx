@@ -44,7 +44,7 @@ const featureGroups: FeatureGroup[] = [
     items: [
       'Aura Coin pour gagner et depenser vos points',
       'Clash pour les duels rapides',
-      'Doodle Jump et Solitaire pour les sessions chill',
+      'Doodle Jump pour les sessions chill',
       'Casino pour tenter votre chance',
       'Bomb Party pour les soirees collectives',
     ],

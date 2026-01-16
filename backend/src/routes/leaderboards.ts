@@ -4,7 +4,7 @@ import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
-type LeaderboardCategory = 'aura' | 'money' | 'doodle_jump' | 'solitaire' | 'casino' | 'games_played' | 'bombparty';
+type LeaderboardCategory = 'aura' | 'money' | 'doodle_jump' | 'casino' | 'games_played' | 'bombparty';
 
 // Get leaderboard by category
 router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response) => {
@@ -80,39 +80,6 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
           usernameColor: s.user.usernameColor,
           value: s.highScore,
         }));
-        break;
-        
-      case 'solitaire':
-        // Win rate leaderboard (minimum 10 games)
-        rankings = await prisma.gameStats.findMany({
-          where: {
-            gameType: 'solitaire',
-            totalPlayed: { gte: 10 },
-            user: { isAdmin: false },
-          },
-          select: {
-            userId: true,
-            wins: true,
-            totalPlayed: true,
-            user: {
-              select: { username: true, usernameColor: true },
-            },
-          },
-          take: parseInt(limit as string),
-          skip: parseInt(offset as string),
-        });
-        // Calculate win rate and sort
-        rankings = rankings
-          .map((s) => ({
-            userId: s.userId,
-            username: s.user.username,
-            usernameColor: s.user.usernameColor,
-            value: Math.round((s.wins / s.totalPlayed) * 100),
-            wins: s.wins,
-            totalPlayed: s.totalPlayed,
-          }))
-          .sort((a, b) => b.value - a.value)
-          .map((r, i) => ({ ...r, rank: parseInt(offset as string) + i + 1 }));
         break;
         
       case 'casino':

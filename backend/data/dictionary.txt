@@ -298198,9 +298198,6 @@ solipsisme
 solipsismes
 soliste
 solistes
-solitaire
-solitairement
-solitaires
 solitude
 solitudes
 solive

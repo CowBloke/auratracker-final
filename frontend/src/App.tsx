@@ -6,7 +6,6 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Games from './pages/Games';
 import DoodleJump from './pages/DoodleJump';
-import Solitaire from './pages/Solitaire';
 import Clash from './pages/Clash';
 import Casino from './pages/Casino';
 import AuraCoin from './pages/AuraCoin';
@@ -59,7 +58,6 @@ function App() {
         <Route index element={<Dashboard />} />
         <Route path="games" element={<Games />} />
         <Route path="games/doodle-jump" element={<DoodleJump />} />
-        <Route path="games/solitaire" element={<Solitaire />} />
         <Route path="games/clash" element={<Clash />} />
         <Route path="games/casino" element={<Casino />} />
         <Route path="games/aura-coin" element={<AuraCoin />} />

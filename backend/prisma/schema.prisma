@@ -128,12 +128,11 @@ model Transfer {
 model GameStats {
   id          String    @id @default(uuid())
   userId      String
-  gameType    String    // "doodle_jump", "solitaire"
+  gameType    String    // "doodle_jump", "casino"
   wins        Int       @default(0)
   losses      Int       @default(0)
   highScore   Int       @default(0)
   totalPlayed Int       @default(0)
-  fastestWin  Int?      // In seconds, for solitaire
   
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   

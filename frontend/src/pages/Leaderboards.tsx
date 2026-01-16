@@ -13,13 +13,12 @@ interface Ranking {
   totalPlayed?: number;
 }
 
-type Category = 'aura' | 'money' | 'doodle_jump' | 'solitaire' | 'casino' | 'games_played' | 'bombparty';
+type Category = 'aura' | 'money' | 'doodle_jump' | 'casino' | 'games_played' | 'bombparty';
 
 const categories: { id: Category; name: string; valueLabel: string }[] = [
   { id: 'aura', name: 'Aura', valueLabel: 'aura' },
   { id: 'money', name: 'Argent', valueLabel: '$' },
   { id: 'doodle_jump', name: 'Doodle Jump', valueLabel: 'score' },
-  { id: 'solitaire', name: 'Solitaire', valueLabel: '%' },
   { id: 'casino', name: 'Casino', valueLabel: '$' },
   { id: 'bombparty', name: 'Bomb Party', valueLabel: 'victoires' },
   { id: 'games_played', name: 'Parties', valueLabel: 'jeux' },
@@ -54,8 +53,6 @@ export default function Leaderboards() {
       case 'money':
       case 'casino':
         return `$${ranking.value.toLocaleString()}`;
-      case 'solitaire':
-        return `${ranking.value}%`;
       default:
         return ranking.value.toLocaleString();
     }
