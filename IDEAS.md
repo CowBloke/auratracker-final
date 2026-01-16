@@ -42,3 +42,4 @@
 - mettre en bas le bouton accepter le reglement
 - fix CORS www.
 - accepter le reglement à la premiere connexion
+- badges dans le chat
