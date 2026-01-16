@@ -265,7 +265,7 @@ export default function ChatSidebar() {
                         >
                           {msg.replyTo.username}
                         </span>
-                        <span className="block truncate">{getSnippet(msg.replyTo.message)}</span>
+                        <span className="block break-words whitespace-normal">{getSnippet(msg.replyTo.message)}</span>
                       </div>
                     )}
                     <div className="flex items-center gap-2 mb-1">
@@ -332,7 +332,7 @@ export default function ChatSidebar() {
                   >
                     {replyTarget.username}
                   </span>
-                  <span className="block truncate text-muted-foreground">{getSnippet(replyTarget.message)}</span>
+                  <span className="block break-words whitespace-normal text-muted-foreground">{getSnippet(replyTarget.message)}</span>
                 </div>
                 <button
                   type="button"
