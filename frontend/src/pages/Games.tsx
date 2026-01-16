@@ -24,12 +24,6 @@ const games = [
     type: 'Score',
   },
   {
-    id: 'solitaire',
-    name: 'Solitaire',
-    description: 'Le classique Klondike. Gagne pour obtenir aura et argent.',
-    type: 'Victoire',
-  },
-  {
     id: 'casino',
     name: 'Casino',
     description: 'Choisis entre machine à sous et roulette animée.',

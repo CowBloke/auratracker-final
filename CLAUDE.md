@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Aura Tracker is a full-stack TypeScript social gaming platform for a private community (~40 users). It features real-time chat, mini-games (Doodle Jump, Solitaire, Clash PvP base-building), a dual-currency economy (Aura prestige + Money), marketplace, and leaderboards.
+Aura Tracker is a full-stack TypeScript social gaming platform for a private community (~40 users). It features real-time chat, mini-games (Doodle Jump, Clash PvP base-building), a dual-currency economy (Aura prestige + Money), marketplace, and leaderboards.
 
 ## Development Commands
 
@@ -109,4 +109,3 @@ VITE_SOCKET_URL - Socket.io URL (auto-set by environment)
 
 ## Game Reward Logic
 - Doodle Jump: 1 money per 10 score (min 100 score), 50 aura for new high score
-- Solitaire: 100 money per win, 25 aura bonus for completion under 3 minutes

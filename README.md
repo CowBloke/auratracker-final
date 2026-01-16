@@ -10,7 +10,6 @@ A web-based social gaming platform for a private community with real-time chat, 
 - **Marketplace** - Buy items, cosmetics, and upgrades
 - **Mini-Games**:
   - 🦘 **Doodle Jump** - Platformer game with high score tracking
-  - 🃏 **Solitaire** - Classic Klondike with fast completion rewards
 - **Leaderboards** - Multiple categories with rankings
 - **User Profiles** - Stats, rankings, and currency transfers
 
@@ -179,10 +178,6 @@ aura-tracker/
 ### Doodle Jump
 - Money: 1 per 10 score (minimum 100 score)
 - Aura: 50 for new high score
-
-### Solitaire
-- Money: 100 per win
-- Aura: 25 for fast win (under 3 minutes)
 
 ## Admin Features
 

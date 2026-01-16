@@ -13,11 +13,6 @@ const GAME_REWARDS = {
     auraForNewHighScore: 50,
     minScoreForReward: 100,
   },
-  solitaire: {
-    moneyPerWin: 100,
-    auraForFastWin: 25, // Under 3 minutes
-    fastWinThreshold: 180, // seconds
-  },
   casino: {
     auraForBigWin: 10, // For wins >= 10x bet
     bigWinMultiplier: 10,
@@ -50,7 +45,6 @@ router.get('/:gameType/stats/:userId', authMiddleware, async (req: AuthRequest, 
         losses: 0,
         highScore: 0,
         totalPlayed: 0,
-        fastestWin: null,
       };
     }
     
@@ -97,8 +91,6 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
     });
     
     const isNewHighScore = !currentStats || score > currentStats.highScore;
-    const isFastWin = won && duration && duration < (GAME_REWARDS.solitaire?.fastWinThreshold || 180);
-    
     // Calculate rewards
     let auraReward = 0;
     let moneyReward = 0;
@@ -110,14 +102,6 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       }
       if (isNewHighScore && score >= config.minScoreForReward) {
         auraReward = config.auraForNewHighScore;
-      }
-    } else if (gameType === 'solitaire') {
-      const config = GAME_REWARDS.solitaire;
-      if (won) {
-        moneyReward = config.moneyPerWin;
-        if (isFastWin) {
-          auraReward = config.auraForFastWin;
-        }
       }
     } else if (gameType === 'casino' && bet) {
       // Casino: score is the win amount, bet is deducted, netGain = score - bet
@@ -149,16 +133,12 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
           losses: won ? 0 : 1,
           highScore: score,
           totalPlayed: 1,
-          fastestWin: won && duration ? duration : null,
         },
         update: {
           wins: won ? { increment: 1 } : undefined,
           losses: !won ? { increment: 1 } : undefined,
           highScore: isNewHighScore ? score : undefined,
           totalPlayed: { increment: 1 },
-          fastestWin: won && duration && (!currentStats?.fastestWin || duration < currentStats.fastestWin)
-            ? duration
-            : undefined,
         },
       }),
       prisma.user.update({
