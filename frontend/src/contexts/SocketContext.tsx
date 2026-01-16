@@ -136,6 +136,7 @@ interface SocketContextType {
   sendMessage: (message: string, replyToId?: string | null) => void;
   setTyping: (isTyping: boolean) => void;
   setCurrentPage: (page: string) => void;
+  deleteMessage: (messageId: string) => void;
   // Party
   currentParty: Party | null;
   partyMembers: PartyMember[];
@@ -252,6 +253,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         } else {
           setTypingUsers((prev) => prev.filter((u) => u.userId !== data.userId));
         }
+      });
+
+      s.on('chat:message-deleted', (data: { messageId: string }) => {
+        setMessages((prev) => prev.filter((m) => m.id !== data.messageId));
       });
 
       // Party events
@@ -471,6 +476,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const deleteMessage = (messageId: string) => {
+    if (user && socket) {
+      socket.emit('chat:delete-message', { messageId, adminId: user.id });
+    }
+  };
+
   const createParty = (name?: string, isPublic: boolean = false) => {
     if (user) {
       partyEvents.create(user.id, name, isPublic);
@@ -572,6 +583,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         sendMessage,
         setTyping,
         setCurrentPage,
+        deleteMessage,
         currentParty,
         partyMembers,
         partyInvites,

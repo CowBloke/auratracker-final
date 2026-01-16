@@ -16,7 +16,33 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
   // Join chat
   socket.on('chat:join', async (data: { userId: string; username: string; currentPage?: string }) => {
     const { userId, username, currentPage } = data;
-    
+
+    // Check if user is banned
+    const activeBan = await prisma.ban.findFirst({
+      where: {
+        userId,
+        isActive: true,
+        OR: [
+          { expiresAt: null }, // Permanent ban
+          { expiresAt: { gt: new Date() } }, // Temporary ban not yet expired
+        ],
+      },
+      select: {
+        reason: true,
+        type: true,
+        expiresAt: true,
+      },
+    });
+
+    if (activeBan) {
+      const message = activeBan.type === 'PERMANENT'
+        ? `Your account has been permanently banned. Reason: ${activeBan.reason}`
+        : `Your account is temporarily banned until ${activeBan.expiresAt?.toISOString()}. Reason: ${activeBan.reason}`;
+
+      socket.emit('ban:active', { message, banned: true });
+      return;
+    }
+
     // Fetch user cosmetics from database
     const dbUser = await prisma.user.findUnique({
       where: { id: userId },
@@ -25,7 +51,7 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
         profilePicture: true,
       },
     });
-    
+
     // Store user info
     onlineUsers.set(userId, {
       userId,
@@ -35,7 +61,7 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
       profilePicture: dbUser?.profilePicture,
       currentPage: currentPage ?? null,
     });
-    
+
     // Join global chat room
     socket.join('global-chat');
     
@@ -110,10 +136,27 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
   // Send message
   socket.on('chat:message', async (data: { message: string; userId: string; replyToId?: string | null }) => {
     const { message, userId, replyToId } = data;
-    
+
     const user = onlineUsers.get(userId);
     if (!user) return;
-    
+
+    // Check if user is banned before allowing message
+    const activeBan = await prisma.ban.findFirst({
+      where: {
+        userId,
+        isActive: true,
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gt: new Date() } },
+        ],
+      },
+    });
+
+    if (activeBan) {
+      socket.emit('ban:active', { banned: true });
+      return;
+    }
+
     // Fetch latest cosmetics from database (in case they changed)
     const dbUser = await prisma.user.findUnique({
       where: { id: userId },
@@ -208,7 +251,34 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     user.currentPage = currentPage;
     io.to('global-chat').emit('user:page', { userId, currentPage });
   });
-  
+
+  // Delete message (admin only)
+  socket.on('chat:delete-message', async (data: { messageId: string; adminId: string }) => {
+    const { messageId, adminId } = data;
+
+    // Verify admin status
+    const admin = await prisma.user.findUnique({
+      where: { id: adminId },
+      select: { isAdmin: true },
+    });
+
+    if (!admin || !admin.isAdmin) {
+      return; // Silently fail if not admin
+    }
+
+    try {
+      // Delete the message from database
+      await prisma.chatMessage.delete({
+        where: { id: messageId },
+      });
+
+      // Broadcast deletion to all users
+      io.to('global-chat').emit('chat:message-deleted', { messageId });
+    } catch (error) {
+      console.error('Error deleting message:', error);
+    }
+  });
+
   // Handle disconnect
   socket.on('disconnect', () => {
     // Find and remove user from online list

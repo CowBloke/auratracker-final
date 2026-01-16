@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { adminApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem } from '../services/api';
+import { adminApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban } from '../services/api';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX } from 'lucide-react';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -112,6 +112,17 @@ export default function Admin() {
   const [approvingUser, setApprovingUser] = useState<string | null>(null);
   const [rejectingUser, setRejectingUser] = useState<string | null>(null);
 
+  // Ban management state
+  const [bans, setBans] = useState<Ban[]>([]);
+  const [loadingBans, setLoadingBans] = useState(false);
+  const [banDialogOpen, setBanDialogOpen] = useState(false);
+  const [banUserId, setBanUserId] = useState<string>('');
+  const [banReason, setBanReason] = useState('');
+  const [banType, setBanType] = useState<'TEMPORARY' | 'PERMANENT'>('TEMPORARY');
+  const [banDuration, setBanDuration] = useState(24);
+  const [creatingBan, setCreatingBan] = useState(false);
+  const [unbanning, setUnbanning] = useState<string | null>(null);
+
   // Redirect non-admin users
   if (!user?.isAdmin) {
     return <Navigate to="/" replace />;
@@ -122,6 +133,7 @@ export default function Admin() {
     fetchItems();
     fetchBugReports();
     fetchPendingUsers();
+    fetchBans();
   }, []);
 
   const fetchUsers = async () => {
@@ -172,6 +184,66 @@ export default function Admin() {
       showMessage('error', 'Erreur lors du chargement des demandes');
     } finally {
       setLoadingPending(false);
+    }
+  };
+
+  const fetchBans = async () => {
+    try {
+      setLoadingBans(true);
+      const res = await adminApi.getBans();
+      setBans(res.data.bans);
+    } catch (error) {
+      console.error('Failed to fetch bans:', error);
+      showMessage('error', 'Erreur lors du chargement des bannissements');
+    } finally {
+      setLoadingBans(false);
+    }
+  };
+
+  const openBanDialog = (userId: string) => {
+    setBanUserId(userId);
+    setBanReason('');
+    setBanType('TEMPORARY');
+    setBanDuration(24);
+    setBanDialogOpen(true);
+  };
+
+  const createBan = async () => {
+    if (!banReason.trim()) {
+      showMessage('error', 'La raison est requise');
+      return;
+    }
+
+    setCreatingBan(true);
+    try {
+      await adminApi.createBan({
+        userId: banUserId,
+        reason: banReason,
+        type: banType,
+        durationHours: banType === 'TEMPORARY' ? banDuration : undefined,
+      });
+      showMessage('success', 'Utilisateur banni avec succès');
+      setBanDialogOpen(false);
+      fetchBans();
+      fetchUsers();
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur lors du bannissement');
+    } finally {
+      setCreatingBan(false);
+    }
+  };
+
+  const unbanUser = async (userId: string) => {
+    setUnbanning(userId);
+    try {
+      await adminApi.unbanUser(userId);
+      showMessage('success', 'Utilisateur débanni avec succès');
+      fetchBans();
+      fetchUsers();
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur lors du débannissement');
+    } finally {
+      setUnbanning(null);
     }
   };
 
@@ -556,7 +628,7 @@ export default function Admin() {
           >
             Chat
           </TabsTrigger>
-          <TabsTrigger 
+          <TabsTrigger
             value="bugs"
             className="data-[state=active]:bg-muted/50 data-[state=active]:text-foreground text-muted-foreground"
           >
@@ -564,6 +636,17 @@ export default function Admin() {
             {bugReports.filter(b => b.status === 'PENDING').length > 0 && (
               <span className="ml-2 px-1.5 py-0.5 text-xs bg-destructive/20 text-destructive rounded">
                 {bugReports.filter(b => b.status === 'PENDING').length}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger
+            value="bans"
+            className="data-[state=active]:bg-muted/50 data-[state=active]:text-foreground text-muted-foreground"
+          >
+            Bannissements
+            {bans.filter(b => b.isActive).length > 0 && (
+              <span className="ml-2 px-1.5 py-0.5 text-xs bg-destructive/20 text-destructive rounded">
+                {bans.filter(b => b.isActive).length}
               </span>
             )}
           </TabsTrigger>
@@ -828,7 +911,18 @@ export default function Admin() {
                             <Package className="h-4 w-4 mr-1" />
                             Inventaire
                           </Button>
-                          
+
+                          {!u.isAdmin && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openBanDialog(u.id)}
+                              className="h-8 border-amber-500/50 text-amber-500 hover:bg-amber-500/10"
+                            >
+                              <BanIcon className="h-4 w-4" />
+                            </Button>
+                          )}
+
                           {!u.isAdmin && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
@@ -1209,7 +1303,208 @@ export default function Admin() {
             </div>
           )}
         </TabsContent>
+
+        {/* Bans Tab */}
+        <TabsContent value="bans" className="space-y-6">
+          <div className="h-px bg-border" />
+
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
+              Gestion des bannissements
+            </h2>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <BanIcon className="h-4 w-4" />
+              <span>{bans.filter(b => b.isActive).length} actifs</span>
+            </div>
+          </div>
+
+          {loadingBans ? (
+            <div className="flex justify-center py-12">
+              <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+            </div>
+          ) : bans.length === 0 ? (
+            <p className="text-center text-muted-foreground py-12">
+              Aucun bannissement
+            </p>
+          ) : (
+            <div className="space-y-0">
+              {bans.map((ban) => (
+                <div
+                  key={ban.id}
+                  className={cn(
+                    "py-4 border-b border-border/30 last:border-0",
+                    !ban.isActive && "opacity-60"
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium">{ban.user.username}</span>
+                        <span className={cn(
+                          "text-xs px-2 py-0.5 rounded",
+                          ban.isActive
+                            ? ban.type === 'PERMANENT'
+                              ? "bg-destructive/20 text-destructive"
+                              : "bg-amber-500/20 text-amber-400"
+                            : "bg-muted text-muted-foreground"
+                        )}>
+                          {ban.isActive
+                            ? ban.type === 'PERMANENT'
+                              ? 'Permanent'
+                              : 'Temporaire'
+                            : 'Inactif'}
+                        </span>
+                      </div>
+
+                      <p className="text-sm text-muted-foreground">
+                        <span className="text-foreground">Raison:</span> {ban.reason}
+                      </p>
+
+                      <p className="text-xs text-muted-foreground">
+                        Par <span className="text-foreground">{ban.admin.username}</span> • {new Date(ban.createdAt).toLocaleDateString('fr-FR', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                        {ban.expiresAt && ban.isActive && (
+                          <span> • Expire le {new Date(ban.expiresAt).toLocaleDateString('fr-FR', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}</span>
+                        )}
+                      </p>
+                    </div>
+
+                    {ban.isActive && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 border-green-500/50 text-green-500 hover:bg-green-500/10"
+                            disabled={unbanning === ban.userId}
+                          >
+                            {unbanning === ban.userId ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <ShieldOff className="h-4 w-4 mr-1" />
+                                Débannir
+                              </>
+                            )}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Débannir {ban.user.username} ?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              L'utilisateur pourra de nouveau se connecter et utiliser la plateforme.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Annuler</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => unbanUser(ban.userId)}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              Débannir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
+
+      {/* Ban Dialog */}
+      <Dialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bannir un utilisateur</DialogTitle>
+            <DialogDescription>
+              Empêcher un utilisateur d'accéder à la plateforme.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Raison</label>
+              <Textarea
+                value={banReason}
+                onChange={(e) => setBanReason(e.target.value)}
+                placeholder="Indiquez la raison du bannissement..."
+                className="min-h-[80px]"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Type de bannissement</label>
+              <Select value={banType} onValueChange={(value: 'TEMPORARY' | 'PERMANENT') => setBanType(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="TEMPORARY">Temporaire</SelectItem>
+                  <SelectItem value="PERMANENT">Permanent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {banType === 'TEMPORARY' && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Durée (heures)</label>
+                <Input
+                  type="number"
+                  value={banDuration}
+                  onChange={(e) => setBanDuration(parseInt(e.target.value) || 1)}
+                  min={1}
+                  placeholder="24"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Le bannissement expirera dans {banDuration} heure{banDuration > 1 ? 's' : ''}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setBanDialogOpen(false)}
+              disabled={creatingBan}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={createBan}
+              disabled={creatingBan || !banReason.trim()}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {creatingBan ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Bannissement...
+                </>
+              ) : (
+                <>
+                  <BanIcon className="h-4 w-4 mr-2" />
+                  Bannir
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* User Inventory Dialog */}
       <Dialog
