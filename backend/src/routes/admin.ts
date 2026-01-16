@@ -630,6 +630,7 @@ router.get('/logs', authMiddleware, requireAdmin, async (req: AuthRequest, res: 
       type,
       action,
       username,
+      gameType,
       limit = '100',
       offset = '0',
       startDate,
@@ -652,6 +653,11 @@ router.get('/logs', authMiddleware, requireAdmin, async (req: AuthRequest, res: 
         { username: { contains: username as string } },
         { targetName: { contains: username as string } },
       ];
+    }
+
+    // Filter by game type in metadata (for GAME type logs)
+    if (gameType && gameType !== 'ALL') {
+      where.metadata = { contains: `"game":"${gameType}"` };
     }
 
     if (startDate) {
