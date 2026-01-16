@@ -125,20 +125,4 @@ export const bombPartyEvents = {
   },
 };
 
-// Mario Kart events
-export const marioKartEvents = {
-  start: (userId: string, partyId: string, laps?: number) => {
-    socket?.emit('mariokart:start', { userId, partyId, laps });
-  },
-  input: (partyId: string, userId: string, input: { throttle: number; steer: number; drift?: boolean; brake?: boolean }) => {
-    socket?.emit('mariokart:input', { partyId, userId, input });
-  },
-  requestState: (partyId: string, userId: string) => {
-    socket?.emit('mariokart:request-state', { partyId, userId });
-  },
-  leave: (partyId: string, userId: string) => {
-    socket?.emit('mariokart:leave', { partyId, userId });
-  },
-};
-
 export default socket;

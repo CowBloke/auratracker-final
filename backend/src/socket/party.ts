@@ -1,7 +1,6 @@
 import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
 import { sendPendingPlayAgainPrompt, sendActiveGameState } from './bombparty.js';
-import { sendActiveMarioKartState } from './mariokart.js';
 import { logParty } from '../utils/logger.js';
 
 interface PartyInvite {
@@ -136,7 +135,6 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
 
         // Send any active game state or pending play again prompt to the reconnecting player
         sendActiveGameState(socket, membership.partyId, data.userId);
-        sendActiveMarioKartState(socket, membership.partyId, data.userId);
         sendPendingPlayAgainPrompt(socket, membership.partyId, data.userId);
 
         // Update party activity

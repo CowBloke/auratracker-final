@@ -47,7 +47,6 @@
 - classement auracoin
 - pseudos/vrais noms
 - UI des nouvelles pages : casino
-- mariokart
 - jeux multijoueurs/solo : pas de casino : party : quitter/venir sur latable
 - numéros roulette
 - bouton admin commit main en ligne

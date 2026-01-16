@@ -12,13 +12,6 @@ const games = [
     requiresParty: true,
   },
   {
-    id: 'mario-kart',
-    name: 'Mario Kart Party',
-    description: 'Course arcade a plusieurs: drift, boosts et classement en direct.',
-    type: 'Party',
-    requiresParty: true,
-  },
-  {
     id: 'clash',
     name: 'Clash',
     description: 'Construis ta base, entraîne des troupes, attaque tes ennemis.',

@@ -25,7 +25,6 @@ import { setupChatHandlers } from './socket/chat.js';
 import { setupPartyHandlers } from './socket/party.js';
 import { setupGameHandlers } from './socket/games.js';
 import { setupBombPartyHandlers, startBombPartyCleanup } from './socket/bombparty.js';
-import { setupMarioKartHandlers } from './socket/mariokart.js';
 
 // Logger
 import { initLogger } from './utils/logger.js';
@@ -84,7 +83,6 @@ io.on('connection', (socket) => {
   setupPartyHandlers(socket, io);
   setupGameHandlers(socket, io);
   setupBombPartyHandlers(socket, io);
-  setupMarioKartHandlers(socket, io);
   
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.id}`);
