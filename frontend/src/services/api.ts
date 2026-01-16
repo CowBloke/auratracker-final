@@ -423,6 +423,7 @@ export const adminApi = {
     type?: string;
     action?: string;
     username?: string;
+    gameType?: string;
     limit?: number;
     offset?: number;
     startDate?: string;
