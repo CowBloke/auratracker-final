@@ -40,3 +40,5 @@
 - revoir récompenses
 - invitation partys dans le chat
 - mettre en bas le bouton accepter le reglement
+- fix CORS www.
+- accepter le reglement à la premiere connexion
