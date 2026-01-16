@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { logAdmin, logSuggestion, logBan } from '../utils/logger.js';
+import { isUploadPath } from '../utils/uploads.js';
 
 const router = Router();
 
@@ -112,7 +113,11 @@ router.get('/items', authMiddleware, requireAdmin, async (req: AuthRequest, res:
 // Create item
 router.post('/items', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const { name, description, type, price, auraCost, imageUrl, effect } = req.body;
+    const { name, description, type, price, imageUrl, effect } = req.body;
+
+    if (imageUrl && !isUploadPath(imageUrl)) {
+      return res.status(400).json({ error: 'Image must be uploaded' });
+    }
     
     const item = await prisma.item.create({
       data: {
@@ -120,7 +125,6 @@ router.post('/items', authMiddleware, requireAdmin, async (req: AuthRequest, res
         description,
         type: type || 'COSMETIC',
         price: parseInt(price) || 0,
-        auraCost: parseInt(auraCost) || 0,
         imageUrl,
         effect: typeof effect === 'string' ? effect : JSON.stringify(effect),
       },
@@ -137,7 +141,11 @@ router.post('/items', authMiddleware, requireAdmin, async (req: AuthRequest, res
 router.put('/items/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, description, type, price, auraCost, imageUrl, effect } = req.body;
+    const { name, description, type, price, imageUrl, effect } = req.body;
+
+    if (imageUrl && !isUploadPath(imageUrl)) {
+      return res.status(400).json({ error: 'Image must be uploaded' });
+    }
     
     const item = await prisma.item.update({
       where: { id },
@@ -146,7 +154,6 @@ router.put('/items/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
         description,
         type,
         price: parseInt(price) || 0,
-        auraCost: parseInt(auraCost) || 0,
         imageUrl,
         effect: typeof effect === 'string' ? effect : JSON.stringify(effect),
       },

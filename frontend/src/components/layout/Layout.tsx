@@ -12,6 +12,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getPageMeta } from '@/components/chat/presence';
+import { resolveImageUrl } from '@/lib/images';
 
 export default function Layout() {
   const { user } = useAuth();
@@ -75,7 +76,7 @@ export default function Layout() {
                                   >
                                     {u.profilePicture ? (
                                       <img
-                                        src={u.profilePicture}
+                                        src={resolveImageUrl(u.profilePicture)}
                                         alt={u.username}
                                         className="w-4 h-4 rounded-full object-cover"
                                         onError={(e) => {

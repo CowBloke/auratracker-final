@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { logSuggestion } from '../utils/logger.js';
+import { isUploadPath } from '../utils/uploads.js';
 
 const router = Router();
 
@@ -85,6 +86,10 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 
     if (description.length > 2000) {
       return res.status(400).json({ error: 'Description must be less than 2000 characters' });
+    }
+
+    if (imageUrl && !isUploadPath(imageUrl)) {
+      return res.status(400).json({ error: 'Image must be uploaded' });
     }
 
     const suggestion = await prisma.suggestion.create({

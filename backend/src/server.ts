@@ -1,4 +1,5 @@
 import express from 'express';
+import path from 'path';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
@@ -17,6 +18,7 @@ import adminRoutes from './routes/admin.js';
 import auraCoinRoutes, { startPriceEngine, stopPriceEngine } from './routes/auracoin.js';
 import suggestionsRoutes from './routes/suggestions.js';
 import bombpartyRoutes from './routes/bombparty.js';
+import uploadsRoutes from './routes/uploads.js';
 
 // Socket handlers
 import { setupChatHandlers } from './socket/chat.js';
@@ -51,7 +53,8 @@ app.use(cors({
   origin: config.corsOrigin,
   credentials: true,
 }));
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
+app.use('/uploads', express.static(path.resolve('uploads')));
 
 // REST Routes
 app.use('/api/auth', authRoutes);
@@ -65,6 +68,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/auracoin', auraCoinRoutes);
 app.use('/api/suggestions', suggestionsRoutes);
 app.use('/api/bombparty', bombpartyRoutes);
+app.use('/api/uploads', uploadsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

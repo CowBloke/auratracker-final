@@ -40,6 +40,12 @@ export const authApi = {
   me: () => api.get('/auth/me'),
 };
 
+// Uploads API
+export const uploadsApi = {
+  uploadImage: (data: { purpose: 'suggestion' | 'item' | 'profile'; imageData: string }) =>
+    api.post<{ url: string }>('/uploads', data),
+};
+
 // Users API
 export const usersApi = {
   getAll: () => api.get('/users'),
@@ -75,7 +81,6 @@ export const marketplaceApi = {
     description: string;
     type: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE';
     price: number;
-    auraCost?: number;
     imageUrl?: string;
     effect?: string;
     expiresAt?: string;
@@ -253,7 +258,6 @@ export interface ShopItem {
   description: string;
   type: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE';
   price: number;
-  auraCost: number;
   imageUrl: string | null;
   effect: string | null;
   expiresAt: string | null;
@@ -394,7 +398,6 @@ export const adminApi = {
     description: string;
     type: string;
     price: number;
-    auraCost?: number;
     imageUrl?: string;
     effect?: string;
   }) => api.post<{ item: ShopItem }>('/admin/items', data),
@@ -403,7 +406,6 @@ export const adminApi = {
     description: string;
     type: string;
     price: number;
-    auraCost?: number;
     imageUrl?: string;
     effect?: string;
   }) => api.put<{ item: ShopItem }>(`/admin/items/${id}`, data),

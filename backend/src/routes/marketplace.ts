@@ -3,6 +3,7 @@ import { prisma } from '../server.js';
 import { authMiddleware, adminMiddleware, AuthRequest } from '../middleware/auth.js';
 import { validate, createItemSchema, purchaseSchema, useItemSchema } from '../middleware/validation.js';
 import { logMarketplace } from '../utils/logger.js';
+import { isUploadPath } from '../utils/uploads.js';
 
 const router = Router();
 
@@ -63,15 +64,10 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
     }
     
     const totalPrice = item.price * quantity;
-    const totalAuraCost = item.auraCost * quantity;
     
     // Check sufficient balance
     if (user.money < totalPrice) {
       return res.status(400).json({ error: 'Insufficient money' });
-    }
-    
-    if (user.aura < totalAuraCost) {
-      return res.status(400).json({ error: 'Insufficient aura' });
     }
     
     // Purchase in transaction
@@ -80,7 +76,6 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
         where: { id: req.user.id },
         data: {
           money: { decrement: totalPrice },
-          aura: { decrement: totalAuraCost },
         },
       }),
       prisma.userItem.upsert({
@@ -110,7 +105,6 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
       itemName: item.name,
       quantity,
       totalPrice,
-      totalAuraCost,
     });
 
     res.json({
@@ -220,6 +214,9 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
       }
       
       if (effect.type === 'PROFILE_PICTURE' && effectData?.imageUrl) {
+        if (!isUploadPath(effectData.imageUrl)) {
+          return res.status(400).json({ error: 'Image must be uploaded' });
+        }
         // Apply profile picture
         await prisma.user.update({
           where: { id: req.user.id },
@@ -325,7 +322,11 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
 // Admin: Create item
 router.post('/admin/item', authMiddleware, adminMiddleware, validate(createItemSchema), async (req: AuthRequest, res: Response) => {
   try {
-    const { name, description, type, price, auraCost, imageUrl, effect, expiresAt } = req.body;
+    const { name, description, type, price, imageUrl, effect, expiresAt } = req.body;
+
+    if (imageUrl && !isUploadPath(imageUrl)) {
+      return res.status(400).json({ error: 'Image must be uploaded' });
+    }
     
     const item = await prisma.item.create({
       data: {
@@ -333,7 +334,6 @@ router.post('/admin/item', authMiddleware, adminMiddleware, validate(createItemS
         description,
         type,
         price,
-        auraCost: auraCost || 0,
         imageUrl,
         effect,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
@@ -351,7 +351,11 @@ router.post('/admin/item', authMiddleware, adminMiddleware, validate(createItemS
 router.put('/admin/item/:id', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, description, type, price, auraCost, imageUrl, effect, expiresAt } = req.body;
+    const { name, description, type, price, imageUrl, effect, expiresAt } = req.body;
+
+    if (imageUrl && !isUploadPath(imageUrl)) {
+      return res.status(400).json({ error: 'Image must be uploaded' });
+    }
     
     const item = await prisma.item.update({
       where: { id },
@@ -360,7 +364,6 @@ router.put('/admin/item/:id', authMiddleware, adminMiddleware, async (req: AuthR
         description,
         type,
         price,
-        auraCost,
         imageUrl,
         effect,
         expiresAt: expiresAt ? new Date(expiresAt) : null,

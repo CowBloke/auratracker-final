@@ -59,7 +59,7 @@ async function main() {
       auraCoinBalance: 12.5,
       isApproved: true,
       usernameColor: '#FF7A59',
-      profilePicture: 'https://i.pravatar.cc/120?img=12',
+      profilePicture: null,
       bio: 'Capitaine des parties publiques. Toujours partante pour un duel.',
     },
     {
@@ -70,7 +70,7 @@ async function main() {
       auraCoinBalance: 4.2,
       isApproved: true,
       usernameColor: '#1D9BF0',
-      profilePicture: 'https://i.pravatar.cc/120?img=15',
+      profilePicture: null,
       bio: 'Collectionneur de skins rares et roi du chat.',
     },
     {
@@ -81,7 +81,7 @@ async function main() {
       auraCoinBalance: 22.3,
       isApproved: true,
       usernameColor: '#22C55E',
-      profilePicture: 'https://i.pravatar.cc/120?img=22',
+      profilePicture: null,
       bio: 'Speedrun solitaire, vibes chill.',
     },
     {
@@ -92,7 +92,7 @@ async function main() {
       auraCoinBalance: 9.9,
       isApproved: true,
       usernameColor: '#F97316',
-      profilePicture: 'https://i.pravatar.cc/120?img=32',
+      profilePicture: null,
       bio: 'Toujours connectee, toujours en tete des classements.',
     },
     {
@@ -103,7 +103,7 @@ async function main() {
       auraCoinBalance: 6.1,
       isApproved: true,
       usernameColor: '#A855F7',
-      profilePicture: 'https://i.pravatar.cc/120?img=45',
+      profilePicture: null,
       bio: 'Shoppeuse de marketplace, fan de cosmetiques.',
     },
     {
@@ -114,7 +114,7 @@ async function main() {
       auraCoinBalance: 1.4,
       isApproved: true,
       usernameColor: '#0EA5E9',
-      profilePicture: 'https://i.pravatar.cc/120?img=52',
+      profilePicture: null,
       bio: 'Petit aura, grosses ambitions.',
     },
   ];
@@ -164,8 +164,7 @@ async function main() {
           description: 'Double tes gains d\'aura pendant 1 heure.',
           type: 'CONSUMABLE',
           price: 800,
-          auraCost: 10,
-          imageUrl: '/items/boost-aura.png',
+          imageUrl: null,
           effect: JSON.stringify({ auraMultiplier: 2, durationMinutes: 60 }),
         },
         {
@@ -173,8 +172,7 @@ async function main() {
           description: 'Effet neon pour ton pseudo dans le chat.',
           type: 'COSMETIC',
           price: 1200,
-          auraCost: 0,
-          imageUrl: '/items/neon-name.png',
+          imageUrl: null,
           effect: JSON.stringify({ chatGlow: true }),
         },
         {
@@ -182,8 +180,7 @@ async function main() {
           description: 'Badge exclusif pour les meilleurs joueurs.',
           type: 'COSMETIC',
           price: 2500,
-          auraCost: 25,
-          imageUrl: '/items/elite-badge.png',
+          imageUrl: null,
           effect: JSON.stringify({ badge: 'elite' }),
         },
         {
@@ -191,8 +188,7 @@ async function main() {
           description: 'Ouvre un coffre avec des gains aleatoires.',
           type: 'CONSUMABLE',
           price: 400,
-          auraCost: 5,
-          imageUrl: '/items/aura-chest.png',
+          imageUrl: null,
           effect: JSON.stringify({ minAura: 25, maxAura: 120 }),
         },
         {
@@ -200,8 +196,7 @@ async function main() {
           description: 'Augmente la taille max de ta party.',
           type: 'UPGRADE',
           price: 3000,
-          auraCost: 40,
-          imageUrl: '/items/vip-slot.png',
+          imageUrl: null,
           effect: JSON.stringify({ partySizeBonus: 2 }),
         },
       ],
@@ -532,13 +527,13 @@ async function main() {
           userId: userByName.get('tom')!.id,
           title: 'Mode tournoi weekly',
           description: 'Ajouter un tournoi hebdo avec recompenses aura.',
-          imageUrl: '/suggestions/tournament.png',
+          imageUrl: null,
         },
         {
           userId: userByName.get('salma')!.id,
           title: 'Skins saisonniers',
           description: 'Skins winter pour le chat et la base.',
-          imageUrl: '/suggestions/winter-skins.png',
+          imageUrl: null,
         },
       ],
     });

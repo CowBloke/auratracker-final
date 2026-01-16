@@ -55,8 +55,7 @@ export const createItemSchema = z.object({
   description: z.string().min(1).max(500),
   type: z.enum(['CONSUMABLE', 'COSMETIC', 'UPGRADE']),
   price: z.number().int().min(0),
-  auraCost: z.number().int().min(0).optional(),
-  imageUrl: z.string().url().optional(),
+  imageUrl: z.string().min(1).optional(),
   effect: z.string().optional(),
   expiresAt: z.string().datetime().optional(),
 });

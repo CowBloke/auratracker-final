@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { marketplaceApi } from '../services/api';
 import { Loader2, Package, Palette, Camera } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { resolveImageUrl } from '@/lib/images';
 
 interface Item {
   id: string;
@@ -10,7 +11,6 @@ interface Item {
   description: string;
   type: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE';
   price: number;
-  auraCost: number;
   imageUrl?: string;
   effect?: string;
 }
@@ -111,7 +111,7 @@ export default function Marketplace() {
   };
 
   const canAfford = (item: Item) => {
-    return (user?.money || 0) >= item.price && (user?.aura || 0) >= item.auraCost;
+    return (user?.money || 0) >= item.price;
   };
 
   const filters = ['all', 'CONSUMABLE', 'COSMETIC', 'UPGRADE'];
@@ -192,7 +192,7 @@ export default function Marketplace() {
                   {/* Item Image */}
                   {item.imageUrl ? (
                     <img 
-                      src={item.imageUrl} 
+                      src={resolveImageUrl(item.imageUrl)} 
                       alt={item.name}
                       className="w-14 h-14 object-cover rounded shrink-0"
                       onError={(e) => {
@@ -227,7 +227,6 @@ export default function Marketplace() {
                 <div className="flex items-center gap-6 ml-4 shrink-0">
                   <div className="text-right text-sm tabular-nums text-muted-foreground">
                     {item.price > 0 && <div>${item.price}</div>}
-                    {item.auraCost > 0 && <div>{item.auraCost} aura</div>}
                   </div>
                   
                   <button
