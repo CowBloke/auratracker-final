@@ -282,6 +282,26 @@ export interface BugReport {
   };
 }
 
+export interface Ban {
+  id: string;
+  userId: string;
+  bannedBy: string;
+  reason: string;
+  type: 'TEMPORARY' | 'PERMANENT';
+  expiresAt: string | null;
+  createdAt: string;
+  isActive: boolean;
+  user: {
+    id: string;
+    username: string;
+    email: string;
+  };
+  admin: {
+    id: string;
+    username: string;
+  };
+}
+
 // Suggestions API
 export interface SuggestionComment {
   id: string;
@@ -373,6 +393,11 @@ export const adminApi = {
   updateBugReport: (id: string, data: { status: 'PENDING' | 'DONE' }) =>
     api.put<{ bugReport: BugReport }>(`/admin/bugs/${id}`, data),
   deleteBugReport: (id: string) => api.delete<{ success: boolean }>(`/admin/bugs/${id}`),
+  // Ban management
+  getBans: () => api.get<{ bans: Ban[] }>('/admin/bans'),
+  createBan: (data: { userId: string; reason: string; type: 'TEMPORARY' | 'PERMANENT'; durationHours?: number }) =>
+    api.post<{ ban: Ban; message: string }>('/admin/bans', data),
+  unbanUser: (userId: string) => api.delete<{ success: boolean; message: string }>(`/admin/bans/${userId}`),
 };
 
 // Bug report API (for regular users)

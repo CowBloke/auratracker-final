@@ -136,16 +136,18 @@ interface SocketContextType {
   sendMessage: (message: string, replyToId?: string | null) => void;
   setTyping: (isTyping: boolean) => void;
   setCurrentPage: (page: string) => void;
+  deleteMessage: (messageId: string) => void;
   // Party
   currentParty: Party | null;
   partyMembers: PartyMember[];
   partyInvites: PartyInvite[];
   publicParties: Array<{ id: string; name: string | null; memberCount: number; maxSize: number }>;
-  createParty: (name?: string, isPublic?: boolean) => void;
+  createParty: (name?: string, isPublic?: boolean, maxSize?: number) => void;
   joinParty: (partyId: string) => void;
   leaveParty: () => void;
   deleteParty: () => void;
   inviteToParty: (targetUserId: string) => void;
+  rejectPartyInvite: (partyId: string) => void;
   kickFromParty: (targetUserId: string) => void;
   fetchPublicParties: () => void;
   syncParty: () => void;
@@ -254,6 +256,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         }
       });
 
+      s.on('chat:message-deleted', (data: { messageId: string }) => {
+        setMessages((prev) => prev.filter((m) => m.id !== data.messageId));
+      });
+
       // Party events
       s.on('party:created', (data: { party: Party; members: PartyMember[] }) => {
         setCurrentParty(data.party);
@@ -297,6 +303,23 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
       s.on('party:invite', (invite: PartyInvite) => {
         setPartyInvites((prev) => [...prev, invite]);
+        // Show toast notification for private party invites
+        if (typeof window !== 'undefined') {
+          import('sonner').then(({ toast }) => {
+            toast(`Invitation de party`, {
+              description: `${invite.inviterUsername} vous invite à rejoindre ${invite.partyName || 'leur party'}`,
+              action: {
+                label: 'Voir',
+                onClick: () => {
+                  // Navigate to party page if not already there
+                  if (window.location.pathname !== '/party') {
+                    window.location.href = '/party';
+                  }
+                },
+              },
+            });
+          });
+        }
       });
 
       s.on('party:list', (data: { parties: typeof publicParties }) => {
@@ -471,9 +494,15 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const createParty = (name?: string, isPublic: boolean = false) => {
+  const deleteMessage = (messageId: string) => {
+    if (user && socket) {
+      socket.emit('chat:delete-message', { messageId, adminId: user.id });
+    }
+  };
+
+  const createParty = (name?: string, isPublic: boolean = false, maxSize: number = 8) => {
     if (user) {
-      partyEvents.create(user.id, name, isPublic);
+      partyEvents.create(user.id, name, isPublic, maxSize);
     }
   };
 
@@ -498,6 +527,13 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const inviteToParty = (targetUserId: string) => {
     if (user) {
       partyEvents.invite(user.id, targetUserId);
+    }
+  };
+
+  const rejectPartyInvite = (partyId: string) => {
+    if (user && socket) {
+      socket.emit('party:reject-invite', { userId: user.id, partyId });
+      setPartyInvites((prev) => prev.filter((invite) => invite.partyId !== partyId));
     }
   };
 
@@ -572,6 +608,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         sendMessage,
         setTyping,
         setCurrentPage,
+        deleteMessage,
         currentParty,
         partyMembers,
         partyInvites,
@@ -581,6 +618,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         leaveParty,
         deleteParty,
         inviteToParty,
+        rejectPartyInvite,
         kickFromParty,
         fetchPublicParties,
         syncParty,

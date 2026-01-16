@@ -8,11 +8,21 @@ interface PartyInvite {
   inviterUsername: string;
 }
 
+interface InviteCooldown {
+  inviterId: string;
+  targetUserId: string;
+  expiresAt: number;
+}
+
 const partyInvites = new Map<string, PartyInvite[]>(); // userId -> invites
-const userSockets = new Map<string, string>(); // oderId -> socketId
+const userSockets = new Map<string, string>(); // userId -> socketId
+const inviteCooldowns = new Map<string, InviteCooldown>(); // key: `${inviterId}:${targetUserId}` -> cooldown
 
 // Auto-disband inactive parties (15 minutes)
 const INACTIVITY_TIMEOUT = 15 * 60 * 1000;
+
+// Invite cooldown (5 minutes) after rejection
+const INVITE_COOLDOWN = 5 * 60 * 1000;
 
 const getPartyRoomId = (partyId: string) => `party:${partyId}`;
 
@@ -86,8 +96,8 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
   });
   
   // Create party
-  socket.on('party:create', async (data: { userId: string; name?: string; isPublic: boolean }) => {
-    const { userId, name, isPublic } = data;
+  socket.on('party:create', async (data: { userId: string; name?: string; isPublic: boolean; maxSize?: number }) => {
+    const { userId, name, isPublic, maxSize } = data;
     
     try {
       // Check if user is already in a party
@@ -111,6 +121,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
         data: {
           name: name || `${creator?.username || 'Unknown'}'s party`,
           isPublic,
+          maxSize: Math.min(maxSize || 8, 16), // Default 8, max 16
           members: {
             create: {
               userId,
@@ -407,8 +418,19 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
   // Invite to party
   socket.on('party:invite', async (data: { userId: string; targetUserId: string }) => {
     const { userId, targetUserId } = data;
-    
+
     try {
+      // Check for active cooldown
+      const cooldownKey = `${userId}:${targetUserId}`;
+      const cooldown = inviteCooldowns.get(cooldownKey);
+      if (cooldown && Date.now() < cooldown.expiresAt) {
+        const remainingMinutes = Math.ceil((cooldown.expiresAt - Date.now()) / 60000);
+        socket.emit('party:error', {
+          message: `Tu dois attendre ${remainingMinutes} minute(s) avant de réinviter ce joueur`
+        });
+        return;
+      }
+
       const membership = await prisma.partyMember.findUnique({
         where: { userId },
         include: {
@@ -416,12 +438,12 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
           party: true,
         },
       });
-      
+
       if (!membership) {
         socket.emit('party:error', { message: 'You are not in a party' });
         return;
       }
-      
+
       // Store invite
       const invites = partyInvites.get(targetUserId) || [];
       invites.push({
@@ -430,7 +452,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
         inviterUsername: membership.user.username,
       });
       partyInvites.set(targetUserId, invites);
-      
+
       // Notify target user
       const targetSocketId = userSockets.get(targetUserId);
       if (targetSocketId) {
@@ -441,7 +463,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
           inviterUsername: membership.user.username,
         });
       }
-      
+
       socket.emit('party:invite-sent', { targetUserId });
     } catch (error) {
       console.error('Invite error:', error);
@@ -452,32 +474,32 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
   // Kick from party
   socket.on('party:kick', async (data: { userId: string; targetUserId: string }) => {
     const { userId, targetUserId } = data;
-    
+
     try {
       const membership = await prisma.partyMember.findUnique({
         where: { userId },
       });
-      
+
       if (!membership || !membership.isLeader) {
         socket.emit('party:error', { message: 'Only the leader can kick members' });
         return;
       }
-      
+
       const targetMembership = await prisma.partyMember.findUnique({
         where: { userId: targetUserId },
         include: { user: { select: { username: true } } },
       });
-      
+
       if (!targetMembership || targetMembership.partyId !== membership.partyId) {
         socket.emit('party:error', { message: 'User is not in your party' });
         return;
       }
-      
+
       // Remove member
       await prisma.partyMember.delete({
         where: { userId: targetUserId },
       });
-      
+
       // Notify kicked user
       const targetSocketId = userSockets.get(targetUserId);
       if (targetSocketId) {
@@ -487,7 +509,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
           targetSocket.emit('party:kicked');
         }
       }
-      
+
       // Notify others
       io.to(`party:${membership.partyId}`).emit('party:member-left', {
         userId: targetUserId,
@@ -497,6 +519,35 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
     } catch (error) {
       console.error('Kick error:', error);
       socket.emit('party:error', { message: 'Failed to kick member' });
+    }
+  });
+
+  // Reject party invite
+  socket.on('party:reject-invite', async (data: { userId: string; partyId: string }) => {
+    const { userId, partyId } = data;
+
+    try {
+      // Find and remove the invite
+      const invites = partyInvites.get(userId) || [];
+      const invite = invites.find((inv) => inv.partyId === partyId);
+
+      if (invite) {
+        // Set cooldown for the inviter
+        const cooldownKey = `${invite.inviterId}:${userId}`;
+        inviteCooldowns.set(cooldownKey, {
+          inviterId: invite.inviterId,
+          targetUserId: userId,
+          expiresAt: Date.now() + INVITE_COOLDOWN,
+        });
+
+        // Remove the invite
+        partyInvites.set(
+          userId,
+          invites.filter((inv) => inv.partyId !== partyId)
+        );
+      }
+    } catch (error) {
+      console.error('Reject invite error:', error);
     }
   });
   
@@ -650,14 +701,14 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
 setInterval(async () => {
   try {
     const cutoff = new Date(Date.now() - INACTIVITY_TIMEOUT);
-    
+
     const inactiveParties = await prisma.party.findMany({
       where: {
         lastActivity: { lt: cutoff },
       },
       select: { id: true },
     });
-    
+
     for (const party of inactiveParties) {
       await prisma.party.delete({
         where: { id: party.id },
@@ -667,3 +718,13 @@ setInterval(async () => {
     console.error('Party cleanup error:', error);
   }
 }, 5 * 60 * 1000); // Run every 5 minutes
+
+// Cleanup expired invite cooldowns periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, cooldown] of inviteCooldowns.entries()) {
+    if (now >= cooldown.expiresAt) {
+      inviteCooldowns.delete(key);
+    }
+  }
+}, 60 * 1000); // Run every minute
