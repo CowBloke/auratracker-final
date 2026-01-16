@@ -51,3 +51,5 @@
 - à l'inscription page accepter le réglèment
 - échecs
 - plus d'infos
+- reinitialisation mdp
+- demande admin pseudo
