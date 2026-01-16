@@ -50,3 +50,8 @@
 - mariokart
 - jeux multijoueurs/solo : pas de casino : party : quitter/venir sur latable
 - numéros roulette
+- bouton admin commit main en ligne
+- argent mise (cours ancien) à coté gauche du prix du cours ancien
+- plus d'effets objets, objets en quantité limité
+- complet clash
+- candy crush palier
