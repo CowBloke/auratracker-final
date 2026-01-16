@@ -51,7 +51,7 @@ export const usersApi = {
 export const economyApi = {
   transfer: (data: { receiverId: string; auraAmount?: number; moneyAmount?: number }) =>
     api.post('/economy/transfer', data),
-  getTransfers: (params?: { userId?: string; limit?: number; offset?: number }) =>
+  getTransfers: (params?: { userId?: string; limit?: number; offset?: number; all?: boolean }) =>
     api.get('/economy/transfers', { params }),
   getBalance: (userId: string) => api.get(`/economy/balance/${userId}`),
   // Daily aura gift system

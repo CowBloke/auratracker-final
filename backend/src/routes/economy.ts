@@ -148,16 +148,20 @@ router.get('/transfers', authMiddleware, async (req: AuthRequest, res: Response)
       return res.status(401).json({ error: 'Not authenticated' });
     }
     
-    const { userId, limit = '50', offset = '0' } = req.query;
+    const { userId, limit = '50', offset = '0', all } = req.query;
+    const includeAll = all === 'true';
     const targetUserId = (userId as string) || req.user.id;
-    
+    const whereClause = includeAll
+      ? undefined
+      : {
+          OR: [
+            { senderId: targetUserId },
+            { receiverId: targetUserId },
+          ],
+        };
+
     const transfers = await prisma.transfer.findMany({
-      where: {
-        OR: [
-          { senderId: targetUserId },
-          { receiverId: targetUserId },
-        ],
-      },
+      where: whereClause,
       include: {
         sender: {
           select: { id: true, username: true, usernameColor: true },

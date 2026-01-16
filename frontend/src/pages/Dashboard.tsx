@@ -110,7 +110,7 @@ export default function Dashboard() {
   const fetchAllHistory = async () => {
     setHistoryLoading(true);
     try {
-      const res = await economyApi.getTransfers({ limit: 50 });
+      const res = await economyApi.getTransfers({ limit: 50, all: true });
       setAllTransfers(res.data.transfers);
       setHasMoreHistory(res.data.transfers.length >= 50);
     } catch (error) {
@@ -124,7 +124,7 @@ export default function Dashboard() {
     if (historyLoading || !hasMoreHistory) return;
     setHistoryLoading(true);
     try {
-      const res = await economyApi.getTransfers({ limit: 50, offset: allTransfers.length });
+      const res = await economyApi.getTransfers({ limit: 50, offset: allTransfers.length, all: true });
       const newTransfers = res.data.transfers;
       setAllTransfers(prev => [...prev, ...newTransfers]);
       setHasMoreHistory(newTransfers.length >= 50);
@@ -140,7 +140,7 @@ export default function Dashboard() {
       try {
         const [rankingsRes, transfersRes, usersRes, allowanceRes] = await Promise.all([
           leaderboardsApi.get('aura', { limit: 5 }),
-          economyApi.getTransfers({ limit: 5 }),
+          economyApi.getTransfers({ limit: 5, all: true }),
           usersApi.getAll(),
           economyApi.getDailyAllowance(),
         ]);
@@ -181,7 +181,7 @@ export default function Dashboard() {
       
       await Promise.all([
         fetchDailyAllowance(),
-        economyApi.getTransfers({ limit: 5 }).then(res => setRecentTransfers(res.data.transfers)),
+        economyApi.getTransfers({ limit: 5, all: true }).then(res => setRecentTransfers(res.data.transfers)),
         refreshUser(),
       ]);
       
