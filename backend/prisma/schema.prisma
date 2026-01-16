@@ -42,12 +42,38 @@ model User {
   suggestions       Suggestion[]
   suggestionVotes   SuggestionVote[]
   suggestionComments SuggestionComment[]
+  suggestionRatings SuggestionRating[]
   bombPartyStats    BombPartyStats?
   bansReceived      Ban[]              @relation("BannedUser")
   bansIssued        Ban[]              @relation("BanIssuer")
+  userBadges        UserBadge[]
 
   @@index([aura])
   @@index([money])
+}
+
+// Badge System
+model Badge {
+  id        String    @id @default(uuid())
+  name      String
+  color     String
+  createdAt DateTime  @default(now())
+
+  users     UserBadge[]
+}
+
+model UserBadge {
+  id         String    @id @default(uuid())
+  userId     String
+  badgeId    String
+  assignedAt DateTime  @default(now())
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge      Badge     @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+  @@index([badgeId])
 }
 
 // Item Model
@@ -258,12 +284,16 @@ model Suggestion {
   title       String
   description String
   imageUrl    String?
+  status      String   @default("PENDING") // PENDING, DONE
   createdAt   DateTime @default(now())
+  resolvedAt  DateTime?
   
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   votes       SuggestionVote[]
   comments    SuggestionComment[]
+  ratings     SuggestionRating[]
   
+  @@index([status])
   @@index([createdAt])
 }
 
@@ -288,6 +318,21 @@ model SuggestionVote {
   suggestionId String
   userId       String
   value        Int      // 1 for upvote, -1 for downvote
+  createdAt    DateTime @default(now())
+
+  suggestion   Suggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([suggestionId, userId])
+  @@index([suggestionId])
+}
+
+// Suggestion Rating
+model SuggestionRating {
+  id           String   @id @default(uuid())
+  suggestionId String
+  userId       String
+  rating       Int      // 1-10
   createdAt    DateTime @default(now())
 
   suggestion   Suggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)

@@ -9,8 +9,7 @@
       // Apply theme immediately to prevent flash
       (function() {
         const stored = localStorage.getItem('theme');
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const theme = stored || (prefersDark ? 'dark' : 'light');
+        const theme = stored || 'light';
         if (theme === 'dark') {
           document.documentElement.classList.add('dark');
         }

@@ -19,7 +19,8 @@ import {
   Spade,
   Dices,
   Search,
-  Ticket
+  Ticket,
+  History
 } from 'lucide-react';
 import {
   Sidebar,
@@ -61,6 +62,7 @@ const navItems = [
   { to: '/pass', label: 'Pass', icon: Ticket },
   { to: '/suggestions', label: 'Suggestions', icon: Lightbulb },
   { to: '/rules', label: 'Règlement', icon: BookOpen },
+  { to: '/changelog', label: 'Changelog', icon: History },
 ];
 
 const adminItems = [

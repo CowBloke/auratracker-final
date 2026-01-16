@@ -24,8 +24,12 @@ export default function Party() {
     partyMembers,
     partyInvites,
     publicParties,
+    partyJoinRequests,
+    pendingJoinRequests,
     createParty,
     joinParty,
+    requestJoinParty,
+    respondToJoinRequest,
     leaveParty,
     deleteParty,
     inviteToParty,
@@ -71,6 +75,8 @@ export default function Party() {
   };
 
   const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
+  const publicPartyList = publicParties.filter((party) => party.isPublic);
+  const privatePartyList = publicParties.filter((party) => !party.isPublic);
   const availableUsersToInvite = allUsers.filter(
     (u) =>
       u.id !== user?.id &&
@@ -219,12 +225,48 @@ export default function Party() {
             ))}
           </div>
 
+          {isLeader && partyJoinRequests.length > 0 && (
+            <div className="space-y-4 pt-6 border-t border-border/30">
+              <h3 className="text-sm text-muted-foreground tracking-wide uppercase">
+                Demandes en attente
+              </h3>
+              <div className="space-y-0">
+                {partyJoinRequests.map((request) => (
+                  <div
+                    key={`${request.partyId}-${request.userId}`}
+                    className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
+                  >
+                    <div className="font-medium">
+                      <span style={request.usernameColor ? { color: request.usernameColor } : undefined}>
+                        {request.username}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => respondToJoinRequest(request.userId, false)}
+                        className="px-3 py-1 text-xs border border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+                      >
+                        Refuser
+                      </button>
+                      <button
+                        onClick={() => respondToJoinRequest(request.userId, true)}
+                        className="px-3 py-1 text-xs border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+                      >
+                        Accepter
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
         </section>
       ) : (
         <section className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
-              Parties publiques
+              Parties ouvertes
             </h2>
             <button
               onClick={fetchPublicParties}
@@ -236,35 +278,73 @@ export default function Party() {
 
           {publicParties.length === 0 ? (
             <p className="text-center text-muted-foreground py-12">
-              Aucune party publique
+              Aucune party disponible
             </p>
           ) : (
-            <div className="space-y-0">
-              {publicParties.map((party) => (
-                <div
-                  key={party.id}
-                  className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
-                >
-                  <div>
-                    <p className="font-medium">{party.name || 'Party sans nom'}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {party.memberCount}/{party.maxSize} membres
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => joinParty(party.id)}
-                    disabled={party.memberCount >= party.maxSize}
-                    className={cn(
-                      "px-4 py-2 text-sm border transition-colors",
-                      party.memberCount >= party.maxSize
-                        ? "border-border/30 text-muted-foreground/50 cursor-not-allowed"
-                        : "border-foreground text-foreground hover:bg-foreground hover:text-background"
-                    )}
-                  >
-                    {party.memberCount >= party.maxSize ? 'Pleine' : 'Rejoindre'}
-                  </button>
+            <div className="space-y-10">
+              {publicPartyList.length > 0 && (
+                <div className="space-y-0">
+                  {publicPartyList.map((party) => (
+                    <div
+                      key={party.id}
+                      className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
+                    >
+                      <div>
+                        <p className="font-medium">{party.name || 'Party sans nom'}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {party.memberCount}/{party.maxSize} membres · publique
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => joinParty(party.id)}
+                        disabled={party.memberCount >= party.maxSize}
+                        className={cn(
+                          "px-4 py-2 text-sm border transition-colors",
+                          party.memberCount >= party.maxSize
+                            ? "border-border/30 text-muted-foreground/50 cursor-not-allowed"
+                            : "border-foreground text-foreground hover:bg-foreground hover:text-background"
+                        )}
+                      >
+                        {party.memberCount >= party.maxSize ? 'Pleine' : 'Rejoindre'}
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
+
+              {privatePartyList.length > 0 && (
+                <div className="space-y-0">
+                  {privatePartyList.map((party) => {
+                    const isPending = pendingJoinRequests.includes(party.id);
+                    const isFull = party.memberCount >= party.maxSize;
+                    return (
+                      <div
+                        key={party.id}
+                        className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
+                      >
+                        <div>
+                          <p className="font-medium">{party.name || 'Party sans nom'}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {party.memberCount}/{party.maxSize} membres · privée
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => requestJoinParty(party.id)}
+                          disabled={isFull || isPending}
+                          className={cn(
+                            "px-4 py-2 text-sm border transition-colors",
+                            isFull || isPending
+                              ? "border-border/30 text-muted-foreground/50 cursor-not-allowed"
+                              : "border-foreground text-foreground hover:bg-foreground hover:text-background"
+                          )}
+                        >
+                          {isFull ? 'Pleine' : isPending ? 'Demande envoyée' : 'Demander'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </section>

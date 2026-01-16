@@ -9,6 +9,7 @@ import {
   MapPin,
   Package,
   ScrollText,
+  History,
   Shield,
   Spade,
   Swords,
@@ -40,6 +41,7 @@ const pageMatchers: Array<{ test: (path: string) => boolean; label: string; icon
   { test: (path) => path.startsWith('/profile'), label: 'Profil', icon: User },
   { test: (path) => path.startsWith('/admin'), label: 'Admin', icon: Shield },
   { test: (path) => path.startsWith('/rules'), label: 'Regles', icon: ScrollText },
+  { test: (path) => path.startsWith('/changelog'), label: 'Changelog', icon: History },
   { test: (path) => path.startsWith('/suggestions'), label: 'Suggestions', icon: Lightbulb },
   { test: (path) => path.startsWith('/report-bug'), label: 'Signaler un bug', icon: Bug },
 ];

@@ -13,7 +13,7 @@ interface Ranking {
   totalPlayed?: number;
 }
 
-type Category = 'aura' | 'money' | 'doodle_jump' | 'solitaire' | 'casino' | 'games_played';
+type Category = 'aura' | 'money' | 'doodle_jump' | 'solitaire' | 'casino' | 'games_played' | 'bombparty';
 
 const categories: { id: Category; name: string; valueLabel: string }[] = [
   { id: 'aura', name: 'Aura', valueLabel: 'aura' },
@@ -21,6 +21,7 @@ const categories: { id: Category; name: string; valueLabel: string }[] = [
   { id: 'doodle_jump', name: 'Doodle Jump', valueLabel: 'score' },
   { id: 'solitaire', name: 'Solitaire', valueLabel: '%' },
   { id: 'casino', name: 'Casino', valueLabel: '$' },
+  { id: 'bombparty', name: 'Bomb Party', valueLabel: 'victoires' },
   { id: 'games_played', name: 'Parties', valueLabel: 'jeux' },
 ];
 

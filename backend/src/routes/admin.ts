@@ -182,6 +182,172 @@ router.delete('/items/:id', authMiddleware, requireAdmin, async (req: AuthReques
   }
 });
 
+// ========== BADGES MANAGEMENT ==========
+
+// Get all badges
+router.get('/badges', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const badges = await prisma.badge.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ badges });
+  } catch (error) {
+    console.error('Admin get badges error:', error);
+    res.status(500).json({ error: 'Failed to get badges' });
+  }
+});
+
+// Create badge
+router.post('/badges', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
+    const color = typeof req.body.color === 'string' ? req.body.color.trim() : '';
+
+    if (!name) {
+      return res.status(400).json({ error: 'Badge name is required' });
+    }
+
+    if (!/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(color)) {
+      return res.status(400).json({ error: 'Badge color must be a hex value' });
+    }
+
+    const badge = await prisma.badge.create({
+      data: { name, color },
+    });
+
+    logAdmin('badge_create', req.user!.id, undefined, badge.id, badge.name, { color: badge.color });
+
+    res.status(201).json({ badge });
+  } catch (error) {
+    console.error('Admin create badge error:', error);
+    res.status(500).json({ error: 'Failed to create badge' });
+  }
+});
+
+// Get a user's badges
+router.get('/users/:id/badges', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, username: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const badges = await prisma.userBadge.findMany({
+      where: { userId: id },
+      include: { badge: true },
+      orderBy: { assignedAt: 'desc' },
+    });
+
+    res.json({ badges });
+  } catch (error) {
+    console.error('Admin get user badges error:', error);
+    res.status(500).json({ error: 'Failed to get user badges' });
+  }
+});
+
+// Assign a badge to a user
+router.post('/users/:id/badges', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { badgeId } = req.body;
+
+    if (!badgeId || typeof badgeId !== 'string') {
+      return res.status(400).json({ error: 'Badge ID is required' });
+    }
+
+    const [user, badge] = await Promise.all([
+      prisma.user.findUnique({ where: { id }, select: { id: true, username: true } }),
+      prisma.badge.findUnique({ where: { id: badgeId }, select: { id: true, name: true, color: true } }),
+    ]);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (!badge) {
+      return res.status(404).json({ error: 'Badge not found' });
+    }
+
+    const existing = await prisma.userBadge.findUnique({
+      where: {
+        userId_badgeId: {
+          userId: id,
+          badgeId,
+        },
+      },
+      include: { badge: true },
+    });
+
+    if (existing) {
+      return res.json({ userBadge: existing, alreadyAssigned: true });
+    }
+
+    const userBadge = await prisma.userBadge.create({
+      data: {
+        userId: id,
+        badgeId,
+      },
+      include: { badge: true },
+    });
+
+    logAdmin('badge_assign', req.user!.id, undefined, id, user.username, {
+      badgeId: badge.id,
+      badgeName: badge.name,
+    });
+
+    res.status(201).json({ userBadge });
+  } catch (error) {
+    console.error('Admin assign badge error:', error);
+    res.status(500).json({ error: 'Failed to assign badge' });
+  }
+});
+
+// Remove a badge from a user
+router.delete('/users/:id/badges/:badgeId', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id, badgeId } = req.params;
+
+    const userBadge = await prisma.userBadge.findUnique({
+      where: {
+        userId_badgeId: {
+          userId: id,
+          badgeId,
+        },
+      },
+      include: { badge: true, user: { select: { username: true } } },
+    });
+
+    if (!userBadge) {
+      return res.status(404).json({ error: 'Badge assignment not found' });
+    }
+
+    await prisma.userBadge.delete({
+      where: {
+        userId_badgeId: {
+          userId: id,
+          badgeId,
+        },
+      },
+    });
+
+    logAdmin('badge_remove', req.user!.id, undefined, id, userBadge.user.username, {
+      badgeId,
+      badgeName: userBadge.badge.name,
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Admin remove badge error:', error);
+    res.status(500).json({ error: 'Failed to remove badge' });
+  }
+});
+
 // Get all approved users with full details (admin only)
 router.get('/users', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
