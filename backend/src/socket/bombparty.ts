@@ -101,15 +101,68 @@ function loadDictionary(): Set<string> {
   }
 }
 
-// Get random prompt from database
-async function getRandomPrompt(difficulty: 'easy' | 'medium' | 'hard'): Promise<string> {
+// Cache for 3-letter start round setting
+let threeLetterStartRound: number | null = null;
+
+// Get setting for when 3-letter prompts should start
+async function getThreeLetterStartRound(): Promise<number> {
+  if (threeLetterStartRound !== null) return threeLetterStartRound;
+
+  try {
+    const setting = await prisma.gameSettings.findUnique({
+      where: { key: 'bombparty_3letter_start_round' },
+    });
+    threeLetterStartRound = setting ? parseInt(setting.value) : 10;
+  } catch {
+    threeLetterStartRound = 10; // Default to round 10
+  }
+  return threeLetterStartRound;
+}
+
+// Clear cached setting (call this when settings are updated)
+export function clearBombPartySettingsCache() {
+  threeLetterStartRound = null;
+}
+
+// Get random prompt from database based on difficulty and round
+async function getRandomPrompt(difficulty: 'easy' | 'medium' | 'hard', round: number = 0): Promise<string> {
+  const startRound = await getThreeLetterStartRound();
+
+  // Determine which prompt lengths to include based on round
+  // Before startRound: only 2-letter prompts
+  // After startRound: mix of 2-letter and 3-letter (increasing 3-letter probability)
+  let lengths: number[];
+  if (round < startRound) {
+    lengths = [2];
+  } else {
+    // Gradually increase 3-letter probability
+    // At startRound: 20% chance of 3-letter
+    // Every 5 rounds after: increase by 10% (max 80%)
+    const roundsAfterStart = round - startRound;
+    const threeLetterChance = Math.min(0.2 + Math.floor(roundsAfterStart / 5) * 0.1, 0.8);
+    lengths = Math.random() < threeLetterChance ? [3] : [2];
+  }
+
   const prompts = await prisma.bombPartyPrompt.findMany({
-    where: { difficulty },
+    where: {
+      difficulty,
+      length: { in: lengths },
+    },
     select: { prompt: true },
   });
 
   if (prompts.length === 0) {
-    // Fallback prompts if DB is empty
+    // Fallback: try any length with this difficulty
+    const fallbackPrompts = await prisma.bombPartyPrompt.findMany({
+      where: { difficulty },
+      select: { prompt: true },
+    });
+
+    if (fallbackPrompts.length > 0) {
+      return fallbackPrompts[Math.floor(Math.random() * fallbackPrompts.length)].prompt;
+    }
+
+    // Ultimate fallback prompts if DB is empty
     const fallbacks = ['TH', 'IN', 'ER', 'AN', 'RE', 'ON', 'AT', 'EN', 'ND', 'TI'];
     return fallbacks[Math.floor(Math.random() * fallbacks.length)];
   }
@@ -386,14 +439,14 @@ export const setupBombPartyHandlers = (socket: Socket, io: Server) => {
     currentPlayer.wordsTypedCount++;
     game.usedWords.add(upperWord);
 
-    // Get new prompt
-    const newPrompt = await getRandomPrompt(game.difficulty);
-
-    // Move to next player
+    // Move to next player and increment round first so we use the new round for prompt selection
     game.currentPlayerIndex = getNextPlayerIndex(game);
+    game.round++;
+
+    // Get new prompt (3-letter prompts may appear based on current round)
+    const newPrompt = await getRandomPrompt(game.difficulty, game.round);
     game.currentPrompt = newPrompt;
     game.currentInput = '';
-    game.round++;
     game.roundsWithoutLifeLoss++;
     game.turnDuration = getTurnDuration(game.roundsWithoutLifeLoss);
     game.turnStartTime = Date.now();
@@ -638,8 +691,8 @@ async function advanceTurn(game: BombPartyGame, io: Server, skipPromptChange: bo
   game.turnStartTime = Date.now();
 
   if (!skipPromptChange) {
-    game.currentPrompt = await getRandomPrompt(game.difficulty);
     game.round++;
+    game.currentPrompt = await getRandomPrompt(game.difficulty, game.round);
     // Don't increment roundsWithoutLifeLoss here - only when word is accepted
   }
 
