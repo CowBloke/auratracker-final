@@ -10,3 +10,6 @@
 - fix logs filtre jeux
 - les feais (minimum) s'affichent mal
 - on ne doit pas piuvoir attaquer admin sur clash (ultra cheaté car 1M d'argent)
+- admin peut changer mdp
+- Comme jeu a rajouter un jeu de voiture serait cool, avec juste des commandes simples (avancer freiner gauche droite) en2D. On pourrait alors comparer les chronos entre joueur
+

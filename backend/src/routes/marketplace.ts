@@ -3,7 +3,7 @@ import { prisma } from '../server.js';
 import { authMiddleware, adminMiddleware, AuthRequest } from '../middleware/auth.js';
 import { validate, createItemSchema, purchaseSchema, useItemSchema } from '../middleware/validation.js';
 import { logMarketplace } from '../utils/logger.js';
-import { isUploadPath } from '../utils/uploads.js';
+import { isAllowedImageUrl } from '../utils/uploads.js';
 
 const router = Router();
 
@@ -214,8 +214,8 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
       }
       
       if (effect.type === 'PROFILE_PICTURE' && effectData?.imageUrl) {
-        if (!isUploadPath(effectData.imageUrl)) {
-          return res.status(400).json({ error: 'Image must be uploaded' });
+        if (!isAllowedImageUrl(effectData.imageUrl)) {
+          return res.status(400).json({ error: 'Image must be uploaded or a valid URL' });
         }
         // Apply profile picture
         await prisma.user.update({
@@ -324,8 +324,8 @@ router.post('/admin/item', authMiddleware, adminMiddleware, validate(createItemS
   try {
     const { name, description, type, price, imageUrl, effect, expiresAt } = req.body;
 
-    if (imageUrl && !isUploadPath(imageUrl)) {
-      return res.status(400).json({ error: 'Image must be uploaded' });
+    if (imageUrl && !isAllowedImageUrl(imageUrl)) {
+      return res.status(400).json({ error: 'Image must be uploaded or a valid URL' });
     }
     
     const item = await prisma.item.create({
@@ -353,8 +353,8 @@ router.put('/admin/item/:id', authMiddleware, adminMiddleware, async (req: AuthR
     const { id } = req.params;
     const { name, description, type, price, imageUrl, effect, expiresAt } = req.body;
 
-    if (imageUrl && !isUploadPath(imageUrl)) {
-      return res.status(400).json({ error: 'Image must be uploaded' });
+    if (imageUrl && !isAllowedImageUrl(imageUrl)) {
+      return res.status(400).json({ error: 'Image must be uploaded or a valid URL' });
     }
     
     const item = await prisma.item.update({

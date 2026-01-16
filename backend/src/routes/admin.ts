@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import { prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { logAdmin, logSuggestion, logBan } from '../utils/logger.js';
-import { isUploadPath } from '../utils/uploads.js';
+import { isAllowedImageUrl } from '../utils/uploads.js';
 
 const router = Router();
 
@@ -115,8 +115,8 @@ router.post('/items', authMiddleware, requireAdmin, async (req: AuthRequest, res
   try {
     const { name, description, type, price, imageUrl, effect } = req.body;
 
-    if (imageUrl && !isUploadPath(imageUrl)) {
-      return res.status(400).json({ error: 'Image must be uploaded' });
+    if (imageUrl && !isAllowedImageUrl(imageUrl)) {
+      return res.status(400).json({ error: 'Image must be uploaded or a valid URL' });
     }
     
     const item = await prisma.item.create({
@@ -143,8 +143,8 @@ router.put('/items/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
     const { id } = req.params;
     const { name, description, type, price, imageUrl, effect } = req.body;
 
-    if (imageUrl && !isUploadPath(imageUrl)) {
-      return res.status(400).json({ error: 'Image must be uploaded' });
+    if (imageUrl && !isAllowedImageUrl(imageUrl)) {
+      return res.status(400).json({ error: 'Image must be uploaded or a valid URL' });
     }
     
     const item = await prisma.item.update({
