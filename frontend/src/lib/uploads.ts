@@ -1,4 +1,9 @@
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
 export const readFileAsDataUrl = (file: File): Promise<string> => {
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return Promise.reject(new Error('Image too large'));
+  }
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
