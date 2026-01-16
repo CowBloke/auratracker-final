@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
 interface User {
@@ -28,6 +29,7 @@ export default function Party() {
     leaveParty,
     deleteParty,
     inviteToParty,
+    rejectPartyInvite,
     kickFromParty,
     fetchPublicParties,
     syncParty,
@@ -37,6 +39,7 @@ export default function Party() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [partyName, setPartyName] = useState('');
   const [isPublic, setIsPublic] = useState(true);
+  const [maxSize, setMaxSize] = useState<number>(8);
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
   useEffect(() => {
@@ -55,10 +58,11 @@ export default function Party() {
   };
 
   const handleCreateParty = () => {
-    createParty(partyName || undefined, isPublic);
+    createParty(partyName || undefined, isPublic, maxSize);
     setShowCreateModal(false);
     setPartyName('');
-    setIsPublic(false);
+    setIsPublic(true);
+    setMaxSize(8);
   };
 
   const handleInvite = (userId: string) => {
@@ -115,12 +119,20 @@ export default function Party() {
                     de {invite.inviterUsername}
                   </p>
                 </div>
-                <button
-                  onClick={() => joinParty(invite.partyId)}
-                  className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-                >
-                  Rejoindre
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => rejectPartyInvite(invite.partyId)}
+                    className="px-4 py-2 text-sm border border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+                  >
+                    Refuser
+                  </button>
+                  <button
+                    onClick={() => joinParty(invite.partyId)}
+                    className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+                  >
+                    Rejoindre
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -272,6 +284,33 @@ export default function Party() {
               placeholder="Nom (optionnel)"
               className="h-12 bg-transparent border-border/50"
             />
+            <div className="space-y-2">
+              <Label htmlFor="maxSize" className="text-sm text-muted-foreground">
+                Taille maximale
+              </Label>
+              <Select value={maxSize.toString()} onValueChange={(value) => setMaxSize(parseInt(value))}>
+                <SelectTrigger id="maxSize" className="h-12 bg-transparent border-border/50">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="2">2 joueurs</SelectItem>
+                  <SelectItem value="3">3 joueurs</SelectItem>
+                  <SelectItem value="4">4 joueurs</SelectItem>
+                  <SelectItem value="5">5 joueurs</SelectItem>
+                  <SelectItem value="6">6 joueurs</SelectItem>
+                  <SelectItem value="7">7 joueurs</SelectItem>
+                  <SelectItem value="8">8 joueurs</SelectItem>
+                  <SelectItem value="9">9 joueurs</SelectItem>
+                  <SelectItem value="10">10 joueurs</SelectItem>
+                  <SelectItem value="11">11 joueurs</SelectItem>
+                  <SelectItem value="12">12 joueurs</SelectItem>
+                  <SelectItem value="13">13 joueurs</SelectItem>
+                  <SelectItem value="14">14 joueurs</SelectItem>
+                  <SelectItem value="15">15 joueurs</SelectItem>
+                  <SelectItem value="16">16 joueurs</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex items-center gap-3">
               <Checkbox
                 id="isPublic"

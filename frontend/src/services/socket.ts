@@ -52,8 +52,8 @@ export const partyEvents = {
   sync: (userId: string) => {
     socket?.emit('party:sync', { userId });
   },
-  create: (userId: string, name?: string, isPublic: boolean = false) => {
-    socket?.emit('party:create', { userId, name, isPublic });
+  create: (userId: string, name?: string, isPublic: boolean = false, maxSize: number = 8) => {
+    socket?.emit('party:create', { userId, name, isPublic, maxSize });
   },
   join: (userId: string, partyId: string) => {
     socket?.emit('party:join', { userId, partyId });
