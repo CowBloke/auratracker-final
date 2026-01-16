@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { adminApi, uploadsApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats } from '../services/api';
@@ -146,6 +146,13 @@ const METADATA_LABELS: Record<string, string> = {
   votes: 'Votes',
 };
 
+// Game type filters
+const GAME_TYPES = [
+  { value: 'doodle_jump', label: 'Doodle Jump' },
+  { value: 'solitaire', label: 'Solitaire' },
+  { value: 'casino', label: 'Casino' },
+];
+
 interface ItemFormData {
   name: string;
   description: string;
@@ -232,11 +239,13 @@ export default function Admin() {
   const [logFilter, setLogFilter] = useState({
     type: 'ALL',
     username: '',
+    gameType: 'ALL',
   });
   const [logsPage, setLogsPage] = useState(0);
   const [totalLogs, setTotalLogs] = useState(0);
   const [expandedLogIds, setExpandedLogIds] = useState<Set<string>>(new Set());
   const logsPerPage = 50;
+  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const toggleLogExpand = (logId: string) => {
     setExpandedLogIds(prev => {
@@ -249,6 +258,21 @@ export default function Admin() {
       return next;
     });
   };
+
+  // Debounced search effect
+  useEffect(() => {
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+    searchDebounceRef.current = setTimeout(() => {
+      fetchLogs(0);
+    }, 300);
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    };
+  }, [logFilter.username]);
 
   // Redirect non-admin users
   if (!user?.isAdmin) {
@@ -329,11 +353,14 @@ export default function Admin() {
     }
   };
 
-  const fetchLogs = async (page = 0) => {
+  const fetchLogs = async (page = 0, typeOverride?: string, gameTypeOverride?: string) => {
     try {
       setLoadingLogs(true);
+      const filterType = typeOverride !== undefined ? typeOverride : logFilter.type;
+      const filterGameType = gameTypeOverride !== undefined ? gameTypeOverride : logFilter.gameType;
       const res = await adminApi.getLogs({
-        type: logFilter.type !== 'ALL' ? logFilter.type : undefined,
+        type: filterType !== 'ALL' ? filterType : undefined,
+        gameType: filterGameType !== 'ALL' ? filterGameType : undefined,
         username: logFilter.username || undefined,
         limit: logsPerPage,
         offset: page * logsPerPage,
@@ -1603,8 +1630,9 @@ export default function Admin() {
                   <button
                     key={type}
                     onClick={() => {
-                      setLogFilter(prev => ({ ...prev, type: prev.type === type ? 'ALL' : type }));
-                      setTimeout(() => fetchLogs(0), 0);
+                      const newType = logFilter.type === type ? 'ALL' : type;
+                      setLogFilter(prev => ({ ...prev, type: newType, gameType: 'ALL' }));
+                      setTimeout(() => fetchLogs(0, newType, 'ALL'), 0);
                     }}
                     className={cn(
                       "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all",
@@ -1627,25 +1655,43 @@ export default function Admin() {
             </div>
           )}
 
-          {/* Search Bar */}
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher par utilisateur..."
-                value={logFilter.username}
-                onChange={(e) => setLogFilter(prev => ({ ...prev, username: e.target.value }))}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    fetchLogs(0);
-                  }
-                }}
-                className="pl-9 bg-transparent border-border/50 h-9"
-              />
+          {/* Game Type Filters (show when GAME type is selected) */}
+          {logFilter.type === 'GAME' && (
+            <div className="flex flex-wrap gap-2">
+              {GAME_TYPES.map((game) => {
+                const isSelected = logFilter.gameType === game.value;
+                return (
+                  <button
+                    key={game.value}
+                    onClick={() => {
+                      const newGameType = logFilter.gameType === game.value ? 'ALL' : game.value;
+                      setLogFilter(prev => ({ ...prev, gameType: newGameType }));
+                      setTimeout(() => fetchLogs(0, undefined, newGameType), 0);
+                    }}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all",
+                      isSelected
+                        ? "bg-purple-500 text-white"
+                        : "border border-purple-500 text-purple-400 bg-transparent hover:bg-muted/30"
+                    )}
+                  >
+                    <Gamepad2 className="h-3 w-3" />
+                    <span>{game.label}</span>
+                  </button>
+                );
+              })}
             </div>
-            <Button onClick={() => fetchLogs(0)} size="sm" className="h-9">
-              <Search className="h-4 w-4" />
-            </Button>
+          )}
+
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher par utilisateur..."
+              value={logFilter.username}
+              onChange={(e) => setLogFilter(prev => ({ ...prev, username: e.target.value }))}
+              className="pl-9 bg-transparent border-border/50 h-9"
+            />
           </div>
 
           {/* Log List */}
