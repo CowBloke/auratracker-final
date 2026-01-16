@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Socket } from 'socket.io-client';
-import { initSocket, connectSocket, disconnectSocket, chatEvents, partyEvents, gameEvents, bombPartyEvents, marioKartEvents } from '../services/socket';
+import { initSocket, connectSocket, disconnectSocket, chatEvents, partyEvents, gameEvents, bombPartyEvents } from '../services/socket';
 import { useAuth } from './AuthContext';
 
 interface ChatMessage {
@@ -143,58 +143,6 @@ interface BombPartyPlayAgainPrompt {
   leaveCount: number;
 }
 
-interface MarioKartTrack {
-  width: number;
-  height: number;
-  checkpoints: Array<{ x: number; y: number; radius: number }>;
-  startPositions: Array<{ x: number; y: number }>;
-  startAngle: number;
-  pads: Array<{ x: number; y: number; width: number; height: number; boost: number }>;
-  lapCount: number;
-}
-
-interface MarioKartPlayerState {
-  userId: string;
-  username: string;
-  usernameColor?: string | null;
-  color: string;
-  x: number;
-  y: number;
-  angle: number;
-  speed: number;
-  lap: number;
-  checkpointIndex: number;
-  finished: boolean;
-  finishTime?: number;
-}
-
-interface MarioKartState {
-  partyId: string;
-  status: 'countdown' | 'running' | 'finished';
-  lapCount: number;
-  countdownEndsAt: number;
-  startedAt: number | null;
-  finishedAt: number | null;
-  track?: MarioKartTrack;
-  players: MarioKartPlayerState[];
-}
-
-interface MarioKartResult {
-  partyId: string;
-  reason: 'completed' | 'timeout';
-  standings: Array<{
-    userId: string;
-    username: string;
-    usernameColor?: string | null;
-    color: string;
-    rank: number | null;
-    finishMs: number | null;
-    lap: number;
-    checkpoints: number;
-    finished: boolean;
-  }>;
-}
-
 interface SocketContextType {
   socket: Socket | null;
   connected: boolean;
@@ -239,14 +187,6 @@ interface SocketContextType {
   submitBombParty: (word: string) => void;
   leaveBombParty: () => void;
   clearBombPartyGameOver: () => void;
-  // Mario Kart
-  marioKartState: MarioKartState | null;
-  marioKartResult: MarioKartResult | null;
-  marioKartError: string | null;
-  startMarioKart: (laps?: number) => void;
-  sendMarioKartInput: (input: { throttle: number; steer: number; drift?: boolean; brake?: boolean }) => void;
-  requestMarioKartState: () => void;
-  leaveMarioKart: () => void;
 }
 
 const SocketContext = createContext<SocketContextType | null>(null);
@@ -278,10 +218,6 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [bombPartyRejection, setBombPartyRejection] = useState<string | null>(null);
   const [bombPartyJoinPrompt, setBombPartyJoinPrompt] = useState<BombPartyJoinPrompt | null>(null);
   const [bombPartyPlayAgainPrompt, setBombPartyPlayAgainPrompt] = useState<BombPartyPlayAgainPrompt | null>(null);
-  // Mario Kart state
-  const [marioKartState, setMarioKartState] = useState<MarioKartState | null>(null);
-  const [marioKartResult, setMarioKartResult] = useState<MarioKartResult | null>(null);
-  const [marioKartError, setMarioKartError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -586,46 +522,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setBombPartyPlayAgainPrompt(null);
       });
 
-      // Mario Kart events
-      s.on('mariokart:starting', (state: MarioKartState) => {
-        setMarioKartState(state);
-        setMarioKartResult(null);
-        setMarioKartError(null);
-      });
-
-      s.on('mariokart:state', (state: MarioKartState) => {
-        setMarioKartState((prev) => {
-          const track = prev?.track || state.track;
-          return { ...state, track: track || state.track };
-        });
-      });
-
-      s.on('mariokart:finished', (data: MarioKartResult) => {
-        setMarioKartResult(data);
-        setMarioKartState((prev) => prev ? { ...prev, status: 'finished', finishedAt: Date.now() } : prev);
-      });
-
-      s.on('mariokart:error', (data: { message: string }) => {
-        setMarioKartError(data.message);
-        import('sonner').then(({ toast }) => toast.error(data.message));
-      });
-
       return () => {
         disconnectSocket();
         s.removeAllListeners();
       };
     }
   }, [user, updateBalance]);
-
-  // Keep Mario Kart state in sync when joining/leaving a party
-  useEffect(() => {
-    if (user && currentParty) {
-      marioKartEvents.requestState(currentParty.id, user.id);
-    } else if (!currentParty) {
-      setMarioKartState(null);
-      setMarioKartResult(null);
-    }
-  }, [user, currentParty]);
 
   const sendMessage = (message: string, replyToId?: string | null) => {
     if (user) {
@@ -679,22 +581,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
   const leaveParty = () => {
     if (user) {
-      if (currentParty) {
-        marioKartEvents.leave(currentParty.id, user.id);
-        setMarioKartState(null);
-        setMarioKartResult(null);
-      }
       partyEvents.leave(user.id);
     }
   };
 
   const deleteParty = () => {
     if (user) {
-      if (currentParty) {
-        marioKartEvents.leave(currentParty.id, user.id);
-        setMarioKartState(null);
-        setMarioKartResult(null);
-      }
       partyEvents.delete(user.id);
     }
   };
@@ -772,33 +664,6 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     setBombPartyGame(null); // Also clear game state to return to lobby
   };
 
-  // Mario Kart actions
-  const startMarioKart = (laps?: number) => {
-    if (user && currentParty) {
-      marioKartEvents.start(user.id, currentParty.id, laps);
-    }
-  };
-
-  const sendMarioKartInput = (input: { throttle: number; steer: number; drift?: boolean; brake?: boolean }) => {
-    if (user && currentParty) {
-      marioKartEvents.input(currentParty.id, user.id, input);
-    }
-  };
-
-  const requestMarioKartState = () => {
-    if (user && currentParty) {
-      marioKartEvents.requestState(currentParty.id, user.id);
-    }
-  };
-
-  const leaveMarioKart = () => {
-    if (user && currentParty) {
-      marioKartEvents.leave(currentParty.id, user.id);
-    }
-    setMarioKartState(null);
-    setMarioKartResult(null);
-  };
-
   return (
     <SocketContext.Provider
       value={{
@@ -841,13 +706,6 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         submitBombParty,
         leaveBombParty,
         clearBombPartyGameOver,
-        marioKartState,
-        marioKartResult,
-        marioKartError,
-        startMarioKart,
-        sendMarioKartInput,
-        requestMarioKartState,
-        leaveMarioKart,
       }}
     >
       {children}
