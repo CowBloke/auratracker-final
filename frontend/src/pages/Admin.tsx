@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Swords } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +41,107 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
   CONSUMABLE: 'Consommable',
   COSMETIC: 'Cosmétique',
   UPGRADE: 'Amélioration',
+};
+
+// Log type configuration with icons, colors and labels
+const LOG_TYPE_CONFIG: Record<string, { label: string; color: string; bgColor: string; borderColor: string; icon: React.ComponentType<{ className?: string }> }> = {
+  AUTH: { label: 'Connexion', color: 'text-blue-400', bgColor: 'bg-blue-500', borderColor: 'border-blue-500', icon: LogIn },
+  CHAT: { label: 'Chat', color: 'text-green-400', bgColor: 'bg-green-500', borderColor: 'border-green-500', icon: MessageCircle },
+  GAME: { label: 'Jeux', color: 'text-purple-400', bgColor: 'bg-purple-500', borderColor: 'border-purple-500', icon: Gamepad2 },
+  ECONOMY: { label: 'Economie', color: 'text-yellow-400', bgColor: 'bg-yellow-500', borderColor: 'border-yellow-500', icon: Coins },
+  PARTY: { label: 'Groupe', color: 'text-pink-400', bgColor: 'bg-pink-500', borderColor: 'border-pink-500', icon: Users },
+  MARKETPLACE: { label: 'Boutique', color: 'text-orange-400', bgColor: 'bg-orange-500', borderColor: 'border-orange-500', icon: Store },
+  ADMIN: { label: 'Admin', color: 'text-red-400', bgColor: 'bg-red-500', borderColor: 'border-red-500', icon: Shield },
+  BAN: { label: 'Bans', color: 'text-red-300', bgColor: 'bg-red-700', borderColor: 'border-red-700', icon: Gavel },
+  SUGGESTION: { label: 'Suggestions', color: 'text-cyan-400', bgColor: 'bg-cyan-500', borderColor: 'border-cyan-500', icon: Lightbulb },
+  AURACOIN: { label: 'AuraCoin', color: 'text-amber-400', bgColor: 'bg-amber-500', borderColor: 'border-amber-500', icon: TrendingUp },
+  CLASH: { label: 'Clash', color: 'text-indigo-400', bgColor: 'bg-indigo-500', borderColor: 'border-indigo-500', icon: Swords },
+};
+
+// Human-readable action labels
+const ACTION_LABELS: Record<string, string> = {
+  // Auth
+  login: 'Connexion',
+  logout: 'Déconnexion',
+  register: 'Inscription',
+  login_failed: 'Connexion échouée',
+  login_banned: 'Connexion bannie',
+  // Chat
+  message_sent: 'Message envoyé',
+  message_deleted: 'Message supprimé',
+  // Game
+  game_complete: 'Partie terminée',
+  game_reward: 'Récompense obtenue',
+  casino_bet: 'Pari casino',
+  highscore: 'Nouveau record',
+  // Economy
+  transfer: 'Transfert',
+  gift_aura: 'Don d\'aura',
+  balance_change: 'Modification solde',
+  // Party
+  party_create: 'Groupe créé',
+  party_join: 'Rejoint groupe',
+  party_leave: 'Quitté groupe',
+  party_disband: 'Groupe dissous',
+  party_kick: 'Expulsion',
+  party_invite: 'Invitation envoyée',
+  // Suggestion
+  suggestion_create: 'Suggestion créée',
+  suggestion_vote: 'Vote',
+  suggestion_comment: 'Commentaire',
+  suggestion_delete: 'Suggestion supprimée',
+  bug_report: 'Bug signalé',
+  // Marketplace
+  item_purchase: 'Achat',
+  item_use: 'Utilisation objet',
+  item_create: 'Objet créé',
+  item_delete: 'Objet supprimé',
+  // Admin
+  user_update: 'Utilisateur modifié',
+  user_delete: 'Utilisateur supprimé',
+  user_approve: 'Utilisateur approuvé',
+  user_reject: 'Utilisateur refusé',
+  inventory_add: 'Inventaire ajouté',
+  inventory_update: 'Inventaire modifié',
+  inventory_remove: 'Inventaire retiré',
+  chat_clear: 'Chat vidé',
+  stats_delete: 'Stats supprimées',
+  // Ban
+  ban_create: 'Bannissement créé',
+  ban_remove: 'Bannissement levé',
+  // AuraCoin
+  auracoin_buy: 'Achat AuraCoin',
+  auracoin_sell: 'Vente AuraCoin',
+  // Clash
+  attack_execute: 'Attaque lancée',
+  base_save: 'Base sauvegardée',
+  building_upgrade: 'Bâtiment amélioré',
+};
+
+// Human-readable metadata key labels
+const METADATA_LABELS: Record<string, string> = {
+  score: 'Score',
+  game: 'Jeu',
+  reward: 'Récompense',
+  amount: 'Montant',
+  item: 'Objet',
+  price: 'Prix',
+  reason: 'Raison',
+  duration: 'Durée',
+  target: 'Cible',
+  result: 'Résultat',
+  bet: 'Mise',
+  win: 'Gain',
+  loss: 'Perte',
+  oldValue: 'Ancienne valeur',
+  newValue: 'Nouvelle valeur',
+  currency: 'Devise',
+  type: 'Type',
+  message: 'Message',
+  partyName: 'Nom du groupe',
+  content: 'Contenu',
+  status: 'Statut',
+  votes: 'Votes',
 };
 
 interface ItemFormData {
@@ -133,7 +234,20 @@ export default function Admin() {
   });
   const [logsPage, setLogsPage] = useState(0);
   const [totalLogs, setTotalLogs] = useState(0);
+  const [expandedLogIds, setExpandedLogIds] = useState<Set<string>>(new Set());
   const logsPerPage = 50;
+
+  const toggleLogExpand = (logId: string) => {
+    setExpandedLogIds(prev => {
+      const next = new Set(prev);
+      if (next.has(logId)) {
+        next.delete(logId);
+      } else {
+        next.add(logId);
+      }
+      return next;
+    });
+  };
 
   // Redirect non-admin users
   if (!user?.isAdmin) {
@@ -614,21 +728,7 @@ export default function Admin() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
-      {/* Header */}
-      <header className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground tracking-wide uppercase">
-              Panel
-            </p>
-            <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-              Administration
-            </h1>
-          </div>
-        </div>
-      </header>
-
+    <div className="max-w-4xl mx-auto py-12 px-4 space-y-8">
       {/* Message */}
       {message && (
         <div className={cn(
@@ -1481,104 +1581,62 @@ export default function Admin() {
         </TabsContent>
 
         {/* Logs Tab */}
-        <TabsContent value="logs" className="space-y-6">
-          <div className="h-px bg-border" />
-
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
-              Journal d'activité
-            </h2>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <ScrollText className="h-4 w-4" />
-              <span>{totalLogs.toLocaleString()} entrées</span>
-            </div>
-          </div>
-
-          {/* Log Stats */}
+        <TabsContent value="logs" className="space-y-4">
+          {/* Category Pills - Single Line */}
           {logStats && (
-            <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
-              {Object.entries(logStats.byType).map(([type, count]) => (
-                <div
-                  key={type}
-                  className={cn(
-                    "p-2 border border-border/30 rounded text-center cursor-pointer hover:bg-muted/30 transition-colors",
-                    logFilter.type === type && "bg-muted/50 border-foreground/30"
-                  )}
-                  onClick={() => {
-                    setLogFilter(prev => ({ ...prev, type: prev.type === type ? 'ALL' : type }));
-                    setTimeout(() => fetchLogs(0), 0);
-                  }}
-                >
-                  <div className={cn(
-                    "w-2 h-2 rounded-full mx-auto mb-1",
-                    type === 'AUTH' && "bg-blue-500",
-                    type === 'CHAT' && "bg-green-500",
-                    type === 'GAME' && "bg-purple-500",
-                    type === 'ECONOMY' && "bg-yellow-500",
-                    type === 'PARTY' && "bg-pink-500",
-                    type === 'MARKETPLACE' && "bg-orange-500",
-                    type === 'ADMIN' && "bg-red-500",
-                    type === 'BAN' && "bg-red-700",
-                    type === 'SUGGESTION' && "bg-cyan-500",
-                    type === 'AURACOIN' && "bg-amber-500",
-                    type === 'CLASH' && "bg-indigo-500",
-                  )} />
-                  <p className="text-xs font-medium">{type}</p>
-                  <p className="text-xs text-muted-foreground tabular-nums">{count}</p>
-                </div>
-              ))}
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(logStats.byType).map(([type, count]) => {
+                const config = LOG_TYPE_CONFIG[type];
+                if (!config) return null;
+                const Icon = config.icon;
+                const isSelected = logFilter.type === type;
+
+                return (
+                  <button
+                    key={type}
+                    onClick={() => {
+                      setLogFilter(prev => ({ ...prev, type: prev.type === type ? 'ALL' : type }));
+                      setTimeout(() => fetchLogs(0), 0);
+                    }}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all",
+                      isSelected
+                        ? `${config.bgColor} text-white`
+                        : `border ${config.borderColor} ${config.color} bg-transparent hover:bg-muted/30`
+                    )}
+                  >
+                    <Icon className="h-3 w-3" />
+                    <span>{config.label}</span>
+                    <span className={cn(
+                      "tabular-nums",
+                      isSelected ? "text-white/80" : "text-muted-foreground"
+                    )}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           )}
 
-          {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Rechercher par nom d'utilisateur..."
-                  value={logFilter.username}
-                  onChange={(e) => setLogFilter(prev => ({ ...prev, username: e.target.value }))}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      fetchLogs(0);
-                    }
-                  }}
-                  className="pl-9 bg-transparent border-border/50"
-                />
-              </div>
+          {/* Search Bar */}
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Rechercher par utilisateur..."
+                value={logFilter.username}
+                onChange={(e) => setLogFilter(prev => ({ ...prev, username: e.target.value }))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    fetchLogs(0);
+                  }
+                }}
+                className="pl-9 bg-transparent border-border/50 h-9"
+              />
             </div>
-            <Select
-              value={logFilter.type}
-              onValueChange={(value) => {
-                setLogFilter(prev => ({ ...prev, type: value }));
-                setTimeout(() => fetchLogs(0), 0);
-              }}
-            >
-              <SelectTrigger className="w-[180px] bg-transparent border-border/50">
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">Tous les types</SelectItem>
-                <SelectItem value="AUTH">Auth</SelectItem>
-                <SelectItem value="CHAT">Chat</SelectItem>
-                <SelectItem value="GAME">Game</SelectItem>
-                <SelectItem value="ECONOMY">Economy</SelectItem>
-                <SelectItem value="PARTY">Party</SelectItem>
-                <SelectItem value="MARKETPLACE">Marketplace</SelectItem>
-                <SelectItem value="ADMIN">Admin</SelectItem>
-                <SelectItem value="BAN">Ban</SelectItem>
-                <SelectItem value="SUGGESTION">Suggestion</SelectItem>
-                <SelectItem value="AURACOIN">AuraCoin</SelectItem>
-                <SelectItem value="CLASH">Clash</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button
-              onClick={() => fetchLogs(0)}
-              className="h-9"
-            >
-              <Search className="h-4 w-4 mr-2" />
-              Rechercher
+            <Button onClick={() => fetchLogs(0)} size="sm" className="h-9">
+              <Search className="h-4 w-4" />
             </Button>
           </div>
 
@@ -1593,105 +1651,145 @@ export default function Admin() {
               <p className="text-muted-foreground">Aucun log trouvé</p>
             </div>
           ) : (
-            <div className="space-y-0 border border-border/30 rounded overflow-hidden">
-              {logs.map((log) => (
-                <div
-                  key={log.id}
-                  className="py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/20"
-                >
-                  <div className="flex items-start gap-3">
-                    {/* Type indicator */}
-                    <div className={cn(
-                      "w-2.5 h-2.5 rounded-full mt-1.5 shrink-0",
-                      log.type === 'AUTH' && "bg-blue-500",
-                      log.type === 'CHAT' && "bg-green-500",
-                      log.type === 'GAME' && "bg-purple-500",
-                      log.type === 'ECONOMY' && "bg-yellow-500",
-                      log.type === 'PARTY' && "bg-pink-500",
-                      log.type === 'MARKETPLACE' && "bg-orange-500",
-                      log.type === 'ADMIN' && "bg-red-500",
-                      log.type === 'BAN' && "bg-red-700",
-                      log.type === 'SUGGESTION' && "bg-cyan-500",
-                      log.type === 'AURACOIN' && "bg-amber-500",
-                      log.type === 'CLASH' && "bg-indigo-500",
-                    )} />
+            <div className="border border-border/30 rounded overflow-hidden divide-y divide-border/30">
+              {logs.map((log) => {
+                const config = LOG_TYPE_CONFIG[log.type];
+                const Icon = config?.icon || ScrollText;
+                const isExpanded = expandedLogIds.has(log.id);
+                const actionLabel = ACTION_LABELS[log.action] || log.action.replace(/_/g, ' ');
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-muted/50">
-                          {log.type}
-                        </span>
-                        <span className="text-sm font-medium">
-                          {log.action.replace(/_/g, ' ')}
-                        </span>
+                return (
+                  <div key={log.id}>
+                    {/* Collapsed single-line view */}
+                    <button
+                      onClick={() => toggleLogExpand(log.id)}
+                      className="w-full px-3 py-2 flex items-center gap-2 hover:bg-muted/20 transition-colors text-left"
+                    >
+                      {/* Type pastille */}
+                      <span className={cn(
+                        "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium shrink-0",
+                        config?.bgColor || 'bg-muted',
+                        "text-white"
+                      )}>
+                        <Icon className="h-2.5 w-2.5" />
+                        {config?.label || log.type}
+                      </span>
+
+                      {/* Action + User summary */}
+                      <span className="text-sm truncate flex-1">
+                        <span className="font-medium">{actionLabel}</span>
                         {log.username && (
-                          <span className="text-sm text-foreground">
-                            par <span className="font-medium">{log.username}</span>
-                          </span>
+                          <span className="text-muted-foreground"> par </span>
+                        )}
+                        {log.username && (
+                          <span className="text-foreground">{log.username}</span>
                         )}
                         {log.targetName && (
-                          <span className="text-sm text-muted-foreground">
-                            → <span className="text-foreground">{log.targetName}</span>
-                          </span>
+                          <span className="text-muted-foreground"> → {log.targetName}</span>
                         )}
-                      </div>
+                      </span>
 
-                      {/* Details/Metadata */}
-                      {(log.details || log.metadata) && (
-                        <div className="mt-1 text-xs text-muted-foreground font-mono">
-                          {log.metadata && Object.entries(log.metadata).map(([key, value]) => (
-                            <span key={key} className="mr-3">
-                              {key}: <span className="text-foreground/80">{String(value)}</span>
-                            </span>
-                          ))}
-                          {log.details && !log.metadata && Object.entries(log.details).slice(0, 3).map(([key, value]) => (
-                            <span key={key} className="mr-3">
-                              {key}: <span className="text-foreground/80">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
-                      <p className="text-xs text-muted-foreground/60 mt-1">
-                        {new Date(log.createdAt).toLocaleDateString('fr-FR', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
+                      {/* Time */}
+                      <span className="text-xs text-muted-foreground/60 shrink-0">
+                        {new Date(log.createdAt).toLocaleTimeString('fr-FR', {
                           hour: '2-digit',
                           minute: '2-digit',
-                          second: '2-digit',
                         })}
-                        {log.ipAddress && (
-                          <span className="ml-2">IP: {log.ipAddress}</span>
-                        )}
-                      </p>
-                    </div>
+                      </span>
+
+                      {/* Expand indicator */}
+                      <ChevronDown className={cn(
+                        "h-4 w-4 text-muted-foreground/50 shrink-0 transition-transform",
+                        isExpanded && "rotate-180"
+                      )} />
+                    </button>
+
+                    {/* Expanded details */}
+                    {isExpanded && (
+                      <div className="px-3 pb-3 pt-1 bg-muted/10 border-t border-border/20">
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                          <div className="text-muted-foreground">Date</div>
+                          <div>
+                            {new Date(log.createdAt).toLocaleDateString('fr-FR', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit',
+                            })}
+                          </div>
+
+                          {log.ipAddress && (
+                            <>
+                              <div className="text-muted-foreground">Adresse IP</div>
+                              <div className="font-mono">{log.ipAddress}</div>
+                            </>
+                          )}
+
+                          {log.userId && (
+                            <>
+                              <div className="text-muted-foreground">ID utilisateur</div>
+                              <div className="font-mono text-[11px]">{log.userId}</div>
+                            </>
+                          )}
+
+                          {log.targetId && (
+                            <>
+                              <div className="text-muted-foreground">ID cible</div>
+                              <div className="font-mono text-[11px]">{log.targetId}</div>
+                            </>
+                          )}
+
+                          {/* Metadata with human-readable labels */}
+                          {log.metadata && Object.entries(log.metadata).map(([key, value]) => (
+                            <div key={key} className="contents">
+                              <div className="text-muted-foreground">{METADATA_LABELS[key] || key}</div>
+                              <div>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</div>
+                            </div>
+                          ))}
+
+                          {/* Details with human-readable labels */}
+                          {log.details && !log.metadata && Object.entries(log.details).map(([key, value]) => (
+                            <div key={key} className="contents">
+                              <div className="text-muted-foreground">{METADATA_LABELS[key] || key}</div>
+                              <div>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
           {/* Pagination */}
           {totalLogs > logsPerPage && (
-            <div className="flex items-center justify-between pt-4">
-              <p className="text-sm text-muted-foreground">
-                Page {logsPage + 1} sur {Math.ceil(totalLogs / logsPerPage)}
+            <div className="flex items-center justify-between pt-2">
+              <p className="text-xs text-muted-foreground">
+                {logsPage * logsPerPage + 1}-{Math.min((logsPage + 1) * logsPerPage, totalLogs)} sur {totalLogs.toLocaleString()}
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
                   onClick={() => fetchLogs(logsPage - 1)}
                   disabled={logsPage === 0 || loadingLogs}
+                  className="h-7 w-7 p-0"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
+                <span className="text-xs text-muted-foreground px-2">
+                  {logsPage + 1}/{Math.ceil(totalLogs / logsPerPage)}
+                </span>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
                   onClick={() => fetchLogs(logsPage + 1)}
                   disabled={(logsPage + 1) * logsPerPage >= totalLogs || loadingLogs}
+                  className="h-7 w-7 p-0"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
