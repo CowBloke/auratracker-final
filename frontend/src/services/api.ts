@@ -406,7 +406,7 @@ export interface LogStats {
 
 export const adminApi = {
   getUsers: () => api.get<{ users: AdminUser[] }>('/admin/users'),
-  updateUser: (id: string, data: { username?: string; aura?: number; money?: number; dailyAuraLimit?: number }) =>
+  updateUser: (id: string, data: { username?: string; aura?: number; money?: number; dailyAuraLimit?: number; password?: string }) =>
     api.put<{ user: AdminUser }>(`/admin/users/${id}`, data),
   deleteUser: (id: string) => api.delete<{ success: boolean; message: string }>(`/admin/users/${id}`),
   getBadges: () => api.get<{ badges: Badge[] }>('/admin/badges'),

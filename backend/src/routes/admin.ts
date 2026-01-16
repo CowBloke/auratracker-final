@@ -1,4 +1,5 @@
 import { Router, Response } from 'express';
+import bcrypt from 'bcryptjs';
 import { prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { logAdmin, logSuggestion, logBan } from '../utils/logger.js';
@@ -382,10 +383,10 @@ router.get('/users', authMiddleware, requireAdmin, async (req: AuthRequest, res:
 router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { aura, money, dailyAuraLimit, username } = req.body;
+    const { aura, money, dailyAuraLimit, username, password } = req.body;
 
     // Build update data
-    const updateData: { aura?: number; money?: number; dailyAuraLimit?: number; username?: string } = {};
+    const updateData: { aura?: number; money?: number; dailyAuraLimit?: number; username?: string; passwordHash?: string } = {};
 
     if (username !== undefined) {
       if (typeof username !== 'string') {
@@ -417,6 +418,16 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
     if (dailyAuraLimit !== undefined) {
       updateData.dailyAuraLimit = parseInt(dailyAuraLimit);
     }
+    if (password !== undefined) {
+      if (typeof password !== 'string') {
+        return res.status(400).json({ error: 'Invalid password' });
+      }
+      const normalizedPassword = password.trim();
+      if (normalizedPassword.length < 6 || normalizedPassword.length > 100) {
+        return res.status(400).json({ error: 'Password must be between 6 and 100 characters' });
+      }
+      updateData.passwordHash = await bcrypt.hash(normalizedPassword, 10);
+    }
 
     // Get old user data for logging
     const oldUser = await prisma.user.findUnique({
@@ -443,8 +454,14 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
     });
 
     // Log user update
+    const logChanges = { ...updateData } as { [key: string]: unknown };
+    if (logChanges.passwordHash) {
+      delete logChanges.passwordHash;
+    }
+
     logAdmin('user_update', req.user!.id, undefined, id, user.username, {
-      changes: updateData,
+      changes: logChanges,
+      passwordChanged: Boolean(updateData.passwordHash),
       oldValues: {
         username: oldUser?.username,
         aura: oldUser?.aura,
