@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { validate, transferSchema, giftAuraSchema } from '../middleware/validation.js';
+import { logEconomy } from '../utils/logger.js';
 
 const router = Router();
 
@@ -127,7 +128,14 @@ router.post('/transfer', authMiddleware, validate(transferSchema), async (req: A
       sender: { id: sender.id, username: sender.username },
       receiver: { id: receiver.id, username: receiver.username },
     });
-    
+
+    // Log transfer
+    logEconomy('transfer', req.user.id, sender.username, receiverId, receiver.username, {
+      auraAmount,
+      moneyAmount,
+      transferId: transfer.id,
+    });
+
     res.json({
       success: true,
       newBalances: {
@@ -313,7 +321,15 @@ router.post('/gift-aura', authMiddleware, validate(giftAuraSchema), async (req: 
       sender: { id: sender.id, username: sender.username },
       receiver: { id: receiver.id, username: receiver.username },
     });
-    
+
+    // Log gift aura
+    logEconomy('gift_aura', req.user.id, sender.username, receiverId, receiver.username, {
+      amount,
+      message: message?.trim() || undefined,
+      transferId: transfer.id,
+      remainingAllowance: Math.max(0, (allowanceInfo.dailyAuraLimit ?? DEFAULT_DAILY_AURA_LIMIT) - updatedSender.dailyAuraGiven),
+    });
+
     res.json({
       success: true,
       remaining: Math.max(0, (allowanceInfo.dailyAuraLimit ?? DEFAULT_DAILY_AURA_LIMIT) - updatedSender.dailyAuraGiven),

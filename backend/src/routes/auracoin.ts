@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
+import { logAuraCoin } from '../utils/logger.js';
 
 const router = Router();
 
@@ -184,7 +185,15 @@ router.post('/buy', authMiddleware, async (req: AuthRequest, res: Response) => {
       money: updatedUser.money,
       aura: updatedUser.aura,
     });
-    
+
+    // Log buy
+    logAuraCoin('auracoin_buy', req.user.id, user.username, {
+      moneySpent: moneyAmount,
+      coinsReceived,
+      fee,
+      priceAtPurchase: currentPrice,
+    });
+
     res.json({
       success: true,
       transaction: {
@@ -269,7 +278,15 @@ router.post('/sell', authMiddleware, async (req: AuthRequest, res: Response) => 
       money: updatedUser.money,
       aura: updatedUser.aura,
     });
-    
+
+    // Log sell
+    logAuraCoin('auracoin_sell', req.user.id, user.username, {
+      coinsSold: coinAmount,
+      moneyReceived: netAmount,
+      fee,
+      priceAtSale: currentPrice,
+    });
+
     res.json({
       success: true,
       transaction: {

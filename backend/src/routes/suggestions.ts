@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
+import { logSuggestion } from '../utils/logger.js';
 
 const router = Router();
 
@@ -104,6 +105,12 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
       },
     });
 
+    // Log suggestion creation
+    logSuggestion('suggestion_create', req.user!.id, suggestion.user.username, {
+      suggestionId: suggestion.id,
+      title: suggestion.title,
+    });
+
     res.status(201).json({
       suggestion: {
         ...suggestion,
@@ -160,6 +167,12 @@ router.post('/:id/comments', authMiddleware, async (req: AuthRequest, res: Respo
           },
         },
       },
+    });
+
+    // Log comment creation
+    logSuggestion('suggestion_comment', req.user!.id, comment.user.username, {
+      suggestionId: id,
+      commentId: comment.id,
     });
 
     res.status(201).json({ comment });
@@ -232,6 +245,16 @@ router.post('/:id/vote', authMiddleware, async (req: AuthRequest, res: Response)
     const upvotes = votes.filter((v) => v.value === 1).length;
     const downvotes = votes.filter((v) => v.value === -1).length;
 
+    // Log vote
+    const voter = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: { username: true },
+    });
+    logSuggestion('suggestion_vote', req.user!.id, voter?.username || undefined, {
+      suggestionId: id,
+      vote: value === 1 ? 'upvote' : value === -1 ? 'downvote' : 'removed',
+    });
+
     res.json({
       upvotes,
       downvotes,
@@ -264,6 +287,17 @@ router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response) =>
 
     await prisma.suggestion.delete({
       where: { id },
+    });
+
+    // Log deletion
+    const deleter = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: { username: true },
+    });
+    logSuggestion('suggestion_delete', req.user!.id, deleter?.username || undefined, {
+      suggestionId: id,
+      suggestionTitle: suggestion.title,
+      wasOwnSuggestion: suggestion.userId === req.user!.id,
     });
 
     res.json({ success: true });

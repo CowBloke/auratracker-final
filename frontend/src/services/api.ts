@@ -349,6 +349,26 @@ export const suggestionsApi = {
     api.delete<{ success: boolean }>(`/suggestions/${id}/comments/${commentId}`),
 };
 
+// Log Interface
+export interface ActivityLog {
+  id: string;
+  type: 'AUTH' | 'CHAT' | 'GAME' | 'ECONOMY' | 'PARTY' | 'SUGGESTION' | 'MARKETPLACE' | 'ADMIN' | 'BAN' | 'AURACOIN' | 'CLASH';
+  action: string;
+  userId: string | null;
+  username: string | null;
+  targetId: string | null;
+  targetName: string | null;
+  details: Record<string, unknown> | null;
+  metadata: Record<string, unknown> | null;
+  ipAddress: string | null;
+  createdAt: string;
+}
+
+export interface LogStats {
+  total: number;
+  byType: Record<string, number>;
+}
+
 export const adminApi = {
   getUsers: () => api.get<{ users: AdminUser[] }>('/admin/users'),
   updateUser: (id: string, data: { username?: string; aura?: number; money?: number; dailyAuraLimit?: number }) =>
@@ -398,6 +418,17 @@ export const adminApi = {
   createBan: (data: { userId: string; reason: string; type: 'TEMPORARY' | 'PERMANENT'; durationHours?: number }) =>
     api.post<{ ban: Ban; message: string }>('/admin/bans', data),
   unbanUser: (userId: string) => api.delete<{ success: boolean; message: string }>(`/admin/bans/${userId}`),
+  // Activity logs
+  getLogs: (params?: {
+    type?: string;
+    action?: string;
+    username?: string;
+    limit?: number;
+    offset?: number;
+    startDate?: string;
+    endDate?: string;
+  }) => api.get<{ logs: ActivityLog[]; total: number }>('/admin/logs', { params }),
+  getLogStats: () => api.get<LogStats>('/admin/logs/stats'),
 };
 
 // Bug report API (for regular users)

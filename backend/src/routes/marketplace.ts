@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { prisma } from '../server.js';
 import { authMiddleware, adminMiddleware, AuthRequest } from '../middleware/auth.js';
 import { validate, createItemSchema, purchaseSchema, useItemSchema } from '../middleware/validation.js';
+import { logMarketplace } from '../utils/logger.js';
 
 const router = Router();
 
@@ -103,6 +104,15 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
       }),
     ]);
     
+    // Log purchase
+    logMarketplace('item_purchase', req.user.id, user.username, {
+      itemId,
+      itemName: item.name,
+      quantity,
+      totalPrice,
+      totalAuraCost,
+    });
+
     res.json({
       success: true,
       item: userItem,
@@ -191,6 +201,18 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
           });
         }
         
+        // Log item use
+        const usernameColorUser = await prisma.user.findUnique({
+          where: { id: req.user.id },
+          select: { username: true },
+        });
+        logMarketplace('item_use', req.user.id, usernameColorUser?.username || undefined, {
+          itemId: userItem.item.id,
+          itemName: userItem.item.name,
+          effectType: 'USERNAME_COLOR',
+          effectData: { color: effectData.color },
+        });
+
         return res.json({
           success: true,
           effect: { type: 'USERNAME_COLOR', color: effectData.color },
@@ -216,6 +238,17 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
           });
         }
         
+        // Log item use
+        const profilePicUser = await prisma.user.findUnique({
+          where: { id: req.user.id },
+          select: { username: true },
+        });
+        logMarketplace('item_use', req.user.id, profilePicUser?.username || undefined, {
+          itemId: userItem.item.id,
+          itemName: userItem.item.name,
+          effectType: 'PROFILE_PICTURE',
+        });
+
         return res.json({
           success: true,
           effect: { type: 'PROFILE_PICTURE', imageUrl: effectData.imageUrl },
@@ -259,7 +292,19 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
           });
         }
       }
-      
+
+      // Log consumable item use
+      const consumableUser = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { username: true },
+      });
+      logMarketplace('item_use', req.user.id, consumableUser?.username || undefined, {
+        itemId: userItem.item.id,
+        itemName: userItem.item.name,
+        itemType: 'CONSUMABLE',
+        effect,
+      });
+
       return res.json({
         success: true,
         effect,

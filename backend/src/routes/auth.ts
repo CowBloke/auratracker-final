@@ -1,10 +1,20 @@
-import { Router, Response } from 'express';
+import { Router, Response, Request } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt, { SignOptions } from 'jsonwebtoken';
 import { prisma } from '../server.js';
 import { config } from '../config/index.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { validate, registerSchema, loginSchema } from '../middleware/validation.js';
+import { logAuth } from '../utils/logger.js';
+
+// Helper to get IP address from request
+const getIpAddress = (req: Request | AuthRequest): string | null => {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string') {
+    return forwarded.split(',')[0].trim();
+  }
+  return req.socket?.remoteAddress || null;
+};
 
 const router = Router();
 
@@ -56,11 +66,14 @@ router.post('/register', validate(registerSchema), async (req, res) => {
       },
     });
     
+    // Log registration
+    logAuth('register', undefined, username, { email, isAdmin }, getIpAddress(req));
+
     // Don't return token - account needs approval first (unless admin)
-    res.status(201).json({ 
+    res.status(201).json({
       success: true,
-      message: isAdmin 
-        ? 'Compte admin créé avec succès' 
+      message: isAdmin
+        ? 'Compte admin créé avec succès'
         : 'Demande envoyée ! Un administrateur doit approuver votre compte avant que vous puissiez vous connecter.',
       requiresApproval: !isAdmin,
     });
@@ -80,25 +93,53 @@ router.post('/login', validate(loginSchema), async (req, res) => {
     });
     
     if (!user) {
+      logAuth('login_failed', undefined, username, { reason: 'user_not_found' }, getIpAddress(req));
       return res.status(401).json({ error: 'Invalid credentials' });
     }
-    
+
     const isValidPassword = await bcrypt.compare(password, user.passwordHash);
-    
+
     if (!isValidPassword) {
+      logAuth('login_failed', user.id, username, { reason: 'invalid_password' }, getIpAddress(req));
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
     // Check if account is approved
     if (!user.isApproved) {
-      return res.status(403).json({ 
+      logAuth('login_failed', user.id, username, { reason: 'pending_approval' }, getIpAddress(req));
+      return res.status(403).json({
         error: 'Votre compte est en attente d\'approbation par un administrateur.',
         pendingApproval: true,
       });
     }
-    
+
+    // Check if user is banned
+    const activeBan = await prisma.ban.findFirst({
+      where: {
+        userId: user.id,
+        isActive: true,
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gt: new Date() } },
+        ],
+      },
+    });
+
+    if (activeBan) {
+      logAuth('login_banned', user.id, username, { banType: activeBan.type, reason: activeBan.reason }, getIpAddress(req));
+      return res.status(403).json({
+        error: activeBan.type === 'PERMANENT'
+          ? `Votre compte a été banni définitivement. Raison: ${activeBan.reason}`
+          : `Votre compte est banni jusqu'au ${activeBan.expiresAt?.toISOString()}. Raison: ${activeBan.reason}`,
+        banned: true,
+      });
+    }
+
     const token = generateToken(user.id, user.email);
-    
+
+    // Log successful login
+    logAuth('login', user.id, user.username, { isAdmin: user.isAdmin }, getIpAddress(req));
+
     res.json({
       user: {
         id: user.id,
