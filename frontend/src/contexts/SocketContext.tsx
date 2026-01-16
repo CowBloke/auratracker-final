@@ -510,12 +510,19 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         playAgainCount: number;
         leaveCount: number;
       }) => {
-        setBombPartyPlayAgainPrompt((prev) => prev ? {
-          ...prev,
-          responses: data.responses,
-          playAgainCount: data.playAgainCount,
-          leaveCount: data.leaveCount,
-        } : null);
+        setBombPartyPlayAgainPrompt((prev) => {
+          // Only update if we have an existing prompt for this party
+          if (!prev || prev.partyId !== data.partyId) {
+            return prev;
+          }
+
+          return {
+            ...prev,
+            responses: data.responses,
+            playAgainCount: data.playAgainCount,
+            leaveCount: data.leaveCount,
+          };
+        });
       });
 
       s.on('bombparty:play-again-cancelled', () => {
