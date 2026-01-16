@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { getPageMeta } from './presence';
+import { resolveImageUrl } from '@/lib/images';
 
 type TimeoutRef = ReturnType<typeof setTimeout> | null;
 
@@ -135,7 +136,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                       <div className="flex items-center gap-2 mb-1">
                         {msg.profilePicture && (
                           <img
-                            src={msg.profilePicture}
+                            src={resolveImageUrl(msg.profilePicture)}
                             alt={msg.username}
                             className="w-5 h-5 rounded-full object-cover"
                             onError={(e) => {

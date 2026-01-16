@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { marketplaceApi } from '../services/api';
+import { marketplaceApi, uploadsApi } from '../services/api';
 import { Loader2, Palette, Camera, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { readFileAsDataUrl } from '@/lib/uploads';
+import { resolveImageUrl } from '@/lib/images';
 
 interface UserItem {
   id: string;
@@ -62,7 +64,7 @@ export default function Inventory() {
   // Image upload state
   const [imageDialogOpen, setImageDialogOpen] = useState(false);
   const [imageItem, setImageItem] = useState<UserItem | null>(null);
-  const [imageUrl, setImageUrl] = useState('');
+  const [imageDataUrl, setImageDataUrl] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -107,7 +109,7 @@ export default function Inventory() {
       }
       if (effect.type === 'PROFILE_PICTURE') {
         setImageItem(userItem);
-        setImageUrl('');
+        setImageDataUrl('');
         setImageDialogOpen(true);
         return;
       }
@@ -172,13 +174,17 @@ export default function Inventory() {
 
   // Apply profile picture
   const applyProfilePicture = async () => {
-    if (!imageItem || !imageUrl.trim()) return;
+    if (!imageItem || !imageDataUrl) return;
     
     try {
       setUsing(imageItem.id);
       setMessage(null);
       
-      await marketplaceApi.useItem(imageItem.id, { imageUrl: imageUrl.trim() });
+      const uploadRes = await uploadsApi.uploadImage({
+        purpose: 'profile',
+        imageData: imageDataUrl,
+      });
+      await marketplaceApi.useItem(imageItem.id, { imageUrl: uploadRes.data.url });
       await refreshUser();
       await fetchInventory();
       
@@ -285,7 +291,7 @@ export default function Inventory() {
                   {/* Item Image */}
                   {userItem.item.imageUrl ? (
                     <img 
-                      src={userItem.item.imageUrl} 
+                      src={resolveImageUrl(userItem.item.imageUrl)} 
                       alt={userItem.item.name}
                       className="w-14 h-14 object-cover rounded shrink-0"
                       onError={(e) => {
@@ -432,17 +438,17 @@ export default function Inventory() {
               Photo de profil
             </DialogTitle>
             <DialogDescription>
-              Entrez l'URL de votre photo de profil qui sera affichée dans le chat.
+              Importez votre photo de profil qui sera affichée dans le chat.
             </DialogDescription>
           </DialogHeader>
 
           <div className="py-4 space-y-4">
             {/* Preview */}
-            {imageUrl && (
+            {imageDataUrl && (
               <div className="flex justify-center">
                 <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-border">
                   <img 
-                    src={imageUrl} 
+                    src={imageDataUrl} 
                     alt="Preview" 
                     className="w-full h-full object-cover"
                     onError={(e) => {
@@ -453,18 +459,28 @@ export default function Inventory() {
               </div>
             )}
 
-            {/* URL input */}
+            {/* File input */}
             <div className="space-y-2">
-              <label className="text-sm text-muted-foreground">URL de l'image</label>
+              <label className="text-sm text-muted-foreground">Image</label>
               <Input
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="https://..."
+                type="file"
+                accept="image/*"
                 className="bg-transparent"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) {
+                    setImageDataUrl('');
+                    return;
+                  }
+                  try {
+                    const dataUrl = await readFileAsDataUrl(file);
+                    setImageDataUrl(dataUrl);
+                  } catch (error) {
+                    console.error('Failed to read image:', error);
+                    setImageDataUrl('');
+                  }
+                }}
               />
-              <p className="text-xs text-muted-foreground">
-                Utilisez un service d'hébergement d'images comme Imgur, ImgBB, etc.
-              </p>
             </div>
           </div>
 
@@ -474,7 +490,7 @@ export default function Inventory() {
             </Button>
             <Button 
               onClick={applyProfilePicture}
-              disabled={using !== null || !imageUrl.trim()}
+              disabled={using !== null || !imageDataUrl}
             >
               {using ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />

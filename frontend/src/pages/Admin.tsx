@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { adminApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats } from '../services/api';
+import { adminApi, uploadsApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats } from '../services/api';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { resolveImageUrl } from '@/lib/images';
+import { readFileAsDataUrl } from '@/lib/uploads';
 
 // Effect types for items
 const EFFECT_TYPES = [
@@ -149,7 +151,6 @@ interface ItemFormData {
   description: string;
   type: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE';
   price: number;
-  auraCost: number;
   imageUrl: string;
   effectType: string;
   effectValue: string;
@@ -160,7 +161,6 @@ const defaultItemForm: ItemFormData = {
   description: '',
   type: 'COSMETIC',
   price: 0,
-  auraCost: 0,
   imageUrl: '',
   effectType: 'USERNAME_COLOR',
   effectValue: '',
@@ -198,6 +198,7 @@ export default function Admin() {
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ShopItem | null>(null);
   const [itemForm, setItemForm] = useState<ItemFormData>(defaultItemForm);
+  const [itemImageDataUrl, setItemImageDataUrl] = useState('');
   const [savingItem, setSavingItem] = useState(false);
   const [deletingItem, setDeletingItem] = useState<string | null>(null);
 
@@ -479,6 +480,7 @@ export default function Admin() {
   const openCreateItemDialog = () => {
     setEditingItem(null);
     setItemForm(defaultItemForm);
+    setItemImageDataUrl('');
     setItemDialogOpen(true);
   };
 
@@ -491,11 +493,11 @@ export default function Admin() {
       description: item.description,
       type: item.type,
       price: item.price,
-      auraCost: item.auraCost,
       imageUrl: item.imageUrl || '',
       effectType,
       effectValue,
     });
+    setItemImageDataUrl('');
     setItemDialogOpen(true);
   };
 
@@ -514,13 +516,21 @@ export default function Admin() {
         value: itemForm.effectValue,
       });
 
+      let uploadedUrl = itemForm.imageUrl.trim() || undefined;
+      if (itemImageDataUrl) {
+        const uploadRes = await uploadsApi.uploadImage({
+          purpose: 'item',
+          imageData: itemImageDataUrl,
+        });
+        uploadedUrl = uploadRes.data.url;
+      }
+
       const data = {
         name: itemForm.name.trim(),
         description: itemForm.description.trim(),
         type: itemForm.type,
         price: itemForm.price,
-        auraCost: itemForm.auraCost,
-        imageUrl: itemForm.imageUrl.trim() || undefined,
+        imageUrl: uploadedUrl,
         effect,
       };
 
@@ -534,6 +544,7 @@ export default function Admin() {
         showMessage('success', 'Objet créé');
       }
       setItemDialogOpen(false);
+      setItemImageDataUrl('');
     } catch (error: any) {
       showMessage('error', error.response?.data?.error || 'Erreur');
     } finally {
@@ -1166,7 +1177,7 @@ export default function Admin() {
                       <div className="flex items-center gap-4 min-w-0 flex-1">
                         {item.imageUrl ? (
                           <img 
-                            src={item.imageUrl} 
+                            src={resolveImageUrl(item.imageUrl)} 
                             alt={item.name}
                             className="w-10 h-10 object-cover rounded"
                           />
@@ -1194,9 +1205,6 @@ export default function Admin() {
                       <div className="flex items-center gap-6">
                         <div className="text-right text-sm text-muted-foreground">
                           <p className="tabular-nums">${item.price}</p>
-                          {item.auraCost > 0 && (
-                            <p className="tabular-nums text-xs">{item.auraCost} aura</p>
-                          )}
                         </div>
                         
                         <div className="flex items-center gap-2">
@@ -1990,7 +1998,7 @@ export default function Admin() {
                           <div className="flex items-center gap-4 min-w-0">
                             {inventoryItem.item.imageUrl ? (
                               <img
-                                src={inventoryItem.item.imageUrl}
+                                src={resolveImageUrl(inventoryItem.item.imageUrl)}
                                 alt={inventoryItem.item.name}
                                 className="w-10 h-10 object-cover rounded"
                               />
@@ -2167,13 +2175,46 @@ export default function Admin() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm text-muted-foreground">Image URL (optionnel)</label>
+              <label className="text-sm text-muted-foreground">Image (optionnel)</label>
               <Input
-                value={itemForm.imageUrl}
-                onChange={(e) => setItemForm(prev => ({ ...prev, imageUrl: e.target.value }))}
-                placeholder="https://..."
+                type="file"
+                accept="image/*"
                 className="bg-transparent"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) {
+                    setItemImageDataUrl('');
+                    return;
+                  }
+                  try {
+                    const dataUrl = await readFileAsDataUrl(file);
+                    setItemImageDataUrl(dataUrl);
+                  } catch (error) {
+                    console.error('Failed to read image:', error);
+                    setItemImageDataUrl('');
+                  }
+                }}
               />
+              {(itemImageDataUrl || itemForm.imageUrl) && (
+                <div className="relative">
+                  <img
+                    src={itemImageDataUrl || resolveImageUrl(itemForm.imageUrl)}
+                    alt="Preview"
+                    className="max-h-40 rounded-md object-cover border border-border/30"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setItemImageDataUrl('')}
+                    className="absolute top-2 right-2 h-7 w-7 flex items-center justify-center bg-background/80 border border-border rounded-full text-muted-foreground hover:text-foreground"
+                    aria-label="Retirer l'image"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">

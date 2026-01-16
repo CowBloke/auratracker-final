@@ -58,7 +58,6 @@ model Item {
   description String
   type        String    // CONSUMABLE, COSMETIC, or UPGRADE
   price       Int
-  auraCost    Int       @default(0)
   imageUrl    String?
   effect      String?   // JSON string describing the effect
   expiresAt   DateTime?

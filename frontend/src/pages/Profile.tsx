@@ -5,6 +5,7 @@ import { usersApi, leaderboardsApi } from '../services/api';
 import { Edit2, Save, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { resolveImageUrl } from '@/lib/images';
 
 interface ProfileUser {
   id: string;
@@ -117,7 +118,7 @@ export default function Profile() {
           {/* Profile Picture */}
           {profileUser.profilePicture ? (
             <img 
-              src={profileUser.profilePicture} 
+              src={resolveImageUrl(profileUser.profilePicture)} 
               alt={profileUser.username}
               className="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover border-2 border-border shrink-0"
               onError={(e) => {

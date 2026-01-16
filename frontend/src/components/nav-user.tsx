@@ -31,6 +31,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { resolveImageUrl } from "@/lib/images"
 
 export function NavUser({
   user,
@@ -68,7 +69,7 @@ export function NavUser({
             >
               <Avatar className="h-8 w-8 rounded-full">
                 {user.profilePicture && (
-                  <AvatarImage src={user.profilePicture} alt={user.name} className="rounded-full object-cover" />
+                  <AvatarImage src={resolveImageUrl(user.profilePicture)} alt={user.name} className="rounded-full object-cover" />
                 )}
                 <AvatarFallback className="rounded-full bg-primary">
                   {getInitials(user.name)}
@@ -96,7 +97,7 @@ export function NavUser({
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-full">
                   {user.profilePicture && (
-                    <AvatarImage src={user.profilePicture} alt={user.name} className="rounded-full object-cover" />
+                    <AvatarImage src={resolveImageUrl(user.profilePicture)} alt={user.name} className="rounded-full object-cover" />
                   )}
                   <AvatarFallback className="rounded-full bg-primary">
                     {getInitials(user.name)}

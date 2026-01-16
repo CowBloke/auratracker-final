@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useChatSidebar } from './ChatSidebarWrapper';
+import { resolveImageUrl } from '@/lib/images';
 
 type TimeoutRef = ReturnType<typeof setTimeout> | null;
 type ReplyTarget = {
@@ -271,7 +272,7 @@ export default function ChatSidebar() {
                     <div className="flex items-center gap-2 mb-1">
                       {msg.profilePicture && (
                         <img 
-                          src={msg.profilePicture} 
+                          src={resolveImageUrl(msg.profilePicture)} 
                           alt={msg.username}
                           className="w-4 h-4 rounded-full object-cover"
                           onError={(e) => {
@@ -374,7 +375,7 @@ export default function ChatSidebar() {
                         >
                           {candidate.profilePicture ? (
                             <img
-                              src={candidate.profilePicture}
+                              src={resolveImageUrl(candidate.profilePicture)}
                               alt={candidate.username}
                               className="h-5 w-5 rounded-full object-cover"
                               onError={(e) => {

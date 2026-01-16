@@ -4,6 +4,8 @@
 - Makeitmeme
 - poker
 - bataille navale
+- monnopoly
+- loup garou
 
 ## Solo
 - Blackjack
@@ -53,3 +55,4 @@
 - plus d'infos
 - reinitialisation mdp
 - demande admin pseudo
+- revoir récompenses

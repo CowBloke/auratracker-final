@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { suggestionsApi, Suggestion } from '../services/api';
+import { suggestionsApi, uploadsApi, Suggestion } from '../services/api';
 import { ChevronUp, ChevronDown, Loader2, Plus, ImageIcon, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { readFileAsDataUrl } from '@/lib/uploads';
+import { resolveImageUrl } from '@/lib/images';
 
 export default function Suggestions() {
   const { user } = useAuth();
@@ -27,7 +29,7 @@ export default function Suggestions() {
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
+  const [imageDataUrl, setImageDataUrl] = useState('');
 
   useEffect(() => {
     fetchSuggestions();
@@ -50,15 +52,24 @@ export default function Suggestions() {
 
     setSubmitting(true);
     try {
+      let uploadedUrl: string | undefined;
+      if (imageDataUrl) {
+        const uploadRes = await uploadsApi.uploadImage({
+          purpose: 'suggestion',
+          imageData: imageDataUrl,
+        });
+        uploadedUrl = uploadRes.data.url;
+      }
+
       const res = await suggestionsApi.create({
         title: title.trim(),
         description: description.trim(),
-        imageUrl: imageUrl.trim() || undefined,
+        imageUrl: uploadedUrl,
       });
       setSuggestions((prev) => [res.data.suggestion, ...prev]);
       setTitle('');
       setDescription('');
-      setImageUrl('');
+      setImageDataUrl('');
       setDialogOpen(false);
     } catch (error) {
       console.error('Failed to create suggestion:', error);
@@ -199,7 +210,15 @@ export default function Suggestions() {
           <h1 className="text-5xl md:text-7xl font-light tracking-tight">Suggestions</h1>
         </div>
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog
+          open={dialogOpen}
+          onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) {
+              setImageDataUrl('');
+            }
+          }}
+        >
           <DialogTrigger asChild>
             <button className="flex items-center gap-2 px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors">
               <Plus className="h-4 w-4" />
@@ -238,12 +257,42 @@ export default function Suggestions() {
                 <div className="relative">
                   <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="URL de l'image (optionnel)"
-                    value={imageUrl}
-                    onChange={(e) => setImageUrl(e.target.value)}
+                    type="file"
+                    accept="image/*"
                     className="h-12 bg-transparent border-border/50 pl-10"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) {
+                        setImageDataUrl('');
+                        return;
+                      }
+                      try {
+                        const dataUrl = await readFileAsDataUrl(file);
+                        setImageDataUrl(dataUrl);
+                      } catch (error) {
+                        console.error('Failed to read image:', error);
+                        setImageDataUrl('');
+                      }
+                    }}
                   />
                 </div>
+                {imageDataUrl && (
+                  <div className="relative">
+                    <img
+                      src={imageDataUrl}
+                      alt="Preview"
+                      className="max-h-40 rounded-md object-cover border border-border/30"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setImageDataUrl('')}
+                      className="absolute top-2 right-2 h-7 w-7 flex items-center justify-center bg-background/80 border border-border rounded-full text-muted-foreground hover:text-foreground"
+                      aria-label="Retirer l'image"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <Button
@@ -355,7 +404,7 @@ export default function Suggestions() {
                   {suggestion.imageUrl && (
                     <div className="mt-4">
                       <img
-                        src={suggestion.imageUrl}
+                        src={resolveImageUrl(suggestion.imageUrl)}
                         alt={suggestion.title}
                         className="max-h-64 rounded-md object-cover border border-border/30"
                         onError={(e) => {

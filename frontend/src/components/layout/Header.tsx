@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { usersApi } from '@/services/api';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { resolveImageUrl } from '@/lib/images';
 
 interface SearchUser {
   id: string;
@@ -131,7 +132,7 @@ export default function Header() {
                       >
                         <Avatar className="h-9 w-9">
                           {u.profilePicture ? (
-                            <AvatarImage src={u.profilePicture} alt={u.username} />
+                            <AvatarImage src={resolveImageUrl(u.profilePicture)} alt={u.username} />
                           ) : null}
                           <AvatarFallback className="bg-primary text-white">
                             {u.username.slice(0, 1).toUpperCase()}
