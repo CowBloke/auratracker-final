@@ -43,6 +43,8 @@ model User {
   suggestionVotes   SuggestionVote[]
   suggestionComments SuggestionComment[]
   bombPartyStats    BombPartyStats?
+  bansReceived      Ban[]              @relation("BannedUser")
+  bansIssued        Ban[]              @relation("BanIssuer")
 
   @@index([aura])
   @@index([money])
@@ -318,4 +320,23 @@ model BombPartyStats {
   longestWord  String?
 
   user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Ban System
+model Ban {
+  id          String    @id @default(uuid())
+  userId      String
+  bannedBy    String    // Admin user ID who issued the ban
+  reason      String
+  type        String    // "TEMPORARY" or "PERMANENT"
+  expiresAt   DateTime? // Null for permanent bans
+  createdAt   DateTime  @default(now())
+  isActive    Boolean   @default(true)
+
+  user        User      @relation("BannedUser", fields: [userId], references: [id], onDelete: Cascade)
+  admin       User      @relation("BanIssuer", fields: [bannedBy], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isActive])
+  @@index([expiresAt])
 }

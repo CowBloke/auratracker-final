@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../../contexts/SocketContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { Send, ChevronDown, ChevronUp } from 'lucide-react';
+import { Send, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -19,7 +19,7 @@ interface ChatProps {
 export default function Chat({ isOpen, onToggle }: ChatProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { messages, onlineUsers, typingUsers, sendMessage, setTyping } = useSocket();
+  const { messages, onlineUsers, typingUsers, sendMessage, setTyping, deleteMessage } = useSocket();
   const [input, setInput] = useState('');
   const [showUsers, setShowUsers] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -120,13 +120,13 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                   <div
                     key={msg.id}
                     className={cn(
-                      "flex flex-col",
+                      "flex flex-col group",
                       msg.userId === user?.id && 'items-end'
                     )}
                   >
                     <div
                       className={cn(
-                        "max-w-[70%] px-3 py-2 rounded-lg",
+                        "max-w-[70%] px-3 py-2 rounded-lg relative",
                         msg.userId === user?.id
                           ? 'bg-foreground/10'
                           : 'bg-muted'
@@ -134,8 +134,8 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                     >
                       <div className="flex items-center gap-2 mb-1">
                         {msg.profilePicture && (
-                          <img 
-                            src={msg.profilePicture} 
+                          <img
+                            src={msg.profilePicture}
                             alt={msg.username}
                             className="w-5 h-5 rounded-full object-cover"
                             onError={(e) => {
@@ -156,6 +156,15 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                         <span className="text-[10px] text-muted-foreground/60 tabular-nums">
                           {formatTime(msg.timestamp)}
                         </span>
+                        {user?.isAdmin && (
+                          <button
+                            onClick={() => deleteMessage(msg.id)}
+                            className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive/80"
+                            title="Delete message"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
                       </div>
                       <p className="text-sm">{msg.message}</p>
                     </div>
