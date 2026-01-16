@@ -47,7 +47,7 @@ interface Ranking {
 
 export default function Dashboard() {
   const { user, refreshUser } = useAuth();
-  const { onlineUsers } = useSocket();
+  const { onlineUsers, publicParties, fetchPublicParties } = useSocket();
   const [auraRankings, setAuraRankings] = useState<Ranking[]>([]);
   const [recentTransfers, setRecentTransfers] = useState<Transfer[]>([]);
   const [userRank, setUserRank] = useState<number | null>(null);
@@ -158,6 +158,7 @@ export default function Dashboard() {
     };
 
     fetchData();
+    fetchPublicParties();
   }, []);
 
   const handleGiftAura = async () => {
@@ -242,7 +243,7 @@ export default function Dashboard() {
       </header>
 
       {/* Primary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-8 md:gap-12">
         <div className="space-y-1">
           <p className="text-4xl md:text-5xl font-light tabular-nums">
             {user?.aura.toLocaleString()}
@@ -260,6 +261,12 @@ export default function Dashboard() {
             #{userRank || '—'}
           </p>
           <p className="text-sm text-muted-foreground">rang</p>
+        </div>
+        <div className="space-y-1">
+          <p className="text-4xl md:text-5xl font-light tabular-nums">
+            {publicParties.length}
+          </p>
+          <p className="text-sm text-muted-foreground">parties en cours</p>
         </div>
         <div className="space-y-1">
           <p className="text-4xl md:text-5xl font-light tabular-nums">
