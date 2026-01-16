@@ -1076,4 +1076,184 @@ router.delete('/bans/:userId', authMiddleware, requireAdmin, async (req: AuthReq
   }
 });
 
+// ========== GAME SETTINGS MANAGEMENT ==========
+
+// Get all game settings (admin only)
+router.get('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const settings = await prisma.gameSettings.findMany({
+      orderBy: { key: 'asc' },
+    });
+
+    // Convert to key-value map for easier consumption
+    const settingsMap: Record<string, string> = {};
+    for (const setting of settings) {
+      settingsMap[setting.key] = setting.value;
+    }
+
+    res.json({ settings: settingsMap });
+  } catch (error) {
+    console.error('Admin get settings error:', error);
+    res.status(500).json({ error: 'Failed to get settings' });
+  }
+});
+
+// Get a specific game setting (admin only)
+router.get('/settings/:key', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { key } = req.params;
+
+    const setting = await prisma.gameSettings.findUnique({
+      where: { key },
+    });
+
+    if (!setting) {
+      return res.status(404).json({ error: 'Setting not found' });
+    }
+
+    res.json({ setting });
+  } catch (error) {
+    console.error('Admin get setting error:', error);
+    res.status(500).json({ error: 'Failed to get setting' });
+  }
+});
+
+// Update a game setting (admin only)
+router.put('/settings/:key', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { key } = req.params;
+    const { value } = req.body;
+
+    if (value === undefined || value === null) {
+      return res.status(400).json({ error: 'Value is required' });
+    }
+
+    const stringValue = String(value);
+
+    // Validate specific settings
+    if (key.startsWith('bombparty_wpp_')) {
+      const numValue = parseInt(stringValue);
+      if (isNaN(numValue) || numValue < 1) {
+        return res.status(400).json({ error: 'WPP values must be positive integers' });
+      }
+    }
+
+    if (key === 'bombparty_3letter_start_round') {
+      const numValue = parseInt(stringValue);
+      if (isNaN(numValue) || numValue < 0) {
+        return res.status(400).json({ error: 'Start round must be a non-negative integer' });
+      }
+    }
+
+    const setting = await prisma.gameSettings.upsert({
+      where: { key },
+      create: { key, value: stringValue },
+      update: { value: stringValue },
+    });
+
+    // Log setting update
+    logAdmin('setting_update', req.user!.id, undefined, undefined, undefined, {
+      key,
+      value: stringValue,
+    });
+
+    // Clear cached settings in bombparty module if needed
+    if (key.startsWith('bombparty_')) {
+      try {
+        // Dynamic import to avoid circular dependencies
+        const { clearBombPartySettingsCache } = await import('../socket/bombparty.js');
+        clearBombPartySettingsCache();
+      } catch {
+        // Ignore if function not available
+      }
+    }
+
+    res.json({ setting });
+  } catch (error) {
+    console.error('Admin update setting error:', error);
+    res.status(500).json({ error: 'Failed to update setting' });
+  }
+});
+
+// Update multiple game settings at once (admin only)
+router.put('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { settings } = req.body;
+
+    if (!settings || typeof settings !== 'object') {
+      return res.status(400).json({ error: 'Settings object is required' });
+    }
+
+    const updates: { key: string; value: string }[] = [];
+    const errors: string[] = [];
+
+    // Validate all settings first
+    for (const [key, value] of Object.entries(settings)) {
+      const stringValue = String(value);
+
+      if (key.startsWith('bombparty_wpp_')) {
+        const numValue = parseInt(stringValue);
+        if (isNaN(numValue) || numValue < 1) {
+          errors.push(`${key}: WPP values must be positive integers`);
+          continue;
+        }
+      }
+
+      if (key === 'bombparty_3letter_start_round') {
+        const numValue = parseInt(stringValue);
+        if (isNaN(numValue) || numValue < 0) {
+          errors.push(`${key}: Start round must be a non-negative integer`);
+          continue;
+        }
+      }
+
+      updates.push({ key, value: stringValue });
+    }
+
+    if (errors.length > 0) {
+      return res.status(400).json({ error: 'Validation errors', details: errors });
+    }
+
+    // Apply all updates
+    for (const { key, value } of updates) {
+      await prisma.gameSettings.upsert({
+        where: { key },
+        create: { key, value },
+        update: { value },
+      });
+    }
+
+    // Log bulk setting update
+    logAdmin('settings_bulk_update', req.user!.id, undefined, undefined, undefined, {
+      updatedKeys: updates.map(u => u.key),
+    });
+
+    // Clear cached settings in bombparty module
+    const hasBombPartySettings = updates.some(u => u.key.startsWith('bombparty_'));
+    if (hasBombPartySettings) {
+      try {
+        const { clearBombPartySettingsCache } = await import('../socket/bombparty.js');
+        clearBombPartySettingsCache();
+      } catch {
+        // Ignore if function not available
+      }
+    }
+
+    // Return updated settings
+    const allSettings = await prisma.gameSettings.findMany({
+      orderBy: { key: 'asc' },
+    });
+
+    const settingsMap: Record<string, string> = {};
+    for (const setting of allSettings) {
+      settingsMap[setting.key] = setting.value;
+    }
+
+    res.json({ settings: settingsMap });
+  } catch (error) {
+    console.error('Admin bulk update settings error:', error);
+    res.status(500).json({ error: 'Failed to update settings' });
+  }
+});
+
 export default router;
