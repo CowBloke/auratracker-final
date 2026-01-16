@@ -10,3 +10,5 @@
 - limite 1e
 - pb d'affichage des records solitaire
 - fix logs filtre jeux
+- les feais (minimum) s'affichent mal
+- on ne doit pas piuvoir attaquer admin sur clash (ultra cheaté car 1M d'argent)
