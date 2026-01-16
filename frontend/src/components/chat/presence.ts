@@ -16,6 +16,7 @@ import {
   ShoppingBag,
   User,
   Users,
+  Flag,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -27,6 +28,7 @@ type PageMeta = {
 const pageMatchers: Array<{ test: (path: string) => boolean; label: string; icon: LucideIcon }> = [
   { test: (path) => path === '/', label: 'Accueil', icon: Home },
   { test: (path) => path.startsWith('/games/bomb-party'), label: 'Bomb Party', icon: Bomb },
+  { test: (path) => path.startsWith('/games/mario-kart'), label: 'Mario Kart', icon: Flag },
   { test: (path) => path.startsWith('/games/doodle-jump'), label: 'Doodle Jump', icon: Gamepad2 },
   { test: (path) => path.startsWith('/games/clash'), label: 'Clash', icon: Swords },
   { test: (path) => path.startsWith('/games/casino'), label: 'Casino', icon: Dice5 },
