@@ -1,6 +1,7 @@
 import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
 import { sendPendingPlayAgainPrompt, sendActiveGameState } from './bombparty.js';
+import { logParty } from '../utils/logger.js';
 
 interface PartyInvite {
   partyId: string;
@@ -142,7 +143,15 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
       
       // Join socket room for party
       socket.join(`party:${party.id}`);
-      
+
+      // Log party creation
+      logParty('party_create', userId, creator?.username || undefined, {
+        partyId: party.id,
+        partyName: party.name,
+        isPublic,
+        maxSize: party.maxSize,
+      });
+
       socket.emit('party:created', {
         party: {
           id: party.id,
@@ -263,13 +272,19 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
         })),
       });
       
+      // Log party join
+      logParty('party_join', userId, user!.username, {
+        partyId,
+        partyName: updatedParty!.name,
+      });
+
       // Notify other members
       socket.to(`party:${partyId}`).emit('party:member-joined', {
         userId,
         username: user!.username,
         usernameColor: user!.usernameColor,
       });
-      
+
       // Clear invite
       const invites = partyInvites.get(userId) || [];
       partyInvites.set(
@@ -318,11 +333,24 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
       // Leave socket room
       socket.leave(`party:${partyId}`);
       
+      // Log party leave
+      logParty('party_leave', userId, membership.user.username, {
+        partyId,
+        wasLeader,
+      });
+
       if (memberCount <= 1) {
         // Disband party if last member
         await prisma.party.delete({
           where: { id: partyId },
         });
+
+        // Log party disband
+        logParty('party_disband', userId, membership.user.username, {
+          partyId,
+          reason: 'last_member_left',
+        });
+
         socket.emit('party:disbanded');
       } else {
         // Notify others
@@ -386,6 +414,14 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
 
       const partyId = membership.partyId;
       const roomId = getPartyRoomId(partyId);
+
+      // Log party disband by leader
+      logParty('party_disband', userId, undefined, {
+        partyId,
+        partyName: membership.party.name,
+        memberCount: membership.party.members.length,
+        reason: 'leader_deleted',
+      });
 
       io.to(roomId).emit('party:disbanded');
 
@@ -453,6 +489,12 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
       });
       partyInvites.set(targetUserId, invites);
 
+      // Log party invite
+      logParty('party_invite', userId, membership.user.username, {
+        partyId: membership.partyId,
+        targetUserId,
+      });
+
       // Notify target user
       const targetSocketId = userSockets.get(targetUserId);
       if (targetSocketId) {
@@ -498,6 +540,13 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
       // Remove member
       await prisma.partyMember.delete({
         where: { userId: targetUserId },
+      });
+
+      // Log kick
+      logParty('party_kick', userId, undefined, {
+        partyId: membership.partyId,
+        kickedUserId: targetUserId,
+        kickedUsername: targetMembership.user.username,
       });
 
       // Notify kicked user

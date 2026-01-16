@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { adminApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban } from '../services/api';
+import { adminApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats } from '../services/api';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff } from 'lucide-react';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -123,6 +123,18 @@ export default function Admin() {
   const [creatingBan, setCreatingBan] = useState(false);
   const [unbanning, setUnbanning] = useState<string | null>(null);
 
+  // Logs state
+  const [logs, setLogs] = useState<ActivityLog[]>([]);
+  const [logStats, setLogStats] = useState<LogStats | null>(null);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [logFilter, setLogFilter] = useState({
+    type: 'ALL',
+    username: '',
+  });
+  const [logsPage, setLogsPage] = useState(0);
+  const [totalLogs, setTotalLogs] = useState(0);
+  const logsPerPage = 50;
+
   // Redirect non-admin users
   if (!user?.isAdmin) {
     return <Navigate to="/" replace />;
@@ -134,6 +146,8 @@ export default function Admin() {
     fetchBugReports();
     fetchPendingUsers();
     fetchBans();
+    fetchLogs();
+    fetchLogStats();
   }, []);
 
   const fetchUsers = async () => {
@@ -197,6 +211,35 @@ export default function Admin() {
       showMessage('error', 'Erreur lors du chargement des bannissements');
     } finally {
       setLoadingBans(false);
+    }
+  };
+
+  const fetchLogs = async (page = 0) => {
+    try {
+      setLoadingLogs(true);
+      const res = await adminApi.getLogs({
+        type: logFilter.type !== 'ALL' ? logFilter.type : undefined,
+        username: logFilter.username || undefined,
+        limit: logsPerPage,
+        offset: page * logsPerPage,
+      });
+      setLogs(res.data.logs);
+      setTotalLogs(res.data.total);
+      setLogsPage(page);
+    } catch (error) {
+      console.error('Failed to fetch logs:', error);
+      showMessage('error', 'Erreur lors du chargement des logs');
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
+  const fetchLogStats = async () => {
+    try {
+      const res = await adminApi.getLogStats();
+      setLogStats(res.data);
+    } catch (error) {
+      console.error('Failed to fetch log stats:', error);
     }
   };
 
@@ -647,6 +690,18 @@ export default function Admin() {
             {bans.filter(b => b.isActive).length > 0 && (
               <span className="ml-2 px-1.5 py-0.5 text-xs bg-destructive/20 text-destructive rounded">
                 {bans.filter(b => b.isActive).length}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger
+            value="logs"
+            className="data-[state=active]:bg-muted/50 data-[state=active]:text-foreground text-muted-foreground"
+          >
+            <ScrollText className="h-4 w-4 mr-1" />
+            Logs
+            {logStats && (
+              <span className="ml-2 px-1.5 py-0.5 text-xs bg-muted text-muted-foreground rounded">
+                {logStats.total.toLocaleString()}
               </span>
             )}
           </TabsTrigger>
@@ -1421,6 +1476,226 @@ export default function Admin() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Logs Tab */}
+        <TabsContent value="logs" className="space-y-6">
+          <div className="h-px bg-border" />
+
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
+              Journal d'activité
+            </h2>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <ScrollText className="h-4 w-4" />
+              <span>{totalLogs.toLocaleString()} entrées</span>
+            </div>
+          </div>
+
+          {/* Log Stats */}
+          {logStats && (
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+              {Object.entries(logStats.byType).map(([type, count]) => (
+                <div
+                  key={type}
+                  className={cn(
+                    "p-2 border border-border/30 rounded text-center cursor-pointer hover:bg-muted/30 transition-colors",
+                    logFilter.type === type && "bg-muted/50 border-foreground/30"
+                  )}
+                  onClick={() => {
+                    setLogFilter(prev => ({ ...prev, type: prev.type === type ? 'ALL' : type }));
+                    setTimeout(() => fetchLogs(0), 0);
+                  }}
+                >
+                  <div className={cn(
+                    "w-2 h-2 rounded-full mx-auto mb-1",
+                    type === 'AUTH' && "bg-blue-500",
+                    type === 'CHAT' && "bg-green-500",
+                    type === 'GAME' && "bg-purple-500",
+                    type === 'ECONOMY' && "bg-yellow-500",
+                    type === 'PARTY' && "bg-pink-500",
+                    type === 'MARKETPLACE' && "bg-orange-500",
+                    type === 'ADMIN' && "bg-red-500",
+                    type === 'BAN' && "bg-red-700",
+                    type === 'SUGGESTION' && "bg-cyan-500",
+                    type === 'AURACOIN' && "bg-amber-500",
+                    type === 'CLASH' && "bg-indigo-500",
+                  )} />
+                  <p className="text-xs font-medium">{type}</p>
+                  <p className="text-xs text-muted-foreground tabular-nums">{count}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Rechercher par nom d'utilisateur..."
+                  value={logFilter.username}
+                  onChange={(e) => setLogFilter(prev => ({ ...prev, username: e.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      fetchLogs(0);
+                    }
+                  }}
+                  className="pl-9 bg-transparent border-border/50"
+                />
+              </div>
+            </div>
+            <Select
+              value={logFilter.type}
+              onValueChange={(value) => {
+                setLogFilter(prev => ({ ...prev, type: value }));
+                setTimeout(() => fetchLogs(0), 0);
+              }}
+            >
+              <SelectTrigger className="w-[180px] bg-transparent border-border/50">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Tous les types</SelectItem>
+                <SelectItem value="AUTH">Auth</SelectItem>
+                <SelectItem value="CHAT">Chat</SelectItem>
+                <SelectItem value="GAME">Game</SelectItem>
+                <SelectItem value="ECONOMY">Economy</SelectItem>
+                <SelectItem value="PARTY">Party</SelectItem>
+                <SelectItem value="MARKETPLACE">Marketplace</SelectItem>
+                <SelectItem value="ADMIN">Admin</SelectItem>
+                <SelectItem value="BAN">Ban</SelectItem>
+                <SelectItem value="SUGGESTION">Suggestion</SelectItem>
+                <SelectItem value="AURACOIN">AuraCoin</SelectItem>
+                <SelectItem value="CLASH">Clash</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              onClick={() => fetchLogs(0)}
+              className="h-9"
+            >
+              <Search className="h-4 w-4 mr-2" />
+              Rechercher
+            </Button>
+          </div>
+
+          {/* Log List */}
+          {loadingLogs ? (
+            <div className="flex justify-center py-12">
+              <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+            </div>
+          ) : logs.length === 0 ? (
+            <div className="text-center py-12 space-y-2">
+              <ScrollText className="h-8 w-8 mx-auto text-muted-foreground/50" />
+              <p className="text-muted-foreground">Aucun log trouvé</p>
+            </div>
+          ) : (
+            <div className="space-y-0 border border-border/30 rounded overflow-hidden">
+              {logs.map((log) => (
+                <div
+                  key={log.id}
+                  className="py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/20"
+                >
+                  <div className="flex items-start gap-3">
+                    {/* Type indicator */}
+                    <div className={cn(
+                      "w-2.5 h-2.5 rounded-full mt-1.5 shrink-0",
+                      log.type === 'AUTH' && "bg-blue-500",
+                      log.type === 'CHAT' && "bg-green-500",
+                      log.type === 'GAME' && "bg-purple-500",
+                      log.type === 'ECONOMY' && "bg-yellow-500",
+                      log.type === 'PARTY' && "bg-pink-500",
+                      log.type === 'MARKETPLACE' && "bg-orange-500",
+                      log.type === 'ADMIN' && "bg-red-500",
+                      log.type === 'BAN' && "bg-red-700",
+                      log.type === 'SUGGESTION' && "bg-cyan-500",
+                      log.type === 'AURACOIN' && "bg-amber-500",
+                      log.type === 'CLASH' && "bg-indigo-500",
+                    )} />
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-muted/50">
+                          {log.type}
+                        </span>
+                        <span className="text-sm font-medium">
+                          {log.action.replace(/_/g, ' ')}
+                        </span>
+                        {log.username && (
+                          <span className="text-sm text-foreground">
+                            par <span className="font-medium">{log.username}</span>
+                          </span>
+                        )}
+                        {log.targetName && (
+                          <span className="text-sm text-muted-foreground">
+                            → <span className="text-foreground">{log.targetName}</span>
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Details/Metadata */}
+                      {(log.details || log.metadata) && (
+                        <div className="mt-1 text-xs text-muted-foreground font-mono">
+                          {log.metadata && Object.entries(log.metadata).map(([key, value]) => (
+                            <span key={key} className="mr-3">
+                              {key}: <span className="text-foreground/80">{String(value)}</span>
+                            </span>
+                          ))}
+                          {log.details && !log.metadata && Object.entries(log.details).slice(0, 3).map(([key, value]) => (
+                            <span key={key} className="mr-3">
+                              {key}: <span className="text-foreground/80">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      <p className="text-xs text-muted-foreground/60 mt-1">
+                        {new Date(log.createdAt).toLocaleDateString('fr-FR', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                        })}
+                        {log.ipAddress && (
+                          <span className="ml-2">IP: {log.ipAddress}</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalLogs > logsPerPage && (
+            <div className="flex items-center justify-between pt-4">
+              <p className="text-sm text-muted-foreground">
+                Page {logsPage + 1} sur {Math.ceil(totalLogs / logsPerPage)}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchLogs(logsPage - 1)}
+                  disabled={logsPage === 0 || loadingLogs}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchLogs(logsPage + 1)}
+                  disabled={(logsPage + 1) * logsPerPage >= totalLogs || loadingLogs}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           )}
         </TabsContent>

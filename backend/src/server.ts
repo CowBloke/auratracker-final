@@ -24,8 +24,14 @@ import { setupPartyHandlers } from './socket/party.js';
 import { setupGameHandlers } from './socket/games.js';
 import { setupBombPartyHandlers, startBombPartyCleanup } from './socket/bombparty.js';
 
+// Logger
+import { initLogger } from './utils/logger.js';
+
 // Initialize Prisma
 export const prisma = new PrismaClient();
+
+// Initialize logger with Prisma client
+initLogger(prisma);
 
 // Initialize Express
 const app = express();

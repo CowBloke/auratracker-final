@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
+import { logAdmin, logSuggestion, logBan } from '../utils/logger.js';
 
 const router = Router();
 
@@ -51,6 +52,9 @@ router.post('/users/:id/approve', authMiddleware, requireAdmin, async (req: Auth
       },
     });
     
+    // Log approval
+    logAdmin('user_approve', req.user!.id, undefined, id, user.username, { email: user.email });
+
     res.json({ success: true, user, message: 'Utilisateur approuvé' });
   } catch (error) {
     console.error('Admin approve user error:', error);
@@ -76,10 +80,13 @@ router.post('/users/:id/reject', authMiddleware, requireAdmin, async (req: AuthR
       return res.status(400).json({ error: 'Cannot reject an already approved user' });
     }
     
+    // Log rejection
+    logAdmin('user_reject', req.user!.id, undefined, id, user.username, { email: user.email });
+
     await prisma.user.delete({
       where: { id },
     });
-    
+
     res.json({ success: true, message: 'Demande rejetée' });
   } catch (error) {
     console.error('Admin reject user error:', error);
@@ -238,6 +245,12 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
       updateData.dailyAuraLimit = parseInt(dailyAuraLimit);
     }
 
+    // Get old user data for logging
+    const oldUser = await prisma.user.findUnique({
+      where: { id },
+      select: { username: true, aura: true, money: true, dailyAuraLimit: true },
+    });
+
     const user = await prisma.user.update({
       where: { id },
       data: updateData,
@@ -253,6 +266,17 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
         lastDailyReset: true,
         createdAt: true,
         updatedAt: true,
+      },
+    });
+
+    // Log user update
+    logAdmin('user_update', req.user!.id, undefined, id, user.username, {
+      changes: updateData,
+      oldValues: {
+        username: oldUser?.username,
+        aura: oldUser?.aura,
+        money: oldUser?.money,
+        dailyAuraLimit: oldUser?.dailyAuraLimit,
       },
     });
 
@@ -335,6 +359,19 @@ router.post('/users/:id/inventory', authMiddleware, requireAdmin, async (req: Au
         quantity: { increment: parseInt(quantity) },
       },
       include: { item: true },
+    });
+
+    // Get user info for logging
+    const targetUser = await prisma.user.findUnique({
+      where: { id },
+      select: { username: true },
+    });
+
+    // Log inventory add
+    logAdmin('inventory_add', req.user!.id, undefined, id, targetUser?.username || undefined, {
+      itemId,
+      itemName: userItem.item.name,
+      quantity: parseInt(quantity),
     });
 
     res.status(201).json({ item: userItem });
@@ -430,6 +467,9 @@ router.delete('/users/:id', authMiddleware, requireAdmin, async (req: AuthReques
       return res.status(400).json({ error: 'Cannot delete admin users' });
     }
 
+    // Log user deletion
+    logAdmin('user_delete', req.user!.id, undefined, id, user.username, { email: user.email });
+
     // Delete user (cascades to related records due to onDelete: Cascade in schema)
     await prisma.user.delete({
       where: { id },
@@ -447,9 +487,14 @@ router.delete('/chat', authMiddleware, requireAdmin, async (req: AuthRequest, re
   try {
     const result = await prisma.chatMessage.deleteMany({});
 
-    res.json({ 
-      success: true, 
-      message: `Deleted ${result.count} chat messages` 
+    // Log chat clear
+    logAdmin('chat_clear', req.user!.id, undefined, undefined, undefined, {
+      messagesDeleted: result.count,
+    });
+
+    res.json({
+      success: true,
+      message: `Deleted ${result.count} chat messages`
     });
   } catch (error) {
     console.error('Admin clear chat error:', error);
@@ -491,7 +536,13 @@ router.post('/bugs', authMiddleware, async (req: AuthRequest, res: Response) => 
         },
       },
     });
-    
+
+    // Log bug report
+    logSuggestion('bug_report', req.user!.id, bugReport.user.username, {
+      bugReportId: bugReport.id,
+      title: bugReport.title,
+    });
+
     res.status(201).json({ bugReport });
   } catch (error) {
     console.error('Create bug report error:', error);
@@ -567,6 +618,124 @@ router.delete('/bugs/:id', authMiddleware, requireAdmin, async (req: AuthRequest
   } catch (error) {
     console.error('Admin delete bug report error:', error);
     res.status(500).json({ error: 'Failed to delete bug report' });
+  }
+});
+
+// ========== ACTIVITY LOGS ==========
+
+// Get activity logs (admin only)
+router.get('/logs', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const {
+      type,
+      action,
+      username,
+      limit = '100',
+      offset = '0',
+      startDate,
+      endDate,
+    } = req.query;
+
+    // Build where clause
+    const where: Record<string, unknown> = {};
+
+    if (type && type !== 'ALL') {
+      where.type = type as string;
+    }
+
+    if (action) {
+      where.action = { contains: action as string };
+    }
+
+    if (username) {
+      where.OR = [
+        { username: { contains: username as string } },
+        { targetName: { contains: username as string } },
+      ];
+    }
+
+    if (startDate) {
+      where.createdAt = { ...((where.createdAt as Record<string, Date>) || {}), gte: new Date(startDate as string) };
+    }
+
+    if (endDate) {
+      where.createdAt = { ...((where.createdAt as Record<string, Date>) || {}), lte: new Date(endDate as string) };
+    }
+
+    const [logs, total] = await Promise.all([
+      prisma.log.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: Math.min(parseInt(limit as string), 500),
+        skip: parseInt(offset as string),
+      }),
+      prisma.log.count({ where }),
+    ]);
+
+    // Parse JSON fields for response
+    const parsedLogs = logs.map(log => ({
+      ...log,
+      details: log.details ? JSON.parse(log.details) : null,
+      metadata: log.metadata ? JSON.parse(log.metadata) : null,
+    }));
+
+    res.json({ logs: parsedLogs, total });
+  } catch (error) {
+    console.error('Admin get logs error:', error);
+    res.status(500).json({ error: 'Failed to get logs' });
+  }
+});
+
+// Get log stats (admin only)
+router.get('/logs/stats', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const [
+      totalLogs,
+      authLogs,
+      chatLogs,
+      gameLogs,
+      economyLogs,
+      partyLogs,
+      marketplaceLogs,
+      adminLogs,
+      banLogs,
+      suggestionLogs,
+      auraCoinLogs,
+      clashLogs,
+    ] = await Promise.all([
+      prisma.log.count(),
+      prisma.log.count({ where: { type: 'AUTH' } }),
+      prisma.log.count({ where: { type: 'CHAT' } }),
+      prisma.log.count({ where: { type: 'GAME' } }),
+      prisma.log.count({ where: { type: 'ECONOMY' } }),
+      prisma.log.count({ where: { type: 'PARTY' } }),
+      prisma.log.count({ where: { type: 'MARKETPLACE' } }),
+      prisma.log.count({ where: { type: 'ADMIN' } }),
+      prisma.log.count({ where: { type: 'BAN' } }),
+      prisma.log.count({ where: { type: 'SUGGESTION' } }),
+      prisma.log.count({ where: { type: 'AURACOIN' } }),
+      prisma.log.count({ where: { type: 'CLASH' } }),
+    ]);
+
+    res.json({
+      total: totalLogs,
+      byType: {
+        AUTH: authLogs,
+        CHAT: chatLogs,
+        GAME: gameLogs,
+        ECONOMY: economyLogs,
+        PARTY: partyLogs,
+        MARKETPLACE: marketplaceLogs,
+        ADMIN: adminLogs,
+        BAN: banLogs,
+        SUGGESTION: suggestionLogs,
+        AURACOIN: auraCoinLogs,
+        CLASH: clashLogs,
+      },
+    });
+  } catch (error) {
+    console.error('Admin get log stats error:', error);
+    res.status(500).json({ error: 'Failed to get log stats' });
   }
 });
 
@@ -675,6 +844,14 @@ router.post('/bans', authMiddleware, requireAdmin, async (req: AuthRequest, res:
       },
     });
 
+    // Log ban creation
+    logBan('ban_create', req.user!.id, undefined, userId, user.username, {
+      banType: type,
+      reason: reason.trim(),
+      expiresAt: expiresAt?.toISOString(),
+      durationHours: type === 'TEMPORARY' ? parseInt(durationHours) : undefined,
+    });
+
     res.status(201).json({ ban, message: `${user.username} has been banned` });
   } catch (error) {
     console.error('Admin create ban error:', error);
@@ -701,6 +878,17 @@ router.delete('/bans/:userId', authMiddleware, requireAdmin, async (req: AuthReq
     if (result.count === 0) {
       return res.status(404).json({ error: 'No active ban found for this user' });
     }
+
+    // Get user info for logging
+    const unbannedUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { username: true },
+    });
+
+    // Log unban
+    logBan('ban_remove', req.user!.id, undefined, userId, unbannedUser?.username || undefined, {
+      bansRemoved: result.count,
+    });
 
     res.json({ success: true, message: 'User has been unbanned' });
   } catch (error) {
