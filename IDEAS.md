@@ -50,3 +50,4 @@
 - maintenance
 - à l'inscription page accepter le réglèment
 - échecs
+- plus d'infos
