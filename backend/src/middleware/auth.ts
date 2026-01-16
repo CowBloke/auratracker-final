@@ -19,18 +19,18 @@ export const authMiddleware = async (
 ) => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'No token provided' });
     }
-    
+
     const token = authHeader.split(' ')[1];
-    
+
     const decoded = jwt.verify(token, config.jwtSecret) as {
       userId: string;
       email: string;
     };
-    
+
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
       select: {
@@ -40,11 +40,36 @@ export const authMiddleware = async (
         isAdmin: true,
       },
     });
-    
+
     if (!user) {
       return res.status(401).json({ error: 'User not found' });
     }
-    
+
+    // Check if user is banned
+    const activeBan = await prisma.ban.findFirst({
+      where: {
+        userId: user.id,
+        isActive: true,
+        OR: [
+          { expiresAt: null }, // Permanent ban
+          { expiresAt: { gt: new Date() } }, // Temporary ban not yet expired
+        ],
+      },
+      select: {
+        reason: true,
+        type: true,
+        expiresAt: true,
+      },
+    });
+
+    if (activeBan) {
+      const message = activeBan.type === 'PERMANENT'
+        ? `Your account has been permanently banned. Reason: ${activeBan.reason}`
+        : `Your account is temporarily banned until ${activeBan.expiresAt?.toISOString()}. Reason: ${activeBan.reason}`;
+
+      return res.status(403).json({ error: message, banned: true });
+    }
+
     req.user = user;
     next();
   } catch (error) {

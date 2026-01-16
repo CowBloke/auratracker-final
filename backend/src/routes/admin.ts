@@ -558,15 +558,154 @@ router.put('/bugs/:id', authMiddleware, requireAdmin, async (req: AuthRequest, r
 router.delete('/bugs/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    
+
     await prisma.bugReport.delete({
       where: { id },
     });
-    
+
     res.json({ success: true });
   } catch (error) {
     console.error('Admin delete bug report error:', error);
     res.status(500).json({ error: 'Failed to delete bug report' });
+  }
+});
+
+// ========== BAN SYSTEM ==========
+
+// Get all bans (admin only)
+router.get('/bans', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const bans = await prisma.ban.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+          },
+        },
+        admin: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json({ bans });
+  } catch (error) {
+    console.error('Admin get bans error:', error);
+    res.status(500).json({ error: 'Failed to get bans' });
+  }
+});
+
+// Create a ban (admin only)
+router.post('/bans', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { userId, reason, type, durationHours } = req.body;
+
+    if (!userId || !reason || !type) {
+      return res.status(400).json({ error: 'User ID, reason, and type are required' });
+    }
+
+    if (!['TEMPORARY', 'PERMANENT'].includes(type)) {
+      return res.status(400).json({ error: 'Type must be TEMPORARY or PERMANENT' });
+    }
+
+    if (type === 'TEMPORARY' && (!durationHours || durationHours <= 0)) {
+      return res.status(400).json({ error: 'Duration in hours is required for temporary bans' });
+    }
+
+    // Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, isAdmin: true, username: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Don't allow banning admins
+    if (user.isAdmin) {
+      return res.status(400).json({ error: 'Cannot ban admin users' });
+    }
+
+    // Deactivate any existing active bans for this user
+    await prisma.ban.updateMany({
+      where: {
+        userId,
+        isActive: true,
+      },
+      data: {
+        isActive: false,
+      },
+    });
+
+    // Create the ban
+    const expiresAt = type === 'TEMPORARY'
+      ? new Date(Date.now() + parseInt(durationHours) * 60 * 60 * 1000)
+      : null;
+
+    const ban = await prisma.ban.create({
+      data: {
+        userId,
+        bannedBy: req.user!.id,
+        reason: reason.trim(),
+        type,
+        expiresAt,
+        isActive: true,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+          },
+        },
+        admin: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+      },
+    });
+
+    res.status(201).json({ ban, message: `${user.username} has been banned` });
+  } catch (error) {
+    console.error('Admin create ban error:', error);
+    res.status(500).json({ error: 'Failed to create ban' });
+  }
+});
+
+// Unban a user (admin only)
+router.delete('/bans/:userId', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { userId } = req.params;
+
+    // Deactivate all active bans for this user
+    const result = await prisma.ban.updateMany({
+      where: {
+        userId,
+        isActive: true,
+      },
+      data: {
+        isActive: false,
+      },
+    });
+
+    if (result.count === 0) {
+      return res.status(404).json({ error: 'No active ban found for this user' });
+    }
+
+    res.json({ success: true, message: 'User has been unbanned' });
+  } catch (error) {
+    console.error('Admin unban user error:', error);
+    res.status(500).json({ error: 'Failed to unban user' });
   }
 });
 
