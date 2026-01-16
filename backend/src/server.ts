@@ -6,6 +6,12 @@ import cors from 'cors';
 import { config } from './config/index.js';
 import { PrismaClient } from '@prisma/client';
 
+// BigInt JSON serialization support (needed for aura field which is BigInt)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
+
 // Routes
 import authRoutes from './routes/auth.js';
 import economyRoutes from './routes/economy.js';
