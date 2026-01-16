@@ -65,6 +65,8 @@ export default function Inventory() {
   const [imageDialogOpen, setImageDialogOpen] = useState(false);
   const [imageItem, setImageItem] = useState<UserItem | null>(null);
   const [imageDataUrl, setImageDataUrl] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [imageInputMode, setImageInputMode] = useState<'upload' | 'url'>('upload');
 
   useEffect(() => {
     if (user) {
@@ -110,6 +112,8 @@ export default function Inventory() {
       if (effect.type === 'PROFILE_PICTURE') {
         setImageItem(userItem);
         setImageDataUrl('');
+        setImageUrl('');
+        setImageInputMode('upload');
         setImageDialogOpen(true);
         return;
       }
@@ -174,17 +178,26 @@ export default function Inventory() {
 
   // Apply profile picture
   const applyProfilePicture = async () => {
-    if (!imageItem || !imageDataUrl) return;
+    if (!imageItem) return;
     
     try {
       setUsing(imageItem.id);
       setMessage(null);
-      
-      const uploadRes = await uploadsApi.uploadImage({
-        purpose: 'profile',
-        imageData: imageDataUrl,
-      });
-      await marketplaceApi.useItem(imageItem.id, { imageUrl: uploadRes.data.url });
+
+      let finalUrl = '';
+      if (imageInputMode === 'upload') {
+        if (!imageDataUrl) return;
+        const uploadRes = await uploadsApi.uploadImage({
+          purpose: 'profile',
+          imageData: imageDataUrl,
+        });
+        finalUrl = uploadRes.data.url;
+      } else {
+        if (!imageUrl.trim()) return;
+        finalUrl = imageUrl.trim();
+      }
+
+      await marketplaceApi.useItem(imageItem.id, { imageUrl: finalUrl });
       await refreshUser();
       await fetchInventory();
       
@@ -444,11 +457,11 @@ export default function Inventory() {
 
           <div className="py-4 space-y-4">
             {/* Preview */}
-            {imageDataUrl && (
+            {(imageInputMode === 'upload' ? imageDataUrl : imageUrl) && (
               <div className="flex justify-center">
                 <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-border">
                   <img 
-                    src={imageDataUrl} 
+                    src={imageInputMode === 'upload' ? imageDataUrl : imageUrl} 
                     alt="Preview" 
                     className="w-full h-full object-cover"
                     onError={(e) => {
@@ -461,26 +474,52 @@ export default function Inventory() {
 
             {/* File input */}
             <div className="space-y-2">
-              <label className="text-sm text-muted-foreground">Image</label>
-              <Input
-                type="file"
-                accept="image/*"
-                className="bg-transparent"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) {
-                    setImageDataUrl('');
-                    return;
-                  }
-                  try {
-                    const dataUrl = await readFileAsDataUrl(file);
-                    setImageDataUrl(dataUrl);
-                  } catch (error) {
-                    console.error('Failed to read image:', error);
-                    setImageDataUrl('');
-                  }
-                }}
-              />
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant={imageInputMode === 'upload' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setImageInputMode('upload')}
+                >
+                  Upload
+                </Button>
+                <Button
+                  type="button"
+                  variant={imageInputMode === 'url' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setImageInputMode('url')}
+                >
+                  URL
+                </Button>
+              </div>
+              {imageInputMode === 'upload' ? (
+                <Input
+                  type="file"
+                  accept="image/*"
+                  className="bg-transparent"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) {
+                      setImageDataUrl('');
+                      return;
+                    }
+                    try {
+                      const dataUrl = await readFileAsDataUrl(file);
+                      setImageDataUrl(dataUrl);
+                    } catch (error) {
+                      console.error('Failed to read image:', error);
+                      setImageDataUrl('');
+                    }
+                  }}
+                />
+              ) : (
+                <Input
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="bg-transparent"
+                />
+              )}
             </div>
           </div>
 
@@ -490,7 +529,10 @@ export default function Inventory() {
             </Button>
             <Button 
               onClick={applyProfilePicture}
-              disabled={using !== null || !imageDataUrl}
+              disabled={
+                using !== null ||
+                (imageInputMode === 'upload' ? !imageDataUrl : !imageUrl.trim())
+              }
             >
               {using ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />

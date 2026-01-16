@@ -23,7 +23,7 @@ export default function PartyBubble() {
 
   const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
   const gameStatus = bombPartyGame
-    ? `En jeu - Round ${bombPartyGame.round}`
+    ? `Bomb Party - Round ${bombPartyGame.round}`
     : 'En attente';
 
   return (
