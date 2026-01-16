@@ -2,20 +2,17 @@ import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../../contexts/SocketContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { Send, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { Send, X } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
   SidebarHeader,
-  SidebarMenuButton,
   SidebarRail,
 } from '@/components/ui/sidebar';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { useChatSidebar } from './ChatSidebarWrapper';
-import { getPageMeta } from './presence';
 
 type TimeoutRef = ReturnType<typeof setTimeout> | null;
 type ReplyTarget = {
@@ -43,7 +40,6 @@ export default function ChatSidebar() {
   const { messages, onlineUsers, typingUsers, sendMessage, setTyping } = useSocket();
   const { unreadCount } = useChatSidebar();
   const [input, setInput] = useState('');
-  const [showUsers, setShowUsers] = useState(false);
   const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);
   const [mentionState, setMentionState] = useState<MentionState | null>(null);
   const [mentionIndex, setMentionIndex] = useState(0);
@@ -231,69 +227,14 @@ export default function ChatSidebar() {
     <Sidebar variant="inset" side="right" collapsible="offcanvas" className="border-l border-border/40">
       <SidebarRail />
       <SidebarHeader className="border-b border-border/40">
-        <Collapsible open={showUsers} onOpenChange={setShowUsers}>
-          <CollapsibleTrigger asChild>
-            <SidebarMenuButton size="lg" className="w-full justify-between">
-              <span className="text-sm text-green-500">{onlineUsers.length} connectés</span>
-              <div className="flex items-center gap-2">
-                {unreadCount > 0 && (
-                  <span className="px-1.5 py-0.5 text-[10px] bg-foreground text-background">
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
-                )}
-                {showUsers ? (
-                  <ChevronUp className="w-3 h-3 text-muted-foreground" />
-                ) : (
-                  <ChevronDown className="w-3 h-3 text-muted-foreground" />
-                )}
-              </div>
-            </SidebarMenuButton>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <ScrollArea className="h-32">
-              <div className="px-3 py-2 space-y-1">
-                {onlineUsers.map((u) => (
-                  <button
-                    key={u.userId}
-                    onClick={() => navigate(`/profile/${u.userId}`)}
-                    className="flex items-center gap-2 py-1 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-left"
-                  >
-                    {u.profilePicture ? (
-                      <img 
-                        src={u.profilePicture} 
-                        alt={u.username}
-                        className="w-4 h-4 rounded-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <div className="w-1 h-1 rounded-full bg-foreground/50" />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <span
-                        className="block truncate"
-                        style={u.usernameColor ? { color: u.usernameColor } : undefined}
-                      >
-                        {u.username}
-                      </span>
-                      {(() => {
-                        const pageMeta = getPageMeta(u.currentPage);
-                        const PageIcon = pageMeta.icon;
-                        return (
-                          <span className="flex items-center gap-1 text-[10px] text-muted-foreground/80">
-                            <PageIcon className="h-3 w-3" />
-                            <span className="truncate">{pageMeta.label}</span>
-                          </span>
-                        );
-                      })()}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </ScrollArea>
-          </CollapsibleContent>
-        </Collapsible>
+        <div className="flex items-center justify-between px-3 py-2">
+          <span className="text-sm text-muted-foreground">Chat</span>
+          {unreadCount > 0 && (
+            <span className="px-1.5 py-0.5 text-[10px] bg-foreground text-background">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
+        </div>
       </SidebarHeader>
       
       <SidebarContent className="flex flex-col">
