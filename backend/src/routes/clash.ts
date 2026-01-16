@@ -3,6 +3,7 @@ import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { validate } from '../middleware/validation.js';
 import { z } from 'zod';
+import { logClash } from '../utils/logger.js';
 
 const router = Router();
 
@@ -176,8 +177,20 @@ router.put('/base', authMiddleware, validate(saveBaseSchema), async (req: AuthRe
       },
     });
     
-    res.json({ 
-      success: true, 
+    // Get user for logging
+    const baseOwner = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { username: true },
+    });
+
+    // Log base save
+    logClash('base_save', req.user.id, baseOwner?.username || undefined, undefined, undefined, {
+      buildingCount: buildings.length,
+      defenseRating,
+    });
+
+    res.json({
+      success: true,
       base: {
         ...base,
         baseLayout: JSON.parse(base.baseLayout),
@@ -459,7 +472,18 @@ router.post('/attack/execute', authMiddleware, validate(executeAttackSchema), as
       auraTaken,
       moneyTaken,
     });
-    
+
+    // Log attack
+    logClash('attack_execute', req.user.id, attacker.username, defenderId, defender.username, {
+      success,
+      starsEarned,
+      destruction,
+      auraTaken,
+      moneyTaken,
+      trophiesWon: success ? trophiesWon : 0,
+      trophiesLost: !success ? trophiesLost : 0,
+    });
+
     res.json({
       success,
       starsEarned,
@@ -591,7 +615,16 @@ router.post('/building/upgrade', authMiddleware, async (req: AuthRequest, res: R
       aura: updatedUser.aura,
       money: updatedUser.money,
     });
-    
+
+    // Log building upgrade
+    logClash('building_upgrade', req.user.id, user.username, undefined, undefined, {
+      buildingId,
+      buildingType,
+      oldLevel: currentLevel,
+      newLevel: currentLevel + 1,
+      cost: upgradeCost,
+    });
+
     res.json({
       success: true,
       newLevel: currentLevel + 1,

@@ -1,5 +1,6 @@
 import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
+import { logChat } from '../utils/logger.js';
 
 interface OnlineUser {
   userId: string;
@@ -196,6 +197,13 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
       },
     });
     
+    // Log message sent
+    logChat('message_sent', userId, user.username, {
+      messageId: savedMessage.id,
+      messageLength: message.length,
+      hasReply: !!replyTo,
+    });
+
     // Broadcast to all in chat with cosmetics
     io.to('global-chat').emit('chat:message', {
       id: savedMessage.id,
@@ -267,9 +275,22 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     }
 
     try {
+      // Get the message before deleting for logging
+      const messageToDelete = await prisma.chatMessage.findUnique({
+        where: { id: messageId },
+        include: { user: { select: { username: true } } },
+      });
+
       // Delete the message from database
       await prisma.chatMessage.delete({
         where: { id: messageId },
+      });
+
+      // Log message deletion
+      logChat('message_deleted', adminId, admin.isAdmin ? 'admin' : undefined, {
+        deletedMessageId: messageId,
+        originalAuthor: messageToDelete?.user.username,
+        originalAuthorId: messageToDelete?.userId,
       });
 
       // Broadcast deletion to all users

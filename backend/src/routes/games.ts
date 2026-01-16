@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { validate, gameCompleteSchema } from '../middleware/validation.js';
+import { logGame, logAdmin } from '../utils/logger.js';
 
 const router = Router();
 
@@ -177,7 +178,39 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
         money: user.money,
       });
     }
-    
+
+    // Log game completion
+    logGame('game_complete', req.user.id, currentUser.username, {
+      gameType,
+      score,
+      won,
+      duration,
+      bet: bet || undefined,
+      netGain: netGain || undefined,
+      auraReward,
+      moneyReward,
+      isNewHighScore,
+    });
+
+    // Log casino bet specifically
+    if (gameType === 'casino' && bet) {
+      logGame('casino_bet', req.user.id, currentUser.username, {
+        bet,
+        won,
+        winAmount: score,
+        netGain: netGain || (score - bet),
+      });
+    }
+
+    // Log high score
+    if (isNewHighScore) {
+      logGame('highscore', req.user.id, currentUser.username, {
+        gameType,
+        newHighScore: score,
+        previousHighScore: currentStats?.highScore || 0,
+      });
+    }
+
     res.json({
       auraReward,
       moneyReward,
@@ -235,6 +268,12 @@ router.delete('/:gameType/stats/:userId', authMiddleware, async (req: AuthReques
 
     const { gameType, userId } = req.params;
 
+    // Get target user info for logging
+    const targetUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { username: true },
+    });
+
     // Delete the game stats record
     await prisma.gameStats.delete({
       where: {
@@ -243,6 +282,11 @@ router.delete('/:gameType/stats/:userId', authMiddleware, async (req: AuthReques
           gameType,
         },
       },
+    });
+
+    // Log stats deletion
+    logAdmin('stats_delete', req.user.id, adminUser.username, userId, targetUser?.username || undefined, {
+      gameType,
     });
 
     res.json({ success: true, message: 'Game stats deleted successfully' });
