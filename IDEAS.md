@@ -40,3 +40,13 @@
 - marquer des suggestions comme réalisées et demander un feedabck aux joeuurs sur une echelle de 1 à 10
 - ajouter changelog
 - temps d'écran avec graphique
+- pop up texte admin sur utilisateurs
+- badges terminale
+- autres stats dashboard : partys en cours
+- reaction
+- grand jeux à part : entrepreneur : créer entreprise avec salariés, parts de marché, actions, carte payer rues, propriétés etc
+- message admin topbar
+- mute (ban chat)
+- maintenance
+- à l'inscription page accepter le réglèment
+- échecs
