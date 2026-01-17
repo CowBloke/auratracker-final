@@ -10,6 +10,8 @@ import DoodleJump from './pages/DoodleJump';
 import Clash from './pages/Clash';
 import Casino from './pages/Casino';
 import AuraCoin from './pages/AuraCoin';
+import MarketHall from './pages/MarketHall';
+import MarketTrade from './pages/MarketTrade';
 import Marketplace from './pages/Marketplace';
 import Leaderboards from './pages/Leaderboards';
 import Profile from './pages/Profile';
@@ -19,6 +21,7 @@ import Clans from './pages/Clans';
 import BombParty from './pages/BombParty';
 import Poker from './pages/Poker';
 import PetitBac from './pages/PetitBac';
+import Monopoly from './pages/Monopoly';
 import Admin from './pages/Admin';
 import Rules from './pages/Rules';
 import Suggestions from './pages/Suggestions';
@@ -112,10 +115,13 @@ function App() {
         <Route path="games/doodle-jump" element={<DoodleJump />} />
         <Route path="games/clash" element={<Clash />} />
         <Route path="games/casino" element={<Casino />} />
+        <Route path="games/market" element={<MarketHall />} />
+        <Route path="games/market/:coinId" element={<MarketTrade />} />
         <Route path="games/aura-coin" element={<AuraCoin />} />
         <Route path="games/bomb-party" element={<BombParty />} />
         <Route path="games/poker" element={<Poker />} />
         <Route path="games/petit-bac" element={<PetitBac />} />
+        <Route path="games/monopoly" element={<Monopoly />} />
         <Route path="marketplace" element={<Marketplace />} />
         <Route path="leaderboards" element={<Leaderboards />} />
         <Route path="party" element={<Party />} />

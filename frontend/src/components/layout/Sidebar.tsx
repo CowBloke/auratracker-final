@@ -18,6 +18,7 @@ import {
   Swords,
   ArrowUp,
   Dices,
+  LineChart,
   Search,
   Ticket,
   History
@@ -71,6 +72,7 @@ const adminItems = [
 ];
 
 const gameItems = [
+  { to: '/games/market', label: 'Salle de marche', icon: LineChart },
   { to: '/games/aura-coin', label: 'Aura Coin', icon: Coins },
   { to: '/games/clash', label: 'Clash', icon: Swords },
   { to: '/games/doodle-jump', label: 'Doodle Jump', icon: ArrowUp },

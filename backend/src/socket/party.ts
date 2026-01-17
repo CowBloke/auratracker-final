@@ -3,6 +3,7 @@ import { prisma } from '../server.js';
 import { sendPendingPlayAgainPrompt, sendActiveGameState } from './bombparty.js';
 import { sendActivePokerState, sendPendingPokerPlayAgainPrompt } from './poker.js';
 import { sendPendingPetitBacPlayAgainPrompt, sendActivePetitBacGameState } from './petitbac.js';
+import { sendActiveMonopolyState, sendPendingMonopolyPlayAgainPrompt } from './monopoly.js';
 import { logParty } from '../utils/logger.js';
 
 interface PartyInvite {
@@ -183,6 +184,8 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
         sendPendingPokerPlayAgainPrompt(socket, membership.partyId, data.userId);
         sendActivePetitBacGameState(socket, membership.partyId, data.userId);
         sendPendingPetitBacPlayAgainPrompt(socket, membership.partyId, data.userId);
+        sendActiveMonopolyState(socket, membership.partyId, data.userId);
+        sendPendingMonopolyPlayAgainPrompt(socket, membership.partyId, data.userId);
 
         // Update party activity
         await prisma.party.update({
