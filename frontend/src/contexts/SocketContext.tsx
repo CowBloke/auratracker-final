@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Socket } from 'socket.io-client';
-import { initSocket, connectSocket, disconnectSocket, chatEvents, partyEvents, gameEvents, bombPartyEvents, pokerEvents, petitBacEvents } from '../services/socket';
+import { initSocket, connectSocket, disconnectSocket, chatEvents, partyEvents, gameEvents, bombPartyEvents, pokerEvents, petitBacEvents, monopolyEvents } from '../services/socket';
 import { useAuth } from './AuthContext';
 
 interface ChatMessage {
@@ -325,6 +325,80 @@ interface PetitBacPlayAgainPrompt {
   leaveCount: number;
 }
 
+interface MonopolyTileState {
+  index: number;
+  name: string;
+  type: string;
+  color?: string;
+  price?: number;
+  rent?: number[];
+  houseCost?: number;
+  taxAmount?: number;
+  ownerId?: string | null;
+  houses: number;
+  mortgaged: boolean;
+}
+
+interface MonopolyPlayerState {
+  userId: string;
+  username: string;
+  usernameColor?: string | null;
+  cash: number;
+  position: number;
+  inJail: boolean;
+  jailTurns: number;
+  getOutOfJailCards: number;
+  isBankrupt: boolean;
+}
+
+interface MonopolyAuctionState {
+  tileIndex: number;
+  highestBid: number;
+  highestBidderId: string | null;
+  activeBidderIds: string[];
+  currentBidderIndex: number;
+  minBid: number;
+}
+
+interface MonopolyGameState {
+  partyId: string;
+  tiles: MonopolyTileState[];
+  players: MonopolyPlayerState[];
+  currentPlayerId: string | null;
+  lastRoll: { die1: number; die2: number; total: number; isDouble: boolean } | null;
+  doublesCount: number;
+  phase: 'waiting-roll' | 'jail' | 'resolve' | 'auction' | 'turn-end';
+  pendingPurchase: { tileIndex: number; price: number } | null;
+  auction: MonopolyAuctionState | null;
+  log: string[];
+  turnNumber: number;
+  isActive: boolean;
+}
+
+interface MonopolyJoinPrompt {
+  partyId: string;
+  leaderId: string;
+  timeLimit: number;
+  startTime: number;
+  members: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+  responses: Array<{ userId: string; accepted: boolean }>;
+}
+
+interface MonopolyGameOver {
+  winnerId: string | null;
+  winnerUsername: string | null;
+  standings: Array<{ userId: string; username: string; cash: number }>;
+}
+
+interface MonopolyPlayAgainPrompt {
+  partyId: string;
+  timeLimit: number;
+  startTime: number;
+  players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+  responses: Array<{ userId: string; playAgain: boolean }>;
+  gameOverData: MonopolyGameOver;
+}
+
 interface SocketContextType {
   socket: Socket | null;
   connected: boolean;
@@ -396,6 +470,29 @@ interface SocketContextType {
   submitPetitBac: (answers: Record<string, string>) => void;
   leavePetitBac: () => void;
   respondToPetitBacPlayAgainPrompt: (playAgain: boolean) => void;
+  // Monopoly
+  monopolyGame: MonopolyGameState | null;
+  monopolyJoinPrompt: MonopolyJoinPrompt | null;
+  monopolyPlayAgainPrompt: MonopolyPlayAgainPrompt | null;
+  monopolyGameOver: MonopolyGameOver | null;
+  startMonopoly: () => void;
+  respondToMonopolyJoinPrompt: (accepted: boolean) => void;
+  rollMonopoly: () => void;
+  jailRollMonopoly: () => void;
+  jailPayMonopoly: () => void;
+  jailUseCardMonopoly: () => void;
+  buyMonopoly: () => void;
+  declineMonopoly: () => void;
+  auctionBidMonopoly: (amount: number) => void;
+  auctionPassMonopoly: () => void;
+  buildMonopoly: (tileIndex: number, count?: number) => void;
+  sellMonopoly: (tileIndex: number, count?: number) => void;
+  mortgageMonopoly: (tileIndex: number) => void;
+  unmortgageMonopoly: (tileIndex: number) => void;
+  endMonopolyTurn: () => void;
+  leaveMonopoly: () => void;
+  respondToMonopolyPlayAgainPrompt: (playAgain: boolean) => void;
+  clearMonopolyGameOver: () => void;
 }
 
 const SocketContext = createContext<SocketContextType | null>(null);
@@ -441,6 +538,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [petitBacRoundResult, setPetitBacRoundResult] = useState<PetitBacRoundResult | null>(null);
   const [petitBacJoinPrompt, setPetitBacJoinPrompt] = useState<PetitBacJoinPrompt | null>(null);
   const [petitBacPlayAgainPrompt, setPetitBacPlayAgainPrompt] = useState<PetitBacPlayAgainPrompt | null>(null);
+
+  // Monopoly state
+  const [monopolyGame, setMonopolyGame] = useState<MonopolyGameState | null>(null);
+  const [monopolyJoinPrompt, setMonopolyJoinPrompt] = useState<MonopolyJoinPrompt | null>(null);
+  const [monopolyPlayAgainPrompt, setMonopolyPlayAgainPrompt] = useState<MonopolyPlayAgainPrompt | null>(null);
+  const [monopolyGameOver, setMonopolyGameOver] = useState<MonopolyGameOver | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -1005,6 +1108,57 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setPetitBacPlayAgainPrompt(null);
       });
 
+      // Monopoly events
+      s.on('monopoly:started', (game: MonopolyGameState) => {
+        setMonopolyGame(game);
+        setMonopolyGameOver(null);
+        setMonopolyJoinPrompt(null);
+        setMonopolyPlayAgainPrompt(null);
+      });
+
+      s.on('monopoly:updated', (game: MonopolyGameState) => {
+        setMonopolyGame(game);
+      });
+
+      s.on('monopoly:join-prompt', (data: MonopolyJoinPrompt) => {
+        setMonopolyJoinPrompt({
+          ...data,
+          responses: data.responses || [],
+        });
+      });
+
+      s.on('monopoly:join-response-update', (data: { partyId: string; responses: Array<{ userId: string; accepted: boolean }> }) => {
+        setMonopolyJoinPrompt((prev) => (prev ? { ...prev, responses: data.responses } : null));
+      });
+
+      s.on('monopoly:join-cancelled', () => {
+        setMonopolyJoinPrompt(null);
+      });
+
+      s.on('monopoly:game-over', (data: MonopolyGameOver) => {
+        setMonopolyGame(null);
+        setMonopolyGameOver(data);
+      });
+
+      s.on('monopoly:play-again-prompt', (data: MonopolyPlayAgainPrompt) => {
+        setMonopolyPlayAgainPrompt({
+          ...data,
+          responses: data.responses || [],
+        });
+      });
+
+      s.on('monopoly:play-again-response-update', (data: { partyId: string; responses: Array<{ userId: string; playAgain: boolean }> }) => {
+        setMonopolyPlayAgainPrompt((prev) => (prev ? { ...prev, responses: data.responses } : null));
+      });
+
+      s.on('monopoly:play-again-cancelled', () => {
+        setMonopolyPlayAgainPrompt(null);
+      });
+
+      s.on('monopoly:error', (data: { message: string }) => {
+        console.error('Monopoly error:', data.message);
+      });
+
       return () => {
         disconnectSocket();
         s.removeAllListeners();
@@ -1240,6 +1394,115 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Monopoly actions
+  const startMonopoly = () => {
+    if (user && currentParty) {
+      monopolyEvents.start(user.id, currentParty.id);
+    }
+  };
+
+  const respondToMonopolyJoinPrompt = (accepted: boolean) => {
+    if (user && monopolyJoinPrompt) {
+      monopolyEvents.respondToJoin(monopolyJoinPrompt.partyId, user.id, accepted);
+    }
+  };
+
+  const rollMonopoly = () => {
+    if (user && currentParty) {
+      monopolyEvents.roll(currentParty.id, user.id);
+    }
+  };
+
+  const jailRollMonopoly = () => {
+    if (user && currentParty) {
+      monopolyEvents.jailRoll(currentParty.id, user.id);
+    }
+  };
+
+  const jailPayMonopoly = () => {
+    if (user && currentParty) {
+      monopolyEvents.jailPay(currentParty.id, user.id);
+    }
+  };
+
+  const jailUseCardMonopoly = () => {
+    if (user && currentParty) {
+      monopolyEvents.jailUseCard(currentParty.id, user.id);
+    }
+  };
+
+  const buyMonopoly = () => {
+    if (user && currentParty) {
+      monopolyEvents.buy(currentParty.id, user.id);
+    }
+  };
+
+  const declineMonopoly = () => {
+    if (user && currentParty) {
+      monopolyEvents.decline(currentParty.id, user.id);
+    }
+  };
+
+  const auctionBidMonopoly = (amount: number) => {
+    if (user && currentParty) {
+      monopolyEvents.auctionBid(currentParty.id, user.id, amount);
+    }
+  };
+
+  const auctionPassMonopoly = () => {
+    if (user && currentParty) {
+      monopolyEvents.auctionPass(currentParty.id, user.id);
+    }
+  };
+
+  const buildMonopoly = (tileIndex: number, count?: number) => {
+    if (user && currentParty) {
+      monopolyEvents.build(currentParty.id, user.id, tileIndex, count);
+    }
+  };
+
+  const sellMonopoly = (tileIndex: number, count?: number) => {
+    if (user && currentParty) {
+      monopolyEvents.sell(currentParty.id, user.id, tileIndex, count);
+    }
+  };
+
+  const mortgageMonopoly = (tileIndex: number) => {
+    if (user && currentParty) {
+      monopolyEvents.mortgage(currentParty.id, user.id, tileIndex);
+    }
+  };
+
+  const unmortgageMonopoly = (tileIndex: number) => {
+    if (user && currentParty) {
+      monopolyEvents.unmortgage(currentParty.id, user.id, tileIndex);
+    }
+  };
+
+  const endMonopolyTurn = () => {
+    if (user && currentParty) {
+      monopolyEvents.endTurn(currentParty.id, user.id);
+    }
+  };
+
+  const leaveMonopoly = () => {
+    if (user && currentParty) {
+      monopolyEvents.leave(currentParty.id, user.id);
+    }
+    setMonopolyGame(null);
+  };
+
+  const respondToMonopolyPlayAgainPrompt = (playAgain: boolean) => {
+    if (user && monopolyPlayAgainPrompt) {
+      monopolyEvents.respondToPlayAgain(monopolyPlayAgainPrompt.partyId, user.id, playAgain);
+    }
+  };
+
+  const clearMonopolyGameOver = () => {
+    setMonopolyGameOver(null);
+    setMonopolyGame(null);
+  };
+
   return (
     <SocketContext.Provider
       value={{
@@ -1307,6 +1570,28 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         submitPetitBac,
         leavePetitBac,
         respondToPetitBacPlayAgainPrompt,
+        monopolyGame,
+        monopolyJoinPrompt,
+        monopolyPlayAgainPrompt,
+        monopolyGameOver,
+        startMonopoly,
+        respondToMonopolyJoinPrompt,
+        rollMonopoly,
+        jailRollMonopoly,
+        jailPayMonopoly,
+        jailUseCardMonopoly,
+        buyMonopoly,
+        declineMonopoly,
+        auctionBidMonopoly,
+        auctionPassMonopoly,
+        buildMonopoly,
+        sellMonopoly,
+        mortgageMonopoly,
+        unmortgageMonopoly,
+        endMonopolyTurn,
+        leaveMonopoly,
+        respondToMonopolyPlayAgainPrompt,
+        clearMonopolyGameOver,
       }}
     >
       {children}

@@ -16,6 +16,7 @@ import {
   ShoppingBag,
   User,
   Users,
+  LineChart,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -28,9 +29,11 @@ const pageMatchers: Array<{ test: (path: string) => boolean; label: string; icon
   { test: (path) => path === '/', label: 'Accueil', icon: Home },
   { test: (path) => path.startsWith('/games/bomb-party'), label: 'Bomb Party', icon: Bomb },
   { test: (path) => path.startsWith('/games/petit-bac'), label: 'Petit Bac', icon: Gamepad2 },
+  { test: (path) => path.startsWith('/games/monopoly'), label: 'Monopoly', icon: Gamepad2 },
   { test: (path) => path.startsWith('/games/doodle-jump'), label: 'Doodle Jump', icon: Gamepad2 },
   { test: (path) => path.startsWith('/games/clash'), label: 'Clash', icon: Swords },
   { test: (path) => path.startsWith('/games/casino'), label: 'Casino', icon: Dice5 },
+  { test: (path) => path.startsWith('/games/market'), label: 'Salle de marche', icon: LineChart },
   { test: (path) => path.startsWith('/games/aura-coin'), label: 'Aura Coin', icon: Coins },
   { test: (path) => path.startsWith('/games'), label: 'Jeux', icon: Gamepad2 },
   { test: (path) => path.startsWith('/marketplace'), label: 'Marketplace', icon: ShoppingBag },

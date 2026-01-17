@@ -3,7 +3,6 @@
 ## Party
 - Makeitmeme
 - bataille navale
-- monnopoly
 - loup garou
 
 ## Solo

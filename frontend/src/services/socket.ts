@@ -178,4 +178,59 @@ export const petitBacEvents = {
   },
 };
 
+// Monopoly events
+export const monopolyEvents = {
+  start: (userId: string, partyId: string) => {
+    socket?.emit('monopoly:start', { userId, partyId });
+  },
+  respondToJoin: (partyId: string, userId: string, accepted: boolean) => {
+    socket?.emit('monopoly:join-response', { partyId, userId, accepted });
+  },
+  roll: (partyId: string, userId: string) => {
+    socket?.emit('monopoly:roll', { partyId, userId });
+  },
+  jailRoll: (partyId: string, userId: string) => {
+    socket?.emit('monopoly:jail-roll', { partyId, userId });
+  },
+  jailPay: (partyId: string, userId: string) => {
+    socket?.emit('monopoly:jail-pay', { partyId, userId });
+  },
+  jailUseCard: (partyId: string, userId: string) => {
+    socket?.emit('monopoly:jail-use-card', { partyId, userId });
+  },
+  buy: (partyId: string, userId: string) => {
+    socket?.emit('monopoly:buy', { partyId, userId });
+  },
+  decline: (partyId: string, userId: string) => {
+    socket?.emit('monopoly:decline', { partyId, userId });
+  },
+  auctionBid: (partyId: string, userId: string, amount: number) => {
+    socket?.emit('monopoly:auction-bid', { partyId, userId, amount });
+  },
+  auctionPass: (partyId: string, userId: string) => {
+    socket?.emit('monopoly:auction-pass', { partyId, userId });
+  },
+  build: (partyId: string, userId: string, tileIndex: number, count?: number) => {
+    socket?.emit('monopoly:build', { partyId, userId, tileIndex, count });
+  },
+  sell: (partyId: string, userId: string, tileIndex: number, count?: number) => {
+    socket?.emit('monopoly:sell', { partyId, userId, tileIndex, count });
+  },
+  mortgage: (partyId: string, userId: string, tileIndex: number) => {
+    socket?.emit('monopoly:mortgage', { partyId, userId, tileIndex });
+  },
+  unmortgage: (partyId: string, userId: string, tileIndex: number) => {
+    socket?.emit('monopoly:unmortgage', { partyId, userId, tileIndex });
+  },
+  endTurn: (partyId: string, userId: string) => {
+    socket?.emit('monopoly:end-turn', { partyId, userId });
+  },
+  leave: (partyId: string, userId: string) => {
+    socket?.emit('monopoly:leave', { partyId, userId });
+  },
+  respondToPlayAgain: (partyId: string, userId: string, playAgain: boolean) => {
+    socket?.emit('monopoly:play-again-response', { partyId, userId, playAgain });
+  },
+};
+
 export default socket;
