@@ -4,9 +4,7 @@
 - Makeitmeme
 - bataille navale
 - loup garou
-
-## Solo
-- Blackjack
+- mariokart 2D avec temps à comprarer
 
 # Idées
 - coffres à item
