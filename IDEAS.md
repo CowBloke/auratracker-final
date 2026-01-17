@@ -16,3 +16,7 @@
 - complet clash
 - animation 
 - Webcam page voir les autres que si on active la sienne 
+- au hover badges et sur prfil dans section disctinctions
+- musés
+- messagerie (avec le notifs : par ex nouvelle demande d'adhésion au club)
+- azerty chat lettres a quon peut pas mettre 

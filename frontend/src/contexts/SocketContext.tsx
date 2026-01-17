@@ -518,6 +518,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [publicParties, setPublicParties] = useState<PartyDirectoryItem[]>([]);
   const [partyGameSuggestions, setPartyGameSuggestions] = useState<PartyGameSuggestion[]>([]);
   const [partySelectedGame, setPartySelectedGame] = useState<PartySelectedGame | null>(null);
+  const [pendingJoinRedirectPartyId, setPendingJoinRedirectPartyId] = useState<string | null>(null);
   
   // Balance update state
   const [balanceUpdate, setBalanceUpdate] = useState<{ userId: string; aura: number; money: number } | null>(null);
@@ -679,9 +680,14 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setPokerJoinPrompt(null);
         setPokerPlayAgainPrompt(null);
         setPokerGameOver(null);
-        if (typeof window !== 'undefined' && window.location.pathname !== '/party') {
+        if (
+          typeof window !== 'undefined' &&
+          pendingJoinRedirectPartyId === data.party.id &&
+          window.location.pathname !== '/party'
+        ) {
           navigate('/party');
         }
+        setPendingJoinRedirectPartyId(null);
       });
 
       s.on('party:restored', (data: { party: Party; members: PartyMember[] }) => {
@@ -802,6 +808,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       s.on('party:game-state', (data: { selectedGame: PartySelectedGame | null; suggestions: PartyGameSuggestion[] }) => {
         setPartySelectedGame(data.selectedGame);
         setPartyGameSuggestions(data.suggestions);
+      });
+
+      s.on('party:error', () => {
+        setPendingJoinRedirectPartyId(null);
       });
 
       // Economy events
@@ -1215,6 +1225,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
   const joinParty = (partyId: string) => {
     if (user) {
+      setPendingJoinRedirectPartyId(partyId);
       partyEvents.join(user.id, partyId);
     }
   };
