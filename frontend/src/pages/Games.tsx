@@ -26,6 +26,13 @@ const games = [
     requiresParty: true,
   },
   {
+    id: 'monopoly',
+    name: 'Monopoly',
+    description: 'Achete, construis et deviens le dernier joueur solvent.',
+    type: 'Party',
+    requiresParty: true,
+  },
+  {
     id: 'clash',
     name: 'Clash',
     description: 'Construis ta base, entraîne des troupes, attaque tes ennemis.',
@@ -42,6 +49,12 @@ const games = [
     name: 'Casino',
     description: 'Choisis entre machine à sous et roulette animée.',
     type: 'Chance',
+  },
+  {
+    id: 'market',
+    name: 'Salle de marche',
+    description: 'Investis sur plusieurs cryptos avec une interface pro.',
+    type: 'Trading',
   },
   {
     id: 'aura-coin',
@@ -65,6 +78,9 @@ export default function Games() {
     }
     if (game.id === 'petit-bac') {
       return '/games/petit-bac';
+    }
+    if (game.id === 'monopoly') {
+      return '/games/monopoly';
     }
     return `/games/${game.id}`;
   };
