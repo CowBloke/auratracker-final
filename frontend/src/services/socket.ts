@@ -36,6 +36,12 @@ export const chatEvents = {
   sendMessage: (userId: string, message: string, replyToId?: string | null) => {
     socket?.emit('chat:message', { userId, message, replyToId });
   },
+  react: (userId: string, messageId: string, emoji: string) => {
+    socket?.emit('chat:reaction', { userId, messageId, emoji });
+  },
+  pinMessage: (adminId: string, messageId: string, pinned: boolean) => {
+    socket?.emit('chat:pin', { adminId, messageId, pinned });
+  },
   setTyping: (userId: string, isTyping: boolean) => {
     socket?.emit('chat:typing', { userId, isTyping });
   },
@@ -78,6 +84,12 @@ export const partyEvents = {
   },
   list: () => {
     socket?.emit('party:list');
+  },
+  suggestGame: (userId: string, gameId: string, gameName: string) => {
+    socket?.emit('party:game-suggest', { userId, gameId, gameName });
+  },
+  selectGame: (userId: string, gameId: string, gameName: string) => {
+    socket?.emit('party:game-select', { userId, gameId, gameName });
   },
 };
 
@@ -122,6 +134,47 @@ export const bombPartyEvents = {
   },
   respondToPlayAgain: (partyId: string, userId: string, playAgain: boolean) => {
     socket?.emit('bombparty:play-again-response', { partyId, userId, playAgain });
+  },
+};
+
+// Poker events
+export const pokerEvents = {
+  register: (userId: string) => {
+    socket?.emit('poker:register', { userId });
+  },
+  start: (userId: string, partyId: string, startStack: number, bigBlind: number) => {
+    socket?.emit('poker:start', { userId, partyId, startStack, bigBlind });
+  },
+  respondToJoin: (partyId: string, userId: string, accepted: boolean) => {
+    socket?.emit('poker:join-response', { partyId, userId, accepted });
+  },
+  action: (partyId: string, userId: string, action: 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'all-in', amount?: number) => {
+    socket?.emit('poker:action', { partyId, userId, action, amount });
+  },
+  leave: (partyId: string, userId: string) => {
+    socket?.emit('poker:leave', { partyId, userId });
+  },
+  respondToPlayAgain: (partyId: string, userId: string, playAgain: boolean) => {
+    socket?.emit('poker:play-again-response', { partyId, userId, playAgain });
+  },
+};
+
+// Petit Bac events
+export const petitBacEvents = {
+  start: (userId: string, partyId: string, rounds: number, roundDuration: number, categories: string[]) => {
+    socket?.emit('petitbac:start', { userId, partyId, rounds, roundDuration, categories });
+  },
+  respondToJoin: (partyId: string, userId: string, accepted: boolean) => {
+    socket?.emit('petitbac:join-response', { partyId, userId, accepted });
+  },
+  submit: (partyId: string, userId: string, answers: Record<string, string>) => {
+    socket?.emit('petitbac:submit', { partyId, userId, answers });
+  },
+  leave: (partyId: string, userId: string) => {
+    socket?.emit('petitbac:leave', { partyId, userId });
+  },
+  respondToPlayAgain: (partyId: string, userId: string, playAgain: boolean) => {
+    socket?.emit('petitbac:play-again-response', { partyId, userId, playAgain });
   },
 };
 

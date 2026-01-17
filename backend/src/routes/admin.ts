@@ -6,6 +6,8 @@ import { logAdmin, logSuggestion, logBan } from '../utils/logger.js';
 import { isAllowedImageUrl } from '../utils/uploads.js';
 
 const router = Router();
+const ANNOUNCEMENT_KEY = 'topbar_announcement';
+const ANNOUNCEMENT_MAX_LENGTH = 120;
 
 // Middleware to check if user is admin
 const requireAdmin = (req: AuthRequest, res: Response, next: Function) => {
@@ -1146,17 +1148,22 @@ router.put('/settings/:key', authMiddleware, requireAdmin, async (req: AuthReque
     }
 
     const stringValue = String(value);
+    const normalizedValue = key === ANNOUNCEMENT_KEY ? stringValue.trim() : stringValue;
 
     // Validate specific settings
+    if (key === ANNOUNCEMENT_KEY && normalizedValue.length > ANNOUNCEMENT_MAX_LENGTH) {
+      return res.status(400).json({ error: `Announcement must be ${ANNOUNCEMENT_MAX_LENGTH} characters or less` });
+    }
+
     if (key.startsWith('bombparty_wpp_')) {
-      const numValue = parseInt(stringValue);
+      const numValue = parseInt(normalizedValue);
       if (isNaN(numValue) || numValue < 1) {
         return res.status(400).json({ error: 'WPP values must be positive integers' });
       }
     }
 
     if (key === 'bombparty_3letter_start_round') {
-      const numValue = parseInt(stringValue);
+      const numValue = parseInt(normalizedValue);
       if (isNaN(numValue) || numValue < 0) {
         return res.status(400).json({ error: 'Start round must be a non-negative integer' });
       }
@@ -1164,14 +1171,14 @@ router.put('/settings/:key', authMiddleware, requireAdmin, async (req: AuthReque
 
     const setting = await prisma.gameSettings.upsert({
       where: { key },
-      create: { key, value: stringValue },
-      update: { value: stringValue },
+      create: { key, value: normalizedValue },
+      update: { value: normalizedValue },
     });
 
     // Log setting update
     logAdmin('setting_update', req.user!.id, undefined, undefined, undefined, {
       key,
-      value: stringValue,
+      value: normalizedValue,
     });
 
     // Clear cached settings in bombparty module if needed
@@ -1207,9 +1214,15 @@ router.put('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, r
     // Validate all settings first
     for (const [key, value] of Object.entries(settings)) {
       const stringValue = String(value);
+      const normalizedValue = key === ANNOUNCEMENT_KEY ? stringValue.trim() : stringValue;
+
+      if (key === ANNOUNCEMENT_KEY && normalizedValue.length > ANNOUNCEMENT_MAX_LENGTH) {
+        errors.push(`${key}: Announcement must be ${ANNOUNCEMENT_MAX_LENGTH} characters or less`);
+        continue;
+      }
 
       if (key.startsWith('bombparty_wpp_')) {
-        const numValue = parseInt(stringValue);
+        const numValue = parseInt(normalizedValue);
         if (isNaN(numValue) || numValue < 1) {
           errors.push(`${key}: WPP values must be positive integers`);
           continue;
@@ -1217,14 +1230,14 @@ router.put('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, r
       }
 
       if (key === 'bombparty_3letter_start_round') {
-        const numValue = parseInt(stringValue);
+        const numValue = parseInt(normalizedValue);
         if (isNaN(numValue) || numValue < 0) {
           errors.push(`${key}: Start round must be a non-negative integer`);
           continue;
         }
       }
 
-      updates.push({ key, value: stringValue });
+      updates.push({ key, value: normalizedValue });
     }
 
     if (errors.length > 0) {

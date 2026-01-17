@@ -1,14 +1,19 @@
-import { useState, useRef, useEffect, type ReactNode } from 'react';
+import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../../contexts/SocketContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { Send, X } from 'lucide-react';
+import { Send, X, MoreHorizontal, Pin, PinOff } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
   SidebarHeader,
   SidebarRail,
 } from '@/components/ui/sidebar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -35,10 +40,31 @@ type MentionableUser = {
   profilePicture?: string | null;
 };
 
+const REACTION_OPTIONS = [
+  { emoji: '❤️', label: 'Coeur' },
+  { emoji: '👍', label: 'Like' },
+  { emoji: '😂', label: 'Haha' },
+  { emoji: '😮', label: 'Wow' },
+  { emoji: '😢', label: 'Triste' },
+  { emoji: '😡', label: 'Grr' },
+];
+
 export default function ChatSidebar() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { messages, onlineUsers, typingUsers, sendMessage, setTyping } = useSocket();
+  const {
+    messages,
+    onlineUsers,
+    typingUsers,
+    sendMessage,
+    setTyping,
+    reactToMessage,
+    pinMessage,
+    joinParty,
+    requestJoinParty,
+    currentParty,
+    pendingJoinRequests,
+  } = useSocket();
   const { unreadCount } = useChatSidebar();
   const [input, setInput] = useState('');
   const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);
@@ -48,6 +74,17 @@ export default function ChatSidebar() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<TimeoutRef>(null);
   const mentionMap = new Map<string, MentionableUser>();
+  const sortedMessages = useMemo(() => {
+    return [...messages].sort((a, b) => {
+      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+      if (a.pinned && b.pinned) {
+        const aTime = a.pinnedAt ?? a.timestamp;
+        const bTime = b.pinnedAt ?? b.timestamp;
+        return new Date(bTime).getTime() - new Date(aTime).getTime();
+      }
+      return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+    });
+  }, [messages]);
 
   onlineUsers.forEach((u) => {
     mentionMap.set(u.username.toLowerCase(), {
@@ -124,6 +161,22 @@ export default function ChatSidebar() {
   const getSnippet = (text: string) => {
     if (text.length <= 120) return text;
     return `${text.slice(0, 120)}...`;
+  };
+
+  const parsePartyInvite = (text: string) => {
+    const prefix = '[[party-invite:';
+    if (!text.startsWith(prefix)) return null;
+    const endIndex = text.indexOf(']]');
+    if (endIndex === -1) return null;
+    const payload = text.slice(prefix.length, endIndex);
+    const [partyId, visibility] = payload.split(':');
+    if (!partyId) return null;
+    const label = text.slice(endIndex + 2).trim() || 'Rejoins la party';
+    return {
+      partyId,
+      visibility: visibility === 'private' ? 'private' : 'public',
+      label,
+    };
   };
 
   const renderMessageContent = (text: string) => {
@@ -242,77 +295,175 @@ export default function ChatSidebar() {
         <div className="flex-1 flex flex-col min-h-0">
           <ScrollArea className="flex-1 px-3">
             <div className="space-y-3 py-4">
-              {messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={cn(
-                    "flex flex-col",
-                    msg.userId === user?.id && 'items-end'
-                  )}
-                >
+              {sortedMessages.map((msg) => {
+                const invite = parsePartyInvite(msg.message);
+                const isSameParty = invite && currentParty?.id === invite.partyId;
+                const isOtherParty = invite && currentParty && currentParty.id !== invite.partyId;
+                const isPendingInvite = invite?.visibility === 'private' && pendingJoinRequests.includes(invite.partyId);
+                const inviteDisabled = Boolean(isSameParty || isOtherParty || isPendingInvite);
+                const inviteActionLabel = isSameParty
+                  ? 'Deja dans la party'
+                  : isOtherParty
+                    ? 'Quitte ta party pour rejoindre'
+                    : invite?.visibility === 'private'
+                      ? isPendingInvite
+                        ? 'Demande envoyee'
+                        : 'Demander a rejoindre'
+                      : 'Rejoindre';
+
+                return (
                   <div
+                    key={msg.id}
                     className={cn(
-                      "max-w-[90%] px-3 py-2 rounded-lg",
-                      msg.userId === user?.id
-                        ? 'bg-foreground/10'
-                        : 'bg-muted'
+                      "flex flex-col group",
+                      msg.userId === user?.id && 'items-end'
                     )}
                   >
-                    {msg.replyTo && (
-                      <div className="mb-2 border-l-2 border-border/60 pl-2 text-xs text-muted-foreground">
-                        <span
-                          className="block font-medium"
-                          style={msg.replyTo.usernameColor ? { color: msg.replyTo.usernameColor } : undefined}
-                        >
-                          {msg.replyTo.username}
-                        </span>
-                        <span className="block break-words whitespace-normal">{getSnippet(msg.replyTo.message)}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2 mb-1">
-                      {msg.profilePicture && (
-                        <img 
-                          src={resolveImageUrl(msg.profilePicture)} 
-                          alt={msg.username}
-                          className="w-4 h-4 rounded-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
-                          }}
-                        />
+                    <div
+                      className={cn(
+                        "max-w-[90%] px-3 py-2 rounded-lg",
+                        msg.userId === user?.id
+                          ? 'bg-foreground/10'
+                          : 'bg-muted'
                       )}
-                      <button
-                        onClick={() => navigate(`/profile/${msg.userId}`)}
-                        className={cn(
-                          "text-xs font-medium hover:underline cursor-pointer",
-                          !msg.usernameColor && (msg.userId === user?.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')
+                    >
+                      {msg.replyTo && (
+                        <div className="mb-2 border-l-2 border-border/60 pl-2 text-xs text-muted-foreground">
+                          <span
+                            className="block font-medium"
+                            style={msg.replyTo.usernameColor ? { color: msg.replyTo.usernameColor } : undefined}
+                          >
+                            {msg.replyTo.username}
+                          </span>
+                          <span className="block break-words whitespace-normal">{getSnippet(msg.replyTo.message)}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 mb-1">
+                        {msg.profilePicture && (
+                          <img 
+                            src={resolveImageUrl(msg.profilePicture)} 
+                            alt={msg.username}
+                            className="w-4 h-4 rounded-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
                         )}
-                        style={msg.usernameColor ? { color: msg.usernameColor } : undefined}
-                      >
-                        {msg.username}
-                      </button>
-                      <span className="text-[10px] text-muted-foreground/60 tabular-nums">
-                        {formatTime(msg.timestamp)}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setReplyTarget({
-                            id: msg.id,
-                            userId: msg.userId,
-                            username: msg.username,
-                            usernameColor: msg.usernameColor,
-                            message: msg.message,
-                          })
-                        }
-                        className="text-[10px] text-muted-foreground/60 hover:text-foreground transition-colors"
-                      >
-                        Répondre
-                      </button>
+                        <button
+                          onClick={() => navigate(`/profile/${msg.userId}`)}
+                          className={cn(
+                            "text-xs font-medium hover:underline cursor-pointer",
+                            !msg.usernameColor && (msg.userId === user?.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')
+                          )}
+                          style={msg.usernameColor ? { color: msg.usernameColor } : undefined}
+                        >
+                          {msg.username}
+                        </button>
+                        <span className="text-[10px] text-muted-foreground/60 tabular-nums">
+                          {formatTime(msg.timestamp)}
+                        </span>
+                        {msg.pinned && (
+                          <Pin className="h-3 w-3 text-amber-500" title="Message épinglé" />
+                        )}
+                        <div className="ml-auto flex items-center gap-2">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/70 hover:text-foreground"
+                                title="Réagir"
+                              >
+                                <MoreHorizontal className="h-3.5 w-3.5" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              align={msg.userId === user?.id ? 'end' : 'start'}
+                              className="flex items-center gap-1 p-2"
+                            >
+                              {REACTION_OPTIONS.map((reaction) => (
+                                <button
+                                  key={reaction.emoji}
+                                  type="button"
+                                  onClick={() => reactToMessage(msg.id, reaction.emoji)}
+                                  className="h-8 w-8 rounded-md hover:bg-muted/60 transition-colors"
+                                  title={reaction.label}
+                                >
+                                  <span className="text-base">{reaction.emoji}</span>
+                                </button>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          {user?.isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => pinMessage(msg.id, !msg.pinned)}
+                              className="text-[10px] text-muted-foreground/60 hover:text-foreground transition-colors opacity-0 group-hover:opacity-100"
+                              title={msg.pinned ? 'Désépingler' : 'Épingler'}
+                            >
+                              {msg.pinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setReplyTarget({
+                                id: msg.id,
+                                userId: msg.userId,
+                                username: msg.username,
+                                usernameColor: msg.usernameColor,
+                                message: msg.message,
+                              })
+                            }
+                            className="text-[10px] text-muted-foreground/60 hover:text-foreground transition-colors"
+                          >
+                            Répondre
+                          </button>
+                        </div>
+                      </div>
+                      {invite ? (
+                        <div className="space-y-2">
+                          <p className="text-sm break-words">{renderMessageContent(invite.label)}</p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (inviteDisabled) return;
+                              if (invite.visibility === 'private') {
+                                requestJoinParty(invite.partyId);
+                              } else {
+                                joinParty(invite.partyId);
+                              }
+                            }}
+                            disabled={inviteDisabled}
+                            className={cn(
+                              "w-full rounded border px-2 py-1 text-xs transition-colors",
+                              inviteDisabled
+                                ? "border-border/50 text-muted-foreground cursor-not-allowed"
+                                : "border-foreground text-foreground hover:bg-foreground hover:text-background"
+                            )}
+                          >
+                            {inviteActionLabel}
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="text-sm break-words">{renderMessageContent(msg.message)}</p>
+                      )}
+                      {msg.reactions.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {msg.reactions.map((reaction) => (
+                            <span
+                              key={`${msg.id}-${reaction.emoji}`}
+                              className="inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-0.5 text-[10px] text-muted-foreground"
+                            >
+                              <span>{reaction.emoji}</span>
+                              <span className="tabular-nums">{reaction.count}</span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <p className="text-sm break-words">{renderMessageContent(msg.message)}</p>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div ref={messagesEndRef} />
             </div>
           </ScrollArea>

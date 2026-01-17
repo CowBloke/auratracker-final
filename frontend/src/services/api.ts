@@ -49,6 +49,7 @@ export const uploadsApi = {
 // Users API
 export const usersApi = {
   getAll: () => api.get('/users'),
+  getAnnouncement: () => api.get<{ message: string }>('/users/announcement'),
   getById: (id: string) => api.get(`/users/${id}`),
   update: (id: string, data: { username?: string; bio?: string }) => api.put(`/users/${id}`, data),
 };
@@ -123,6 +124,13 @@ export interface AuraCoinTransaction {
   };
 }
 
+export interface AuraCoinLeaderboardEntry {
+  id: string;
+  username: string;
+  usernameColor: string | null;
+  auraCoinBalance: number;
+}
+
 export const auraCoinApi = {
   getPrice: (hours?: number) =>
     api.get<{
@@ -131,6 +139,8 @@ export const auraCoinApi = {
       history: AuraCoinPriceHistory[];
       userBalance: { auraCoin: number; money: number };
     }>('/auracoin/price', { params: { hours } }),
+  getLeaderboard: (limit?: number) =>
+    api.get<{ leaderboard: AuraCoinLeaderboardEntry[] }>('/auracoin/leaderboard', { params: { limit } }),
   buy: (moneyAmount: number) =>
     api.post<{
       success: boolean;
@@ -484,6 +494,10 @@ export const adminApi = {
   // Reset extreme aura values
   resetExtremeAura: (threshold?: number) =>
     api.post<{ success: boolean; message: string; usersReset: number; users: { id: string; username: string; oldAura: string }[] }>('/admin/reset-extreme-aura', { threshold }),
+};
+
+export const maintenanceApi = {
+  getStatus: () => api.get<{ enabled: boolean; message: string }>('/maintenance'),
 };
 
 // Bug report API (for regular users)

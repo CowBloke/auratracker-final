@@ -25,12 +25,15 @@ import auraCoinRoutes, { startPriceEngine, stopPriceEngine } from './routes/aura
 import suggestionsRoutes from './routes/suggestions.js';
 import bombpartyRoutes from './routes/bombparty.js';
 import uploadsRoutes from './routes/uploads.js';
+import maintenanceRoutes from './routes/maintenance.js';
 
 // Socket handlers
 import { setupChatHandlers } from './socket/chat.js';
 import { setupPartyHandlers } from './socket/party.js';
 import { setupGameHandlers } from './socket/games.js';
 import { setupBombPartyHandlers, startBombPartyCleanup } from './socket/bombparty.js';
+import { setupPokerHandlers } from './socket/poker.js';
+import { setupPetitBacHandlers } from './socket/petitbac.js';
 
 // Logger
 import { initLogger } from './utils/logger.js';
@@ -75,6 +78,7 @@ app.use('/api/auracoin', auraCoinRoutes);
 app.use('/api/suggestions', suggestionsRoutes);
 app.use('/api/bombparty', bombpartyRoutes);
 app.use('/api/uploads', uploadsRoutes);
+app.use('/api/maintenance', maintenanceRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -89,6 +93,8 @@ io.on('connection', (socket) => {
   setupPartyHandlers(socket, io);
   setupGameHandlers(socket, io);
   setupBombPartyHandlers(socket, io);
+  setupPokerHandlers(socket, io);
+  setupPetitBacHandlers(socket, io);
   
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.id}`);

@@ -24,6 +24,10 @@ interface ProfileUser {
     assignedAt: string;
     userBadgeId: string;
   }>;
+  auraCoinStats?: {
+    transactionCount: number;
+    totalMoney: number;
+  };
   gameStats: Array<{
     gameType: string;
     wins: number;
@@ -139,6 +143,9 @@ export default function Profile() {
   const totalWins = profileUser.gameStats.reduce((acc, s) => acc + s.wins, 0) + bombPartyWins;
   const totalGames = profileUser.gameStats.reduce((acc, s) => acc + s.totalPlayed, 0) + bombPartyGames;
   const hasBombPartyStats = (bombPartyStats?.totalPlayed ?? 0) > 0;
+  const auraCoinTransactionCount = profileUser.auraCoinStats?.transactionCount ?? 0;
+  const auraCoinTotalMoney = profileUser.auraCoinStats?.totalMoney ?? 0;
+  const hasGameStats = profileUser.gameStats.length > 0 || hasBombPartyStats;
   const auraCoinValue = auraCoinPrice !== null
     ? profileUser.auraCoinBalance * auraCoinPrice
     : null;
@@ -329,48 +336,54 @@ export default function Profile() {
           Statistiques par jeu
         </h2>
         
-        {profileUser.gameStats.length === 0 && !hasBombPartyStats ? (
+        {!hasGameStats && (
           <p className="text-muted-foreground">Aucune partie jouée</p>
-        ) : (
-          <div className="space-y-0">
-            {profileUser.gameStats.map((stat) => (
-              <div
-                key={stat.gameType}
-                className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
-              >
-                <span className="font-medium capitalize">
-                  {stat.gameType.replace('_', ' ')}
-                </span>
-                <div className="flex items-center gap-8 text-sm text-muted-foreground tabular-nums">
-                  <span>{stat.highScore.toLocaleString()} record</span>
-                  <span>{stat.wins} V</span>
-                  <span>{stat.totalPlayed} jouées</span>
-                  <span>
-                    {stat.totalPlayed > 0
-                      ? Math.round((stat.wins / stat.totalPlayed) * 100)
-                      : 0}%
-                  </span>
-                </div>
-              </div>
-            ))}
-            {hasBombPartyStats && bombPartyStats && (
-              <div className="flex items-center justify-between py-4 border-b border-border/30 last:border-0">
-                <span className="font-medium capitalize">bomb party</span>
-                <div className="flex items-center gap-8 text-sm text-muted-foreground tabular-nums">
-                  <span>{bombPartyStats.longestWord || '—'} record</span>
-                  <span>{bombPartyStats.wordsTyped.toLocaleString()} mots</span>
-                  <span>{bombPartyStats.wins} V</span>
-                  <span>{bombPartyStats.totalPlayed} jouées</span>
-                  <span>
-                    {bombPartyStats.totalPlayed > 0
-                      ? Math.round((bombPartyStats.wins / bombPartyStats.totalPlayed) * 100)
-                      : 0}%
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
         )}
+        <div className="space-y-0">
+          <div className="flex items-center justify-between py-4 border-b border-border/30 last:border-0">
+            <span className="font-medium capitalize">aura coin</span>
+            <div className="flex items-center gap-8 text-sm text-muted-foreground tabular-nums">
+              <span>{auraCoinTransactionCount} transactions</span>
+              <span>${auraCoinTotalMoney.toLocaleString()}</span>
+            </div>
+          </div>
+          {profileUser.gameStats.map((stat) => (
+            <div
+              key={stat.gameType}
+              className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
+            >
+              <span className="font-medium capitalize">
+                {stat.gameType.replace('_', ' ')}
+              </span>
+              <div className="flex items-center gap-8 text-sm text-muted-foreground tabular-nums">
+                <span>{stat.highScore.toLocaleString()} record</span>
+                <span>{stat.wins} V</span>
+                <span>{stat.totalPlayed} jouées</span>
+                <span>
+                  {stat.totalPlayed > 0
+                    ? Math.round((stat.wins / stat.totalPlayed) * 100)
+                    : 0}%
+                </span>
+              </div>
+            </div>
+          ))}
+          {hasBombPartyStats && bombPartyStats && (
+            <div className="flex items-center justify-between py-4 border-b border-border/30 last:border-0">
+              <span className="font-medium capitalize">bomb party</span>
+              <div className="flex items-center gap-8 text-sm text-muted-foreground tabular-nums">
+                <span>{bombPartyStats.longestWord || '—'} record</span>
+                <span>{bombPartyStats.wordsTyped.toLocaleString()} mots</span>
+                <span>{bombPartyStats.wins} V</span>
+                <span>{bombPartyStats.totalPlayed} jouées</span>
+                <span>
+                  {bombPartyStats.totalPlayed > 0
+                    ? Math.round((bombPartyStats.wins / bombPartyStats.totalPlayed) * 100)
+                    : 0}%
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
       </section>
     </div>
   );

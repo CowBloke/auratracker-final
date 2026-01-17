@@ -249,7 +249,7 @@ export default function AuraCoin() {
           </p>
         </div>
       </div>
-      
+
       {/* Trading Interface */}
       <div className="grid md:grid-cols-2 gap-6">
         {/* Buy */}

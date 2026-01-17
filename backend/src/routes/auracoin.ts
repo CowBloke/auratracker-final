@@ -365,4 +365,29 @@ router.get('/transactions/all', authMiddleware, async (req: AuthRequest, res: Re
   }
 });
 
+// Get AuraCoin leaderboard (top holders)
+router.get('/leaderboard', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { limit = '10' } = req.query;
+    const take = Math.max(1, Math.min(parseInt(limit as string, 10) || 10, 100));
+
+    const leaderboard = await prisma.user.findMany({
+      where: { auraCoinBalance: { gt: 0 } },
+      orderBy: { auraCoinBalance: 'desc' },
+      take,
+      select: {
+        id: true,
+        username: true,
+        usernameColor: true,
+        auraCoinBalance: true,
+      },
+    });
+
+    res.json({ leaderboard });
+  } catch (error) {
+    console.error('Get AuraCoin leaderboard error:', error);
+    res.status(500).json({ error: 'Failed to get leaderboard' });
+  }
+});
+
 export default router;

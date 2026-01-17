@@ -1,11 +1,12 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../../contexts/SocketContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { Send, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import { Send, ChevronDown, ChevronUp, Trash2, MoreHorizontal, Pin, PinOff } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { getPageMeta } from './presence';
 import { resolveImageUrl } from '@/lib/images';
@@ -17,16 +18,36 @@ interface ChatProps {
   onToggle: () => void;
 }
 
+const REACTION_OPTIONS = [
+  { emoji: '❤️', label: 'Coeur' },
+  { emoji: '👍', label: 'Like' },
+  { emoji: '😂', label: 'Haha' },
+  { emoji: '😮', label: 'Wow' },
+  { emoji: '😢', label: 'Triste' },
+  { emoji: '😡', label: 'Grr' },
+];
+
 export default function Chat({ isOpen, onToggle }: ChatProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { messages, onlineUsers, typingUsers, sendMessage, setTyping, deleteMessage } = useSocket();
+  const { messages, onlineUsers, typingUsers, sendMessage, setTyping, deleteMessage, reactToMessage, pinMessage } = useSocket();
   const [input, setInput] = useState('');
   const [showUsers, setShowUsers] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<TimeoutRef>(null);
   const lastMessageIdRef = useRef<string | null>(null);
+  const sortedMessages = useMemo(() => {
+    return [...messages].sort((a, b) => {
+      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+      if (a.pinned && b.pinned) {
+        const aTime = a.pinnedAt ?? a.timestamp;
+        const bTime = b.pinnedAt ?? b.timestamp;
+        return new Date(bTime).getTime() - new Date(aTime).getTime();
+      }
+      return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+    });
+  }, [messages]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -117,7 +138,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
           <div className="flex-1 flex flex-col">
             <ScrollArea className="flex-1 px-6">
               <div className="space-y-3 py-3">
-                {messages.map((msg) => (
+                {sortedMessages.map((msg) => (
                   <div
                     key={msg.id}
                     className={cn(
@@ -157,17 +178,71 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                         <span className="text-[10px] text-muted-foreground/60 tabular-nums">
                           {formatTime(msg.timestamp)}
                         </span>
-                        {user?.isAdmin && (
-                          <button
-                            onClick={() => deleteMessage(msg.id)}
-                            className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive/80"
-                            title="Delete message"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
+                        {msg.pinned && (
+                          <Pin className="h-3 w-3 text-amber-500" title="Message épinglé" />
                         )}
+                        <div className="ml-auto flex items-center gap-2">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/70 hover:text-foreground"
+                                title="Réagir"
+                              >
+                                <MoreHorizontal className="h-3.5 w-3.5" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              align={msg.userId === user?.id ? 'end' : 'start'}
+                              className="flex items-center gap-1 p-2"
+                            >
+                              {REACTION_OPTIONS.map((reaction) => (
+                                <button
+                                  key={reaction.emoji}
+                                  type="button"
+                                  onClick={() => reactToMessage(msg.id, reaction.emoji)}
+                                  className="h-8 w-8 rounded-md hover:bg-muted/60 transition-colors"
+                                  title={reaction.label}
+                                >
+                                  <span className="text-base">{reaction.emoji}</span>
+                                </button>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          {user?.isAdmin && (
+                            <>
+                              <button
+                                onClick={() => pinMessage(msg.id, !msg.pinned)}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/70 hover:text-foreground"
+                                title={msg.pinned ? 'Désépingler' : 'Épingler'}
+                              >
+                                {msg.pinned ? <PinOff className="w-3 h-3" /> : <Pin className="w-3 h-3" />}
+                              </button>
+                              <button
+                                onClick={() => deleteMessage(msg.id)}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive/80"
+                                title="Delete message"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </div>
                       <p className="text-sm">{msg.message}</p>
+                      {msg.reactions.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {msg.reactions.map((reaction) => (
+                            <span
+                              key={`${msg.id}-${reaction.emoji}`}
+                              className="inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-0.5 text-[10px] text-muted-foreground"
+                            >
+                              <span>{reaction.emoji}</span>
+                              <span className="tabular-nums">{reaction.count}</span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

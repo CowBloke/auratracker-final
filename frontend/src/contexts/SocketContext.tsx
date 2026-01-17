@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Socket } from 'socket.io-client';
-import { initSocket, connectSocket, disconnectSocket, chatEvents, partyEvents, gameEvents, bombPartyEvents } from '../services/socket';
+import { initSocket, connectSocket, disconnectSocket, chatEvents, partyEvents, gameEvents, bombPartyEvents, pokerEvents, petitBacEvents } from '../services/socket';
 import { useAuth } from './AuthContext';
 
 interface ChatMessage {
@@ -10,6 +10,9 @@ interface ChatMessage {
   usernameColor?: string | null;
   profilePicture?: string | null;
   message: string;
+  pinned: boolean;
+  pinnedAt?: string | null;
+  reactions: Array<{ emoji: string; count: number }>;
   replyTo?: {
     id: string;
     userId: string;
@@ -69,6 +72,25 @@ interface PartyDirectoryItem {
   memberCount: number;
   maxSize: number;
   isPublic: boolean;
+}
+
+interface PartyGameSuggestion {
+  id: string;
+  gameId: string;
+  gameName: string;
+  suggestedById: string;
+  suggestedByName: string;
+  suggestedByColor?: string | null;
+  suggestedAt: number;
+}
+
+interface PartySelectedGame {
+  gameId: string;
+  gameName: string;
+  selectedById: string;
+  selectedByName: string;
+  selectedByColor?: string | null;
+  selectedAt: number;
 }
 
 interface BombPartyPlayer {
@@ -143,6 +165,164 @@ interface BombPartyPlayAgainPrompt {
   leaveCount: number;
 }
 
+type PokerStage = 'preflop' | 'flop' | 'turn' | 'river' | 'showdown';
+type PokerAction = 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'all-in';
+
+interface PokerPlayerState {
+  userId: string;
+  username: string;
+  usernameColor?: string | null;
+  chips: number;
+  bet: number;
+  totalBet: number;
+  hasFolded: boolean;
+  isAllIn: boolean;
+  isEliminated: boolean;
+  lastAction: string | null;
+  hand: string[];
+}
+
+interface PokerHandResult {
+  winners: Array<{ userId: string; username: string; amountWon: number; handRank: string }>;
+  showdown: Array<{ userId: string; username: string; hand: string[]; handRank: string }>;
+  pot: number;
+}
+
+interface PokerGameState {
+  partyId: string;
+  stage: PokerStage;
+  communityCards: string[];
+  pot: number;
+  smallBlind: number;
+  bigBlind: number;
+  minRaise: number;
+  highestBet: number;
+  dealerId?: string;
+  smallBlindId?: string;
+  bigBlindId?: string;
+  currentPlayerId?: string;
+  turnEndsAt: number | null;
+  handNumber: number;
+  maxHands: number;
+  startingStack: number;
+  lastHandResult?: PokerHandResult;
+  players: PokerPlayerState[];
+  yourHand: string[];
+  availableActions: PokerAction[];
+  callAmount: number;
+  minRaiseTo: number;
+}
+
+interface PokerJoinPrompt {
+  partyId: string;
+  leaderId: string;
+  startStack: number;
+  bigBlind: number;
+  timeLimit: number;
+  startTime: number;
+  members: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+  responses: Array<{ userId: string; accepted: boolean }>;
+}
+
+interface PokerPlayAgainPrompt {
+  partyId: string;
+  startStack: number;
+  bigBlind: number;
+  timeLimit: number;
+  startTime: number;
+  players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+  responses: Array<{ userId: string; playAgain: boolean }>;
+  playAgainCount?: number;
+  leaveCount?: number;
+}
+
+interface PokerGameOver {
+  winnerId: string | null;
+  winnerUsername: string | null;
+  standings: Array<{ userId: string; username: string; chips: number }>;
+}
+
+interface PetitBacPlayer {
+  userId: string;
+  username: string;
+  usernameColor?: string | null;
+  score: number;
+  submitted: boolean;
+}
+
+interface PetitBacGameState {
+  partyId: string;
+  players: PetitBacPlayer[];
+  categories: string[];
+  currentLetter: string;
+  round: number;
+  maxRounds: number;
+  roundDuration: number;
+  roundStartTime: number;
+  phase: 'playing' | 'scoring';
+  submittedCount: number;
+}
+
+interface PetitBacRoundResult {
+  round: number;
+  letter: string;
+  categories: string[];
+  submissions: Array<{
+    userId: string;
+    username: string;
+    answers: Record<string, string>;
+    perCategoryScores: Record<string, number>;
+    score: number;
+    totalScore: number;
+  }>;
+}
+
+interface PetitBacJoinPrompt {
+  partyId: string;
+  leaderId: string;
+  rounds: number;
+  roundDuration: number;
+  categories: string[];
+  timeLimit: number;
+  startTime: number;
+  members: Array<{
+    userId: string;
+    username: string;
+    usernameColor?: string | null;
+  }>;
+  responses: Array<{
+    userId: string;
+    accepted: boolean;
+  }>;
+}
+
+interface PetitBacPlayAgainPrompt {
+  partyId: string;
+  timeLimit: number;
+  startTime: number;
+  gameOverData: {
+    winnerIds: string[];
+    winnerUsernames: string[];
+    players: Array<{
+      userId: string;
+      username: string;
+      score: number;
+      isWinner: boolean;
+    }>;
+  };
+  players: Array<{
+    userId: string;
+    username: string;
+    usernameColor?: string | null;
+  }>;
+  responses: Array<{
+    userId: string;
+    playAgain: boolean;
+  }>;
+  playAgainCount: number;
+  leaveCount: number;
+}
+
 interface SocketContextType {
   socket: Socket | null;
   connected: boolean;
@@ -151,9 +331,11 @@ interface SocketContextType {
   onlineUsers: OnlineUser[];
   typingUsers: TypingUser[];
   sendMessage: (message: string, replyToId?: string | null) => void;
+  reactToMessage: (messageId: string, emoji: string) => void;
   setTyping: (isTyping: boolean) => void;
   setCurrentPage: (page: string) => void;
   deleteMessage: (messageId: string) => void;
+  pinMessage: (messageId: string, pinned: boolean) => void;
   // Party
   currentParty: Party | null;
   partyMembers: PartyMember[];
@@ -172,6 +354,10 @@ interface SocketContextType {
   kickFromParty: (targetUserId: string) => void;
   fetchPublicParties: () => void;
   syncParty: () => void;
+  partyGameSuggestions: PartyGameSuggestion[];
+  partySelectedGame: PartySelectedGame | null;
+  suggestPartyGame: (gameId: string, gameName: string) => void;
+  selectPartyGame: (gameId: string, gameName: string) => void;
   // Balance updates
   balanceUpdate: { userId: string; aura: number; money: number } | null;
   // Bomb Party
@@ -187,6 +373,27 @@ interface SocketContextType {
   submitBombParty: (word: string) => void;
   leaveBombParty: () => void;
   clearBombPartyGameOver: () => void;
+  // Poker
+  pokerGame: PokerGameState | null;
+  pokerJoinPrompt: PokerJoinPrompt | null;
+  pokerPlayAgainPrompt: PokerPlayAgainPrompt | null;
+  pokerGameOver: PokerGameOver | null;
+  startPoker: (startStack: number, bigBlind: number) => void;
+  respondToPokerJoinPrompt: (accepted: boolean) => void;
+  actInPoker: (action: PokerAction, amount?: number) => void;
+  leavePoker: () => void;
+  respondToPokerPlayAgainPrompt: (playAgain: boolean) => void;
+  clearPokerGameOver: () => void;
+  // Petit Bac
+  petitBacGame: PetitBacGameState | null;
+  petitBacRoundResult: PetitBacRoundResult | null;
+  petitBacJoinPrompt: PetitBacJoinPrompt | null;
+  petitBacPlayAgainPrompt: PetitBacPlayAgainPrompt | null;
+  startPetitBac: (rounds: number, roundDuration: number, categories: string[]) => void;
+  respondToPetitBacJoinPrompt: (accepted: boolean) => void;
+  submitPetitBac: (answers: Record<string, string>) => void;
+  leavePetitBac: () => void;
+  respondToPetitBacPlayAgainPrompt: (playAgain: boolean) => void;
 }
 
 const SocketContext = createContext<SocketContextType | null>(null);
@@ -208,6 +415,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [partyJoinRequests, setPartyJoinRequests] = useState<PartyJoinRequest[]>([]);
   const [pendingJoinRequests, setPendingJoinRequests] = useState<string[]>([]);
   const [publicParties, setPublicParties] = useState<PartyDirectoryItem[]>([]);
+  const [partyGameSuggestions, setPartyGameSuggestions] = useState<PartyGameSuggestion[]>([]);
+  const [partySelectedGame, setPartySelectedGame] = useState<PartySelectedGame | null>(null);
   
   // Balance update state
   const [balanceUpdate, setBalanceUpdate] = useState<{ userId: string; aura: number; money: number } | null>(null);
@@ -218,6 +427,18 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [bombPartyRejection, setBombPartyRejection] = useState<string | null>(null);
   const [bombPartyJoinPrompt, setBombPartyJoinPrompt] = useState<BombPartyJoinPrompt | null>(null);
   const [bombPartyPlayAgainPrompt, setBombPartyPlayAgainPrompt] = useState<BombPartyPlayAgainPrompt | null>(null);
+
+  // Poker state
+  const [pokerGame, setPokerGame] = useState<PokerGameState | null>(null);
+  const [pokerJoinPrompt, setPokerJoinPrompt] = useState<PokerJoinPrompt | null>(null);
+  const [pokerPlayAgainPrompt, setPokerPlayAgainPrompt] = useState<PokerPlayAgainPrompt | null>(null);
+  const [pokerGameOver, setPokerGameOver] = useState<PokerGameOver | null>(null);
+
+  // Petit Bac state
+  const [petitBacGame, setPetitBacGame] = useState<PetitBacGameState | null>(null);
+  const [petitBacRoundResult, setPetitBacRoundResult] = useState<PetitBacRoundResult | null>(null);
+  const [petitBacJoinPrompt, setPetitBacJoinPrompt] = useState<PetitBacJoinPrompt | null>(null);
+  const [petitBacPlayAgainPrompt, setPetitBacPlayAgainPrompt] = useState<PetitBacPlayAgainPrompt | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -232,6 +453,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         partyEvents.register(user.id);
         partyEvents.sync(user.id);
         gameEvents.register(user.id);
+        pokerEvents.register(user.id);
       });
 
       s.on('disconnect', () => {
@@ -240,11 +462,26 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
       // Chat events
       s.on('chat:history', (data: { messages: ChatMessage[] }) => {
-        setMessages(data.messages);
+        setMessages(
+          data.messages.map((message) => ({
+            ...message,
+            reactions: message.reactions ?? [],
+            pinned: message.pinned ?? false,
+            pinnedAt: message.pinnedAt ?? null,
+          }))
+        );
       });
 
       s.on('chat:message', (message: ChatMessage) => {
-        setMessages((prev) => [...prev, message]);
+        setMessages((prev) => [
+          ...prev,
+          {
+            ...message,
+            reactions: message.reactions ?? [],
+            pinned: message.pinned ?? false,
+            pinnedAt: message.pinnedAt ?? null,
+          },
+        ]);
       });
 
       s.on('users:online-list', (data: { users: OnlineUser[] }) => {
@@ -283,11 +520,37 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setMessages((prev) => prev.filter((m) => m.id !== data.messageId));
       });
 
+      s.on('chat:reactions-updated', (data: { messageId: string; reactions: Array<{ emoji: string; count: number }> }) => {
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === data.messageId
+              ? { ...message, reactions: data.reactions }
+              : message
+          )
+        );
+      });
+
+      s.on('chat:pin-updated', (data: { messageId: string; pinned: boolean; pinnedAt: string | null }) => {
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === data.messageId
+              ? { ...message, pinned: data.pinned, pinnedAt: data.pinnedAt }
+              : message
+          )
+        );
+      });
+
       // Party events
       s.on('party:created', (data: { party: Party; members: PartyMember[] }) => {
         setCurrentParty(data.party);
         setPartyMembers(data.members);
         setPendingJoinRequests([]);
+        setPartyGameSuggestions([]);
+        setPartySelectedGame(null);
+        setPokerGame(null);
+        setPokerJoinPrompt(null);
+        setPokerPlayAgainPrompt(null);
+        setPokerGameOver(null);
       });
 
       s.on('party:joined', (data: { party: Party; members: PartyMember[] }) => {
@@ -295,6 +558,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setPartyMembers(data.members);
         setPartyInvites((prev) => prev.filter((invite) => invite.partyId !== data.party.id));
         setPendingJoinRequests([]);
+        setPartyGameSuggestions([]);
+        setPartySelectedGame(null);
+        setPokerGame(null);
+        setPokerJoinPrompt(null);
+        setPokerPlayAgainPrompt(null);
+        setPokerGameOver(null);
       });
 
       s.on('party:restored', (data: { party: Party; members: PartyMember[] }) => {
@@ -302,6 +571,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setPartyMembers(data.members);
         setPartyInvites((prev) => prev.filter((invite) => invite.partyId !== data.party.id));
         setPendingJoinRequests([]);
+        setPartyGameSuggestions([]);
+        setPartySelectedGame(null);
+        setPokerGame(null);
+        setPokerJoinPrompt(null);
+        setPokerPlayAgainPrompt(null);
+        setPokerGameOver(null);
       });
 
       s.on('party:member-joined', (member: { userId: string; username: string; usernameColor?: string | null }) => {
@@ -317,6 +592,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setPartyMembers([]);
         setPartyJoinRequests([]);
         setPendingJoinRequests([]);
+        setPartyGameSuggestions([]);
+        setPartySelectedGame(null);
+        setPokerGame(null);
+        setPokerJoinPrompt(null);
+        setPokerPlayAgainPrompt(null);
+        setPokerGameOver(null);
       });
 
       s.on('party:left', () => {
@@ -324,6 +605,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setPartyMembers([]);
         setPartyJoinRequests([]);
         setPendingJoinRequests([]);
+        setPartyGameSuggestions([]);
+        setPartySelectedGame(null);
+        setPokerGame(null);
+        setPokerJoinPrompt(null);
+        setPokerPlayAgainPrompt(null);
+        setPokerGameOver(null);
       });
 
       s.on('party:kicked', () => {
@@ -331,6 +618,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setPartyMembers([]);
         setPartyJoinRequests([]);
         setPendingJoinRequests([]);
+        setPartyGameSuggestions([]);
+        setPartySelectedGame(null);
+        setPokerGame(null);
+        setPokerJoinPrompt(null);
+        setPokerPlayAgainPrompt(null);
+        setPokerGameOver(null);
       });
 
       s.on('party:invite', (invite: PartyInvite) => {
@@ -386,6 +679,11 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
       s.on('party:join-request-resolved', (data: { partyId: string; accepted: boolean }) => {
         setPendingJoinRequests((prev) => prev.filter((partyId) => partyId !== data.partyId));
+      });
+
+      s.on('party:game-state', (data: { selectedGame: PartySelectedGame | null; suggestions: PartyGameSuggestion[] }) => {
+        setPartySelectedGame(data.selectedGame);
+        setPartyGameSuggestions(data.suggestions);
       });
 
       // Economy events
@@ -522,6 +820,181 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setBombPartyPlayAgainPrompt(null);
       });
 
+      // Poker events
+      s.on('poker:state', (game: PokerGameState) => {
+        setPokerGame(game);
+        setPokerGameOver(null);
+        setPokerJoinPrompt(null);
+        setPokerPlayAgainPrompt(null);
+      });
+
+      s.on('poker:join-prompt', (data: PokerJoinPrompt) => {
+        setPokerJoinPrompt({
+          ...data,
+          responses: data.responses || [],
+        });
+      });
+
+      s.on('poker:join-response-update', (data: { partyId: string; responses: Array<{ userId: string; accepted: boolean }> }) => {
+        setPokerJoinPrompt((prev) => (prev ? { ...prev, responses: data.responses } : null));
+      });
+
+      s.on('poker:join-cancelled', () => {
+        setPokerJoinPrompt(null);
+      });
+
+      s.on('poker:game-over', (data: PokerGameOver) => {
+        setPokerGame(null);
+        setPokerGameOver(data);
+      });
+
+      s.on('poker:play-again-prompt', (data: PokerPlayAgainPrompt) => {
+        const responses = data.responses || [];
+        setPokerPlayAgainPrompt({
+          ...data,
+          responses,
+          playAgainCount: data.playAgainCount ?? responses.filter((r) => r.playAgain).length,
+          leaveCount: data.leaveCount ?? responses.filter((r) => !r.playAgain).length,
+        });
+      });
+
+      s.on('poker:play-again-response-update', (data: {
+        partyId: string;
+        responses: Array<{ userId: string; playAgain: boolean }>;
+        playAgainCount: number;
+        leaveCount: number;
+      }) => {
+        setPokerPlayAgainPrompt((prev) => prev ? {
+          ...prev,
+          responses: data.responses,
+          playAgainCount: data.playAgainCount,
+          leaveCount: data.leaveCount,
+        } : null);
+      });
+
+      s.on('poker:play-again-cancelled', () => {
+        setPokerPlayAgainPrompt(null);
+      });
+
+      s.on('poker:error', (data: { message: string }) => {
+        console.error('Poker error:', data.message);
+      });
+
+      // Petit Bac events
+      s.on('petitbac:started', (game: PetitBacGameState) => {
+        setPetitBacGame(game);
+        setPetitBacRoundResult(null);
+        setPetitBacJoinPrompt(null);
+        setPetitBacPlayAgainPrompt(null);
+      });
+
+      s.on('petitbac:round-started', (game: PetitBacGameState) => {
+        setPetitBacGame(game);
+        setPetitBacRoundResult(null);
+      });
+
+      s.on('petitbac:player-submitted', (data: { userId: string; submittedCount: number }) => {
+        setPetitBacGame((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            submittedCount: data.submittedCount,
+            players: prev.players.map((p) =>
+              p.userId === data.userId ? { ...p, submitted: true } : p
+            ),
+          };
+        });
+      });
+
+      s.on('petitbac:player-left', (data: { userId: string }) => {
+        setPetitBacGame((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            players: prev.players.filter((p) => p.userId !== data.userId),
+          };
+        });
+      });
+
+      s.on('petitbac:round-ended', (data: { game: PetitBacGameState; result: PetitBacRoundResult }) => {
+        setPetitBacGame(data.game);
+        setPetitBacRoundResult(data.result);
+      });
+
+      s.on('petitbac:error', (data: { message: string }) => {
+        console.error('Petit Bac error:', data.message);
+      });
+
+      s.on('petitbac:join-prompt', (data: {
+        partyId: string;
+        leaderId: string;
+        rounds: number;
+        roundDuration: number;
+        categories: string[];
+        timeLimit: number;
+        members: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+        responses?: Array<{ userId: string; accepted: boolean }>;
+      }) => {
+        setPetitBacJoinPrompt({
+          ...data,
+          startTime: Date.now(),
+          responses: data.responses || [],
+        });
+      });
+
+      s.on('petitbac:join-response-update', (data: {
+        partyId: string;
+        responses: Array<{ userId: string; accepted: boolean }>;
+      }) => {
+        setPetitBacJoinPrompt((prev) => (prev ? { ...prev, responses: data.responses } : null));
+      });
+
+      s.on('petitbac:join-cancelled', () => {
+        setPetitBacJoinPrompt(null);
+      });
+
+      s.on('petitbac:play-again-prompt', (data: {
+        partyId: string;
+        timeLimit: number;
+        gameOverData: PetitBacPlayAgainPrompt['gameOverData'];
+        players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+        responses?: Array<{ userId: string; playAgain: boolean }>;
+        playAgainCount?: number;
+        leaveCount?: number;
+      }) => {
+        const responses = data.responses || [];
+        setPetitBacPlayAgainPrompt({
+          ...data,
+          startTime: Date.now(),
+          responses,
+          playAgainCount: data.playAgainCount ?? responses.filter((r) => r.playAgain).length,
+          leaveCount: data.leaveCount ?? responses.filter((r) => !r.playAgain).length,
+        });
+        setPetitBacGame(null);
+      });
+
+      s.on('petitbac:play-again-response-update', (data: {
+        partyId: string;
+        responses: Array<{ userId: string; playAgain: boolean }>;
+        playAgainCount: number;
+        leaveCount: number;
+      }) => {
+        setPetitBacPlayAgainPrompt((prev) =>
+          prev
+            ? {
+                ...prev,
+                responses: data.responses,
+                playAgainCount: data.playAgainCount,
+                leaveCount: data.leaveCount,
+              }
+            : null
+        );
+      });
+
+      s.on('petitbac:play-again-cancelled', () => {
+        setPetitBacPlayAgainPrompt(null);
+      });
+
       return () => {
         disconnectSocket();
         s.removeAllListeners();
@@ -541,6 +1014,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const reactToMessage = (messageId: string, emoji: string) => {
+    if (user) {
+      chatEvents.react(user.id, messageId, emoji);
+    }
+  };
+
   const setCurrentPage = (page: string) => {
     if (user) {
       chatEvents.setPage(user.id, page);
@@ -550,6 +1029,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const deleteMessage = (messageId: string) => {
     if (user && socket) {
       socket.emit('chat:delete-message', { messageId, adminId: user.id });
+    }
+  };
+
+  const pinMessage = (messageId: string, pinned: boolean) => {
+    if (user) {
+      chatEvents.pinMessage(user.id, messageId, pinned);
     }
   };
 
@@ -620,6 +1105,18 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const suggestPartyGame = (gameId: string, gameName: string) => {
+    if (user && currentParty) {
+      partyEvents.suggestGame(user.id, gameId, gameName);
+    }
+  };
+
+  const selectPartyGame = (gameId: string, gameName: string) => {
+    if (user && currentParty) {
+      partyEvents.selectGame(user.id, gameId, gameName);
+    }
+  };
+
   // Bomb Party actions
   const startBombParty = (lives: number, difficulty: 'easy' | 'medium' | 'hard') => {
     if (user && currentParty) {
@@ -664,6 +1161,75 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     setBombPartyGame(null); // Also clear game state to return to lobby
   };
 
+  // Poker actions
+  const startPoker = (startStack: number, bigBlind: number) => {
+    if (user && currentParty) {
+      pokerEvents.start(user.id, currentParty.id, startStack, bigBlind);
+    }
+  };
+
+  const respondToPokerJoinPrompt = (accepted: boolean) => {
+    if (user && pokerJoinPrompt) {
+      pokerEvents.respondToJoin(pokerJoinPrompt.partyId, user.id, accepted);
+    }
+  };
+
+  const actInPoker = (action: PokerAction, amount?: number) => {
+    if (user && currentParty) {
+      pokerEvents.action(currentParty.id, user.id, action, amount);
+    }
+  };
+
+  const leavePoker = () => {
+    if (user && currentParty) {
+      pokerEvents.leave(currentParty.id, user.id);
+    }
+    setPokerGame(null);
+  };
+
+  const respondToPokerPlayAgainPrompt = (playAgain: boolean) => {
+    if (user && pokerPlayAgainPrompt) {
+      pokerEvents.respondToPlayAgain(pokerPlayAgainPrompt.partyId, user.id, playAgain);
+    }
+  };
+
+  const clearPokerGameOver = () => {
+    setPokerGameOver(null);
+    setPokerGame(null);
+  };
+
+  // Petit Bac actions
+  const startPetitBac = (rounds: number, roundDuration: number, categories: string[]) => {
+    if (user && currentParty) {
+      petitBacEvents.start(user.id, currentParty.id, rounds, roundDuration, categories);
+    }
+  };
+
+  const respondToPetitBacJoinPrompt = (accepted: boolean) => {
+    if (user && petitBacJoinPrompt) {
+      petitBacEvents.respondToJoin(petitBacJoinPrompt.partyId, user.id, accepted);
+    }
+  };
+
+  const submitPetitBac = (answers: Record<string, string>) => {
+    if (user && currentParty) {
+      petitBacEvents.submit(currentParty.id, user.id, answers);
+    }
+  };
+
+  const leavePetitBac = () => {
+    if (user && currentParty) {
+      petitBacEvents.leave(currentParty.id, user.id);
+    }
+    setPetitBacGame(null);
+  };
+
+  const respondToPetitBacPlayAgainPrompt = (playAgain: boolean) => {
+    if (user && petitBacPlayAgainPrompt) {
+      petitBacEvents.respondToPlayAgain(petitBacPlayAgainPrompt.partyId, user.id, playAgain);
+    }
+  };
+
   return (
     <SocketContext.Provider
       value={{
@@ -673,9 +1239,11 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         onlineUsers,
         typingUsers,
         sendMessage,
+        reactToMessage,
         setTyping,
         setCurrentPage,
         deleteMessage,
+        pinMessage,
         currentParty,
         partyMembers,
         partyInvites,
@@ -693,6 +1261,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         kickFromParty,
         fetchPublicParties,
         syncParty,
+        partyGameSuggestions,
+        partySelectedGame,
+        suggestPartyGame,
+        selectPartyGame,
         balanceUpdate,
         bombPartyGame,
         bombPartyGameOver,
@@ -706,6 +1278,25 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         submitBombParty,
         leaveBombParty,
         clearBombPartyGameOver,
+        pokerGame,
+        pokerJoinPrompt,
+        pokerPlayAgainPrompt,
+        pokerGameOver,
+        startPoker,
+        respondToPokerJoinPrompt,
+        actInPoker,
+        leavePoker,
+        respondToPokerPlayAgainPrompt,
+        clearPokerGameOver,
+        petitBacGame,
+        petitBacRoundResult,
+        petitBacJoinPrompt,
+        petitBacPlayAgainPrompt,
+        startPetitBac,
+        respondToPetitBacJoinPrompt,
+        submitPetitBac,
+        leavePetitBac,
+        respondToPetitBacPlayAgainPrompt,
       }}
     >
       {children}

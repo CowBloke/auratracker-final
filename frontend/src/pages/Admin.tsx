@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Swords, Award, Rocket } from 'lucide-react';
 import {
   AlertDialog,
@@ -44,6 +45,8 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
   COSMETIC: 'Cosmétique',
   UPGRADE: 'Amélioration',
 };
+
+const ANNOUNCEMENT_MAX_LENGTH = 120;
 
 // Log type configuration with icons, colors and labels
 const LOG_TYPE_CONFIG: Record<string, { label: string; color: string; bgColor: string; borderColor: string; icon: React.ComponentType<{ className?: string }> }> = {
@@ -275,6 +278,11 @@ export default function Admin() {
     bombparty_wpp_hard: '100',
     bombparty_3letter_start_round: '10',
   });
+  const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
+  const [maintenanceMessage, setMaintenanceMessage] = useState('');
+  const [savingMaintenance, setSavingMaintenance] = useState(false);
+  const [announcementMessage, setAnnouncementMessage] = useState('');
+  const [savingAnnouncement, setSavingAnnouncement] = useState(false);
 
   // Deploy state
   const [deploying, setDeploying] = useState(false);
@@ -450,6 +458,7 @@ export default function Admin() {
       setLoadingSettings(true);
       const res = await adminApi.getSettings();
       setGameSettings(res.data.settings);
+      setAnnouncementMessage(res.data.settings.topbar_announcement || '');
       // Update form with loaded values
       setSettingsForm({
         bombparty_wpp_easy: res.data.settings.bombparty_wpp_easy || '500',
@@ -457,6 +466,10 @@ export default function Admin() {
         bombparty_wpp_hard: res.data.settings.bombparty_wpp_hard || '100',
         bombparty_3letter_start_round: res.data.settings.bombparty_3letter_start_round || '10',
       });
+      const maintenanceValue = res.data.settings.maintenance_enabled || 'false';
+      const maintenanceNormalized = maintenanceValue.toLowerCase();
+      setMaintenanceEnabled(maintenanceNormalized === 'true' || maintenanceNormalized === '1');
+      setMaintenanceMessage(res.data.settings.maintenance_message || '');
     } catch (error) {
       console.error('Failed to fetch settings:', error);
       showMessage('error', 'Erreur lors du chargement des paramètres');
@@ -504,6 +517,43 @@ export default function Admin() {
       showMessage('error', 'Erreur lors de la sauvegarde');
     } finally {
       setSavingSettings(false);
+    }
+  };
+
+  const saveMaintenance = async () => {
+    try {
+      setSavingMaintenance(true);
+      await adminApi.updateSettings({
+        maintenance_enabled: maintenanceEnabled ? 'true' : 'false',
+        maintenance_message: maintenanceMessage.trim(),
+      });
+      showMessage('success', 'Maintenance mise à jour');
+      fetchSettings();
+    } catch (error) {
+      console.error('Failed to save maintenance:', error);
+      showMessage('error', 'Erreur lors de la sauvegarde');
+    } finally {
+      setSavingMaintenance(false);
+    }
+  };
+
+  const saveAnnouncement = async () => {
+    try {
+      const trimmed = announcementMessage.trim();
+      if (trimmed.length > ANNOUNCEMENT_MAX_LENGTH) {
+        showMessage('error', `Le message doit faire ${ANNOUNCEMENT_MAX_LENGTH} caractères ou moins`);
+        return;
+      }
+
+      setSavingAnnouncement(true);
+      await adminApi.updateSetting('topbar_announcement', trimmed);
+      setAnnouncementMessage(trimmed);
+      showMessage('success', 'Annonce sauvegardée');
+    } catch (error) {
+      console.error('Failed to save announcement:', error);
+      showMessage('error', 'Erreur lors de la sauvegarde de l\'annonce');
+    } finally {
+      setSavingAnnouncement(false);
     }
   };
 
@@ -1095,6 +1145,19 @@ export default function Admin() {
                 {logStats.total.toLocaleString()}
               </span>
             )}
+          </TabsTrigger>
+          <TabsTrigger
+            value="announcement"
+            className="data-[state=active]:bg-muted/50 data-[state=active]:text-foreground text-muted-foreground"
+          >
+            Annonce
+          </TabsTrigger>
+          <TabsTrigger
+            value="attention"
+            className="data-[state=active]:bg-muted/50 data-[state=active]:text-foreground text-muted-foreground"
+          >
+            <AlertTriangle className="h-4 w-4 mr-1" />
+            Attention
           </TabsTrigger>
           <TabsTrigger
             value="settings"
@@ -2280,6 +2343,118 @@ export default function Admin() {
                   className="h-7 w-7 p-0"
                 >
                   <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Announcement Tab */}
+        <TabsContent value="announcement" className="space-y-6">
+          <div className="h-px bg-border" />
+
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
+              Annonce top bar
+            </h2>
+          </div>
+
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Ce message s'affiche pour tous les utilisateurs dans la barre du haut, à côté du bouton de sidebar.
+            </p>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Message</label>
+                <span className={cn(
+                  'text-xs',
+                  announcementMessage.length >= ANNOUNCEMENT_MAX_LENGTH ? 'text-amber-400' : 'text-muted-foreground'
+                )}>
+                  {announcementMessage.length}/{ANNOUNCEMENT_MAX_LENGTH}
+                </span>
+              </div>
+              <Textarea
+                value={announcementMessage}
+                onChange={(e) => setAnnouncementMessage(e.target.value)}
+                placeholder="Ex: Maintenance prévue ce soir à 23h."
+                className="min-h-[90px]"
+                maxLength={ANNOUNCEMENT_MAX_LENGTH}
+              />
+              <p className="text-xs text-muted-foreground">
+                Laissez vide pour masquer l'annonce.
+              </p>
+            </div>
+
+            <div className="flex justify-end">
+              <Button
+                onClick={saveAnnouncement}
+                disabled={savingAnnouncement}
+              >
+                {savingAnnouncement ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                Sauvegarder l'annonce
+              </Button>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Attention Tab */}
+        <TabsContent value="attention" className="space-y-6">
+          <div className="h-px bg-border" />
+
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
+              Maintenance
+            </h2>
+          </div>
+
+          {loadingSettings ? (
+            <div className="flex justify-center py-12">
+              <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 border border-border/30 rounded-lg">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Activer la maintenance</p>
+                  <p className="text-xs text-muted-foreground">
+                    Affiche la page de maintenance sur tout le site (hors admin).
+                  </p>
+                </div>
+                <Switch
+                  checked={maintenanceEnabled}
+                  onCheckedChange={setMaintenanceEnabled}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Raison</label>
+                <Textarea
+                  value={maintenanceMessage}
+                  onChange={(e) => setMaintenanceMessage(e.target.value)}
+                  placeholder="Ex: Mise à jour technique en cours."
+                  className="min-h-[120px]"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Ce texte s'affichera sur la page de maintenance.
+                </p>
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  onClick={saveMaintenance}
+                  disabled={savingMaintenance}
+                >
+                  {savingMaintenance ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  Sauvegarder la maintenance
                 </Button>
               </div>
             </div>

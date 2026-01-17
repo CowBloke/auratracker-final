@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import { usersApi } from '../services/api';
@@ -16,6 +17,31 @@ interface User {
   username: string;
   usernameColor?: string | null;
 }
+
+const multiplayerGames = [
+  {
+    id: 'bomb-party',
+    name: 'Bomb Party',
+    description: 'Trouve des mots contenant les lettres avant que la bombe explose.',
+    type: 'Party',
+  },
+  {
+    id: 'petit-bac',
+    name: 'Petit Bac',
+    description: 'Remplis les categories avec la bonne lettre avant la fin du temps.',
+    type: 'Party',
+  },
+];
+
+const getGameLink = (gameId: string) => {
+  if (gameId === 'bomb-party') {
+    return '/games/bomb-party';
+  }
+  if (gameId === 'petit-bac') {
+    return '/games/petit-bac';
+  }
+  return `/games/${gameId}`;
+};
 
 export default function Party() {
   const { user } = useAuth();
@@ -37,6 +63,10 @@ export default function Party() {
     kickFromParty,
     fetchPublicParties,
     syncParty,
+    partyGameSuggestions,
+    partySelectedGame,
+    suggestPartyGame,
+    selectPartyGame,
   } = useSocket();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -82,6 +112,7 @@ export default function Party() {
       u.id !== user?.id &&
       !partyMembers.find((m) => m.userId === u.id)
   );
+  const selectedGameId = partySelectedGame?.gameId;
   return (
     <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
       {/* Header */}
@@ -223,6 +254,127 @@ export default function Party() {
                 )}
               </div>
             ))}
+          </div>
+
+          <div className="space-y-4 pt-6 border-t border-border/30">
+            <h3 className="text-sm text-muted-foreground tracking-wide uppercase">
+              Jeux multijoueur
+            </h3>
+            {partySelectedGame ? (
+              <div className="flex flex-col gap-2 border border-border/30 p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="font-medium">{partySelectedGame.gameName}</p>
+                    <p className="text-sm text-muted-foreground">
+                      selectionne par{' '}
+                      <span
+                        style={partySelectedGame.selectedByColor ? { color: partySelectedGame.selectedByColor } : undefined}
+                      >
+                        {partySelectedGame.selectedByName}
+                      </span>
+                    </p>
+                  </div>
+                  <Link
+                    to={getGameLink(partySelectedGame.gameId)}
+                    className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+                  >
+                    Ouvrir
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Aucun jeu selectionne pour le moment
+              </p>
+            )}
+
+            <div className="space-y-0">
+              {multiplayerGames.map((game) => {
+                const hasSuggested = partyGameSuggestions.some(
+                  (suggestion) => suggestion.gameId === game.id && suggestion.suggestedById === user?.id
+                );
+                const isSelected = selectedGameId === game.id;
+                const isDisabled = isLeader ? isSelected : hasSuggested || isSelected;
+                return (
+                  <div
+                    key={game.id}
+                    className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-3">
+                        <p className="font-medium">{game.name}</p>
+                        <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                          {game.type}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {game.description}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() =>
+                        isLeader
+                          ? selectPartyGame(game.id, game.name)
+                          : suggestPartyGame(game.id, game.name)
+                      }
+                      disabled={isDisabled}
+                      className={cn(
+                        "px-4 py-2 text-sm border transition-colors",
+                        isDisabled
+                          ? "border-border/30 text-muted-foreground/60 cursor-not-allowed"
+                          : "border-foreground text-foreground hover:bg-foreground hover:text-background"
+                      )}
+                    >
+                      {isLeader
+                        ? isSelected
+                          ? 'Selectionne'
+                          : 'Choisir'
+                        : isSelected
+                          ? 'Selectionne'
+                          : hasSuggested
+                            ? 'Suggere'
+                            : 'Suggerer'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                Suggestions
+              </p>
+              {partyGameSuggestions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Aucune suggestion</p>
+              ) : (
+                <div className="space-y-0">
+                  {partyGameSuggestions.map((suggestion) => (
+                    <div
+                      key={suggestion.id}
+                      className="flex items-center justify-between py-2 border-b border-border/30 last:border-0"
+                    >
+                      <div className="text-sm">
+                        <span className="font-medium">{suggestion.gameName}</span>
+                        <span className="text-muted-foreground"> · par </span>
+                        <span
+                          style={suggestion.suggestedByColor ? { color: suggestion.suggestedByColor } : undefined}
+                        >
+                          {suggestion.suggestedByName}
+                        </span>
+                      </div>
+                      {isLeader && suggestion.gameId !== selectedGameId && (
+                        <button
+                          onClick={() => selectPartyGame(suggestion.gameId, suggestion.gameName)}
+                          className="px-3 py-1 text-xs border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+                        >
+                          Choisir
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {isLeader && partyJoinRequests.length > 0 && (

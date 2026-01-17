@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { leaderboardsApi } from '../services/api';
+import { auraCoinApi, AuraCoinLeaderboardEntry, leaderboardsApi } from '../services/api';
 import { cn } from '@/lib/utils';
 
 interface Ranking {
@@ -9,15 +9,17 @@ interface Ranking {
   username: string;
   usernameColor?: string | null;
   value: number;
+  moneyValue?: number;
   wins?: number;
   totalPlayed?: number;
 }
 
-type Category = 'aura' | 'money' | 'doodle_jump' | 'casino' | 'games_played' | 'bombparty';
+type Category = 'aura' | 'money' | 'auracoin' | 'doodle_jump' | 'casino' | 'games_played' | 'bombparty';
 
 const categories: { id: Category; name: string; valueLabel: string }[] = [
   { id: 'aura', name: 'Aura', valueLabel: 'aura' },
   { id: 'money', name: 'Argent', valueLabel: '$' },
+  { id: 'auracoin', name: 'Aura Coin', valueLabel: 'AC' },
   { id: 'doodle_jump', name: 'Doodle Jump', valueLabel: 'score' },
   { id: 'casino', name: 'Casino', valueLabel: '$' },
   { id: 'bombparty', name: 'Bomb Party', valueLabel: 'victoires' },
@@ -38,9 +40,28 @@ export default function Leaderboards() {
   const fetchRankings = async () => {
     try {
       setLoading(true);
-      const response = await leaderboardsApi.get(category, { limit: 50 });
-      setRankings(response.data.rankings);
-      setUserRank(response.data.userRank);
+      if (category === 'auracoin') {
+        const [leaderboardRes, priceRes] = await Promise.all([
+          auraCoinApi.getLeaderboard(50),
+          auraCoinApi.getPrice(24),
+        ]);
+        const currentPrice = priceRes.data.currentPrice;
+        const mapped = leaderboardRes.data.leaderboard.map((entry: AuraCoinLeaderboardEntry, index: number) => ({
+          rank: index + 1,
+          userId: entry.id,
+          username: entry.username,
+          usernameColor: entry.usernameColor,
+          value: entry.auraCoinBalance,
+          moneyValue: entry.auraCoinBalance * currentPrice,
+        }));
+        setRankings(mapped);
+        const userEntry = mapped.find((entry) => entry.userId === user?.id);
+        setUserRank(userEntry ? userEntry.rank : null);
+      } else {
+        const response = await leaderboardsApi.get(category, { limit: 50 });
+        setRankings(response.data.rankings);
+        setUserRank(response.data.userRank);
+      }
     } catch (error) {
       console.error('Failed to fetch rankings:', error);
     } finally {
@@ -49,12 +70,15 @@ export default function Leaderboards() {
   };
 
   const formatValue = (ranking: Ranking) => {
+    const numericValue = typeof ranking.value === 'number' ? ranking.value : Number(ranking.value);
     switch (category) {
+      case 'auracoin':
+        return `${numericValue.toFixed(4)} AC • ≈ $${(ranking.moneyValue || 0).toFixed(2)}`;
       case 'money':
       case 'casino':
-        return `$${ranking.value.toLocaleString()}`;
+        return `$${numericValue.toLocaleString()}`;
       default:
-        return ranking.value.toLocaleString();
+        return numericValue.toLocaleString();
     }
   };
 

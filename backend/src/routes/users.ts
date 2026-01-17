@@ -3,6 +3,7 @@ import { prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
+const ANNOUNCEMENT_KEY = 'topbar_announcement';
 
 // Get all users (for the 40-user community)
 router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
@@ -31,48 +32,69 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   }
 });
 
+// Get top bar announcement (all authenticated users)
+router.get('/announcement', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const setting = await prisma.gameSettings.findUnique({
+      where: { key: ANNOUNCEMENT_KEY },
+    });
+
+    res.json({ message: setting?.value || '' });
+  } catch (error) {
+    console.error('Get announcement error:', error);
+    res.status(500).json({ error: 'Failed to get announcement' });
+  }
+});
+
 // Get user by ID
 router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     
-    const user = await prisma.user.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        username: true,
-        aura: true,
-        money: true,
-        auraCoinBalance: true,
-        usernameColor: true,
-        profilePicture: true,
-        bio: true,
-        createdAt: true,
-        userBadges: {
-          select: {
-            id: true,
-            assignedAt: true,
-            badge: {
-              select: {
-                id: true,
-                name: true,
-                color: true,
+    const [user, auraCoinAggregate] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          username: true,
+          aura: true,
+          money: true,
+          auraCoinBalance: true,
+          usernameColor: true,
+          profilePicture: true,
+          bio: true,
+          createdAt: true,
+          userBadges: {
+            select: {
+              id: true,
+              assignedAt: true,
+              badge: {
+                select: {
+                  id: true,
+                  name: true,
+                  color: true,
+                },
               },
             },
+            orderBy: { assignedAt: 'desc' },
           },
-          orderBy: { assignedAt: 'desc' },
-        },
-        gameStats: {
-          select: {
-            gameType: true,
-            wins: true,
-            losses: true,
-            highScore: true,
-            totalPlayed: true,
+          gameStats: {
+            select: {
+              gameType: true,
+              wins: true,
+              losses: true,
+              highScore: true,
+              totalPlayed: true,
+            },
           },
         },
-      },
-    });
+      }),
+      prisma.auraCoinTransaction.aggregate({
+        where: { userId: id },
+        _count: { _all: true },
+        _sum: { moneyAmount: true },
+      }),
+    ]);
     
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -87,7 +109,16 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
       userBadgeId: userBadge.id,
     }));
 
-    res.json({ user: { ...userData, badges } });
+    res.json({
+      user: {
+        ...userData,
+        badges,
+        auraCoinStats: {
+          transactionCount: auraCoinAggregate._count._all,
+          totalMoney: auraCoinAggregate._sum.moneyAmount ?? 0,
+        },
+      },
+    });
   } catch (error) {
     console.error('Get user error:', error);
     res.status(500).json({ error: 'Failed to get user' });

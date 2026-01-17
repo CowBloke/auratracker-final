@@ -1,4 +1,5 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import Layout from './components/layout/Layout';
 import Login from './pages/Login';
@@ -15,12 +16,16 @@ import Profile from './pages/Profile';
 import Inventory from './pages/Inventory';
 import Party from './pages/Party';
 import BombParty from './pages/BombParty';
+import Poker from './pages/Poker';
+import PetitBac from './pages/PetitBac';
 import Admin from './pages/Admin';
 import Rules from './pages/Rules';
 import Suggestions from './pages/Suggestions';
 import ReportBug from './pages/ReportBug';
 import Pass from './pages/Pass';
 import Changelog from './pages/Changelog';
+import Maintenance from './pages/Maintenance';
+import { maintenanceApi } from './services/api';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -43,6 +48,51 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function App() {
+  const location = useLocation();
+  const [maintenanceStatus, setMaintenanceStatus] = useState<{ enabled: boolean; message: string }>({
+    enabled: false,
+    message: '',
+  });
+  const [maintenanceLoading, setMaintenanceLoading] = useState(true);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const fetchMaintenance = async () => {
+      try {
+        const res = await maintenanceApi.getStatus();
+        if (!isActive) return;
+        setMaintenanceStatus({
+          enabled: res.data.enabled,
+          message: res.data.message || '',
+        });
+      } catch (error) {
+        if (!isActive) return;
+        setMaintenanceStatus({ enabled: false, message: '' });
+      } finally {
+        if (isActive) {
+          setMaintenanceLoading(false);
+        }
+      }
+    };
+
+    fetchMaintenance();
+    const interval = window.setInterval(fetchMaintenance, 60000);
+    return () => {
+      isActive = false;
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  if (
+    !maintenanceLoading &&
+    maintenanceStatus.enabled &&
+    !location.pathname.startsWith('/admin') &&
+    location.pathname !== '/login'
+  ) {
+    return <Maintenance message={maintenanceStatus.message} />;
+  }
+
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
@@ -62,6 +112,8 @@ function App() {
         <Route path="games/casino" element={<Casino />} />
         <Route path="games/aura-coin" element={<AuraCoin />} />
         <Route path="games/bomb-party" element={<BombParty />} />
+        <Route path="games/poker" element={<Poker />} />
+        <Route path="games/petit-bac" element={<PetitBac />} />
         <Route path="marketplace" element={<Marketplace />} />
         <Route path="leaderboards" element={<Leaderboards />} />
         <Route path="party" element={<Party />} />

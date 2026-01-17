@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useSocket } from '@/contexts/SocketContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { Users, LogOut, Bomb, ChevronUp, ChevronDown, Gamepad2, Trash2 } from 'lucide-react';
+import { Users, LogOut, Bomb, ChevronUp, ChevronDown, Gamepad2, Trash2, UserPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function PartyBubble() {
@@ -14,6 +14,8 @@ export default function PartyBubble() {
     leaveParty,
     deleteParty,
     bombPartyGame,
+    petitBacGame,
+    sendMessage,
   } = useSocket();
 
   const [expanded, setExpanded] = useState(true);
@@ -24,7 +26,15 @@ export default function PartyBubble() {
   const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
   const gameStatus = bombPartyGame
     ? `Bomb Party - Round ${bombPartyGame.round}`
-    : 'En attente';
+    : petitBacGame
+      ? `Petit Bac - Manche ${petitBacGame.round}/${petitBacGame.maxRounds}`
+      : 'En attente';
+  const inviteLabel = currentParty.name ? `Rejoins ${currentParty.name}` : 'Rejoins ma party';
+  const inviteVisibility = currentParty.isPublic ? 'public' : 'private';
+
+  const sendChatInvite = () => {
+    sendMessage(`[[party-invite:${currentParty.id}:${inviteVisibility}]]${inviteLabel}`);
+  };
 
   return (
     <div className="bg-background border border-border rounded-lg shadow-lg overflow-hidden min-w-[200px] max-w-[280px]">
@@ -72,7 +82,11 @@ export default function PartyBubble() {
                       "w-1.5 h-1.5 rounded-full",
                       bombPartyGame?.currentPlayerId === member.userId
                         ? "bg-yellow-500"
-                        : "bg-green-500"
+                        : petitBacGame
+                          ? (petitBacGame.players.find((p) => p.userId === member.userId)?.submitted
+                              ? "bg-green-500"
+                              : "bg-yellow-500")
+                          : "bg-green-500"
                     )}
                   />
                   <span
@@ -89,7 +103,15 @@ export default function PartyBubble() {
             </div>
 
             {/* Actions */}
-            <div className="px-3 py-2 border-t border-border/30 flex gap-2">
+            <div className="px-3 py-2 border-t border-border/30 flex flex-wrap gap-2">
+              <button
+                onClick={sendChatInvite}
+                className="flex items-center justify-center gap-1 px-2 py-1.5 text-xs border border-border/50 text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors rounded"
+                title="Inviter via le chat"
+              >
+                <UserPlus className="h-3 w-3" />
+                Inviter
+              </button>
               {/* Go to game */}
               {bombPartyGame && location.pathname !== '/games/bomb-party' && (
                 <Link
@@ -97,6 +119,15 @@ export default function PartyBubble() {
                   className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors rounded"
                 >
                   <Bomb className="h-3 w-3" />
+                  Rejoindre
+                </Link>
+              )}
+              {petitBacGame && location.pathname !== '/games/petit-bac' && (
+                <Link
+                  to="/games/petit-bac"
+                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors rounded"
+                >
+                  <Gamepad2 className="h-3 w-3" />
                   Rejoindre
                 </Link>
               )}
