@@ -131,21 +131,21 @@ export default function Casino() {
   const [activeGame, setActiveGame] = useState<GameTab>('roulette');
 
   return (
-    <div className="max-w-6xl mx-auto py-10 px-4 space-y-6">
+    <div className="max-w-6xl mx-auto py-12 px-4 space-y-8">
       <header className="space-y-3">
         <div className="flex items-center justify-between">
-          <div className="space-y-1">
+          <div>
             <Link
               to="/games"
-              className="text-xs text-muted-foreground uppercase hover:text-foreground transition-colors"
+              className="text-sm text-muted-foreground tracking-wide uppercase hover:text-foreground transition-colors"
             >
               ← Jeux
             </Link>
-            <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">
+            <h1 className="text-5xl md:text-7xl font-light tracking-tight">
               Casino
             </h1>
-            <p className="text-muted-foreground text-sm">
-              Deux tables, une interface nette.
+            <p className="text-muted-foreground">
+              Choisis ta table: machine à sous classique ou roulette animée.
             </p>
           </div>
         </div>
@@ -158,10 +158,10 @@ export default function Casino() {
               key={tab.id}
               onClick={() => setActiveGame(tab.id as GameTab)}
               className={cn(
-                "rounded-full px-3 py-1.5 text-sm border transition-colors",
+                "rounded-full px-4 py-2 text-sm border transition-colors",
                 activeGame === tab.id
-                  ? "border-foreground text-foreground bg-background"
-                  : "border-border text-muted-foreground hover:text-foreground"
+                  ? "border-foreground text-foreground"
+                  : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40"
               )}
             >
               {tab.label}
@@ -362,31 +362,31 @@ function RouletteGame() {
   const canSpin = user && totalBet > 0 && !spinning && (user.money >= totalBet);
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-start justify-between">
-        <div className="space-y-1">
-          <h2 className="text-2xl font-semibold">Roulette</h2>
-          <p className="text-muted-foreground text-sm">
-            Interface dépouillée, mêmes règles.
+    <div className="space-y-10">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-semibold">Roulette</h2>
+          <p className="text-muted-foreground">
+            Mises multi-cases, roue animée et historique en direct.
           </p>
         </div>
-        <div className="text-right text-xs text-muted-foreground tabular-nums space-y-0.5">
-          <div className="text-sm text-foreground">Solde: ${user?.money.toLocaleString() || 0}</div>
-          <div>Mises: ${totalBet.toLocaleString()}</div>
+        <div className="text-right text-sm text-muted-foreground tabular-nums space-y-1">
+          <div className="text-lg text-foreground">Solde: ${user?.money.toLocaleString() || 0}</div>
+          <div>Mises en cours: ${totalBet.toLocaleString()}</div>
           {lastResult && (
-            <div className={cn(lastResult.net >= 0 ? "text-green-500" : "text-destructive")}>
-              {lastResult.net >= 0 ? '+' : ''}{lastResult.net.toLocaleString()}
+            <div className={cn("text-xs", lastResult.net >= 0 ? "text-green-500" : "text-destructive")}>
+              Dernier tour: {lastResult.net >= 0 ? '+' : ''}{lastResult.net.toLocaleString()}
             </div>
           )}
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
+      <div className="grid gap-8 lg:grid-cols-[420px_1fr]">
         {/* Wheel + status */}
-        <div className="rounded-xl border border-border/40 bg-background p-4">
-          <div className="relative aspect-square w-full max-w-[360px] mx-auto">
+        <div className="rounded-2xl border border-border/60 bg-gradient-to-b from-background to-background/40 p-6 shadow-2xl shadow-black/10">
+          <div className="relative aspect-square w-full max-w-[420px] mx-auto">
             <div
-              className="absolute inset-0 rounded-full overflow-hidden border border-border/50"
+              className="absolute inset-0 rounded-full overflow-hidden border border-border/40 shadow-2xl shadow-black/30"
               style={{
                 transform: `rotate(${wheelRotation}deg)`,
                 transition: `transform ${SPIN_DURATION}ms cubic-bezier(0.21, 0.8, 0.34, 1)`,
@@ -396,24 +396,32 @@ function RouletteGame() {
                 className="absolute inset-0 rounded-full"
                 style={{ background: wheelGradient }}
               />
+              <div className="absolute inset-3 rounded-full border border-white/10 shadow-inner shadow-black/40" />
+              <div className="absolute inset-6 rounded-full bg-gradient-to-b from-black/30 via-background/70 to-background/90 border border-white/5" />
+              <div className="absolute inset-14 rounded-full bg-black/50 border border-white/10 backdrop-blur-sm" />
               {WHEEL_NUMBERS.map((num, idx) => {
                 const angle = WHEEL_OFFSET + idx * SLICE_ANGLE + SLICE_ANGLE / 2;
                 const color = getNumberColor(num);
                 return (
                   <div
                     key={`${num}-${idx}`}
-                    className="absolute left-1/2 top-1/2 text-[10px] font-semibold tracking-tight"
-                    style={{
-                      transform: `rotate(${angle}deg) translateY(-47%)`,
-                      color:
-                        color === 'red'
-                          ? '#fecdd3'
-                          : color === 'black'
-                            ? '#e2e8f0'
-                            : '#86efac',
-                    }}
+                    className="absolute inset-0"
+                    style={{ transform: `rotate(${angle}deg)` }}
                   >
-                    {num}
+                    <div
+                      className="absolute left-1/2 -translate-x-1/2 text-[10px] font-semibold tracking-tight"
+                      style={{
+                        top: '6%',
+                        color:
+                          color === 'red'
+                            ? '#fecdd3'
+                            : color === 'black'
+                              ? '#e2e8f0'
+                              : '#86efac',
+                      }}
+                    >
+                      {num}
+                    </div>
                   </div>
                 );
               })}
@@ -421,20 +429,23 @@ function RouletteGame() {
 
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
               <div
-                className="relative w-[84%] h-[84%]"
+                className="relative w-[88%] h-[88%]"
                 style={{
                   transform: `rotate(${ballRotation}deg)`,
                   transition: `transform ${BALL_DURATION}ms cubic-bezier(0.17, 0.84, 0.44, 1.02)`,
                 }}
               >
-                <div className="absolute left-1/2 -translate-x-1/2 -top-2 w-3.5 h-3.5 rounded-full bg-white shadow-sm border border-black/20" />
+                <div className="absolute left-1/2 -translate-x-1/2 -top-2 w-4 h-4 rounded-full bg-white shadow-xl shadow-black/40 border border-black/30" />
               </div>
             </div>
+
+            <div className="absolute inset-[42%] rounded-full border border-white/10 bg-gradient-to-b from-white/10 via-white/5 to-black/40 shadow-inner shadow-black/50" />
+            <div className="absolute inset-[48%] rounded-full bg-gradient-to-b from-foreground/80 to-black/90 shadow-2xl shadow-black/60" />
           </div>
 
-          <div className="mt-4 space-y-3">
+          <div className="mt-6 space-y-3">
             {lastResult ? (
-              <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background px-3 py-2">
+              <div className="flex items-center justify-between rounded-xl border border-border/60 bg-background/70 px-4 py-3">
                 <div className="flex items-center gap-3">
                   <div
                     className={cn(
