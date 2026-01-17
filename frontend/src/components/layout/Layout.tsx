@@ -6,6 +6,7 @@ import PartyBubble from '../party/PartyBubble';
 import BombPartyJoinPrompt from '../game/BombPartyJoinPrompt';
 import PokerJoinPrompt from '../game/PokerJoinPrompt';
 import PetitBacJoinPrompt from '../game/PetitBacJoinPrompt';
+import MonopolyJoinPrompt from '../game/MonopolyJoinPrompt';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocket } from '@/contexts/SocketContext';
@@ -206,6 +207,7 @@ export default function Layout() {
         <BombPartyJoinPrompt />
         <PokerJoinPrompt />
         <PetitBacJoinPrompt />
+        <MonopolyJoinPrompt />
       </div>
     </ChatSidebarProvider>
   );

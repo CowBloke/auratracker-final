@@ -15,6 +15,7 @@ export default function PartyBubble() {
     deleteParty,
     bombPartyGame,
     petitBacGame,
+    monopolyGame,
     sendMessage,
   } = useSocket();
 
@@ -28,6 +29,8 @@ export default function PartyBubble() {
     ? `Bomb Party - Round ${bombPartyGame.round}`
     : petitBacGame
       ? `Petit Bac - Manche ${petitBacGame.round}/${petitBacGame.maxRounds}`
+      : monopolyGame
+        ? `Monopoly - Tour ${monopolyGame.turnNumber}`
       : 'En attente';
   const inviteLabel = currentParty.name ? `Rejoins ${currentParty.name}` : 'Rejoins ma party';
   const inviteVisibility = currentParty.isPublic ? 'public' : 'private';
@@ -86,6 +89,8 @@ export default function PartyBubble() {
                           ? (petitBacGame.players.find((p) => p.userId === member.userId)?.submitted
                               ? "bg-green-500"
                               : "bg-yellow-500")
+                          : monopolyGame
+                            ? (monopolyGame.currentPlayerId === member.userId ? "bg-yellow-500" : "bg-green-500")
                           : "bg-green-500"
                     )}
                   />
@@ -125,6 +130,15 @@ export default function PartyBubble() {
               {petitBacGame && location.pathname !== '/games/petit-bac' && (
                 <Link
                   to="/games/petit-bac"
+                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors rounded"
+                >
+                  <Gamepad2 className="h-3 w-3" />
+                  Rejoindre
+                </Link>
+              )}
+              {monopolyGame && location.pathname !== '/games/monopoly' && (
+                <Link
+                  to="/games/monopoly"
                   className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors rounded"
                 >
                   <Gamepad2 className="h-3 w-3" />

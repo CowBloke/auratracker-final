@@ -35,6 +35,7 @@ import { setupGameHandlers } from './socket/games.js';
 import { setupBombPartyHandlers, startBombPartyCleanup } from './socket/bombparty.js';
 import { setupPokerHandlers } from './socket/poker.js';
 import { setupPetitBacHandlers } from './socket/petitbac.js';
+import { setupMonopolyHandlers } from './socket/monopoly.js';
 
 // Logger
 import { initLogger } from './utils/logger.js';
@@ -97,6 +98,7 @@ io.on('connection', (socket) => {
   setupBombPartyHandlers(socket, io);
   setupPokerHandlers(socket, io);
   setupPetitBacHandlers(socket, io);
+  setupMonopolyHandlers(socket, io);
   
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.id}`);
