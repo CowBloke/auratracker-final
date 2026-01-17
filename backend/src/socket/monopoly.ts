@@ -631,7 +631,46 @@ const endTurn = (game: MonopolyGame, io: Server) => {
   pushLog(game, `Tour de ${current.username}.`);
 };
 
-const endGame = (game: MonopolyGame, winnerId: string | null, io: Server | null) => {
+const calculateRewards = (game: MonopolyGame): Array<{ userId: string; aura: number; money: number; placement: number }> => {
+  const gameDurationSeconds = Date.now() - (game as any).startTime || 600; // Default 10 min
+  const durationMinutes = gameDurationSeconds / 60;
+
+  // Duration multiplier: 15 min = 0.5x, 30 min = 1x, 60+ min = 2x (capped)
+  const durationMultiplier = Math.min(durationMinutes / 30, 2);
+
+  // Player count multiplier: 2 players = 1x, 8 players = 4x
+  const playerCountMultiplier = game.players.length / 2;
+
+  // Base rewards per placement
+  const baseRewards: Record<number, { aura: number; money: number }> = {
+    1: { aura: 100, money: 500 },
+    2: { aura: 50, money: 250 },
+    3: { aura: 25, money: 125 },
+    4: { aura: 15, money: 75 },
+    5: { aura: 10, money: 50 },
+    6: { aura: 5, money: 25 },
+    7: { aura: 5, money: 20 },
+    8: { aura: 5, money: 15 },
+  };
+
+  const standings = game.players
+    .map((p, idx) => ({ ...p, cashRank: idx }))
+    .sort((a, b) => b.cash - a.cash);
+
+  return standings.map((player, placement) => {
+    const base = baseRewards[placement + 1] || { aura: 5, money: 10 };
+    const multiplier = durationMultiplier * playerCountMultiplier;
+
+    return {
+      userId: player.userId,
+      aura: Math.floor(base.aura * multiplier),
+      money: Math.floor(base.money * multiplier),
+      placement: placement + 1,
+    };
+  });
+};
+
+const endGame = async (game: MonopolyGame, winnerId: string | null, io: Server | null) => {
   game.isActive = false;
   const winner = winnerId ? game.players.find((p) => p.userId === winnerId) : null;
   const standings = game.players
@@ -647,7 +686,63 @@ const endGame = (game: MonopolyGame, winnerId: string | null, io: Server | null)
   activeGames.delete(game.partyId);
 
   if (io) {
-    io.to(`party:${game.partyId}`).emit('monopoly:game-over', gameOverData);
+    // Calculate and apply rewards
+    const rewards = calculateRewards(game);
+    const gameDurationSeconds = Date.now() - (game as any).startTime || 600;
+
+    try {
+      for (const reward of rewards) {
+        // Update user balance
+        await prisma.user.update({
+          where: { id: reward.userId },
+          data: {
+            aura: { increment: BigInt(reward.aura) },
+            money: { increment: reward.money },
+          },
+        });
+
+        // Update Monopoly stats
+        const existingStats = await prisma.monopolyStats.findUnique({
+          where: { userId: reward.userId },
+        });
+
+        await prisma.monopolyStats.upsert({
+          where: { userId: reward.userId },
+          create: {
+            userId: reward.userId,
+            gamesPlayed: 1,
+            gamesWon: reward.placement === 1 ? 1 : 0,
+            totalMoneyEarned: BigInt(reward.money),
+            totalAuraEarned: BigInt(reward.aura),
+            longestGameMinutes: Math.floor(gameDurationSeconds / 60),
+            totalGameMinutes: Math.floor(gameDurationSeconds / 60),
+          },
+          update: {
+            gamesPlayed: { increment: 1 },
+            gamesWon: { increment: reward.placement === 1 ? 1 : 0 },
+            totalMoneyEarned: { increment: BigInt(reward.money) },
+            totalAuraEarned: { increment: BigInt(reward.aura) },
+            longestGameMinutes: Math.max(existingStats?.longestGameMinutes || 0, Math.floor(gameDurationSeconds / 60)),
+            totalGameMinutes: { increment: Math.floor(gameDurationSeconds / 60) },
+          },
+        });
+      }
+
+      // Save game record
+      await prisma.monopolyGame.create({
+        data: {
+          partyId: game.partyId,
+          winnerId: winnerId || '',
+          durationSeconds: gameDurationSeconds,
+          playerCount: game.players.length,
+          finalPositions: JSON.stringify(standings),
+        },
+      });
+    } catch (error) {
+      console.error('Error saving game rewards:', error);
+    }
+
+    io.to(`party:${game.partyId}`).emit('monopoly:game-over', { ...gameOverData, rewards });
 
     const playAgainPrompt: PendingPlayAgainPrompt = {
       partyId: game.partyId,
@@ -673,6 +768,12 @@ const endGame = (game: MonopolyGame, winnerId: string | null, io: Server | null)
       players: playAgainPrompt.players,
       responses: [],
       gameOverData,
+      rewards,
+    });
+
+    // Broadcast balance update
+    io.to(`party:${game.partyId}`).emit('economy:balance-update', {
+      timestamp: Date.now(),
     });
   }
 };
@@ -740,7 +841,8 @@ const startGame = async (partyId: string, acceptedIds: string[], io: Server) => 
     chanceDeck: shuffle(CHANCE_CARDS),
     communityDeck: shuffle(COMMUNITY_CARDS),
     isActive: true,
-  };
+    startTime: Date.now(),
+  } as any;
 
   pushLog(game, `Tour de ${shuffled[0]?.username}.`);
 

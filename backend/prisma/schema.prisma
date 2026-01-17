@@ -49,6 +49,7 @@ model User {
   suggestionComments SuggestionComment[]
   suggestionRatings SuggestionRating[]
   bombPartyStats    BombPartyStats?
+  monopolyStats     MonopolyStats?
   bansReceived      Ban[]              @relation("BannedUser")
   bansIssued        Ban[]              @relation("BanIssuer")
   userBadges        UserBadge[]
@@ -477,6 +478,38 @@ model BombPartyStats {
   longestWord  String?
 
   user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Monopoly Player Stats
+model MonopolyStats {
+  id                  String  @id @default(uuid())
+  userId              String  @unique
+  gamesPlayed         Int     @default(0)
+  gamesWon            Int     @default(0)
+  totalMoneyEarned    BigInt  @default(0)    // Total money rewards earned
+  totalAuraEarned     BigInt  @default(0)    // Total aura rewards earned
+  longestGameMinutes  Int     @default(0)    // Duration of longest game in minutes
+  totalGameMinutes    Int     @default(0)    // Cumulative game time
+  bankruptcies        Int     @default(0)    // Times went bankrupt
+
+  user                User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+// Monopoly Game Record
+model MonopolyGame {
+  id              String  @id @default(uuid())
+  partyId         String
+  winnerId        String
+  durationSeconds Int              // Game duration in seconds
+  playerCount     Int
+  finalPositions  String           // JSON array of {userId, placement, finalBalance}
+
+  createdAt       DateTime @default(now())
+
+  @@index([winnerId])
+  @@index([createdAt])
 }
 
 // Ban System
