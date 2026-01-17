@@ -34,6 +34,7 @@ model User {
   gameStats         GameStats[]
   partyMemberships  PartyMember[]
   sentMessages      ChatMessage[]
+  chatReactions     ChatReaction[]
   clashBase         ClashBase?
   attacksMade       Attack[]   @relation("Attacker")
   attacksReceived   Attack[]   @relation("Defender")
@@ -171,13 +172,31 @@ model ChatMessage {
   userId    String
   message   String
   replyToId String?
+  pinned    Boolean  @default(false)
+  pinnedAt  DateTime?
   createdAt DateTime @default(now())
   
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   replyTo   ChatMessage? @relation("ChatMessageReply", fields: [replyToId], references: [id], onDelete: SetNull)
   replies   ChatMessage[] @relation("ChatMessageReply")
+  reactions ChatReaction[]
   
   @@index([createdAt])
+}
+
+model ChatReaction {
+  id        String   @id @default(uuid())
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
+  @@index([userId])
 }
 
 // Season System

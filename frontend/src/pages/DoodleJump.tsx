@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { gamesApi } from '../services/api';
-import { Play, RotateCcw, Trophy, X, Maximize2, Minimize2 } from 'lucide-react';
+import { Play, RotateCcw, Trophy, X } from 'lucide-react';
 
 // ============================================
 // GAME CONSTANTS (from old implementation)
@@ -122,8 +122,6 @@ export default function DoodleJump() {
   const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [playerImageLoaded, setPlayerImageLoaded] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   // Fetch stats and leaderboard on mount
   useEffect(() => {
@@ -160,31 +158,6 @@ export default function DoodleJump() {
       console.error('Failed to fetch leaderboard:', error);
     }
   };
-
-  // Fullscreen toggle
-  const toggleFullscreen = useCallback(async () => {
-    try {
-      if (!document.fullscreenElement) {
-        await document.documentElement.requestFullscreen();
-        setIsFullscreen(true);
-      } else {
-        await document.exitFullscreen();
-        setIsFullscreen(false);
-      }
-    } catch (error) {
-      console.error('Fullscreen error:', error);
-    }
-  }, []);
-
-  // Sync fullscreen state when user exits via Escape
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, []);
 
   // Admin: Delete a user's high score
   const handleDeleteScore = async (userId: string, username: string) => {
@@ -652,44 +625,30 @@ export default function DoodleJump() {
   // RENDER
   // ============================================
   return (
-    <div
-      ref={containerRef}
-      className={`${isFullscreen ? 'fixed inset-0 bg-background flex flex-col' : 'max-w-6xl mx-auto py-12 px-4 space-y-8'}`}
-    >
+    <div className="max-w-6xl mx-auto py-12 px-4 space-y-8">
       {/* Header */}
-      <header className={`${isFullscreen ? 'px-6 py-4 border-b border-border/30' : 'space-y-2'}`}>
+      <header className="space-y-2">
         <div className="flex items-center justify-between">
           <div>
-            {!isFullscreen && (
-              <Link
-                to="/games"
-                className="text-sm text-muted-foreground tracking-wide uppercase hover:text-foreground transition-colors"
-              >
-                &larr; Jeux
-              </Link>
-            )}
-            <h1 className={`font-light tracking-tight ${isFullscreen ? 'text-3xl' : 'text-5xl md:text-7xl'}`}>
+            <Link
+              to="/games"
+              className="text-sm text-muted-foreground tracking-wide uppercase hover:text-foreground transition-colors"
+            >
+              &larr; Jeux
+            </Link>
+            <h1 className="text-5xl md:text-7xl font-light tracking-tight">
               Doodle Jump
             </h1>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right text-sm text-muted-foreground tabular-nums">
-              <div className={`font-light text-foreground ${isFullscreen ? 'text-2xl' : 'text-3xl'}`}>{score.toLocaleString()}</div>
-              <div>Record: {highScore.toLocaleString()}</div>
-            </div>
-            <button
-              onClick={toggleFullscreen}
-              className="p-2 border border-border/50 rounded-lg hover:bg-muted/50 transition-colors"
-              title={isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
-            >
-              {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
-            </button>
+          <div className="text-right text-sm text-muted-foreground tabular-nums">
+            <div className="text-3xl font-light text-foreground">{score.toLocaleString()}</div>
+            <div>Record: {highScore.toLocaleString()}</div>
           </div>
         </div>
       </header>
 
       {/* Game Area with Leaderboard */}
-      <div className={`flex justify-center gap-6 ${isFullscreen ? 'flex-1 items-center py-4' : ''}`}>
+      <div className="flex justify-center gap-6">
         {/* Canvas */}
         <div className="relative">
           <canvas
@@ -801,45 +760,41 @@ export default function DoodleJump() {
         </div>
       </div>
 
-      {/* Controls & Info - Hidden in fullscreen */}
-      {!isFullscreen && (
-        <div className="flex justify-center gap-8 text-xs text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <kbd className="px-2 py-1 border border-border/50 rounded">←</kbd>
-            <span>Gauche</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <kbd className="px-2 py-1 border border-border/50 rounded">→</kbd>
-            <span>Droite</span>
-          </div>
+      {/* Controls & Info */}
+      <div className="flex justify-center gap-8 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <kbd className="px-2 py-1 border border-border/50 rounded">←</kbd>
+          <span>Gauche</span>
         </div>
-      )}
+        <div className="flex items-center gap-2">
+          <kbd className="px-2 py-1 border border-border/50 rounded">→</kbd>
+          <span>Droite</span>
+        </div>
+      </div>
 
-      {/* Platform Legend - Hidden in fullscreen */}
-      {!isFullscreen && (
-        <div className="flex justify-center gap-6 text-xs text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: colors.platformNormal }}></div>
-            <span>Normal</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: colors.platformMoving }}></div>
-            <span>Mobile</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: colors.platformConveyor }}></div>
-            <span>Tapis</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-2 rounded-full" style={{ backgroundColor: colors.platformBounce }}></div>
-            <span>Trampoline</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: colors.platformDisappear }}></div>
-            <span>Fragile</span>
-          </div>
+      {/* Platform Legend */}
+      <div className="flex justify-center gap-6 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: colors.platformNormal }}></div>
+          <span>Normal</span>
         </div>
-      )}
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: colors.platformMoving }}></div>
+          <span>Mobile</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: colors.platformConveyor }}></div>
+          <span>Tapis</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-2 rounded-full" style={{ backgroundColor: colors.platformBounce }}></div>
+          <span>Trampoline</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: colors.platformDisappear }}></div>
+          <span>Fragile</span>
+        </div>
+      </div>
     </div>
   );
 }

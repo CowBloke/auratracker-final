@@ -12,6 +12,20 @@ const games = [
     requiresParty: true,
   },
   {
+    id: 'poker',
+    name: 'Poker',
+    description: "Hold'em minimaliste en party, blindes fixes et rounds rapides.",
+    type: 'Party',
+    requiresParty: true,
+  },
+  {
+    id: 'petit-bac',
+    name: 'Petit Bac',
+    description: 'Remplis les categories avec la bonne lettre avant la fin du temps.',
+    type: 'Party',
+    requiresParty: true,
+  },
+  {
     id: 'clash',
     name: 'Clash',
     description: 'Construis ta base, entraîne des troupes, attaque tes ennemis.',
@@ -45,6 +59,12 @@ export default function Games() {
   const getGameLink = (game: typeof games[0]) => {
     if (game.id === 'bomb-party') {
       return '/games/bomb-party';
+    }
+    if (game.id === 'poker') {
+      return '/games/poker';
+    }
+    if (game.id === 'petit-bac') {
+      return '/games/petit-bac';
     }
     return `/games/${game.id}`;
   };

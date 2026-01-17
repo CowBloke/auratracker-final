@@ -1,6 +1,8 @@
 import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
 import { sendPendingPlayAgainPrompt, sendActiveGameState } from './bombparty.js';
+import { sendActivePokerState, sendPendingPokerPlayAgainPrompt } from './poker.js';
+import { sendPendingPetitBacPlayAgainPrompt, sendActivePetitBacGameState } from './petitbac.js';
 import { logParty } from '../utils/logger.js';
 
 interface PartyInvite {
@@ -24,10 +26,31 @@ interface InviteCooldown {
   expiresAt: number;
 }
 
+interface PartyGameSuggestion {
+  id: string;
+  gameId: string;
+  gameName: string;
+  suggestedById: string;
+  suggestedByName: string;
+  suggestedByColor?: string | null;
+  suggestedAt: number;
+}
+
+interface PartySelectedGame {
+  gameId: string;
+  gameName: string;
+  selectedById: string;
+  selectedByName: string;
+  selectedByColor?: string | null;
+  selectedAt: number;
+}
+
 const partyInvites = new Map<string, PartyInvite[]>(); // userId -> invites
 const partyJoinRequests = new Map<string, PartyJoinRequest[]>(); // partyId -> join requests
 const userSockets = new Map<string, string>(); // userId -> socketId
 const inviteCooldowns = new Map<string, InviteCooldown>(); // key: `${inviterId}:${targetUserId}` -> cooldown
+const partyGameSuggestions = new Map<string, PartyGameSuggestion[]>(); // partyId -> suggestions
+const partySelectedGames = new Map<string, PartySelectedGame | null>(); // partyId -> selected game
 
 // Auto-disband inactive parties (15 minutes)
 const INACTIVITY_TIMEOUT = 15 * 60 * 1000;
@@ -36,6 +59,24 @@ const INACTIVITY_TIMEOUT = 15 * 60 * 1000;
 const INVITE_COOLDOWN = 5 * 60 * 1000;
 
 const getPartyRoomId = (partyId: string) => `party:${partyId}`;
+
+const getPartyGameState = (partyId: string) => ({
+  selectedGame: partySelectedGames.get(partyId) ?? null,
+  suggestions: partyGameSuggestions.get(partyId) ?? [],
+});
+
+const emitPartyGameState = (socket: Socket, partyId: string) => {
+  socket.emit('party:game-state', getPartyGameState(partyId));
+};
+
+const broadcastPartyGameState = (io: Server, partyId: string) => {
+  io.to(getPartyRoomId(partyId)).emit('party:game-state', getPartyGameState(partyId));
+};
+
+const clearPartyGameState = (partyId: string) => {
+  partyGameSuggestions.delete(partyId);
+  partySelectedGames.delete(partyId);
+};
 
 const getPartyMembers = async (partyId: string) => {
   const members = await prisma.partyMember.findMany({
@@ -132,10 +173,16 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
             isLeader: m.isLeader,
           })),
         });
+        emitPartyGameState(socket, membership.partyId);
+        emitPartyGameState(socket, membership.partyId);
 
         // Send any active game state or pending play again prompt to the reconnecting player
         sendActiveGameState(socket, membership.partyId, data.userId);
         sendPendingPlayAgainPrompt(socket, membership.partyId, data.userId);
+        sendActivePokerState(socket, membership.partyId, data.userId);
+        sendPendingPokerPlayAgainPrompt(socket, membership.partyId, data.userId);
+        sendActivePetitBacGameState(socket, membership.partyId, data.userId);
+        sendPendingPetitBacPlayAgainPrompt(socket, membership.partyId, data.userId);
 
         // Update party activity
         await prisma.party.update({
@@ -225,6 +272,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
           isLeader: m.isLeader,
         })),
       });
+      emitPartyGameState(socket, party.id);
     } catch (error) {
       console.error('Create party error:', error);
       socket.emit('party:error', { message: 'Failed to create party' });
@@ -323,6 +371,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
       
       // Notify the joining user
       socket.emit('party:joined', serializePartyPayload(updatedParty!));
+      emitPartyGameState(socket, partyId);
       
       // Log party join
       logParty('party_join', userId, user!.username, {
@@ -533,6 +582,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
           partyId,
           accepted: true,
         });
+        emitPartyGameState(targetSocket, partyId);
       }
 
       if (targetSocket) {
@@ -553,6 +603,94 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
     } catch (error) {
       console.error('Join request response error:', error);
       socket.emit('party:error', { message: 'Failed to respond to join request' });
+    }
+  });
+
+  // Suggest a multiplayer game for the party
+  socket.on('party:game-suggest', async (data: { userId: string; gameId: string; gameName: string }) => {
+    const { userId, gameId, gameName } = data;
+
+    try {
+      const membership = await prisma.partyMember.findUnique({
+        where: { userId },
+        include: {
+          user: {
+            select: { username: true, usernameColor: true },
+          },
+        },
+      });
+
+      if (!membership) {
+        socket.emit('party:error', { message: 'You are not in a party' });
+        return;
+      }
+
+      const partyId = membership.partyId;
+      const suggestions = partyGameSuggestions.get(partyId) || [];
+      const alreadySuggested = suggestions.some(
+        (suggestion) => suggestion.gameId === gameId && suggestion.suggestedById === userId
+      );
+
+      if (alreadySuggested) {
+        return;
+      }
+
+      const suggestion: PartyGameSuggestion = {
+        id: `${userId}-${gameId}-${Date.now()}`,
+        gameId,
+        gameName,
+        suggestedById: userId,
+        suggestedByName: membership.user.username,
+        suggestedByColor: membership.user.usernameColor,
+        suggestedAt: Date.now(),
+      };
+
+      partyGameSuggestions.set(partyId, [...suggestions, suggestion]);
+      broadcastPartyGameState(io, partyId);
+    } catch (error) {
+      console.error('Game suggestion error:', error);
+      socket.emit('party:error', { message: 'Failed to suggest game' });
+    }
+  });
+
+  // Select a multiplayer game (leader only)
+  socket.on('party:game-select', async (data: { userId: string; gameId: string; gameName: string }) => {
+    const { userId, gameId, gameName } = data;
+
+    try {
+      const membership = await prisma.partyMember.findUnique({
+        where: { userId },
+        include: {
+          user: {
+            select: { username: true, usernameColor: true },
+          },
+        },
+      });
+
+      if (!membership) {
+        socket.emit('party:error', { message: 'You are not in a party' });
+        return;
+      }
+
+      if (!membership.isLeader) {
+        socket.emit('party:error', { message: 'Only the leader can select the game' });
+        return;
+      }
+
+      const selectedGame: PartySelectedGame = {
+        gameId,
+        gameName,
+        selectedById: userId,
+        selectedByName: membership.user.username,
+        selectedByColor: membership.user.usernameColor,
+        selectedAt: Date.now(),
+      };
+
+      partySelectedGames.set(membership.partyId, selectedGame);
+      broadcastPartyGameState(io, membership.partyId);
+    } catch (error) {
+      console.error('Game select error:', error);
+      socket.emit('party:error', { message: 'Failed to select game' });
     }
   });
   
@@ -600,6 +738,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
 
       if (memberCount <= 1) {
         // Disband party if last member
+        clearPartyGameState(partyId);
         await prisma.party.delete({
           where: { id: partyId },
         });
@@ -712,6 +851,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
         }
       }
 
+      clearPartyGameState(partyId);
       await prisma.party.delete({
         where: { id: partyId },
       });
@@ -1028,6 +1168,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
           isLeader: m.isLeader,
         })),
       });
+      emitPartyGameState(socket, party.id);
     } catch (error) {
       console.error('Party sync error:', error);
       socket.emit('party:error', { message: 'Failed to sync party' });
@@ -1049,6 +1190,7 @@ setInterval(async () => {
     });
 
     for (const party of inactiveParties) {
+      clearPartyGameState(party.id);
       await prisma.party.delete({
         where: { id: party.id },
       });

@@ -13,6 +13,14 @@ interface OnlineUser {
 
 const onlineUsers = new Map<string, OnlineUser>();
 
+const summarizeReactions = (reactions: Array<{ emoji: string }>) => {
+  const counts = new Map<string, number>();
+  reactions.forEach((reaction) => {
+    counts.set(reaction.emoji, (counts.get(reaction.emoji) ?? 0) + 1);
+  });
+  return Array.from(counts.entries()).map(([emoji, count]) => ({ emoji, count }));
+};
+
 export const setupChatHandlers = (socket: Socket, io: Server) => {
   // Join chat
   socket.on('chat:join', async (data: { userId: string; username: string; currentPage?: string }) => {
@@ -79,6 +87,11 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
             profilePicture: true,
           },
         },
+        reactions: {
+          select: {
+            emoji: true,
+          },
+        },
         replyTo: {
           include: {
             user: {
@@ -101,6 +114,9 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
         usernameColor: m.user.usernameColor,
         profilePicture: m.user.profilePicture,
         message: m.message,
+        pinned: m.pinned,
+        pinnedAt: m.pinnedAt ? m.pinnedAt.toISOString() : null,
+        reactions: summarizeReactions(m.reactions),
         replyTo: m.replyTo
           ? {
               id: m.replyTo.id,
@@ -212,6 +228,9 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
       usernameColor: dbUser?.usernameColor,
       profilePicture: dbUser?.profilePicture,
       message,
+      pinned: false,
+      pinnedAt: null,
+      reactions: [],
       replyTo: replyTo
         ? {
             id: replyTo.id,
@@ -229,12 +248,15 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     if (messageCount > 1000) {
       const oldMessages = await prisma.chatMessage.findMany({
         take: messageCount - 1000,
+        where: { pinned: false },
         orderBy: { createdAt: 'asc' },
         select: { id: true },
       });
-      await prisma.chatMessage.deleteMany({
-        where: { id: { in: oldMessages.map((m) => m.id) } },
-      });
+      if (oldMessages.length > 0) {
+        await prisma.chatMessage.deleteMany({
+          where: { id: { in: oldMessages.map((m) => m.id) } },
+        });
+      }
     }
   });
   
@@ -258,6 +280,90 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
 
     user.currentPage = currentPage;
     io.to('global-chat').emit('user:page', { userId, currentPage });
+  });
+
+  socket.on('chat:reaction', async (data: { messageId: string; userId: string; emoji: string }) => {
+    const { messageId, userId, emoji } = data;
+    const user = onlineUsers.get(userId);
+    if (!user) return;
+
+    const message = await prisma.chatMessage.findUnique({
+      where: { id: messageId },
+      select: { id: true },
+    });
+    if (!message) return;
+
+    const existingReaction = await prisma.chatReaction.findUnique({
+      where: {
+        messageId_userId_emoji: {
+          messageId,
+          userId,
+          emoji,
+        },
+      },
+    });
+
+    if (existingReaction) {
+      await prisma.chatReaction.delete({
+        where: {
+          id: existingReaction.id,
+        },
+      });
+    } else {
+      await prisma.chatReaction.create({
+        data: {
+          messageId,
+          userId,
+          emoji,
+        },
+      });
+    }
+
+    const reactionCounts = await prisma.chatReaction.groupBy({
+      by: ['emoji'],
+      where: { messageId },
+      _count: { emoji: true },
+    });
+
+    io.to('global-chat').emit('chat:reactions-updated', {
+      messageId,
+      reactions: reactionCounts.map((entry) => ({
+        emoji: entry.emoji,
+        count: entry._count.emoji,
+      })),
+    });
+  });
+
+  socket.on('chat:pin', async (data: { messageId: string; adminId: string; pinned: boolean }) => {
+    const { messageId, adminId, pinned } = data;
+
+    const admin = await prisma.user.findUnique({
+      where: { id: adminId },
+      select: { isAdmin: true },
+    });
+
+    if (!admin || !admin.isAdmin) {
+      return;
+    }
+
+    try {
+      const updated = await prisma.chatMessage.update({
+        where: { id: messageId },
+        data: {
+          pinned,
+          pinnedAt: pinned ? new Date() : null,
+        },
+        select: { pinned: true, pinnedAt: true },
+      });
+
+      io.to('global-chat').emit('chat:pin-updated', {
+        messageId,
+        pinned: updated.pinned,
+        pinnedAt: updated.pinnedAt ? updated.pinnedAt.toISOString() : null,
+      });
+    } catch (error) {
+      console.error('Error pinning message:', error);
+    }
   });
 
   // Delete message (admin only)
