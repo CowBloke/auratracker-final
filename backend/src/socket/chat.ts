@@ -21,6 +21,28 @@ const summarizeReactions = (reactions: Array<{ emoji: string }>) => {
   return Array.from(counts.entries()).map(([emoji, count]) => ({ emoji, count }));
 };
 
+const getTopLeaderboardIds = async () => {
+  const [topMoney, topAura] = await Promise.all([
+    prisma.user.findMany({
+      where: { isAdmin: false },
+      select: { id: true },
+      orderBy: { money: 'desc' },
+      take: 5,
+    }),
+    prisma.user.findMany({
+      where: { isAdmin: false },
+      select: { id: true },
+      orderBy: { aura: 'desc' },
+      take: 5,
+    }),
+  ]);
+
+  return {
+    topMoneyIds: new Set(topMoney.map((u) => u.id)),
+    topAuraIds: new Set(topAura.map((u) => u.id)),
+  };
+};
+
 export const setupChatHandlers = (socket: Socket, io: Server) => {
   // Join chat
   socket.on('chat:join', async (data: { userId: string; username: string; currentPage?: string }) => {
@@ -58,8 +80,13 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
       select: {
         usernameColor: true,
         profilePicture: true,
+        isChatMuted: true,
       },
     });
+
+    if (dbUser?.isChatMuted) {
+      socket.emit('chat:muted', { message: 'Vous avez été mute du chat par un admin.' });
+    }
 
     // Store user info
     onlineUsers.set(userId, {
@@ -74,6 +101,8 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     // Join global chat room
     socket.join('global-chat');
     
+    const { topMoneyIds, topAuraIds } = await getTopLeaderboardIds();
+
     // Send chat history with user cosmetics
     const messages = await prisma.chatMessage.findMany({
       take: 100,
@@ -116,6 +145,8 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
         message: m.message,
         pinned: m.pinned,
         pinnedAt: m.pinnedAt ? m.pinnedAt.toISOString() : null,
+        isTopMoney: topMoneyIds.has(m.userId),
+        isTopAura: topAuraIds.has(m.userId),
         reactions: summarizeReactions(m.reactions),
         replyTo: m.replyTo
           ? {
@@ -180,8 +211,14 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
       select: {
         usernameColor: true,
         profilePicture: true,
+        isChatMuted: true,
       },
     });
+
+    if (dbUser?.isChatMuted) {
+      socket.emit('chat:muted', { message: 'Vous êtes mute du chat pour le moment.' });
+      return;
+    }
     
     // Update cached cosmetics
     if (dbUser) {
@@ -221,6 +258,8 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     });
 
     // Broadcast to all in chat with cosmetics
+    const { topMoneyIds, topAuraIds } = await getTopLeaderboardIds();
+
     io.to('global-chat').emit('chat:message', {
       id: savedMessage.id,
       userId,
@@ -230,6 +269,8 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
       message,
       pinned: false,
       pinnedAt: null,
+      isTopMoney: topMoneyIds.has(userId),
+      isTopAura: topAuraIds.has(userId),
       reactions: [],
       replyTo: replyTo
         ? {

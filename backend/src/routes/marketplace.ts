@@ -1,11 +1,35 @@
 import { Router, Response } from 'express';
 import { prisma } from '../server.js';
 import { authMiddleware, adminMiddleware, AuthRequest } from '../middleware/auth.js';
-import { validate, createItemSchema, purchaseSchema, useItemSchema } from '../middleware/validation.js';
+import { validate, createItemSchema, purchaseSchema, useItemSchema, purchaseNftSchema, displayNftSchema } from '../middleware/validation.js';
 import { logMarketplace } from '../utils/logger.js';
 import { isAllowedImageUrl } from '../utils/uploads.js';
 
 const router = Router();
+
+// Get all NFTs
+router.get('/nfts', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { rarity, page = '1', limit = '20' } = req.query;
+
+    const where = rarity ? { rarity: rarity as string } : {};
+
+    const [nfts, total] = await Promise.all([
+      prisma.nft.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: parseInt(limit as string),
+        skip: (parseInt(page as string) - 1) * parseInt(limit as string),
+      }),
+      prisma.nft.count({ where }),
+    ]);
+
+    res.json({ nfts, total });
+  } catch (error) {
+    console.error('Get NFTs error:', error);
+    res.status(500).json({ error: 'Failed to get NFTs' });
+  }
+});
 
 // Get all items
 router.get('/items', authMiddleware, async (req: AuthRequest, res: Response) => {
@@ -28,6 +52,133 @@ router.get('/items', authMiddleware, async (req: AuthRequest, res: Response) => 
   } catch (error) {
     console.error('Get items error:', error);
     res.status(500).json({ error: 'Failed to get items' });
+  }
+});
+
+// Purchase NFT
+router.post('/nfts/purchase', authMiddleware, validate(purchaseNftSchema), async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const { nftId } = req.body;
+
+    const nft = await prisma.nft.findUnique({
+      where: { id: nftId },
+    });
+
+    if (!nft) {
+      return res.status(404).json({ error: 'NFT not found' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.money < nft.price) {
+      return res.status(400).json({ error: 'Insufficient money' });
+    }
+
+    const [updatedUser, userNft] = await prisma.$transaction([
+      prisma.user.update({
+        where: { id: req.user.id },
+        data: { money: { decrement: nft.price } },
+      }),
+      prisma.userNft.create({
+        data: {
+          userId: req.user.id,
+          nftId: nft.id,
+          purchasePrice: nft.price,
+        },
+        include: { nft: true },
+      }),
+    ]);
+
+    logMarketplace('nft_purchase', req.user.id, user.username, {
+      nftId: nft.id,
+      nftName: nft.name,
+      price: nft.price,
+      rarity: nft.rarity,
+    });
+
+    res.json({
+      success: true,
+      nft: userNft,
+      newBalance: {
+        aura: updatedUser.aura,
+        money: updatedUser.money,
+      },
+    });
+  } catch (error) {
+    console.error('Purchase NFT error:', error);
+    res.status(500).json({ error: 'Failed to purchase NFT' });
+  }
+});
+
+// Get user NFT inventory
+router.get('/nfts/inventory/:userId', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { userId } = req.params;
+
+    const [items, user] = await Promise.all([
+      prisma.userNft.findMany({
+        where: { userId },
+        include: { nft: true },
+        orderBy: { acquiredAt: 'desc' },
+      }),
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: { displayedNftId: true },
+      }),
+    ]);
+
+    res.json({ items, displayedNftId: user?.displayedNftId ?? null });
+  } catch (error) {
+    console.error('Get NFT inventory error:', error);
+    res.status(500).json({ error: 'Failed to get NFT inventory' });
+  }
+});
+
+// Display NFT on profile
+router.post('/nfts/display', authMiddleware, validate(displayNftSchema), async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const { userNftId } = req.body as { userNftId?: string | null };
+
+    if (!userNftId) {
+      await prisma.user.update({
+        where: { id: req.user.id },
+        data: { displayedNftId: null },
+      });
+      return res.json({ success: true, displayedNftId: null });
+    }
+
+    const userNft = await prisma.userNft.findUnique({
+      where: { id: userNftId },
+      select: { id: true, userId: true },
+    });
+
+    if (!userNft || userNft.userId !== req.user.id) {
+      return res.status(403).json({ error: 'Not your NFT' });
+    }
+
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { displayedNftId: userNft.id },
+    });
+
+    res.json({ success: true, displayedNftId: userNft.id });
+  } catch (error) {
+    console.error('Display NFT error:', error);
+    res.status(500).json({ error: 'Failed to display NFT' });
   }
 });
 

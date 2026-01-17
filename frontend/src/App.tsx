@@ -15,6 +15,7 @@ import Leaderboards from './pages/Leaderboards';
 import Profile from './pages/Profile';
 import Inventory from './pages/Inventory';
 import Party from './pages/Party';
+import Clans from './pages/Clans';
 import BombParty from './pages/BombParty';
 import Poker from './pages/Poker';
 import PetitBac from './pages/PetitBac';
@@ -25,6 +26,7 @@ import ReportBug from './pages/ReportBug';
 import Pass from './pages/Pass';
 import Changelog from './pages/Changelog';
 import Maintenance from './pages/Maintenance';
+import Settings from './pages/Settings';
 import { maintenanceApi } from './services/api';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -117,6 +119,7 @@ function App() {
         <Route path="marketplace" element={<Marketplace />} />
         <Route path="leaderboards" element={<Leaderboards />} />
         <Route path="party" element={<Party />} />
+        <Route path="clans" element={<Clans />} />
         <Route path="inventory" element={<Inventory />} />
         <Route path="profile/:userId?" element={<Profile />} />
         <Route path="admin" element={<Admin />} />
@@ -125,6 +128,7 @@ function App() {
         <Route path="changelog" element={<Changelog />} />
         <Route path="suggestions" element={<Suggestions />} />
         <Route path="report-bug" element={<ReportBug />} />
+        <Route path="settings" element={<Settings />} />
       </Route>
     </Routes>
   );

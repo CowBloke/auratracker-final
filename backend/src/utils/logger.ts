@@ -21,7 +21,15 @@ export type GameAction = 'game_complete' | 'game_reward' | 'casino_bet' | 'highs
 export type EconomyAction = 'transfer' | 'gift_aura' | 'balance_change';
 export type PartyAction = 'party_create' | 'party_join' | 'party_leave' | 'party_disband' | 'party_kick' | 'party_invite';
 export type SuggestionAction = 'suggestion_create' | 'suggestion_vote' | 'suggestion_comment' | 'suggestion_delete' | 'suggestion_status' | 'suggestion_rating' | 'bug_report';
-export type MarketplaceAction = 'item_purchase' | 'item_use' | 'item_create' | 'item_delete';
+export type MarketplaceAction =
+  | 'item_purchase'
+  | 'item_use'
+  | 'item_create'
+  | 'item_delete'
+  | 'nft_purchase'
+  | 'nft_create'
+  | 'nft_update'
+  | 'nft_delete';
 export type AdminAction = 'user_update' | 'user_delete' | 'user_approve' | 'user_reject' | 'inventory_add' | 'inventory_update' | 'inventory_remove' | 'chat_clear' | 'stats_delete' | 'badge_create' | 'badge_assign' | 'badge_remove';
 export type BanAction = 'ban_create' | 'ban_remove';
 export type AuraCoinAction = 'auracoin_buy' | 'auracoin_sell';

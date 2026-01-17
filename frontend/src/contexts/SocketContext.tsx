@@ -12,6 +12,8 @@ interface ChatMessage {
   message: string;
   pinned: boolean;
   pinnedAt?: string | null;
+  isTopMoney?: boolean;
+  isTopAura?: boolean;
   reactions: Array<{ emoji: string; count: number }>;
   replyTo?: {
     id: string;
@@ -482,6 +484,14 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
             pinnedAt: message.pinnedAt ?? null,
           },
         ]);
+      });
+
+      s.on('chat:muted', (data: { message?: string }) => {
+        if (typeof window !== 'undefined') {
+          import('sonner').then(({ toast }) => {
+            toast(data.message || 'Vous êtes mute du chat.');
+          });
+        }
       });
 
       s.on('users:online-list', (data: { users: OnlineUser[] }) => {

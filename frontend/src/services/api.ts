@@ -42,7 +42,7 @@ export const authApi = {
 
 // Uploads API
 export const uploadsApi = {
-  uploadImage: (data: { purpose: 'suggestion' | 'item' | 'profile'; imageData: string }) =>
+  uploadImage: (data: { purpose: 'suggestion' | 'item' | 'nft' | 'profile'; imageData: string }) =>
     api.post<{ url: string }>('/uploads', data),
 };
 
@@ -68,6 +68,23 @@ export const economyApi = {
 };
 
 // Marketplace API
+export interface Nft {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  imageUrl: string;
+  rarity: 'COMMON' | 'UNCOMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
+  createdAt: string;
+}
+
+export interface UserNft {
+  id: string;
+  purchasePrice: number;
+  acquiredAt: string;
+  nft: Nft;
+}
+
 export const marketplaceApi = {
   getItems: (params?: { type?: string; page?: number; limit?: number }) =>
     api.get('/marketplace/items', { params }),
@@ -76,6 +93,14 @@ export const marketplaceApi = {
   getInventory: (userId: string) => api.get(`/marketplace/inventory/${userId}`),
   useItem: (userItemId: string, effectData?: { color?: string; imageUrl?: string }) => 
     api.post('/marketplace/use-item', { userItemId, effectData }),
+  getNfts: (params?: { rarity?: string; page?: number; limit?: number }) =>
+    api.get('/marketplace/nfts', { params }),
+  purchaseNft: (data: { nftId: string }) =>
+    api.post('/marketplace/nfts/purchase', data),
+  getNftInventory: (userId: string) =>
+    api.get<{ items: UserNft[]; displayedNftId: string | null }>(`/marketplace/nfts/inventory/${userId}`),
+  setDisplayedNft: (userNftId: string | null) =>
+    api.post<{ success: boolean; displayedNftId: string | null }>('/marketplace/nfts/display', { userNftId }),
   // Admin
   createItem: (data: {
     name: string;
@@ -178,6 +203,68 @@ export const leaderboardsApi = {
   getUserRankings: (userId: string) => api.get(`/leaderboards/user/${userId}`),
 };
 
+// Clans API
+export interface ClanSummary {
+  id: string;
+  name: string;
+  description: string | null;
+  imageUrl: string | null;
+  isPublic: boolean;
+  createdAt: string;
+  maxMembers: number;
+  memberCount: number;
+  totalAura: number | string;
+  leader: {
+    id: string;
+    username: string;
+    usernameColor: string | null;
+    profilePicture: string | null;
+  };
+}
+
+export interface ClanMember {
+  id: string;
+  userId: string;
+  username: string;
+  usernameColor: string | null;
+  aura: number | string;
+  profilePicture: string | null;
+  joinedAt: string;
+  isLeader: boolean;
+}
+
+export interface ClanJoinRequest {
+  id: string;
+  userId: string;
+  username: string;
+  usernameColor: string | null;
+  aura: number | string;
+  profilePicture: string | null;
+  requestedAt: string;
+}
+
+export interface ClanDetail extends ClanSummary {
+  members: ClanMember[];
+  joinRequests: ClanJoinRequest[];
+  viewer: {
+    isMember: boolean;
+    isLeader: boolean;
+    hasPendingRequest: boolean;
+  };
+}
+
+export const clansApi = {
+  list: () => api.get<{ clans: ClanSummary[] }>('/clans'),
+  getById: (id: string) => api.get<{ clan: ClanDetail }>(`/clans/${id}`),
+  create: (data: { name: string; description?: string; imageUrl?: string; isPublic?: boolean }) =>
+    api.post<{ clan: ClanSummary }>('/clans', data),
+  join: (id: string) => api.post<{ status: 'joined' | 'requested'; requestId?: string }>(`/clans/${id}/join`),
+  acceptRequest: (clanId: string, requestId: string) =>
+    api.post(`/clans/${clanId}/requests/${requestId}/accept`),
+  rejectRequest: (clanId: string, requestId: string) =>
+    api.post(`/clans/${clanId}/requests/${requestId}/reject`),
+};
+
 // Clash API
 export interface Building {
   id: string;
@@ -246,6 +333,7 @@ export interface AdminUser {
   aura: number;
   money: number;
   isAdmin: boolean;
+  isChatMuted: boolean;
   dailyAuraGiven: number;
   dailyAuraLimit: number;
   lastDailyReset: string;
@@ -416,7 +504,7 @@ export interface LogStats {
 
 export const adminApi = {
   getUsers: () => api.get<{ users: AdminUser[] }>('/admin/users'),
-  updateUser: (id: string, data: { username?: string; aura?: number; money?: number; dailyAuraLimit?: number; password?: string }) =>
+  updateUser: (id: string, data: { username?: string; aura?: number; money?: number; dailyAuraLimit?: number; password?: string; isChatMuted?: boolean }) =>
     api.put<{ user: AdminUser }>(`/admin/users/${id}`, data),
   deleteUser: (id: string) => api.delete<{ success: boolean; message: string }>(`/admin/users/${id}`),
   getBadges: () => api.get<{ badges: Badge[] }>('/admin/badges'),
@@ -460,6 +548,23 @@ export const adminApi = {
     effect?: string;
   }) => api.put<{ item: ShopItem }>(`/admin/items/${id}`, data),
   deleteItem: (id: string) => api.delete<{ success: boolean }>(`/admin/items/${id}`),
+  // NFT management
+  getNfts: () => api.get<{ nfts: Nft[] }>('/admin/nfts'),
+  createNft: (data: {
+    name: string;
+    description: string;
+    price: number;
+    imageUrl: string;
+    rarity: 'COMMON' | 'UNCOMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
+  }) => api.post<{ nft: Nft }>('/admin/nfts', data),
+  updateNft: (id: string, data: {
+    name: string;
+    description: string;
+    price: number;
+    imageUrl: string;
+    rarity: 'COMMON' | 'UNCOMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
+  }) => api.put<{ nft: Nft }>(`/admin/nfts/${id}`, data),
+  deleteNft: (id: string) => api.delete<{ success: boolean }>(`/admin/nfts/${id}`),
   // Bug reports management
   getBugReports: () => api.get<{ bugReports: BugReport[] }>('/admin/bugs'),
   updateBugReport: (id: string, data: { status: 'PENDING' | 'DONE' }) =>
@@ -481,6 +586,14 @@ export const adminApi = {
     startDate?: string;
     endDate?: string;
   }) => api.get<{ logs: ActivityLog[]; total: number }>('/admin/logs', { params }),
+  downloadLogs: (params: {
+    startDate: string;
+    endDate?: string;
+    type?: string;
+    action?: string;
+    username?: string;
+    gameType?: string;
+  }) => api.get<Blob>('/admin/logs/download', { params, responseType: 'blob' }),
   getLogStats: () => api.get<LogStats>('/admin/logs/stats'),
   // Game settings management
   getSettings: () => api.get<{ settings: Record<string, string> }>('/admin/settings'),

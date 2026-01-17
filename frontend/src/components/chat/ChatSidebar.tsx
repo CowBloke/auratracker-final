@@ -359,6 +359,26 @@ export default function ChatSidebar() {
                         >
                           {msg.username}
                         </button>
+                        {(msg.isTopMoney || msg.isTopAura) && (
+                          <div className="flex items-center gap-1">
+                            {msg.isTopMoney && (
+                              <span
+                                className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-yellow-300 text-[9px] font-semibold text-yellow-900"
+                                title="Top 5 argent"
+                              >
+                                $
+                              </span>
+                            )}
+                            {msg.isTopAura && (
+                              <span
+                                className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-sky-500 text-[9px] font-semibold text-white"
+                                title="Top 5 aura"
+                              >
+                                A
+                              </span>
+                            )}
+                          </div>
+                        )}
                         <span className="text-[10px] text-muted-foreground/60 tabular-nums">
                           {formatTime(msg.timestamp)}
                         </span>

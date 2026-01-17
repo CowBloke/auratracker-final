@@ -2,9 +2,33 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const corsOrigin = process.env.CORS_ORIGIN
+const rawCorsOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean)
   : ['http://localhost:5173'];
+
+const expandAuratrackerOrigins = (origins: string[]): string[] => {
+  const expanded = new Set<string>(origins);
+
+  for (const origin of origins) {
+    try {
+      const url = new URL(origin);
+      const isAuraTracker = url.hostname === 'auratracker.xyz' || url.hostname === 'www.auratracker.xyz';
+
+      if (isAuraTracker) {
+        const altHost = url.hostname.startsWith('www.')
+          ? url.hostname.slice(4)
+          : `www.${url.hostname}`;
+        expanded.add(`${url.protocol}//${altHost}`);
+      }
+    } catch {
+      // Ignore invalid origins; keep as-is.
+    }
+  }
+
+  return Array.from(expanded);
+};
+
+const corsOrigin = expandAuratrackerOrigins(rawCorsOrigins);
 
 export const config = {
   port: parseInt(process.env.PORT || '3000', 10),

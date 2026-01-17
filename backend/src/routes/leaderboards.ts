@@ -4,7 +4,14 @@ import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
-type LeaderboardCategory = 'aura' | 'money' | 'doodle_jump' | 'casino' | 'games_played' | 'bombparty';
+type LeaderboardCategory =
+  | 'aura'
+  | 'money'
+  | 'total_money'
+  | 'doodle_jump'
+  | 'casino'
+  | 'games_played'
+  | 'bombparty';
 
 // Get leaderboard by category
 router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response) => {
@@ -13,6 +20,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
     const { limit = '50', offset = '0' } = req.query;
     
     let rankings: any[] = [];
+    let totalMoneyPrice: number | null = null;
     
     switch (category) {
       case 'aura':
@@ -58,6 +66,46 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
           value: u.money,
         }));
         break;
+
+      case 'total_money': {
+        const latestPrice = await prisma.auraCoinPrice.findFirst({
+          orderBy: { createdAt: 'desc' },
+          select: { price: true },
+        });
+        totalMoneyPrice = latestPrice?.price ?? 100;
+        const take = parseInt(limit as string);
+        const skip = parseInt(offset as string);
+        const totals = await prisma.$queryRaw<
+          {
+            id: string;
+            username: string;
+            usernameColor: string | null;
+            money: number;
+            auraCoinBalance: number;
+            total: number;
+          }[]
+        >`
+          SELECT
+            id,
+            username,
+            usernameColor,
+            money,
+            auraCoinBalance,
+            (money + auraCoinBalance * ${totalMoneyPrice}) as total
+          FROM "User"
+          WHERE isAdmin = 0
+          ORDER BY total DESC
+          LIMIT ${take} OFFSET ${skip}
+        `;
+        rankings = totals.map((u, i) => ({
+          rank: skip + i + 1,
+          userId: u.id,
+          username: u.username,
+          usernameColor: u.usernameColor,
+          value: Number(u.total),
+        }));
+        break;
+      }
         
       case 'doodle_jump':
         rankings = await prisma.gameStats.findMany({
@@ -222,6 +270,22 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
             },
           });
           userRank = higherWins + 1;
+        }
+      } else if (category === 'total_money') {
+        const priceToUse = totalMoneyPrice ?? 100;
+        const userTotals = await prisma.user.findUnique({
+          where: { id: req.user.id },
+          select: { money: true, auraCoinBalance: true },
+        });
+        if (userTotals) {
+          const userTotalValue = userTotals.money + userTotals.auraCoinBalance * priceToUse;
+          const higherTotals = await prisma.$queryRaw<{ count: number }[]>`
+            SELECT COUNT(*) as count
+            FROM "User"
+            WHERE isAdmin = 0
+              AND (money + auraCoinBalance * ${priceToUse}) > ${userTotalValue}
+          `;
+          userRank = Number(higherTotals[0]?.count ?? 0) + 1;
         }
       }
     }

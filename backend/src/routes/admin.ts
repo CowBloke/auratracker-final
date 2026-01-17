@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
+import { validate, createNftSchema } from '../middleware/validation.js';
 import { logAdmin, logSuggestion, logBan } from '../utils/logger.js';
 import { isAllowedImageUrl } from '../utils/uploads.js';
 
@@ -185,6 +186,91 @@ router.delete('/items/:id', authMiddleware, requireAdmin, async (req: AuthReques
   }
 });
 
+// ========== NFT MANAGEMENT ==========
+
+// Get all NFTs (admin view)
+router.get('/nfts', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const nfts = await prisma.nft.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ nfts });
+  } catch (error) {
+    console.error('Admin get NFTs error:', error);
+    res.status(500).json({ error: 'Failed to get NFTs' });
+  }
+});
+
+// Create NFT
+router.post('/nfts', authMiddleware, requireAdmin, validate(createNftSchema), async (req: AuthRequest, res: Response) => {
+  try {
+    const { name, description, price, imageUrl, rarity } = req.body;
+
+    if (!isAllowedImageUrl(imageUrl)) {
+      return res.status(400).json({ error: 'Image must be uploaded or a valid URL' });
+    }
+
+    const nft = await prisma.nft.create({
+      data: {
+        name,
+        description,
+        price: parseInt(price) || 0,
+        imageUrl,
+        rarity,
+      },
+    });
+
+    res.status(201).json({ nft });
+  } catch (error) {
+    console.error('Admin create NFT error:', error);
+    res.status(500).json({ error: 'Failed to create NFT' });
+  }
+});
+
+// Update NFT
+router.put('/nfts/:id', authMiddleware, requireAdmin, validate(createNftSchema), async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name, description, price, imageUrl, rarity } = req.body;
+
+    if (!isAllowedImageUrl(imageUrl)) {
+      return res.status(400).json({ error: 'Image must be uploaded or a valid URL' });
+    }
+
+    const nft = await prisma.nft.update({
+      where: { id },
+      data: {
+        name,
+        description,
+        price: parseInt(price) || 0,
+        imageUrl,
+        rarity,
+      },
+    });
+
+    res.json({ nft });
+  } catch (error) {
+    console.error('Admin update NFT error:', error);
+    res.status(500).json({ error: 'Failed to update NFT' });
+  }
+});
+
+// Delete NFT
+router.delete('/nfts/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    await prisma.nft.delete({
+      where: { id },
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Admin delete NFT error:', error);
+    res.status(500).json({ error: 'Failed to delete NFT' });
+  }
+});
+
 // ========== BADGES MANAGEMENT ==========
 
 // Get all badges
@@ -363,6 +449,7 @@ router.get('/users', authMiddleware, requireAdmin, async (req: AuthRequest, res:
         aura: true,
         money: true,
         isAdmin: true,
+        isChatMuted: true,
         dailyAuraGiven: true,
         dailyAuraLimit: true,
         lastDailyReset: true,
@@ -385,10 +472,10 @@ router.get('/users', authMiddleware, requireAdmin, async (req: AuthRequest, res:
 router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { aura, money, dailyAuraLimit, username, password } = req.body;
+    const { aura, money, dailyAuraLimit, username, password, isChatMuted } = req.body;
 
     // Build update data
-    const updateData: { aura?: number; money?: number; dailyAuraLimit?: number; username?: string; passwordHash?: string } = {};
+    const updateData: { aura?: number; money?: number; dailyAuraLimit?: number; username?: string; passwordHash?: string; isChatMuted?: boolean } = {};
 
     if (username !== undefined) {
       if (typeof username !== 'string') {
@@ -420,6 +507,12 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
     if (dailyAuraLimit !== undefined) {
       updateData.dailyAuraLimit = parseInt(dailyAuraLimit);
     }
+    if (isChatMuted !== undefined) {
+      if (typeof isChatMuted !== 'boolean') {
+        return res.status(400).json({ error: 'Invalid chat mute status' });
+      }
+      updateData.isChatMuted = isChatMuted;
+    }
     if (password !== undefined) {
       if (typeof password !== 'string') {
         return res.status(400).json({ error: 'Invalid password' });
@@ -434,7 +527,7 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
     // Get old user data for logging
     const oldUser = await prisma.user.findUnique({
       where: { id },
-      select: { username: true, aura: true, money: true, dailyAuraLimit: true },
+      select: { username: true, aura: true, money: true, dailyAuraLimit: true, isChatMuted: true },
     });
 
     const user = await prisma.user.update({
@@ -447,6 +540,7 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
         aura: true,
         money: true,
         isAdmin: true,
+        isChatMuted: true,
         dailyAuraGiven: true,
         dailyAuraLimit: true,
         lastDailyReset: true,
@@ -469,6 +563,7 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
         aura: oldUser?.aura,
         money: oldUser?.money,
         dailyAuraLimit: oldUser?.dailyAuraLimit,
+        isChatMuted: oldUser?.isChatMuted,
       },
     });
 
@@ -881,6 +976,104 @@ router.get('/logs', authMiddleware, requireAdmin, async (req: AuthRequest, res: 
   } catch (error) {
     console.error('Admin get logs error:', error);
     res.status(500).json({ error: 'Failed to get logs' });
+  }
+});
+
+// Download activity logs as CSV (admin only)
+router.get('/logs/download', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const {
+      type,
+      action,
+      username,
+      gameType,
+      startDate,
+      endDate,
+    } = req.query;
+
+    if (!startDate) {
+      return res.status(400).json({ error: 'startDate is required' });
+    }
+
+    const where: Record<string, unknown> = {};
+
+    if (type && type !== 'ALL') {
+      where.type = type as string;
+    }
+
+    if (action) {
+      where.action = { contains: action as string };
+    }
+
+    if (username) {
+      where.OR = [
+        { username: { contains: username as string } },
+        { targetName: { contains: username as string } },
+      ];
+    }
+
+    if (gameType && gameType !== 'ALL') {
+      where.metadata = { contains: `"game":"${gameType}"` };
+    }
+
+    if (startDate) {
+      where.createdAt = { ...((where.createdAt as Record<string, Date>) || {}), gte: new Date(startDate as string) };
+    }
+
+    if (endDate) {
+      where.createdAt = { ...((where.createdAt as Record<string, Date>) || {}), lte: new Date(endDate as string) };
+    }
+
+    const logs = await prisma.log.findMany({
+      where,
+      orderBy: { createdAt: 'asc' },
+      take: 10000,
+    });
+
+    const escapeCsv = (value: unknown) => {
+      if (value === null || value === undefined) {
+        return '""';
+      }
+      const text = String(value).replace(/"/g, '""');
+      return `"${text}"`;
+    };
+
+    const header = [
+      'id',
+      'type',
+      'action',
+      'userId',
+      'username',
+      'targetId',
+      'targetName',
+      'ipAddress',
+      'createdAt',
+      'details',
+      'metadata',
+    ].join(',');
+
+    const rows = logs.map((log) => [
+      escapeCsv(log.id),
+      escapeCsv(log.type),
+      escapeCsv(log.action),
+      escapeCsv(log.userId),
+      escapeCsv(log.username),
+      escapeCsv(log.targetId),
+      escapeCsv(log.targetName),
+      escapeCsv(log.ipAddress),
+      escapeCsv(log.createdAt.toISOString()),
+      escapeCsv(log.details),
+      escapeCsv(log.metadata),
+    ].join(','));
+
+    const csv = [header, ...rows].join('\n');
+    const safeStart = new Date(startDate as string).toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="admin-logs-${safeStart}.csv"`);
+    res.send(csv);
+  } catch (error) {
+    console.error('Admin download logs error:', error);
+    res.status(500).json({ error: 'Failed to download logs' });
   }
 });
 

@@ -112,6 +112,36 @@
     --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
     --sidebar-background: 240 5.9% 10%;
   }
+
+  :root[data-accent="aura"] {
+    --primary: 270 91% 65%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 270 91% 65%;
+  }
+
+  :root[data-accent="cyan"] {
+    --primary: 189 85% 53%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 189 85% 53%;
+  }
+
+  :root[data-accent="pink"] {
+    --primary: 330 88% 70%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 330 88% 70%;
+  }
+
+  :root[data-accent="orange"] {
+    --primary: 28 96% 62%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 28 96% 62%;
+  }
+
+  :root[data-accent="green"] {
+    --primary: 142 69% 58%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 142 69% 58%;
+  }
 }
 
 @layer base {
