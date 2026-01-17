@@ -199,7 +199,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                           {formatTime(msg.timestamp)}
                         </span>
                         {msg.pinned && (
-                          <Pin className="h-3 w-3 text-amber-500" title="Message épinglé" />
+                          <Pin className="h-3 w-3 text-amber-500" />
                         )}
                         <div className="ml-auto flex items-center gap-2">
                           <DropdownMenu>

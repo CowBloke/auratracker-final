@@ -363,7 +363,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
         },
       });
 
-      logParty('party_join', targetUserId, request.username, {
+      logParty('party_join', userId, user!.username, {
         partyId,
         partyName: updatedParty!.name,
         source: 'join_request',
