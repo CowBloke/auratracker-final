@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { marketplaceApi, uploadsApi } from '../services/api';
+import { marketplaceApi, uploadsApi, UserNft } from '../services/api';
 import { Loader2, Palette, Camera, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
@@ -41,6 +42,14 @@ const typeLabels: Record<string, string> = {
   UPGRADE: 'Amélioration',
 };
 
+const nftRarityLabels: Record<string, string> = {
+  COMMON: 'Commun',
+  UNCOMMON: 'Inhabituel',
+  RARE: 'Rare',
+  EPIC: 'Épique',
+  LEGENDARY: 'Légendaire',
+};
+
 const PRESET_COLORS = [
   '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', 
   '#22c55e', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9',
@@ -51,9 +60,14 @@ const PRESET_COLORS = [
 export default function Inventory() {
   const { user, refreshUser } = useAuth();
   const [items, setItems] = useState<UserItem[]>([]);
+  const [nfts, setNfts] = useState<UserNft[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingNfts, setLoadingNfts] = useState(true);
   const [using, setUsing] = useState<string | null>(null);
+  const [displayingNft, setDisplayingNft] = useState<string | null>(null);
+  const [displayedNftId, setDisplayedNftId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [activeTab, setActiveTab] = useState<'items' | 'nfts'>('items');
 
   // Color picker state
   const [colorDialogOpen, setColorDialogOpen] = useState(false);
@@ -71,6 +85,7 @@ export default function Inventory() {
   useEffect(() => {
     if (user) {
       fetchInventory();
+      fetchNftInventory();
     }
   }, [user]);
 
@@ -83,6 +98,19 @@ export default function Inventory() {
       console.error('Failed to fetch inventory:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchNftInventory = async () => {
+    try {
+      setLoadingNfts(true);
+      const response = await marketplaceApi.getNftInventory(user!.id);
+      setNfts(response.data.items);
+      setDisplayedNftId(response.data.displayedNftId);
+    } catch (error) {
+      console.error('Failed to fetch NFT inventory:', error);
+    } finally {
+      setLoadingNfts(false);
     }
   };
 
@@ -215,6 +243,26 @@ export default function Inventory() {
     }
   };
 
+  const handleDisplayNft = async (userNftId: string | null) => {
+    if (displayingNft) return;
+
+    try {
+      setDisplayingNft(userNftId ?? displayedNftId ?? 'clear');
+      setMessage(null);
+      const res = await marketplaceApi.setDisplayedNft(userNftId);
+      setDisplayedNftId(res.data.displayedNftId);
+      setMessage({ type: 'success', text: userNftId ? 'NFT affiché sur le profil' : 'NFT retiré du profil' });
+      setTimeout(() => setMessage(null), 3000);
+    } catch (error: any) {
+      setMessage({
+        type: 'error',
+        text: error.response?.data?.error || 'Échec',
+      });
+    } finally {
+      setDisplayingNft(null);
+    }
+  };
+
   const getEffectIcon = (effect: ItemEffect | null) => {
     if (!effect) return null;
     switch (effect.type) {
@@ -265,7 +313,7 @@ export default function Inventory() {
             </h1>
           </div>
           <div className="text-right text-sm text-muted-foreground tabular-nums">
-            {items.length} objet{items.length !== 1 ? 's' : ''}
+            {items.length} objet{items.length !== 1 ? 's' : ''} • {nfts.length} NFT{nfts.length !== 1 ? 's' : ''}
           </div>
         </div>
       </header>
@@ -280,83 +328,169 @@ export default function Inventory() {
         </p>
       )}
 
-      {/* Divider */}
-      <div className="h-px bg-border" />
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'items' | 'nfts')} className="space-y-10">
+        <TabsList className="bg-transparent border border-border/30 p-1 w-fit">
+          <TabsTrigger value="items">Objets</TabsTrigger>
+          <TabsTrigger value="nfts">NFT</TabsTrigger>
+        </TabsList>
 
-      {/* Items */}
-      {items.length === 0 ? (
-        <p className="text-center text-muted-foreground py-12">
-          Inventaire vide
-        </p>
-      ) : (
-        <div className="space-y-0">
-          {items.map((userItem) => {
-            const effect = parseEffect(userItem.item.effect);
-            const effectIcon = getEffectIcon(effect);
-            const effectLabel = getEffectLabel(effect);
-            
-            return (
-              <div
-                key={userItem.id}
-                className="flex items-center justify-between py-6 border-b border-border/30 last:border-0"
-              >
-                <div className="flex items-center gap-4 flex-1">
-                  {/* Item Image */}
-                  {userItem.item.imageUrl ? (
-                    <img 
-                      src={resolveImageUrl(userItem.item.imageUrl)} 
-                      alt={userItem.item.name}
-                      className="w-14 h-14 object-cover rounded shrink-0"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                  ) : (
-                    <div className="w-14 h-14 bg-muted/30 flex items-center justify-center rounded shrink-0">
-                      <Package className="w-6 h-6 text-muted-foreground" />
-                    </div>
-                  )}
-                  
-                  <div className="space-y-1 flex-1 min-w-0">
-                    <div className="flex items-center gap-4">
-                      <h2 className="text-lg font-medium truncate">{userItem.item.name}</h2>
-                      <span className="text-xs text-muted-foreground uppercase tracking-wide shrink-0">
-                        {typeLabels[userItem.item.type]}
-                      </span>
-                      <span className="text-xs text-muted-foreground shrink-0">
-                        ×{userItem.quantity}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground max-w-md truncate">
-                      {userItem.item.description}
-                    </p>
-                    {effectLabel && (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground/80">
-                        {effectIcon}
-                        <span>{effectLabel}</span>
+        <TabsContent value="items" className="space-y-10">
+          {/* Divider */}
+          <div className="h-px bg-border" />
+
+          {/* Items */}
+          {items.length === 0 ? (
+            <p className="text-center text-muted-foreground py-12">
+              Inventaire vide
+            </p>
+          ) : (
+            <div className="space-y-0">
+              {items.map((userItem) => {
+                const effect = parseEffect(userItem.item.effect);
+                const effectIcon = getEffectIcon(effect);
+                const effectLabel = getEffectLabel(effect);
+                
+                return (
+                  <div
+                    key={userItem.id}
+                    className="flex items-center justify-between py-6 border-b border-border/30 last:border-0"
+                  >
+                    <div className="flex items-center gap-4 flex-1">
+                      {/* Item Image */}
+                      {userItem.item.imageUrl ? (
+                        <img 
+                          src={resolveImageUrl(userItem.item.imageUrl)} 
+                          alt={userItem.item.name}
+                          className="w-14 h-14 object-cover rounded shrink-0"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-14 h-14 bg-muted/30 flex items-center justify-center rounded shrink-0">
+                          <Package className="w-6 h-6 text-muted-foreground" />
+                        </div>
+                      )}
+                      
+                      <div className="space-y-1 flex-1 min-w-0">
+                        <div className="flex items-center gap-4">
+                          <h2 className="text-lg font-medium truncate">{userItem.item.name}</h2>
+                          <span className="text-xs text-muted-foreground uppercase tracking-wide shrink-0">
+                            {typeLabels[userItem.item.type]}
+                          </span>
+                          <span className="text-xs text-muted-foreground shrink-0">
+                            ×{userItem.quantity}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground max-w-md truncate">
+                          {userItem.item.description}
+                        </p>
+                        {effectLabel && (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground/80">
+                            {effectIcon}
+                            <span>{effectLabel}</span>
+                          </div>
+                        )}
                       </div>
+                    </div>
+                    
+                    {(userItem.item.type === 'CONSUMABLE' || userItem.item.type === 'COSMETIC') && (
+                      <button
+                        onClick={() => handleUseItem(userItem)}
+                        disabled={using === userItem.id}
+                        className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 ml-4 shrink-0"
+                      >
+                        {using === userItem.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          'Utiliser'
+                        )}
+                      </button>
                     )}
                   </div>
-                </div>
-                
-                {(userItem.item.type === 'CONSUMABLE' || userItem.item.type === 'COSMETIC') && (
-                  <button
-                    onClick={() => handleUseItem(userItem)}
-                    disabled={using === userItem.id}
-                    className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 ml-4 shrink-0"
-                  >
-                    {using === userItem.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="nfts" className="space-y-10">
+          <div className="h-px bg-border" />
+
+          {loadingNfts ? (
+            <div className="flex justify-center py-12">
+              <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+            </div>
+          ) : nfts.length === 0 ? (
+            <p className="text-center text-muted-foreground py-12">
+              Aucun NFT dans l'inventaire
+            </p>
+          ) : (
+            <div className="space-y-0">
+              {nfts.map((userNft) => (
+                <div
+                  key={userNft.id}
+                  className="flex items-center justify-between py-6 border-b border-border/30 last:border-0"
+                >
+                  <div className="flex items-center gap-4 flex-1">
+                    {userNft.nft.imageUrl ? (
+                      <img 
+                        src={resolveImageUrl(userNft.nft.imageUrl)} 
+                        alt={userNft.nft.name}
+                        className="w-14 h-14 object-cover rounded shrink-0"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
                     ) : (
-                      'Utiliser'
+                      <div className="w-14 h-14 bg-muted/30 flex items-center justify-center rounded shrink-0">
+                        <Package className="w-6 h-6 text-muted-foreground" />
+                      </div>
+                    )}
+                    
+                    <div className="space-y-1 flex-1 min-w-0">
+                      <div className="flex items-center gap-4">
+                        <h2 className="text-lg font-medium truncate">{userNft.nft.name}</h2>
+                        <span className="text-xs text-muted-foreground uppercase tracking-wide shrink-0">
+                          {nftRarityLabels[userNft.nft.rarity] || userNft.nft.rarity}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground max-w-md truncate">
+                        {userNft.nft.description}
+                      </p>
+                      <div className="text-xs text-muted-foreground/80 flex items-center gap-4">
+                        <span>Acheté ${userNft.purchasePrice}</span>
+                        <span>
+                          Ajouté le {new Date(userNft.acquiredAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={() => handleDisplayNft(displayedNftId === userNft.id ? null : userNft.id)}
+                    disabled={displayingNft === userNft.id}
+                    className={cn(
+                      "px-4 py-2 text-sm border transition-colors ml-4 shrink-0",
+                      displayedNftId === userNft.id
+                        ? "border-foreground text-foreground hover:bg-foreground hover:text-background"
+                        : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                    )}
+                  >
+                    {displayingNft === userNft.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : displayedNftId === userNft.id ? (
+                      'Retirer'
+                    ) : (
+                      'Afficher'
                     )}
                   </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
 
       {/* Color Picker Dialog */}
       <Dialog open={colorDialogOpen} onOpenChange={setColorDialogOpen}>

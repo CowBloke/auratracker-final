@@ -17,6 +17,7 @@ model User {
   money         Int       @default(1000)
   auraCoinBalance Float   @default(0)         // Aura Coin balance for trading game
   isAdmin       Boolean   @default(false)
+  isChatMuted   Boolean   @default(false)
   isApproved    Boolean   @default(false)     // Account must be approved by admin before login
   dailyAuraGiven Int      @default(0)        // Aura given today
   dailyAuraLimit Int      @default(50)       // Personal daily aura limit (default 50)
@@ -24,11 +25,14 @@ model User {
   usernameColor String?                       // Custom username color for chat (hex)
   profilePicture String?                      // Custom profile picture URL for chat
   bio           String?                       // User bio/description
+  displayedNftId String?   @unique            // Selected NFT to show on profile
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   
   // Relations
   ownedItems        UserItem[]
+  ownedNfts         UserNft[]
+  displayedNft      UserNft? @relation("DisplayedNft", fields: [displayedNftId], references: [id], onDelete: SetNull)
   sentTransfers     Transfer[] @relation("SentTransfers")
   receivedTransfers Transfer[] @relation("ReceivedTransfers")
   gameStats         GameStats[]
@@ -48,6 +52,9 @@ model User {
   bansReceived      Ban[]              @relation("BannedUser")
   bansIssued        Ban[]              @relation("BanIssuer")
   userBadges        UserBadge[]
+  ownedClans        Clan[]             @relation("ClanOwner")
+  clanMemberships   ClanMember[]
+  clanJoinRequests  ClanJoinRequest[]
 
   @@index([aura])
   @@index([money])
@@ -91,6 +98,35 @@ model Item {
   createdAt   DateTime  @default(now())
   
   userItems   UserItem[]
+}
+
+// NFT Model
+model Nft {
+  id          String    @id @default(uuid())
+  name        String
+  description String
+  price       Int
+  imageUrl    String
+  rarity      String
+  createdAt   DateTime  @default(now())
+
+  userNfts    UserNft[]
+}
+
+// User NFT Inventory
+model UserNft {
+  id            String   @id @default(uuid())
+  userId        String
+  nftId         String
+  purchasePrice Int
+  acquiredAt    DateTime @default(now())
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nft           Nft      @relation(fields: [nftId], references: [id], onDelete: Cascade)
+  displayedBy   User?    @relation("DisplayedNft")
+
+  @@index([userId])
+  @@index([nftId])
 }
 
 // User Inventory
@@ -164,6 +200,55 @@ model PartyMember {
   
   @@unique([partyId, userId])
   @@unique([userId]) // User can only be in one party at a time
+}
+
+// Clan System
+model Clan {
+  id         String   @id @default(uuid())
+  name       String
+  description String?
+  imageUrl   String?
+  isPublic   Boolean  @default(true)
+  maxMembers Int      @default(5)
+  ownerId    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  owner        User              @relation("ClanOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members      ClanMember[]
+  joinRequests ClanJoinRequest[]
+
+  @@index([isPublic])
+  @@index([createdAt])
+}
+
+model ClanMember {
+  id        String   @id @default(uuid())
+  clanId    String
+  userId    String
+  isLeader  Boolean  @default(false)
+  joinedAt  DateTime @default(now())
+
+  clan      Clan     @relation(fields: [clanId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([clanId, userId])
+  @@unique([userId])
+  @@index([clanId])
+}
+
+model ClanJoinRequest {
+  id        String   @id @default(uuid())
+  clanId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  clan      Clan     @relation(fields: [clanId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([clanId, userId])
+  @@index([clanId])
+  @@index([userId])
 }
 
 // Chat Messages

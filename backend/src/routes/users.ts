@@ -64,6 +64,24 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
           profilePicture: true,
           bio: true,
           createdAt: true,
+          displayedNft: {
+            select: {
+              id: true,
+              purchasePrice: true,
+              acquiredAt: true,
+              nft: {
+                select: {
+                  id: true,
+                  name: true,
+                  description: true,
+                  price: true,
+                  imageUrl: true,
+                  rarity: true,
+                  createdAt: true,
+                },
+              },
+            },
+          },
           userBadges: {
             select: {
               id: true,

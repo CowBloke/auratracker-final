@@ -31,6 +31,12 @@ const multiplayerGames = [
     description: 'Remplis les categories avec la bonne lettre avant la fin du temps.',
     type: 'Party',
   },
+  {
+    id: 'poker',
+    name: 'Poker',
+    description: 'Joue une table entre amis, blindes et stack personnalisables.',
+    type: 'Party',
+  },
 ];
 
 const getGameLink = (gameId: string) => {
@@ -39,6 +45,9 @@ const getGameLink = (gameId: string) => {
   }
   if (gameId === 'petit-bac') {
     return '/games/petit-bac';
+  }
+  if (gameId === 'poker') {
+    return '/games/poker';
   }
   return `/games/${gameId}`;
 };

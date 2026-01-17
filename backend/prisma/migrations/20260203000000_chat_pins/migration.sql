@@ -1,3 +1,1 @@
--- AlterTable
-ALTER TABLE "ChatMessage" ADD COLUMN "pinned" BOOLEAN NOT NULL DEFAULT false;
-ALTER TABLE "ChatMessage" ADD COLUMN "pinnedAt" TIMESTAMP(3);
+-- No-op: pinned fields already added in earlier migration.

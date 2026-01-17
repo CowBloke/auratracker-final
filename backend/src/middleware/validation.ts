@@ -73,6 +73,23 @@ export const useItemSchema = z.object({
   }).optional(),
 });
 
+// NFT schemas
+export const createNftSchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().min(1).max(500),
+  price: z.number().int().min(0),
+  imageUrl: z.string().min(1),
+  rarity: z.enum(['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY']),
+});
+
+export const purchaseNftSchema = z.object({
+  nftId: z.string().uuid(),
+});
+
+export const displayNftSchema = z.object({
+  userNftId: z.string().uuid().nullable().optional(),
+});
+
 // Game schemas
 export const gameCompleteSchema = z.object({
   score: z.number().int().min(0),

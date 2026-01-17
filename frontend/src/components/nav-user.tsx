@@ -7,6 +7,7 @@ import {
   LogOut,
   Moon,
   Sun,
+  Settings,
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import { useTheme } from "@/contexts/ThemeContext"
@@ -120,6 +121,12 @@ export function NavUser({
                 <Link to={`/profile/${authUser?.id}`}>
                   <User />
                   Profil
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/settings">
+                  <Settings />
+                  Reglages
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={toggleTheme}>

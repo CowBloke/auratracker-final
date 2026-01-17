@@ -4,6 +4,7 @@ import { ChatSidebarProvider, ChatSidebarWrapper } from '../chat/ChatSidebarWrap
 import ChatBubble from '../chat/ChatBubble';
 import PartyBubble from '../party/PartyBubble';
 import BombPartyJoinPrompt from '../game/BombPartyJoinPrompt';
+import PokerJoinPrompt from '../game/PokerJoinPrompt';
 import PetitBacJoinPrompt from '../game/PetitBacJoinPrompt';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -203,6 +204,7 @@ export default function Layout() {
           <ChatBubble />
         </div>
         <BombPartyJoinPrompt />
+        <PokerJoinPrompt />
         <PetitBacJoinPrompt />
       </div>
     </ChatSidebarProvider>

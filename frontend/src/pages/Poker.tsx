@@ -47,11 +47,9 @@ export default function Poker() {
     currentParty,
     partyMembers,
     pokerGame,
-    pokerJoinPrompt,
     pokerPlayAgainPrompt,
     pokerGameOver,
     startPoker,
-    respondToPokerJoinPrompt,
     actInPoker,
     leavePoker,
     respondToPokerPlayAgainPrompt,
@@ -62,7 +60,6 @@ export default function Poker() {
   const [bigBlind, setBigBlind] = useState(20);
   const [raiseTarget, setRaiseTarget] = useState(0);
   const [turnProgress, setTurnProgress] = useState(100);
-  const [joinProgress, setJoinProgress] = useState(100);
   const [playAgainProgress, setPlayAgainProgress] = useState(100);
 
   const me = useMemo(() => pokerGame?.players.find((p) => p.userId === user?.id), [pokerGame, user?.id]);
@@ -95,18 +92,6 @@ export default function Poker() {
     }, 120);
     return () => clearInterval(interval);
   }, [pokerGame?.turnEndsAt]);
-
-  useEffect(() => {
-    if (!pokerJoinPrompt) {
-      setJoinProgress(100);
-      return;
-    }
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - pokerJoinPrompt.startTime;
-      setJoinProgress(Math.max(0, 100 - (elapsed / pokerJoinPrompt.timeLimit) * 100));
-    }, 120);
-    return () => clearInterval(interval);
-  }, [pokerJoinPrompt?.startTime, pokerJoinPrompt?.timeLimit]);
 
   useEffect(() => {
     if (!pokerPlayAgainPrompt) {
@@ -454,63 +439,6 @@ export default function Poker() {
           )}
         </div>
       )}
-
-      {/* Join prompt */}
-      <Dialog open={!!pokerJoinPrompt}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Table de poker</DialogTitle>
-          </DialogHeader>
-          {pokerJoinPrompt && (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                {partyMembers.find((m) => m.userId === pokerJoinPrompt.leaderId)?.username || 'Le leader'} veut lancer une partie.
-              </p>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="p-3 rounded bg-muted/50">
-                  <p className="text-muted-foreground">Stack</p>
-                  <p className="font-semibold">{pokerJoinPrompt.startStack}</p>
-                </div>
-                <div className="p-3 rounded bg-muted/50">
-                  <p className="text-muted-foreground">Blindes</p>
-                  <p className="font-semibold">{pokerJoinPrompt.bigBlind / 2} / {pokerJoinPrompt.bigBlind}</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">Joueurs</p>
-                <div className="space-y-1 max-h-40 overflow-y-auto">
-                  {pokerJoinPrompt.members.map((member) => {
-                    const response = pokerJoinPrompt.responses.find((r) => r.userId === member.userId);
-                    return (
-                      <div key={member.userId} className="flex items-center justify-between text-sm">
-                        <span style={{ color: member.usernameColor || undefined }}>{member.username}</span>
-                        {response ? (
-                          <span className={cn('text-xs uppercase', response.accepted ? 'text-green-500' : 'text-red-500')}>
-                            {response.accepted ? 'OK' : 'Non'}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">En attente</span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-              <div className="h-1 rounded bg-muted">
-                <div className="h-full bg-foreground transition-all" style={{ width: `${joinProgress}%` }} />
-              </div>
-              <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2">
-                <Button variant="outline" onClick={() => respondToPokerJoinPrompt(false)}>
-                  Refuser
-                </Button>
-                <Button onClick={() => respondToPokerJoinPrompt(true)}>
-                  Rejoindre
-                </Button>
-              </DialogFooter>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* Play again prompt */}
       <Dialog open={!!pokerPlayAgainPrompt}>
