@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
 import { cn } from '@/lib/utils';
-import { Coins, Flame, History, RotateCcw, Sparkles, XCircle } from 'lucide-react';
+import { Coins, Flame, RotateCcw, Sparkles, XCircle } from 'lucide-react';
 
 type GameTab = 'roulette' | 'slots';
 
@@ -128,12 +128,15 @@ const BET_STEPS = [10, 25, 50, 100, 250, 500, 1000];
 // Main Casino page
 // -----------------------------
 export default function Casino() {
-  const [activeGame, setActiveGame] = useState<GameTab>('roulette');
+  const { user } = useAuth();
+  const [activeGame, setActiveGame] = useState<GameTab | null>(null);
+  const [rouletteTotalBet, setRouletteTotalBet] = useState(0);
+  const [slotBet, setSlotBet] = useState(50);
 
   return (
     <div className="max-w-6xl mx-auto py-12 px-4 space-y-8">
       <header className="space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <div>
             <Link
               to="/games"
@@ -148,29 +151,60 @@ export default function Casino() {
               Choisis ta table: machine à sous classique ou roulette animée.
             </p>
           </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { id: 'roulette', label: 'Roulette' },
-            { id: 'slots', label: 'Machine à sous' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveGame(tab.id as GameTab)}
-              className={cn(
-                "rounded-full px-4 py-2 text-sm border transition-colors",
-                activeGame === tab.id
-                  ? "border-foreground text-foreground"
-                  : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40"
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
+          {activeGame && (
+            <div className="flex flex-col items-end gap-2 text-right">
+              <button
+                onClick={() => setActiveGame(null)}
+                className="text-xs uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Changer de jeu
+              </button>
+              <div className="text-sm text-muted-foreground tabular-nums space-y-1">
+                <div className="text-base text-foreground">
+                  Solde: ${user?.money.toLocaleString() || 0}
+                </div>
+                <div>
+                  Mises en cours: $
+                  {(activeGame === 'roulette' ? rouletteTotalBet : slotBet).toLocaleString()}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
-      {activeGame === 'roulette' ? <RouletteGame /> : <SlotMachineGame />}
+      {activeGame ? (
+        <div className="space-y-4">
+          {activeGame === 'roulette' ? (
+            <RouletteGame onTotalBetChange={setRouletteTotalBet} />
+          ) : (
+            <SlotMachineGame onBetChange={setSlotBet} />
+          )}
+        </div>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2">
+          <button
+            onClick={() => setActiveGame('roulette')}
+            className="group rounded-2xl border border-border/60 px-6 py-8 text-left transition-all hover:border-foreground/50"
+          >
+            <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Jeu</p>
+            <p className="mt-2 text-2xl font-semibold">Roulette</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Mises multi-cases, roue animée et tirage rapide.
+            </p>
+          </button>
+          <button
+            onClick={() => setActiveGame('slots')}
+            className="group rounded-2xl border border-border/60 px-6 py-8 text-left transition-all hover:border-foreground/50"
+          >
+            <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Jeu</p>
+            <p className="mt-2 text-2xl font-semibold">Machine à sous</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Classique, rapide et minimaliste.
+            </p>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -178,7 +212,7 @@ export default function Casino() {
 // -----------------------------
 // Roulette Game Component
 // -----------------------------
-function RouletteGame() {
+function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number) => void }) {
   const { user, refreshUser } = useAuth();
   const [bets, setBets] = useState<Bet[]>([]);
   const [chipValue, setChipValue] = useState(25);
@@ -186,8 +220,6 @@ function RouletteGame() {
   const [wheelRotation, setWheelRotation] = useState(0);
   const [ballRotation, setBallRotation] = useState(WHEEL_OFFSET + SLICE_ANGLE / 2);
   const [lastResult, setLastResult] = useState<SpinOutcome | null>(null);
-  const [history, setHistory] = useState<SpinOutcome[]>([]);
-  const [stats, setStats] = useState({ wins: 0, losses: 0, highScore: 0 });
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -195,6 +227,10 @@ function RouletteGame() {
     () => bets.reduce((sum, bet) => sum + bet.amount, 0),
     [bets]
   );
+
+  useEffect(() => {
+    onTotalBetChange?.(totalBet);
+  }, [onTotalBetChange, totalBet]);
 
   const wheelGradient = useMemo(() => {
     const segments = WHEEL_NUMBERS.map((num, idx) => {
@@ -211,25 +247,6 @@ function RouletteGame() {
 
     return `conic-gradient(from ${WHEEL_OFFSET}deg, ${segments})`;
   }, []);
-
-  const fetchStats = useCallback(async () => {
-    if (!user) return;
-    try {
-      const response = await gamesApi.getStats('casino', user.id);
-      const gameStats = response.data.stats;
-      setStats({
-        wins: gameStats.wins || 0,
-        losses: gameStats.losses || 0,
-        highScore: gameStats.highScore || 0,
-      });
-    } catch (err) {
-      console.error('Failed to fetch stats:', err);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
 
   const calculatePayout = useCallback(
     (winningNumber: number) => {
@@ -316,7 +333,6 @@ function RouletteGame() {
       };
 
       setLastResult(spinResult);
-      setHistory((prev) => [spinResult, ...prev].slice(0, 8));
 
       try {
         const response = await gamesApi.complete('casino', {
@@ -332,7 +348,6 @@ function RouletteGame() {
         });
 
         await refreshUser();
-        await fetchStats();
       } catch (err) {
         console.error('Failed to submit spin:', err);
       } finally {
@@ -346,7 +361,6 @@ function RouletteGame() {
     wheelRotation,
     calculatePayout,
     refreshUser,
-    fetchStats,
   ]);
 
   const renderChip = (amount: number) => (
@@ -362,29 +376,12 @@ function RouletteGame() {
   const canSpin = user && totalBet > 0 && !spinning && (user.money >= totalBet);
 
   return (
-    <div className="space-y-10">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-semibold">Roulette</h2>
-          <p className="text-muted-foreground">
-            Mises multi-cases, roue animée et historique en direct.
-          </p>
-        </div>
-        <div className="text-right text-sm text-muted-foreground tabular-nums space-y-1">
-          <div className="text-lg text-foreground">Solde: ${user?.money.toLocaleString() || 0}</div>
-          <div>Mises en cours: ${totalBet.toLocaleString()}</div>
-          {lastResult && (
-            <div className={cn("text-xs", lastResult.net >= 0 ? "text-green-500" : "text-destructive")}>
-              Dernier tour: {lastResult.net >= 0 ? '+' : ''}{lastResult.net.toLocaleString()}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="grid gap-8 lg:grid-cols-[420px_1fr]">
+    <div className="space-y-8">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,420px)_1fr]">
         {/* Wheel + status */}
-        <div className="rounded-2xl border border-border/60 bg-gradient-to-b from-background to-background/40 p-6 shadow-2xl shadow-black/10">
-          <div className="relative aspect-square w-full max-w-[420px] mx-auto">
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-border/60 bg-gradient-to-b from-background to-background/40 p-5 shadow-2xl shadow-black/10">
+            <div className="relative aspect-square w-full max-w-[380px] mx-auto">
             <div
               className="absolute inset-0 rounded-full overflow-hidden border border-border/40 shadow-2xl shadow-black/30"
               style={{
@@ -443,7 +440,7 @@ function RouletteGame() {
             <div className="absolute inset-[48%] rounded-full bg-gradient-to-b from-foreground/80 to-black/90 shadow-2xl shadow-black/60" />
           </div>
 
-          <div className="mt-6 space-y-3">
+            <div className="mt-5 space-y-3">
             {lastResult ? (
               <div className="flex items-center justify-between rounded-xl border border-border/60 bg-background/70 px-4 py-3">
                 <div className="flex items-center gap-3">
@@ -487,215 +484,9 @@ function RouletteGame() {
               </div>
             )}
 
-            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-              <div>{bets.length > 0 ? `${bets.length} pari${bets.length > 1 ? 's' : ''}` : 'Aucune mise'}</div>
-              <div className="flex items-center gap-1">
-                {history.slice(0, 4).map((spin, idx) => (
-                  <span
-                    key={`${spin.number}-${idx}`}
-                    className={cn(
-                      "inline-flex h-6 w-6 items-center justify-center rounded-full border text-[11px] font-semibold",
-                      spin.color === 'red'
-                        ? "bg-red-500/20 text-red-100 border-red-500/40"
-                        : spin.color === 'black'
-                          ? "bg-slate-900 text-slate-100 border-slate-700"
-                          : "bg-emerald-500/20 text-emerald-100 border-emerald-500/40"
-                    )}
-                  >
-                    {spin.number}
-                  </span>
-                ))}
+              <div className="text-[11px] text-muted-foreground">
+                {bets.length > 0 ? `${bets.length} pari${bets.length > 1 ? 's' : ''}` : 'Aucune mise'}
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Betting table */}
-        <div className="space-y-3">
-          <div className="rounded-lg border border-border/60 bg-card p-4 space-y-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                Jetons
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {CHIP_VALUES.map((value) => (
-                  <button
-                    key={value}
-                    onClick={() => setChipValue(value)}
-                    className={cn("rounded-full border px-3 py-1 text-sm transition-colors",
-                      chipValue === value ? "border-foreground text-foreground" : "border-border text-muted-foreground hover:text-foreground")}
-                  >
-                    ${value}
-                  </button>
-                ))}
-              </div>
-              <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <Coins className="h-4 w-4" />
-                  Total: ${totalBet}
-                </div>
-                <div className="flex items-center gap-1">
-                  <Flame className="h-4 w-4 text-orange-400" />
-                  Mise sélection: ${chipValue}
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-3 lg:grid-cols-[84px_1fr]">
-              <button
-                onClick={() => placeBet('straight', 0)}
-                className={cn(
-                  "relative flex items-center justify-center rounded-lg border px-3 py-3 font-semibold text-base transition-all",
-                  "bg-emerald-900/30 text-emerald-50 border-emerald-500/30 hover:border-emerald-400",
-                  spinning && "opacity-70 cursor-not-allowed"
-                )}
-                disabled={spinning}
-              >
-                <span>0</span>
-                {getBetFor('straight', 0) && (
-                  <div className="absolute right-2 top-2">
-                    {renderChip(getBetFor('straight', 0)!.amount)}
-                  </div>
-                )}
-              </button>
-
-              <div
-                className="grid grid-cols-3 gap-2"
-                style={{ gridTemplateRows: 'repeat(12, minmax(0, 1fr))' }}
-              >
-                {TABLE_ROWS.map((row) =>
-                  row.map((num) => {
-                    const color = getNumberColor(num);
-                    const bet = getBetFor('straight', num);
-                    return (
-                      <button
-                        key={num}
-                        onClick={() => placeBet('straight', num)}
-                        className={cn(
-                          "relative rounded-lg border px-2 py-3 text-center font-semibold transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground",
-                          color === 'red'
-                            ? "bg-red-500/10 text-red-100 border-red-500/40 hover:border-red-300"
-                            : "bg-slate-950 text-slate-100 border-slate-800 hover:border-slate-600",
-                          spinning && "opacity-70 cursor-not-allowed"
-                        )}
-                        disabled={spinning}
-                      >
-                        <span>{num}</span>
-                        {bet && (
-                          <div className="absolute right-1.5 top-1.5">
-                            {renderChip(bet.amount)}
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              <button
-                onClick={() => placeBet('color', 'red')}
-                className={cn(
-                  "relative flex items-center justify-between rounded-lg border px-3 py-3 text-sm font-semibold transition-colors",
-                  "bg-red-500/10 text-red-100 border-red-500/30 hover:border-red-300",
-                  spinning && "opacity-70 cursor-not-allowed"
-                )}
-                disabled={spinning}
-              >
-                Rouge {getBetFor('color', 'red') && renderChip(getBetFor('color', 'red')!.amount)}
-              </button>
-              <button
-                onClick={() => placeBet('color', 'black')}
-                className={cn(
-                  "relative flex items-center justify-between rounded-lg border px-3 py-3 text-sm font-semibold transition-colors",
-                  "bg-slate-950 text-slate-100 border-slate-800 hover:border-slate-600",
-                  spinning && "opacity-70 cursor-not-allowed"
-                )}
-                disabled={spinning}
-              >
-                Noir {getBetFor('color', 'black') && renderChip(getBetFor('color', 'black')!.amount)}
-              </button>
-              <button
-                onClick={() => placeBet('parity', 'even')}
-                className={cn(
-                  "relative flex items-center justify-between rounded-lg border px-3 py-3 text-sm font-semibold transition-colors",
-                  "bg-background text-foreground hover:border-foreground/40 border-border",
-                  spinning && "opacity-70 cursor-not-allowed"
-                )}
-                disabled={spinning}
-              >
-                Pair {getBetFor('parity', 'even') && renderChip(getBetFor('parity', 'even')!.amount)}
-              </button>
-              <button
-                onClick={() => placeBet('parity', 'odd')}
-                className={cn(
-                  "relative flex items-center justify-between rounded-lg border px-3 py-3 text-sm font-semibold transition-colors",
-                  "bg-background text-foreground hover:border-foreground/40 border-border",
-                  spinning && "opacity-70 cursor-not-allowed"
-                )}
-                disabled={spinning}
-              >
-                Impair {getBetFor('parity', 'odd') && renderChip(getBetFor('parity', 'odd')!.amount)}
-              </button>
-              <button
-                onClick={() => placeBet('range', 'low')}
-                className={cn(
-                  "relative flex items-center justify-between rounded-lg border px-3 py-3 text-sm font-semibold transition-colors",
-                  "bg-background text-foreground hover:border-foreground/40 border-border",
-                  spinning && "opacity-70 cursor-not-allowed"
-                )}
-                disabled={spinning}
-              >
-                1 - 18 {getBetFor('range', 'low') && renderChip(getBetFor('range', 'low')!.amount)}
-              </button>
-              <button
-                onClick={() => placeBet('range', 'high')}
-                className={cn(
-                  "relative flex items-center justify-between rounded-lg border px-3 py-3 text-sm font-semibold transition-colors",
-                  "bg-background text-foreground hover:border-foreground/40 border-border",
-                  spinning && "opacity-70 cursor-not-allowed"
-                )}
-                disabled={spinning}
-              >
-                19 - 36 {getBetFor('range', 'high') && renderChip(getBetFor('range', 'high')!.amount)}
-              </button>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              {[1, 2, 3].map((dozen) => (
-                <button
-                  key={dozen}
-                  onClick={() => placeBet('dozen', dozen)}
-                  className={cn(
-                    "relative flex items-center justify-between rounded-lg border px-3 py-3 text-sm font-semibold transition-colors",
-                    "bg-background text-foreground hover:border-foreground/40 border-border",
-                    spinning && "opacity-70 cursor-not-allowed"
-                  )}
-                  disabled={spinning}
-                >
-                  {dozen === 1 ? '1 - 12' : dozen === 2 ? '13 - 24' : '25 - 36'}
-                  {getBetFor('dozen', dozen) && renderChip(getBetFor('dozen', dozen)!.amount)}
-                </button>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              {[1, 2, 3].map((column) => (
-                <button
-                  key={column}
-                  onClick={() => placeBet('column', column)}
-                  className={cn(
-                    "relative flex items-center justify-between rounded-lg border px-3 py-3 text-sm font-semibold transition-colors",
-                    "bg-background text-foreground hover:border-foreground/40 border-border",
-                    spinning && "opacity-70 cursor-not-allowed"
-                  )}
-                  disabled={spinning}
-                >
-                  Colonne {column}
-                  {getBetFor('column', column) && renderChip(getBetFor('column', column)!.amount)}
-                </button>
-              ))}
             </div>
           </div>
 
@@ -706,7 +497,7 @@ function RouletteGame() {
             </div>
           )}
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-3">
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 <Coins className="h-4 w-4" />
@@ -748,80 +539,201 @@ function RouletteGame() {
             </div>
           </div>
         </div>
+
+        {/* Betting table */}
+        <div className="space-y-3">
+          <div className="space-y-3 border border-border/40 rounded-lg p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                Jetons
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {CHIP_VALUES.map((value) => (
+                  <button
+                    key={value}
+                    onClick={() => setChipValue(value)}
+                    className={cn(
+                      "rounded-full border px-3 py-1 text-xs transition-colors",
+                      chipValue === value
+                        ? "border-foreground text-foreground"
+                        : "border-border/50 text-muted-foreground hover:text-foreground hover:border-foreground/40"
+                    )}
+                  >
+                    ${value}
+                  </button>
+                ))}
+              </div>
+              <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <Coins className="h-4 w-4" />
+                  Total: ${totalBet}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Flame className="h-4 w-4 text-orange-400" />
+                  Mise sélection: ${chipValue}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-2 lg:grid-cols-[72px_1fr]">
+              <button
+                onClick={() => placeBet('straight', 0)}
+                className={cn(
+                  "relative flex items-center justify-center rounded-md border px-2 py-2 font-semibold text-sm transition-all",
+                  "bg-emerald-900/30 text-emerald-50 border-emerald-500/30 hover:border-emerald-400",
+                  spinning && "opacity-70 cursor-not-allowed"
+                )}
+                disabled={spinning}
+              >
+                <span>0</span>
+                {getBetFor('straight', 0) && (
+                  <div className="absolute right-2 top-2">
+                    {renderChip(getBetFor('straight', 0)!.amount)}
+                  </div>
+                )}
+              </button>
+
+              <div className="grid grid-cols-3 gap-1.5" style={{ gridTemplateRows: 'repeat(12, minmax(0, 1fr))' }}>
+                {TABLE_ROWS.map((row) =>
+                  row.map((num) => {
+                    const color = getNumberColor(num);
+                    const bet = getBetFor('straight', num);
+                    return (
+                      <button
+                        key={num}
+                        onClick={() => placeBet('straight', num)}
+                        className={cn(
+                          "relative rounded-md border px-1 py-2 text-center text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground",
+                          color === 'red'
+                            ? "bg-red-500/10 text-red-100 border-red-500/40 hover:border-red-300"
+                            : "bg-slate-950 text-slate-100 border-slate-800 hover:border-slate-600",
+                          spinning && "opacity-70 cursor-not-allowed"
+                        )}
+                        disabled={spinning}
+                      >
+                        <span>{num}</span>
+                        {bet && (
+                          <div className="absolute right-1.5 top-1.5">
+                            {renderChip(bet.amount)}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
+              <button
+                onClick={() => placeBet('color', 'red')}
+                className={cn(
+                  "relative flex items-center justify-between rounded-md border px-2 py-2 text-xs font-semibold transition-colors",
+                  "bg-red-500/10 text-red-100 border-red-500/30 hover:border-red-300",
+                  spinning && "opacity-70 cursor-not-allowed"
+                )}
+                disabled={spinning}
+              >
+                Rouge {getBetFor('color', 'red') && renderChip(getBetFor('color', 'red')!.amount)}
+              </button>
+              <button
+                onClick={() => placeBet('color', 'black')}
+                className={cn(
+                  "relative flex items-center justify-between rounded-md border px-2 py-2 text-xs font-semibold transition-colors",
+                  "bg-slate-950 text-slate-100 border-slate-800 hover:border-slate-600",
+                  spinning && "opacity-70 cursor-not-allowed"
+                )}
+                disabled={spinning}
+              >
+                Noir {getBetFor('color', 'black') && renderChip(getBetFor('color', 'black')!.amount)}
+              </button>
+              <button
+                onClick={() => placeBet('parity', 'even')}
+                className={cn(
+                  "relative flex items-center justify-between rounded-md border px-2 py-2 text-xs font-semibold transition-colors",
+                  "bg-background text-foreground hover:border-foreground/40 border-border",
+                  spinning && "opacity-70 cursor-not-allowed"
+                )}
+                disabled={spinning}
+              >
+                Pair {getBetFor('parity', 'even') && renderChip(getBetFor('parity', 'even')!.amount)}
+              </button>
+              <button
+                onClick={() => placeBet('parity', 'odd')}
+                className={cn(
+                  "relative flex items-center justify-between rounded-md border px-2 py-2 text-xs font-semibold transition-colors",
+                  "bg-background text-foreground hover:border-foreground/40 border-border",
+                  spinning && "opacity-70 cursor-not-allowed"
+                )}
+                disabled={spinning}
+              >
+                Impair {getBetFor('parity', 'odd') && renderChip(getBetFor('parity', 'odd')!.amount)}
+              </button>
+              <button
+                onClick={() => placeBet('range', 'low')}
+                className={cn(
+                  "relative flex items-center justify-between rounded-md border px-2 py-2 text-xs font-semibold transition-colors",
+                  "bg-background text-foreground hover:border-foreground/40 border-border",
+                  spinning && "opacity-70 cursor-not-allowed"
+                )}
+                disabled={spinning}
+              >
+                1 - 18 {getBetFor('range', 'low') && renderChip(getBetFor('range', 'low')!.amount)}
+              </button>
+              <button
+                onClick={() => placeBet('range', 'high')}
+                className={cn(
+                  "relative flex items-center justify-between rounded-md border px-2 py-2 text-xs font-semibold transition-colors",
+                  "bg-background text-foreground hover:border-foreground/40 border-border",
+                  spinning && "opacity-70 cursor-not-allowed"
+                )}
+                disabled={spinning}
+              >
+                19 - 36 {getBetFor('range', 'high') && renderChip(getBetFor('range', 'high')!.amount)}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-1.5">
+              {[1, 2, 3].map((dozen) => (
+                <button
+                  key={dozen}
+                  onClick={() => placeBet('dozen', dozen)}
+                  className={cn(
+                    "relative flex items-center justify-between rounded-md border px-2 py-2 text-xs font-semibold transition-colors",
+                    "bg-background text-foreground hover:border-foreground/40 border-border",
+                    spinning && "opacity-70 cursor-not-allowed"
+                  )}
+                  disabled={spinning}
+                >
+                  {dozen === 1 ? '1 - 12' : dozen === 2 ? '13 - 24' : '25 - 36'}
+                  {getBetFor('dozen', dozen) && renderChip(getBetFor('dozen', dozen)!.amount)}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-3 gap-1.5">
+              {[1, 2, 3].map((column) => (
+                <button
+                  key={column}
+                  onClick={() => placeBet('column', column)}
+                  className={cn(
+                    "relative flex items-center justify-between rounded-md border px-2 py-2 text-xs font-semibold transition-colors",
+                    "bg-background text-foreground hover:border-foreground/40 border-border",
+                    spinning && "opacity-70 cursor-not-allowed"
+                  )}
+                  disabled={spinning}
+                >
+                  Colonne {column}
+                  {getBetFor('column', column) && renderChip(getBetFor('column', column)!.amount)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+        </div>
       </div>
 
       {/* Stats & history */}
-      <div className="grid gap-3 md:grid-cols-3">
-        <div className="rounded-lg border border-border/60 bg-card p-3 text-center">
-          <p className="text-2xl font-semibold tabular-nums">{stats.wins}</p>
-          <p className="text-[11px] text-muted-foreground uppercase tracking-[0.12em]">Victoires</p>
-        </div>
-        <div className="rounded-lg border border-border/60 bg-card p-3 text-center">
-          <p className="text-2xl font-semibold tabular-nums">{stats.losses}</p>
-          <p className="text-[11px] text-muted-foreground uppercase tracking-[0.12em]">Défaites</p>
-        </div>
-        <div className="rounded-lg border border-border/60 bg-card p-3 text-center">
-          <p className="text-2xl font-semibold tabular-nums">${stats.highScore.toLocaleString()}</p>
-          <p className="text-[11px] text-muted-foreground uppercase tracking-[0.12em]">Meilleur gain</p>
-        </div>
-      </div>
-
-      <div className="rounded-lg border border-border/60 bg-card p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-[0.16em]">
-            <History className="h-3.5 w-3.5" />
-            Tours
-          </div>
-          <div className="text-xs text-muted-foreground">
-            Multi-mises: gain brut = mise x multiplicateur, net = gain - mise totale.
-          </div>
-        </div>
-        {history.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Aucun tour joué pour l&apos;instant.</p>
-        ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-2">
-            {history.map((spin, idx) => (
-              <div
-                key={`${spin.number}-${idx}`}
-                className="rounded-md border border-border/60 bg-card px-3 py-2 flex items-center justify-between"
-              >
-                <div className="flex items-center gap-2">
-                  <span
-                    className={cn(
-                      "inline-flex h-8 w-8 items-center justify-center rounded-full border text-sm font-semibold",
-                      spin.color === 'red'
-                        ? "bg-red-500/15 text-red-100 border-red-500/40"
-                        : spin.color === 'black'
-                          ? "bg-slate-900 text-slate-100 border-slate-700"
-                          : "bg-emerald-500/20 text-emerald-100 border-emerald-500/40"
-                    )}
-                  >
-                    {spin.number}
-                  </span>
-                  <div className="text-xs">
-                    <div className="font-semibold">
-                      {spin.color === 'red'
-                        ? 'Rouge'
-                        : spin.color === 'black'
-                          ? 'Noir'
-                          : 'Vert'}
-                    </div>
-                    <div className="text-muted-foreground">Mise: ${spin.totalBet}</div>
-                  </div>
-                </div>
-                <div className="text-right text-xs font-semibold">
-                  {spin.net >= 0 ? (
-                    <span className="text-green-500">+${spin.net}</span>
-                  ) : (
-                    <span className="text-destructive">${spin.net}</span>
-                  )}
-                  <div className="text-[11px] text-muted-foreground">Gain: ${spin.payout}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
@@ -829,7 +741,7 @@ function RouletteGame() {
 // -----------------------------
 // Slot Machine Component (previous experience)
 // -----------------------------
-function SlotMachineGame() {
+function SlotMachineGame({ onBetChange }: { onBetChange?: (value: number) => void }) {
   const { user, refreshUser } = useAuth();
   const [bet, setBet] = useState(50);
   const [spinning, setSpinning] = useState(false);
@@ -838,28 +750,12 @@ function SlotMachineGame() {
   );
   const [winAmount, setWinAmount] = useState(0);
   const [lastResult, setLastResult] = useState<SlotResult | null>(null);
-  const [stats, setStats] = useState({ wins: 0, losses: 0, highScore: 0 });
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
 
   useEffect(() => {
-    fetchStats();
-  }, []);
-
-  const fetchStats = async () => {
-    if (!user) return;
-    try {
-      const response = await gamesApi.getStats('casino', user.id);
-      const gameStats = response.data.stats;
-      setStats({
-        wins: gameStats.wins || 0,
-        losses: gameStats.losses || 0,
-        highScore: gameStats.highScore || 0,
-      });
-    } catch (error) {
-      console.error('Failed to fetch stats:', error);
-    }
-  };
+    onBetChange?.(bet);
+  }, [bet, onBetChange]);
 
   const generateReels = (): SlotSymbol[][] => {
     return Array(REEL_COUNT).fill(null).map(() =>
@@ -943,7 +839,6 @@ function SlotMachineGame() {
         });
 
         await refreshUser();
-        await fetchStats();
       } catch (error) {
         console.error('Failed to submit spin:', error);
       }
@@ -955,22 +850,7 @@ function SlotMachineGame() {
   const canSpin = user && user.money >= bet && !spinning;
 
   return (
-    <div className="max-w-4xl space-y-8">
-      <header className="space-y-1">
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">
-              Machine à sous
-            </h2>
-            <p className="text-sm text-muted-foreground">Style épuré, même logique de gain.</p>
-          </div>
-          <div className="text-right text-xs text-muted-foreground tabular-nums">
-            <div className="text-sm text-foreground">${user?.money.toLocaleString() || 0}</div>
-            <div>Mise: ${bet}</div>
-          </div>
-        </div>
-      </header>
-
+    <div className="max-w-4xl mx-auto space-y-8">
       <div className="flex flex-wrap justify-center gap-2">
         {BET_STEPS.map((step) => (
           <button
@@ -1049,20 +929,6 @@ function SlotMachineGame() {
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 text-center">
-        <div>
-          <p className="text-2xl font-light tabular-nums">{stats.wins}</p>
-          <p className="text-xs text-muted-foreground uppercase">Victoires</p>
-        </div>
-        <div>
-          <p className="text-2xl font-light tabular-nums">{stats.losses}</p>
-          <p className="text-xs text-muted-foreground uppercase">Défaites</p>
-        </div>
-        <div>
-          <p className="text-2xl font-light tabular-nums">${stats.highScore.toLocaleString()}</p>
-          <p className="text-xs text-muted-foreground uppercase">Meilleur gain</p>
-        </div>
-      </div>
     </div>
   );
 }
