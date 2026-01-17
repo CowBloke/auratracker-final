@@ -1555,7 +1555,7 @@ router.post('/deploy', authMiddleware, requireAdmin, async (req: AuthRequest, re
     });
 
     // Execute the deploy script
-    const { stdout, stderr } = await execAsync('cd /home/cowbloke/auratracker-final/backend ; /var/scripts/deploy.sh', {
+    const { stdout, stderr } = await execAsync('/var/scripts/deploy.sh', {
       timeout: 120000, // 2 minute timeout
       cwd: '/',
     });
