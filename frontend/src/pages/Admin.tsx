@@ -306,7 +306,7 @@ export default function Admin() {
   const [totalLogs, setTotalLogs] = useState(0);
   const [expandedLogIds, setExpandedLogIds] = useState<Set<string>>(new Set());
   const logsPerPage = 50;
-  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [downloadLogsOpen, setDownloadLogsOpen] = useState(false);
   const [downloadLogsStartDate, setDownloadLogsStartDate] = useState(() => {
     const date = new Date();
@@ -317,7 +317,7 @@ export default function Admin() {
   const [downloadLogsError, setDownloadLogsError] = useState<string | null>(null);
 
   // Game settings state
-  const [gameSettings, setGameSettings] = useState<Record<string, string>>({});
+  const [_gameSettings, setGameSettings] = useState<Record<string, string>>({});
   const [loadingSettings, setLoadingSettings] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsForm, setSettingsForm] = useState({

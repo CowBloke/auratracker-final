@@ -366,6 +366,12 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
         },
       });
 
+      logParty('party_join', userId, user!.username, {
+        partyId,
+        partyName: updatedParty!.name,
+        source: 'join_request',
+      });
+      
       // Notify the joining user
       socket.emit('party:joined', serializePartyPayload(updatedParty!));
       emitPartyGameState(socket, partyId);

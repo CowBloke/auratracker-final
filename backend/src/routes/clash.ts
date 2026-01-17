@@ -255,7 +255,7 @@ router.get('/targets', authMiddleware, async (req: AuthRequest, res: Response) =
       trophies: target.trophies,
       defenseRating: target.defenseRating,
       potentialMoney: Math.floor(target.user.money * 0.2), // Can steal up to 20%
-      potentialAura: Math.floor(target.user.aura * 0.1), // Can steal up to 10%
+      potentialAura: Math.floor(Number(target.user.aura) * 0.1), // Can steal up to 10%
     }));
     
     res.json({ targets: targetsWithLoot });
@@ -322,7 +322,7 @@ router.post('/attack/check', authMiddleware, async (req: AuthRequest, res: Respo
       });
     }
     
-    res.json({ 
+    res.json({
       canAttack: true,
       defender: {
         id: defenderBase.userId,
@@ -331,7 +331,7 @@ router.post('/attack/check', authMiddleware, async (req: AuthRequest, res: Respo
         defenseRating: defenderBase.defenseRating,
         trophies: defenderBase.trophies,
         potentialMoney: Math.floor(defenderBase.user.money * 0.2),
-        potentialAura: Math.floor(defenderBase.user.aura * 0.1),
+        potentialAura: Math.floor(Number(defenderBase.user.aura) * 0.1),
       },
       troopTypes: TROOP_TYPES,
     });
@@ -370,10 +370,10 @@ router.post('/attack/execute', authMiddleware, validate(executeAttackSchema), as
     // Calculate rewards based on destruction and stars
     const success = starsEarned >= 1;
     const destructionMultiplier = destruction / 100;
-    
+
     // Loot calculation
     const maxMoneyLoot = Math.floor(defender.money * 0.2);
-    const maxAuraLoot = Math.floor(defender.aura * 0.1);
+    const maxAuraLoot = Math.floor(Number(defender.aura) * 0.1);
     const moneyTaken = success ? Math.floor(maxMoneyLoot * destructionMultiplier) : 0;
     const auraTaken = success ? Math.floor(maxAuraLoot * destructionMultiplier * (starsEarned / 3)) : 0;
     
@@ -410,7 +410,7 @@ router.post('/attack/execute', authMiddleware, validate(executeAttackSchema), as
       prisma.user.update({
         where: { id: req.user.id },
         data: {
-          aura: { increment: auraTaken - (!success ? Math.floor(attacker.aura * 0.05) : 0) },
+          aura: { increment: auraTaken - (!success ? Math.floor(Number(attacker.aura) * 0.05) : 0) },
           money: { increment: moneyTaken },
         },
       }),
@@ -492,7 +492,7 @@ router.post('/attack/execute', authMiddleware, validate(executeAttackSchema), as
       moneyTaken,
       trophiesWon: success ? trophiesWon : 0,
       trophiesLost: !success ? trophiesLost : 0,
-      auraLostOnFail: !success ? Math.floor(attacker.aura * 0.05) : 0,
+      auraLostOnFail: !success ? Math.floor(Number(attacker.aura) * 0.05) : 0,
       newBalance: {
         aura: updatedAttacker.aura,
         money: updatedAttacker.money,

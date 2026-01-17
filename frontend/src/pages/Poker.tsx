@@ -87,7 +87,7 @@ export default function Poker() {
       return;
     }
     const interval = setInterval(() => {
-      const remaining = pokerGame.turnEndsAt - Date.now();
+      const remaining = (pokerGame.turnEndsAt ?? Date.now()) - Date.now();
       setTurnProgress(Math.max(0, Math.min(100, (remaining / ACTION_TIME_LIMIT) * 100)));
     }, 120);
     return () => clearInterval(interval);
