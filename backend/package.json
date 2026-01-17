@@ -1,6 +1,7 @@
 {
   "name": "aura-tracker-backend",
   "version": "1.0.0",
+  "type": "module",
   "description": "Aura Tracker Backend API",
   "main": "dist/server.js",
   "scripts": {

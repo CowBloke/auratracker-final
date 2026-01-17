@@ -750,7 +750,7 @@ function SlotMachineGame({ onBetChange }: { onBetChange?: (value: number) => voi
   );
   const [winAmount, setWinAmount] = useState(0);
   const [lastResult, setLastResult] = useState<SlotResult | null>(null);
-  const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
+  const [_rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
 
   useEffect(() => {
@@ -856,7 +856,7 @@ function SlotMachineGame({ onBetChange }: { onBetChange?: (value: number) => voi
           <button
             key={step}
             onClick={() => setBet(step)}
-            disabled={spinning || (user && user.money < step)}
+            disabled={spinning || !!(user && user.money < step)}
             className={cn(
               "px-3 py-1.5 text-sm border transition-colors rounded-full",
               bet === step
