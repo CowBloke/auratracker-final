@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Socket } from 'socket.io-client';
 import { initSocket, connectSocket, disconnectSocket, chatEvents, partyEvents, gameEvents, bombPartyEvents, pokerEvents, petitBacEvents, monopolyEvents } from '../services/socket';
 import { useAuth } from './AuthContext';
@@ -499,6 +500,7 @@ const SocketContext = createContext<SocketContextType | null>(null);
 
 export function SocketProvider({ children }: { children: React.ReactNode }) {
   const { user, updateBalance } = useAuth();
+  const navigate = useNavigate();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [connected, setConnected] = useState(false);
   
@@ -677,6 +679,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setPokerJoinPrompt(null);
         setPokerPlayAgainPrompt(null);
         setPokerGameOver(null);
+        if (typeof window !== 'undefined' && window.location.pathname !== '/party') {
+          navigate('/party');
+        }
       });
 
       s.on('party:restored', (data: { party: Party; members: PartyMember[] }) => {
@@ -1164,7 +1169,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         s.removeAllListeners();
       };
     }
-  }, [user, updateBalance]);
+  }, [user, updateBalance, navigate]);
 
   const sendMessage = (message: string, replyToId?: string | null) => {
     if (user) {
