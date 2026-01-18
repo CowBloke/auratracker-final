@@ -56,6 +56,8 @@ model User {
   ownedClans        Clan[]             @relation("ClanOwner")
   clanMemberships   ClanMember[]
   clanJoinRequests  ClanJoinRequest[]
+  polymarketSuggestions PolymarketSuggestion[]
+  polymarketBets    PolymarketBet[]
 
   @@index([aura])
   @@index([money])
@@ -551,4 +553,67 @@ model Log {
   @@index([action])
   @@index([userId])
   @@index([createdAt])
+}
+
+// Polymarket System
+model PolymarketSuggestion {
+  id          String   @id @default(uuid())
+  userId      String
+  title       String
+  description String
+  imageUrl    String?
+  eventDate   DateTime // Date de réalisation de l'événement
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt   DateTime @default(now())
+  reviewedAt  DateTime?
+  reviewedBy  String?  // Admin ID who reviewed
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event       PolymarketEvent? // If approved and converted to event
+  
+  @@index([status])
+  @@index([createdAt])
+  @@index([userId])
+}
+
+model PolymarketEvent {
+  id            String   @id @default(uuid())
+  suggestionId  String?  @unique // If created from suggestion
+  title         String
+  description   String
+  imageUrl      String?
+  eventDate     DateTime // Date de réalisation de l'événement
+  yesOdds       Float    // Cote pour "Oui" (ex: 1.5 = mise * 1.5 si gagnant)
+  noOdds        Float    // Cote pour "Non" (ex: 2.0 = mise * 2.0 si gagnant)
+  status        String   @default("OPEN") // OPEN, CLOSED, RESOLVED
+  resolution    String?  // "YES" or "NO" when resolved
+  resolvedAt    DateTime?
+  resolvedBy    String?  // Admin ID who resolved
+  createdAt     DateTime @default(now())
+  closedAt      DateTime? // When betting closed (before event date)
+  
+  suggestion    PolymarketSuggestion? @relation(fields: [suggestionId], references: [id], onDelete: SetNull)
+  bets          PolymarketBet[]
+  
+  @@index([status])
+  @@index([eventDate])
+  @@index([createdAt])
+}
+
+model PolymarketBet {
+  id          String   @id @default(uuid())
+  userId      String
+  eventId     String
+  prediction  String   // "YES" or "NO"
+  amount      Int      // Mise en money
+  payout      Int?     // Gains calculés après résolution (null si perdu)
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event       PolymarketEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([eventId])
+  @@index([createdAt])
+  @@unique([userId, eventId]) // Un seul pari par utilisateur par événement
 }
