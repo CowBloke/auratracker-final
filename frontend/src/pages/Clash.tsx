@@ -269,7 +269,7 @@ export default function Clash() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
+    <div className="max-w-6xl mx-auto py-12 px-4 space-y-16">
       {/* Header */}
       <header className="space-y-2">
         <div className="flex items-center justify-between">

@@ -6,13 +6,13 @@ export default function ChatBubble() {
 
   return (
     <button
-        onClick={() => setOpen((prev) => !prev)}
-        title="Toggle Chat"
-        className="relative flex items-center justify-center w-14 h-14 bg-background border border-border rounded-full shadow-lg hover:bg-muted/50 transition-colors"
-      >
-        <MessageCircle className="h-7 w-7" />
+      onClick={() => setOpen((prev) => !prev)}
+      title="Toggle Chat"
+      className="relative flex items-center justify-center w-12 h-12 border border-border/30 hover:border-foreground/30 transition-colors"
+    >
+      <MessageCircle className="h-5 w-5" />
       {unreadCount > 0 && (
-        <span className="absolute -top-1 -right-1 min-w-6 h-6 px-1.5 flex items-center justify-center text-xs font-bold bg-red-500 text-white rounded-full">
+        <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 flex items-center justify-center text-[10px] font-medium border border-border/30 bg-background text-foreground">
           {unreadCount > 99 ? '99+' : unreadCount}
         </span>
       )}

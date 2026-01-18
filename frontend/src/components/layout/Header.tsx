@@ -13,10 +13,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { usersApi } from '@/services/api';
-import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { resolveImageUrl } from '@/lib/images';
 
@@ -106,41 +104,41 @@ export default function Header() {
                 <SheetTitle>Rechercher un joueur</SheetTitle>
               </SheetHeader>
               <div className="mt-6 space-y-4">
-                <Input
+                <input
+                  type="text"
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
                   placeholder="Pseudo, ID..."
                   autoFocus
+                  className="w-full h-12 bg-transparent border border-border/50 px-4 text-sm focus:outline-none focus:border-foreground/30"
                 />
-                <Separator />
-                <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-2">
+                <div className="h-px bg-border" />
+                <div className="max-h-[60vh] space-y-0 overflow-y-auto">
                   {isLoadingUsers ? (
-                    <p className="text-sm text-muted-foreground">Chargement des joueurs...</p>
+                    <p className="text-sm text-muted-foreground py-4">Chargement des joueurs...</p>
                   ) : loadError ? (
-                    <p className="text-sm text-destructive">{loadError}</p>
+                    <p className="text-sm text-muted-foreground py-4">{loadError}</p>
                   ) : filteredUsers.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Aucun joueur trouvé.</p>
+                    <p className="text-sm text-muted-foreground py-4">Aucun joueur trouvé.</p>
                   ) : (
                     filteredUsers.map((u) => (
                       <button
                         key={u.id}
                         type="button"
                         onClick={() => handleUserSelect(u.id)}
-                        className={cn(
-                          "flex w-full items-center gap-3 rounded-md border border-border/60 px-3 py-2 text-left transition hover:border-aura/60 hover:bg-aura/10"
-                        )}
+                        className="flex w-full items-center gap-3 border-b border-border/30 px-3 py-4 text-left transition-colors hover:bg-muted/30 last:border-0"
                       >
                         <Avatar className="h-9 w-9">
                           {u.profilePicture ? (
                             <AvatarImage src={resolveImageUrl(u.profilePicture)} alt={u.username} />
                           ) : null}
-                          <AvatarFallback className="bg-primary text-white">
+                          <AvatarFallback className="bg-muted text-foreground">
                             {u.username.slice(0, 1).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0 flex-1">
                           <span
-                            className="block font-medium"
+                            className="block text-sm font-medium"
                             style={u.usernameColor ? { color: u.usernameColor } : undefined}
                           >
                             {u.username}

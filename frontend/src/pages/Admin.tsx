@@ -2,7 +2,6 @@ import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { adminApi, uploadsApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, Badge, UserBadge, Nft } from '../services/api';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -225,6 +224,7 @@ export default function Admin() {
   const [mutingUser, setMutingUser] = useState<string | null>(null);
   const [clearingChat, setClearingChat] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [activeTab, setActiveTab] = useState<'pending' | 'users' | 'items' | 'badges' | 'chat' | 'bugs' | 'bans' | 'logs' | 'announcement' | 'attention' | 'settings'>('pending');
   const [inventoryDialogOpen, setInventoryDialogOpen] = useState(false);
   const [inventoryUser, setInventoryUser] = useState<AdminUser | null>(null);
   const [inventoryItems, setInventoryItems] = useState<AdminInventoryItem[]>([]);
@@ -1277,101 +1277,154 @@ export default function Admin() {
       )}
 
       {/* Tabs */}
-      <Tabs defaultValue="pending" className="space-y-8">
-        <TabsList className="bg-transparent border border-border/30 p-1">
-          <TabsTrigger 
-            value="pending"
-            className="data-[state=active]:bg-muted/50 data-[state=active]:text-foreground text-muted-foreground"
+      <div className="space-y-6">
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setActiveTab('pending')}
+            className={cn(
+              "px-4 py-2 text-sm border transition-colors flex items-center gap-2",
+              activeTab === 'pending'
+                ? "border-foreground text-foreground"
+                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+            )}
           >
             Demandes
             {pendingUsers.length > 0 && (
-              <span className="ml-2 px-1.5 py-0.5 text-xs bg-amber-500/20 text-amber-400 rounded">
+              <span className="text-xs text-muted-foreground">
                 {pendingUsers.length}
               </span>
             )}
-          </TabsTrigger>
-          <TabsTrigger 
-            value="users"
-            className="data-[state=active]:bg-muted/50 data-[state=active]:text-foreground text-muted-foreground"
+          </button>
+          <button
+            onClick={() => setActiveTab('users')}
+            className={cn(
+              "px-4 py-2 text-sm border transition-colors",
+              activeTab === 'users'
+                ? "border-foreground text-foreground"
+                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+            )}
           >
             Utilisateurs
-          </TabsTrigger>
-          <TabsTrigger 
-            value="items"
-            className="data-[state=active]:bg-muted/50 data-[state=active]:text-foreground text-muted-foreground"
+          </button>
+          <button
+            onClick={() => setActiveTab('items')}
+            className={cn(
+              "px-4 py-2 text-sm border transition-colors",
+              activeTab === 'items'
+                ? "border-foreground text-foreground"
+                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+            )}
           >
             Objets
-          </TabsTrigger>
-          <TabsTrigger
-            value="badges"
-            className="data-[state=active]:bg-muted/50 data-[state=active]:text-foreground text-muted-foreground"
+          </button>
+          <button
+            onClick={() => setActiveTab('badges')}
+            className={cn(
+              "px-4 py-2 text-sm border transition-colors",
+              activeTab === 'badges'
+                ? "border-foreground text-foreground"
+                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+            )}
           >
-            <Award className="h-4 w-4 mr-1" />
             Badges
-          </TabsTrigger>
-          <TabsTrigger 
-            value="chat"
-            className="data-[state=active]:bg-muted/50 data-[state=active]:text-foreground text-muted-foreground"
+          </button>
+          <button
+            onClick={() => setActiveTab('chat')}
+            className={cn(
+              "px-4 py-2 text-sm border transition-colors",
+              activeTab === 'chat'
+                ? "border-foreground text-foreground"
+                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+            )}
           >
             Chat
-          </TabsTrigger>
-          <TabsTrigger
-            value="bugs"
-            className="data-[state=active]:bg-muted/50 data-[state=active]:text-foreground text-muted-foreground"
+          </button>
+          <button
+            onClick={() => setActiveTab('bugs')}
+            className={cn(
+              "px-4 py-2 text-sm border transition-colors flex items-center gap-2",
+              activeTab === 'bugs'
+                ? "border-foreground text-foreground"
+                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+            )}
           >
             Bugs
             {bugReports.filter(b => b.status === 'PENDING').length > 0 && (
-              <span className="ml-2 px-1.5 py-0.5 text-xs bg-destructive/20 text-destructive rounded">
+              <span className="text-xs text-muted-foreground">
                 {bugReports.filter(b => b.status === 'PENDING').length}
               </span>
             )}
-          </TabsTrigger>
-          <TabsTrigger
-            value="bans"
-            className="data-[state=active]:bg-muted/50 data-[state=active]:text-foreground text-muted-foreground"
+          </button>
+          <button
+            onClick={() => setActiveTab('bans')}
+            className={cn(
+              "px-4 py-2 text-sm border transition-colors flex items-center gap-2",
+              activeTab === 'bans'
+                ? "border-foreground text-foreground"
+                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+            )}
           >
             Bannissements
             {bans.filter(b => b.isActive).length > 0 && (
-              <span className="ml-2 px-1.5 py-0.5 text-xs bg-destructive/20 text-destructive rounded">
+              <span className="text-xs text-muted-foreground">
                 {bans.filter(b => b.isActive).length}
               </span>
             )}
-          </TabsTrigger>
-          <TabsTrigger
-            value="logs"
-            className="data-[state=active]:bg-muted/50 data-[state=active]:text-foreground text-muted-foreground"
+          </button>
+          <button
+            onClick={() => setActiveTab('logs')}
+            className={cn(
+              "px-4 py-2 text-sm border transition-colors flex items-center gap-2",
+              activeTab === 'logs'
+                ? "border-foreground text-foreground"
+                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+            )}
           >
-            <ScrollText className="h-4 w-4 mr-1" />
             Logs
             {logStats && (
-              <span className="ml-2 px-1.5 py-0.5 text-xs bg-muted text-muted-foreground rounded">
+              <span className="text-xs text-muted-foreground">
                 {logStats.total.toLocaleString()}
               </span>
             )}
-          </TabsTrigger>
-          <TabsTrigger
-            value="announcement"
-            className="data-[state=active]:bg-muted/50 data-[state=active]:text-foreground text-muted-foreground"
+          </button>
+          <button
+            onClick={() => setActiveTab('announcement')}
+            className={cn(
+              "px-4 py-2 text-sm border transition-colors",
+              activeTab === 'announcement'
+                ? "border-foreground text-foreground"
+                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+            )}
           >
             Annonce
-          </TabsTrigger>
-          <TabsTrigger
-            value="attention"
-            className="data-[state=active]:bg-muted/50 data-[state=active]:text-foreground text-muted-foreground"
+          </button>
+          <button
+            onClick={() => setActiveTab('attention')}
+            className={cn(
+              "px-4 py-2 text-sm border transition-colors",
+              activeTab === 'attention'
+                ? "border-foreground text-foreground"
+                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+            )}
           >
-            <AlertTriangle className="h-4 w-4 mr-1" />
             Attention
-          </TabsTrigger>
-          <TabsTrigger
-            value="settings"
-            className="data-[state=active]:bg-muted/50 data-[state=active]:text-foreground text-muted-foreground"
+          </button>
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={cn(
+              "px-4 py-2 text-sm border transition-colors",
+              activeTab === 'settings'
+                ? "border-foreground text-foreground"
+                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+            )}
           >
             Paramètres
-          </TabsTrigger>
-        </TabsList>
+          </button>
+        </div>
 
         {/* Pending Users Tab */}
-        <TabsContent value="pending" className="space-y-6">
+        {activeTab === 'pending' && (
+          <div className="space-y-6">
           <div className="h-px bg-border" />
           
           <div className="flex items-center justify-between">
@@ -1487,10 +1540,12 @@ export default function Admin() {
               ))}
             </div>
           )}
-        </TabsContent>
+          </div>
+        )}
 
         {/* Users Tab */}
-        <TabsContent value="users" className="space-y-6">
+        {activeTab === 'users' && (
+          <div className="space-y-6">
           <div className="h-px bg-border" />
           
           {loading ? (
@@ -1725,10 +1780,12 @@ export default function Admin() {
               ))}
             </div>
           )}
-        </TabsContent>
+          </div>
+        )}
 
         {/* Items Tab */}
-        <TabsContent value="items" className="space-y-6">
+        {activeTab === 'items' && (
+          <div className="space-y-6">
           <div className="h-px bg-border" />
           
           <div className="flex items-center justify-between">
@@ -1966,10 +2023,12 @@ export default function Admin() {
               ))}
             </div>
           )}
-        </TabsContent>
+          </div>
+        )}
 
         {/* Badges Tab */}
-        <TabsContent value="badges" className="space-y-6">
+        {activeTab === 'badges' && (
+          <div className="space-y-6">
           <div className="h-px bg-border" />
 
           <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
@@ -2130,10 +2189,12 @@ export default function Admin() {
               </div>
             </div>
           </div>
-        </TabsContent>
+          </div>
+        )}
 
         {/* Chat Tab */}
-        <TabsContent value="chat" className="space-y-6">
+        {activeTab === 'chat' && (
+          <div className="space-y-6">
           <div className="h-px bg-border" />
           
           <section className="space-y-6">
@@ -2195,10 +2256,12 @@ export default function Admin() {
               </AlertDialog>
             </div>
           </section>
-        </TabsContent>
+          </div>
+        )}
 
         {/* Bugs Tab */}
-        <TabsContent value="bugs" className="space-y-6">
+        {activeTab === 'bugs' && (
+          <div className="space-y-6">
           <div className="h-px bg-border" />
           
           <div className="flex items-center justify-between">
@@ -2334,10 +2397,12 @@ export default function Admin() {
               ))}
             </div>
           )}
-        </TabsContent>
+          </div>
+        )}
 
         {/* Bans Tab */}
-        <TabsContent value="bans" className="space-y-6">
+        {activeTab === 'bans' && (
+          <div className="space-y-6">
           <div className="h-px bg-border" />
 
           <div className="flex items-center justify-between">
@@ -2455,10 +2520,12 @@ export default function Admin() {
               ))}
             </div>
           )}
-        </TabsContent>
+          </div>
+        )}
 
         {/* Logs Tab */}
-        <TabsContent value="logs" className="space-y-4">
+        {activeTab === 'logs' && (
+          <div className="space-y-4">
           {/* Category Pills - Single Line */}
           {logStats && (
             <div className="flex flex-wrap gap-2">
@@ -2759,10 +2826,12 @@ export default function Admin() {
               </div>
             </div>
           )}
-        </TabsContent>
+          </div>
+        )}
 
         {/* Announcement Tab */}
-        <TabsContent value="announcement" className="space-y-6">
+        {activeTab === 'announcement' && (
+          <div className="space-y-6">
           <div className="h-px bg-border" />
 
           <div className="flex items-center justify-between">
@@ -2812,10 +2881,12 @@ export default function Admin() {
               </Button>
             </div>
           </div>
-        </TabsContent>
+          </div>
+        )}
 
         {/* Attention Tab */}
-        <TabsContent value="attention" className="space-y-6">
+        {activeTab === 'attention' && (
+          <div className="space-y-6">
           <div className="h-px bg-border" />
 
           <div className="flex items-center justify-between">
@@ -2871,10 +2942,12 @@ export default function Admin() {
               </div>
             </div>
           )}
-        </TabsContent>
+          </div>
+        )}
 
         {/* Settings Tab */}
-        <TabsContent value="settings" className="space-y-6">
+        {activeTab === 'settings' && (
+          <div className="space-y-6">
           <div className="h-px bg-border" />
 
           <div className="flex items-center justify-between">
@@ -3150,8 +3223,9 @@ export default function Admin() {
               </div>
             </div>
           )}
-        </TabsContent>
-      </Tabs>
+          </div>
+        )}
+      </div>
 
       {/* Ban Dialog */}
       <Dialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>

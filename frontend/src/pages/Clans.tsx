@@ -1,14 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Crown, Globe, ImageIcon, Loader2, Lock, Plus, ShieldCheck, Users, X, Check, UserX } from 'lucide-react';
+import { ImageIcon, Loader2, Plus, ShieldCheck, Users, X, Check, UserX } from 'lucide-react';
 import { clansApi, ClanDetail, ClanSummary, uploadsApi } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { readFileAsDataUrl } from '@/lib/uploads';
@@ -211,109 +208,113 @@ export default function Clans() {
   );
 
   return (
-    <div className="max-w-6xl mx-auto py-12 px-4 space-y-10">
-      <header className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground tracking-wide uppercase">Communautes</p>
-          <h1 className="text-4xl md:text-6xl font-light tracking-tight">Clans</h1>
+    <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
+      <header className="space-y-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-muted-foreground tracking-wide uppercase">Communautes</p>
+            <h1 className="text-5xl md:text-7xl font-light tracking-tight">Clans</h1>
+          </div>
+          <button 
+            onClick={() => setDialogOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            Creer un clan (100$)
+          </button>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={(open) => {
-          setDialogOpen(open);
-          if (!open) resetForm();
-        }}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Creer un clan (100$)
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-            <DialogTitle>Creer un clan</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleCreateClan} className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Nom du clan</label>
-                <Input value={name} onChange={(event) => setName(event.target.value)} maxLength={32} />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Description</label>
-                <Textarea
-                  value={description}
-                  onChange={(event) => setDescription(event.target.value)}
-                  rows={3}
-                  maxLength={300}
-                />
-              </div>
-              <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2">
-                <div>
-                  <p className="text-sm font-medium">Clan public</p>
-                  <p className="text-xs text-muted-foreground">Ouvert a tous sans validation</p>
-                </div>
-                <Switch checked={isPublic} onCheckedChange={setIsPublic} />
-              </div>
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant={imageInputMode === 'upload' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setImageInputMode('upload')}
-                  >
-                    Upload
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={imageInputMode === 'url' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setImageInputMode('url')}
-                  >
-                    URL
-                  </Button>
-                </div>
-                {imageInputMode === 'upload' ? (
-                  <div className="space-y-2">
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        if (file) handleImageFile(file);
-                      }}
-                    />
-                    {imageDataUrl ? (
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        <ImageIcon className="h-4 w-4" />
-                        Image chargee
-                      </div>
-                    ) : null}
-                  </div>
-                ) : (
-                  <Input
-                    placeholder="https://..."
-                    value={imageUrl}
-                    onChange={(event) => setImageUrl(event.target.value)}
-                  />
-                )}
-              </div>
-              {formError ? (
-                <Alert variant="destructive">
-                <AlertTitle>Erreur</AlertTitle>
-                  <AlertDescription>{formError}</AlertDescription>
-                </Alert>
-              ) : null}
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                  Annuler
-                </Button>
-                <Button type="submit" disabled={creating}>
-                  {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Creer'}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
       </header>
+
+      <Dialog open={dialogOpen} onOpenChange={(open) => {
+        setDialogOpen(open);
+        if (!open) resetForm();
+      }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Creer un clan</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateClan} className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Nom du clan</label>
+              <Input value={name} onChange={(event) => setName(event.target.value)} maxLength={32} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Description</label>
+              <Textarea
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                rows={3}
+                maxLength={300}
+              />
+            </div>
+            <div className="flex items-center justify-between border border-border/30 px-3 py-2">
+              <div>
+                <p className="text-sm font-medium">Clan public</p>
+                <p className="text-xs text-muted-foreground">Ouvert a tous sans validation</p>
+              </div>
+              <Switch checked={isPublic} onCheckedChange={setIsPublic} />
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant={imageInputMode === 'upload' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setImageInputMode('upload')}
+                >
+                  Upload
+                </Button>
+                <Button
+                  type="button"
+                  variant={imageInputMode === 'url' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setImageInputMode('url')}
+                >
+                  URL
+                </Button>
+              </div>
+              {imageInputMode === 'upload' ? (
+                <div className="space-y-2">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) handleImageFile(file);
+                    }}
+                  />
+                  {imageDataUrl ? (
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <ImageIcon className="h-4 w-4" />
+                      Image chargee
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <Input
+                  placeholder="https://..."
+                  value={imageUrl}
+                  onChange={(event) => setImageUrl(event.target.value)}
+                />
+              )}
+            </div>
+            {formError ? (
+              <Alert variant="destructive">
+                <AlertTitle>Erreur</AlertTitle>
+                <AlertDescription>{formError}</AlertDescription>
+              </Alert>
+            ) : null}
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                Annuler
+              </Button>
+              <Button type="submit" disabled={creating}>
+                {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Creer'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {message ? (
         <Alert variant={message.type === 'error' ? 'destructive' : 'default'}>
@@ -325,27 +326,27 @@ export default function Clans() {
       <div className="grid gap-6 lg:grid-cols-[1.1fr_1.4fr]">
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium">Tous les clans</h2>
-            <Badge variant="outline">{clans.length}</Badge>
+            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">Tous les clans</h2>
+            <span className="text-sm text-muted-foreground tabular-nums">{clans.length}</span>
           </div>
           {loading ? (
             <div className="py-10 text-sm text-muted-foreground">Chargement...</div>
           ) : clans.length === 0 ? (
             <div className="py-10 text-sm text-muted-foreground">Aucun clan pour le moment.</div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-0">
               {clans.map((clan) => (
-                <Card
+                <div
                   key={clan.id}
                   role="button"
                   tabIndex={0}
                   onClick={() => setSelectedClanId(clan.id)}
                   className={cn(
-                    "cursor-pointer border-border/60 transition hover:border-aura/50 hover:shadow-sm",
-                    clan.id === selectedClanId && "border-aura/80 shadow-sm"
+                    "cursor-pointer border-b border-border/30 py-4 last:border-0 transition-colors",
+                    clan.id === selectedClanId && "bg-muted/30 -mx-4 px-4"
                   )}
                 >
-                  <CardContent className="flex items-start gap-4 py-4">
+                  <div className="flex items-start gap-4">
                     <Avatar className="h-12 w-12">
                       {clan.imageUrl ? (
                         <AvatarImage src={resolveImageUrl(clan.imageUrl)} alt={clan.name} />
@@ -364,9 +365,9 @@ export default function Clans() {
                             </span>
                           </p>
                         </div>
-                        <Badge variant={clan.isPublic ? 'default' : 'secondary'}>
+                        <span className="text-xs text-muted-foreground uppercase tracking-wide">
                           {clan.isPublic ? 'Public' : 'Prive'}
-                        </Badge>
+                        </span>
                       </div>
                       <p className="text-sm text-muted-foreground line-clamp-2">
                         {clan.description || 'Aucune description.'}
@@ -381,22 +382,20 @@ export default function Clans() {
                         <span>{formatDate(clan.createdAt)}</span>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               ))}
             </div>
           )}
         </div>
 
-        <div className="space-y-4">
-            <h2 className="text-lg font-medium">Details du clan</h2>
+        <div className="space-y-6">
+            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">Details du clan</h2>
           {detailLoading ? (
-            <Card>
-              <CardContent className="py-10 text-sm text-muted-foreground">Chargement...</CardContent>
-            </Card>
+            <div className="py-12 text-sm text-muted-foreground text-center">Chargement...</div>
           ) : selectedClan ? (
-            <Card>
-              <CardHeader className="space-y-4">
+            <div className="space-y-6">
+              <div className="space-y-4">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="flex items-center gap-4">
                     <Avatar className="h-14 w-14">
@@ -408,7 +407,7 @@ export default function Clans() {
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <CardTitle className="text-2xl">{selectedClan.name}</CardTitle>
+                      <h2 className="text-2xl font-light">{selectedClan.name}</h2>
                       <p className="text-sm text-muted-foreground">
                         Chef: <span style={selectedClan.leader.usernameColor ? { color: selectedClan.leader.usernameColor } : undefined}>
                           {selectedClan.leader.username}
@@ -417,58 +416,64 @@ export default function Clans() {
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Badge variant={selectedClan.isPublic ? 'default' : 'secondary'}>
-                      {selectedClan.isPublic ? (
-                        <span className="flex items-center gap-1"><Globe className="h-3 w-3" /> Public</span>
-                      ) : (
-                        <span className="flex items-center gap-1"><Lock className="h-3 w-3" /> Prive</span>
-                      )}
-                    </Badge>
-                    {selectedClan.viewer.isLeader ? (
-                      <Badge variant="outline" className="flex items-center gap-1">
-                        <Crown className="h-3 w-3" /> Chef
-                      </Badge>
-                    ) : selectedClan.viewer.isMember ? (
-                      <Badge variant="outline">Membre</Badge>
-                    ) : selectedClan.viewer.hasPendingRequest ? (
-                      <Badge variant="outline">Demande en attente</Badge>
-                    ) : null}
+                    <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                      {selectedClan.isPublic ? 'Public' : 'Prive'}
+                    </span>
+                    {selectedClan.viewer.isLeader && (
+                      <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                        Chef
+                      </span>
+                    )}
+                    {selectedClan.viewer.isMember && !selectedClan.viewer.isLeader && (
+                      <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                        Membre
+                      </span>
+                    )}
+                    {selectedClan.viewer.hasPendingRequest && (
+                      <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                        Demande en attente
+                      </span>
+                    )}
                   </div>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {selectedClan.description || 'Aucune description.'}
                 </p>
-                <div className="grid gap-3 sm:grid-cols-3 text-sm">
-                  <div className="rounded-lg border border-border/60 p-3">
-                    <p className="text-xs text-muted-foreground">Membres</p>
-                    <p className="text-lg font-semibold">{selectedClan.memberCount}/{selectedClan.maxMembers}</p>
+                <div className="grid gap-8 sm:grid-cols-3 text-sm">
+                  <div className="space-y-1">
+                    <p className="text-4xl md:text-5xl font-light tabular-nums">{selectedClan.memberCount}/{selectedClan.maxMembers}</p>
+                    <p className="text-sm text-muted-foreground">Membres</p>
                   </div>
-                  <div className="rounded-lg border border-border/60 p-3">
-                    <p className="text-xs text-muted-foreground">Aura totale</p>
-                    <p className="text-lg font-semibold">{formatAura(selectedClan.totalAura)}</p>
+                  <div className="space-y-1">
+                    <p className="text-4xl md:text-5xl font-light tabular-nums">{formatAura(selectedClan.totalAura)}</p>
+                    <p className="text-sm text-muted-foreground">Aura totale</p>
                   </div>
-                  <div className="rounded-lg border border-border/60 p-3">
-                    <p className="text-xs text-muted-foreground">Creation</p>
-                    <p className="text-lg font-semibold">{formatDate(selectedClan.createdAt)}</p>
+                  <div className="space-y-1">
+                    <p className="text-4xl md:text-5xl font-light tabular-nums">{formatDate(selectedClan.createdAt)}</p>
+                    <p className="text-sm text-muted-foreground">Creation</p>
                   </div>
                 </div>
-                {!selectedClan.viewer.isMember && !selectedClan.viewer.hasPendingRequest ? (
-                  <Button onClick={handleJoin} disabled={actionLoading}>
+                {!selectedClan.viewer.isMember && !selectedClan.viewer.hasPendingRequest && (
+                  <button
+                    onClick={handleJoin}
+                    disabled={actionLoading}
+                    className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors disabled:opacity-50"
+                  >
                     {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : selectedClan.isPublic ? 'Rejoindre' : 'Demander'}
-                  </Button>
-                ) : null}
-              </CardHeader>
-              <Separator />
-              <CardContent className="space-y-6 py-6">
-                <div className="space-y-3">
-                  <h3 className="text-base font-semibold">Membres (classement aura)</h3>
+                  </button>
+                )}
+              </div>
+              <div className="h-px bg-border" />
+              <div className="space-y-6 py-6">
+                <div className="space-y-6">
+                  <h3 className="text-sm text-muted-foreground tracking-wide uppercase">Membres (classement aura)</h3>
                   <div className="space-y-2">
                     {selectedClan.members.map((member, index) => (
                       <div
                         key={member.id}
                         className={cn(
-                          "flex items-center justify-between rounded-md border border-border/60 px-3 py-2",
-                          member.userId === selectedClan.leader.id && "border-aura/60 bg-aura/10"
+                          "flex items-center justify-between border-b border-border/30 py-4 last:border-0",
+                          member.userId === selectedClan.leader.id && "bg-muted/30 -mx-4 px-4"
                         )}
                       >
                         <div className="flex items-center gap-3">
@@ -496,26 +501,24 @@ export default function Clans() {
                           <span className="text-sm text-muted-foreground tabular-nums">
                             {formatAura(member.aura)} aura
                           </span>
-                          {selectedClan.viewer.isLeader && !member.isLeader ? (
-                            <Button
-                              size="sm"
-                              variant="ghost"
+                          {selectedClan.viewer.isLeader && !member.isLeader && (
+                            <button
                               onClick={() => handleRemoveMember(member.userId)}
                               disabled={actionLoading}
-                              className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              className="text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
                             >
                               <UserX className="h-4 w-4" />
-                            </Button>
-                          ) : null}
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {selectedClan.viewer.isLeader ? (
-                  <div className="space-y-3">
-                    <h3 className="text-base font-semibold">Demandes en attente</h3>
+                {selectedClan.viewer.isLeader && (
+                  <div className="space-y-6">
+                    <h3 className="text-sm text-muted-foreground tracking-wide uppercase">Demandes en attente</h3>
                     {selectedClan.joinRequests.length === 0 ? (
                       <p className="text-sm text-muted-foreground">Aucune demande pour le moment.</p>
                     ) : (
@@ -523,7 +526,7 @@ export default function Clans() {
                         {selectedClan.joinRequests.map((request) => (
                           <div
                             key={request.id}
-                            className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-2"
+                            className="flex flex-wrap items-center justify-between gap-3 border-b border-border/30 py-4 last:border-0"
                           >
                             <div className="flex items-center gap-3">
                               <Avatar className="h-8 w-8">
@@ -547,42 +550,37 @@ export default function Clans() {
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
+                              <button
                                 onClick={() => handleRequestAction(request.id, 'reject')}
                                 disabled={actionLoading}
+                                className="px-3 py-1 text-xs border border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors disabled:opacity-50"
                               >
                                 <X className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
+                              </button>
+                              <button
                                 onClick={() => handleRequestAction(request.id, 'accept')}
                                 disabled={actionLoading}
+                                className="px-3 py-1 text-xs border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors disabled:opacity-50"
                               >
                                 <Check className="h-4 w-4" />
-                              </Button>
+                              </button>
                             </div>
                           </div>
                         ))}
                       </div>
                     )}
                   </div>
-                ) : null}
-              </CardContent>
-            </Card>
+                )}
+              </div>
+            </div>
           ) : selectedClanSummary ? (
-            <Card>
-              <CardContent className="py-10 text-sm text-muted-foreground">
-                Clique sur un clan pour voir les details.
-              </CardContent>
-            </Card>
+            <div className="py-12 text-sm text-muted-foreground text-center">
+              Clique sur un clan pour voir les details.
+            </div>
           ) : (
-            <Card>
-              <CardContent className="py-10 text-sm text-muted-foreground">
-                Aucun clan selectionne.
-              </CardContent>
-            </Card>
+            <div className="py-12 text-sm text-muted-foreground text-center">
+              Aucun clan selectionne.
+            </div>
           )}
         </div>
       </div>

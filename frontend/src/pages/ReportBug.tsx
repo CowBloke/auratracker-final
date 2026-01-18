@@ -1,10 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { bugReportApi } from '../services/api';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Send, CheckCircle2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function ReportBug() {
@@ -60,32 +57,31 @@ export default function ReportBug() {
           </h1>
         </header>
 
-        <div className="p-8 border border-green-500/30 bg-green-500/5 space-y-6">
-          <div className="flex items-center gap-4">
-            <CheckCircle2 className="h-12 w-12 text-green-500" />
-            <div>
-              <h2 className="text-xl font-medium text-green-400">Rapport envoyé</h2>
-              <p className="text-muted-foreground">
-                Votre rapport de bug a été envoyé aux administrateurs.
-              </p>
-            </div>
+        <div className="h-px bg-border" />
+
+        <section className="space-y-6">
+          <div className="space-y-2">
+            <h2 className="text-base font-medium">Rapport envoyé</h2>
+            <p className="text-sm text-muted-foreground">
+              Votre rapport de bug a été envoyé aux administrateurs.
+            </p>
           </div>
           
-          <div className="flex gap-4">
-            <Button
-              variant="outline"
+          <div className="flex gap-2">
+            <button
               onClick={() => setSubmitted(false)}
-              className="border-border/50"
+              className="px-4 py-2 text-sm border border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
             >
               Signaler un autre bug
-            </Button>
-            <Button
+            </button>
+            <button
               onClick={() => navigate('/')}
+              className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
             >
               Retour au tableau de bord
-            </Button>
+            </button>
           </div>
-        </div>
+        </section>
       </div>
     );
   }
@@ -102,10 +98,13 @@ export default function ReportBug() {
         </h1>
       </header>
 
+      {/* Divider */}
+      <div className="h-px bg-border" />
+
       {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
-          <div className="px-4 py-3 border border-destructive/30 bg-destructive/10 text-destructive">
+          <div className="px-4 py-3 border border-border/30 text-sm text-muted-foreground">
             {error}
           </div>
         )}
@@ -114,11 +113,12 @@ export default function ReportBug() {
           <label className="text-sm text-muted-foreground">
             Titre du bug
           </label>
-          <Input
+          <input
+            type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Ex: Le bouton ne fonctionne pas sur la page..."
-            className="bg-transparent h-12 text-lg"
+            className="w-full h-12 bg-transparent border border-border/50 px-4 text-sm focus:outline-none focus:border-foreground/30"
             maxLength={100}
             disabled={submitting}
           />
@@ -131,11 +131,11 @@ export default function ReportBug() {
           <label className="text-sm text-muted-foreground">
             Description détaillée
           </label>
-          <Textarea
+          <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Décrivez le bug en détail : que faisiez-vous, qu'est-ce qui s'est passé, qu'est-ce qui aurait dû se passer..."
-            className="bg-transparent min-h-[200px] resize-none text-base"
+            className="w-full min-h-[200px] bg-transparent border border-border/50 px-4 py-3 text-sm resize-none focus:outline-none focus:border-foreground/30"
             maxLength={2000}
             disabled={submitting}
           />
@@ -147,36 +147,34 @@ export default function ReportBug() {
         <div className="h-px bg-border" />
 
         <div className="flex items-center justify-between">
-          <Button
+          <button
             type="button"
-            variant="outline"
             onClick={() => navigate(-1)}
-            className="border-border/50"
+            className="px-4 py-2 text-sm border border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={submitting}
           >
             Annuler
-          </Button>
+          </button>
           
-          <Button
+          <button
             type="submit"
             disabled={submitting || !title.trim() || !description.trim()}
             className={cn(
-              "min-w-[140px]",
-              submitting && "opacity-80"
+              "px-4 py-2 text-sm border transition-colors min-w-[140px]",
+              !submitting && title.trim() && description.trim()
+                ? "border-foreground text-foreground hover:bg-foreground hover:text-background"
+                : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
             )}
           >
             {submitting ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
                 Envoi...
-              </>
+              </span>
             ) : (
-              <>
-                <Send className="h-4 w-4 mr-2" />
-                Envoyer
-              </>
+              "Envoyer"
             )}
-          </Button>
+          </button>
         </div>
       </form>
     </div>

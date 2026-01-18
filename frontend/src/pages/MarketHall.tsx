@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { TrendingDown, TrendingUp, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { auraCoinApi, AuraCoinPriceHistory, AuraCoinTransaction } from '@/services/api';
 import { marketCoins, buildSyntheticHistory, clamp, MarketCoin } from '@/data/marketCoins';
 import { loadSimState, SimTransaction } from '@/lib/marketSim';
-import { cn } from '@/lib/utils';
 
 const MINI_POINTS = 40;
 const AURA_BASE_PRICE = 100;
@@ -29,16 +27,17 @@ const buildMiniPoints = (history: AuraCoinPriceHistory[]) => {
     .join(' ');
 };
 
-const MiniSparkline = ({ history, positive }: { history: AuraCoinPriceHistory[]; positive: boolean }) => {
+const MiniSparkline = ({ history }: { history: AuraCoinPriceHistory[] }) => {
   const points = buildMiniPoints(history);
   return (
     <svg viewBox="0 0 120 36" className="w-full h-10" preserveAspectRatio="none">
       {points && (
         <polyline
           fill="none"
-          stroke={positive ? '#10b981' : '#ef4444'}
+          stroke="currentColor"
           strokeWidth="2"
           points={points}
+          opacity={0.5}
         />
       )}
     </svg>
@@ -143,26 +142,19 @@ export default function MarketHall() {
   }, [auraTransactions, simTransactions]);
 
   return (
-    <div className="max-w-5xl mx-auto py-12 px-4 space-y-12">
-      <header className="space-y-3">
+    <div className="max-w-6xl mx-auto py-12 px-4 space-y-16">
+      <header className="space-y-2">
         <div className="flex items-center justify-between">
           <div>
-            <Link
-              to="/games"
-              className="text-sm text-muted-foreground tracking-wide uppercase hover:text-foreground transition-colors"
-            >
-              ← Jeux
-            </Link>
+            <p className="text-sm text-muted-foreground tracking-wide uppercase">
+              Trading
+            </p>
             <h1 className="text-5xl md:text-7xl font-light tracking-tight">
               Salle de marche
             </h1>
-            <p className="text-sm text-muted-foreground mt-2 max-w-2xl">
-              Quatre cryptos, une interface de trading unique. Aura Coin reste la reference principale.
-            </p>
           </div>
-          <div className="text-right text-sm text-muted-foreground">
-            <p className="uppercase tracking-wide">Apercu 24h</p>
-            <p className="tabular-nums">{auraHistory.length ? `${auraHistory.length} points` : 'Chargement...'}</p>
+          <div className="text-right text-sm text-muted-foreground tabular-nums">
+            {auraHistory.length ? `${auraHistory.length} points` : 'Chargement...'}
           </div>
         </div>
       </header>
@@ -176,21 +168,21 @@ export default function MarketHall() {
             <Link
               key={coin.id}
               to={coin.route}
-              className="border border-border/30 p-5 space-y-4 hover:border-foreground/40 transition-colors"
+              className="border border-border/30 p-6 space-y-4 hover:border-foreground/30 transition-colors"
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <h2 className="text-xl font-medium">{coin.name}</h2>
                     {coin.primary && (
-                      <span className="text-[10px] uppercase tracking-widest border border-amber-400 text-amber-400 px-2 py-0.5">
+                      <span className="text-xs uppercase tracking-wide text-muted-foreground">
                         Principal
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground">{coin.description}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{coin.description}</p>
                 </div>
-                <div className={cn('text-sm font-medium', coin.accent)}>{coin.symbol}</div>
+                <div className="text-sm text-muted-foreground">{coin.symbol}</div>
               </div>
 
               <div className="flex items-end justify-between">
@@ -198,16 +190,15 @@ export default function MarketHall() {
                   <div className="text-3xl font-light tabular-nums">
                     ${coin.currentPrice.toFixed(2)}
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
                     <span>Fee {(coin.feePercentage * 100).toFixed(1)}%</span>
-                    <span className={cn('flex items-center gap-1', priceChange >= 0 ? 'text-emerald-500' : 'text-red-500')}>
-                      {priceChange >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                    <span className="tabular-nums">
                       {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
                     </span>
                   </div>
                 </div>
                 <div className="w-32">
-                  <MiniSparkline history={coin.history} positive={priceChange >= 0} />
+                  <MiniSparkline history={coin.history} />
                 </div>
               </div>
             </Link>
@@ -215,50 +206,42 @@ export default function MarketHall() {
         })}
       </section>
 
-      <section className="space-y-4">
+      <div className="h-px bg-border" />
+
+      <section className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium">Historique global des transactions</h2>
-          <span className="text-xs text-muted-foreground">{loading ? 'Chargement...' : `${combinedTransactions.length} lignes`}</span>
+          <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
+            Historique global des transactions
+          </h2>
+          <span className="text-xs text-muted-foreground tabular-nums">{loading ? 'Chargement...' : `${combinedTransactions.length} lignes`}</span>
         </div>
-        <div className="border border-border/30">
-          {combinedTransactions.length === 0 ? (
-            <p className="text-center text-muted-foreground py-10">Aucune transaction recente</p>
-          ) : (
-            combinedTransactions.map((tx) => {
+        {combinedTransactions.length === 0 ? (
+          <p className="text-center text-muted-foreground py-12">Aucune transaction recente</p>
+        ) : (
+          <div className="space-y-0">
+            {combinedTransactions.map((tx) => {
               const coinMeta = marketCoins.find((coin) => coin.id === tx.coinId);
               const positive = tx.type === 'BUY';
               return (
-                <div key={tx.id} className="flex items-center justify-between px-4 py-3 border-b border-border/10">
-                  <div className="flex items-center gap-3">
-                    <div className={cn(
-                      'w-8 h-8 flex items-center justify-center border',
-                      positive
-                        ? 'border-emerald-500/30 text-emerald-500'
-                        : 'border-red-500/30 text-red-500'
-                    )}>
-                      {positive ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="text-sm font-medium"
-                          style={{ color: tx.user.usernameColor || undefined }}
-                        >
-                          {tx.user.username}
-                        </span>
-                        <span className={cn('text-xs uppercase', positive ? 'text-emerald-500' : 'text-red-500')}>
-                          {positive ? 'Achat' : 'Vente'}
-                        </span>
-                        {coinMeta && (
-                          <span className={cn('text-xs uppercase', coinMeta.accent)}>
-                            {coinMeta.symbol}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(tx.createdAt).toLocaleString('fr-FR')}
-                      </p>
-                    </div>
+                <div key={tx.id} className="flex items-center justify-between py-4 border-b border-border/30 last:border-0">
+                  <div className="flex items-center gap-4">
+                    <span className="text-xs text-muted-foreground uppercase">
+                      {positive ? 'Achat' : 'Vente'}
+                    </span>
+                    <span
+                      className="text-sm font-medium"
+                      style={{ color: tx.user.usernameColor || undefined }}
+                    >
+                      {tx.user.username}
+                    </span>
+                    {coinMeta && (
+                      <span className="text-xs text-muted-foreground uppercase">
+                        {coinMeta.symbol}
+                      </span>
+                    )}
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(tx.createdAt).toLocaleString('fr-FR')}
+                    </span>
                   </div>
                   <div className="text-right">
                     <p className="text-sm tabular-nums">
@@ -270,9 +253,9 @@ export default function MarketHall() {
                   </div>
                 </div>
               );
-            })
-          )}
-        </div>
+            })}
+          </div>
+        )}
       </section>
     </div>
   );

@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, Users } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { useSocket } from '@/contexts/SocketContext';
-import { cn } from '@/lib/utils';
 
 const games = [
   {
@@ -122,25 +121,12 @@ export default function Games() {
                     <h3 className="text-xl font-medium group-hover:text-foreground transition-colors">
                       {game.name}
                     </h3>
-                    <span
-                      className={cn(
-                        "text-xs uppercase tracking-wide",
-                        game.requiresParty ? "text-purple-400" : "text-muted-foreground"
-                      )}
-                    >
+                    <span className="text-xs uppercase tracking-wide text-muted-foreground">
                       {game.type}
                     </span>
-                    {game.requiresParty && (
-                      <span
-                        className={cn(
-                          "flex items-center gap-1 text-xs px-2 py-0.5 rounded border",
-                          currentParty
-                            ? "border-green-500/30 text-green-500"
-                            : "border-muted-foreground/30 text-muted-foreground"
-                        )}
-                      >
-                        <Users className="h-3 w-3" />
-                        {currentParty ? 'Party' : 'Besoin party'}
+                    {game.requiresParty && currentParty && (
+                      <span className="text-xs text-muted-foreground">
+                        Party
                       </span>
                     )}
                   </div>
@@ -170,25 +156,12 @@ export default function Games() {
                     <h3 className="text-xl font-medium group-hover:text-foreground transition-colors">
                       {game.name}
                     </h3>
-                    <span
-                      className={cn(
-                        "text-xs uppercase tracking-wide",
-                        game.requiresParty ? "text-purple-400" : "text-muted-foreground"
-                      )}
-                    >
+                    <span className="text-xs uppercase tracking-wide text-muted-foreground">
                       {game.type}
                     </span>
-                    {game.requiresParty && (
-                      <span
-                        className={cn(
-                          "flex items-center gap-1 text-xs px-2 py-0.5 rounded border",
-                          currentParty
-                            ? "border-green-500/30 text-green-500"
-                            : "border-muted-foreground/30 text-muted-foreground"
-                        )}
-                      >
-                        <Users className="h-3 w-3" />
-                        {currentParty ? 'Party' : 'Besoin party'}
+                    {game.requiresParty && currentParty && (
+                      <span className="text-xs text-muted-foreground">
+                        Party
                       </span>
                     )}
                   </div>

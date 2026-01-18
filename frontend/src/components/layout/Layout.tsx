@@ -1,8 +1,7 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { ChatSidebarProvider, ChatSidebarWrapper } from '../chat/ChatSidebarWrapper';
+import { ChatSidebarProvider, ChatSidebarWrapper, useChatSidebar } from '../chat/ChatSidebarWrapper';
 import ChatBubble from '../chat/ChatBubble';
-import PartyBubble from '../party/PartyBubble';
 import BombPartyJoinPrompt from '../game/BombPartyJoinPrompt';
 import PokerJoinPrompt from '../game/PokerJoinPrompt';
 import PetitBacJoinPrompt from '../game/PetitBacJoinPrompt';
@@ -12,21 +11,66 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSocket } from '@/contexts/SocketContext';
 import { useCallback, useEffect, useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronUp, Maximize2, Minimize2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Maximize2, Minimize2, Users, LogOut, Bomb, Gamepad2, Trash2, UserPlus } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getPageMeta } from '@/components/chat/presence';
 import { resolveImageUrl } from '@/lib/images';
 import { usersApi } from '@/services/api';
+import { cn } from '@/lib/utils';
+import { Link } from 'react-router-dom';
+
+function ChatBubbleContainer() {
+  const { open } = useChatSidebar();
+
+  return (
+    <div 
+      className="fixed bottom-6 z-50 flex items-end gap-3 transition-all"
+      style={{ right: open ? 'calc(20rem + 1.5rem)' : '1.5rem' }}
+    >
+      <ChatBubble />
+    </div>
+  );
+}
 
 export default function Layout() {
   const { user } = useAuth();
-  const { connected, setCurrentPage, onlineUsers } = useSocket();
+  const { 
+    connected, 
+    setCurrentPage, 
+    onlineUsers, 
+    currentParty, 
+    partyMembers, 
+    leaveParty, 
+    deleteParty, 
+    bombPartyGame, 
+    petitBacGame, 
+    monopolyGame, 
+    sendMessage 
+  } = useSocket();
   const location = useLocation();
   const navigate = useNavigate();
   const [showUsers, setShowUsers] = useState(false);
+  const [showParty, setShowParty] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [announcement, setAnnouncement] = useState('');
   const isGameRoute = location.pathname.startsWith('/games/');
+  
+  const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
+  const gameStatus = bombPartyGame
+    ? `Bomb Party - Round ${bombPartyGame.round}`
+    : petitBacGame
+      ? `Petit Bac - Manche ${petitBacGame.round}/${petitBacGame.maxRounds}`
+      : monopolyGame
+        ? `Monopoly - Tour ${monopolyGame.turnNumber}`
+        : 'En attente';
+  const inviteLabel = currentParty?.name ? `Rejoins ${currentParty.name}` : 'Rejoins ma party';
+  const inviteVisibility = currentParty?.isPublic ? 'public' : 'private';
+
+  const sendChatInvite = () => {
+    if (currentParty) {
+      sendMessage(`[[party-invite:${currentParty.id}:${inviteVisibility}]]${inviteLabel}`);
+    }
+  };
 
   useEffect(() => {
     if (connected) {
@@ -106,6 +150,149 @@ export default function Layout() {
                   </button>
                 )}
                 <div className="flex items-center gap-8 text-sm">
+                  {/* Party Menu */}
+                  {currentParty && (
+                    <div className="relative">
+                      <Collapsible open={showParty} onOpenChange={setShowParty}>
+                        <CollapsibleTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+                          >
+                            <Users className="h-4 w-4" />
+                            <span>{currentParty.name || 'Party'}</span>
+                            <span className="text-xs">
+                              ({partyMembers.length}/{currentParty.maxSize})
+                            </span>
+                            {showParty ? (
+                              <ChevronUp className="h-3 w-3" />
+                            ) : (
+                              <ChevronDown className="h-3 w-3" />
+                            )}
+                          </button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="absolute right-0 top-full z-50 mt-2 w-64">
+                          <div className="rounded-md border border-border/60 bg-background/95 shadow-lg">
+                            {/* Game Status */}
+                            <div className="px-3 py-2 border-b border-border/30">
+                              <div className="flex items-center gap-2">
+                                <Gamepad2 className="h-3 w-3 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground">{gameStatus}</span>
+                              </div>
+                            </div>
+
+                            {/* Members */}
+                            <ScrollArea className="h-32">
+                              <div className="px-3 py-2 space-y-1">
+                                {partyMembers.map((member) => (
+                                  <div
+                                    key={member.userId}
+                                    className="flex items-center gap-2 text-xs"
+                                  >
+                                    <div
+                                      className={cn(
+                                        "w-1.5 h-1.5 rounded-full",
+                                        bombPartyGame?.currentPlayerId === member.userId
+                                          ? "bg-yellow-500"
+                                          : petitBacGame
+                                            ? (petitBacGame.players.find((p) => p.userId === member.userId)?.submitted
+                                                ? "bg-green-500"
+                                                : "bg-yellow-500")
+                                            : monopolyGame
+                                              ? (monopolyGame.currentPlayerId === member.userId ? "bg-yellow-500" : "bg-green-500")
+                                              : "bg-green-500"
+                                      )}
+                                    />
+                                    <span
+                                      style={member.usernameColor ? { color: member.usernameColor } : undefined}
+                                      className={cn(
+                                        member.userId === user?.id && "font-medium"
+                                      )}
+                                    >
+                                      {member.username}
+                                      {member.isLeader && ' *'}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </ScrollArea>
+
+                            {/* Actions */}
+                            <div className="px-3 py-2 border-t border-border/30 flex flex-wrap gap-2">
+                              <button
+                                onClick={() => {
+                                  sendChatInvite();
+                                  setShowParty(false);
+                                }}
+                                className="flex items-center justify-center gap-1 px-2 py-1.5 text-xs border border-border/50 text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors rounded"
+                                title="Inviter via le chat"
+                              >
+                                <UserPlus className="h-3 w-3" />
+                                Inviter
+                              </button>
+                              {/* Go to game */}
+                              {bombPartyGame && location.pathname !== '/games/bomb-party' && (
+                                <Link
+                                  to="/games/bomb-party"
+                                  onClick={() => setShowParty(false)}
+                                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors rounded"
+                                >
+                                  <Bomb className="h-3 w-3" />
+                                  Rejoindre
+                                </Link>
+                              )}
+                              {petitBacGame && location.pathname !== '/games/petit-bac' && (
+                                <Link
+                                  to="/games/petit-bac"
+                                  onClick={() => setShowParty(false)}
+                                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors rounded"
+                                >
+                                  <Gamepad2 className="h-3 w-3" />
+                                  Rejoindre
+                                </Link>
+                              )}
+                              {monopolyGame && location.pathname !== '/games/monopoly' && (
+                                <Link
+                                  to="/games/monopoly"
+                                  onClick={() => setShowParty(false)}
+                                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors rounded"
+                                >
+                                  <Gamepad2 className="h-3 w-3" />
+                                  Rejoindre
+                                </Link>
+                              )}
+
+                              {/* Leave or delete */}
+                              {isLeader ? (
+                                <button
+                                  onClick={() => {
+                                    deleteParty();
+                                    setShowParty(false);
+                                  }}
+                                  className="flex items-center justify-center gap-1 px-2 py-1.5 text-xs border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors rounded"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                  Supprimer
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    leaveParty();
+                                    setShowParty(false);
+                                  }}
+                                  className="flex items-center justify-center gap-1 px-2 py-1.5 text-xs border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors rounded"
+                                >
+                                  <LogOut className="h-3 w-3" />
+                                  Quitter
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </div>
+                  )}
+
                   {/* Connection indicator */}
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
@@ -200,10 +387,7 @@ export default function Layout() {
           </SidebarInset>
         </SidebarProvider>
         <ChatSidebarWrapper />
-        <div className="fixed bottom-6 right-6 z-50 flex items-end gap-3">
-          <PartyBubble />
-          <ChatBubble />
-        </div>
+        <ChatBubbleContainer />
         <BombPartyJoinPrompt />
         <PokerJoinPrompt />
         <PetitBacJoinPrompt />

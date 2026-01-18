@@ -1,15 +1,10 @@
-import { ScrollText, Users, Gift, Gamepad2, ShoppingBag, Shield, AlertTriangle } from 'lucide-react';
-import { cn } from '@/lib/utils';
-
 interface RuleSection {
-  icon: React.ReactNode;
   title: string;
   rules: string[];
 }
 
 const sections: RuleSection[] = [
   {
-    icon: <ScrollText className="h-5 w-5" />,
     title: "Principes généraux",
     rules: [
       "L'aura est une monnaie virtuelle utilisée uniquement dans le cadre de cette application.",
@@ -19,7 +14,6 @@ const sections: RuleSection[] = [
     ],
   },
   {
-    icon: <Users className="h-5 w-5" />,
     title: "Comportement entre utilisateurs",
     rules: [
       "Le respect mutuel est obligatoire dans toutes les interactions.",
@@ -29,7 +23,6 @@ const sections: RuleSection[] = [
     ],
   },
   {
-    icon: <Gift className="h-5 w-5" />,
     title: "Système de dons",
     rules: [
       "Chaque utilisateur dispose d'une limite quotidienne de dons d'aura.",
@@ -39,7 +32,6 @@ const sections: RuleSection[] = [
     ],
   },
   {
-    icon: <Gamepad2 className="h-5 w-5" />,
     title: "Jeux et compétitions",
     rules: [
       "L'utilisation de scripts, bots ou logiciels tiers est interdite.",
@@ -49,7 +41,6 @@ const sections: RuleSection[] = [
     ],
   },
   {
-    icon: <ShoppingBag className="h-5 w-5" />,
     title: "Marché et économie",
     rules: [
       "Les transactions sur le marché sont définitives.",
@@ -59,7 +50,6 @@ const sections: RuleSection[] = [
     ],
   },
   {
-    icon: <Shield className="h-5 w-5" />,
     title: "Confidentialité et sécurité",
     rules: [
       "Ne partagez jamais vos identifiants de connexion.",
@@ -96,12 +86,9 @@ export default function Rules() {
       {/* Rules Sections */}
       {sections.map((section, index) => (
         <section key={index} className="space-y-6">
-          <div className="flex items-center gap-3">
-            <span className="text-muted-foreground">{section.icon}</span>
-            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
-              {section.title}
-            </h2>
-          </div>
+          <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
+            {section.title}
+          </h2>
           
           <div className="space-y-0">
             {section.rules.map((rule, ruleIndex) => (
@@ -112,13 +99,13 @@ export default function Rules() {
                 <span className="text-muted-foreground text-sm w-6 tabular-nums shrink-0">
                   {ruleIndex + 1}
                 </span>
-                <p className="text-foreground/90">{rule}</p>
+                <p className="text-sm text-muted-foreground">{rule}</p>
               </div>
             ))}
           </div>
           
           {index < sections.length - 1 && (
-            <div className="h-px bg-border mt-10" />
+            <div className="h-px bg-border" />
           )}
         </section>
       ))}
@@ -128,14 +115,11 @@ export default function Rules() {
 
       {/* Sanctions */}
       <section className="space-y-6">
-        <div className="flex items-center gap-3">
-          <AlertTriangle className="h-5 w-5 text-amber-500" />
-          <h2 className="text-sm text-amber-500 tracking-wide uppercase">
-            Sanctions
-          </h2>
-        </div>
+        <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
+          Sanctions
+        </h2>
         
-        <p className="text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Le non-respect du règlement entraîne des sanctions proportionnelles à la gravité de l'infraction.
         </p>
         
@@ -143,12 +127,10 @@ export default function Rules() {
           {sanctions.map((item, index) => (
             <div
               key={index}
-              className={cn(
-                "flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-4 border-b border-border/30 last:border-0"
-              )}
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-4 border-b border-border/30 last:border-0"
             >
-              <span className="text-foreground/90">{item.offense}</span>
-              <span className="text-muted-foreground text-sm sm:text-right">
+              <span className="text-sm text-muted-foreground">{item.offense}</span>
+              <span className="text-sm text-muted-foreground sm:text-right">
                 {item.sanction}
               </span>
             </div>
@@ -156,15 +138,18 @@ export default function Rules() {
         </div>
       </section>
 
+      {/* Divider */}
+      <div className="h-px bg-border" />
+
       {/* Footer note */}
-      <footer className="pt-8 border-t border-border">
+      <section className="space-y-2">
         <p className="text-sm text-muted-foreground">
           Dernière mise à jour : Janvier 2026
         </p>
-        <p className="text-sm text-muted-foreground mt-2">
+        <p className="text-sm text-muted-foreground">
           Pour toute question concernant ce règlement, contactez l'équipe d'administration.
         </p>
-      </footer>
+      </section>
     </div>
   );
 }

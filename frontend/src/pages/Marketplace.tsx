@@ -4,7 +4,6 @@ import { marketplaceApi, Nft } from '../services/api';
 import { Loader2, Package, Palette, Camera } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface Item {
   id: string;
@@ -205,13 +204,34 @@ export default function Marketplace() {
         </p>
       )}
 
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'items' | 'nfts')} className="space-y-10">
-        <TabsList className="bg-transparent border border-border/30 p-1 w-fit">
-          <TabsTrigger value="items">Objets</TabsTrigger>
-          <TabsTrigger value="nfts">NFT</TabsTrigger>
-        </TabsList>
+      <div className="space-y-6">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveTab('items')}
+            className={cn(
+              "px-4 py-2 text-sm border transition-colors",
+              activeTab === 'items'
+                ? "border-foreground text-foreground"
+                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+            )}
+          >
+            Objets
+          </button>
+          <button
+            onClick={() => setActiveTab('nfts')}
+            className={cn(
+              "px-4 py-2 text-sm border transition-colors",
+              activeTab === 'nfts'
+                ? "border-foreground text-foreground"
+                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+            )}
+          >
+            NFT
+          </button>
+        </div>
 
-        <TabsContent value="items" className="space-y-10">
+        {activeTab === 'items' && (
+          <div className="space-y-6">
           {/* Filters */}
           <div className="flex flex-wrap gap-2">
             {filters.map((f) => (
@@ -319,9 +339,11 @@ export default function Marketplace() {
               })}
             </div>
           )}
-        </TabsContent>
+          </div>
+        )}
 
-        <TabsContent value="nfts" className="space-y-10">
+        {activeTab === 'nfts' && (
+          <div className="space-y-6">
           <div className="h-px bg-border" />
 
           {loadingNfts ? (
@@ -396,8 +418,9 @@ export default function Marketplace() {
               ))}
             </div>
           )}
-        </TabsContent>
-      </Tabs>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

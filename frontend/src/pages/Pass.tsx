@@ -1,8 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarCheck } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 
 const rewardSteps = [25, 40, 60, 90, 130, 180, 250];
@@ -143,87 +140,111 @@ export default function Pass() {
   const streakProgress = Math.min((streak / rewardSteps.length) * 100, 100);
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4 space-y-12">
+    <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
+      {/* Header */}
       <header className="space-y-2">
-        <p className="text-sm text-muted-foreground tracking-wide uppercase">
-          Fidélité
-        </p>
-        <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-          Pass quotidien
-        </h1>
-        <p className="text-muted-foreground max-w-2xl">
+        <div>
+          <p className="text-sm text-muted-foreground tracking-wide uppercase">
+            Fidélité
+          </p>
+          <h1 className="text-5xl md:text-7xl font-light tracking-tight">
+            Pass quotidien
+          </h1>
+        </div>
+        <p className="text-sm text-muted-foreground max-w-2xl">
           Connecte-toi chaque jour pour monter les paliers. Un jour manqué remet la série à zéro.
         </p>
       </header>
 
+      {/* Divider */}
       <div className="h-px bg-border" />
 
-      <section className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="space-y-5">
-          <div className="space-y-1">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-              Récompense du jour
-            </p>
-            <div className="flex items-baseline gap-3">
-              <span className="text-5xl font-semibold">${claimReward}</span>
-              <span className="text-sm text-muted-foreground">argent</span>
+      {/* Main Section */}
+      <section className="space-y-6">
+        <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="space-y-6">
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground tracking-wide uppercase">
+                Récompense du jour
+              </p>
+              <div className="flex items-baseline gap-3">
+                <span className="text-5xl font-light tabular-nums">${claimReward}</span>
+                <span className="text-sm text-muted-foreground">argent</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Jour {claimDay} · Série {streak} jour{streak > 1 ? 's' : ''}
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Jour {claimDay} · Série {streak} jour{streak > 1 ? 's' : ''}
-            </p>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={handleClaim}
+                disabled={status === 'claimed'}
+                className={cn(
+                  "px-4 py-2 text-sm border transition-colors",
+                  status === 'claimed'
+                    ? "border-border/30 text-muted-foreground/50 cursor-not-allowed"
+                    : "border-foreground text-foreground hover:bg-foreground hover:text-background"
+                )}
+              >
+                {status === 'claimed' ? 'Récompense récupérée' : 'Récupérer'}
+              </button>
+              {message && <span className="text-sm text-muted-foreground">{message}</span>}
+              {resetNotice && (
+                <span className="text-sm text-muted-foreground">
+                  Série réinitialisée.
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>Prochaine récompense</span>
+              <span className="text-foreground font-medium tabular-nums">${nextReward}</span>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Button onClick={handleClaim} disabled={status === 'claimed'}>
-              {status === 'claimed' ? 'Récompense récupérée' : 'Récupérer'}
-            </Button>
-            {message && <span className="text-sm text-emerald-400">{message}</span>}
-            {resetNotice && (
-              <span className="text-sm text-amber-400">
-                Série réinitialisée.
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>Prochaine récompense</span>
-            <span className="text-foreground font-medium">${nextReward}</span>
-          </div>
-        </div>
-
-        <div className="space-y-5">
-          <div className="flex items-center gap-3">
-            <CalendarCheck className="h-4 w-4 text-muted-foreground" />
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+          <div className="space-y-6">
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground tracking-wide uppercase">
                 Prochain reset
               </p>
-              <p className="text-2xl font-semibold tabular-nums">{countdown}</p>
+              <p className="text-2xl font-light tabular-nums">{countdown}</p>
             </div>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Progression série</span>
-              <span className="text-foreground font-medium">
-                {Math.min(streak, rewardSteps.length)}/{rewardSteps.length}
-              </span>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Progression série</span>
+                <span className="text-foreground font-medium tabular-nums">
+                  {Math.min(streak, rewardSteps.length)}/{rewardSteps.length}
+                </span>
+              </div>
+              <div className="h-1 bg-border/30 overflow-hidden">
+                <div
+                  className="h-full bg-foreground transition-all"
+                  style={{ width: `${streakProgress}%` }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Après le jour {rewardSteps.length}, les récompenses continuent de monter.
+              </p>
             </div>
-            <Progress value={streakProgress} className="h-1.5" />
-            <p className="text-xs text-muted-foreground">
-              Après le jour {rewardSteps.length}, les récompenses continuent de monter.
-            </p>
           </div>
         </div>
       </section>
 
-      <section className="space-y-4">
+      {/* Divider */}
+      <div className="h-px bg-border" />
+
+      {/* Paliers */}
+      <section className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium">Paliers</h2>
-          <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+          <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
+            Paliers
+          </h2>
+          <span className="text-xs text-muted-foreground">
             7 jours
           </span>
         </div>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-0 sm:grid-cols-2 lg:grid-cols-3">
           {rewardSteps.map((reward, index) => {
             const day = index + 1;
             const isClaimed = day <= streak;
@@ -232,20 +253,20 @@ export default function Pass() {
               <div
                 key={day}
                 className={cn(
-                  "rounded-md border px-3 py-2 flex items-center justify-between text-sm",
-                  isClaimed && "border-foreground/40",
+                  "border-b border-border/30 px-3 py-4 flex items-center justify-between text-sm last:border-0",
+                  isClaimed && "border-foreground/30",
                   isCurrent && status === 'available' && "border-foreground",
-                  !isClaimed && !isCurrent && "border-border/60 text-muted-foreground"
+                  !isClaimed && !isCurrent && "text-muted-foreground"
                 )}
               >
                 <span>Jour {day}</span>
-                <span className="font-medium text-foreground">${reward}</span>
+                <span className="font-medium tabular-nums">${reward}</span>
               </div>
             );
           })}
-          <div className="rounded-md border border-border/60 px-3 py-2 flex items-center justify-between text-sm text-muted-foreground">
+          <div className="border-b border-border/30 px-3 py-4 flex items-center justify-between text-sm text-muted-foreground last:border-0">
             <span>Jour {rewardSteps.length + 1}+</span>
-            <span className="font-medium text-foreground">${getRewardForDay(rewardSteps.length + 1)}</span>
+            <span className="font-medium tabular-nums">${getRewardForDay(rewardSteps.length + 1)}</span>
           </div>
         </div>
       </section>
