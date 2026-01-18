@@ -13,3 +13,5 @@
 - supprimer des gens des clans
 - gérer l'aura des utilisateurs
 - fix image upload
+- fixer stats jeux profile
+- fixer autres coins
