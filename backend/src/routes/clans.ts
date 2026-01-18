@@ -484,4 +484,60 @@ router.post('/:id/requests/:requestId/reject', authMiddleware, async (req: AuthR
   }
 });
 
+// Remove a member from the clan (leader only)
+router.delete('/:id/members/:targetUserId', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id, targetUserId } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Verify the requester is a clan leader
+    const leader = await prisma.clanMember.findFirst({
+      where: {
+        clanId: id,
+        userId,
+        isLeader: true,
+      },
+      select: { id: true },
+    });
+
+    if (!leader) {
+      return res.status(403).json({ error: 'Seul le chef peut retirer des membres.' });
+    }
+
+    // Prevent self-removal (leaders should leave voluntarily)
+    if (targetUserId === userId) {
+      return res.status(400).json({ error: 'Tu ne peux pas te retirer toi-meme. Quitte le clan a la place.' });
+    }
+
+    // Find the member to remove
+    const member = await prisma.clanMember.findUnique({
+      where: {
+        clanId_userId: {
+          clanId: id,
+          userId: targetUserId,
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!member) {
+      return res.status(404).json({ error: 'Membre introuvable dans ce clan.' });
+    }
+
+    // Remove the member
+    await prisma.clanMember.delete({
+      where: { id: member.id },
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Remove clan member error:', error);
+    res.status(500).json({ error: 'Failed to remove member' });
+  }
+});
+
 export default router;
