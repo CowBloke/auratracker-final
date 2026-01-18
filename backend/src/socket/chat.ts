@@ -114,6 +114,20 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
             username: true,
             usernameColor: true,
             profilePicture: true,
+            userBadges: {
+              where: { isSelected: true },
+              take: 2,
+              select: {
+                badge: {
+                  select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                    color: true,
+                  },
+                },
+              },
+            },
           },
         },
         reactions: {
@@ -142,6 +156,7 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
         username: m.user.username,
         usernameColor: m.user.usernameColor,
         profilePicture: m.user.profilePicture,
+        badges: m.user.userBadges.map((ub) => ub.badge),
         message: m.message,
         pinned: m.pinned,
         pinnedAt: m.pinnedAt ? m.pinnedAt.toISOString() : null,
@@ -212,6 +227,20 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
         usernameColor: true,
         profilePicture: true,
         isChatMuted: true,
+        userBadges: {
+          where: { isSelected: true },
+          take: 2,
+          select: {
+            badge: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                color: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -266,6 +295,7 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
       username: user.username,
       usernameColor: dbUser?.usernameColor,
       profilePicture: dbUser?.profilePicture,
+      badges: dbUser?.userBadges.map((ub) => ub.badge) ?? [],
       message,
       pinned: false,
       pinnedAt: null,

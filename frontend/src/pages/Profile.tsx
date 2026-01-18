@@ -6,6 +6,7 @@ import { Edit2, Save, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { resolveImageUrl } from '@/lib/images';
+import { BadgeWithTooltip } from '@/components/ui/badge-tooltip';
 
 const nftRarityLabels: Record<string, string> = {
   COMMON: 'Commun',
@@ -28,6 +29,7 @@ interface ProfileUser {
   badges: Array<{
     id: string;
     name: string;
+    description?: string | null;
     color: string;
     assignedAt: string;
     userBadgeId: string;
@@ -214,13 +216,12 @@ export default function Profile() {
             {profileUser.badges?.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-3">
                 {profileUser.badges.map((badge) => (
-                  <span
+                  <BadgeWithTooltip
                     key={badge.userBadgeId || badge.id}
-                    className="text-xs uppercase tracking-wide px-2.5 py-1 rounded-full border"
-                    style={{ color: badge.color, borderColor: badge.color }}
-                  >
-                    {badge.name}
-                  </span>
+                    name={badge.name}
+                    description={badge.description}
+                    color={badge.color}
+                  />
                 ))}
               </div>
             )}

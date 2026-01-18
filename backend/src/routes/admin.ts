@@ -291,6 +291,7 @@ router.post('/badges', authMiddleware, requireAdmin, async (req: AuthRequest, re
   try {
     const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
     const color = typeof req.body.color === 'string' ? req.body.color.trim() : '';
+    const description = typeof req.body.description === 'string' ? req.body.description.trim() : null;
 
     if (!name) {
       return res.status(400).json({ error: 'Badge name is required' });
@@ -301,10 +302,10 @@ router.post('/badges', authMiddleware, requireAdmin, async (req: AuthRequest, re
     }
 
     const badge = await prisma.badge.create({
-      data: { name, color },
+      data: { name, color, description: description || null },
     });
 
-    logAdmin('badge_create', req.user!.id, undefined, badge.id, badge.name, { color: badge.color });
+    logAdmin('badge_create', req.user!.id, undefined, badge.id, badge.name, { color: badge.color, description: badge.description });
 
     res.status(201).json({ badge });
   } catch (error) {

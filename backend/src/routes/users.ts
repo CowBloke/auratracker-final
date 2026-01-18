@@ -83,6 +83,7 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
             },
           },
           userBadges: {
+            where: { isSelected: true },
             select: {
               id: true,
               assignedAt: true,
@@ -90,11 +91,13 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
                 select: {
                   id: true,
                   name: true,
+                  description: true,
                   color: true,
                 },
               },
             },
             orderBy: { assignedAt: 'desc' },
+            take: 2,
           },
           gameStats: {
             select: {
@@ -122,6 +125,7 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
     const badges = userBadges.map((userBadge) => ({
       id: userBadge.badge.id,
       name: userBadge.badge.name,
+      description: userBadge.badge.description,
       color: userBadge.badge.color,
       assignedAt: userBadge.assignedAt,
       userBadgeId: userBadge.id,
@@ -147,14 +151,14 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
 router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    
+
     // Only allow users to update their own profile
     if (req.user?.id !== id && !req.user?.isAdmin) {
       return res.status(403).json({ error: 'Not authorized' });
     }
-    
+
     const { username, bio } = req.body;
-    
+
     if (username) {
       // Check if username is taken
       const existing = await prisma.user.findFirst({
@@ -163,16 +167,16 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
           NOT: { id },
         },
       });
-      
+
       if (existing) {
         return res.status(400).json({ error: 'Username already taken' });
       }
     }
-    
+
     const updateData: { username?: string; bio?: string } = {};
     if (username) updateData.username = username;
     if (bio !== undefined) updateData.bio = bio?.trim() || null;
-    
+
     const user = await prisma.user.update({
       where: { id },
       data: updateData,
@@ -190,11 +194,101 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
         createdAt: true,
       },
     });
-    
+
     res.json({ user });
   } catch (error) {
     console.error('Update user error:', error);
     res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
+// Get current user's badges
+router.get('/me/badges', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const userBadges = await prisma.userBadge.findMany({
+      where: { userId: req.user!.id },
+      include: {
+        badge: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            color: true,
+          }
+        }
+      },
+      orderBy: { assignedAt: 'desc' },
+    });
+
+    res.json({ badges: userBadges });
+  } catch (error) {
+    console.error('Get user badges error:', error);
+    res.status(500).json({ error: 'Failed to get badges' });
+  }
+});
+
+// Update selected badges (limit 2)
+router.put('/me/badges/selected', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { badgeIds } = req.body;
+
+    if (!Array.isArray(badgeIds)) {
+      return res.status(400).json({ error: 'badgeIds must be an array' });
+    }
+
+    if (badgeIds.length > 2) {
+      return res.status(400).json({ error: 'You can only select up to 2 badges' });
+    }
+
+    // Verify user owns all these badges
+    const userBadges = await prisma.userBadge.findMany({
+      where: {
+        userId: req.user!.id,
+        badgeId: { in: badgeIds },
+      },
+    });
+
+    if (userBadges.length !== badgeIds.length) {
+      return res.status(400).json({ error: 'You do not own all selected badges' });
+    }
+
+    // Deselect all badges first
+    await prisma.userBadge.updateMany({
+      where: { userId: req.user!.id },
+      data: { isSelected: false },
+    });
+
+    // Select the chosen badges
+    if (badgeIds.length > 0) {
+      await prisma.userBadge.updateMany({
+        where: {
+          userId: req.user!.id,
+          badgeId: { in: badgeIds },
+        },
+        data: { isSelected: true },
+      });
+    }
+
+    // Return updated badges
+    const updatedBadges = await prisma.userBadge.findMany({
+      where: { userId: req.user!.id },
+      include: {
+        badge: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            color: true,
+          }
+        }
+      },
+      orderBy: { assignedAt: 'desc' },
+    });
+
+    res.json({ badges: updatedBadges });
+  } catch (error) {
+    console.error('Update selected badges error:', error);
+    res.status(500).json({ error: 'Failed to update selected badges' });
   }
 });
 
