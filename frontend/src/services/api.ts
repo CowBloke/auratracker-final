@@ -263,6 +263,8 @@ export const clansApi = {
     api.post(`/clans/${clanId}/requests/${requestId}/accept`),
   rejectRequest: (clanId: string, requestId: string) =>
     api.post(`/clans/${clanId}/requests/${requestId}/reject`),
+  removeMember: (clanId: string, userId: string) =>
+    api.delete(`/clans/${clanId}/members/${userId}`),
 };
 
 // Clash API
