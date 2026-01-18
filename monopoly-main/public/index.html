@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monopoly</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Lobby Screen -->
+  <div id="lobby-screen" class="screen active">
+    <div class="lobby-container">
+      <h1>MONOPOLY</h1>
+      <p class="subtitle">Classic Board Game</p>
+
+      <div class="lobby-tabs">
+        <button class="tab-btn active" data-tab="singleplayer">vs AI</button>
+        <button class="tab-btn" data-tab="create">Create Game</button>
+        <button class="tab-btn" data-tab="join">Join Game</button>
+      </div>
+
+      <div id="singleplayer-tab" class="tab-content active">
+        <div class="form-group">
+          <label for="sp-name">Your Name</label>
+          <input type="text" id="sp-name" placeholder="Enter your name" maxlength="15">
+        </div>
+        <div class="form-group">
+          <label for="ai-count">Number of AI Opponents</label>
+          <select id="ai-count">
+            <option value="1">1 AI Player</option>
+            <option value="2">2 AI Players</option>
+            <option value="3" selected>3 AI Players</option>
+            <option value="4">4 AI Players</option>
+            <option value="5">5 AI Players</option>
+          </select>
+        </div>
+        <button id="start-sp-btn" class="primary-btn">Start Game</button>
+      </div>
+
+      <div id="create-tab" class="tab-content">
+        <div class="form-group">
+          <label for="host-name">Your Name</label>
+          <input type="text" id="host-name" placeholder="Enter your name" maxlength="15">
+        </div>
+        <button id="create-game-btn" class="primary-btn">Create Game</button>
+      </div>
+
+      <div id="join-tab" class="tab-content">
+        <div class="form-group">
+          <label for="join-name">Your Name</label>
+          <input type="text" id="join-name" placeholder="Enter your name" maxlength="15">
+        </div>
+        <div class="form-group">
+          <label for="game-code">Game Code</label>
+          <input type="text" id="game-code" placeholder="Enter 4-letter code" maxlength="4">
+        </div>
+        <button id="join-game-btn" class="primary-btn">Join Game</button>
+      </div>
+
+      <div id="lobby-error" class="error-message"></div>
+    </div>
+  </div>
+
+  <!-- Waiting Room -->
+  <div id="waiting-room" class="screen">
+    <div class="waiting-container">
+      <h2>Game Lobby</h2>
+      <div class="game-code-display">
+        <span>Game Code:</span>
+        <span id="display-game-code" class="code"></span>
+      </div>
+      <p class="share-text">Share this code with friends</p>
+
+      <div class="players-list">
+        <h3>Players (<span id="player-count">0</span>/8)</h3>
+        <div id="lobby-players"></div>
+      </div>
+
+      <button id="start-game-btn" class="primary-btn" style="display: none;">Start Game</button>
+      <p id="waiting-text" class="waiting-text">Waiting for host to start...</p>
+    </div>
+  </div>
+
+  <!-- Game Screen -->
+  <div id="game-screen" class="screen">
+    <div class="game-layout">
+      <!-- Left Panel: Player Info -->
+      <div class="left-panel">
+        <div class="players-panel">
+          <h3>Players</h3>
+          <div id="players-info"></div>
+        </div>
+        <div class="game-log-panel">
+          <h3>Game Log</h3>
+          <div id="game-log"></div>
+        </div>
+      </div>
+
+      <!-- Center: Game Board -->
+      <div class="board-wrapper">
+        <div class="board-viewport" id="board-viewport">
+          <div id="game-board" class="game-board">
+            <!-- Board spaces will be generated dynamically -->
+            <div class="board-center">
+              <div class="center-logo">MONOPOLY</div>
+              <div id="dice-stage" class="dice-stage">
+                <div class="dice-3d-container">
+                  <div id="die1-3d" class="die-3d">
+                    <div class="die-face die-front"></div>
+                    <div class="die-face die-back"></div>
+                    <div class="die-face die-right"></div>
+                    <div class="die-face die-left"></div>
+                    <div class="die-face die-top"></div>
+                    <div class="die-face die-bottom"></div>
+                  </div>
+                  <div id="die2-3d" class="die-3d">
+                    <div class="die-face die-front"></div>
+                    <div class="die-face die-back"></div>
+                    <div class="die-face die-right"></div>
+                    <div class="die-face die-left"></div>
+                    <div class="die-face die-top"></div>
+                    <div class="die-face die-bottom"></div>
+                  </div>
+                </div>
+              </div>
+              <div id="free-parking-display" class="free-parking-display">
+                Free Parking: $<span id="free-parking-amount">0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="zoom-controls">
+          <button id="zoom-in-btn" class="zoom-btn">+</button>
+          <button id="zoom-reset-btn" class="zoom-btn">Reset</button>
+          <button id="zoom-out-btn" class="zoom-btn">-</button>
+          <button id="auto-camera-btn" class="zoom-btn auto-btn active">Auto: ON</button>
+          <button id="dark-mode-btn" class="zoom-btn dark-mode-btn">🌙</button>
+        </div>
+      </div>
+
+      <!-- Right Panel: Player Properties & Money -->
+      <div class="right-panel">
+        <div class="my-money-panel">
+          <h3>My Money</h3>
+          <div id="money-total" class="money-total">$1500</div>
+          <div id="bills-display" class="bills-display"></div>
+        </div>
+        <div class="my-properties-panel">
+          <h3>My Properties</h3>
+          <div id="property-cards-container" class="property-cards-container"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Central Action Modal -->
+    <div id="action-modal" class="action-modal" style="display: none;">
+      <div class="action-modal-content">
+        <div id="action-title" class="action-title"></div>
+        <div id="action-details" class="action-details"></div>
+        <div id="action-buttons" class="action-buttons"></div>
+      </div>
+    </div>
+
+    <!-- Property Purchase Modal -->
+    <div id="property-modal" class="property-modal" style="display: none;">
+      <div class="property-modal-overlay"></div>
+      <div class="property-modal-content">
+        <div id="property-card-display" class="property-card-large"></div>
+        <div class="property-modal-actions">
+          <div id="modal-bills-preview" class="modal-bills-preview"></div>
+          <div class="property-modal-buttons">
+            <button id="modal-buy-btn" class="modal-btn buy-btn">Buy Property</button>
+            <button id="modal-decline-btn" class="modal-btn decline-btn">Pass</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Property Info Modal -->
+    <div id="property-info-modal" class="property-info-modal" style="display: none;">
+      <div class="property-info-content">
+        <div id="property-info-card" class="property-card-large"></div>
+        <div id="property-info-actions" class="property-info-actions"></div>
+        <button id="close-property-info" class="close-modal-btn">Close</button>
+      </div>
+    </div>
+
+    <!-- Property Tooltip -->
+    <div id="property-tooltip" class="property-tooltip" style="display: none;"></div>
+  </div>
+
+  <!-- Game Over Modal -->
+  <div id="game-over-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <h2>Game Over!</h2>
+      <div id="winner-announcement"></div>
+      <button id="return-lobby-btn" class="primary-btn">Return to Lobby</button>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="notification" class="notification"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="client.js"></script>
+</body>
+</html>
