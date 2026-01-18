@@ -12,3 +12,4 @@
 - supprimer admin classement auracoin
 - supprimer des gens des clans
 - gérer l'aura des utilisateurs
+- fix image upload
