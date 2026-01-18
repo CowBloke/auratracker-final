@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
 import { cn } from '@/lib/utils';
-import { Coins, RotateCcw, XCircle } from 'lucide-react';
+import { Coins, RotateCcw } from 'lucide-react';
 
 type GameTab = 'roulette' | 'slots';
 
@@ -582,7 +582,6 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
             <div className="grid grid-cols-3 gap-1" style={{ gridTemplateRows: 'repeat(12, minmax(0, 1fr))' }}>
               {TABLE_ROWS.map((row) =>
                 row.map((num) => {
-                  const color = getNumberColor(num);
                   const bet = getBetFor('straight', num);
                   return (
                     <button

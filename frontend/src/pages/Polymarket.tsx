@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { polymarketApi, uploadsApi, PolymarketEvent, PolymarketSuggestion, PolymarketBet } from '../services/api';
-import { 
-  Loader2, Plus, ImageIcon, Calendar, TrendingUp, TrendingDown, 
-  CheckCircle2, XCircle, Clock, DollarSign, Users, BarChart3,
-  AlertCircle, Check, X
+import {
+  Loader2, Plus, Calendar,
+  CheckCircle2, XCircle, DollarSign, Users,
+  Check, X
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -241,7 +241,6 @@ export default function Polymarket() {
   };
 
   const openEvents = events.filter((e) => e.status === 'OPEN');
-  const closedEvents = events.filter((e) => e.status === 'CLOSED');
   const resolvedEvents = events.filter((e) => e.status === 'RESOLVED');
   const pendingSuggestions = suggestions.filter((s) => s.status === 'PENDING');
 
