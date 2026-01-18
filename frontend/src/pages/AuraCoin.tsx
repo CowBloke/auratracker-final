@@ -25,9 +25,6 @@ export default function AuraCoin() {
   const [activeTab, setActiveTab] = useState<'my' | 'all'>('my');
   const [myTransactions, setMyTransactions] = useState<AuraCoinTransaction[]>([]);
   const [allTransactions, setAllTransactions] = useState<AuraCoinTransaction[]>([]);
-
-  const MIN_FEE = 1;
-  const MIN_TRADE_GROSS = MIN_FEE + 1;
   
   const fetchData = useCallback(async () => {
     try {
@@ -131,10 +128,6 @@ export default function AuraCoin() {
   const sellFee = Math.floor(sellGrossAmount * feePercentage);
   const sellNetAmount = sellGrossAmount - sellFee;
 
-  const minBuyAmount = MIN_TRADE_GROSS;
-  const minSellAmount = Math.ceil((MIN_TRADE_GROSS / currentPrice) * 10000) / 10000;
-  const canUseMinBuy = moneyBalance >= minBuyAmount;
-  const canUseMinSell = auraCoinBalance >= minSellAmount;
 
   // Format chart data for Recharts
   const chartData = priceHistory.map((p) => ({
