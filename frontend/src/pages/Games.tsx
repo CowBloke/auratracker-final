@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
-import { useSocket } from '@/contexts/SocketContext';
 
 const games = [
   {
@@ -70,7 +69,6 @@ const games = [
 ];
 
 export default function Games() {
-  const { currentParty } = useSocket();
   const multiplayerGames = games.filter((game) => game.requiresParty);
   const soloGames = games.filter((game) => !game.requiresParty);
 
