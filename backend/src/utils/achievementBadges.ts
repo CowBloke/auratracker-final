@@ -12,15 +12,15 @@ export async function updateAchievementBadges() {
   try {
     // Get badge IDs for achievement badges (assuming they exist)
     const mostMoneyBadge = await prisma.badge.findFirst({
-      where: { name: { contains: 'Most Money', mode: 'insensitive' } },
+      where: { name: { contains: 'Most Money' } },
     });
 
     const topAuraBadge = await prisma.badge.findFirst({
-      where: { name: { contains: 'Top Aura', mode: 'insensitive' } },
+      where: { name: { contains: 'Top Aura' } },
     });
 
     const bestScoreBadge = await prisma.badge.findFirst({
-      where: { name: { contains: 'Best Score', mode: 'insensitive' } },
+      where: { name: { contains: 'Best Score' } },
     });
 
     // Update "Most Money" badge
@@ -116,7 +116,7 @@ export async function updateSpecificAchievementBadge(type: 'money' | 'aura' | 's
     switch (type) {
       case 'money':
         badge = await prisma.badge.findFirst({
-          where: { name: { contains: 'Most Money', mode: 'insensitive' } },
+          where: { name: { contains: 'Most Money' } },
         });
         topUser = await prisma.user.findFirst({
           orderBy: { money: 'desc' },
@@ -126,7 +126,7 @@ export async function updateSpecificAchievementBadge(type: 'money' | 'aura' | 's
 
       case 'aura':
         badge = await prisma.badge.findFirst({
-          where: { name: { contains: 'Top Aura', mode: 'insensitive' } },
+          where: { name: { contains: 'Top Aura' } },
         });
         topUser = await prisma.user.findFirst({
           orderBy: { aura: 'desc' },
@@ -136,7 +136,7 @@ export async function updateSpecificAchievementBadge(type: 'money' | 'aura' | 's
 
       case 'score':
         badge = await prisma.badge.findFirst({
-          where: { name: { contains: 'Best Score', mode: 'insensitive' } },
+          where: { name: { contains: 'Best Score' } },
         });
         const topScoreGame = await prisma.gameStats.findFirst({
           where: { gameType: 'doodle_jump' },
