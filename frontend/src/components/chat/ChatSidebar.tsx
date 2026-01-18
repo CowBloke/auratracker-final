@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../../contexts/SocketContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { Send, X, MoreHorizontal, Pin, PinOff } from 'lucide-react';
+import { Send, X, MoreHorizontal, Pin, PinOff, Award } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -19,6 +19,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useChatSidebar } from './ChatSidebarWrapper';
 import { resolveImageUrl } from '@/lib/images';
+import { BadgeSelectionModal } from '@/components/badges/BadgeSelectionModal';
+import { BadgeWithTooltip } from '@/components/ui/badge-tooltip';
 
 type TimeoutRef = ReturnType<typeof setTimeout> | null;
 type ReplyTarget = {
@@ -70,6 +72,7 @@ export default function ChatSidebar() {
   const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);
   const [mentionState, setMentionState] = useState<MentionState | null>(null);
   const [mentionIndex, setMentionIndex] = useState(0);
+  const [badgeModalOpen, setBadgeModalOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<TimeoutRef>(null);
@@ -282,14 +285,28 @@ export default function ChatSidebar() {
       <SidebarRail />
       <SidebarHeader className="border-b border-border/40">
         <div className="flex items-center justify-between px-3 py-2">
-          <span className="text-sm text-muted-foreground">Chat</span>
-          {unreadCount > 0 && (
-            <span className="px-1.5 py-0.5 text-[10px] bg-foreground text-background">
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Chat</span>
+            {unreadCount > 0 && (
+              <span className="px-1.5 py-0.5 text-[10px] bg-foreground text-background">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => setBadgeModalOpen(true)}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            title="Gérer tes badges"
+          >
+            <Award className="h-4 w-4" />
+          </button>
         </div>
       </SidebarHeader>
+
+      <BadgeSelectionModal
+        open={badgeModalOpen}
+        onOpenChange={setBadgeModalOpen}
+      />
       
       <SidebarContent className="flex flex-col">
         <div className="flex-1 flex flex-col min-h-0">
@@ -359,6 +376,19 @@ export default function ChatSidebar() {
                         >
                           {msg.username}
                         </button>
+                        {msg.badges && msg.badges.length > 0 && (
+                          <div className="flex items-center gap-1">
+                            {msg.badges.map((badge) => (
+                              <BadgeWithTooltip
+                                key={badge.id}
+                                name={badge.name}
+                                description={badge.description}
+                                color={badge.color}
+                                className="text-[8px] px-1.5 py-0.5"
+                              />
+                            ))}
+                          </div>
+                        )}
                         {(msg.isTopMoney || msg.isTopAura) && (
                           <div className="flex items-center gap-1">
                             {msg.isTopMoney && (

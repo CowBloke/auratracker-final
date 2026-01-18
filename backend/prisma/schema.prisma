@@ -63,10 +63,11 @@ model User {
 
 // Badge System
 model Badge {
-  id        String    @id @default(uuid())
-  name      String
-  color     String
-  createdAt DateTime  @default(now())
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  color       String
+  createdAt   DateTime  @default(now())
 
   users     UserBadge[]
 }
@@ -76,6 +77,7 @@ model UserBadge {
   userId     String
   badgeId    String
   assignedAt DateTime  @default(now())
+  isSelected Boolean   @default(false)
 
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   badge      Badge     @relation(fields: [badgeId], references: [id], onDelete: Cascade)
