@@ -61,6 +61,12 @@ const games = [
     description: 'Trade la cryptomonnaie virtuelle. Achète bas, vends haut.',
     type: 'Trading',
   },
+  {
+    id: 'polymarket',
+    name: 'Polymarket',
+    description: 'Marché de prédiction. Pariez sur des événements futurs.',
+    type: 'Prédiction',
+  },
 ];
 
 export default function Games() {
@@ -80,6 +86,9 @@ export default function Games() {
     }
     if (game.id === 'monopoly') {
       return '/games/monopoly';
+    }
+    if (game.id === 'polymarket') {
+      return '/games/polymarket';
     }
     return `/games/${game.id}`;
   };
@@ -124,11 +133,6 @@ export default function Games() {
                     <span className="text-xs uppercase tracking-wide text-muted-foreground">
                       {game.type}
                     </span>
-                    {game.requiresParty && currentParty && (
-                      <span className="text-xs text-muted-foreground">
-                        Party
-                      </span>
-                    )}
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {game.description}
@@ -159,11 +163,6 @@ export default function Games() {
                     <span className="text-xs uppercase tracking-wide text-muted-foreground">
                       {game.type}
                     </span>
-                    {game.requiresParty && currentParty && (
-                      <span className="text-xs text-muted-foreground">
-                        Party
-                      </span>
-                    )}
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {game.description}
