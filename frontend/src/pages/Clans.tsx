@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ImageIcon, Loader2, Plus, ShieldCheck, Users, X, Check, UserX } from 'lucide-react';
+import { ImageIcon, Loader2, Plus, ShieldCheck, Users, X, Check, UserX, Crown } from 'lucide-react';
 import { clansApi, ClanDetail, ClanSummary, uploadsApi } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -232,6 +232,9 @@ export default function Clans() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Creer un clan</DialogTitle>
+            <DialogDescription>
+              Cree un nouveau clan pour rassembler des joueurs. Le cout est de 100$ aura.
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateClan} className="space-y-4">
             <div className="space-y-2">
@@ -334,7 +337,7 @@ export default function Clans() {
           ) : clans.length === 0 ? (
             <div className="py-10 text-sm text-muted-foreground">Aucun clan pour le moment.</div>
           ) : (
-            <div className="space-y-0">
+            <div className="space-y-3">
               {clans.map((clan) => (
                 <div
                   key={clan.id}
@@ -342,8 +345,8 @@ export default function Clans() {
                   tabIndex={0}
                   onClick={() => setSelectedClanId(clan.id)}
                   className={cn(
-                    "cursor-pointer border-b border-border/30 py-4 last:border-0 transition-colors",
-                    clan.id === selectedClanId && "bg-muted/30 -mx-4 px-4"
+                    "cursor-pointer border border-border rounded-lg p-4 transition-colors hover:border-foreground/30",
+                    clan.id === selectedClanId && "bg-muted/30 border-foreground/50"
                   )}
                 >
                   <div className="flex items-start gap-4">
@@ -395,7 +398,7 @@ export default function Clans() {
             <div className="py-12 text-sm text-muted-foreground text-center">Chargement...</div>
           ) : selectedClan ? (
             <div className="space-y-6">
-              <div className="space-y-4">
+              <div className="space-y-4 border border-border rounded-lg p-6">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="flex items-center gap-4">
                     <Avatar className="h-14 w-14">
@@ -463,17 +466,16 @@ export default function Clans() {
                   </button>
                 )}
               </div>
-              <div className="h-px bg-border" />
-              <div className="space-y-6 py-6">
-                <div className="space-y-6">
+              <div className="border border-border rounded-lg p-6 space-y-6">
+                <div className="space-y-4">
                   <h3 className="text-sm text-muted-foreground tracking-wide uppercase">Membres (classement aura)</h3>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {selectedClan.members.map((member, index) => (
                       <div
                         key={member.id}
                         className={cn(
-                          "flex items-center justify-between border-b border-border/30 py-4 last:border-0",
-                          member.userId === selectedClan.leader.id && "bg-muted/30 -mx-4 px-4"
+                          "flex items-center justify-between border border-border rounded-lg p-4",
+                          member.userId === selectedClan.leader.id && "bg-muted/30 border-foreground/50"
                         )}
                       >
                         <div className="flex items-center gap-3">
@@ -517,16 +519,16 @@ export default function Clans() {
                 </div>
 
                 {selectedClan.viewer.isLeader && (
-                  <div className="space-y-6">
+                  <div className="space-y-4 border border-border rounded-lg p-6">
                     <h3 className="text-sm text-muted-foreground tracking-wide uppercase">Demandes en attente</h3>
                     {selectedClan.joinRequests.length === 0 ? (
                       <p className="text-sm text-muted-foreground">Aucune demande pour le moment.</p>
                     ) : (
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {selectedClan.joinRequests.map((request) => (
                           <div
                             key={request.id}
-                            className="flex flex-wrap items-center justify-between gap-3 border-b border-border/30 py-4 last:border-0"
+                            className="flex flex-wrap items-center justify-between gap-3 border border-border rounded-lg p-4"
                           >
                             <div className="flex items-center gap-3">
                               <Avatar className="h-8 w-8">
