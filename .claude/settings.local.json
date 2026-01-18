@@ -5,7 +5,8 @@
       "Bash(npm run db:generate:*)",
       "Bash(npx tsc:*)",
       "Bash(dir:*)",
-      "Bash(npx prisma migrate:*)"
+      "Bash(npx prisma migrate:*)",
+      "Bash(find:*)"
     ]
   }
 }
