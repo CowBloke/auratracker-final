@@ -10,7 +10,6 @@
 - les feais (minimum) s'affichent mal
 - on ne doit pas piuvoir attaquer admin sur clash (ultra cheaté car 1M d'argent)
 - supprimer admin classement auracoin
-- supprimer des gens des clans
 - gérer l'aura des utilisateurs
 - fix image upload
 - fixer stats jeux profile

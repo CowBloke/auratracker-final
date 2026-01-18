@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Crown, Globe, ImageIcon, Loader2, Lock, Plus, ShieldCheck, Users, X, Check } from 'lucide-react';
+import { Crown, Globe, ImageIcon, Loader2, Lock, Plus, ShieldCheck, Users, X, Check, UserX } from 'lucide-react';
 import { clansApi, ClanDetail, ClanSummary, uploadsApi } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -184,6 +184,22 @@ export default function Clans() {
     } catch (error: any) {
       console.error('Failed to update request:', error);
       setMessage({ type: 'error', text: error.response?.data?.error || 'Impossible de traiter la demande.' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRemoveMember = async (userId: string) => {
+    if (!selectedClan) return;
+    setActionLoading(true);
+    setMessage(null);
+    try {
+      await clansApi.removeMember(selectedClan.id, userId);
+      setMessage({ type: 'success', text: 'Membre retire du clan.' });
+      await Promise.all([fetchClans(), fetchClanDetail(selectedClan.id)]);
+    } catch (error: any) {
+      console.error('Failed to remove member:', error);
+      setMessage({ type: 'error', text: error.response?.data?.error || 'Impossible de retirer ce membre.' });
     } finally {
       setActionLoading(false);
     }
@@ -476,9 +492,22 @@ export default function Clans() {
                             <p className="text-xs text-muted-foreground">Arrive le {formatDate(member.joinedAt)}</p>
                           </div>
                         </div>
-                        <span className="text-sm text-muted-foreground tabular-nums">
-                          {formatAura(member.aura)} aura
-                        </span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm text-muted-foreground tabular-nums">
+                            {formatAura(member.aura)} aura
+                          </span>
+                          {selectedClan.viewer.isLeader && !member.isLeader ? (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleRemoveMember(member.userId)}
+                              disabled={actionLoading}
+                              className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <UserX className="h-4 w-4" />
+                            </Button>
+                          ) : null}
+                        </div>
                       </div>
                     ))}
                   </div>
