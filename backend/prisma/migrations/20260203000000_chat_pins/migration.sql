@@ -1,1 +1,0 @@
--- No-op: pinned fields already added in earlier migration.
