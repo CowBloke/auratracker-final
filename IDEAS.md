@@ -1,5 +1,11 @@
 # Jeux : 
 
+## Solo
+
+## Multijoueur
+
+- Polymarket
+
 ## Party
 - Makeitmeme
 - bataille navale
