@@ -5,6 +5,7 @@ import { useSocket } from '../contexts/SocketContext';
 import { auraCoinApi, AuraCoinTransaction, AuraCoinPriceHistory } from '../services/api';
 import { cn } from '@/lib/utils';
 import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 export default function AuraCoin() {
   const { refreshUser } = useAuth();
@@ -134,154 +135,148 @@ export default function AuraCoin() {
   const minSellAmount = Math.ceil((MIN_TRADE_GROSS / currentPrice) * 10000) / 10000;
   const canUseMinBuy = moneyBalance >= minBuyAmount;
   const canUseMinSell = auraCoinBalance >= minSellAmount;
-  
-  // Mini chart SVG
-  const chartWidth = 400;
-  const chartHeight = 100;
-  const chartPadding = 10;
-  
-  const minPrice = Math.min(...priceHistory.map(p => p.price), currentPrice) * 0.99;
-  const maxPrice = Math.max(...priceHistory.map(p => p.price), currentPrice) * 1.01;
-  const priceRange = maxPrice - minPrice || 1;
-  
-  const chartPoints = priceHistory.map((p, i) => {
-    const x = chartPadding + (i / Math.max(priceHistory.length - 1, 1)) * (chartWidth - 2 * chartPadding);
-    const y = chartHeight - chartPadding - ((p.price - minPrice) / priceRange) * (chartHeight - 2 * chartPadding);
-    return `${x},${y}`;
-  }).join(' ');
-  
+
+  // Format chart data for Recharts
+  const chartData = priceHistory.map((p) => ({
+    time: new Date(p.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+    price: p.price,
+    timestamp: p.createdAt,
+  }));
+
   const transactions = activeTab === 'my' ? myTransactions : allTransactions;
 
+  // Custom tooltip component
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-background border border-border/30 p-3 shadow-lg">
+          <p className="text-sm font-medium">${data.price.toFixed(2)}</p>
+          <p className="text-xs text-muted-foreground">
+            {new Date(data.timestamp).toLocaleString('fr-FR')}
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4 space-y-12">
+    <div className="max-w-5xl mx-auto py-8 px-4 space-y-6">
       {/* Header */}
-      <header className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <Link
-              to="/games"
-              className="text-sm text-muted-foreground tracking-wide uppercase hover:text-foreground transition-colors"
-            >
-              ← Jeux
-            </Link>
-            <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-              Aura Coin
-            </h1>
+      <header>
+        <Link
+          to="/games"
+          className="text-sm text-muted-foreground tracking-wide uppercase hover:text-foreground transition-colors"
+        >
+          ← Jeux
+        </Link>
+        <h1 className="text-4xl md:text-5xl font-light tracking-tight mt-2">
+          Aura Coin
+        </h1>
+      </header>
+
+      {/* Main Trading Card */}
+      <div className="border border-border/30 p-6 space-y-5">
+        {/* Balances and Current Price */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="border border-border/30 p-4">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Solde Money</p>
+            <p className="text-2xl font-light tabular-nums">${moneyBalance.toLocaleString()}</p>
           </div>
-          <div className="text-right">
-            <div className="flex items-center gap-2 justify-end">
-              <span className="text-3xl font-light tabular-nums">
+          <div className="border border-border/30 p-4">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Solde AuraCoin</p>
+            <p className="text-2xl font-light tabular-nums">{auraCoinBalance.toFixed(4)} AC</p>
+            <p className="text-xs text-muted-foreground tabular-nums">
+              ≈ ${(auraCoinBalance * currentPrice).toFixed(2)}
+            </p>
+          </div>
+          <div className="border border-border/30 p-4">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Prix Actuel</p>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-light tabular-nums">
                 ${currentPrice.toFixed(2)}
               </span>
               <span className={cn(
-                "flex items-center text-sm",
+                "flex items-center text-xs",
                 priceChange >= 0 ? "text-emerald-500" : "text-red-500"
               )}>
-                {priceChange >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                {priceChange >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                 {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
               </span>
             </div>
-            <p className="text-sm text-muted-foreground">Prix actuel</p>
           </div>
         </div>
-      </header>
-      
-      {/* Price Chart */}
-      <div className="border border-border/30 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-sm text-muted-foreground uppercase tracking-wide">Cours 24h</span>
-          <span className="text-sm text-muted-foreground tabular-nums">
-            Min: ${minPrice.toFixed(2)} / Max: ${maxPrice.toFixed(2)}
-          </span>
-        </div>
-        
-        <svg
-          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-          className="w-full h-32"
-          preserveAspectRatio="none"
-        >
-          {/* Grid lines */}
-          {[0, 0.25, 0.5, 0.75, 1].map((ratio) => (
-            <line
-              key={ratio}
-              x1={chartPadding}
-              y1={chartPadding + ratio * (chartHeight - 2 * chartPadding)}
-              x2={chartWidth - chartPadding}
-              y2={chartPadding + ratio * (chartHeight - 2 * chartPadding)}
-              stroke="currentColor"
-              strokeOpacity={0.1}
-            />
-          ))}
-          
-          {/* Price line */}
-          {priceHistory.length > 1 && (
-            <polyline
-              fill="none"
-              stroke={priceChange >= 0 ? '#10b981' : '#ef4444'}
-              strokeWidth="2"
-              points={chartPoints}
-            />
-          )}
-          
-          {/* Current price dot */}
-          {priceHistory.length > 0 && (
-            <circle
-              cx={chartWidth - chartPadding}
-              cy={chartHeight - chartPadding - ((currentPrice - minPrice) / priceRange) * (chartHeight - 2 * chartPadding)}
-              r="4"
-              fill={priceChange >= 0 ? '#10b981' : '#ef4444'}
-            />
-          )}
-        </svg>
-      </div>
-      
-      {/* Balances */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="border border-border/30 p-4">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">Solde $</p>
-          <p className="text-2xl font-light tabular-nums">${moneyBalance.toLocaleString()}</p>
-        </div>
-        <div className="border border-border/30 p-4">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">Solde AuraCoin</p>
-          <p className="text-2xl font-light tabular-nums">{auraCoinBalance.toFixed(4)} AC</p>
-          <p className="text-xs text-muted-foreground tabular-nums">
-            ≈ ${(auraCoinBalance * currentPrice).toFixed(2)}
-          </p>
-        </div>
-      </div>
 
-      {/* Trading Interface */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Buy */}
-        <div className="border border-border/30 p-6 space-y-4">
-          <div className="flex items-center gap-2">
-            <ArrowUpRight className="w-5 h-5 text-emerald-500" />
-            <h2 className="text-lg font-medium">Acheter</h2>
+        {/* Professional Chart */}
+        <div className="border border-border/30 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm text-muted-foreground uppercase tracking-wide">Cours 24h</span>
           </div>
-          
-          <div>
-            <div className="flex items-center justify-between">
-              <label className="text-sm text-muted-foreground">Montant ($)</label>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setBuyAmount(minBuyAmount.toString())}
-                  disabled={loading || !canUseMinBuy}
-                  className={cn(
-                    "px-2 py-1 border text-[10px] uppercase tracking-widest transition-colors",
-                    !loading && canUseMinBuy
-                      ? "border-emerald-500/60 text-emerald-500 hover:bg-emerald-500 hover:text-background"
-                      : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
-                  )}
-                >
-                  Min
-                </button>
+
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="currentColor"
+                opacity={0.1}
+                vertical={false}
+              />
+              <XAxis
+                dataKey="time"
+                stroke="currentColor"
+                opacity={0.5}
+                tick={{ fontSize: 11 }}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                stroke="currentColor"
+                opacity={0.5}
+                tick={{ fontSize: 11 }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) => `$${value.toFixed(2)}`}
+                domain={['auto', 'auto']}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Line
+                type="monotone"
+                dataKey="price"
+                stroke={priceChange >= 0 ? '#10b981' : '#ef4444'}
+                strokeWidth={2.5}
+                dot={false}
+                activeDot={{ r: 5, strokeWidth: 2 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Trading Interface */}
+        <div className="grid md:grid-cols-2 gap-4">
+          {/* Buy */}
+          <div className="border border-border/30 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <ArrowUpRight className="w-4 h-4 text-emerald-500" />
+              <h2 className="text-base font-medium">Acheter</h2>
+            </div>
+
+            <div>
+              <label className="text-xs text-muted-foreground">Montant ($)</label>
+              <div className="flex items-center gap-2 mt-1">
+                <input
+                  type="number"
+                  value={buyAmount}
+                  onChange={(e) => setBuyAmount(e.target.value)}
+                  placeholder="0"
+                  className="flex-1 px-3 py-2 bg-transparent border border-border/30 focus:border-foreground/30 outline-none tabular-nums text-sm"
+                />
                 <button
                   type="button"
                   onClick={() => setBuyAmount(moneyBalance.toString())}
                   disabled={loading || moneyBalance <= 0}
                   className={cn(
-                    "px-2 py-1 border text-[10px] uppercase tracking-widest transition-colors",
+                    "px-3 py-2 border text-[10px] uppercase tracking-widest transition-colors whitespace-nowrap",
                     !loading && moneyBalance > 0
                       ? "border-emerald-500/60 text-emerald-500 hover:bg-emerald-500 hover:text-background"
                       : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
@@ -289,74 +284,59 @@ export default function AuraCoin() {
                 >
                   Max
                 </button>
-              </div>
-            </div>
-            <input
-              type="number"
-              value={buyAmount}
-              onChange={(e) => setBuyAmount(e.target.value)}
-              placeholder="0"
-              className="w-full mt-1 px-3 py-2 bg-transparent border border-border/30 focus:border-foreground/30 outline-none tabular-nums"
-            />
-          </div>
-          
-          {buyMoneyAmount > 0 && (
-            <div className="text-sm text-muted-foreground space-y-1">
-              <div className="flex justify-between">
-                <span>Frais ({(feePercentage * 100).toFixed(0)}%)</span>
-                <span className="tabular-nums">-${buyFee}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Vous recevrez</span>
-                <span className="tabular-nums text-foreground">{buyCoinsEstimate.toFixed(4)} AC</span>
-              </div>
-            </div>
-          )}
-          
-          <button
-            onClick={handleBuy}
-            disabled={loading || !buyAmount || buyMoneyAmount <= 0 || buyMoneyAmount > moneyBalance}
-            className={cn(
-              "w-full py-3 border text-sm transition-colors",
-              !loading && buyMoneyAmount > 0 && buyMoneyAmount <= moneyBalance
-                ? "border-emerald-500 text-emerald-500 hover:bg-emerald-500 hover:text-background"
-                : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
-            )}
-          >
-            {loading ? 'Traitement...' : 'Acheter'}
-          </button>
-        </div>
-        
-        {/* Sell */}
-        <div className="border border-border/30 p-6 space-y-4">
-          <div className="flex items-center gap-2">
-            <ArrowDownRight className="w-5 h-5 text-red-500" />
-            <h2 className="text-lg font-medium">Vendre</h2>
-          </div>
-          
-          <div>
-            <div className="flex items-center justify-between">
-              <label className="text-sm text-muted-foreground">Quantité (AC)</label>
-              <div className="flex items-center gap-2">
                 <button
-                  type="button"
-                  onClick={() => setSellAmount(minSellAmount.toFixed(4))}
-                  disabled={loading || !canUseMinSell}
+                  onClick={handleBuy}
+                  disabled={loading || !buyAmount || buyMoneyAmount <= 0 || buyMoneyAmount > moneyBalance}
                   className={cn(
-                    "px-2 py-1 border text-[10px] uppercase tracking-widest transition-colors",
-                    !loading && canUseMinSell
-                      ? "border-red-500/60 text-red-500 hover:bg-red-500 hover:text-background"
+                    "px-4 py-2 border text-xs transition-colors whitespace-nowrap",
+                    !loading && buyMoneyAmount > 0 && buyMoneyAmount <= moneyBalance
+                      ? "border-emerald-500 text-emerald-500 hover:bg-emerald-500 hover:text-background"
                       : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
                   )}
                 >
-                  Min
+                  Acheter
                 </button>
+              </div>
+            </div>
+
+            {buyMoneyAmount > 0 && (
+              <div className="text-xs text-muted-foreground space-y-1 pt-1">
+                <div className="flex justify-between">
+                  <span>Frais ({(feePercentage * 100).toFixed(0)}%)</span>
+                  <span className="tabular-nums">-${buyFee}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Vous recevrez</span>
+                  <span className="tabular-nums text-foreground">{buyCoinsEstimate.toFixed(4)} AC</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Sell */}
+          <div className="border border-border/30 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <ArrowDownRight className="w-4 h-4 text-red-500" />
+              <h2 className="text-base font-medium">Vendre</h2>
+            </div>
+
+            <div>
+              <label className="text-xs text-muted-foreground">Quantité (AC)</label>
+              <div className="flex items-center gap-2 mt-1">
+                <input
+                  type="number"
+                  value={sellAmount}
+                  onChange={(e) => setSellAmount(e.target.value)}
+                  placeholder="0"
+                  step="0.0001"
+                  className="flex-1 px-3 py-2 bg-transparent border border-border/30 focus:border-foreground/30 outline-none tabular-nums text-sm"
+                />
                 <button
                   type="button"
                   onClick={() => setSellAmount(auraCoinBalance.toFixed(4))}
                   disabled={loading || auraCoinBalance <= 0}
                   className={cn(
-                    "px-2 py-1 border text-[10px] uppercase tracking-widest transition-colors",
+                    "px-3 py-2 border text-[10px] uppercase tracking-widest transition-colors whitespace-nowrap",
                     !loading && auraCoinBalance > 0
                       ? "border-red-500/60 text-red-500 hover:bg-red-500 hover:text-background"
                       : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
@@ -364,64 +344,55 @@ export default function AuraCoin() {
                 >
                   Max
                 </button>
+                <button
+                  onClick={handleSell}
+                  disabled={loading || !sellAmount || sellCoinAmount <= 0 || sellCoinAmount > auraCoinBalance}
+                  className={cn(
+                    "px-4 py-2 border text-xs transition-colors whitespace-nowrap",
+                    !loading && sellCoinAmount > 0 && sellCoinAmount <= auraCoinBalance
+                      ? "border-red-500 text-red-500 hover:bg-red-500 hover:text-background"
+                      : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
+                  )}
+                >
+                  Vendre
+                </button>
               </div>
             </div>
-            <input
-              type="number"
-              value={sellAmount}
-              onChange={(e) => setSellAmount(e.target.value)}
-              placeholder="0"
-              step="0.0001"
-              className="w-full mt-1 px-3 py-2 bg-transparent border border-border/30 focus:border-foreground/30 outline-none tabular-nums"
-            />
-          </div>
-          
-          {sellCoinAmount > 0 && (
-            <div className="text-sm text-muted-foreground space-y-1">
-              <div className="flex justify-between">
-                <span>Valeur brute</span>
-                <span className="tabular-nums">${sellGrossAmount}</span>
+
+            {sellCoinAmount > 0 && (
+              <div className="text-xs text-muted-foreground space-y-1 pt-1">
+                <div className="flex justify-between">
+                  <span>Valeur brute</span>
+                  <span className="tabular-nums">${sellGrossAmount}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Frais ({(feePercentage * 100).toFixed(0)}%)</span>
+                  <span className="tabular-nums">-${sellFee}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Vous recevrez</span>
+                  <span className="tabular-nums text-foreground">${sellNetAmount}</span>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span>Frais ({(feePercentage * 100).toFixed(0)}%)</span>
-                <span className="tabular-nums">-${sellFee}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Vous recevrez</span>
-                <span className="tabular-nums text-foreground">${sellNetAmount}</span>
-              </div>
-            </div>
-          )}
-          
-          <button
-            onClick={handleSell}
-            disabled={loading || !sellAmount || sellCoinAmount <= 0 || sellCoinAmount > auraCoinBalance}
-            className={cn(
-              "w-full py-3 border text-sm transition-colors",
-              !loading && sellCoinAmount > 0 && sellCoinAmount <= auraCoinBalance
-                ? "border-red-500 text-red-500 hover:bg-red-500 hover:text-background"
-                : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
             )}
-          >
-            {loading ? 'Traitement...' : 'Vendre'}
-          </button>
+          </div>
         </div>
       </div>
-      
+
       {/* Error */}
       {error && (
         <div className="text-center text-red-500 text-sm">
           {error}
         </div>
       )}
-      
+
       {/* Transactions */}
-      <div className="space-y-4">
+      <div className="border border-border/30 p-5 space-y-3">
         <div className="flex gap-4 border-b border-border/30">
           <button
             onClick={() => setActiveTab('my')}
             className={cn(
-              "pb-3 text-sm transition-colors",
+              "pb-2 text-sm transition-colors",
               activeTab === 'my'
                 ? "border-b-2 border-foreground text-foreground"
                 : "text-muted-foreground hover:text-foreground"
@@ -432,7 +403,7 @@ export default function AuraCoin() {
           <button
             onClick={() => setActiveTab('all')}
             className={cn(
-              "pb-3 text-sm transition-colors",
+              "pb-2 text-sm transition-colors",
               activeTab === 'all'
                 ? "border-b-2 border-foreground text-foreground"
                 : "text-muted-foreground hover:text-foreground"
@@ -441,54 +412,54 @@ export default function AuraCoin() {
             Toutes les Transactions
           </button>
         </div>
-        
-        <div className="space-y-2">
+
+        <div className="space-y-1 max-h-[300px] overflow-y-auto">
           {transactions.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
+            <p className="text-center text-muted-foreground py-6 text-sm">
               Aucune transaction
             </p>
           ) : (
             transactions.map((tx) => (
               <div
                 key={tx.id}
-                className="flex items-center justify-between py-3 border-b border-border/10"
+                className="flex items-center justify-between py-2 border-b border-border/10"
               >
                 <div className="flex items-center gap-3">
                   <div className={cn(
-                    "w-8 h-8 flex items-center justify-center border",
+                    "w-7 h-7 flex items-center justify-center border",
                     tx.type === 'BUY'
                       ? "border-emerald-500/30 text-emerald-500"
                       : "border-red-500/30 text-red-500"
                   )}>
-                    {tx.type === 'BUY' ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+                    {tx.type === 'BUY' ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
                       {activeTab === 'all' && (
                         <span
-                          className="text-sm font-medium"
+                          className="text-xs font-medium"
                           style={{ color: tx.user.usernameColor || undefined }}
                         >
                           {tx.user.username}
                         </span>
                       )}
                       <span className={cn(
-                        "text-xs uppercase",
+                        "text-[10px] uppercase",
                         tx.type === 'BUY' ? "text-emerald-500" : "text-red-500"
                       )}>
                         {tx.type === 'BUY' ? 'Achat' : 'Vente'}
                       </span>
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-[10px] text-muted-foreground">
                       {new Date(tx.createdAt).toLocaleString('fr-FR')}
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm tabular-nums">
+                  <p className="text-xs tabular-nums">
                     {tx.type === 'BUY' ? '+' : '-'}{tx.coinAmount.toFixed(4)} AC
                   </p>
-                  <p className="text-xs text-muted-foreground tabular-nums">
+                  <p className="text-[10px] text-muted-foreground tabular-nums">
                     @ ${tx.price.toFixed(2)} • Frais: ${tx.fee}
                   </p>
                 </div>
