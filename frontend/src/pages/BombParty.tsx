@@ -164,7 +164,7 @@ export default function BombParty() {
   // Not in a party - show message
   if (!currentParty) {
     return (
-      <div className="max-w-4xl mx-auto py-12 px-4 space-y-8">
+      <div className="max-w-6xl mx-auto py-12 px-4 space-y-8">
         <Link
           to="/games"
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -185,10 +185,8 @@ export default function BombParty() {
         <div className="h-px bg-border" />
 
         <div className="text-center py-20 space-y-6">
-          <Users className="h-16 w-16 mx-auto text-muted-foreground" />
           <div>
-            <h2 className="text-2xl font-light mb-2">Besoin d'une party</h2>
-            <p className="text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Rejoins ou cree une party pour jouer a Bomb Party
             </p>
           </div>
@@ -207,7 +205,7 @@ export default function BombParty() {
   // Lobby state (no game active)
   if (!bombPartyGame) {
     return (
-      <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
+      <div className="max-w-6xl mx-auto py-12 px-4 space-y-16">
         {/* Header */}
         <header className="space-y-2">
           <Link
@@ -546,7 +544,7 @@ export default function BombParty() {
 
   // Game active
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4 space-y-8">
+    <div className="max-w-6xl mx-auto py-12 px-4 space-y-8">
       {/* Header */}
       <header className="flex items-center justify-between">
         <div>

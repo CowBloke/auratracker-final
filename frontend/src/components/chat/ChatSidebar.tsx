@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../../contexts/SocketContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { Send, X, MoreHorizontal, Pin, PinOff, Award } from 'lucide-react';
+import { Send, X, MoreHorizontal, Pin, PinOff, Award, Reply } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -464,9 +464,10 @@ export default function ChatSidebar() {
                                 message: msg.message,
                               })
                             }
-                            className="text-[10px] text-muted-foreground/60 hover:text-foreground transition-colors"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/70 hover:text-foreground"
+                            title="Répondre"
                           >
-                            Répondre
+                            <Reply className="h-3.5 w-3.5" />
                           </button>
                         </div>
                       </div>
@@ -524,7 +525,7 @@ export default function ChatSidebar() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="p-3 pb-16 border-t border-border/40">
+          <form onSubmit={handleSubmit} className="p-3 border-t border-border/40">
             {replyTarget && (
               <div className="mb-2 flex items-start justify-between gap-3 rounded-md border border-border/60 bg-foreground/5 px-3 py-2 text-xs">
                 <div className="min-w-0">

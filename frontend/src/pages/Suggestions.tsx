@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { suggestionsApi, uploadsApi, Suggestion } from '../services/api';
 import { ChevronUp, ChevronDown, Loader2, Plus, ImageIcon, Trash2, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -10,9 +9,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 import { readFileAsDataUrl } from '@/lib/uploads';
@@ -343,10 +340,8 @@ export default function Suggestions() {
 
                     <div className="flex items-center gap-2">
                       {user?.isAdmin && (
-                        <Button
+                        <button
                           type="button"
-                          variant="outline"
-                          size="sm"
                           onClick={() =>
                             handleStatusUpdate(
                               suggestion.id,
@@ -354,6 +349,7 @@ export default function Suggestions() {
                             )
                           }
                           disabled={statusUpdating[suggestion.id]}
+                          className="px-3 py-1.5 text-xs border border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors disabled:opacity-50"
                         >
                           {statusUpdating[suggestion.id] ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -362,7 +358,7 @@ export default function Suggestions() {
                           ) : (
                             'Marquer comme réalisée'
                           )}
-                        </Button>
+                        </button>
                       )}
 
                       {/* Delete button for author or admin */}
@@ -428,18 +424,18 @@ export default function Suggestions() {
                             setRatingInputs((prev) => ({ ...prev, [suggestion.id]: value[0] }))
                           }
                         />
-                        <Button
+                        <button
                           type="button"
-                          size="sm"
                           onClick={() => handleRatingSubmit(suggestion.id)}
                           disabled={ratingSubmitting[suggestion.id]}
+                          className="px-3 py-1.5 text-xs border border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors disabled:opacity-50"
                         >
                           {ratingSubmitting[suggestion.id] ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
                           ) : (
                             'Noter'
                           )}
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   )}
@@ -502,21 +498,21 @@ export default function Suggestions() {
                       />
                       <div className="flex items-center justify-between text-xs text-muted-foreground/60">
                         <span>{(commentInputs[suggestion.id] || '').length}/500</span>
-                        <Button
+                        <button
                           type="button"
-                          size="sm"
                           onClick={() => handleCommentSubmit(suggestion.id)}
                           disabled={
                             commentSubmitting[suggestion.id] ||
                             !(commentInputs[suggestion.id] || '').trim()
                           }
+                          className="px-3 py-1.5 text-xs border border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {commentSubmitting[suggestion.id] ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
                           ) : (
                             'Commenter'
                           )}
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -540,14 +536,22 @@ export default function Suggestions() {
   return (
     <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
       {/* Header */}
-      <header className="flex items-center justify-between">
-        <div className="space-y-2">
-          <p className="text-sm text-muted-foreground tracking-wide uppercase">
-            Proposez vos idées
-          </p>
-          <h1 className="text-5xl md:text-7xl font-light tracking-tight">Suggestions</h1>
+      <header className="space-y-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-muted-foreground tracking-wide uppercase">
+              Proposez vos idées
+            </p>
+            <h1 className="text-5xl md:text-7xl font-light tracking-tight">Suggestions</h1>
+          </div>
+          <button
+            onClick={() => setDialogOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            Créer
+          </button>
         </div>
-
         <Dialog
           open={dialogOpen}
           onOpenChange={(open) => {
@@ -559,12 +563,6 @@ export default function Suggestions() {
             }
           }}
         >
-          <DialogTrigger asChild>
-            <button className="flex items-center gap-2 px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors">
-              <Plus className="h-4 w-4" />
-              Créer
-            </button>
-          </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle className="text-xl font-light">Nouvelle suggestion</DialogTitle>
@@ -595,22 +593,30 @@ export default function Suggestions() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Button
+                  <button
                     type="button"
-                    variant={imageInputMode === 'upload' ? 'default' : 'outline'}
-                    size="sm"
                     onClick={() => setImageInputMode('upload')}
+                    className={cn(
+                      "px-3 py-1.5 text-xs border transition-colors",
+                      imageInputMode === 'upload'
+                        ? "border-foreground text-foreground"
+                        : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                    )}
                   >
                     Upload
-                  </Button>
-                  <Button
+                  </button>
+                  <button
                     type="button"
-                    variant={imageInputMode === 'url' ? 'default' : 'outline'}
-                    size="sm"
                     onClick={() => setImageInputMode('url')}
+                    className={cn(
+                      "px-3 py-1.5 text-xs border transition-colors",
+                      imageInputMode === 'url'
+                        ? "border-foreground text-foreground"
+                        : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                    )}
                   >
                     URL
-                  </Button>
+                  </button>
                 </div>
                 {imageInputMode === 'upload' ? (
                   <>
@@ -666,38 +672,65 @@ export default function Suggestions() {
                   </div>
                 )}
               </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <Button
+              <div className="flex justify-end gap-2 pt-2">
+                <button
                   type="button"
-                  variant="ghost"
                   onClick={() => setDialogOpen(false)}
+                  className="px-4 py-2 text-sm border border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
                 >
                   Annuler
-                </Button>
-                <Button type="submit" disabled={submitting || !title.trim() || !description.trim()}>
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting || !title.trim() || !description.trim()}
+                  className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   {submitting ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     'Publier'
                   )}
-                </Button>
+                </button>
               </div>
             </form>
           </DialogContent>
         </Dialog>
       </header>
 
+      {/* Tab Selector */}
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => setActiveTab('pending')}
+          className={cn(
+            "px-4 py-2 text-sm border transition-colors",
+            activeTab === 'pending'
+              ? "border-foreground text-foreground"
+              : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+          )}
+        >
+          Suggestions ({pendingSuggestions.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('done')}
+          className={cn(
+            "px-4 py-2 text-sm border transition-colors",
+            activeTab === 'done'
+              ? "border-foreground text-foreground"
+              : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+          )}
+        >
+          Réalisées ({doneSuggestions.length})
+        </button>
+      </div>
+
       {/* Divider */}
       <div className="h-px bg-border" />
 
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'pending' | 'done')}>
-        <TabsList className="w-full justify-start">
-          <TabsTrigger value="pending">Suggestions ({pendingSuggestions.length})</TabsTrigger>
-          <TabsTrigger value="done">Réalisées ({doneSuggestions.length})</TabsTrigger>
-        </TabsList>
-        <TabsContent value="pending">{renderSuggestions(pendingSuggestions, false)}</TabsContent>
-        <TabsContent value="done">{renderSuggestions(doneSuggestions, true)}</TabsContent>
-      </Tabs>
+      {/* Content */}
+      <section>
+        {activeTab === 'pending' && renderSuggestions(pendingSuggestions, false)}
+        {activeTab === 'done' && renderSuggestions(doneSuggestions, true)}
+      </section>
     </div>
   );
 }

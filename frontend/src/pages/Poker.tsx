@@ -189,7 +189,7 @@ export default function Poker() {
 
   if (!currentParty) {
     return (
-      <div className="max-w-4xl mx-auto py-12 px-4 space-y-8">
+      <div className="max-w-6xl mx-auto py-12 px-4 space-y-8">
         <Link
           to="/games"
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -210,10 +210,8 @@ export default function Poker() {
         <div className="h-px bg-border" />
 
         <div className="text-center py-20 space-y-6">
-          <Users className="h-16 w-16 mx-auto text-muted-foreground" />
           <div>
-            <h2 className="text-2xl font-light mb-2">Besoin d'une party</h2>
-            <p className="text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Crée ou rejoins une party pour lancer une table de poker.
             </p>
           </div>
@@ -237,7 +235,7 @@ export default function Poker() {
   const lobby = !pokerGame;
 
   return (
-    <div className="max-w-5xl mx-auto py-12 px-4 space-y-10">
+    <div className="max-w-6xl mx-auto py-12 px-4 space-y-10">
       <header className="space-y-2">
         <Link
           to="/games"

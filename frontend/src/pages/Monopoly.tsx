@@ -96,7 +96,7 @@ export default function Monopoly() {
 
   if (!currentParty) {
     return (
-      <div className="max-w-4xl mx-auto py-12 px-4 space-y-8">
+      <div className="max-w-6xl mx-auto py-12 px-4 space-y-8">
         <Link
           to="/games"
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -117,15 +117,17 @@ export default function Monopoly() {
         <div className="h-px bg-border" />
 
         <div className="text-center py-20 space-y-6">
-          <Users className="h-16 w-16 mx-auto text-muted-foreground" />
           <div>
-            <h2 className="text-2xl font-light mb-2">Besoin d'une party</h2>
-            <p className="text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Crée ou rejoins une party pour lancer une partie de Monopoly.
             </p>
           </div>
-          <Link to="/party">
-            <Button size="lg">Aller aux parties</Button>
+          <Link
+            to="/party"
+            className="inline-flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+          >
+            <Users className="h-4 w-4" />
+            Aller aux parties
           </Link>
         </div>
       </div>
@@ -136,7 +138,7 @@ export default function Monopoly() {
   const hasAlreadyResponded = hasRespondedPlayAgain || !!myPlayAgainResponse;
 
   return (
-    <div className="max-w-6xl mx-auto py-10 px-4 space-y-8">
+    <div className="max-w-6xl mx-auto py-12 px-4 space-y-8">
       <header className="space-y-3">
         <Link
           to="/games"

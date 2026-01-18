@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
 import { cn } from '@/lib/utils';
-import { Coins, Flame, RotateCcw, Sparkles, XCircle } from 'lucide-react';
+import { Coins, RotateCcw, XCircle } from 'lucide-react';
 
 type GameTab = 'roulette' | 'slots';
 
@@ -182,23 +182,23 @@ export default function Casino() {
           )}
         </div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-2 md:grid-cols-2">
           <button
             onClick={() => setActiveGame('roulette')}
-            className="group rounded-2xl border border-border/60 px-6 py-8 text-left transition-all hover:border-foreground/50"
+            className="group border border-foreground px-6 py-8 text-left transition-colors hover:bg-foreground hover:text-background"
           >
-            <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Jeu</p>
-            <p className="mt-2 text-2xl font-semibold">Roulette</p>
+            <p className="text-sm text-muted-foreground tracking-wide uppercase">Jeu</p>
+            <p className="mt-2 text-2xl font-light">Roulette</p>
             <p className="mt-2 text-sm text-muted-foreground">
               Mises multi-cases, roue animée et tirage rapide.
             </p>
           </button>
           <button
             onClick={() => setActiveGame('slots')}
-            className="group rounded-2xl border border-border/60 px-6 py-8 text-left transition-all hover:border-foreground/50"
+            className="group border border-foreground px-6 py-8 text-left transition-colors hover:bg-foreground hover:text-background"
           >
-            <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Jeu</p>
-            <p className="mt-2 text-2xl font-semibold">Machine à sous</p>
+            <p className="text-sm text-muted-foreground tracking-wide uppercase">Jeu</p>
+            <p className="mt-2 text-2xl font-light">Machine à sous</p>
             <p className="mt-2 text-sm text-muted-foreground">
               Classique, rapide et minimaliste.
             </p>
@@ -364,7 +364,7 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
   ]);
 
   const renderChip = (amount: number) => (
-    <span className="inline-flex items-center gap-1 rounded-full bg-background/80 px-2 py-0.5 text-[11px] font-semibold shadow">
+    <span className="inline-flex items-center gap-1 border border-border/30 px-2 py-0.5 text-[11px] font-medium">
       <Coins className="h-3 w-3" />
       {amount}
     </span>
@@ -376,12 +376,79 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
   const canSpin = user && totalBet > 0 && !spinning && (user.money >= totalBet);
 
   return (
-    <div className="space-y-8">
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,420px)_1fr]">
+    <div className="space-y-4">
+      {/* Chip selection and controls at top */}
+      <div className="border border-border/30 p-3">
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+            Jetons
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {CHIP_VALUES.map((value) => (
+              <button
+                key={value}
+                onClick={() => setChipValue(value)}
+                className={cn(
+                  "border px-3 py-1 text-xs transition-colors",
+                  chipValue === value
+                    ? "border-foreground text-foreground"
+                    : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                )}
+              >
+                ${value}
+              </button>
+            ))}
+          </div>
+          <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
+            <div>
+              Total: ${totalBet}
+            </div>
+            <div>
+              Mise sélection: ${chipValue}
+            </div>
+          </div>
+        </div>
+
+        {error && (
+          <div className="px-3 py-2 text-sm text-muted-foreground border border-border/30 mb-3">
+            {error}
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button
+            onClick={clearBets}
+            disabled={spinning || bets.length === 0}
+            className={cn(
+              "flex-1 sm:flex-none px-4 py-2 text-sm border transition-colors",
+              bets.length === 0 || spinning
+                ? "border-border/30 text-muted-foreground/50 cursor-not-allowed"
+                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+            )}
+          >
+            Réinitialiser les mises
+          </button>
+          <button
+            onClick={spinWheel}
+            disabled={!canSpin}
+            className={cn(
+              "flex-1 sm:flex-none px-5 py-3 text-sm border flex items-center justify-center gap-2 transition-colors",
+              canSpin
+                ? "border-foreground text-foreground hover:bg-foreground hover:text-background"
+                : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
+            )}
+          >
+            {spinning ? <RotateCcw className="h-5 w-5 animate-spin" /> : 'Lancer la roue'}
+          </button>
+        </div>
+      </div>
+
+      {/* Main game area: Wheel + Betting table side by side */}
+      <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
         {/* Wheel + status */}
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-border/60 bg-gradient-to-b from-background to-background/40 p-5 shadow-2xl shadow-black/10">
-            <div className="relative aspect-square w-full max-w-[380px] mx-auto">
+        <div className="space-y-3">
+          <div className="border border-border/30 p-4">
+            <div className="relative aspect-square w-full max-w-[280px] mx-auto">
             <div
               className="absolute inset-0 rounded-full overflow-hidden border border-border/40 shadow-2xl shadow-black/30"
               style={{
@@ -394,7 +461,7 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
                 style={{ background: wheelGradient }}
               />
               <div className="absolute inset-3 rounded-full border border-white/10 shadow-inner shadow-black/40" />
-              <div className="absolute inset-6 rounded-full bg-gradient-to-b from-black/30 via-background/70 to-background/90 border border-white/5" />
+              <div className="absolute inset-6 rounded-full bg-gradient-to-b from-black/30 to-black/60 border border-white/5" />
               <div className="absolute inset-14 rounded-full bg-black/50 border border-white/10 backdrop-blur-sm" />
               {WHEEL_NUMBERS.map((num, idx) => {
                 const angle = WHEEL_OFFSET + idx * SLICE_ANGLE + SLICE_ANGLE / 2;
@@ -406,7 +473,7 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
                     style={{ transform: `rotate(${angle}deg)` }}
                   >
                     <div
-                      className="absolute left-1/2 -translate-x-1/2 text-[10px] font-semibold tracking-tight"
+                      className="absolute left-1/2 -translate-x-1/2 text-[9px] font-semibold tracking-tight"
                       style={{
                         top: '6%',
                         color:
@@ -432,35 +499,26 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
                   transition: `transform ${BALL_DURATION}ms cubic-bezier(0.17, 0.84, 0.44, 1.02)`,
                 }}
               >
-                <div className="absolute left-1/2 -translate-x-1/2 -top-2 w-4 h-4 rounded-full bg-white shadow-xl shadow-black/40 border border-black/30" />
+                <div className="absolute left-1/2 -translate-x-1/2 -top-2 w-3 h-3 rounded-full bg-white shadow-xl shadow-black/40 border border-black/30" />
               </div>
             </div>
 
-            <div className="absolute inset-[42%] rounded-full border border-white/10 bg-gradient-to-b from-white/10 via-white/5 to-black/40 shadow-inner shadow-black/50" />
-            <div className="absolute inset-[48%] rounded-full bg-gradient-to-b from-foreground/80 to-black/90 shadow-2xl shadow-black/60" />
+            <div className="absolute inset-[42%] rounded-full border border-white/10 bg-gradient-to-b from-black/20 to-black/40 shadow-inner shadow-black/50" />
+            <div className="absolute inset-[48%] rounded-full bg-gradient-to-b from-black/60 to-black/90 shadow-2xl shadow-black/60" />
           </div>
 
-            <div className="mt-5 space-y-3">
+            <div className="space-y-2">
             {lastResult ? (
-              <div className="flex items-center justify-between rounded-xl border border-border/60 bg-background/70 px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={cn(
-                      "h-10 w-10 rounded-full flex items-center justify-center text-lg font-semibold shadow",
-                      lastResult.color === 'red'
-                        ? "bg-red-500/20 text-red-200 border border-red-400/50"
-                        : lastResult.color === 'black'
-                          ? "bg-slate-900 text-slate-100 border border-slate-700"
-                          : "bg-emerald-500/20 text-emerald-100 border border-emerald-400/50"
-                    )}
-                  >
+              <div className="flex items-center justify-between border border-border/30 px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 border border-border/30 flex items-center justify-center text-sm font-medium">
                     {lastResult.number}
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground uppercase tracking-[0.18em]">
+                    <p className="text-[10px] text-muted-foreground tracking-wide uppercase">
                       Dernier tirage
                     </p>
-                    <p className="text-lg font-semibold">
+                    <p className="text-xs font-medium">
                       {lastResult.color === 'red'
                         ? 'Rouge'
                         : lastResult.color === 'black'
@@ -469,271 +527,209 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
                     </p>
                   </div>
                 </div>
-                <div className="text-right text-sm font-semibold">
-                  {lastResult.net >= 0 ? (
-                    <span className="text-green-500">+${lastResult.net.toLocaleString()}</span>
-                  ) : (
-                    <span className="text-destructive">${lastResult.net.toLocaleString()}</span>
-                  )}
-                  <div className="text-xs text-muted-foreground">Total gagné: ${lastResult.payout.toLocaleString()}</div>
+                <div className="text-right text-xs">
+                  <span className={lastResult.net >= 0 ? 'text-foreground' : 'text-muted-foreground'}>
+                    {lastResult.net >= 0 ? '+' : ''}${lastResult.net.toLocaleString()}
+                  </span>
+                  <div className="text-[10px] text-muted-foreground">Total: ${lastResult.payout.toLocaleString()}</div>
                 </div>
               </div>
             ) : (
-              <div className="rounded-xl border border-dashed border-border/60 px-4 py-3 text-sm text-muted-foreground">
-                Place tes jetons et lance la roue pour voir le résultat ici.
+              <div className="border border-dashed border-border/30 px-3 py-2 text-xs text-muted-foreground">
+                Place tes jetons et lance la roue.
               </div>
             )}
 
-              <div className="text-[11px] text-muted-foreground">
-                {bets.length > 0 ? `${bets.length} pari${bets.length > 1 ? 's' : ''}` : 'Aucune mise'}
-              </div>
-            </div>
-          </div>
-
-          {error && (
-            <div className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              <XCircle className="h-4 w-4" />
-              {error}
-            </div>
-          )}
-
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <Coins className="h-4 w-4" />
-                Mise totale: ${totalBet}
-              </div>
-              {rewards && (
-                <div className="flex items-center gap-2 text-foreground">
-                  <Sparkles className="h-4 w-4 text-yellow-400" />
-                  {rewards.aura > 0 && <span>+{rewards.aura} aura</span>}
-                  {rewards.money !== 0 && <span>{rewards.money > 0 ? '+' : ''}${rewards.money}</span>}
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                <span>{bets.length > 0 ? `${bets.length} pari${bets.length > 1 ? 's' : ''}` : 'Aucune mise'}</span>
+                <div className="flex items-center gap-2">
+                  <Coins className="h-3 w-3" />
+                  <span>Mise totale: ${totalBet}</span>
                 </div>
-              )}
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <button
-                onClick={clearBets}
-                disabled={spinning || bets.length === 0}
-                className={cn(
-                  "flex-1 sm:flex-none px-4 py-2 text-sm border transition-colors rounded-lg",
-                  bets.length === 0 || spinning
-                    ? "border-border/60 text-muted-foreground cursor-not-allowed"
-                    : "border-border text-foreground hover:border-foreground"
+                {rewards && (
+                  <div className="flex items-center gap-1 text-[10px]">
+                    {rewards.aura > 0 && <span>+{rewards.aura} aura</span>}
+                    {rewards.money !== 0 && <span>{rewards.money > 0 ? '+' : ''}${rewards.money}</span>}
+                  </div>
                 )}
-              >
-                Réinitialiser les mises
-              </button>
-              <button
-                onClick={spinWheel}
-                disabled={!canSpin}
-                className={cn(
-                  "flex-1 sm:flex-none px-5 py-3 rounded-lg text-base font-semibold flex items-center justify-center gap-2 transition-colors",
-                  canSpin
-                    ? "bg-foreground text-background hover:opacity-90"
-                    : "bg-muted text-muted-foreground cursor-not-allowed"
-                )}
-              >
-                {spinning ? <RotateCcw className="h-5 w-5 animate-spin" /> : 'Lancer la roue'}
-              </button>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Betting table */}
-        <div className="space-y-3">
-          <div className="space-y-3 border border-border/40 rounded-lg p-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                Jetons
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {CHIP_VALUES.map((value) => (
+        <div className="border border-border/30 p-3">
+          <div className="grid gap-2 lg:grid-cols-[60px_1fr_auto]">
+            {/* Zero column */}
+            <button
+              onClick={() => placeBet('straight', 0)}
+              className={cn(
+                "relative flex items-center justify-center border px-1 py-2 font-medium text-xs transition-colors",
+                "border-border/30 hover:border-foreground/30",
+                spinning && "opacity-70 cursor-not-allowed"
+              )}
+              disabled={spinning}
+            >
+              <span>0</span>
+              {getBetFor('straight', 0) && (
+                <div className="absolute right-1 top-1">
+                  {renderChip(getBetFor('straight', 0)!.amount)}
+                </div>
+              )}
+            </button>
+
+            {/* Main number grid */}
+            <div className="grid grid-cols-3 gap-1" style={{ gridTemplateRows: 'repeat(12, minmax(0, 1fr))' }}>
+              {TABLE_ROWS.map((row) =>
+                row.map((num) => {
+                  const color = getNumberColor(num);
+                  const bet = getBetFor('straight', num);
+                  return (
+                    <button
+                      key={num}
+                      onClick={() => placeBet('straight', num)}
+                      className={cn(
+                        "relative border px-1 py-1.5 text-center text-[11px] font-medium transition-colors",
+                        "border-border/30 hover:border-foreground/30",
+                        spinning && "opacity-70 cursor-not-allowed"
+                      )}
+                      disabled={spinning}
+                    >
+                      <span>{num}</span>
+                      {bet && (
+                        <div className="absolute right-1 top-1">
+                          {renderChip(bet.amount)}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Outside bets - placed to the right of the grid */}
+            <div className="space-y-1.5">
+              {/* Colors and parity */}
+              <div className="grid grid-cols-2 gap-1">
+                <button
+                  onClick={() => placeBet('color', 'red')}
+                  className={cn(
+                    "relative flex items-center justify-between border px-2 py-1.5 text-[10px] font-medium transition-colors",
+                    "border-border/30 hover:border-foreground/30",
+                    spinning && "opacity-70 cursor-not-allowed"
+                  )}
+                  disabled={spinning}
+                >
+                  <span>Rouge</span>
+                  {getBetFor('color', 'red') && renderChip(getBetFor('color', 'red')!.amount)}
+                </button>
+                <button
+                  onClick={() => placeBet('color', 'black')}
+                  className={cn(
+                    "relative flex items-center justify-between border px-2 py-1.5 text-[10px] font-medium transition-colors",
+                    "border-border/30 hover:border-foreground/30",
+                    spinning && "opacity-70 cursor-not-allowed"
+                  )}
+                  disabled={spinning}
+                >
+                  <span>Noir</span>
+                  {getBetFor('color', 'black') && renderChip(getBetFor('color', 'black')!.amount)}
+                </button>
+                <button
+                  onClick={() => placeBet('parity', 'even')}
+                  className={cn(
+                    "relative flex items-center justify-between border px-2 py-1.5 text-[10px] font-medium transition-colors",
+                    "border-border/30 hover:border-foreground/30",
+                    spinning && "opacity-70 cursor-not-allowed"
+                  )}
+                  disabled={spinning}
+                >
+                  <span>Pair</span>
+                  {getBetFor('parity', 'even') && renderChip(getBetFor('parity', 'even')!.amount)}
+                </button>
+                <button
+                  onClick={() => placeBet('parity', 'odd')}
+                  className={cn(
+                    "relative flex items-center justify-between border px-2 py-1.5 text-[10px] font-medium transition-colors",
+                    "border-border/30 hover:border-foreground/30",
+                    spinning && "opacity-70 cursor-not-allowed"
+                  )}
+                  disabled={spinning}
+                >
+                  <span>Impair</span>
+                  {getBetFor('parity', 'odd') && renderChip(getBetFor('parity', 'odd')!.amount)}
+                </button>
+              </div>
+
+              {/* Ranges */}
+              <div className="grid grid-cols-2 gap-1">
+                <button
+                  onClick={() => placeBet('range', 'low')}
+                  className={cn(
+                    "relative flex items-center justify-between border px-2 py-1.5 text-[10px] font-medium transition-colors",
+                    "border-border/30 hover:border-foreground/30",
+                    spinning && "opacity-70 cursor-not-allowed"
+                  )}
+                  disabled={spinning}
+                >
+                  <span>1-18</span>
+                  {getBetFor('range', 'low') && renderChip(getBetFor('range', 'low')!.amount)}
+                </button>
+                <button
+                  onClick={() => placeBet('range', 'high')}
+                  className={cn(
+                    "relative flex items-center justify-between border px-2 py-1.5 text-[10px] font-medium transition-colors",
+                    "border-border/30 hover:border-foreground/30",
+                    spinning && "opacity-70 cursor-not-allowed"
+                  )}
+                  disabled={spinning}
+                >
+                  <span>19-36</span>
+                  {getBetFor('range', 'high') && renderChip(getBetFor('range', 'high')!.amount)}
+                </button>
+              </div>
+
+              {/* Dozens */}
+              <div className="grid grid-cols-1 gap-1">
+                {[1, 2, 3].map((dozen) => (
                   <button
-                    key={value}
-                    onClick={() => setChipValue(value)}
+                    key={dozen}
+                    onClick={() => placeBet('dozen', dozen)}
                     className={cn(
-                      "rounded-full border px-3 py-1 text-xs transition-colors",
-                      chipValue === value
-                        ? "border-foreground text-foreground"
-                        : "border-border/50 text-muted-foreground hover:text-foreground hover:border-foreground/40"
+                      "relative flex items-center justify-between border px-2 py-1.5 text-[10px] font-medium transition-colors",
+                      "border-border/30 hover:border-foreground/30",
+                      spinning && "opacity-70 cursor-not-allowed"
                     )}
+                    disabled={spinning}
                   >
-                    ${value}
+                    <span>{dozen === 1 ? '1-12' : dozen === 2 ? '13-24' : '25-36'}</span>
+                    {getBetFor('dozen', dozen) && renderChip(getBetFor('dozen', dozen)!.amount)}
                   </button>
                 ))}
               </div>
-              <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <Coins className="h-4 w-4" />
-                  Total: ${totalBet}
-                </div>
-                <div className="flex items-center gap-1">
-                  <Flame className="h-4 w-4 text-orange-400" />
-                  Mise sélection: ${chipValue}
-                </div>
+
+              {/* Columns */}
+              <div className="grid grid-cols-1 gap-1">
+                {[1, 2, 3].map((column) => (
+                  <button
+                    key={column}
+                    onClick={() => placeBet('column', column)}
+                    className={cn(
+                      "relative flex items-center justify-between border px-2 py-1.5 text-[10px] font-medium transition-colors",
+                      "border-border/30 hover:border-foreground/30",
+                      spinning && "opacity-70 cursor-not-allowed"
+                    )}
+                    disabled={spinning}
+                  >
+                    <span>Col {column}</span>
+                    {getBetFor('column', column) && renderChip(getBetFor('column', column)!.amount)}
+                  </button>
+                ))}
               </div>
-            </div>
-
-            <div className="grid gap-2 lg:grid-cols-[72px_1fr]">
-              <button
-                onClick={() => placeBet('straight', 0)}
-                className={cn(
-                  "relative flex items-center justify-center rounded-md border px-2 py-2 font-semibold text-sm transition-all",
-                  "bg-emerald-900/30 text-emerald-50 border-emerald-500/30 hover:border-emerald-400",
-                  spinning && "opacity-70 cursor-not-allowed"
-                )}
-                disabled={spinning}
-              >
-                <span>0</span>
-                {getBetFor('straight', 0) && (
-                  <div className="absolute right-2 top-2">
-                    {renderChip(getBetFor('straight', 0)!.amount)}
-                  </div>
-                )}
-              </button>
-
-              <div className="grid grid-cols-3 gap-1.5" style={{ gridTemplateRows: 'repeat(12, minmax(0, 1fr))' }}>
-                {TABLE_ROWS.map((row) =>
-                  row.map((num) => {
-                    const color = getNumberColor(num);
-                    const bet = getBetFor('straight', num);
-                    return (
-                      <button
-                        key={num}
-                        onClick={() => placeBet('straight', num)}
-                        className={cn(
-                          "relative rounded-md border px-1 py-2 text-center text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground",
-                          color === 'red'
-                            ? "bg-red-500/10 text-red-100 border-red-500/40 hover:border-red-300"
-                            : "bg-slate-950 text-slate-100 border-slate-800 hover:border-slate-600",
-                          spinning && "opacity-70 cursor-not-allowed"
-                        )}
-                        disabled={spinning}
-                      >
-                        <span>{num}</span>
-                        {bet && (
-                          <div className="absolute right-1.5 top-1.5">
-                            {renderChip(bet.amount)}
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
-              <button
-                onClick={() => placeBet('color', 'red')}
-                className={cn(
-                  "relative flex items-center justify-between rounded-md border px-2 py-2 text-xs font-semibold transition-colors",
-                  "bg-red-500/10 text-red-100 border-red-500/30 hover:border-red-300",
-                  spinning && "opacity-70 cursor-not-allowed"
-                )}
-                disabled={spinning}
-              >
-                Rouge {getBetFor('color', 'red') && renderChip(getBetFor('color', 'red')!.amount)}
-              </button>
-              <button
-                onClick={() => placeBet('color', 'black')}
-                className={cn(
-                  "relative flex items-center justify-between rounded-md border px-2 py-2 text-xs font-semibold transition-colors",
-                  "bg-slate-950 text-slate-100 border-slate-800 hover:border-slate-600",
-                  spinning && "opacity-70 cursor-not-allowed"
-                )}
-                disabled={spinning}
-              >
-                Noir {getBetFor('color', 'black') && renderChip(getBetFor('color', 'black')!.amount)}
-              </button>
-              <button
-                onClick={() => placeBet('parity', 'even')}
-                className={cn(
-                  "relative flex items-center justify-between rounded-md border px-2 py-2 text-xs font-semibold transition-colors",
-                  "bg-background text-foreground hover:border-foreground/40 border-border",
-                  spinning && "opacity-70 cursor-not-allowed"
-                )}
-                disabled={spinning}
-              >
-                Pair {getBetFor('parity', 'even') && renderChip(getBetFor('parity', 'even')!.amount)}
-              </button>
-              <button
-                onClick={() => placeBet('parity', 'odd')}
-                className={cn(
-                  "relative flex items-center justify-between rounded-md border px-2 py-2 text-xs font-semibold transition-colors",
-                  "bg-background text-foreground hover:border-foreground/40 border-border",
-                  spinning && "opacity-70 cursor-not-allowed"
-                )}
-                disabled={spinning}
-              >
-                Impair {getBetFor('parity', 'odd') && renderChip(getBetFor('parity', 'odd')!.amount)}
-              </button>
-              <button
-                onClick={() => placeBet('range', 'low')}
-                className={cn(
-                  "relative flex items-center justify-between rounded-md border px-2 py-2 text-xs font-semibold transition-colors",
-                  "bg-background text-foreground hover:border-foreground/40 border-border",
-                  spinning && "opacity-70 cursor-not-allowed"
-                )}
-                disabled={spinning}
-              >
-                1 - 18 {getBetFor('range', 'low') && renderChip(getBetFor('range', 'low')!.amount)}
-              </button>
-              <button
-                onClick={() => placeBet('range', 'high')}
-                className={cn(
-                  "relative flex items-center justify-between rounded-md border px-2 py-2 text-xs font-semibold transition-colors",
-                  "bg-background text-foreground hover:border-foreground/40 border-border",
-                  spinning && "opacity-70 cursor-not-allowed"
-                )}
-                disabled={spinning}
-              >
-                19 - 36 {getBetFor('range', 'high') && renderChip(getBetFor('range', 'high')!.amount)}
-              </button>
-            </div>
-
-            <div className="grid grid-cols-3 gap-1.5">
-              {[1, 2, 3].map((dozen) => (
-                <button
-                  key={dozen}
-                  onClick={() => placeBet('dozen', dozen)}
-                  className={cn(
-                    "relative flex items-center justify-between rounded-md border px-2 py-2 text-xs font-semibold transition-colors",
-                    "bg-background text-foreground hover:border-foreground/40 border-border",
-                    spinning && "opacity-70 cursor-not-allowed"
-                  )}
-                  disabled={spinning}
-                >
-                  {dozen === 1 ? '1 - 12' : dozen === 2 ? '13 - 24' : '25 - 36'}
-                  {getBetFor('dozen', dozen) && renderChip(getBetFor('dozen', dozen)!.amount)}
-                </button>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-3 gap-1.5">
-              {[1, 2, 3].map((column) => (
-                <button
-                  key={column}
-                  onClick={() => placeBet('column', column)}
-                  className={cn(
-                    "relative flex items-center justify-between rounded-md border px-2 py-2 text-xs font-semibold transition-colors",
-                    "bg-background text-foreground hover:border-foreground/40 border-border",
-                    spinning && "opacity-70 cursor-not-allowed"
-                  )}
-                  disabled={spinning}
-                >
-                  Colonne {column}
-                  {getBetFor('column', column) && renderChip(getBetFor('column', column)!.amount)}
-                </button>
-              ))}
             </div>
           </div>
-
         </div>
       </div>
-
-      {/* Stats & history */}
     </div>
   );
 }
@@ -858,7 +854,7 @@ function SlotMachineGame({ onBetChange }: { onBetChange?: (value: number) => voi
             onClick={() => setBet(step)}
             disabled={spinning || !!(user && user.money < step)}
             className={cn(
-              "px-3 py-1.5 text-sm border transition-colors rounded-full",
+              "px-3 py-1.5 text-sm border transition-colors",
               bet === step
                 ? "border-foreground text-foreground"
                 : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30",
@@ -870,7 +866,7 @@ function SlotMachineGame({ onBetChange }: { onBetChange?: (value: number) => voi
         ))}
       </div>
 
-      <div className="border border-border/40 p-5 rounded-lg bg-card">
+      <div className="border border-border/30 p-5">
         <div className="grid grid-cols-3 gap-3 mb-5">
           {reels.map((reel, reelIndex) => (
             <div key={reelIndex} className="space-y-2">
@@ -886,9 +882,9 @@ function SlotMachineGame({ onBetChange }: { onBetChange?: (value: number) => voi
                   <div
                     key={`${reelIndex}-${rowIndex}`}
                     className={cn(
-                      "text-4xl text-center py-3 border transition-all rounded-md bg-background",
+                      "text-4xl text-center py-3 border transition-all",
                       isWinning && !isSpinning
-                        ? 'border-foreground bg-muted/40'
+                        ? 'border-foreground bg-muted/30'
                         : 'border-border/30'
                     )}
                   >
@@ -913,7 +909,7 @@ function SlotMachineGame({ onBetChange }: { onBetChange?: (value: number) => voi
           onClick={spin}
           disabled={!canSpin}
           className={cn(
-            "w-full h-14 border text-lg transition-colors flex items-center justify-center rounded-lg",
+            "w-full h-14 border text-sm transition-colors flex items-center justify-center",
             canSpin
               ? "border-foreground text-foreground hover:bg-foreground hover:text-background"
               : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
