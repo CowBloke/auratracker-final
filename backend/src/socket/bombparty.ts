@@ -707,21 +707,41 @@ async function endGame(game: BombPartyGame, io: Server) {
 
   const winner = getWinner(game);
 
+  // Calculate multipliers based on game settings
+  // Lives multiplier: more hearts = longer game = more rewards
+  // 2 hearts = 1x, 3 hearts = 1.3x, 4 hearts = 1.6x, 5 hearts = 2x
+  const livesMultiplier = 0.7 + (game.maxLives * 0.3);
+  
+  // Player count multiplier: more players = more competitive = more rewards
+  // 2 players = 1x, 3 players = 1.2x, 4 players = 1.4x, 5+ players = 1.6x
+  const playerCount = game.players.length;
+  const playerCountMultiplier = Math.min(1 + (playerCount - 2) * 0.2, 1.6);
+  
+  // Combined multiplier
+  const totalMultiplier = livesMultiplier * playerCountMultiplier;
+
   // Calculate rewards
   const rewards: { [userId: string]: { aura: number; money: number } } = {};
 
   for (const player of game.players) {
     if (player.userId === winner?.userId) {
-      // Winner: 50 aura + 10 money per word
+      // Winner: base rewards scaled by multipliers
+      // Base: 50 aura + 10 money per word
+      const baseAura = 50;
+      const baseMoneyPerWord = 10;
+      
       rewards[player.userId] = {
-        aura: 50,
-        money: player.wordsTypedCount * 10,
+        aura: Math.floor(baseAura * totalMultiplier),
+        money: Math.floor(player.wordsTypedCount * baseMoneyPerWord * totalMultiplier),
       };
     } else {
-      // Others: 5 money per word
+      // Others: base rewards scaled by multipliers
+      // Base: 0 aura + 5 money per word
+      const baseMoneyPerWord = 5;
+      
       rewards[player.userId] = {
         aura: 0,
-        money: player.wordsTypedCount * 5,
+        money: Math.floor(player.wordsTypedCount * baseMoneyPerWord * totalMultiplier),
       };
     }
 
