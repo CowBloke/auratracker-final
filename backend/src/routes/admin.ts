@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import { prisma } from '../server.js';
+import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { validate, createNftSchema, adminRareActionSchema } from '../middleware/validation.js';
 import { logAdmin, logSuggestion, logBan } from '../utils/logger.js';
@@ -1383,6 +1383,20 @@ router.post('/bans', authMiddleware, requireAdmin, async (req: AuthRequest, res:
       expiresAt: expiresAt?.toISOString(),
       durationHours: type === 'TEMPORARY' ? parseInt(durationHours) : undefined,
     });
+
+    const banMessage = type === 'PERMANENT'
+      ? `Your account has been permanently banned. Reason: ${ban.reason}`
+      : `Your account is temporarily banned until ${ban.expiresAt?.toISOString()}. Reason: ${ban.reason}`;
+    io.to(`user:${userId}`).emit('ban:enforced', {
+      message: banMessage,
+      banned: true,
+      ban: {
+        reason: ban.reason,
+        type: ban.type,
+        expiresAt: ban.expiresAt ? ban.expiresAt.toISOString() : null,
+      },
+    });
+    io.in(`user:${userId}`).disconnectSockets(true);
 
     res.status(201).json({ ban, message: `${user.username} has been banned` });
   } catch (error) {

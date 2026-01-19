@@ -31,6 +31,7 @@ import Pass from './pages/Pass';
 import Changelog from './pages/Changelog';
 import Maintenance from './pages/Maintenance';
 import Settings from './pages/Settings';
+import Banned from './pages/Banned';
 import { maintenanceApi } from './services/api';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -94,7 +95,8 @@ function App() {
     !maintenanceLoading &&
     maintenanceStatus.enabled &&
     !location.pathname.startsWith('/admin') &&
-    location.pathname !== '/login'
+    location.pathname !== '/login' &&
+    location.pathname !== '/banned'
   ) {
     return <Maintenance message={maintenanceStatus.message} />;
   }
@@ -102,6 +104,7 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/banned" element={<Banned />} />
       <Route path="/register" element={<Register />} />
       <Route
         path="/"

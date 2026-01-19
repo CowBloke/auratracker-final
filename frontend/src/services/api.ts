@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { storeBanInfo } from './ban';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const API_BASE = API_URL.endsWith('/api/')
@@ -27,6 +28,18 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (error.response?.status === 403 && error.response?.data?.banned) {
+      const banData = error.response.data;
+      storeBanInfo({
+        reason: banData.ban?.reason ?? null,
+        type: banData.ban?.type ?? null,
+        expiresAt: banData.ban?.expiresAt ?? null,
+        message: banData.error,
+      });
+      localStorage.removeItem('token');
+      window.location.href = '/banned';
+      return Promise.reject(error);
+    }
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       window.location.href = '/login';
