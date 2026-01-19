@@ -68,12 +68,6 @@ const games = [
     type: 'Trading',
     image: '/images/games/aura-coin.png',
   },
-  {
-    id: 'polymarket',
-    name: 'Polymarket',
-    description: 'Marché de prédiction. Pariez sur des événements futurs.',
-    type: 'Prédiction',
-  },
 ];
 
 export default function Games() {
