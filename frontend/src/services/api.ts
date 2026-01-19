@@ -242,6 +242,216 @@ export const auraCoinApi = {
     api.get<{ transactions: AuraCoinTransaction[] }>('/auracoin/transactions/all', { params }),
 };
 
+// Solaris API
+export interface SolarisPriceHistory {
+  price: number;
+  volume: number;
+  createdAt: string;
+}
+
+export interface SolarisTransaction {
+  id: string;
+  userId: string;
+  type: 'BUY' | 'SELL';
+  coinAmount: number;
+  moneyAmount: number;
+  price: number;
+  fee: number;
+  createdAt: string;
+  user: {
+    id: string;
+    username: string;
+    usernameColor: string | null;
+  };
+}
+
+export interface SolarisLeaderboardEntry {
+  id: string;
+  username: string;
+  usernameColor: string | null;
+  solarisBalance: number;
+}
+
+export const solarisApi = {
+  getPrice: (hours?: number) =>
+    api.get<{
+      currentPrice: number;
+      feePercentage: number;
+      history: SolarisPriceHistory[];
+      userBalance: { solaris: number; money: number };
+    }>('/solaris/price', { params: { hours } }),
+  getLeaderboard: (limit?: number) =>
+    api.get<{ leaderboard: SolarisLeaderboardEntry[] }>('/solaris/leaderboard', { params: { limit } }),
+  buy: (moneyAmount: number) =>
+    api.post<{
+      success: boolean;
+      transaction: {
+        type: 'BUY';
+        coinsReceived: number;
+        moneySpent: number;
+        fee: number;
+        newPrice: number;
+      };
+      newBalance: { money: number; solaris: number };
+    }>('/solaris/buy', { moneyAmount }),
+  sell: (coinAmount: number) =>
+    api.post<{
+      success: boolean;
+      transaction: {
+        type: 'SELL';
+        coinsSold: number;
+        moneyReceived: number;
+        fee: number;
+        newPrice: number;
+      };
+      newBalance: { money: number; solaris: number };
+    }>('/solaris/sell', { coinAmount }),
+  getMyTransactions: (params?: { limit?: number; offset?: number }) =>
+    api.get<{ transactions: SolarisTransaction[] }>('/solaris/transactions/me', { params }),
+  getAllTransactions: (params?: { limit?: number; offset?: number }) =>
+    api.get<{ transactions: SolarisTransaction[] }>('/solaris/transactions/all', { params }),
+};
+
+// Zenith API
+export interface ZenithPriceHistory {
+  price: number;
+  volume: number;
+  createdAt: string;
+}
+
+export interface ZenithTransaction {
+  id: string;
+  userId: string;
+  type: 'BUY' | 'SELL';
+  coinAmount: number;
+  moneyAmount: number;
+  price: number;
+  fee: number;
+  createdAt: string;
+  user: {
+    id: string;
+    username: string;
+    usernameColor: string | null;
+  };
+}
+
+export interface ZenithLeaderboardEntry {
+  id: string;
+  username: string;
+  usernameColor: string | null;
+  zenithBalance: number;
+}
+
+export const zenithApi = {
+  getPrice: (hours?: number) =>
+    api.get<{
+      currentPrice: number;
+      feePercentage: number;
+      history: ZenithPriceHistory[];
+      userBalance: { zenith: number; money: number };
+    }>('/zenith/price', { params: { hours } }),
+  getLeaderboard: (limit?: number) =>
+    api.get<{ leaderboard: ZenithLeaderboardEntry[] }>('/zenith/leaderboard', { params: { limit } }),
+  buy: (moneyAmount: number) =>
+    api.post<{
+      success: boolean;
+      transaction: {
+        type: 'BUY';
+        coinsReceived: number;
+        moneySpent: number;
+        fee: number;
+        newPrice: number;
+      };
+      newBalance: { money: number; zenith: number };
+    }>('/zenith/buy', { moneyAmount }),
+  sell: (coinAmount: number) =>
+    api.post<{
+      success: boolean;
+      transaction: {
+        type: 'SELL';
+        coinsSold: number;
+        moneyReceived: number;
+        fee: number;
+        newPrice: number;
+      };
+      newBalance: { money: number; zenith: number };
+    }>('/zenith/sell', { coinAmount }),
+  getMyTransactions: (params?: { limit?: number; offset?: number }) =>
+    api.get<{ transactions: ZenithTransaction[] }>('/zenith/transactions/me', { params }),
+  getAllTransactions: (params?: { limit?: number; offset?: number }) =>
+    api.get<{ transactions: ZenithTransaction[] }>('/zenith/transactions/all', { params }),
+};
+
+// Rift API
+export interface RiftPriceHistory {
+  price: number;
+  volume: number;
+  createdAt: string;
+}
+
+export interface RiftTransaction {
+  id: string;
+  userId: string;
+  type: 'BUY' | 'SELL';
+  coinAmount: number;
+  moneyAmount: number;
+  price: number;
+  fee: number;
+  createdAt: string;
+  user: {
+    id: string;
+    username: string;
+    usernameColor: string | null;
+  };
+}
+
+export interface RiftLeaderboardEntry {
+  id: string;
+  username: string;
+  usernameColor: string | null;
+  riftBalance: number;
+}
+
+export const riftApi = {
+  getPrice: (hours?: number) =>
+    api.get<{
+      currentPrice: number;
+      feePercentage: number;
+      history: RiftPriceHistory[];
+      userBalance: { rift: number; money: number };
+    }>('/rift/price', { params: { hours } }),
+  getLeaderboard: (limit?: number) =>
+    api.get<{ leaderboard: RiftLeaderboardEntry[] }>('/rift/leaderboard', { params: { limit } }),
+  buy: (moneyAmount: number) =>
+    api.post<{
+      success: boolean;
+      transaction: {
+        type: 'BUY';
+        coinsReceived: number;
+        moneySpent: number;
+        fee: number;
+        newPrice: number;
+      };
+      newBalance: { money: number; rift: number };
+    }>('/rift/buy', { moneyAmount }),
+  sell: (coinAmount: number) =>
+    api.post<{
+      success: boolean;
+      transaction: {
+        type: 'SELL';
+        coinsSold: number;
+        moneyReceived: number;
+        fee: number;
+        newPrice: number;
+      };
+      newBalance: { money: number; rift: number };
+    }>('/rift/sell', { coinAmount }),
+  getMyTransactions: (params?: { limit?: number; offset?: number }) =>
+    api.get<{ transactions: RiftTransaction[] }>('/rift/transactions/me', { params }),
+  getAllTransactions: (params?: { limit?: number; offset?: number }) =>
+    api.get<{ transactions: RiftTransaction[] }>('/rift/transactions/all', { params }),
+};
+
 // Leaderboards API
 export const leaderboardsApi = {
   get: (category: string, params?: { limit?: number; offset?: number; seasonId?: string }) =>
