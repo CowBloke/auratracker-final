@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { getPageMeta } from './presence';
 import { resolveImageUrl } from '@/lib/images';
 import { BadgeWithTooltip } from '@/components/ui/badge-tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type TimeoutRef = ReturnType<typeof setTimeout> | null;
 
@@ -192,20 +193,42 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                         {(msg.isTopMoney || msg.isTopAura) && (
                           <div className="flex items-center gap-1">
                             {msg.isTopMoney && (
-                              <span
-                                className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-yellow-300 text-[9px] font-semibold text-yellow-900"
-                                title="Top 5 argent"
-                              >
-                                $
-                              </span>
+                              <TooltipProvider delayDuration={200}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-yellow-300 text-[9px] font-semibold text-yellow-900 cursor-help">
+                                      $
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <div className="space-y-1">
+                                      <p className="font-medium text-yellow-300">Top 5 Argent</p>
+                                      <p className="text-xs text-muted-foreground">
+                                        Ce joueur fait partie des 5 joueurs avec le plus d'argent
+                                      </p>
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             )}
                             {msg.isTopAura && (
-                              <span
-                                className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-sky-500 text-[9px] font-semibold text-white"
-                                title="Top 5 aura"
-                              >
-                                A
-                              </span>
+                              <TooltipProvider delayDuration={200}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-sky-500 text-[9px] font-semibold text-white cursor-help">
+                                      A
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <div className="space-y-1">
+                                      <p className="font-medium text-sky-500">Top 5 Aura</p>
+                                      <p className="text-xs text-muted-foreground">
+                                        Ce joueur fait partie des 5 joueurs avec le plus d'aura
+                                      </p>
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             )}
                           </div>
                         )}
