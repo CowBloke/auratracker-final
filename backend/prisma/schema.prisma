@@ -132,6 +132,7 @@ model UserNft {
 
   @@index([userId])
   @@index([nftId])
+  @@unique([userId, nftId])
 }
 
 // User Inventory

@@ -82,6 +82,7 @@ export default function Marketplace() {
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const [purchasingNft, setPurchasingNft] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [ownedNftIds, setOwnedNftIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (activeTab === 'items') {
@@ -92,8 +93,9 @@ export default function Marketplace() {
   useEffect(() => {
     if (activeTab === 'nfts') {
       fetchNfts();
+      fetchNftInventory();
     }
-  }, [activeTab]);
+  }, [activeTab, user?.id]);
 
   const fetchItems = async () => {
     try {
@@ -117,6 +119,19 @@ export default function Marketplace() {
       console.error('Failed to fetch NFTs:', error);
     } finally {
       setLoadingNfts(false);
+    }
+  };
+
+  const fetchNftInventory = async () => {
+    if (!user?.id) {
+      setOwnedNftIds(new Set());
+      return;
+    }
+    try {
+      const response = await marketplaceApi.getNftInventory(user.id);
+      setOwnedNftIds(new Set(response.data.items.map((item) => item.nft.id)));
+    } catch (error) {
+      console.error('Failed to fetch NFT inventory:', error);
     }
   };
 
@@ -151,6 +166,7 @@ export default function Marketplace() {
 
       await marketplaceApi.purchaseNft({ nftId: nft.id });
       await refreshUser();
+      setOwnedNftIds((prev) => new Set(prev).add(nft.id));
 
       setMessage({ type: 'success', text: `${nft.name} acheté` });
       setTimeout(() => setMessage(null), 3000);
@@ -356,7 +372,10 @@ export default function Marketplace() {
             </p>
           ) : (
             <div className="space-y-0">
-              {nfts.map((nft) => (
+              {nfts.map((nft) => {
+                const isOwned = ownedNftIds.has(nft.id);
+
+                return (
                 <div
                   key={nft.id}
                   className="flex items-center justify-between py-6 border-b border-border/30 last:border-0"
@@ -397,16 +416,20 @@ export default function Marketplace() {
                     
                     <button
                       onClick={() => handlePurchaseNft(nft)}
-                      disabled={!canAffordNft(nft) || purchasingNft === nft.id}
+                      disabled={isOwned || !canAffordNft(nft) || purchasingNft === nft.id}
                       className={cn(
                         "px-4 py-2 text-sm border transition-colors",
-                        canAffordNft(nft)
+                        isOwned
+                          ? "border-border/30 text-muted-foreground/50 cursor-not-allowed"
+                          : canAffordNft(nft)
                           ? "border-foreground text-foreground hover:bg-foreground hover:text-background"
                           : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
                       )}
                     >
                       {purchasingNft === nft.id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : isOwned ? (
+                        'Déjà acheté'
                       ) : canAffordNft(nft) ? (
                         'Acheter'
                       ) : (
@@ -415,7 +438,7 @@ export default function Marketplace() {
                     </button>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           )}
           </div>
