@@ -331,8 +331,9 @@ export default function DoodleJump() {
     }
 
     // Sub-stepping for collision detection
-    const maxStep = CHARACTER_HEIGHT / 2;
-    const numSteps = Math.ceil(Math.max(Math.abs(deltaX), Math.abs(deltaY)) / maxStep);
+    // Use smaller max step to prevent phasing through platforms at low framerates
+    const maxStep = Math.min(CHARACTER_HEIGHT / 4, PLATFORM_HEIGHT / 2);
+    const numSteps = Math.max(1, Math.ceil(Math.max(Math.abs(deltaX), Math.abs(deltaY)) / maxStep));
     const stepX = deltaX / numSteps;
     let stepY = deltaY / numSteps;
 
@@ -357,17 +358,22 @@ export default function DoodleJump() {
           const characterLeft = positionRef.current.x + 5;
           const characterRight = positionRef.current.x + CHARACTER_WIDTH - 5;
           const characterBottom = positionRef.current.y;
+          // Also check previous position to catch platforms we may have passed through
+          const prevCharacterBottom = characterBottom + stepY;
 
           const platformLeft = platform.x;
           const platformRight = platform.x + PLATFORM_WIDTH;
           const platformTop = platform.y + PLATFORM_HEIGHT;
           const platformBottom = platform.y;
 
+          // Standard collision OR swept collision (character passed through platform this step)
+          const standardCollision = characterBottom <= platformTop && characterBottom >= platformBottom;
+          const sweptCollision = prevCharacterBottom > platformTop && characterBottom < platformBottom;
+
           if (
             characterRight > platformLeft &&
             characterLeft < platformRight &&
-            characterBottom <= platformTop &&
-            characterBottom >= platformBottom
+            (standardCollision || sweptCollision)
           ) {
             collisionOccurred = true;
 
