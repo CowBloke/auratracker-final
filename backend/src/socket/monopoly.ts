@@ -6,6 +6,7 @@ const PLAY_AGAIN_TIMEOUT = 20000;
 const STARTING_CASH = 1500;
 const PASS_GO_BONUS = 200;
 const JAIL_FINE = 50;
+const MONOPOLY_BOARD_NAMES_KEY = 'monopoly_board_names';
 
 const HOUSE_LIMIT = 5; // 5 = hotel
 
@@ -82,6 +83,7 @@ interface MonopolyGame {
   partyId: string;
   players: MonopolyPlayer[];
   tiles: TileState[];
+  boardNames: string[];
   currentPlayerIndex: number;
   lastRoll: { die1: number; die2: number; total: number; isDouble: boolean } | null;
   doublesCount: number;
@@ -122,46 +124,46 @@ const pendingJoinPrompts = new Map<string, PendingJoinPrompt>();
 const pendingPlayAgainPrompts = new Map<string, PendingPlayAgainPrompt>();
 
 const BOARD: TileDefinition[] = [
-  { index: 0, name: 'GO', type: 'go' },
-  { index: 1, name: 'Mediterranean Avenue', type: 'property', color: 'brown', price: 60, rent: [2, 10, 30, 90, 160, 250], houseCost: 50 },
-  { index: 2, name: 'Community Chest', type: 'community' },
-  { index: 3, name: 'Baltic Avenue', type: 'property', color: 'brown', price: 60, rent: [4, 20, 60, 180, 320, 450], houseCost: 50 },
-  { index: 4, name: 'Income Tax', type: 'tax', taxAmount: 200 },
-  { index: 5, name: 'Reading Railroad', type: 'railroad', price: 200 },
-  { index: 6, name: 'Oriental Avenue', type: 'property', color: 'lightblue', price: 100, rent: [6, 30, 90, 270, 400, 550], houseCost: 50 },
+  { index: 0, name: 'Départ', type: 'go' },
+  { index: 1, name: 'Avenue Méditerranée', type: 'property', color: 'brown', price: 60, rent: [2, 10, 30, 90, 160, 250], houseCost: 50 },
+  { index: 2, name: 'Caisse de communauté', type: 'community' },
+  { index: 3, name: 'Avenue Baltique', type: 'property', color: 'brown', price: 60, rent: [4, 20, 60, 180, 320, 450], houseCost: 50 },
+  { index: 4, name: 'Impôt sur le revenu', type: 'tax', taxAmount: 200 },
+  { index: 5, name: 'Gare de Reading', type: 'railroad', price: 200 },
+  { index: 6, name: 'Avenue Orientale', type: 'property', color: 'lightblue', price: 100, rent: [6, 30, 90, 270, 400, 550], houseCost: 50 },
   { index: 7, name: 'Chance', type: 'chance' },
-  { index: 8, name: 'Vermont Avenue', type: 'property', color: 'lightblue', price: 100, rent: [6, 30, 90, 270, 400, 550], houseCost: 50 },
-  { index: 9, name: 'Connecticut Avenue', type: 'property', color: 'lightblue', price: 120, rent: [8, 40, 100, 300, 450, 600], houseCost: 50 },
-  { index: 10, name: 'Jail', type: 'jail' },
-  { index: 11, name: 'St. Charles Place', type: 'property', color: 'pink', price: 140, rent: [10, 50, 150, 450, 625, 750], houseCost: 100 },
-  { index: 12, name: 'Electric Company', type: 'utility', price: 150 },
-  { index: 13, name: 'States Avenue', type: 'property', color: 'pink', price: 140, rent: [10, 50, 150, 450, 625, 750], houseCost: 100 },
-  { index: 14, name: 'Virginia Avenue', type: 'property', color: 'pink', price: 160, rent: [12, 60, 180, 500, 700, 900], houseCost: 100 },
-  { index: 15, name: 'Pennsylvania Railroad', type: 'railroad', price: 200 },
-  { index: 16, name: 'St. James Place', type: 'property', color: 'orange', price: 180, rent: [14, 70, 200, 550, 750, 950], houseCost: 100 },
-  { index: 17, name: 'Community Chest', type: 'community' },
-  { index: 18, name: 'Tennessee Avenue', type: 'property', color: 'orange', price: 180, rent: [14, 70, 200, 550, 750, 950], houseCost: 100 },
-  { index: 19, name: 'New York Avenue', type: 'property', color: 'orange', price: 200, rent: [16, 80, 220, 600, 800, 1000], houseCost: 100 },
-  { index: 20, name: 'Free Parking', type: 'free-parking' },
-  { index: 21, name: 'Kentucky Avenue', type: 'property', color: 'red', price: 220, rent: [18, 90, 250, 700, 875, 1050], houseCost: 150 },
+  { index: 8, name: 'Avenue Vermont', type: 'property', color: 'lightblue', price: 100, rent: [6, 30, 90, 270, 400, 550], houseCost: 50 },
+  { index: 9, name: 'Avenue Connecticut', type: 'property', color: 'lightblue', price: 120, rent: [8, 40, 100, 300, 450, 600], houseCost: 50 },
+  { index: 10, name: 'Prison', type: 'jail' },
+  { index: 11, name: 'Place Saint-Charles', type: 'property', color: 'pink', price: 140, rent: [10, 50, 150, 450, 625, 750], houseCost: 100 },
+  { index: 12, name: 'Compagnie d\'électricité', type: 'utility', price: 150 },
+  { index: 13, name: 'Avenue des États', type: 'property', color: 'pink', price: 140, rent: [10, 50, 150, 450, 625, 750], houseCost: 100 },
+  { index: 14, name: 'Avenue de Virginie', type: 'property', color: 'pink', price: 160, rent: [12, 60, 180, 500, 700, 900], houseCost: 100 },
+  { index: 15, name: 'Gare de Pennsylvanie', type: 'railroad', price: 200 },
+  { index: 16, name: 'Place Saint-Jacques', type: 'property', color: 'orange', price: 180, rent: [14, 70, 200, 550, 750, 950], houseCost: 100 },
+  { index: 17, name: 'Caisse de communauté', type: 'community' },
+  { index: 18, name: 'Avenue du Tennessee', type: 'property', color: 'orange', price: 180, rent: [14, 70, 200, 550, 750, 950], houseCost: 100 },
+  { index: 19, name: 'Avenue de New York', type: 'property', color: 'orange', price: 200, rent: [16, 80, 220, 600, 800, 1000], houseCost: 100 },
+  { index: 20, name: 'Parc Gratuit', type: 'free-parking' },
+  { index: 21, name: 'Avenue du Kentucky', type: 'property', color: 'red', price: 220, rent: [18, 90, 250, 700, 875, 1050], houseCost: 150 },
   { index: 22, name: 'Chance', type: 'chance' },
-  { index: 23, name: 'Indiana Avenue', type: 'property', color: 'red', price: 220, rent: [18, 90, 250, 700, 875, 1050], houseCost: 150 },
-  { index: 24, name: 'Illinois Avenue', type: 'property', color: 'red', price: 240, rent: [20, 100, 300, 750, 925, 1100], houseCost: 150 },
-  { index: 25, name: 'B. & O. Railroad', type: 'railroad', price: 200 },
-  { index: 26, name: 'Atlantic Avenue', type: 'property', color: 'yellow', price: 260, rent: [22, 110, 330, 800, 975, 1150], houseCost: 150 },
-  { index: 27, name: 'Ventnor Avenue', type: 'property', color: 'yellow', price: 260, rent: [22, 110, 330, 800, 975, 1150], houseCost: 150 },
-  { index: 28, name: 'Water Works', type: 'utility', price: 150 },
-  { index: 29, name: 'Marvin Gardens', type: 'property', color: 'yellow', price: 280, rent: [24, 120, 360, 850, 1025, 1200], houseCost: 150 },
-  { index: 30, name: 'Go To Jail', type: 'go-to-jail' },
-  { index: 31, name: 'Pacific Avenue', type: 'property', color: 'green', price: 300, rent: [26, 130, 390, 900, 1100, 1275], houseCost: 200 },
-  { index: 32, name: 'North Carolina Avenue', type: 'property', color: 'green', price: 300, rent: [26, 130, 390, 900, 1100, 1275], houseCost: 200 },
-  { index: 33, name: 'Community Chest', type: 'community' },
-  { index: 34, name: 'Pennsylvania Avenue', type: 'property', color: 'green', price: 320, rent: [28, 150, 450, 1000, 1200, 1400], houseCost: 200 },
-  { index: 35, name: 'Short Line', type: 'railroad', price: 200 },
+  { index: 23, name: 'Avenue de l\'Indiana', type: 'property', color: 'red', price: 220, rent: [18, 90, 250, 700, 875, 1050], houseCost: 150 },
+  { index: 24, name: 'Avenue de l\'Illinois', type: 'property', color: 'red', price: 240, rent: [20, 100, 300, 750, 925, 1100], houseCost: 150 },
+  { index: 25, name: 'Gare B&O', type: 'railroad', price: 200 },
+  { index: 26, name: 'Avenue de l\'Atlantique', type: 'property', color: 'yellow', price: 260, rent: [22, 110, 330, 800, 975, 1150], houseCost: 150 },
+  { index: 27, name: 'Avenue de Ventnor', type: 'property', color: 'yellow', price: 260, rent: [22, 110, 330, 800, 975, 1150], houseCost: 150 },
+  { index: 28, name: 'Compagnie des eaux', type: 'utility', price: 150 },
+  { index: 29, name: 'Jardins Marvin', type: 'property', color: 'yellow', price: 280, rent: [24, 120, 360, 850, 1025, 1200], houseCost: 150 },
+  { index: 30, name: 'Allez en prison', type: 'go-to-jail' },
+  { index: 31, name: 'Avenue du Pacifique', type: 'property', color: 'green', price: 300, rent: [26, 130, 390, 900, 1100, 1275], houseCost: 200 },
+  { index: 32, name: 'Avenue de Caroline du Nord', type: 'property', color: 'green', price: 300, rent: [26, 130, 390, 900, 1100, 1275], houseCost: 200 },
+  { index: 33, name: 'Caisse de communauté', type: 'community' },
+  { index: 34, name: 'Avenue de Pennsylvanie', type: 'property', color: 'green', price: 320, rent: [28, 150, 450, 1000, 1200, 1400], houseCost: 200 },
+  { index: 35, name: 'Gare de Short Line', type: 'railroad', price: 200 },
   { index: 36, name: 'Chance', type: 'chance' },
-  { index: 37, name: 'Park Place', type: 'property', color: 'darkblue', price: 350, rent: [35, 175, 500, 1100, 1300, 1500], houseCost: 200 },
-  { index: 38, name: 'Luxury Tax', type: 'tax', taxAmount: 100 },
-  { index: 39, name: 'Boardwalk', type: 'property', color: 'darkblue', price: 400, rent: [50, 200, 600, 1400, 1700, 2000], houseCost: 200 },
+  { index: 37, name: 'Place du Parc', type: 'property', color: 'darkblue', price: 350, rent: [35, 175, 500, 1100, 1300, 1500], houseCost: 200 },
+  { index: 38, name: 'Taxe de luxe', type: 'tax', taxAmount: 100 },
+  { index: 39, name: 'Promenade', type: 'property', color: 'darkblue', price: 400, rent: [50, 200, 600, 1400, 1700, 2000], houseCost: 200 },
 ];
 
 const COLOR_GROUPS: Record<string, number[]> = {
@@ -176,33 +178,33 @@ const COLOR_GROUPS: Record<string, number[]> = {
 };
 
 const CHANCE_CARDS: CardDefinition[] = [
-  { id: 'chance-go', text: 'Advance to GO (Collect $200).', type: 'move', moveTo: 0 },
-  { id: 'chance-illinois', text: 'Advance to Illinois Avenue.', type: 'move', moveTo: 24 },
-  { id: 'chance-charles', text: 'Advance to St. Charles Place.', type: 'move', moveTo: 11 },
-  { id: 'chance-boardwalk', text: 'Advance to Boardwalk.', type: 'move', moveTo: 39 },
-  { id: 'chance-nearest-railroad', text: 'Advance to the nearest Railroad.', type: 'move', nearest: 'railroad' },
-  { id: 'chance-nearest-utility', text: 'Advance to the nearest Utility.', type: 'move', nearest: 'utility' },
-  { id: 'chance-back-3', text: 'Go back 3 spaces.', type: 'move', moveSteps: -3 },
-  { id: 'chance-bank-dividend', text: 'Bank pays you dividend of $50.', type: 'money', amount: 50 },
-  { id: 'chance-poor-tax', text: 'Pay poor tax of $15.', type: 'pay', amount: 15 },
-  { id: 'chance-go-jail', text: 'Go to Jail.', type: 'jail' },
-  { id: 'chance-get-out', text: 'Get Out of Jail Free.', type: 'jail' },
-  { id: 'chance-chairman', text: 'Pay each player $50.', type: 'collect', amount: 50 },
+  { id: 'chance-go', text: 'Avancez jusqu\'à Départ (recevez 200 $).', type: 'move', moveTo: 0 },
+  { id: 'chance-illinois', text: 'Avancez jusqu\'à l\'Avenue de l\'Illinois.', type: 'move', moveTo: 24 },
+  { id: 'chance-charles', text: 'Avancez jusqu\'à la Place Saint-Charles.', type: 'move', moveTo: 11 },
+  { id: 'chance-boardwalk', text: 'Avancez jusqu\'à la Promenade.', type: 'move', moveTo: 39 },
+  { id: 'chance-nearest-railroad', text: 'Avancez jusqu\'à la gare la plus proche.', type: 'move', nearest: 'railroad' },
+  { id: 'chance-nearest-utility', text: 'Avancez jusqu\'à la compagnie la plus proche.', type: 'move', nearest: 'utility' },
+  { id: 'chance-back-3', text: 'Reculez de 3 cases.', type: 'move', moveSteps: -3 },
+  { id: 'chance-bank-dividend', text: 'La banque vous verse un dividende de 50 $.', type: 'money', amount: 50 },
+  { id: 'chance-poor-tax', text: 'Payez une taxe de pauvreté de 15 $.', type: 'pay', amount: 15 },
+  { id: 'chance-go-jail', text: 'Allez en prison.', type: 'jail' },
+  { id: 'chance-get-out', text: 'Carte "Sortie de prison".', type: 'jail' },
+  { id: 'chance-chairman', text: 'Payez 50 $ à chaque joueur.', type: 'collect', amount: 50 },
 ];
 
 const COMMUNITY_CARDS: CardDefinition[] = [
-  { id: 'community-go', text: 'Advance to GO (Collect $200).', type: 'move', moveTo: 0 },
-  { id: 'community-bank-error', text: 'Bank error in your favor. Collect $200.', type: 'money', amount: 200 },
-  { id: 'community-doctor', text: 'Doctor\'s fees. Pay $50.', type: 'pay', amount: 50 },
-  { id: 'community-stock', text: 'From sale of stock you get $50.', type: 'money', amount: 50 },
-  { id: 'community-get-out', text: 'Get Out of Jail Free.', type: 'jail' },
-  { id: 'community-go-jail', text: 'Go to Jail.', type: 'jail' },
-  { id: 'community-inherit', text: 'You inherit $100.', type: 'money', amount: 100 },
-  { id: 'community-life', text: 'Life insurance matures. Collect $100.', type: 'money', amount: 100 },
-  { id: 'community-hospital', text: 'Pay hospital fees of $100.', type: 'pay', amount: 100 },
-  { id: 'community-school', text: 'Pay school fees of $50.', type: 'pay', amount: 50 },
-  { id: 'community-birthday', text: 'It is your birthday. Collect $10 from each player.', type: 'collect', amount: 10 },
-  { id: 'community-repairs', text: 'You are assessed for street repairs.', type: 'repair', perHouse: 40, perHotel: 115 },
+  { id: 'community-go', text: 'Avancez jusqu\'à Départ (recevez 200 $).', type: 'move', moveTo: 0 },
+  { id: 'community-bank-error', text: 'Erreur de la banque en votre faveur. Recevez 200 $.', type: 'money', amount: 200 },
+  { id: 'community-doctor', text: 'Frais de médecin. Payez 50 $.', type: 'pay', amount: 50 },
+  { id: 'community-stock', text: 'Vente d\'actions : vous recevez 50 $.', type: 'money', amount: 50 },
+  { id: 'community-get-out', text: 'Carte "Sortie de prison".', type: 'jail' },
+  { id: 'community-go-jail', text: 'Allez en prison.', type: 'jail' },
+  { id: 'community-inherit', text: 'Vous héritez de 100 $.', type: 'money', amount: 100 },
+  { id: 'community-life', text: 'Assurance vie à échéance. Recevez 100 $.', type: 'money', amount: 100 },
+  { id: 'community-hospital', text: 'Frais d\'hôpital. Payez 100 $.', type: 'pay', amount: 100 },
+  { id: 'community-school', text: 'Frais de scolarité. Payez 50 $.', type: 'pay', amount: 50 },
+  { id: 'community-birthday', text: 'C\'est votre anniversaire. Recevez 10 $ de chaque joueur.', type: 'collect', amount: 10 },
+  { id: 'community-repairs', text: 'Réparations de rue.', type: 'repair', perHouse: 40, perHotel: 115 },
 ];
 
 const shuffle = <T,>(items: T[]): T[] => {
@@ -214,10 +216,49 @@ const shuffle = <T,>(items: T[]): T[] => {
   return arr;
 };
 
+const normalizeBoardNames = (value: unknown) => {
+  const defaults = BOARD.map((tile) => tile.name);
+  if (!value) return defaults;
+  try {
+    const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+    if (Array.isArray(parsed)) {
+      return defaults.map((name, index) => {
+        const candidate = parsed[index];
+        return typeof candidate === 'string' && candidate.trim().length > 0 ? candidate.trim() : name;
+      });
+    }
+    if (parsed && typeof parsed === 'object') {
+      return defaults.map((name, index) => {
+        const candidate = (parsed as Record<string, unknown>)[String(index)];
+        return typeof candidate === 'string' && candidate.trim().length > 0 ? candidate.trim() : name;
+      });
+    }
+  } catch (error) {
+    console.warn('Failed to parse monopoly board names setting:', error);
+  }
+  return defaults;
+};
+
+export const getMonopolyBoardNames = async () => {
+  try {
+    const setting = await prisma.gameSettings.findUnique({
+      where: { key: MONOPOLY_BOARD_NAMES_KEY },
+      select: { value: true },
+    });
+    return normalizeBoardNames(setting?.value);
+  } catch (error) {
+    console.error('Failed to load monopoly board names:', error);
+    return BOARD.map((tile) => tile.name);
+  }
+};
+
 const initTileState = (): TileState[] =>
   BOARD.map(() => ({ ownerId: null, houses: 0, mortgaged: false }));
 
 const getCurrentPlayer = (game: MonopolyGame) => game.players[game.currentPlayerIndex];
+
+const getTileName = (game: MonopolyGame, tileIndex: number) =>
+  game.boardNames[tileIndex] || BOARD[tileIndex].name;
 
 const pushLog = (game: MonopolyGame, message: string) => {
   game.log.push(message);
@@ -230,6 +271,7 @@ const serializeGameState = (game: MonopolyGame) => ({
   partyId: game.partyId,
   tiles: BOARD.map((tile, idx) => ({
     ...tile,
+    name: getTileName(game, idx),
     ownerId: game.tiles[idx].ownerId ?? null,
     houses: game.tiles[idx].houses,
     mortgaged: game.tiles[idx].mortgaged,
@@ -339,7 +381,7 @@ const liquidateForPayment = (game: MonopolyGame, player: MonopolyPlayer, amount:
     const cash = sellHouse(game, idx);
     if (cash > 0) {
       adjustCash(player, cash);
-      pushLog(game, `${player.username} vend une maison sur ${BOARD[idx].name}.`);
+      pushLog(game, `${player.username} vend une maison sur ${getTileName(game, idx)}.`);
     } else {
       break;
     }
@@ -353,7 +395,7 @@ const liquidateForPayment = (game: MonopolyGame, player: MonopolyPlayer, amount:
       const cash = mortgageProperty(game, idx);
       if (cash > 0) {
         adjustCash(player, cash);
-        pushLog(game, `${player.username} hypothèque ${BOARD[idx].name}.`);
+        pushLog(game, `${player.username} hypothèque ${getTileName(game, idx)}.`);
       }
     }
   }
@@ -549,7 +591,7 @@ const resolveTile = (game: MonopolyGame, player: MonopolyPlayer, io: Server) => 
       if (tile.price && player.cash >= tile.price) {
         game.pendingPurchase = { tileIndex, price: tile.price };
         game.phase = 'resolve';
-        pushLog(game, `${player.username} peut acheter ${tile.name} pour $${tile.price}.`);
+      pushLog(game, `${player.username} peut acheter ${getTileName(game, tileIndex)} pour $${tile.price}.`);
       } else {
         startAuction(game, tileIndex);
       }
@@ -560,7 +602,7 @@ const resolveTile = (game: MonopolyGame, player: MonopolyPlayer, io: Server) => 
       const rent = getRent(game, tileIndex, game.lastRoll?.total || 0);
       if (rent > 0) {
         payAmount(game, player, rent, state.ownerId, io);
-        pushLog(game, `${player.username} paie $${rent} de loyer pour ${tile.name}.`);
+        pushLog(game, `${player.username} paie $${rent} de loyer pour ${getTileName(game, tileIndex)}.`);
       }
     }
   }
@@ -578,7 +620,7 @@ const startAuction = (game: MonopolyGame, tileIndex: number) => {
   };
   game.phase = 'auction';
   game.pendingPurchase = null;
-  pushLog(game, `Encheres ouvertes pour ${BOARD[tileIndex].name}.`);
+  pushLog(game, `Enchères ouvertes pour ${getTileName(game, tileIndex)}.`);
 };
 
 const advanceAuction = (game: MonopolyGame, io: Server) => {
@@ -593,10 +635,10 @@ const advanceAuction = (game: MonopolyGame, io: Server) => {
       if (winner && tile.price) {
         payAmount(game, winner, auction.highestBid, null, io);
         game.tiles[tileIndex].ownerId = winner.userId;
-        pushLog(game, `${winner.username} gagne ${tile.name} pour $${auction.highestBid}.`);
+        pushLog(game, `${winner.username} gagne ${getTileName(game, tileIndex)} pour $${auction.highestBid}.`);
       }
     } else {
-      pushLog(game, `Aucun enchere pour ${BOARD[auction.tileIndex].name}.`);
+      pushLog(game, `Aucune enchère pour ${getTileName(game, auction.tileIndex)}.`);
     }
     game.auction = null;
     game.phase = 'turn-end';
@@ -826,10 +868,13 @@ const startGame = async (partyId: string, acceptedIds: string[], io: Server) => 
 
   const shuffled = shuffle(players);
 
+  const boardNames = await getMonopolyBoardNames();
+
   const game: MonopolyGame = {
     partyId,
     players: shuffled,
     tiles: initTileState(),
+    boardNames,
     currentPlayerIndex: 0,
     lastRoll: null,
     doublesCount: 0,
@@ -861,17 +906,17 @@ export const setupMonopolyHandlers = (socket: Socket, io: Server) => {
       });
 
       if (!membership || membership.partyId !== partyId) {
-        socket.emit('monopoly:error', { message: 'You are not in this party' });
+        socket.emit('monopoly:error', { message: 'Vous n\'êtes pas dans cette party' });
         return;
       }
 
       if (!membership.isLeader) {
-        socket.emit('monopoly:error', { message: 'Only the party leader can start the game' });
+        socket.emit('monopoly:error', { message: 'Seul le chef de party peut lancer la partie' });
         return;
       }
 
       if (activeGames.has(partyId) || pendingJoinPrompts.has(partyId)) {
-        socket.emit('monopoly:error', { message: 'A game is already in progress' });
+        socket.emit('monopoly:error', { message: 'Une partie est déjà en cours' });
         return;
       }
 
@@ -884,7 +929,7 @@ export const setupMonopolyHandlers = (socket: Socket, io: Server) => {
       });
 
       if (partyMembers.length < 2) {
-        socket.emit('monopoly:error', { message: 'Need at least 2 players to start' });
+        socket.emit('monopoly:error', { message: 'Il faut au moins 2 joueurs pour démarrer' });
         return;
       }
 
@@ -915,7 +960,7 @@ export const setupMonopolyHandlers = (socket: Socket, io: Server) => {
       });
     } catch (error) {
       console.error('Start monopoly error:', error);
-      socket.emit('monopoly:error', { message: 'Failed to start game' });
+      socket.emit('monopoly:error', { message: 'Impossible de démarrer la partie' });
     }
   });
 
@@ -1091,7 +1136,7 @@ export const setupMonopolyHandlers = (socket: Socket, io: Server) => {
     current.inJail = false;
     current.jailTurns = 0;
     game.phase = 'waiting-roll';
-    pushLog(game, `${current.username} paye $${JAIL_FINE} pour sortir de prison.`);
+    pushLog(game, `${current.username} paie $${JAIL_FINE} pour sortir de prison.`);
     io.to(`party:${partyId}`).emit('monopoly:updated', serializeGameState(game));
   });
 
@@ -1127,7 +1172,7 @@ export const setupMonopolyHandlers = (socket: Socket, io: Server) => {
     payAmount(game, current, price, null, io);
     game.tiles[tileIndex].ownerId = current.userId;
     game.pendingPurchase = null;
-    pushLog(game, `${current.username} achete ${BOARD[tileIndex].name} pour $${price}.`);
+    pushLog(game, `${current.username} achète ${getTileName(game, tileIndex)} pour $${price}.`);
 
     game.phase = game.lastRoll?.isDouble ? 'waiting-roll' : 'turn-end';
 
@@ -1163,7 +1208,7 @@ export const setupMonopolyHandlers = (socket: Socket, io: Server) => {
 
     auction.highestBid = amount;
     auction.highestBidderId = userId;
-    pushLog(game, `${bidder.username} encherit $${amount}.`);
+    pushLog(game, `${bidder.username} enchérit $${amount}.`);
     advanceAuction(game, io);
 
     io.to(`party:${partyId}`).emit('monopoly:updated', serializeGameState(game));
@@ -1215,7 +1260,7 @@ export const setupMonopolyHandlers = (socket: Socket, io: Server) => {
 
     payAmount(game, current, cost, null, io);
     state.houses += buildCount;
-    pushLog(game, `${current.username} construit ${buildCount} maison(s) sur ${tile.name}.`);
+    pushLog(game, `${current.username} construit ${buildCount} maison(s) sur ${getTileName(game, tileIndex)}.`);
     io.to(`party:${partyId}`).emit('monopoly:updated', serializeGameState(game));
   });
 
@@ -1238,7 +1283,7 @@ export const setupMonopolyHandlers = (socket: Socket, io: Server) => {
       cash += sellHouse(game, tileIndex);
     }
     adjustCash(current, cash);
-    pushLog(game, `${current.username} vend ${sellCount} maison(s) sur ${tile.name}.`);
+    pushLog(game, `${current.username} vend ${sellCount} maison(s) sur ${getTileName(game, tileIndex)}.`);
     io.to(`party:${partyId}`).emit('monopoly:updated', serializeGameState(game));
   });
 
@@ -1257,7 +1302,7 @@ export const setupMonopolyHandlers = (socket: Socket, io: Server) => {
     const cash = mortgageProperty(game, tileIndex);
     if (cash > 0) {
       adjustCash(current, cash);
-      pushLog(game, `${current.username} hypothèque ${tile.name}.`);
+      pushLog(game, `${current.username} hypothèque ${getTileName(game, tileIndex)}.`);
       io.to(`party:${partyId}`).emit('monopoly:updated', serializeGameState(game));
     }
   });
@@ -1279,7 +1324,7 @@ export const setupMonopolyHandlers = (socket: Socket, io: Server) => {
 
     payAmount(game, current, cost, null, io);
     state.mortgaged = false;
-    pushLog(game, `${current.username} leve l'hypotheque de ${tile.name}.`);
+    pushLog(game, `${current.username} lève l'hypothèque de ${getTileName(game, tileIndex)}.`);
     io.to(`party:${partyId}`).emit('monopoly:updated', serializeGameState(game));
   });
 
@@ -1390,3 +1435,5 @@ export function sendPendingMonopolyPlayAgainPrompt(socket: Socket, partyId: stri
     gameOverData: prompt.gameOverData,
   });
 }
+
+export const BASE_MONOPOLY_BOARD = BOARD;
