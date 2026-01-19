@@ -42,6 +42,7 @@ import { setupGameHandlers } from './socket/games.js';
 import { setupBombPartyHandlers, startBombPartyCleanup } from './socket/bombparty.js';
 import { setupPokerHandlers } from './socket/poker.js';
 import { setupPetitBacHandlers } from './socket/petitbac.js';
+import { setupBattleshipHandlers } from './socket/battleship.js';
 import { setupWebcamHandlers } from './socket/webcam.js';
 
 // Logger
@@ -156,6 +157,7 @@ io.on('connection', (socket) => {
   setupBombPartyHandlers(socket, io);
   setupPokerHandlers(socket, io);
   setupPetitBacHandlers(socket, io);
+  setupBattleshipHandlers(socket, io);
   setupWebcamHandlers(socket, io);
   
   socket.on('disconnect', () => {

@@ -26,6 +26,14 @@ const games = [
     image: '/images/games/petit-bac.jpg',
   },
   {
+    id: 'bataille-navale',
+    name: 'Bataille Navale',
+    description: 'Place tes bateaux et coule ceux de ton adversaire.',
+    type: 'Duel',
+    requiresParty: true,
+    image: '/images/games/bataille-navale.png',
+  },
+  {
     id: 'clash',
     name: 'Clash',
     description: 'Construis ta base, entraîne des troupes, attaque tes ennemis.',
@@ -75,6 +83,9 @@ export default function Games() {
     }
   if (game.id === 'petit-bac') {
     return '/games/petit-bac';
+  }
+  if (game.id === 'bataille-navale') {
+    return '/games/bataille-navale';
   }
     return `/games/${game.id}`;
   };

@@ -178,6 +178,25 @@ export const petitBacEvents = {
   },
 };
 
+// Battleship events
+export const battleshipEvents = {
+  register: (userId: string) => {
+    socket?.emit('battleship:register', { userId });
+  },
+  start: (userId: string, partyId: string) => {
+    socket?.emit('battleship:start', { userId, partyId });
+  },
+  placeShip: (userId: string, partyId: string, x: number, y: number, length: number, horizontal: boolean) => {
+    socket?.emit('battleship:place-ship', { userId, partyId, x, y, length, horizontal });
+  },
+  shoot: (userId: string, partyId: string, x: number, y: number) => {
+    socket?.emit('battleship:shoot', { userId, partyId, x, y });
+  },
+  leave: (userId: string, partyId: string) => {
+    socket?.emit('battleship:leave', { userId, partyId });
+  },
+};
+
 // Webcam events
 export const webcamEvents = {
   start: (userId: string) => {
