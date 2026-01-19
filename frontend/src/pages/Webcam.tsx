@@ -4,7 +4,6 @@ import { useSocket } from '@/contexts/SocketContext';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Video, VideoOff, Users } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -21,7 +20,7 @@ export default function Webcam() {
   const { socket, connected, onlineUsers } = useSocket();
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [webcamUsers, setWebcamUsers] = useState<Map<string, WebcamUser>>(new Map());
-  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideosRef = useRef<Map<string, HTMLVideoElement>>(new Map());
   const localStreamRef = useRef<MediaStream | null>(null);
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
@@ -65,7 +64,7 @@ export default function Webcam() {
     setIsCameraActive(false);
     
     // Close all peer connections
-    peerConnectionsRef.current.forEach((pc, userId) => {
+    peerConnectionsRef.current.forEach((pc, _userId) => {
       pc.close();
     });
     peerConnectionsRef.current.clear();

@@ -45,7 +45,6 @@ export default function BatailleNavale() {
 
   const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
   const isMyTurn = gameState?.currentPlayerId === user?.id;
-  const myPlayer = gameState?.players.find((p) => p.userId === user?.id);
   const opponent = gameState?.players.find((p) => p.userId !== user?.id);
 
   // Get remaining ships to place
@@ -85,7 +84,7 @@ export default function BatailleNavale() {
       refreshUser();
     };
 
-    const handleShotResult = (data: { shooterId: string; x: number; y: number; hit: boolean }) => {
+    const handleShotResult = (_data: { shooterId: string; x: number; y: number; hit: boolean }) => {
       // State will be updated via battleship:state
     };
 

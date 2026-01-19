@@ -176,10 +176,6 @@ export default function DoodleJump() {
     localStorage.setItem(SKIN_STORAGE_KEY, selectedSkin);
   }, [selectedSkin]);
 
-  const currentSkin = useMemo(() => {
-    return SKINS.find(s => s.id === selectedSkin) || SKINS[0];
-  }, [selectedSkin]);
-
   const fetchStats = async () => {
     try {
       const response = await gamesApi.getStats('doodle_jump', user!.id);
