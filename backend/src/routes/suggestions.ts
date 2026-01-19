@@ -47,6 +47,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
     });
 
     // Transform to include vote count and user's vote
+    const now = new Date();
     const transformedSuggestions = suggestions.map((suggestion) => {
       const upvotes = suggestion.votes.filter((v) => v.value === 1).length;
       const downvotes = suggestion.votes.filter((v) => v.value === -1).length;
@@ -56,6 +57,25 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
         ? suggestion.ratings.reduce((sum, rating) => sum + rating.rating, 0) / ratingCount
         : null;
       const userRating = suggestion.ratings.find((r) => r.userId === req.user!.id);
+
+      const score = upvotes - downvotes;
+      
+      // Calculate boost based on age (only for PENDING suggestions)
+      let boost = 0;
+      if (suggestion.status === 'PENDING') {
+        const ageInMs = now.getTime() - new Date(suggestion.createdAt).getTime();
+        const ageInHours = ageInMs / (1000 * 60 * 60);
+        
+        if (ageInHours < 24) {
+          // Boost of +5 for suggestions less than 24 hours old
+          boost = 5;
+        } else if (ageInHours < 48) {
+          // Boost of +2 for suggestions between 24-48 hours old
+          boost = 2;
+        }
+      }
+      
+      const boostedScore = score + boost;
 
       return {
         id: suggestion.id,
@@ -68,7 +88,9 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
         user: suggestion.user,
         upvotes,
         downvotes,
-        score: upvotes - downvotes,
+        score,
+        boostedScore,
+        boost,
         userVote: userVote?.value || 0,
         averageRating,
         ratingCount,
@@ -77,8 +99,16 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
       };
     });
 
-    // Sort by score (highest first)
-    transformedSuggestions.sort((a, b) => b.score - a.score);
+    // Sort by boosted score (highest first), then by score, then by creation date
+    transformedSuggestions.sort((a, b) => {
+      if (b.boostedScore !== a.boostedScore) {
+        return b.boostedScore - a.boostedScore;
+      }
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
 
     res.json({ suggestions: transformedSuggestions });
   } catch (error) {

@@ -36,6 +36,24 @@ export default function Suggestions() {
   const [imageUrl, setImageUrl] = useState('');
   const [imageInputMode, setImageInputMode] = useState<'upload' | 'url'>('upload');
 
+  // Calculate boost based on suggestion age
+  const calculateBoost = (createdAt: string, status: string): number => {
+    if (status !== 'PENDING') return 0;
+    
+    const now = new Date();
+    const created = new Date(createdAt);
+    const ageInMs = now.getTime() - created.getTime();
+    const ageInHours = ageInMs / (1000 * 60 * 60);
+    
+    if (ageInHours < 24) {
+      return 5; // Boost of +5 for suggestions less than 24 hours old
+    } else if (ageInHours < 48) {
+      return 2; // Boost of +2 for suggestions between 24-48 hours old
+    }
+    
+    return 0;
+  };
+
   useEffect(() => {
     fetchSuggestions();
   }, []);
@@ -43,7 +61,19 @@ export default function Suggestions() {
   const fetchSuggestions = async () => {
     try {
       const res = await suggestionsApi.getAll();
-      setSuggestions(res.data.suggestions);
+      // Ensure suggestions are sorted by boosted score
+      const sorted = [...res.data.suggestions].sort((a, b) => {
+        const aBoosted = a.boostedScore ?? a.score + (a.boost ?? calculateBoost(a.createdAt, a.status));
+        const bBoosted = b.boostedScore ?? b.score + (b.boost ?? calculateBoost(b.createdAt, b.status));
+        if (bBoosted !== aBoosted) {
+          return bBoosted - aBoosted;
+        }
+        if (b.score !== a.score) {
+          return b.score - a.score;
+        }
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+      setSuggestions(sorted);
     } catch (error) {
       console.error('Failed to fetch suggestions:', error);
     } finally {
@@ -74,7 +104,27 @@ export default function Suggestions() {
         description: description.trim(),
         imageUrl: uploadedUrl,
       });
-      setSuggestions((prev) => [res.data.suggestion, ...prev]);
+      // Add boost to new suggestion
+      const newSuggestion = {
+        ...res.data.suggestion,
+        boost: calculateBoost(res.data.suggestion.createdAt, res.data.suggestion.status),
+        boostedScore: res.data.suggestion.score + calculateBoost(res.data.suggestion.createdAt, res.data.suggestion.status),
+      };
+      setSuggestions((prev) => {
+        const updated = [newSuggestion, ...prev];
+        // Re-sort by boosted score
+        return updated.sort((a, b) => {
+          const aBoosted = a.boostedScore ?? a.score + (a.boost ?? calculateBoost(a.createdAt, a.status));
+          const bBoosted = b.boostedScore ?? b.score + (b.boost ?? calculateBoost(b.createdAt, b.status));
+          if (bBoosted !== aBoosted) {
+            return bBoosted - aBoosted;
+          }
+          if (b.score !== a.score) {
+            return b.score - a.score;
+          }
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+      });
       setTitle('');
       setDescription('');
       setImageDataUrl('');
@@ -95,8 +145,8 @@ export default function Suggestions() {
     const newValue = suggestion.userVote === value ? 0 : value;
 
     // Optimistic update
-    setSuggestions((prev) =>
-      prev.map((s) => {
+    setSuggestions((prev) => {
+      const updated = prev.map((s) => {
         if (s.id !== suggestionId) return s;
 
         let newUpvotes = s.upvotes;
@@ -110,15 +160,34 @@ export default function Suggestions() {
         if (newValue === 1) newUpvotes++;
         if (newValue === -1) newDownvotes++;
 
+        const newScore = newUpvotes - newDownvotes;
+        const boost = calculateBoost(s.createdAt, s.status);
+        const boostedScore = newScore + boost;
+
         return {
           ...s,
           upvotes: newUpvotes,
           downvotes: newDownvotes,
-          score: newUpvotes - newDownvotes,
+          score: newScore,
+          boostedScore,
+          boost,
           userVote: newValue,
         };
-      })
-    );
+      });
+
+      // Re-sort by boosted score
+      return updated.sort((a, b) => {
+        const aBoosted = a.boostedScore ?? a.score + (a.boost ?? 0);
+        const bBoosted = b.boostedScore ?? b.score + (b.boost ?? 0);
+        if (bBoosted !== aBoosted) {
+          return bBoosted - aBoosted;
+        }
+        if (b.score !== a.score) {
+          return b.score - a.score;
+        }
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+    });
 
     try {
       await suggestionsApi.vote(suggestionId, newValue);
@@ -315,7 +384,14 @@ export default function Suggestions() {
                 <div className="flex-1 p-4 min-w-0">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
-                      <h3 className="text-lg font-medium leading-tight">{suggestion.title}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-medium leading-tight">{suggestion.title}</h3>
+                        {suggestion.boost && suggestion.boost > 0 && (
+                          <span className="px-2 py-0.5 text-xs font-medium bg-amber-500/20 text-amber-500 border border-amber-500/30 rounded">
+                            Nouveau
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-muted-foreground mt-1">
                         par{' '}
                         <span
