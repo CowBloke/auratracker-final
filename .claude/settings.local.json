@@ -6,7 +6,8 @@
       "Bash(npx tsc:*)",
       "Bash(dir:*)",
       "Bash(npx prisma migrate:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npm run db:push:*)"
     ]
   }
 }
