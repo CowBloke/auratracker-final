@@ -67,6 +67,7 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '25mb' }));
 app.use('/uploads', express.static(path.resolve('uploads')));
+app.use('/api/uploads', express.static(path.resolve('uploads')));
 
 // REST Routes
 app.use('/api/auth', authRoutes);
@@ -93,6 +94,49 @@ app.get('/api/health', (req, res) => {
 // Socket.io connection handling
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
+
+  socket.use(async (packet, next) => {
+    const data = packet[1] as { userId?: string } | undefined;
+    const userId = data?.userId;
+    if (!userId) {
+      return next();
+    }
+
+    const activeBan = await prisma.ban.findFirst({
+      where: {
+        userId,
+        isActive: true,
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gt: new Date() } },
+        ],
+      },
+      select: {
+        reason: true,
+        type: true,
+        expiresAt: true,
+      },
+    });
+
+    if (activeBan) {
+      const message = activeBan.type === 'PERMANENT'
+        ? `Your account has been permanently banned. Reason: ${activeBan.reason}`
+        : `Your account is temporarily banned until ${activeBan.expiresAt?.toISOString()}. Reason: ${activeBan.reason}`;
+      socket.emit('ban:enforced', {
+        message,
+        banned: true,
+        ban: {
+          reason: activeBan.reason,
+          type: activeBan.type,
+          expiresAt: activeBan.expiresAt ? activeBan.expiresAt.toISOString() : null,
+        },
+      });
+      socket.disconnect(true);
+      return;
+    }
+
+    next();
+  });
   
   setupChatHandlers(socket, io);
   setupPartyHandlers(socket, io);

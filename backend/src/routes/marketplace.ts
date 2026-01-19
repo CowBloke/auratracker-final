@@ -62,11 +62,11 @@ router.post('/nfts/purchase', authMiddleware, validate(purchaseNftSchema), async
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
-    const { nftId } = req.body;
+  const { nftId } = req.body;
 
-    const nft = await prisma.nft.findUnique({
-      where: { id: nftId },
-    });
+  const nft = await prisma.nft.findUnique({
+    where: { id: nftId },
+  });
 
     if (!nft) {
       return res.status(404).json({ error: 'NFT not found' });
@@ -76,13 +76,24 @@ router.post('/nfts/purchase', authMiddleware, validate(purchaseNftSchema), async
       where: { id: req.user.id },
     });
 
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
 
-    if (user.money < nft.price) {
-      return res.status(400).json({ error: 'Insufficient money' });
-    }
+  const existing = await prisma.userNft.findFirst({
+    where: {
+      userId: req.user.id,
+      nftId: nft.id,
+    },
+  });
+
+  if (existing) {
+    return res.status(400).json({ error: 'NFT already owned' });
+  }
+
+  if (user.money < nft.price) {
+    return res.status(400).json({ error: 'Insufficient money' });
+  }
 
     const [updatedUser, userNft] = await prisma.$transaction([
       prisma.user.update({

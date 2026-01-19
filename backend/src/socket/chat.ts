@@ -70,7 +70,15 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
         ? `Your account has been permanently banned. Reason: ${activeBan.reason}`
         : `Your account is temporarily banned until ${activeBan.expiresAt?.toISOString()}. Reason: ${activeBan.reason}`;
 
-      socket.emit('ban:active', { message, banned: true });
+      socket.emit('ban:active', {
+        message,
+        banned: true,
+        ban: {
+          reason: activeBan.reason,
+          type: activeBan.type,
+          expiresAt: activeBan.expiresAt ? activeBan.expiresAt.toISOString() : null,
+        },
+      });
       return;
     }
 
@@ -97,6 +105,7 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
       profilePicture: dbUser?.profilePicture,
       currentPage: currentPage ?? null,
     });
+    socket.join(`user:${userId}`);
 
     // Join global chat room
     socket.join('global-chat');
@@ -216,7 +225,14 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     });
 
     if (activeBan) {
-      socket.emit('ban:active', { banned: true });
+      socket.emit('ban:active', {
+        banned: true,
+        ban: {
+          reason: activeBan.reason,
+          type: activeBan.type,
+          expiresAt: activeBan.expiresAt ? activeBan.expiresAt.toISOString() : null,
+        },
+      });
       return;
     }
 

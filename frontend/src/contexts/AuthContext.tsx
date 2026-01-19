@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authApi } from '../services/api';
+import { clearBanInfo } from '../services/ban';
 
 interface User {
   id: string;
@@ -35,6 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (token) {
         const response = await authApi.me();
         setUser(response.data.user);
+        clearBanInfo();
       }
     } catch (error) {
       localStorage.removeItem('token');
@@ -54,12 +56,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const response = await authApi.login({ username, password });
     localStorage.setItem('token', response.data.token);
     setUser(response.data.user);
+    clearBanInfo();
   };
 
   const register = async (username: string, email: string, password: string) => {
     const response = await authApi.register({ username, email, password });
     localStorage.setItem('token', response.data.token);
     setUser(response.data.user);
+    clearBanInfo();
   };
 
   const logout = () => {

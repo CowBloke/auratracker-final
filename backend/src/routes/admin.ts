@@ -1,8 +1,8 @@
 import { Router, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import { prisma } from '../server.js';
+import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
-import { validate, createNftSchema } from '../middleware/validation.js';
+import { validate, createNftSchema, adminRareActionSchema } from '../middleware/validation.js';
 import { logAdmin, logSuggestion, logBan } from '../utils/logger.js';
 import { isAllowedImageUrl } from '../utils/uploads.js';
 import { BASE_MONOPOLY_BOARD, getMonopolyBoardNames } from '../socket/monopoly.js';
@@ -772,23 +772,161 @@ router.delete('/users/:id', authMiddleware, requireAdmin, async (req: AuthReques
   }
 });
 
-// Clear all chat messages - admin only
-router.delete('/chat', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+// Rare admin actions (grouped for cleanliness)
+router.post('/rare', authMiddleware, requireAdmin, validate(adminRareActionSchema), async (req: AuthRequest, res: Response) => {
+  const { action } = req.body;
+
   try {
-    const result = await prisma.chatMessage.deleteMany({});
+    if (action === 'chat_clear') {
+      const result = await prisma.chatMessage.deleteMany({});
 
-    // Log chat clear
-    logAdmin('chat_clear', req.user!.id, undefined, undefined, undefined, {
-      messagesDeleted: result.count,
-    });
+      logAdmin('chat_clear', req.user!.id, undefined, undefined, undefined, {
+        messagesDeleted: result.count,
+      });
 
-    res.json({
-      success: true,
-      message: `Deleted ${result.count} chat messages`
-    });
+      return res.json({
+        success: true,
+        message: `Deleted ${result.count} chat messages`,
+        messagesDeleted: result.count,
+      });
+    }
+
+    if (action === 'reset_extreme_aura') {
+      const threshold = typeof req.body.threshold === 'number' ? req.body.threshold : 1000000000;
+
+      const usersToReset = await prisma.user.findMany({
+        where: {
+          aura: { gt: BigInt(threshold) }
+        },
+        select: {
+          id: true,
+          username: true,
+          aura: true,
+        },
+      });
+
+      if (usersToReset.length === 0) {
+        return res.json({
+          success: true,
+          message: 'No users found with extreme aura values',
+          usersReset: 0,
+          users: []
+        });
+      }
+
+      await prisma.user.updateMany({
+        where: {
+          aura: { gt: BigInt(threshold) }
+        },
+        data: {
+          aura: BigInt(0)
+        }
+      });
+
+      logAdmin('extreme_aura_reset', req.user!.id, undefined, undefined, undefined, {
+        threshold,
+        usersReset: usersToReset.length,
+        users: usersToReset.map(u => ({ id: u.id, username: u.username, oldAura: u.aura.toString() })),
+      });
+
+      return res.json({
+        success: true,
+        message: `Reset aura for ${usersToReset.length} user(s) with values above ${threshold.toLocaleString()}`,
+        usersReset: usersToReset.length,
+        users: usersToReset.map(u => ({
+          id: u.id,
+          username: u.username,
+          oldAura: u.aura.toString()
+        }))
+      });
+    }
+
+    if (action === 'deploy') {
+      try {
+        const { exec } = await import('child_process');
+        const { promisify } = await import('util');
+        const execAsync = promisify(exec);
+
+        logAdmin('deploy_trigger', req.user!.id, req.user!.username, undefined, undefined, {
+          timestamp: new Date().toISOString(),
+        });
+
+        const { stdout, stderr } = await execAsync('/var/scripts/deploy.sh', {
+          timeout: 120000,
+          cwd: '/',
+        });
+
+        return res.json({
+          success: true,
+          message: 'Deploy script executed successfully',
+          stdout: stdout || '',
+          stderr: stderr || '',
+        });
+      } catch (error: unknown) {
+        console.error('Deploy script error:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorOutput = (error as { stderr?: string })?.stderr || '';
+        return res.status(500).json({
+          error: 'Deploy script failed',
+          message: errorMessage,
+          stderr: errorOutput,
+        });
+      }
+    }
+
+    if (action === 'nft_refund_all') {
+      const result = await prisma.$transaction(async (tx) => {
+        const refundTotals = await tx.userNft.groupBy({
+          by: ['userId'],
+          _sum: { purchasePrice: true },
+        });
+
+        const refundUpdates = refundTotals
+          .map((refund) => ({
+            userId: refund.userId,
+            total: refund._sum.purchasePrice ?? 0,
+          }))
+          .filter((refund) => refund.total > 0)
+          .map((refund) =>
+            tx.user.update({
+              where: { id: refund.userId },
+              data: { money: { increment: refund.total } },
+              select: { id: true },
+            })
+          );
+
+        await Promise.all(refundUpdates);
+
+        const deletedUserNfts = await tx.userNft.deleteMany({});
+        const deletedNfts = await tx.nft.deleteMany({});
+        const totalRefunded = refundTotals.reduce((sum, refund) => sum + (refund._sum.purchasePrice ?? 0), 0);
+
+        return {
+          totalRefunded,
+          usersRefunded: refundUpdates.length,
+          userNftsDeleted: deletedUserNfts.count,
+          nftsDeleted: deletedNfts.count,
+        };
+      });
+
+      logAdmin('nft_refund_all', req.user!.id, req.user!.username, undefined, undefined, {
+        totalRefunded: result.totalRefunded,
+        usersRefunded: result.usersRefunded,
+        nftsDeleted: result.nftsDeleted,
+        userNftsDeleted: result.userNftsDeleted,
+      });
+
+      return res.json({
+        success: true,
+        message: `Refunded ${result.totalRefunded} and removed ${result.userNftsDeleted} user NFT(s).`,
+        ...result,
+      });
+    }
+
+    return res.status(400).json({ error: 'Unknown admin action' });
   } catch (error) {
-    console.error('Admin clear chat error:', error);
-    res.status(500).json({ error: 'Failed to clear chat' });
+    console.error('Admin rare action error:', error);
+    return res.status(500).json({ error: 'Failed to run admin action' });
   }
 });
 
@@ -1246,6 +1384,20 @@ router.post('/bans', authMiddleware, requireAdmin, async (req: AuthRequest, res:
       durationHours: type === 'TEMPORARY' ? parseInt(durationHours) : undefined,
     });
 
+    const banMessage = type === 'PERMANENT'
+      ? `Your account has been permanently banned. Reason: ${ban.reason}`
+      : `Your account is temporarily banned until ${ban.expiresAt?.toISOString()}. Reason: ${ban.reason}`;
+    io.to(`user:${userId}`).emit('ban:enforced', {
+      message: banMessage,
+      banned: true,
+      ban: {
+        reason: ban.reason,
+        type: ban.type,
+        expiresAt: ban.expiresAt ? ban.expiresAt.toISOString() : null,
+      },
+    });
+    io.in(`user:${userId}`).disconnectSockets(true);
+
     res.status(201).json({ ban, message: `${user.username} has been banned` });
   } catch (error) {
     console.error('Admin create ban error:', error);
@@ -1551,105 +1703,6 @@ router.put('/monopoly/board', authMiddleware, requireAdmin, async (req: AuthRequ
   } catch (error) {
     console.error('Admin update monopoly board error:', error);
     res.status(500).json({ error: 'Failed to update monopoly board' });
-  }
-});
-
-// ========== RESET EXTREME AURA VALUES ==========
-
-// Reset users with extreme aura values (for overflow/corruption fixes)
-router.post('/reset-extreme-aura', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
-  try {
-    const { threshold = 1000000000 } = req.body; // Default 1 billion threshold
-
-    // Find users with aura above threshold
-    const usersToReset = await prisma.user.findMany({
-      where: {
-        aura: { gt: BigInt(threshold) }
-      },
-      select: {
-        id: true,
-        username: true,
-        aura: true,
-      },
-    });
-
-    if (usersToReset.length === 0) {
-      return res.json({
-        success: true,
-        message: 'No users found with extreme aura values',
-        usersReset: 0,
-        users: []
-      });
-    }
-
-    // Reset their aura to 0
-    await prisma.user.updateMany({
-      where: {
-        aura: { gt: BigInt(threshold) }
-      },
-      data: {
-        aura: BigInt(0)
-      }
-    });
-
-    // Log the reset action
-    logAdmin('extreme_aura_reset', req.user!.id, undefined, undefined, undefined, {
-      threshold,
-      usersReset: usersToReset.length,
-      users: usersToReset.map(u => ({ id: u.id, username: u.username, oldAura: u.aura.toString() })),
-    });
-
-    res.json({
-      success: true,
-      message: `Reset aura for ${usersToReset.length} user(s) with values above ${threshold.toLocaleString()}`,
-      usersReset: usersToReset.length,
-      users: usersToReset.map(u => ({
-        id: u.id,
-        username: u.username,
-        oldAura: u.aura.toString()
-      }))
-    });
-  } catch (error) {
-    console.error('Admin reset extreme aura error:', error);
-    res.status(500).json({ error: 'Failed to reset extreme aura values' });
-  }
-});
-
-// ========== SERVER DEPLOYMENT ==========
-
-// Run deploy script (admin only)
-router.post('/deploy', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
-  try {
-    const { exec } = await import('child_process');
-    const { promisify } = await import('util');
-    const execAsync = promisify(exec);
-
-    // Log deployment attempt
-    logAdmin('deploy_trigger', req.user!.id, req.user!.username, undefined, undefined, {
-      timestamp: new Date().toISOString(),
-    });
-
-    // Execute the deploy script
-    const { stdout, stderr } = await execAsync('/var/scripts/deploy.sh', {
-      timeout: 120000, // 2 minute timeout
-      cwd: '/',
-    });
-
-    res.json({
-      success: true,
-      message: 'Deploy script executed successfully',
-      stdout: stdout || '',
-      stderr: stderr || '',
-    });
-  } catch (error: unknown) {
-    console.error('Deploy script error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const errorOutput = (error as { stderr?: string })?.stderr || '';
-    res.status(500).json({
-      error: 'Deploy script failed',
-      message: errorMessage,
-      stderr: errorOutput,
-    });
   }
 });
 

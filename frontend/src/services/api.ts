@@ -1,9 +1,15 @@
 import axios from 'axios';
+import { storeBanInfo } from './ban';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_BASE = API_URL.endsWith('/api/')
+  ? API_URL.slice(0, -1)
+  : API_URL.endsWith('/api')
+    ? API_URL
+    : `${API_URL.replace(/\/$/, '')}/api`;
 
 export const api = axios.create({
-  baseURL: `${API_URL}/api`,
+  baseURL: API_BASE,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -22,6 +28,18 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (error.response?.status === 403 && error.response?.data?.banned) {
+      const banData = error.response.data;
+      storeBanInfo({
+        reason: banData.ban?.reason ?? null,
+        type: banData.ban?.type ?? null,
+        expiresAt: banData.ban?.expiresAt ?? null,
+        message: banData.error,
+      });
+      localStorage.removeItem('token');
+      window.location.href = '/banned';
+      return Promise.reject(error);
+    }
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       window.location.href = '/login';
@@ -511,7 +529,16 @@ export interface LogStats {
   byType: Record<string, number>;
 }
 
+type AdminRareAction =
+  | { action: 'chat_clear' }
+  | { action: 'deploy' }
+  | { action: 'reset_extreme_aura'; threshold?: number }
+  | { action: 'nft_refund_all' };
+
+const runRareAction = (data: AdminRareAction) => api.post('/admin/rare', data);
+
 export const adminApi = {
+  runRareAction,
   getUsers: () => api.get<{ users: AdminUser[] }>('/admin/users'),
   updateUser: (id: string, data: { username?: string; aura?: number; money?: number; dailyAuraLimit?: number; password?: string; isChatMuted?: boolean }) =>
     api.put<{ user: AdminUser }>(`/admin/users/${id}`, data),
@@ -533,7 +560,8 @@ export const adminApi = {
     api.patch<{ item?: AdminInventoryItem; removed?: boolean }>(`/admin/users/${id}/inventory/${userItemId}`, data),
   deleteUserInventoryItem: (id: string, userItemId: string) =>
     api.delete<{ success: boolean }>(`/admin/users/${id}/inventory/${userItemId}`),
-  clearChat: () => api.delete<{ success: boolean; message: string }>('/admin/chat'),
+  clearChat: () =>
+    runRareAction({ action: 'chat_clear' }) as Promise<{ data: { success: boolean; message: string; messagesDeleted: number } }>,
   // Pending users management
   getPendingUsers: () => api.get<{ pendingUsers: PendingUser[] }>('/admin/pending-users'),
   approveUser: (id: string) => api.post<{ success: boolean; user: PendingUser; message: string }>(`/admin/users/${id}/approve`),
@@ -612,10 +640,12 @@ export const adminApi = {
     api.put<{ setting: { key: string; value: string } }>(`/admin/settings/${key}`, { value }),
   // Server deployment
   deploy: () =>
-    api.post<{ success: boolean; message: string; stdout?: string; stderr?: string }>('/admin/deploy'),
+    runRareAction({ action: 'deploy' }) as Promise<{ data: { success: boolean; message: string; stdout?: string; stderr?: string } }>,
   // Reset extreme aura values
   resetExtremeAura: (threshold?: number) =>
-    api.post<{ success: boolean; message: string; usersReset: number; users: { id: string; username: string; oldAura: string }[] }>('/admin/reset-extreme-aura', { threshold }),
+    runRareAction({ action: 'reset_extreme_aura', threshold }) as Promise<{ data: { success: boolean; message: string; usersReset: number; users: { id: string; username: string; oldAura: string }[] } }>,
+  refundAllNfts: () =>
+    runRareAction({ action: 'nft_refund_all' }) as Promise<{ data: { success: boolean; message: string; totalRefunded: number; usersRefunded: number; userNftsDeleted: number; nftsDeleted: number } }>,
   // Monopoly board editor
   getMonopolyBoard: () => api.get<{ tiles: MonopolyBoardTile[] }>('/admin/monopoly/board'),
   updateMonopolyBoard: (data: { names?: string[]; tiles?: Array<{ index: number; name: string }> }) =>
