@@ -77,7 +77,6 @@ const gameItems = [
   { to: '/games/clash', label: 'Clash', icon: Swords },
   { to: '/games/doodle-jump', label: 'Doodle Jump', icon: ArrowUp },
   { to: '/games/casino', label: 'Casino', icon: Dices },
-  { to: '/games/polymarket', label: 'Polymarket', icon: BarChart3 },
 ];
 
 export default function AppSidebar() {
@@ -280,6 +279,26 @@ export default function AppSidebar() {
                 </CollapsibleContent>
               </SidebarMenuItem>
             </Collapsible>
+
+            {/* Polymarket */}
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={location.pathname === '/polymarket' || location.pathname.startsWith('/polymarket')}
+                tooltip="Polymarket"
+                className={cn(
+                  "h-9 px-3 text-sm font-normal",
+                  location.pathname === '/polymarket' || location.pathname.startsWith('/polymarket')
+                    ? "text-foreground bg-muted/50"
+                    : "text-muted-foreground hover:text-foreground hover:bg-transparent"
+                )}
+              >
+                <NavLink to="/polymarket">
+                  <BarChart3 className="h-4 w-4" />
+                  <span className="group-data-[collapsible=icon]:hidden">Polymarket</span>
+                </NavLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
 
             {/* Other nav items */}
             {navItems.map((item) => {
