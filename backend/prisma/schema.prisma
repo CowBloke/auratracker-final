@@ -9,69 +9,70 @@ datasource db {
 
 // User Model
 model User {
-  id            String    @id @default(uuid())
-  username      String    @unique
-  email         String    @unique
-  passwordHash  String
-  aura          BigInt    @default(0)
-  money         Int       @default(1000)
-  auraCoinBalance Float   @default(0)         // Aura Coin balance for trading game
-  solarisBalance Float    @default(0)         // Solaris balance for trading game
-  zenithBalance Float     @default(0)         // Zenith balance for trading game
-  riftBalance Float       @default(0)         // Rift balance for trading game
-  isAdmin       Boolean   @default(false)
-  isChatMuted   Boolean   @default(false)
-  isApproved    Boolean   @default(false)     // Account must be approved by admin before login
-  dailyAuraGiven Int      @default(0)        // Aura given today
-  dailyAuraLimit Int      @default(50)       // Personal daily aura limit (default 50)
-  lastDailyReset DateTime @default(now())    // When daily allowance was last reset
-  dailyPassStreak Int     @default(0)        // Current daily pass streak
-  lastDailyPassClaim DateTime?              // Last date when daily pass reward was claimed
-  usernameColor String?                       // Custom username color for chat (hex)
-  profilePicture String?                      // Custom profile picture URL for chat
-  bio           String?                       // User bio/description
-  displayedNftId String?   @unique            // Selected NFT to show on profile
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
+  id                 String    @id @default(uuid())
+  username           String    @unique
+  email              String    @unique
+  passwordHash       String
+  aura               BigInt    @default(0)
+  money              Int       @default(1000)
+  auraCoinBalance    Float     @default(0) // Aura Coin balance for trading game
+  solarisBalance     Float     @default(0) // Solaris balance for trading game
+  zenithBalance      Float     @default(0) // Zenith balance for trading game
+  riftBalance        Float     @default(0) // Rift balance for trading game
+  isAdmin            Boolean   @default(false)
+  isChatMuted        Boolean   @default(false)
+  isApproved         Boolean   @default(false) // Account must be approved by admin before login
+  dailyAuraGiven     Int       @default(0) // Aura given today
+  dailyAuraLimit     Int       @default(50) // Personal daily aura limit (default 50)
+  lastDailyReset     DateTime  @default(now()) // When daily allowance was last reset
+  dailyPassStreak    Int       @default(0) // Current daily pass streak
+  lastDailyPassClaim DateTime? // Last date when daily pass reward was claimed
+  usernameColor      String? // Custom username color for chat (hex)
+  profilePicture     String? // Custom profile picture URL for chat
+  bio                String? // User bio/description
+  displayedNftId     String?   @unique // Selected NFT to show on profile
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
   // Relations
-  ownedItems        UserItem[]
-  ownedNfts         UserNft[]
-  displayedNft      UserNft? @relation("DisplayedNft", fields: [displayedNftId], references: [id], onDelete: SetNull)
-  sentTransfers     Transfer[] @relation("SentTransfers")
-  receivedTransfers Transfer[] @relation("ReceivedTransfers")
-  gameStats         GameStats[]
-  partyMemberships  PartyMember[]
-  sentMessages      ChatMessage[]
-  chatReactions     ChatReaction[]
-  clashBase         ClashBase?
-  attacksMade       Attack[]   @relation("Attacker")
-  attacksReceived   Attack[]   @relation("Defender")
-  auraCoinTransactions AuraCoinTransaction[]
-  solarisTransactions SolarisTransaction[]
-  zenithTransactions ZenithTransaction[]
-  riftTransactions RiftTransaction[]
-  bugReports        BugReport[]
-  suggestions       Suggestion[]
-  suggestionVotes   SuggestionVote[]
-  suggestionComments SuggestionComment[]
-  suggestionRatings SuggestionRating[]
-  bombPartyStats    BombPartyStats?
-  bansReceived      Ban[]              @relation("BannedUser")
-  bansIssued        Ban[]              @relation("BanIssuer")
-  userBadges        UserBadge[]
-  ownedClans        Clan[]             @relation("ClanOwner")
-  clanMemberships   ClanMember[]
-  clanJoinRequests  ClanJoinRequest[]
+  ownedItems            UserItem[]
+  ownedNfts             UserNft[]
+  displayedNft          UserNft?               @relation("DisplayedNft", fields: [displayedNftId], references: [id], onDelete: SetNull)
+  sentTransfers         Transfer[]             @relation("SentTransfers")
+  receivedTransfers     Transfer[]             @relation("ReceivedTransfers")
+  gameStats             GameStats[]
+  partyMemberships      PartyMember[]
+  sentMessages          ChatMessage[]
+  chatReactions         ChatReaction[]
+  clashBase             ClashBase?
+  attacksMade           Attack[]               @relation("Attacker")
+  attacksReceived       Attack[]               @relation("Defender")
+  auraCoinTransactions  AuraCoinTransaction[]
+  auraCoinPositions     AuraCoinPosition[]
+  solarisTransactions   SolarisTransaction[]
+  zenithTransactions    ZenithTransaction[]
+  riftTransactions      RiftTransaction[]
+  bugReports            BugReport[]
+  suggestions           Suggestion[]
+  suggestionVotes       SuggestionVote[]
+  suggestionComments    SuggestionComment[]
+  suggestionRatings     SuggestionRating[]
+  bombPartyStats        BombPartyStats?
+  bansReceived          Ban[]                  @relation("BannedUser")
+  bansIssued            Ban[]                  @relation("BanIssuer")
+  userBadges            UserBadge[]
+  ownedClans            Clan[]                 @relation("ClanOwner")
+  clanMemberships       ClanMember[]
+  clanJoinRequests      ClanJoinRequest[]
   polymarketSuggestions PolymarketSuggestion[]
-  polymarketBets    PolymarketBet[]
+  polymarketBets        PolymarketBet[]
 
   // Gallery & Market relations
-  ownedPaintings    PaintingCopy[]     @relation("OwnedPaintings")
-  gallery           UserGallery?
+  ownedPaintings      PaintingCopy[]       @relation("OwnedPaintings")
+  gallery             UserGallery?
   artPackagePurchases ArtPackagePurchase[]
-  marketListings    MarketListing[]    @relation("MarketSeller")
-  marketPurchases   MarketListing[]    @relation("MarketBuyer")
+  marketListings      MarketListing[]      @relation("MarketSeller")
+  marketPurchases     MarketListing[]      @relation("MarketBuyer")
 
   @@index([aura])
   @@index([money])
@@ -79,24 +80,24 @@ model User {
 
 // Badge System
 model Badge {
-  id          String    @id @default(uuid())
+  id          String   @id @default(uuid())
   name        String
   description String?
   color       String
-  createdAt   DateTime  @default(now())
+  createdAt   DateTime @default(now())
 
-  users     UserBadge[]
+  users UserBadge[]
 }
 
 model UserBadge {
-  id         String    @id @default(uuid())
+  id         String   @id @default(uuid())
   userId     String
   badgeId    String
-  assignedAt DateTime  @default(now())
-  isSelected Boolean   @default(false)
+  assignedAt DateTime @default(now())
+  isSelected Boolean  @default(false)
 
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  badge      Badge     @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
 
   @@unique([userId, badgeId])
   @@index([userId])
@@ -109,27 +110,27 @@ model Item {
   id          String    @id @default(uuid())
   name        String
   description String
-  type        String    // CONSUMABLE, COSMETIC, or UPGRADE
+  type        String // CONSUMABLE, COSMETIC, or UPGRADE
   price       Int
   imageUrl    String?
-  effect      String?   // JSON string describing the effect
+  effect      String? // JSON string describing the effect
   expiresAt   DateTime?
   createdAt   DateTime  @default(now())
-  
-  userItems   UserItem[]
+
+  userItems UserItem[]
 }
 
 // NFT Model
 model Nft {
-  id          String    @id @default(uuid())
+  id          String   @id @default(uuid())
   name        String
   description String
   price       Int
   imageUrl    String
   rarity      String
-  createdAt   DateTime  @default(now())
+  createdAt   DateTime @default(now())
 
-  userNfts    UserNft[]
+  userNfts UserNft[]
 }
 
 // User NFT Inventory
@@ -140,9 +141,9 @@ model UserNft {
   purchasePrice Int
   acquiredAt    DateTime @default(now())
 
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  nft           Nft      @relation(fields: [nftId], references: [id], onDelete: Cascade)
-  displayedBy   User?    @relation("DisplayedNft")
+  user        User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nft         Nft   @relation(fields: [nftId], references: [id], onDelete: Cascade)
+  displayedBy User? @relation("DisplayedNft")
 
   @@index([userId])
   @@index([nftId])
@@ -150,14 +151,14 @@ model UserNft {
 
 // User Inventory
 model UserItem {
-  id          String    @id @default(uuid())
-  userId      String
-  itemId      String
-  quantity    Int       @default(1)
-  acquiredAt  DateTime  @default(now())
+  id         String   @id @default(uuid())
+  userId     String
+  itemId     String
+  quantity   Int      @default(1)
+  acquiredAt DateTime @default(now())
 
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  item        Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item          Item           @relation(fields: [itemId], references: [id], onDelete: Cascade)
   marketListing MarketListing?
 
   @@unique([userId, itemId])
@@ -165,74 +166,74 @@ model UserItem {
 
 // Transfer/Trade Model
 model Transfer {
-  id          String    @id @default(uuid())
+  id          String   @id @default(uuid())
   senderId    String
   receiverId  String
-  auraAmount  Int       @default(0)
-  moneyAmount Int       @default(0)
-  isGift      Boolean   @default(false)  // True if from daily gift allowance
-  message     String?   // Optional message (max 20 words)
-  createdAt   DateTime  @default(now())
-  
-  sender      User      @relation("SentTransfers", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver    User      @relation("ReceivedTransfers", fields: [receiverId], references: [id], onDelete: Cascade)
-  
+  auraAmount  Int      @default(0)
+  moneyAmount Int      @default(0)
+  isGift      Boolean  @default(false) // True if from daily gift allowance
+  message     String? // Optional message (max 20 words)
+  createdAt   DateTime @default(now())
+
+  sender   User @relation("SentTransfers", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedTransfers", fields: [receiverId], references: [id], onDelete: Cascade)
+
   @@index([senderId])
   @@index([receiverId])
 }
 
 // Game Statistics
 model GameStats {
-  id          String    @id @default(uuid())
+  id          String @id @default(uuid())
   userId      String
-  gameType    String    // "doodle_jump", "casino"
-  wins        Int       @default(0)
-  losses      Int       @default(0)
-  highScore   Int       @default(0)
-  totalPlayed Int       @default(0)
-  
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  gameType    String // "doodle_jump", "casino"
+  wins        Int    @default(0)
+  losses      Int    @default(0)
+  highScore   Int    @default(0)
+  totalPlayed Int    @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, gameType])
 }
 
 // Party System
 model Party {
-  id           String        @id @default(uuid())
+  id           String   @id @default(uuid())
   name         String?
-  isPublic     Boolean       @default(false)
-  maxSize      Int           @default(8)
-  createdAt    DateTime      @default(now())
-  lastActivity DateTime      @default(now())
-  
-  members      PartyMember[]
+  isPublic     Boolean  @default(false)
+  maxSize      Int      @default(8)
+  createdAt    DateTime @default(now())
+  lastActivity DateTime @default(now())
+
+  members PartyMember[]
 }
 
 model PartyMember {
-  id        String   @id @default(uuid())
-  partyId   String
-  userId    String
-  isLeader  Boolean  @default(false)
-  joinedAt  DateTime @default(now())
-  
-  party     Party    @relation(fields: [partyId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id       String   @id @default(uuid())
+  partyId  String
+  userId   String
+  isLeader Boolean  @default(false)
+  joinedAt DateTime @default(now())
+
+  party Party @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([partyId, userId])
   @@unique([userId]) // User can only be in one party at a time
 }
 
 // Clan System
 model Clan {
-  id         String   @id @default(uuid())
-  name       String
+  id          String   @id @default(uuid())
+  name        String
   description String?
-  imageUrl   String?
-  isPublic   Boolean  @default(true)
-  maxMembers Int      @default(5)
-  ownerId    String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  imageUrl    String?
+  isPublic    Boolean  @default(true)
+  maxMembers  Int      @default(5)
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   owner        User              @relation("ClanOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   members      ClanMember[]
@@ -243,14 +244,14 @@ model Clan {
 }
 
 model ClanMember {
-  id        String   @id @default(uuid())
-  clanId    String
-  userId    String
-  isLeader  Boolean  @default(false)
-  joinedAt  DateTime @default(now())
+  id       String   @id @default(uuid())
+  clanId   String
+  userId   String
+  isLeader Boolean  @default(false)
+  joinedAt DateTime @default(now())
 
-  clan      Clan     @relation(fields: [clanId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clan Clan @relation(fields: [clanId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([clanId, userId])
   @@unique([userId])
@@ -263,8 +264,8 @@ model ClanJoinRequest {
   userId    String
   createdAt DateTime @default(now())
 
-  clan      Clan     @relation(fields: [clanId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clan Clan @relation(fields: [clanId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([clanId, userId])
   @@index([clanId])
@@ -273,19 +274,19 @@ model ClanJoinRequest {
 
 // Chat Messages
 model ChatMessage {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   userId    String
   message   String
   replyToId String?
-  pinned    Boolean  @default(false)
+  pinned    Boolean   @default(false)
   pinnedAt  DateTime?
-  createdAt DateTime @default(now())
-  
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  replyTo   ChatMessage? @relation("ChatMessageReply", fields: [replyToId], references: [id], onDelete: SetNull)
-  replies   ChatMessage[] @relation("ChatMessageReply")
+  createdAt DateTime  @default(now())
+
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replyTo   ChatMessage?   @relation("ChatMessageReply", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   ChatMessage[]  @relation("ChatMessageReply")
   reactions ChatReaction[]
-  
+
   @@index([createdAt])
 }
 
@@ -296,8 +297,8 @@ model ChatReaction {
   emoji     String
   createdAt DateTime @default(now())
 
-  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([messageId, userId, emoji])
   @@index([messageId])
@@ -306,52 +307,52 @@ model ChatReaction {
 
 // Season System
 model Season {
-  id          String    @id @default(uuid())
-  name        String
-  startDate   DateTime
-  endDate     DateTime
-  isActive    Boolean   @default(true)
-  
+  id        String   @id @default(uuid())
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  isActive  Boolean  @default(true)
+
   @@index([isActive])
 }
 
 // Clash of Clans Base
 model ClashBase {
-  id              String    @id @default(uuid())
-  userId          String    @unique
-  baseLayout      String    // JSON string storing building positions/levels
-  defenseRating   Int       @default(100)
-  trophies        Int       @default(0)
-  lastAttackedAt  DateTime?
-  shieldUntil     DateTime?
-  attackCooldown  DateTime? // When user can attack again
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id             String    @id @default(uuid())
+  userId         String    @unique
+  baseLayout     String // JSON string storing building positions/levels
+  defenseRating  Int       @default(100)
+  trophies       Int       @default(0)
+  lastAttackedAt DateTime?
+  shieldUntil    DateTime?
+  attackCooldown DateTime? // When user can attack again
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([defenseRating])
   @@index([trophies])
 }
 
 // Attack Log
 model Attack {
-  id            String    @id @default(uuid())
-  attackerId    String
-  defenderId    String
-  success       Boolean
-  starsEarned   Int       @default(0) // 0-3 stars
-  destruction   Int       @default(0) // Percentage 0-100
-  auraTaken     Int       @default(0)
-  moneyTaken    Int       @default(0)
-  trophiesWon   Int       @default(0)
-  trophiesLost  Int       @default(0)
-  replayData    String?   // JSON string for replay
-  attackedAt    DateTime  @default(now())
-  
-  attacker      User      @relation("Attacker", fields: [attackerId], references: [id], onDelete: Cascade)
-  defender      User      @relation("Defender", fields: [defenderId], references: [id], onDelete: Cascade)
-  
+  id           String   @id @default(uuid())
+  attackerId   String
+  defenderId   String
+  success      Boolean
+  starsEarned  Int      @default(0) // 0-3 stars
+  destruction  Int      @default(0) // Percentage 0-100
+  auraTaken    Int      @default(0)
+  moneyTaken   Int      @default(0)
+  trophiesWon  Int      @default(0)
+  trophiesLost Int      @default(0)
+  replayData   String? // JSON string for replay
+  attackedAt   DateTime @default(now())
+
+  attacker User @relation("Attacker", fields: [attackerId], references: [id], onDelete: Cascade)
+  defender User @relation("Defender", fields: [defenderId], references: [id], onDelete: Cascade)
+
   @@index([attackerId])
   @@index([defenderId])
   @@index([attackedAt])
@@ -363,7 +364,7 @@ model AuraCoinPrice {
   price     Float
   volume    Float    @default(0)
   createdAt DateTime @default(now())
-  
+
   @@index([createdAt])
 }
 
@@ -371,16 +372,39 @@ model AuraCoinPrice {
 model AuraCoinTransaction {
   id          String   @id @default(uuid())
   userId      String
-  type        String   // "BUY" or "SELL"
+  type        String // "BUY" or "SELL"
   coinAmount  Float
   moneyAmount Int
   price       Float
   fee         Int
   createdAt   DateTime @default(now())
-  
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
+  @@index([createdAt])
+}
+
+// Aura Coin Position (Leveraged Trading)
+model AuraCoinPosition {
+  id           String    @id @default(uuid())
+  userId       String
+  type         String // "LONG" or "SHORT"
+  leverage     Int // 1 to 10
+  entryPrice   Float // Price when position was opened
+  coinAmount   Float // Notional value in coins
+  marginAmount Int // Collateral deposited (money)
+  isOpen       Boolean   @default(true)
+  closedAt     DateTime?
+  exitPrice    Float? // Price when position was closed
+  pnl          Int? // Profit/Loss when closed
+  liquidated   Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isOpen])
   @@index([createdAt])
 }
 
@@ -390,7 +414,7 @@ model SolarisPrice {
   price     Float
   volume    Float    @default(0)
   createdAt DateTime @default(now())
-  
+
   @@index([createdAt])
 }
 
@@ -398,15 +422,15 @@ model SolarisPrice {
 model SolarisTransaction {
   id          String   @id @default(uuid())
   userId      String
-  type        String   // "BUY" or "SELL"
+  type        String // "BUY" or "SELL"
   coinAmount  Float
   moneyAmount Int
   price       Float
   fee         Int
   createdAt   DateTime @default(now())
-  
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([createdAt])
 }
@@ -417,7 +441,7 @@ model ZenithPrice {
   price     Float
   volume    Float    @default(0)
   createdAt DateTime @default(now())
-  
+
   @@index([createdAt])
 }
 
@@ -425,15 +449,15 @@ model ZenithPrice {
 model ZenithTransaction {
   id          String   @id @default(uuid())
   userId      String
-  type        String   // "BUY" or "SELL"
+  type        String // "BUY" or "SELL"
   coinAmount  Float
   moneyAmount Int
   price       Float
   fee         Int
   createdAt   DateTime @default(now())
-  
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([createdAt])
 }
@@ -444,7 +468,7 @@ model RiftPrice {
   price     Float
   volume    Float    @default(0)
   createdAt DateTime @default(now())
-  
+
   @@index([createdAt])
 }
 
@@ -452,51 +476,51 @@ model RiftPrice {
 model RiftTransaction {
   id          String   @id @default(uuid())
   userId      String
-  type        String   // "BUY" or "SELL"
+  type        String // "BUY" or "SELL"
   coinAmount  Float
   moneyAmount Int
   price       Float
   fee         Int
   createdAt   DateTime @default(now())
-  
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([createdAt])
 }
 
 // Bug Report
 model BugReport {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   userId      String
   title       String
   description String
-  status      String   @default("PENDING") // PENDING, DONE
-  createdAt   DateTime @default(now())
+  status      String    @default("PENDING") // PENDING, DONE
+  createdAt   DateTime  @default(now())
   resolvedAt  DateTime?
-  
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([status])
   @@index([createdAt])
 }
 
 // Suggestion
 model Suggestion {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   userId      String
   title       String
   description String
   imageUrl    String?
-  status      String   @default("PENDING") // PENDING, DONE
-  createdAt   DateTime @default(now())
+  status      String    @default("PENDING") // PENDING, DONE
+  createdAt   DateTime  @default(now())
   resolvedAt  DateTime?
-  
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  votes       SuggestionVote[]
-  comments    SuggestionComment[]
-  ratings     SuggestionRating[]
-  
+
+  user     User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  votes    SuggestionVote[]
+  comments SuggestionComment[]
+  ratings  SuggestionRating[]
+
   @@index([status])
   @@index([createdAt])
 }
@@ -509,8 +533,8 @@ model SuggestionComment {
   content      String
   createdAt    DateTime @default(now())
 
-  suggestion   Suggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  suggestion Suggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([suggestionId])
   @@index([createdAt])
@@ -521,11 +545,11 @@ model SuggestionVote {
   id           String   @id @default(uuid())
   suggestionId String
   userId       String
-  value        Int      // 1 for upvote, -1 for downvote
+  value        Int // 1 for upvote, -1 for downvote
   createdAt    DateTime @default(now())
 
-  suggestion   Suggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  suggestion Suggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([suggestionId, userId])
   @@index([suggestionId])
@@ -536,11 +560,11 @@ model SuggestionRating {
   id           String   @id @default(uuid())
   suggestionId String
   userId       String
-  rating       Int      // 1-10
+  rating       Int // 1-10
   createdAt    DateTime @default(now())
 
-  suggestion   Suggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  suggestion Suggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([suggestionId, userId])
   @@index([suggestionId])
@@ -549,9 +573,9 @@ model SuggestionRating {
 // Bomb Party Prompts (precomputed)
 model BombPartyPrompt {
   id         String @id @default(uuid())
-  prompt     String @unique  // e.g., "TH", "ING", "QU"
-  wordCount  Int              // precomputed count of valid words
-  difficulty String           // "easy", "medium", "hard"
+  prompt     String @unique // e.g., "TH", "ING", "QU"
+  wordCount  Int // precomputed count of valid words
+  difficulty String // "easy", "medium", "hard"
   length     Int    @default(2) // prompt length (2 or 3)
 
   @@index([difficulty])
@@ -561,38 +585,38 @@ model BombPartyPrompt {
 
 // Game Settings (configurable values for admin panel)
 model GameSettings {
-  id         String @id @default(uuid())
-  key        String @unique  // e.g., "bombparty_wpp_easy", "bombparty_wpp_medium"
-  value      String          // stored as string, parsed as needed
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(uuid())
+  key       String   @unique // e.g., "bombparty_wpp_easy", "bombparty_wpp_medium"
+  value     String // stored as string, parsed as needed
+  updatedAt DateTime @updatedAt
 }
 
 // Bomb Party Player Stats
 model BombPartyStats {
-  id           String  @id @default(uuid())
-  userId       String  @unique
-  wins         Int     @default(0)
-  losses       Int     @default(0)
-  totalPlayed  Int     @default(0)
-  wordsTyped   Int     @default(0)
-  longestWord  String?
+  id          String  @id @default(uuid())
+  userId      String  @unique
+  wins        Int     @default(0)
+  losses      Int     @default(0)
+  totalPlayed Int     @default(0)
+  wordsTyped  Int     @default(0)
+  longestWord String?
 
-  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // Ban System
 model Ban {
-  id          String    @id @default(uuid())
-  userId      String
-  bannedBy    String    // Admin user ID who issued the ban
-  reason      String
-  type        String    // "TEMPORARY" or "PERMANENT"
-  expiresAt   DateTime? // Null for permanent bans
-  createdAt   DateTime  @default(now())
-  isActive    Boolean   @default(true)
+  id        String    @id @default(uuid())
+  userId    String
+  bannedBy  String // Admin user ID who issued the ban
+  reason    String
+  type      String // "TEMPORARY" or "PERMANENT"
+  expiresAt DateTime? // Null for permanent bans
+  createdAt DateTime  @default(now())
+  isActive  Boolean   @default(true)
 
-  user        User      @relation("BannedUser", fields: [userId], references: [id], onDelete: Cascade)
-  admin       User      @relation("BanIssuer", fields: [bannedBy], references: [id], onDelete: Cascade)
+  user  User @relation("BannedUser", fields: [userId], references: [id], onDelete: Cascade)
+  admin User @relation("BanIssuer", fields: [bannedBy], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([isActive])
@@ -601,17 +625,17 @@ model Ban {
 
 // Activity Log
 model Log {
-  id          String    @id @default(uuid())
-  type        String    // AUTH, CHAT, GAME, ECONOMY, PARTY, SUGGESTION, MARKETPLACE, ADMIN, BAN
-  action      String    // login, logout, register, message, game_complete, transfer, etc.
-  userId      String?   // User who performed the action (nullable for system events)
-  username    String?   // Cached username for display
-  targetId    String?   // Target user/entity ID (for transfers, bans, etc.)
-  targetName  String?   // Cached target name for display
-  details     String?   // JSON string with additional details
-  metadata    String?   // JSON string with extra metadata (amounts, scores, etc.)
-  ipAddress   String?   // IP address if available
-  createdAt   DateTime  @default(now())
+  id         String   @id @default(uuid())
+  type       String // AUTH, CHAT, GAME, ECONOMY, PARTY, SUGGESTION, MARKETPLACE, ADMIN, BAN
+  action     String // login, logout, register, message, game_complete, transfer, etc.
+  userId     String? // User who performed the action (nullable for system events)
+  username   String? // Cached username for display
+  targetId   String? // Target user/entity ID (for transfers, bans, etc.)
+  targetName String? // Cached target name for display
+  details    String? // JSON string with additional details
+  metadata   String? // JSON string with extra metadata (amounts, scores, etc.)
+  ipAddress  String? // IP address if available
+  createdAt  DateTime @default(now())
 
   @@index([type])
   @@index([action])
@@ -621,65 +645,65 @@ model Log {
 
 // Polymarket System
 model PolymarketSuggestion {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   userId      String
   title       String
   description String
   imageUrl    String?
   eventDate   DateTime // Date de réalisation de l'événement
-  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
-  createdAt   DateTime @default(now())
+  status      String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt   DateTime  @default(now())
   reviewedAt  DateTime?
-  reviewedBy  String?  // Admin ID who reviewed
-  
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event       PolymarketEvent? // If approved and converted to event
-  
+  reviewedBy  String? // Admin ID who reviewed
+
+  user  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event PolymarketEvent? // If approved and converted to event
+
   @@index([status])
   @@index([createdAt])
   @@index([userId])
 }
 
 model PolymarketEvent {
-  id            String   @id @default(uuid())
-  suggestionId  String?  @unique // If created from suggestion
-  title         String
-  description   String
-  imageUrl      String?
-  eventDate     DateTime // Date de réalisation de l'événement
-  yesOdds       Float    // Cote pour "Oui" (ex: 1.5 = mise * 1.5 si gagnant)
-  noOdds        Float    // Cote pour "Non" (ex: 2.0 = mise * 2.0 si gagnant)
-  status        String   @default("OPEN") // OPEN, CLOSED, RESOLVED
-  resolution    String?  // "YES" or "NO" when resolved
-  resolvedAt    DateTime?
-  resolvedBy    String?  // Admin ID who resolved
-  createdAt     DateTime @default(now())
-  closedAt      DateTime? // When betting closed (before event date)
-  
-  suggestion    PolymarketSuggestion? @relation(fields: [suggestionId], references: [id], onDelete: SetNull)
-  bets          PolymarketBet[]
-  
+  id           String    @id @default(uuid())
+  suggestionId String?   @unique // If created from suggestion
+  title        String
+  description  String
+  imageUrl     String?
+  eventDate    DateTime // Date de réalisation de l'événement
+  yesOdds      Float // Cote pour "Oui" (ex: 1.5 = mise * 1.5 si gagnant)
+  noOdds       Float // Cote pour "Non" (ex: 2.0 = mise * 2.0 si gagnant)
+  status       String    @default("OPEN") // OPEN, CLOSED, RESOLVED
+  resolution   String? // "YES" or "NO" when resolved
+  resolvedAt   DateTime?
+  resolvedBy   String? // Admin ID who resolved
+  createdAt    DateTime  @default(now())
+  closedAt     DateTime? // When betting closed (before event date)
+
+  suggestion PolymarketSuggestion? @relation(fields: [suggestionId], references: [id], onDelete: SetNull)
+  bets       PolymarketBet[]
+
   @@index([status])
   @@index([eventDate])
   @@index([createdAt])
 }
 
 model PolymarketBet {
-  id          String   @id @default(uuid())
-  userId      String
-  eventId     String
-  prediction  String   // "YES" or "NO"
-  amount      Int      // Mise en money
-  payout      Int?     // Gains calculés après résolution (null si perdu)
-  createdAt   DateTime @default(now())
+  id         String   @id @default(uuid())
+  userId     String
+  eventId    String
+  prediction String // "YES" or "NO"
+  amount     Int // Mise en money
+  payout     Int? // Gains calculés après résolution (null si perdu)
+  createdAt  DateTime @default(now())
 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event       PolymarketEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event PolymarketEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, eventId]) // Un seul pari par utilisateur par événement
   @@index([userId])
   @@index([eventId])
   @@index([createdAt])
-  @@unique([userId, eventId]) // Un seul pari par utilisateur par événement
 }
 
 // ============================================
@@ -688,15 +712,15 @@ model PolymarketBet {
 
 // Painting (Artwork definition by admin)
 model Painting {
-  id          String    @id @default(uuid())
+  id          String   @id @default(uuid())
   title       String
   artist      String
   description String?
   imageUrl    String
-  isVaulted   Boolean   @default(false)  // Removed from acquisition pool
-  createdAt   DateTime  @default(now())
+  isVaulted   Boolean  @default(false) // Removed from acquisition pool
+  createdAt   DateTime @default(now())
 
-  copies      PaintingCopy[]
+  copies PaintingCopy[]
 
   @@index([isVaulted])
 }
@@ -704,17 +728,17 @@ model Painting {
 // PaintingCopy (Individual copy with rarity)
 // Each painting has 6 copies: 3 common, 2 rare, 1 golden
 model PaintingCopy {
-  id          String    @id @default(uuid())
-  paintingId  String
-  rarity      String    // COMMON, RARE, GOLDEN
-  copyNumber  Int       // 1, 2, or 3 for common; 1 or 2 for rare; 1 for golden
-  ownerId     String?   // null if not yet acquired
-  inGallery   Boolean   @default(false)  // true if displayed in owner's gallery
-  galleryPosition Int?  // Position in gallery (0-19)
-  acquiredAt  DateTime?
+  id              String    @id @default(uuid())
+  paintingId      String
+  rarity          String // COMMON, RARE, GOLDEN
+  copyNumber      Int // 1, 2, or 3 for common; 1 or 2 for rare; 1 for golden
+  ownerId         String? // null if not yet acquired
+  inGallery       Boolean   @default(false) // true if displayed in owner's gallery
+  galleryPosition Int? // Position in gallery (0-19)
+  acquiredAt      DateTime?
 
-  painting    Painting  @relation(fields: [paintingId], references: [id], onDelete: Cascade)
-  owner       User?     @relation("OwnedPaintings", fields: [ownerId], references: [id], onDelete: SetNull)
+  painting      Painting       @relation(fields: [paintingId], references: [id], onDelete: Cascade)
+  owner         User?          @relation("OwnedPaintings", fields: [ownerId], references: [id], onDelete: SetNull)
   marketListing MarketListing? @relation("PaintingListing")
 
   @@unique([paintingId, rarity, copyNumber])
@@ -727,22 +751,22 @@ model PaintingCopy {
 model UserGallery {
   id              String    @id @default(uuid())
   userId          String    @unique
-  backgroundColor String    @default("#1a1a2e")  // Gallery wall color
-  lastNpcVisit    DateTime?  // Last time NPCs visited
+  backgroundColor String    @default("#1a1a2e") // Gallery wall color
+  lastNpcVisit    DateTime? // Last time NPCs visited
 
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // Art Package Purchase Record (tracks daily packages)
 model ArtPackagePurchase {
-  id          String    @id @default(uuid())
-  userId      String
-  packageTier Int       // 1, 2, or 3
-  cost        Int
-  paintingCopyId String?  // The copy received
-  purchasedAt DateTime  @default(now())
+  id             String   @id @default(uuid())
+  userId         String
+  packageTier    Int // 1, 2, or 3
+  cost           Int
+  paintingCopyId String? // The copy received
+  purchasedAt    DateTime @default(now())
 
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([purchasedAt])
@@ -754,25 +778,25 @@ model ArtPackagePurchase {
 
 // Market Listing (for paintings and items)
 model MarketListing {
-  id              String    @id @default(uuid())
-  sellerId        String
-  listingType     String    // PAINTING, ITEM
-  price           Int       // Price in money
-  createdAt       DateTime  @default(now())
-  soldAt          DateTime?
-  buyerId         String?   // User who bought (null if not sold)
+  id          String    @id @default(uuid())
+  sellerId    String
+  listingType String // PAINTING, ITEM
+  price       Int // Price in money
+  createdAt   DateTime  @default(now())
+  soldAt      DateTime?
+  buyerId     String? // User who bought (null if not sold)
 
   // For PAINTING type
-  paintingCopyId  String?   @unique
-  paintingCopy    PaintingCopy? @relation("PaintingListing", fields: [paintingCopyId], references: [id], onDelete: Cascade)
+  paintingCopyId String?       @unique
+  paintingCopy   PaintingCopy? @relation("PaintingListing", fields: [paintingCopyId], references: [id], onDelete: Cascade)
 
   // For ITEM type
-  userItemId      String?   @unique
-  userItem        UserItem? @relation(fields: [userItemId], references: [id], onDelete: Cascade)
-  quantity        Int       @default(1)  // For items that can stack
+  userItemId String?   @unique
+  userItem   UserItem? @relation(fields: [userItemId], references: [id], onDelete: Cascade)
+  quantity   Int       @default(1) // For items that can stack
 
-  seller          User      @relation("MarketSeller", fields: [sellerId], references: [id], onDelete: Cascade)
-  buyer           User?     @relation("MarketBuyer", fields: [buyerId], references: [id], onDelete: SetNull)
+  seller User  @relation("MarketSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  buyer  User? @relation("MarketBuyer", fields: [buyerId], references: [id], onDelete: SetNull)
 
   @@index([sellerId])
   @@index([listingType])

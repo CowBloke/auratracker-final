@@ -21,7 +21,6 @@
 - plsuieurs périodes auracoin
 - parier que ça va baisser
 - jeux a 2
-- effet echelle auracoin
 - resend
 - FIX NFT
 - cote qui change en fonctiion des inestissements

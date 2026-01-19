@@ -240,7 +240,84 @@ export const auraCoinApi = {
     api.get<{ transactions: AuraCoinTransaction[] }>('/auracoin/transactions/me', { params }),
   getAllTransactions: (params?: { limit?: number; offset?: number }) =>
     api.get<{ transactions: AuraCoinTransaction[] }>('/auracoin/transactions/all', { params }),
+  openPosition: (type: 'LONG' | 'SHORT', leverage: number, marginAmount: number) =>
+    api.post<{
+      success: boolean;
+      position: {
+        id: string;
+        type: string;
+        leverage: number;
+        entryPrice: number;
+        coinAmount: number;
+        marginAmount: number;
+        createdAt: string;
+      };
+      newBalance: { money: number };
+    }>('/auracoin/position/open', { type, leverage, marginAmount }),
+  closePosition: (positionId: string) =>
+    api.post<{
+      success: boolean;
+      position: {
+        id: string;
+        pnl: number;
+        exitPrice: number;
+        closedAt: string;
+      };
+      newBalance: { money: number };
+    }>(`/auracoin/position/close/${positionId}`),
+  getOpenPositions: () =>
+    api.get<{
+      positions: Array<{
+        id: string;
+        type: string;
+        leverage: number;
+        entryPrice: number;
+        coinAmount: number;
+        marginAmount: number;
+        currentPrice: number;
+        pnl: number;
+        currentMargin: number;
+        marginRatio: number;
+        pnlPercentage: number;
+        createdAt: string;
+      }>;
+    }>('/auracoin/positions/open'),
+  getClosedPositions: (params?: { limit?: number; offset?: number }) =>
+    api.get<{
+      positions: Array<{
+        id: string;
+        type: string;
+        leverage: number;
+        entryPrice: number;
+        exitPrice: number | null;
+        coinAmount: number;
+        marginAmount: number;
+        pnl: number | null;
+        liquidated: boolean;
+        createdAt: string;
+        closedAt: string | null;
+      }>;
+    }>('/auracoin/positions/closed', { params }),
 };
+
+export interface AuraCoinPosition {
+  id: string;
+  type: 'LONG' | 'SHORT';
+  leverage: number;
+  entryPrice: number;
+  coinAmount: number;
+  marginAmount: number;
+  currentPrice?: number;
+  pnl?: number;
+  currentMargin?: number;
+  marginRatio?: number;
+  pnlPercentage?: number;
+  isOpen: boolean;
+  liquidated: boolean;
+  createdAt: string;
+  closedAt?: string | null;
+  exitPrice?: number | null;
+}
 
 // Solaris API
 export interface SolarisPriceHistory {
