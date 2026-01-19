@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { gamesApi } from '../services/api';
-import { Play, RotateCcw, Trophy, X } from 'lucide-react';
+import { Play, RotateCcw, Trophy, X, Palette } from 'lucide-react';
 
 // ============================================
 // GAME CONSTANTS (from old implementation)
@@ -31,6 +31,31 @@ const PLAYER_IMAGE_SRC = '/assets/doodle-player.png';
 // Timing
 const DISAPPEARING_PLATFORM_FADE_TIME = 1000;
 const BROKEN_PLATFORM_FADE_TIME = 500;
+
+// ============================================
+// SKINS
+// ============================================
+export type SkinId = 'default' | 'red' | 'blue' | 'green' | 'yellow' | 'purple' | 'orange' | 'pink';
+
+export interface Skin {
+  id: SkinId;
+  name: string;
+  color: string;
+  eyeColor: string;
+}
+
+export const SKINS: Skin[] = [
+  { id: 'default', name: 'Classique', color: '#111827', eyeColor: '#ffffff' },
+  { id: 'red', name: 'Rouge', color: '#ef4444', eyeColor: '#ffffff' },
+  { id: 'blue', name: 'Bleu', color: '#3b82f6', eyeColor: '#ffffff' },
+  { id: 'green', name: 'Vert', color: '#22c55e', eyeColor: '#ffffff' },
+  { id: 'yellow', name: 'Jaune', color: '#eab308', eyeColor: '#000000' },
+  { id: 'purple', name: 'Violet', color: '#a855f7', eyeColor: '#ffffff' },
+  { id: 'orange', name: 'Orange', color: '#f97316', eyeColor: '#ffffff' },
+  { id: 'pink', name: 'Rose', color: '#ec4899', eyeColor: '#ffffff' },
+];
+
+const SKIN_STORAGE_KEY = 'doodle-jump-skin';
 
 // ============================================
 // TYPES
@@ -122,6 +147,11 @@ export default function DoodleJump() {
   const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [playerImageLoaded, setPlayerImageLoaded] = useState(false);
+  const [selectedSkin, setSelectedSkin] = useState<SkinId>(() => {
+    const saved = localStorage.getItem(SKIN_STORAGE_KEY);
+    return (saved as SkinId) || 'default';
+  });
+  const [showSkinSelector, setShowSkinSelector] = useState(false);
 
   // Fetch stats and leaderboard on mount
   useEffect(() => {
@@ -140,6 +170,15 @@ export default function DoodleJump() {
       playerImageRef.current = null;
     };
   }, []);
+
+  // Save skin selection to localStorage
+  useEffect(() => {
+    localStorage.setItem(SKIN_STORAGE_KEY, selectedSkin);
+  }, [selectedSkin]);
+
+  const currentSkin = useMemo(() => {
+    return SKINS.find(s => s.id === selectedSkin) || SKINS[0];
+  }, [selectedSkin]);
 
   const fetchStats = async () => {
     try {
@@ -543,7 +582,12 @@ export default function DoodleJump() {
     }
 
     const playerScreenY = CANVAS_HEIGHT - positionRef.current.y - CHARACTER_HEIGHT;
-    if (playerImageLoaded && playerImageRef.current) {
+    
+    // Draw player with selected skin
+    const skin = SKINS.find(s => s.id === selectedSkin) || SKINS[0];
+    
+    if (playerImageLoaded && playerImageRef.current && selectedSkin === 'default') {
+      // Use original image only for default skin
       ctx.save();
       if (facingLeftRef.current) {
         ctx.translate(positionRef.current.x + CHARACTER_WIDTH, playerScreenY);
@@ -560,8 +604,8 @@ export default function DoodleJump() {
       }
       ctx.restore();
     } else {
-      // Draw fallback player (ball)
-      ctx.fillStyle = colors.player;
+      // Draw colored player (ball with skin color)
+      ctx.fillStyle = skin.color;
       ctx.beginPath();
       ctx.arc(
         positionRef.current.x + CHARACTER_WIDTH / 2,
@@ -573,7 +617,7 @@ export default function DoodleJump() {
       ctx.fill();
 
       // Draw eyes
-      ctx.fillStyle = colors.background;
+      ctx.fillStyle = skin.eyeColor;
       const eyeOffsetX = facingLeftRef.current ? -4 : 4;
       ctx.beginPath();
       ctx.arc(positionRef.current.x + CHARACTER_WIDTH / 2 - 6 + eyeOffsetX, playerScreenY + CHARACTER_HEIGHT / 2 - 5, 4, 0, Math.PI * 2);
@@ -583,7 +627,7 @@ export default function DoodleJump() {
 
     // Continue loop
     animationRef.current = requestAnimationFrame(gameLoop);
-  }, [handleGameOver, generateNewPlatforms, colors, playerImageLoaded]);
+  }, [handleGameOver, generateNewPlatforms, colors, playerImageLoaded, selectedSkin]);
 
   // ============================================
   // INPUT HANDLING
@@ -627,6 +671,28 @@ export default function DoodleJump() {
     return () => cancelAnimationFrame(animationRef.current);
   }, [started, gameOver, gameLoop]);
 
+  // Close skin selector when game starts
+  useEffect(() => {
+    if (started) {
+      setShowSkinSelector(false);
+    }
+  }, [started]);
+
+  // Close skin selector when clicking outside
+  useEffect(() => {
+    if (!showSkinSelector) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('[data-skin-selector]')) {
+        setShowSkinSelector(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showSkinSelector]);
+
   // ============================================
   // RENDER
   // ============================================
@@ -646,9 +712,59 @@ export default function DoodleJump() {
               Doodle Jump
             </h1>
           </div>
-          <div className="text-right text-sm text-muted-foreground tabular-nums">
-            <div className="text-3xl font-light text-foreground">{score.toLocaleString()}</div>
-            <div>Record: {highScore.toLocaleString()}</div>
+          <div className="flex items-center gap-4">
+            <div className="relative" data-skin-selector>
+              <button
+                onClick={() => setShowSkinSelector(!showSkinSelector)}
+                disabled={started && !gameOver}
+                className="flex items-center gap-2 px-4 py-2 border border-border/50 rounded-lg hover:bg-muted/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Choisir un skin"
+              >
+                <Palette className="w-4 h-4" />
+                <span className="text-sm">Skin</span>
+              </button>
+              
+              {showSkinSelector && !started && (
+                <div className="absolute top-full right-0 mt-2 bg-card border border-border/50 rounded-lg shadow-lg p-4 z-50 w-[320px]" data-skin-selector>
+                  <h3 className="text-sm font-semibold mb-3">Choisir un skin</h3>
+                  <div className="grid grid-cols-4 gap-2">
+                    {SKINS.map((skin) => (
+                      <button
+                        key={skin.id}
+                        onClick={() => {
+                          setSelectedSkin(skin.id);
+                          setShowSkinSelector(false);
+                        }}
+                        className={`relative p-2 rounded-lg border-2 transition-all hover:scale-105 ${
+                          selectedSkin === skin.id
+                            ? 'border-foreground bg-muted ring-2 ring-foreground/20'
+                            : 'border-border/30 hover:border-border/60'
+                        }`}
+                        title={skin.name}
+                      >
+                        <div
+                          className="w-full h-10 rounded-full flex items-center justify-center"
+                          style={{ backgroundColor: skin.color }}
+                        >
+                          <div
+                            className="w-2 h-2 rounded-full"
+                            style={{
+                              backgroundColor: skin.eyeColor,
+                              boxShadow: `-5px 0 0 0 ${skin.eyeColor}, 5px 0 0 0 ${skin.eyeColor}`,
+                            }}
+                          />
+                        </div>
+                        <span className="text-xs mt-1.5 block text-center text-muted-foreground">{skin.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="text-right text-sm text-muted-foreground tabular-nums">
+              <div className="text-3xl font-light text-foreground">{score.toLocaleString()}</div>
+              <div>Record: {highScore.toLocaleString()}</div>
+            </div>
           </div>
         </div>
       </header>
