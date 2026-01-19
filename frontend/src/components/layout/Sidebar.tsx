@@ -22,7 +22,9 @@ import {
   Search,
   Ticket,
   History,
-  BarChart3
+  BarChart3,
+  Image,
+  ShoppingCart,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -57,7 +59,9 @@ interface SearchUser {
 
 const navItems = [
   { to: '/leaderboards', label: 'Classement', icon: Trophy },
-  { to: '/marketplace', label: 'Marché', icon: Store },
+  { to: '/gallery', label: 'Galerie', icon: Image },
+  { to: '/market', label: 'Marché', icon: ShoppingCart },
+  { to: '/marketplace', label: 'NFT', icon: Store },
   { to: '/party', label: 'Party', icon: Users },
   { to: '/clans', label: 'Clans', icon: Flag },
   { to: '/inventory', label: 'Inventaire', icon: Backpack },
@@ -69,6 +73,7 @@ const navItems = [
 
 const adminItems = [
   { to: '/admin', label: 'Administration', icon: Shield },
+  { to: '/admin/gallery', label: 'Galerie (Admin)', icon: Image },
 ];
 
 const gameItems = [
@@ -350,7 +355,8 @@ export default function AppSidebar() {
 
             {/* Admin items (only for admins) */}
             {user?.isAdmin && adminItems.map((item) => {
-              const isActive = location.pathname === item.to;
+              const isActive = location.pathname === item.to ||
+                (item.to !== '/admin' && location.pathname.startsWith(item.to));
               const AdminIcon = item.icon;
 
               return (
