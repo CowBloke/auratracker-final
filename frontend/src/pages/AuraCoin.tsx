@@ -118,14 +118,17 @@ export default function AuraCoin() {
     ? ((currentPrice - priceHistory[0].price) / priceHistory[0].price) * 100
     : 0;
   
+  // Minimum fee constant (matches backend)
+  const MIN_FEE = 1;
+  
   // Calculate estimates
   const buyMoneyAmount = parseFloat(buyAmount) || 0;
-  const buyFee = Math.floor(buyMoneyAmount * feePercentage);
+  const buyFee = Math.max(MIN_FEE, Math.floor(buyMoneyAmount * feePercentage));
   const buyCoinsEstimate = (buyMoneyAmount - buyFee) / currentPrice;
   
   const sellCoinAmount = parseFloat(sellAmount) || 0;
   const sellGrossAmount = Math.floor(sellCoinAmount * currentPrice);
-  const sellFee = Math.floor(sellGrossAmount * feePercentage);
+  const sellFee = Math.max(MIN_FEE, Math.floor(sellGrossAmount * feePercentage));
   const sellNetAmount = sellGrossAmount - sellFee;
 
 

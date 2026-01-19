@@ -28,6 +28,7 @@ import uploadsRoutes from './routes/uploads.js';
 import maintenanceRoutes from './routes/maintenance.js';
 import clansRoutes from './routes/clans.js';
 import polymarketRoutes from './routes/polymarket.js';
+import passRoutes from './routes/pass.js';
 
 // Socket handlers
 import { setupChatHandlers } from './socket/chat.js';
@@ -85,6 +86,7 @@ app.use('/api/uploads', uploadsRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/clans', clansRoutes);
 app.use('/api/polymarket', polymarketRoutes);
+app.use('/api/pass', passRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

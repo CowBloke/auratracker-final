@@ -451,6 +451,7 @@ router.get('/users', authMiddleware, requireAdmin, async (req: AuthRequest, res:
         email: true,
         aura: true,
         money: true,
+        auraCoinBalance: true,
         isAdmin: true,
         isChatMuted: true,
         dailyAuraGiven: true,
@@ -475,10 +476,10 @@ router.get('/users', authMiddleware, requireAdmin, async (req: AuthRequest, res:
 router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { aura, money, dailyAuraLimit, username, password, isChatMuted } = req.body;
+    const { aura, money, auraCoinBalance, dailyAuraLimit, username, password, isChatMuted } = req.body;
 
     // Build update data
-    const updateData: { aura?: number; money?: number; dailyAuraLimit?: number; username?: string; passwordHash?: string; isChatMuted?: boolean } = {};
+    const updateData: { aura?: number; money?: number; auraCoinBalance?: number; dailyAuraLimit?: number; username?: string; passwordHash?: string; isChatMuted?: boolean } = {};
 
     if (username !== undefined) {
       if (typeof username !== 'string') {
@@ -507,6 +508,9 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
     if (money !== undefined) {
       updateData.money = parseInt(money);
     }
+    if (auraCoinBalance !== undefined) {
+      updateData.auraCoinBalance = parseFloat(auraCoinBalance);
+    }
     if (dailyAuraLimit !== undefined) {
       updateData.dailyAuraLimit = parseInt(dailyAuraLimit);
     }
@@ -530,7 +534,7 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
     // Get old user data for logging
     const oldUser = await prisma.user.findUnique({
       where: { id },
-      select: { username: true, aura: true, money: true, dailyAuraLimit: true, isChatMuted: true },
+      select: { username: true, aura: true, money: true, auraCoinBalance: true, dailyAuraLimit: true, isChatMuted: true },
     });
 
     const user = await prisma.user.update({
@@ -542,6 +546,7 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
         email: true,
         aura: true,
         money: true,
+        auraCoinBalance: true,
         isAdmin: true,
         isChatMuted: true,
         dailyAuraGiven: true,
@@ -565,6 +570,7 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
         username: oldUser?.username,
         aura: oldUser?.aura,
         money: oldUser?.money,
+        auraCoinBalance: oldUser?.auraCoinBalance,
         dailyAuraLimit: oldUser?.dailyAuraLimit,
         isChatMuted: oldUser?.isChatMuted,
       },
