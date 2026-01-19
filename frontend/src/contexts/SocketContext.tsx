@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Socket } from 'socket.io-client';
 import { initSocket, connectSocket, disconnectSocket, chatEvents, partyEvents, gameEvents, bombPartyEvents, pokerEvents, petitBacEvents, monopolyEvents } from '../services/socket';
+import { storeBanInfo } from '../services/ban';
 import { useAuth } from './AuthContext';
 
 interface ChatMessage {
@@ -505,7 +506,7 @@ interface SocketContextType {
 const SocketContext = createContext<SocketContextType | null>(null);
 
 export function SocketProvider({ children }: { children: React.ReactNode }) {
-  const { user, updateBalance } = useAuth();
+  const { user, updateBalance, logout } = useAuth();
   const navigate = useNavigate();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [connected, setConnected] = useState(false);
@@ -573,6 +574,21 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       s.on('disconnect', () => {
         setConnected(false);
       });
+
+      const handleBan = (data: { message?: string; ban?: { reason?: string; type?: string; expiresAt?: string | null } }) => {
+        storeBanInfo({
+          reason: data?.ban?.reason ?? null,
+          type: (data?.ban?.type as 'TEMPORARY' | 'PERMANENT' | null) ?? null,
+          expiresAt: data?.ban?.expiresAt ?? null,
+          message: data?.message,
+        });
+        logout();
+        disconnectSocket();
+        navigate('/banned', { replace: true });
+      };
+
+      s.on('ban:enforced', handleBan);
+      s.on('ban:active', handleBan);
 
       // Chat events
       s.on('chat:history', (data: { messages: ChatMessage[] }) => {
@@ -1185,7 +1201,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         s.removeAllListeners();
       };
     }
-  }, [user, updateBalance, navigate]);
+  }, [user, updateBalance, logout, navigate]);
 
   const sendMessage = (message: string, replyToId?: string | null) => {
     if (user) {

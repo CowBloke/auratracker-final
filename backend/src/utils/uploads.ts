@@ -1,5 +1,6 @@
 export const isUploadPath = (value?: string | null) => {
-  return typeof value === 'string' && value.startsWith('/uploads/');
+  if (typeof value !== 'string') return false;
+  return value.startsWith('/uploads/') || value.startsWith('/api/uploads/');
 };
 
 export const isRemoteImageUrl = (value?: string | null) => {

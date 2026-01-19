@@ -67,7 +67,15 @@ export const authMiddleware = async (
         ? `Your account has been permanently banned. Reason: ${activeBan.reason}`
         : `Your account is temporarily banned until ${activeBan.expiresAt?.toISOString()}. Reason: ${activeBan.reason}`;
 
-      return res.status(403).json({ error: message, banned: true });
+      return res.status(403).json({
+        error: message,
+        banned: true,
+        ban: {
+          reason: activeBan.reason,
+          type: activeBan.type,
+          expiresAt: activeBan.expiresAt ? activeBan.expiresAt.toISOString() : null,
+        },
+      });
     }
 
     req.user = user;
