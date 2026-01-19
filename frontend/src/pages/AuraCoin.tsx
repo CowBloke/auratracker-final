@@ -34,7 +34,6 @@ export default function AuraCoin() {
   const [leverage, setLeverage] = useState(1);
   const [marginAmount, setMarginAmount] = useState('');
   const [openPositions, setOpenPositions] = useState<AuraCoinPosition[]>([]);
-  const [closedPositions, setClosedPositions] = useState<AuraCoinPosition[]>([]);
   
   const getHoursForPeriod = (period: 'hour' | 'day' | 'week' | 'month') => {
     switch (period) {
@@ -214,9 +213,6 @@ export default function AuraCoin() {
   const marginAmountNum = parseFloat(marginAmount) || 0;
   const notionalValue = marginAmountNum * leverage;
   const coinAmountLeveraged = notionalValue / currentPrice;
-  const estimatedPnL = positionType === 'LONG'
-    ? (currentPrice * 1.1 - currentPrice) * coinAmountLeveraged // +10% example
-    : (currentPrice - currentPrice * 0.9) * coinAmountLeveraged; // -10% example
 
   // Format chart data for Recharts based on time period
   const formatChartTime = (date: Date, period: 'hour' | 'day' | 'week' | 'month') => {
