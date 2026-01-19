@@ -12,7 +12,6 @@
 - plus d'effets objets, objets en quantité limité
 - complet clash
 - animation/événements
-- Webcam page voir les autres que si on active la sienne 
 - messagerie (avec le notifs : par ex nouvelle demande d'adhésion au club)
 - jeux a 2
 - resend
