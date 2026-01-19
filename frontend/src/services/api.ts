@@ -473,6 +473,8 @@ export interface Suggestion {
   upvotes: number;
   downvotes: number;
   score: number;
+  boostedScore?: number;
+  boost?: number;
   userVote: number;
   averageRating: number | null;
   ratingCount: number;

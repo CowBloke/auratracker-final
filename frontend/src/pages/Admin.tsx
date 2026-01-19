@@ -222,6 +222,7 @@ const defaultNftForm: NftFormData = {
 export default function Admin() {
   const { user } = useAuth();
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<{ username: string; aura: number; money: number; dailyAuraLimit: number }>({
@@ -1645,17 +1646,35 @@ export default function Admin() {
           <div className="space-y-6">
           <div className="h-px bg-border" />
           
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher par pseudo..."
+              value={userSearchQuery}
+              onChange={(e) => setUserSearchQuery(e.target.value)}
+              className="pl-9 bg-transparent border-border/50 h-9"
+            />
+          </div>
+          
           {loading ? (
             <div className="flex justify-center py-12">
               <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
             </div>
-          ) : users.length === 0 ? (
-            <p className="text-center text-muted-foreground py-12">
-              Aucun utilisateur
-            </p>
-          ) : (
-            <div className="space-y-0">
-              {users.map((u) => (
+          ) : (() => {
+            const filteredUsers = userSearchQuery.trim()
+              ? users.filter(u => 
+                  u.username.toLowerCase().includes(userSearchQuery.toLowerCase())
+                )
+              : users;
+            
+            return filteredUsers.length === 0 ? (
+              <p className="text-center text-muted-foreground py-12">
+                {userSearchQuery.trim() ? 'Aucun utilisateur trouvé' : 'Aucun utilisateur'}
+              </p>
+            ) : (
+              <div className="space-y-0">
+                {filteredUsers.map((u) => (
                 <div
                   key={u.id}
                   className={cn(
@@ -1874,9 +1893,10 @@ export default function Admin() {
                     </div>
                   )}
                 </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            );
+          })()}
           </div>
         )}
 
