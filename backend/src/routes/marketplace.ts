@@ -80,12 +80,10 @@ router.post('/nfts/purchase', authMiddleware, validate(purchaseNftSchema), async
     return res.status(404).json({ error: 'User not found' });
   }
 
-  const existing = await prisma.userNft.findUnique({
+  const existing = await prisma.userNft.findFirst({
     where: {
-      userId_nftId: {
-        userId: req.user.id,
-        nftId: nft.id,
-      },
+      userId: req.user.id,
+      nftId: nft.id,
     },
   });
 
