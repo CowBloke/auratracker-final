@@ -24,7 +24,6 @@ import Clans from './pages/Clans';
 import BombParty from './pages/BombParty';
 import Poker from './pages/Poker';
 import PetitBac from './pages/PetitBac';
-import Monopoly from './pages/Monopoly';
 import Polymarket from './pages/Polymarket';
 import Admin from './pages/Admin';
 import Rules from './pages/Rules';
@@ -131,7 +130,6 @@ function App() {
         <Route path="games/bomb-party" element={<BombParty />} />
         <Route path="games/poker" element={<Poker />} />
         <Route path="games/petit-bac" element={<PetitBac />} />
-        <Route path="games/monopoly" element={<Monopoly />} />
         <Route path="games/polymarket" element={<Polymarket />} />
         <Route path="polymarket" element={<Polymarket />} />
         <Route path="marketplace" element={<Marketplace />} />
