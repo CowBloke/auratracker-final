@@ -26,14 +26,6 @@ const games = [
     image: '/images/games/petit-bac.jpg',
   },
   {
-    id: 'monopoly',
-    name: 'Monopoly',
-    description: 'Achete, construis et deviens le dernier joueur solvent.',
-    type: 'Party',
-    requiresParty: true,
-    image: '/images/games/monopoly.png',
-  },
-  {
     id: 'clash',
     name: 'Clash',
     description: 'Construis ta base, entraîne des troupes, attaque tes ennemis.',
@@ -81,12 +73,9 @@ export default function Games() {
     if (game.id === 'poker') {
       return '/games/poker';
     }
-    if (game.id === 'petit-bac') {
-      return '/games/petit-bac';
-    }
-    if (game.id === 'monopoly') {
-      return '/games/monopoly';
-    }
+  if (game.id === 'petit-bac') {
+    return '/games/petit-bac';
+  }
     return `/games/${game.id}`;
   };
 

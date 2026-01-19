@@ -29,7 +29,6 @@ const pageMatchers: Array<{ test: (path: string) => boolean; label: string; icon
   { test: (path) => path === '/', label: 'Accueil', icon: Home },
   { test: (path) => path.startsWith('/games/bomb-party'), label: 'Bomb Party', icon: Bomb },
   { test: (path) => path.startsWith('/games/petit-bac'), label: 'Petit Bac', icon: Gamepad2 },
-  { test: (path) => path.startsWith('/games/monopoly'), label: 'Monopoly', icon: Gamepad2 },
   { test: (path) => path.startsWith('/games/doodle-jump'), label: 'Doodle Jump', icon: Gamepad2 },
   { test: (path) => path.startsWith('/games/clash'), label: 'Clash', icon: Swords },
   { test: (path) => path.startsWith('/games/casino'), label: 'Casino', icon: Dice5 },
