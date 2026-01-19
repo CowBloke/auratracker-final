@@ -37,6 +37,7 @@ import Changelog from './pages/Changelog';
 import Maintenance from './pages/Maintenance';
 import Settings from './pages/Settings';
 import Banned from './pages/Banned';
+import Webcam from './pages/Webcam';
 import { maintenanceApi } from './services/api';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -152,6 +153,7 @@ function App() {
         <Route path="suggestions" element={<Suggestions />} />
         <Route path="report-bug" element={<ReportBug />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="webcam" element={<Webcam />} />
       </Route>
     </Routes>
   );

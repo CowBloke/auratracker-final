@@ -178,4 +178,26 @@ export const petitBacEvents = {
   },
 };
 
+// Webcam events
+export const webcamEvents = {
+  start: (userId: string) => {
+    socket?.emit('webcam:start', { userId });
+  },
+  stop: (userId: string) => {
+    socket?.emit('webcam:stop', { userId });
+  },
+  getActiveUsers: () => {
+    socket?.emit('webcam:get-active-users');
+  },
+  offer: (fromUserId: string, toUserId: string, offer: RTCSessionDescriptionInit) => {
+    socket?.emit('webcam:offer', { fromUserId, toUserId, offer });
+  },
+  answer: (fromUserId: string, toUserId: string, answer: RTCSessionDescriptionInit) => {
+    socket?.emit('webcam:answer', { fromUserId, toUserId, answer });
+  },
+  iceCandidate: (fromUserId: string, toUserId: string, candidate: RTCIceCandidateInit) => {
+    socket?.emit('webcam:ice-candidate', { fromUserId, toUserId, candidate });
+  },
+};
+
 export default socket;
