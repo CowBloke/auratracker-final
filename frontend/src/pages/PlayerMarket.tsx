@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { marketApi, galleryApi, marketplaceApi, MarketListing, Painting } from '../services/api';
-import { Loader2, Package, ShoppingCart, Tag, History, X, ImageIcon } from 'lucide-react';
+import { Loader2, Package, ShoppingCart, Tag, X, ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
