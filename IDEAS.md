@@ -1,11 +1,3 @@
-# Jeux : 
-
-## Solo
-
-## Multijoueur
-
-- Polymarket
-
 ## Party
 - Makeitmeme
 - bataille navale
@@ -28,9 +20,8 @@
 - azerty chat lettres a quon peut pas mettre 
 - plsuieurs périodes auracoin
 - parier que ça va baisser
-- temp ban
 - jeux a 2
 - pertes casino
-- marché 
-- effet echelle
+- marché perso
+- effet echelle auracoin
 - resend
