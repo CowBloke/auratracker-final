@@ -5,7 +5,6 @@ import ChatBubble from '../chat/ChatBubble';
 import BombPartyJoinPrompt from '../game/BombPartyJoinPrompt';
 import PokerJoinPrompt from '../game/PokerJoinPrompt';
 import PetitBacJoinPrompt from '../game/PetitBacJoinPrompt';
-import MonopolyJoinPrompt from '../game/MonopolyJoinPrompt';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocket } from '@/contexts/SocketContext';
@@ -44,7 +43,6 @@ export default function Layout() {
     deleteParty, 
     bombPartyGame, 
     petitBacGame, 
-    monopolyGame, 
     sendMessage 
   } = useSocket();
   const location = useLocation();
@@ -60,9 +58,7 @@ export default function Layout() {
     ? `Bomb Party - Round ${bombPartyGame.round}`
     : petitBacGame
       ? `Petit Bac - Manche ${petitBacGame.round}/${petitBacGame.maxRounds}`
-      : monopolyGame
-        ? `Monopoly - Tour ${monopolyGame.turnNumber}`
-        : 'En attente';
+      : 'En attente';
   const inviteLabel = currentParty?.name ? `Rejoins ${currentParty.name}` : 'Rejoins ma party';
   const inviteVisibility = currentParty?.isPublic ? 'public' : 'private';
 
@@ -198,9 +194,7 @@ export default function Layout() {
                                             ? (petitBacGame.players.find((p) => p.userId === member.userId)?.submitted
                                                 ? "bg-green-500"
                                                 : "bg-yellow-500")
-                                            : monopolyGame
-                                              ? (monopolyGame.currentPlayerId === member.userId ? "bg-yellow-500" : "bg-green-500")
-                                              : "bg-green-500"
+                                            : "bg-green-500"
                                       )}
                                     />
                                     <span
@@ -251,17 +245,6 @@ export default function Layout() {
                                   Rejoindre
                                 </Link>
                               )}
-                              {monopolyGame && location.pathname !== '/games/monopoly' && (
-                                <Link
-                                  to="/games/monopoly"
-                                  onClick={() => setShowParty(false)}
-                                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors rounded"
-                                >
-                                  <Gamepad2 className="h-3 w-3" />
-                                  Rejoindre
-                                </Link>
-                              )}
-
                               {/* Leave or delete */}
                               {isLeader ? (
                                 <button
@@ -391,7 +374,6 @@ export default function Layout() {
         <BombPartyJoinPrompt />
         <PokerJoinPrompt />
         <PetitBacJoinPrompt />
-        <MonopolyJoinPrompt />
       </div>
     </ChatSidebarProvider>
   );
