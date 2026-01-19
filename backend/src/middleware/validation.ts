@@ -90,6 +90,17 @@ export const displayNftSchema = z.object({
   userNftId: z.string().uuid().nullable().optional(),
 });
 
+// Admin rare actions
+export const adminRareActionSchema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('chat_clear') }),
+  z.object({ action: z.literal('deploy') }),
+  z.object({
+    action: z.literal('reset_extreme_aura'),
+    threshold: z.number().int().min(1).optional(),
+  }),
+  z.object({ action: z.literal('nft_refund_all') }),
+]);
+
 // Game schemas
 export const gameCompleteSchema = z.object({
   score: z.number().int().min(0),

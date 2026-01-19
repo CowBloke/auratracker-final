@@ -125,6 +125,7 @@ const ACTION_LABELS: Record<string, string> = {
   badge_create: 'Badge créé',
   badge_assign: 'Badge attribué',
   badge_remove: 'Badge retiré',
+  nft_refund_all: 'NFT remboursés',
   // Ban
   ban_create: 'Bannissement créé',
   ban_remove: 'Bannissement levé',
@@ -354,6 +355,8 @@ export default function Admin() {
   // Reset extreme aura state
   const [resettingAura, setResettingAura] = useState(false);
   const [resetAuraResult, setResetAuraResult] = useState<{ success: boolean; message: string; usersReset: number; users: { id: string; username: string; oldAura: string }[] } | null>(null);
+  const [refundingNfts, setRefundingNfts] = useState(false);
+  const [refundNftsResult, setRefundNftsResult] = useState<{ success: boolean; message: string; totalRefunded: number; usersRefunded: number; userNftsDeleted: number; nftsDeleted: number } | null>(null);
 
   const toggleLogExpand = (logId: string) => {
     setExpandedLogIds(prev => {
@@ -760,6 +763,32 @@ export default function Admin() {
       showMessage('error', 'Erreur lors de la réinitialisation');
     } finally {
       setResettingAura(false);
+    }
+  };
+
+  const refundAllNfts = async () => {
+    try {
+      setRefundingNfts(true);
+      setRefundNftsResult(null);
+      const res = await adminApi.refundAllNfts();
+      setRefundNftsResult(res.data);
+      showMessage('success', res.data.message);
+      fetchNfts();
+      fetchUsers();
+    } catch (error: unknown) {
+      console.error('Refund NFTs failed:', error);
+      const errorData = (error as { response?: { data?: { message?: string } } })?.response?.data;
+      setRefundNftsResult({
+        success: false,
+        message: errorData?.message || 'Erreur lors du remboursement des NFTs',
+        totalRefunded: 0,
+        usersRefunded: 0,
+        userNftsDeleted: 0,
+        nftsDeleted: 0,
+      });
+      showMessage('error', 'Erreur lors du remboursement des NFTs');
+    } finally {
+      setRefundingNfts(false);
     }
   };
 
@@ -3126,6 +3155,80 @@ export default function Admin() {
                   <strong>Note:</strong> Les modifications des seuils WPP prendront effet immédiatement pour les nouvelles parties.
                   Pour régénérer les prompts avec les nouveaux seuils, exécutez <code className="bg-muted px-1 rounded">npm run db:seed-bombparty</code> dans le backend.
                 </p>
+              </div>
+
+              {/* NFT Refund Section */}
+              <div className="space-y-4 pt-8 border-t border-border/30">
+                <h3 className="text-lg font-medium">Supprimer tous les NFTs et rembourser</h3>
+                <p className="text-sm text-muted-foreground">
+                  Supprime tous les NFTs (catalogue et inventaires) et rembourse le prix d'achat à chaque joueur.
+                </p>
+
+                <div className="flex items-center gap-4">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        disabled={refundingNfts}
+                        className="border-red-500/50 text-red-500 hover:bg-red-500/10"
+                      >
+                        {refundingNfts ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Remboursement en cours...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Rembourser et supprimer
+                          </>
+                        )}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                          <AlertTriangle className="h-5 w-5 text-red-500" />
+                          Supprimer tous les NFTs ?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Cette action supprime tous les NFTs du catalogue et des inventaires, puis rembourse les joueurs. Cette action est irréversible.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={refundAllNfts}
+                          className="bg-red-500 hover:bg-red-600"
+                        >
+                          Supprimer et rembourser
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+
+                {refundNftsResult && (
+                  <div className={cn(
+                    "p-4 border rounded-lg space-y-2",
+                    refundNftsResult.success
+                      ? "border-green-500/50 bg-green-500/10"
+                      : "border-red-500/50 bg-red-500/10"
+                  )}>
+                    <p className={cn(
+                      "text-sm font-medium",
+                      refundNftsResult.success ? "text-green-400" : "text-red-400"
+                    )}>
+                      {refundNftsResult.success ? 'Remboursement réussi' : 'Échec du remboursement'}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{refundNftsResult.message}</p>
+                    {refundNftsResult.success && (
+                      <div className="text-xs text-muted-foreground">
+                        {refundNftsResult.usersRefunded} utilisateur(s) remboursé(s) • {refundNftsResult.userNftsDeleted} NFT(s) retiré(s) • {refundNftsResult.nftsDeleted} NFT(s) supprimé(s) • {refundNftsResult.totalRefunded} $ remboursés
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Reset Extreme Aura Section */}
