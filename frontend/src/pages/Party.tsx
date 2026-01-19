@@ -37,12 +37,6 @@ const multiplayerGames = [
     description: 'Joue une table entre amis, blindes et stack personnalisables.',
     type: 'Party',
   },
-  {
-    id: 'monopoly',
-    name: 'Monopoly',
-    description: 'Achete, construis, encaisse les loyers et deviens le dernier debout.',
-    type: 'Party',
-  },
 ];
 
 const getGameLink = (gameId: string) => {
@@ -54,9 +48,6 @@ const getGameLink = (gameId: string) => {
   }
   if (gameId === 'poker') {
     return '/games/poker';
-  }
-  if (gameId === 'monopoly') {
-    return '/games/monopoly';
   }
   return `/games/${gameId}`;
 };

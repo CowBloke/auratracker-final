@@ -343,33 +343,6 @@ CREATE TABLE "BombPartyStats" (
 );
 
 -- CreateTable
-CREATE TABLE "MonopolyStats" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "userId" TEXT NOT NULL,
-    "gamesPlayed" INTEGER NOT NULL DEFAULT 0,
-    "gamesWon" INTEGER NOT NULL DEFAULT 0,
-    "totalMoneyEarned" BIGINT NOT NULL DEFAULT 0,
-    "totalAuraEarned" BIGINT NOT NULL DEFAULT 0,
-    "longestGameMinutes" INTEGER NOT NULL DEFAULT 0,
-    "totalGameMinutes" INTEGER NOT NULL DEFAULT 0,
-    "bankruptcies" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
-    CONSTRAINT "MonopolyStats_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
-);
-
--- CreateTable
-CREATE TABLE "MonopolyGame" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "partyId" TEXT NOT NULL,
-    "winnerId" TEXT NOT NULL,
-    "durationSeconds" INTEGER NOT NULL,
-    "playerCount" INTEGER NOT NULL,
-    "finalPositions" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
--- CreateTable
 CREATE TABLE "Ban" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "userId" TEXT NOT NULL,
@@ -559,15 +532,6 @@ CREATE UNIQUE INDEX "GameSettings_key_key" ON "GameSettings"("key");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "BombPartyStats_userId_key" ON "BombPartyStats"("userId");
-
--- CreateIndex
-CREATE UNIQUE INDEX "MonopolyStats_userId_key" ON "MonopolyStats"("userId");
-
--- CreateIndex
-CREATE INDEX "MonopolyGame_winnerId_idx" ON "MonopolyGame"("winnerId");
-
--- CreateIndex
-CREATE INDEX "MonopolyGame_createdAt_idx" ON "MonopolyGame"("createdAt");
 
 -- CreateIndex
 CREATE INDEX "Ban_userId_idx" ON "Ban"("userId");

@@ -613,12 +613,6 @@ export interface UserBadge {
   badge: Badge;
 }
 
-export interface MonopolyBoardTile {
-  index: number;
-  name: string;
-  type: string;
-  color: string | null;
-}
 
 // Pending User Interface
 export interface PendingUser {
@@ -887,10 +881,6 @@ export const adminApi = {
     runRareAction({ action: 'reset_extreme_aura', threshold }) as Promise<{ data: { success: boolean; message: string; usersReset: number; users: { id: string; username: string; oldAura: string }[] } }>,
   refundAllNfts: () =>
     runRareAction({ action: 'nft_refund_all' }) as Promise<{ data: { success: boolean; message: string; totalRefunded: number; usersRefunded: number; userNftsDeleted: number; nftsDeleted: number } }>,
-  // Monopoly board editor
-  getMonopolyBoard: () => api.get<{ tiles: MonopolyBoardTile[] }>('/admin/monopoly/board'),
-  updateMonopolyBoard: (data: { names?: string[]; tiles?: Array<{ index: number; name: string }> }) =>
-    api.put<{ names: string[] }>('/admin/monopoly/board', data),
 };
 
 export const maintenanceApi = {
