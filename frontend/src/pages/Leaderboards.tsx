@@ -14,7 +14,7 @@ interface Ranking {
   totalPlayed?: number;
 }
 
-type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'casino' | 'games_played' | 'bombparty';
+type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'casino' | 'casino_losses' | 'games_played' | 'bombparty';
 
 const categories: { id: Category; name: string; valueLabel: string }[] = [
   { id: 'aura', name: 'Aura', valueLabel: 'aura' },
@@ -23,6 +23,7 @@ const categories: { id: Category; name: string; valueLabel: string }[] = [
   { id: 'auracoin', name: 'Aura Coin', valueLabel: 'AC' },
   { id: 'doodle_jump', name: 'Doodle Jump', valueLabel: 'score' },
   { id: 'casino', name: 'Casino', valueLabel: '$' },
+  { id: 'casino_losses', name: 'Pertes Casino', valueLabel: '$' },
   { id: 'bombparty', name: 'Bomb Party', valueLabel: 'victoires' },
   { id: 'games_played', name: 'Parties', valueLabel: 'jeux' },
 ];
@@ -80,6 +81,8 @@ export default function Leaderboards() {
       case 'money':
       case 'casino':
         return `$${numericValue.toLocaleString()}`;
+      case 'casino_losses':
+        return `-$${numericValue.toLocaleString()}`;
       default:
         return numericValue.toLocaleString();
     }
