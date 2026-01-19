@@ -55,7 +55,7 @@ All paintings placed in the gallery are publicly visible
 
 The gallery is accessible directly from a player’s profile
 
-Gallery layout is fixed (no customization)
+Gallery should be customisable in color and position of paintings on the wall.
 
 4.2 Warehouse
 
