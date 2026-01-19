@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
-import { auraCoinApi, AuraCoinTransaction, AuraCoinPriceHistory } from '../services/api';
+import { auraCoinApi, AuraCoinTransaction, AuraCoinPriceHistory, AuraCoinPosition } from '../services/api';
 import { cn } from '@/lib/utils';
-import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, X } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 export default function AuraCoin() {
@@ -28,6 +28,14 @@ export default function AuraCoin() {
   
   const [timePeriod, setTimePeriod] = useState<'hour' | 'day' | 'week' | 'month'>('day');
   
+  // Leveraged trading state
+  const [tradingMode, setTradingMode] = useState<'spot' | 'leverage'>('spot');
+  const [positionType, setPositionType] = useState<'LONG' | 'SHORT'>('LONG');
+  const [leverage, setLeverage] = useState(1);
+  const [marginAmount, setMarginAmount] = useState('');
+  const [openPositions, setOpenPositions] = useState<AuraCoinPosition[]>([]);
+  const [closedPositions, setClosedPositions] = useState<AuraCoinPosition[]>([]);
+  
   const getHoursForPeriod = (period: 'hour' | 'day' | 'week' | 'month') => {
     switch (period) {
       case 'hour': return 1;
@@ -41,10 +49,11 @@ export default function AuraCoin() {
   const fetchData = useCallback(async () => {
     try {
       const hours = getHoursForPeriod(timePeriod);
-      const [priceRes, myTxRes, allTxRes] = await Promise.all([
+      const [priceRes, myTxRes, allTxRes, openPosRes] = await Promise.all([
         auraCoinApi.getPrice(hours),
         auraCoinApi.getMyTransactions({ limit: 50 }),
         auraCoinApi.getAllTransactions({ limit: 50 }),
+        auraCoinApi.getOpenPositions().catch(() => ({ data: { positions: [] } })),
       ]);
       
       setCurrentPrice(priceRes.data.currentPrice);
@@ -54,6 +63,7 @@ export default function AuraCoin() {
       setMoneyBalance(priceRes.data.userBalance.money);
       setMyTransactions(myTxRes.data.transactions);
       setAllTransactions(allTxRes.data.transactions);
+      setOpenPositions(openPosRes.data.positions as any);
     } catch (err) {
       console.error('Failed to fetch data:', err);
     }
@@ -73,6 +83,10 @@ export default function AuraCoin() {
         ...prev.slice(-288), // Keep last 24h of 5min intervals
         { price: data.price, volume: 0, createdAt: data.timestamp },
       ]);
+      // Refresh open positions to update P&L
+      auraCoinApi.getOpenPositions()
+        .then(res => setOpenPositions(res.data.positions as any))
+        .catch(() => {});
     };
     
     socket.on('auracoin:price-update', handlePriceUpdate);
@@ -81,6 +95,19 @@ export default function AuraCoin() {
       socket.off('auracoin:price-update', handlePriceUpdate);
     };
   }, [socket]);
+  
+  // Refresh positions periodically
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (tradingMode === 'leverage') {
+        auraCoinApi.getOpenPositions()
+          .then(res => setOpenPositions(res.data.positions as any))
+          .catch(() => {});
+      }
+    }, 5000); // Every 5 seconds
+    
+    return () => clearInterval(interval);
+  }, [tradingMode]);
   
   const handleBuy = async () => {
     const amount = parseFloat(buyAmount);
@@ -126,6 +153,45 @@ export default function AuraCoin() {
     }
   };
   
+  const handleOpenPosition = async () => {
+    if (!marginAmountNum || marginAmountNum <= 0) return;
+    if (marginAmountNum > moneyBalance) {
+      setError('Fonds insuffisants pour la marge');
+      return;
+    }
+    
+    setLoading(true);
+    setError('');
+    
+    try {
+      const res = await auraCoinApi.openPosition(positionType, leverage, marginAmountNum);
+      setMoneyBalance(res.data.newBalance.money);
+      setMarginAmount('');
+      await refreshUser();
+      await fetchData();
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Échec d\'ouverture de position');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleClosePosition = async (positionId: string) => {
+    setLoading(true);
+    setError('');
+    
+    try {
+      const res = await auraCoinApi.closePosition(positionId);
+      setMoneyBalance(res.data.newBalance.money);
+      await refreshUser();
+      await fetchData();
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Échec de fermeture de position');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   // Calculate price change
   const priceChange = priceHistory.length > 1
     ? ((currentPrice - priceHistory[0].price) / priceHistory[0].price) * 100
@@ -143,7 +209,14 @@ export default function AuraCoin() {
   const sellGrossAmount = Math.floor(sellCoinAmount * currentPrice);
   const sellFee = Math.max(MIN_FEE, Math.floor(sellGrossAmount * feePercentage));
   const sellNetAmount = sellGrossAmount - sellFee;
-
+  
+  // Leveraged trading calculations
+  const marginAmountNum = parseFloat(marginAmount) || 0;
+  const notionalValue = marginAmountNum * leverage;
+  const coinAmountLeveraged = notionalValue / currentPrice;
+  const estimatedPnL = positionType === 'LONG'
+    ? (currentPrice * 1.1 - currentPrice) * coinAmountLeveraged // +10% example
+    : (currentPrice - currentPrice * 0.9) * coinAmountLeveraged; // -10% example
 
   // Format chart data for Recharts based on time period
   const formatChartTime = (date: Date, period: 'hour' | 'day' | 'week' | 'month') => {
@@ -324,7 +397,34 @@ export default function AuraCoin() {
           </ResponsiveContainer>
         </div>
 
+        {/* Trading Mode Selector */}
+        <div className="flex gap-2 border-b border-border/30">
+          <button
+            onClick={() => setTradingMode('spot')}
+            className={cn(
+              "px-4 py-2 text-sm transition-colors",
+              tradingMode === 'spot'
+                ? "border-b-2 border-foreground text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Spot
+          </button>
+          <button
+            onClick={() => setTradingMode('leverage')}
+            className={cn(
+              "px-4 py-2 text-sm transition-colors",
+              tradingMode === 'leverage'
+                ? "border-b-2 border-foreground text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Levier (x10 max)
+          </button>
+        </div>
+
         {/* Trading Interface */}
+        {tradingMode === 'spot' ? (
         <div className="grid md:grid-cols-2 gap-4">
           {/* Buy */}
           <div className="border border-border/30 p-4 space-y-3">
@@ -449,6 +549,206 @@ export default function AuraCoin() {
             )}
           </div>
         </div>
+        ) : (
+        <div className="space-y-4">
+          {/* Leverage Trading Interface */}
+          <div className="grid md:grid-cols-2 gap-4">
+            {/* Open Position */}
+            <div className="border border-border/30 p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-medium">Ouvrir une Position</h2>
+              </div>
+
+              {/* Position Type */}
+              <div>
+                <label className="text-xs text-muted-foreground">Type de Position</label>
+                <div className="flex gap-2 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setPositionType('LONG')}
+                    className={cn(
+                      "flex-1 px-3 py-2 border text-sm transition-colors",
+                      positionType === 'LONG'
+                        ? "border-emerald-500 text-emerald-500 bg-emerald-500/10"
+                        : "border-border/30 text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    LONG
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPositionType('SHORT')}
+                    className={cn(
+                      "flex-1 px-3 py-2 border text-sm transition-colors",
+                      positionType === 'SHORT'
+                        ? "border-red-500 text-red-500 bg-red-500/10"
+                        : "border-border/30 text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    SHORT
+                  </button>
+                </div>
+              </div>
+
+              {/* Leverage Selector */}
+              <div>
+                <label className="text-xs text-muted-foreground">Effet de Levier</label>
+                <div className="flex gap-1 mt-1 flex-wrap">
+                  {[1, 2, 3, 5, 10].map((lev) => (
+                    <button
+                      key={lev}
+                      type="button"
+                      onClick={() => setLeverage(lev)}
+                      className={cn(
+                        "px-3 py-1 text-xs border transition-colors",
+                        leverage === lev
+                          ? "border-foreground text-foreground bg-foreground/10"
+                          : "border-border/30 text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {lev}x
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Margin Amount */}
+              <div>
+                <label className="text-xs text-muted-foreground">Marge ($)</label>
+                <div className="flex items-center gap-2 mt-1">
+                  <input
+                    type="number"
+                    value={marginAmount}
+                    onChange={(e) => setMarginAmount(e.target.value)}
+                    placeholder="0"
+                    className="flex-1 px-3 py-2 bg-transparent border border-border/30 focus:border-foreground/30 outline-none tabular-nums text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setMarginAmount(moneyBalance.toString())}
+                    disabled={loading || moneyBalance <= 0}
+                    className={cn(
+                      "px-3 py-2 border text-[10px] uppercase tracking-widest transition-colors whitespace-nowrap",
+                      !loading && moneyBalance > 0
+                        ? "border-foreground/60 text-foreground hover:bg-foreground hover:text-background"
+                        : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
+                    )}
+                  >
+                    Max
+                  </button>
+                </div>
+              </div>
+
+              {marginAmountNum > 0 && (
+                <div className="text-xs text-muted-foreground space-y-1 pt-1">
+                  <div className="flex justify-between">
+                    <span>Valeur notionnelle</span>
+                    <span className="tabular-nums text-foreground">${notionalValue.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Quantité (AC)</span>
+                    <span className="tabular-nums text-foreground">{coinAmountLeveraged.toFixed(4)} AC</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Prix d'entrée</span>
+                    <span className="tabular-nums">${currentPrice.toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={handleOpenPosition}
+                disabled={loading || !marginAmount || marginAmountNum <= 0 || marginAmountNum > moneyBalance}
+                className={cn(
+                  "w-full px-4 py-2 border text-sm transition-colors",
+                  !loading && marginAmountNum > 0 && marginAmountNum <= moneyBalance
+                    ? positionType === 'LONG'
+                      ? "border-emerald-500 text-emerald-500 hover:bg-emerald-500 hover:text-background"
+                      : "border-red-500 text-red-500 hover:bg-red-500 hover:text-background"
+                    : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
+                )}
+              >
+                Ouvrir {positionType}
+              </button>
+            </div>
+
+            {/* Open Positions */}
+            <div className="border border-border/30 p-4 space-y-3">
+              <h2 className="text-base font-medium">Positions Ouvertes</h2>
+              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                {openPositions.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-4 text-sm">
+                    Aucune position ouverte
+                  </p>
+                ) : (
+                  openPositions.map((pos) => (
+                    <div
+                      key={pos.id}
+                      className={cn(
+                        "p-3 border space-y-2",
+                        pos.type === 'LONG' ? "border-emerald-500/30" : "border-red-500/30"
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className={cn(
+                            "text-xs font-medium",
+                            pos.type === 'LONG' ? "text-emerald-500" : "text-red-500"
+                          )}>
+                            {pos.type} {pos.leverage}x
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => handleClosePosition(pos.id)}
+                          disabled={loading}
+                          className="p-1 hover:bg-border/30 transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <div className="text-xs space-y-1">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Prix d'entrée</span>
+                          <span className="tabular-nums">${pos.entryPrice.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Prix actuel</span>
+                          <span className="tabular-nums">${pos.currentPrice?.toFixed(2) || currentPrice.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Marge</span>
+                          <span className="tabular-nums">${pos.marginAmount}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">P&L</span>
+                          <span className={cn(
+                            "tabular-nums font-medium",
+                            (pos.pnl || 0) >= 0 ? "text-emerald-500" : "text-red-500"
+                          )}>
+                            {pos.pnl && pos.pnl >= 0 ? '+' : ''}{pos.pnl?.toFixed(2) || '0.00'} $
+                            ({pos.pnlPercentage?.toFixed(2) || '0.00'}%)
+                          </span>
+                        </div>
+                        {pos.marginRatio !== undefined && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Ratio de marge</span>
+                            <span className={cn(
+                              "tabular-nums",
+                              pos.marginRatio < 1 ? "text-red-500" : "text-foreground"
+                            )}>
+                              {(pos.marginRatio * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+        )}
       </div>
 
       {/* Error */}

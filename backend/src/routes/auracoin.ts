@@ -12,6 +12,8 @@ const MIN_FEE = 1; // Minimum fee in money units
 const PRICE_IMPACT_PER_100 = 0.001; // 0.1% per 100$ traded
 const RANDOM_VARIATION_PERCENTAGE = 0.005; // +/- 0.5%
 const PRICE_UPDATE_INTERVAL = 5000; // 5 seconds
+const MAX_LEVERAGE = 10; // Maximum leverage (x10)
+const LIQUIDATION_THRESHOLD = 0.8; // Liquidate when margin drops to 80% of initial
 
 // Current price in memory (will be persisted to DB)
 let currentPrice = INITIAL_PRICE;
@@ -63,17 +65,6 @@ const savePriceAndBroadcast = async (volume: number = 0) => {
 
 // Start price variation interval
 let priceInterval: NodeJS.Timeout | null = null;
-
-export const startPriceEngine = () => {
-  initializePrice();
-  
-  priceInterval = setInterval(async () => {
-    applyRandomVariation();
-    await savePriceAndBroadcast();
-  }, PRICE_UPDATE_INTERVAL);
-  
-  console.log('AuraCoin price engine started');
-};
 
 export const stopPriceEngine = () => {
   if (priceInterval) {
@@ -392,5 +383,298 @@ router.get('/leaderboard', authMiddleware, async (req: AuthRequest, res: Respons
     res.status(500).json({ error: 'Failed to get leaderboard' });
   }
 });
+
+// Calculate P&L for a position
+const calculatePnL = (position: any, currentPrice: number): number => {
+  if (position.type === 'LONG') {
+    // Profit = (currentPrice - entryPrice) * coinAmount * leverage
+    const priceChange = currentPrice - position.entryPrice;
+    return Math.floor(priceChange * position.coinAmount * position.leverage);
+  } else {
+    // SHORT: Profit = (entryPrice - currentPrice) * coinAmount * leverage
+    const priceChange = position.entryPrice - currentPrice;
+    return Math.floor(priceChange * position.coinAmount * position.leverage);
+  }
+};
+
+// Check and liquidate positions if needed
+const checkLiquidations = async () => {
+  try {
+    const openPositions = await prisma.auraCoinPosition.findMany({
+      where: { isOpen: true },
+      include: { user: true },
+    });
+
+    for (const position of openPositions) {
+      const pnl = calculatePnL(position, currentPrice);
+      const currentMargin = position.marginAmount + pnl;
+      const marginRatio = currentMargin / position.marginAmount;
+
+      // Liquidate if margin drops below threshold
+      if (marginRatio <= LIQUIDATION_THRESHOLD) {
+        await prisma.$transaction([
+          prisma.auraCoinPosition.update({
+            where: { id: position.id },
+            data: {
+              isOpen: false,
+              closedAt: new Date(),
+              exitPrice: currentPrice,
+              pnl,
+              liquidated: true,
+            },
+          }),
+          prisma.user.update({
+            where: { id: position.userId },
+            data: {
+              money: { increment: Math.max(0, currentMargin) }, // Return remaining margin
+            },
+          }),
+        ]);
+
+        io.emit('auracoin:position-liquidated', {
+          userId: position.userId,
+          positionId: position.id,
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Liquidation check error:', error);
+  }
+};
+
+// Open a leveraged position (LONG or SHORT)
+router.post('/position/open', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const { type, leverage, marginAmount } = req.body;
+
+    if (!type || !['LONG', 'SHORT'].includes(type)) {
+      return res.status(400).json({ error: 'Invalid position type. Must be LONG or SHORT' });
+    }
+
+    if (!leverage || leverage < 1 || leverage > MAX_LEVERAGE) {
+      return res.status(400).json({ error: `Leverage must be between 1 and ${MAX_LEVERAGE}` });
+    }
+
+    if (!marginAmount || marginAmount <= 0) {
+      return res.status(400).json({ error: 'Invalid margin amount' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.money < marginAmount) {
+      return res.status(400).json({ error: 'Insufficient funds for margin' });
+    }
+
+    // Calculate notional value (position size)
+    const notionalValue = marginAmount * leverage;
+    const coinAmount = notionalValue / currentPrice;
+
+    // Create position
+    const position = await prisma.$transaction([
+      prisma.user.update({
+        where: { id: req.user.id },
+        data: { money: { decrement: marginAmount } },
+      }),
+      prisma.auraCoinPosition.create({
+        data: {
+          userId: req.user.id,
+          type,
+          leverage,
+          entryPrice: currentPrice,
+          coinAmount,
+          marginAmount,
+        },
+      }),
+    ]);
+
+    // Broadcast balance update
+    io.emit('economy:balance-update', {
+      userId: req.user.id,
+      money: position[0].money,
+      aura: position[0].aura,
+    });
+
+    res.json({
+      success: true,
+      position: {
+        id: position[1].id,
+        type: position[1].type,
+        leverage: position[1].leverage,
+        entryPrice: position[1].entryPrice,
+        coinAmount: position[1].coinAmount,
+        marginAmount: position[1].marginAmount,
+        createdAt: position[1].createdAt,
+      },
+      newBalance: {
+        money: position[0].money,
+      },
+    });
+  } catch (error) {
+    console.error('Open position error:', error);
+    res.status(500).json({ error: 'Failed to open position' });
+  }
+});
+
+// Close a position
+router.post('/position/close/:positionId', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const { positionId } = req.params;
+
+    const position = await prisma.auraCoinPosition.findUnique({
+      where: { id: positionId },
+      include: { user: true },
+    });
+
+    if (!position) {
+      return res.status(404).json({ error: 'Position not found' });
+    }
+
+    if (position.userId !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    if (!position.isOpen) {
+      return res.status(400).json({ error: 'Position is already closed' });
+    }
+
+    // Calculate P&L
+    const pnl = calculatePnL(position, currentPrice);
+    const totalReturn = position.marginAmount + pnl;
+
+    // Close position and return funds
+    const [updatedPosition, updatedUser] = await prisma.$transaction([
+      prisma.auraCoinPosition.update({
+        where: { id: positionId },
+        data: {
+          isOpen: false,
+          closedAt: new Date(),
+          exitPrice: currentPrice,
+          pnl,
+        },
+      }),
+      prisma.user.update({
+        where: { id: req.user.id },
+        data: {
+          money: { increment: Math.max(0, totalReturn) }, // Ensure non-negative
+        },
+      }),
+    ]);
+
+    // Broadcast balance update
+    io.emit('economy:balance-update', {
+      userId: req.user.id,
+      money: updatedUser.money,
+      aura: updatedUser.aura,
+    });
+
+    res.json({
+      success: true,
+      position: {
+        id: updatedPosition.id,
+        pnl: updatedPosition.pnl,
+        exitPrice: updatedPosition.exitPrice,
+        closedAt: updatedPosition.closedAt,
+      },
+      newBalance: {
+        money: updatedUser.money,
+      },
+    });
+  } catch (error) {
+    console.error('Close position error:', error);
+    res.status(500).json({ error: 'Failed to close position' });
+  }
+});
+
+// Get user's open positions
+router.get('/positions/open', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const positions = await prisma.auraCoinPosition.findMany({
+      where: {
+        userId: req.user.id,
+        isOpen: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Calculate current P&L for each position
+    const positionsWithPnL = positions.map(pos => {
+      const pnl = calculatePnL(pos, currentPrice);
+      const currentMargin = pos.marginAmount + pnl;
+      const marginRatio = currentMargin / pos.marginAmount;
+      const pnlPercentage = (pnl / pos.marginAmount) * 100;
+
+      return {
+        ...pos,
+        currentPrice,
+        pnl,
+        currentMargin,
+        marginRatio,
+        pnlPercentage,
+      };
+    });
+
+    res.json({ positions: positionsWithPnL });
+  } catch (error) {
+    console.error('Get open positions error:', error);
+    res.status(500).json({ error: 'Failed to get positions' });
+  }
+});
+
+// Get user's closed positions
+router.get('/positions/closed', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const { limit = '50', offset = '0' } = req.query;
+
+    const positions = await prisma.auraCoinPosition.findMany({
+      where: {
+        userId: req.user.id,
+        isOpen: false,
+      },
+      orderBy: { closedAt: 'desc' },
+      take: parseInt(limit as string),
+      skip: parseInt(offset as string),
+    });
+
+    res.json({ positions });
+  } catch (error) {
+    console.error('Get closed positions error:', error);
+    res.status(500).json({ error: 'Failed to get positions' });
+  }
+});
+
+// Update price engine to check liquidations
+export const startPriceEngine = () => {
+  initializePrice();
+  
+  priceInterval = setInterval(async () => {
+    applyRandomVariation();
+    await savePriceAndBroadcast();
+    await checkLiquidations(); // Check for liquidations on each price update
+  }, PRICE_UPDATE_INTERVAL);
+  
+  console.log('AuraCoin price engine started');
+};
 
 export default router;
