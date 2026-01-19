@@ -21,7 +21,9 @@
 - plsuieurs périodes auracoin
 - parier que ça va baisser
 - jeux a 2
-- pertes casino
-- marché perso
 - effet echelle auracoin
 - resend
+- FIX NFT
+- cote qui change en fonctiion des inestissements
+- pertes casino
+- grabd lusé pour visiter tout le monde

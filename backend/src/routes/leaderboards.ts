@@ -10,6 +10,7 @@ type LeaderboardCategory =
   | 'total_money'
   | 'doodle_jump'
   | 'casino'
+  | 'casino_losses'
   | 'games_played'
   | 'bombparty';
 
@@ -152,6 +153,80 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
           value: s.highScore,
         }));
         break;
+
+      case 'casino_losses': {
+        // Get all non-admin user IDs first
+        const nonAdminUsers = await prisma.user.findMany({
+          where: { isAdmin: false },
+          select: { id: true },
+        });
+        const nonAdminUserIds = new Set(nonAdminUsers.map((u) => u.id));
+
+        // Get all casino bet logs and calculate total losses per user
+        const casinoLogs = await prisma.log.findMany({
+          where: {
+            type: 'GAME',
+            action: 'casino_bet',
+            userId: { not: null },
+          },
+          select: {
+            userId: true,
+            metadata: true,
+          },
+        });
+
+        // Calculate total losses per user (netGain is negative for losses)
+        const lossesByUser = new Map<string, number>();
+        for (const log of casinoLogs) {
+          if (!log.userId || !log.metadata || !nonAdminUserIds.has(log.userId)) continue;
+          try {
+            const metadata = JSON.parse(log.metadata);
+            const netGain = metadata.netGain ?? 0;
+            // netGain is negative for losses, so we sum the absolute value of negative netGains
+            // or equivalently, subtract positive netGains from losses
+            const currentLosses = lossesByUser.get(log.userId) ?? 0;
+            if (netGain < 0) {
+              lossesByUser.set(log.userId, currentLosses + Math.abs(netGain));
+            }
+          } catch (e) {
+            // Skip invalid JSON
+            continue;
+          }
+        }
+
+        // Get user info for users with losses
+        const userIds = Array.from(lossesByUser.keys());
+        if (userIds.length === 0) {
+          rankings = [];
+          break;
+        }
+        const users = await prisma.user.findMany({
+          where: { id: { in: userIds }, isAdmin: false },
+          select: { id: true, username: true, usernameColor: true },
+        });
+        const userMap = new Map(users.map((u) => [u.id, { username: u.username, usernameColor: u.usernameColor }]));
+
+        // Create rankings sorted by losses (descending)
+        const lossEntries = Array.from(lossesByUser.entries())
+          .map(([userId, losses]) => ({
+            userId,
+            losses,
+            username: userMap.get(userId)?.username || 'Unknown',
+            usernameColor: userMap.get(userId)?.usernameColor || null,
+          }))
+          .sort((a, b) => b.losses - a.losses);
+
+        const take = parseInt(limit as string);
+        const skip = parseInt(offset as string);
+        rankings = lossEntries.slice(skip, skip + take).map((entry, i) => ({
+          rank: skip + i + 1,
+          userId: entry.userId,
+          username: entry.username,
+          usernameColor: entry.usernameColor,
+          value: entry.losses,
+        }));
+        break;
+      }
         
       case 'games_played':
         // Aggregate total games played across all game types
@@ -286,6 +361,74 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
               AND (money + auraCoinBalance * ${priceToUse}) > ${userTotalValue}
           `;
           userRank = Number(higherTotals[0]?.count ?? 0) + 1;
+        }
+      } else if (category === 'casino_losses') {
+        // Calculate user's total casino losses
+        const casinoLogs = await prisma.log.findMany({
+          where: {
+            type: 'GAME',
+            action: 'casino_bet',
+            userId: req.user.id,
+          },
+          select: {
+            metadata: true,
+          },
+        });
+
+        let userTotalLosses = 0;
+        for (const log of casinoLogs) {
+          if (!log.metadata) continue;
+          try {
+            const metadata = JSON.parse(log.metadata);
+            const netGain = metadata.netGain ?? 0;
+            if (netGain < 0) {
+              userTotalLosses += Math.abs(netGain);
+            }
+          } catch (e) {
+            continue;
+          }
+        }
+
+        if (userTotalLosses > 0) {
+          // Get all non-admin user IDs first
+          const nonAdminUsers = await prisma.user.findMany({
+            where: { isAdmin: false },
+            select: { id: true },
+          });
+          const nonAdminUserIds = new Set(nonAdminUsers.map((u) => u.id));
+
+          // Count users with higher losses
+          const allCasinoLogs = await prisma.log.findMany({
+            where: {
+              type: 'GAME',
+              action: 'casino_bet',
+              userId: { not: null },
+            },
+            select: {
+              userId: true,
+              metadata: true,
+            },
+          });
+
+          const lossesByUser = new Map<string, number>();
+          for (const log of allCasinoLogs) {
+            if (!log.userId || !log.metadata || !nonAdminUserIds.has(log.userId)) continue;
+            try {
+              const metadata = JSON.parse(log.metadata);
+              const netGain = metadata.netGain ?? 0;
+              if (netGain < 0) {
+                const currentLosses = lossesByUser.get(log.userId) ?? 0;
+                lossesByUser.set(log.userId, currentLosses + Math.abs(netGain));
+              }
+            } catch (e) {
+              continue;
+            }
+          }
+
+          const higherLosses = Array.from(lossesByUser.values()).filter(
+            (losses) => losses > userTotalLosses
+          ).length;
+          userRank = higherLosses + 1;
         }
       }
     }
