@@ -14,3 +14,9 @@
 - fix image upload
 - fixer stats jeux profile
 - fixer autres coins
+- chosiir valeur boost aura/argent
+- supprimer l'upload d'image (ne amrche pas)
+ -aura par rapport taile/durée party jeux
+ - images dans le chat
+ - anciespsuedo et on peut se co avaec ancien psueod
+ - NFT 1 personne
