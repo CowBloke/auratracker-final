@@ -1085,7 +1085,7 @@ router.get('/logs', authMiddleware, requireAdmin, async (req: AuthRequest, res: 
 
     // Filter by game type in metadata (for GAME type logs)
     if (gameType && gameType !== 'ALL') {
-      where.metadata = { contains: `"game":"${gameType}"` };
+      where.metadata = { contains: `"gameType":"${gameType}"` };
     }
 
     if (startDate) {
@@ -1154,7 +1154,7 @@ router.get('/logs/download', authMiddleware, requireAdmin, async (req: AuthReque
     }
 
     if (gameType && gameType !== 'ALL') {
-      where.metadata = { contains: `"game":"${gameType}"` };
+      where.metadata = { contains: `"gameType":"${gameType}"` };
     }
 
     if (startDate) {
