@@ -124,6 +124,7 @@ function App() {
         <Route path="games/petit-bac" element={<PetitBac />} />
         <Route path="games/monopoly" element={<Monopoly />} />
         <Route path="games/polymarket" element={<Polymarket />} />
+        <Route path="polymarket" element={<Polymarket />} />
         <Route path="marketplace" element={<Marketplace />} />
         <Route path="leaderboards" element={<Leaderboards />} />
         <Route path="party" element={<Party />} />

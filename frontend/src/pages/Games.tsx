@@ -60,12 +60,6 @@ const games = [
     description: 'Trade la cryptomonnaie virtuelle. Achète bas, vends haut.',
     type: 'Trading',
   },
-  {
-    id: 'polymarket',
-    name: 'Polymarket',
-    description: 'Marché de prédiction. Pariez sur des événements futurs.',
-    type: 'Prédiction',
-  },
 ];
 
 export default function Games() {
@@ -84,9 +78,6 @@ export default function Games() {
     }
     if (game.id === 'monopoly') {
       return '/games/monopoly';
-    }
-    if (game.id === 'polymarket') {
-      return '/games/polymarket';
     }
     return `/games/${game.id}`;
   };
