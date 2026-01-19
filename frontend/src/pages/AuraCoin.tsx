@@ -26,10 +26,23 @@ export default function AuraCoin() {
   const [myTransactions, setMyTransactions] = useState<AuraCoinTransaction[]>([]);
   const [allTransactions, setAllTransactions] = useState<AuraCoinTransaction[]>([]);
   
+  const [timePeriod, setTimePeriod] = useState<'hour' | 'day' | 'week' | 'month'>('day');
+  
+  const getHoursForPeriod = (period: 'hour' | 'day' | 'week' | 'month') => {
+    switch (period) {
+      case 'hour': return 1;
+      case 'day': return 24;
+      case 'week': return 168; // 7 * 24
+      case 'month': return 720; // 30 * 24
+      default: return 24;
+    }
+  };
+  
   const fetchData = useCallback(async () => {
     try {
+      const hours = getHoursForPeriod(timePeriod);
       const [priceRes, myTxRes, allTxRes] = await Promise.all([
-        auraCoinApi.getPrice(24),
+        auraCoinApi.getPrice(hours),
         auraCoinApi.getMyTransactions({ limit: 50 }),
         auraCoinApi.getAllTransactions({ limit: 50 }),
       ]);
@@ -44,7 +57,7 @@ export default function AuraCoin() {
     } catch (err) {
       console.error('Failed to fetch data:', err);
     }
-  }, []);
+  }, [timePeriod]);
   
   useEffect(() => {
     fetchData();
@@ -132,9 +145,24 @@ export default function AuraCoin() {
   const sellNetAmount = sellGrossAmount - sellFee;
 
 
-  // Format chart data for Recharts
+  // Format chart data for Recharts based on time period
+  const formatChartTime = (date: Date, period: 'hour' | 'day' | 'week' | 'month') => {
+    switch (period) {
+      case 'hour':
+        return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      case 'day':
+        return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      case 'week':
+        return date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', hour: '2-digit' });
+      case 'month':
+        return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+      default:
+        return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    }
+  };
+  
   const chartData = priceHistory.map((p) => ({
-    time: new Date(p.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+    time: formatChartTime(new Date(p.createdAt), timePeriod),
     price: p.price,
     timestamp: p.createdAt,
   }));
@@ -207,7 +235,55 @@ export default function AuraCoin() {
         {/* Professional Chart */}
         <div className="border border-border/30 p-5">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-sm text-muted-foreground uppercase tracking-wide">Cours 24h</span>
+            <span className="text-sm text-muted-foreground uppercase tracking-wide">
+              Cours {timePeriod === 'hour' ? '1h' : timePeriod === 'day' ? '24h' : timePeriod === 'week' ? '7j' : '30j'}
+            </span>
+            <div className="flex gap-1 border border-border/30">
+              <button
+                onClick={() => setTimePeriod('hour')}
+                className={cn(
+                  "px-3 py-1 text-xs transition-colors",
+                  timePeriod === 'hour'
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground hover:bg-border/30"
+                )}
+              >
+                Heure
+              </button>
+              <button
+                onClick={() => setTimePeriod('day')}
+                className={cn(
+                  "px-3 py-1 text-xs transition-colors",
+                  timePeriod === 'day'
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground hover:bg-border/30"
+                )}
+              >
+                Jour
+              </button>
+              <button
+                onClick={() => setTimePeriod('week')}
+                className={cn(
+                  "px-3 py-1 text-xs transition-colors",
+                  timePeriod === 'week'
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground hover:bg-border/30"
+                )}
+              >
+                Semaine
+              </button>
+              <button
+                onClick={() => setTimePeriod('month')}
+                className={cn(
+                  "px-3 py-1 text-xs transition-colors",
+                  timePeriod === 'month'
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground hover:bg-border/30"
+                )}
+              >
+                Mois
+              </button>
+            </div>
           </div>
 
           <ResponsiveContainer width="100%" height={280}>
