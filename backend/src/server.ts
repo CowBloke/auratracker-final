@@ -21,7 +21,10 @@ import leaderboardsRoutes from './routes/leaderboards.js';
 import usersRoutes from './routes/users.js';
 import clashRoutes from './routes/clash.js';
 import adminRoutes from './routes/admin.js';
-import auraCoinRoutes, { startPriceEngine, stopPriceEngine } from './routes/auracoin.js';
+import auraCoinRoutes, { startPriceEngine as startAuraCoinEngine, stopPriceEngine as stopAuraCoinEngine } from './routes/auracoin.js';
+import solarisRoutes, { startPriceEngine as startSolarisEngine, stopPriceEngine as stopSolarisEngine } from './routes/solaris.js';
+import zenithRoutes, { startPriceEngine as startZenithEngine, stopPriceEngine as stopZenithEngine } from './routes/zenith.js';
+import riftRoutes, { startPriceEngine as startRiftEngine, stopPriceEngine as stopRiftEngine } from './routes/rift.js';
 import suggestionsRoutes from './routes/suggestions.js';
 import bombpartyRoutes from './routes/bombparty.js';
 import uploadsRoutes from './routes/uploads.js';
@@ -80,6 +83,9 @@ app.use('/api/users', usersRoutes);
 app.use('/api/clash', clashRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/auracoin', auraCoinRoutes);
+app.use('/api/solaris', solarisRoutes);
+app.use('/api/zenith', zenithRoutes);
+app.use('/api/rift', riftRoutes);
 app.use('/api/suggestions', suggestionsRoutes);
 app.use('/api/bombparty', bombpartyRoutes);
 app.use('/api/uploads', uploadsRoutes);
@@ -159,8 +165,11 @@ const start = async () => {
     await prisma.$connect();
     console.log('Connected to database');
     
-    // Start AuraCoin price engine
-    startPriceEngine();
+    // Start price engines for all coins
+    startAuraCoinEngine();
+    startSolarisEngine();
+    startZenithEngine();
+    startRiftEngine();
 
     // Start bomb party game cleanup
     startBombPartyCleanup(io);
@@ -178,13 +187,19 @@ start();
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
-  stopPriceEngine();
+  stopAuraCoinEngine();
+  stopSolarisEngine();
+  stopZenithEngine();
+  stopRiftEngine();
   await prisma.$disconnect();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
-  stopPriceEngine();
+  stopAuraCoinEngine();
+  stopSolarisEngine();
+  stopZenithEngine();
+  stopRiftEngine();
   await prisma.$disconnect();
   process.exit(0);
 });

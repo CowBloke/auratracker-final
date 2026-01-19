@@ -16,6 +16,9 @@ model User {
   aura          BigInt    @default(0)
   money         Int       @default(1000)
   auraCoinBalance Float   @default(0)         // Aura Coin balance for trading game
+  solarisBalance Float    @default(0)         // Solaris balance for trading game
+  zenithBalance Float     @default(0)         // Zenith balance for trading game
+  riftBalance Float       @default(0)         // Rift balance for trading game
   isAdmin       Boolean   @default(false)
   isChatMuted   Boolean   @default(false)
   isApproved    Boolean   @default(false)     // Account must be approved by admin before login
@@ -45,6 +48,9 @@ model User {
   attacksMade       Attack[]   @relation("Attacker")
   attacksReceived   Attack[]   @relation("Defender")
   auraCoinTransactions AuraCoinTransaction[]
+  solarisTransactions SolarisTransaction[]
+  zenithTransactions ZenithTransaction[]
+  riftTransactions RiftTransaction[]
   bugReports        BugReport[]
   suggestions       Suggestion[]
   suggestionVotes   SuggestionVote[]
@@ -356,6 +362,87 @@ model AuraCoinPrice {
 
 // Aura Coin Transaction
 model AuraCoinTransaction {
+  id          String   @id @default(uuid())
+  userId      String
+  type        String   // "BUY" or "SELL"
+  coinAmount  Float
+  moneyAmount Int
+  price       Float
+  fee         Int
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// Solaris Price History
+model SolarisPrice {
+  id        String   @id @default(uuid())
+  price     Float
+  volume    Float    @default(0)
+  createdAt DateTime @default(now())
+  
+  @@index([createdAt])
+}
+
+// Solaris Transaction
+model SolarisTransaction {
+  id          String   @id @default(uuid())
+  userId      String
+  type        String   // "BUY" or "SELL"
+  coinAmount  Float
+  moneyAmount Int
+  price       Float
+  fee         Int
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// Zenith Price History
+model ZenithPrice {
+  id        String   @id @default(uuid())
+  price     Float
+  volume    Float    @default(0)
+  createdAt DateTime @default(now())
+  
+  @@index([createdAt])
+}
+
+// Zenith Transaction
+model ZenithTransaction {
+  id          String   @id @default(uuid())
+  userId      String
+  type        String   // "BUY" or "SELL"
+  coinAmount  Float
+  moneyAmount Int
+  price       Float
+  fee         Int
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// Rift Price History
+model RiftPrice {
+  id        String   @id @default(uuid())
+  price     Float
+  volume    Float    @default(0)
+  createdAt DateTime @default(now())
+  
+  @@index([createdAt])
+}
+
+// Rift Transaction
+model RiftTransaction {
   id          String   @id @default(uuid())
   userId      String
   type        String   // "BUY" or "SELL"

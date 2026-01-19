@@ -10,6 +10,9 @@ import DoodleJump from './pages/DoodleJump';
 import Clash from './pages/Clash';
 import Casino from './pages/Casino';
 import AuraCoin from './pages/AuraCoin';
+import Solaris from './pages/Solaris';
+import Zenith from './pages/Zenith';
+import Rift from './pages/Rift';
 import MarketHall from './pages/MarketHall';
 import MarketTrade from './pages/MarketTrade';
 import Marketplace from './pages/Marketplace';
@@ -122,6 +125,9 @@ function App() {
         <Route path="games/market" element={<MarketHall />} />
         <Route path="games/market/:coinId" element={<MarketTrade />} />
         <Route path="games/aura-coin" element={<AuraCoin />} />
+        <Route path="games/market/solaris" element={<Solaris />} />
+        <Route path="games/market/zenith" element={<Zenith />} />
+        <Route path="games/market/rift" element={<Rift />} />
         <Route path="games/bomb-party" element={<BombParty />} />
         <Route path="games/poker" element={<Poker />} />
         <Route path="games/petit-bac" element={<PetitBac />} />
