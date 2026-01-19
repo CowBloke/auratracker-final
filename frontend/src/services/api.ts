@@ -356,6 +356,13 @@ export interface UserBadge {
   badge: Badge;
 }
 
+export interface MonopolyBoardTile {
+  index: number;
+  name: string;
+  type: string;
+  color: string | null;
+}
+
 // Pending User Interface
 export interface PendingUser {
   id: string;
@@ -609,6 +616,10 @@ export const adminApi = {
   // Reset extreme aura values
   resetExtremeAura: (threshold?: number) =>
     api.post<{ success: boolean; message: string; usersReset: number; users: { id: string; username: string; oldAura: string }[] }>('/admin/reset-extreme-aura', { threshold }),
+  // Monopoly board editor
+  getMonopolyBoard: () => api.get<{ tiles: MonopolyBoardTile[] }>('/admin/monopoly/board'),
+  updateMonopolyBoard: (data: { names?: string[]; tiles?: Array<{ index: number; name: string }> }) =>
+    api.put<{ names: string[] }>('/admin/monopoly/board', data),
 };
 
 export const maintenanceApi = {

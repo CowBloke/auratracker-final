@@ -7,22 +7,98 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import './Monopoly.css';
 
 const colorMap: Record<string, string> = {
-  brown: 'bg-amber-700',
-  lightblue: 'bg-sky-400',
-  pink: 'bg-pink-400',
-  orange: 'bg-orange-400',
-  red: 'bg-red-500',
-  yellow: 'bg-yellow-400',
-  green: 'bg-emerald-500',
-  darkblue: 'bg-blue-600',
+  brown: '#8B5A2B',
+  lightblue: '#6EC6E8',
+  pink: '#E573A7',
+  orange: '#F59E0B',
+  red: '#EF4444',
+  yellow: '#FCD34D',
+  green: '#22C55E',
+  darkblue: '#1D4ED8',
 };
 
-const shortName = (name: string) => {
-  const parts = name.split(' ');
-  if (parts.length === 1) return name.slice(0, 8);
-  return parts.slice(0, 2).join(' ');
+const tileLabelMap: Record<string, string> = {
+  go: 'Départ',
+  property: 'Propriété',
+  railroad: 'Gare',
+  utility: 'Compagnie',
+  chance: 'Chance',
+  community: 'Caisse de communauté',
+  tax: 'Taxe',
+  jail: 'Prison',
+  'free-parking': 'Parc Gratuit',
+  'go-to-jail': 'Allez en prison',
+};
+
+const getTilePosition = (index: number) => {
+  if (index <= 10) {
+    return { row: 10, col: 10 - index };
+  }
+  if (index <= 19) {
+    return { row: 10 - (index - 10), col: 0 };
+  }
+  if (index === 20) {
+    return { row: 0, col: 0 };
+  }
+  if (index <= 29) {
+    return { row: 0, col: index - 20 };
+  }
+  if (index === 30) {
+    return { row: 0, col: 10 };
+  }
+  return { row: index - 30, col: 10 };
+};
+
+const formatMoney = (amount?: number | null) => `$${amount ?? 0}`;
+
+const renderPropertyDetails = (tile: { type: string; rent?: number[]; price?: number; houseCost?: number }) => {
+  if (tile.type === 'property' && tile.rent) {
+    return (
+      <div className="monopoly-rent-grid">
+        <div>Sans maison</div>
+        <div>{formatMoney(tile.rent[0])}</div>
+        <div>1 maison</div>
+        <div>{formatMoney(tile.rent[1])}</div>
+        <div>2 maisons</div>
+        <div>{formatMoney(tile.rent[2])}</div>
+        <div>3 maisons</div>
+        <div>{formatMoney(tile.rent[3])}</div>
+        <div>4 maisons</div>
+        <div>{formatMoney(tile.rent[4])}</div>
+        <div>Hôtel</div>
+        <div>{formatMoney(tile.rent[5])}</div>
+      </div>
+    );
+  }
+
+  if (tile.type === 'railroad') {
+    return (
+      <div className="monopoly-rent-grid">
+        <div>1 gare</div>
+        <div>$25</div>
+        <div>2 gares</div>
+        <div>$50</div>
+        <div>3 gares</div>
+        <div>$100</div>
+        <div>4 gares</div>
+        <div>$200</div>
+      </div>
+    );
+  }
+
+  if (tile.type === 'utility') {
+    return (
+      <div className="text-xs text-muted-foreground space-y-1">
+        <p>1 compagnie: 4x le lancer</p>
+        <p>2 compagnies: 10x le lancer</p>
+      </div>
+    );
+  }
+
+  return null;
 };
 
 export default function Monopoly() {
@@ -53,11 +129,12 @@ export default function Monopoly() {
     clearMonopolyGameOver,
   } = useSocket();
 
-  const [selectedTile, setSelectedTile] = useState<string>('');
+  const [selectedTileIndex, setSelectedTileIndex] = useState<number | null>(null);
   const [buildCount, setBuildCount] = useState(1);
   const [sellCount, setSellCount] = useState(1);
   const [bidAmount, setBidAmount] = useState(1);
   const [hasRespondedPlayAgain, setHasRespondedPlayAgain] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
 
   const isLeader = partyMembers.some((m) => m.userId === user?.id && m.isLeader);
   const me = monopolyGame?.players.find((p) => p.userId === user?.id);
@@ -72,14 +149,6 @@ export default function Monopoly() {
     return monopolyGame.tiles.filter((tile) => tile.ownerId === user.id && tile.type !== 'go');
   }, [monopolyGame, user]);
 
-  const buildableTiles = useMemo(() => ownedTiles.filter((tile) => tile.type === 'property'), [ownedTiles]);
-
-  useEffect(() => {
-    if (!selectedTile && ownedTiles.length > 0) {
-      setSelectedTile(String(ownedTiles[0].index));
-    }
-  }, [ownedTiles, selectedTile]);
-
   useEffect(() => {
     if (monopolyPlayAgainPrompt) {
       setHasRespondedPlayAgain(false);
@@ -92,7 +161,11 @@ export default function Monopoly() {
     }
   }, [auction?.highestBid, auction?.tileIndex]);
 
-  const selectedTileIndex = selectedTile ? Number(selectedTile) : null;
+  useEffect(() => {
+    if (!selectedTileIndex && ownedTiles.length > 0) {
+      setSelectedTileIndex(ownedTiles[0].index);
+    }
+  }, [ownedTiles, selectedTileIndex]);
 
   if (!currentParty) {
     return (
@@ -136,9 +209,12 @@ export default function Monopoly() {
 
   const myPlayAgainResponse = monopolyPlayAgainPrompt?.responses.find((r) => r.userId === user?.id);
   const hasAlreadyResponded = hasRespondedPlayAgain || !!myPlayAgainResponse;
+  const selectedTile = selectedTileIndex !== null
+    ? monopolyGame?.tiles.find((tile) => tile.index === selectedTileIndex)
+    : null;
 
   return (
-    <div className="max-w-6xl mx-auto py-12 px-4 space-y-8">
+    <div className="max-w-7xl mx-auto py-10 px-4 space-y-8">
       <header className="space-y-3">
         <Link
           to="/games"
@@ -147,7 +223,7 @@ export default function Monopoly() {
           <ArrowLeft className="h-4 w-4" />
           Jeux
         </Link>
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Party</p>
             <h1 className="text-4xl md:text-5xl font-light">Monopoly</h1>
@@ -171,7 +247,7 @@ export default function Monopoly() {
             {isLeader && (
               <Button onClick={startMonopoly} className="gap-2">
                 <Dice6 className="h-4 w-4" />
-                Demarrer
+                Démarrer
               </Button>
             )}
           </div>
@@ -184,10 +260,56 @@ export default function Monopoly() {
       )}
 
       {monopolyGame && (
-        <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_0.6fr] gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-[260px_minmax(0,1fr)_320px] gap-6">
+          <aside className="space-y-4">
+            <div className="rounded-lg border border-border/50 p-4 space-y-2">
+              <p className="text-sm font-medium">Joueurs</p>
+              <div className="space-y-2">
+                {monopolyGame.players.map((player) => (
+                  <div
+                    key={player.userId}
+                    className={cn(
+                      'flex items-center justify-between text-xs rounded border border-border/40 px-2 py-2',
+                      player.userId === monopolyGame.currentPlayerId && 'border-foreground/60'
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="h-2 w-2 rounded-full"
+                        style={{ backgroundColor: player.usernameColor || '#999' }}
+                      />
+                      <span style={player.usernameColor ? { color: player.usernameColor } : undefined}>
+                        {player.username}
+                        {player.userId === user?.id && ' (toi)'}
+                        {partyMembers.find((m) => m.userId === player.userId)?.isLeader && (
+                          <Crown className="inline-block ml-1 h-3 w-3 text-yellow-500" />
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <span>{formatMoney(player.cash)}</span>
+                      {player.inJail && <span>Prison</span>}
+                      {player.isBankrupt && <span>Out</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-border/50 p-4 space-y-2">
+              <p className="text-sm font-medium">Journal</p>
+              <div className="space-y-1 text-xs text-muted-foreground max-h-72 overflow-y-auto">
+                {monopolyGame.log.length === 0 && <p>Aucun événement pour le moment.</p>}
+                {monopolyGame.log.map((entry, index) => (
+                  <p key={`${entry}-${index}`}>{entry}</p>
+                ))}
+              </div>
+            </div>
+          </aside>
+
           <section className="space-y-4">
             <div className="rounded-lg border border-border/50 p-4">
-              <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-xs uppercase text-muted-foreground">Tour</p>
                   <p className="text-lg font-medium">{currentPlayer?.username || '—'}</p>
@@ -199,64 +321,108 @@ export default function Monopoly() {
                       {monopolyGame.lastRoll.die1} + {monopolyGame.lastRoll.die2} = {monopolyGame.lastRoll.total}
                     </span>
                   ) : (
-                    <span>Pas encore lance</span>
+                    <span>Pas encore lancé</span>
                   )}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   Phase: {monopolyGame.phase}
                 </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setZoomLevel((z) => Math.min(1.4, z + 0.1))}
+                  >
+                    +
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setZoomLevel((z) => Math.max(0.8, z - 0.1))}
+                  >
+                    -
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setZoomLevel(1)}>
+                    Reset
+                  </Button>
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-10 gap-2">
-              {monopolyGame.tiles.map((tile) => {
-                const playersHere = monopolyGame.players.filter((p) => p.position === tile.index && !p.isBankrupt);
-                const owner = tile.ownerId
-                  ? monopolyGame.players.find((p) => p.userId === tile.ownerId)
-                  : null;
+            <div className="monopoly-board-viewport">
+              <div className="monopoly-board" style={{ transform: `scale(${zoomLevel})` }}>
+                {monopolyGame.tiles.map((tile) => {
+                  const position = getTilePosition(tile.index);
+                  const playersHere = monopolyGame.players.filter((p) => p.position === tile.index && !p.isBankrupt);
+                  const owner = tile.ownerId
+                    ? monopolyGame.players.find((p) => p.userId === tile.ownerId)
+                    : null;
 
-                return (
-                  <div
-                    key={tile.index}
-                    className={cn(
-                      'border border-border/40 rounded-md p-2 text-[10px] flex flex-col gap-1 min-h-[90px]',
-                      tile.index === monopolyGame.players.find((p) => p.userId === monopolyGame.currentPlayerId)?.position &&
-                        'border-foreground/60'
-                    )}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">{tile.index}</span>
-                      {tile.color && <span className={cn('h-2 w-6 rounded-full', colorMap[tile.color])} />}
-                    </div>
-                    <div className="font-medium text-foreground/90">{shortName(tile.name)}</div>
-                    {tile.price && <div className="text-muted-foreground">${tile.price}</div>}
-                    {tile.houses > 0 && (
-                      <div className="text-emerald-400">
-                        {tile.houses >= 5 ? 'Hotel' : `${tile.houses} maison(s)`}
+                  return (
+                    <div
+                      key={tile.index}
+                      className={cn(
+                        'monopoly-tile',
+                        tile.index === monopolyGame.players.find((p) => p.userId === monopolyGame.currentPlayerId)?.position &&
+                          'is-current'
+                      )}
+                      style={{ gridRow: position.row + 1, gridColumn: position.col + 1 }}
+                      onClick={() => setSelectedTileIndex(tile.index)}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <div className="monopoly-tile-header">
+                        <span className="text-[9px] text-muted-foreground">{tile.index}</span>
+                        {tile.color && (
+                          <span className="monopoly-color-bar" style={{ backgroundColor: colorMap[tile.color] }} />
+                        )}
                       </div>
-                    )}
-                    {tile.mortgaged && <div className="text-amber-400">Hypotheque</div>}
-                    {owner && (
-                      <div className="text-[10px]" style={owner.usernameColor ? { color: owner.usernameColor } : undefined}>
-                        {owner.username}
-                      </div>
-                    )}
-                    <div className="flex flex-wrap gap-1">
-                      {playersHere.map((p) => (
-                        <span
-                          key={p.userId}
-                          className={cn(
-                            'h-4 w-4 rounded-full border border-border/40 flex items-center justify-center text-[8px]',
-                            p.userId === user?.id ? 'bg-foreground text-background' : 'bg-muted'
+                      <div className="monopoly-tile-name">{tile.name}</div>
+                      {tile.price && <div className="text-muted-foreground">{formatMoney(tile.price)}</div>}
+                      {!tile.price && tile.type !== 'go' && tile.type !== 'jail' && (
+                        <div className="text-muted-foreground">{tileLabelMap[tile.type] || tile.type}</div>
+                      )}
+                      {tile.houses > 0 && (
+                        <div className="monopoly-buildings">
+                          {tile.houses >= 5 ? (
+                            <span className="monopoly-hotel" />
+                          ) : (
+                            Array.from({ length: tile.houses }).map((_, idx) => (
+                              <span key={`${tile.index}-house-${idx}`} className="monopoly-house" />
+                            ))
                           )}
-                        >
-                          {p.username.slice(0, 1).toUpperCase()}
-                        </span>
-                      ))}
+                        </div>
+                      )}
+                      {tile.mortgaged && <div className="text-amber-400">Hypothèque</div>}
+                      {owner && (
+                        <div className="text-[10px]" style={owner.usernameColor ? { color: owner.usernameColor } : undefined}>
+                          {owner.username}
+                        </div>
+                      )}
+                      <div className="flex flex-wrap gap-1">
+                        {playersHere.map((p) => (
+                          <span
+                            key={p.userId}
+                            className={cn(
+                              'monopoly-token',
+                              p.userId === user?.id ? 'is-me' : ''
+                            )}
+                            style={p.usernameColor ? { borderColor: p.usernameColor } : undefined}
+                          >
+                            {p.username.slice(0, 1).toUpperCase()}
+                          </span>
+                        ))}
+                      </div>
                     </div>
+                  );
+                })}
+                <div className="monopoly-center">
+                  <div className="monopoly-center-title">Monopoly</div>
+                  <div className="text-xs text-muted-foreground">
+                    {monopolyGame.turnNumber} tours joués
                   </div>
-                );
-              })}
+                </div>
+              </div>
             </div>
           </section>
 
@@ -288,7 +454,12 @@ export default function Monopoly() {
                   <Button onClick={jailPayMonopoly} variant="outline" className="w-full">
                     Payer $50
                   </Button>
-                  <Button onClick={jailUseCardMonopoly} variant="outline" className="w-full" disabled={(me?.getOutOfJailCards || 0) === 0}>
+                  <Button
+                    onClick={jailUseCardMonopoly}
+                    variant="outline"
+                    className="w-full"
+                    disabled={(me?.getOutOfJailCards || 0) === 0}
+                  >
                     Utiliser carte ({me?.getOutOfJailCards || 0})
                   </Button>
                 </div>
@@ -297,17 +468,17 @@ export default function Monopoly() {
               {isMyTurn && monopolyGame.phase === 'waiting-roll' && !me?.inJail && (
                 <Button onClick={rollMonopoly} className="w-full gap-2">
                   <Dice6 className="h-4 w-4" />
-                  Lancer les des
+                  Lancer les dés
                 </Button>
               )}
 
               {isMyTurn && pendingPurchase && (
                 <div className="space-y-2">
                   <Button onClick={buyMonopoly} className="w-full">
-                    Acheter (${pendingPurchase.price})
+                    Acheter ({formatMoney(pendingPurchase.price)})
                   </Button>
                   <Button onClick={declineMonopoly} variant="outline" className="w-full">
-                    Passer a l'enchere
+                    Passer à l'enchère
                   </Button>
                 </div>
               )}
@@ -322,10 +493,10 @@ export default function Monopoly() {
                 <div className="space-y-2 border-t border-border/40 pt-3">
                   <div className="flex items-center gap-2 text-sm">
                     <Gavel className="h-4 w-4" />
-                    Encheres: {monopolyGame.tiles[auction.tileIndex].name}
+                    Enchères: {monopolyGame.tiles[auction.tileIndex].name}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    Meilleure offre: ${auction.highestBid} {auction.highestBidderId ? '(leader)' : ''}
+                    Meilleure offre: {formatMoney(auction.highestBid)} {auction.highestBidderId ? '(leader)' : ''}
                   </div>
                   {isMyBidTurn ? (
                     <div className="space-y-2">
@@ -343,20 +514,20 @@ export default function Monopoly() {
                       </Button>
                     </div>
                   ) : (
-                    <p className="text-xs text-muted-foreground">En attente des encheres...</p>
+                    <p className="text-xs text-muted-foreground">En attente des enchères...</p>
                   )}
                 </div>
               )}
 
               {isMyTurn && !pendingPurchase && !auction && (
                 <div className="space-y-2 border-t border-border/40 pt-3">
-                  <p className="text-xs text-muted-foreground">Gestion de proprietes</p>
+                  <p className="text-xs text-muted-foreground">Gestion de propriétés</p>
                   <select
                     className="w-full rounded border border-border bg-background px-2 py-1 text-sm"
-                    value={selectedTile}
-                    onChange={(e) => setSelectedTile(e.target.value)}
+                    value={selectedTileIndex ?? ''}
+                    onChange={(e) => setSelectedTileIndex(e.target.value ? Number(e.target.value) : null)}
                   >
-                    {ownedTiles.length === 0 && <option value="">Aucune propriete</option>}
+                    {ownedTiles.length === 0 && <option value="">Aucune propriété</option>}
                     {ownedTiles.map((tile) => (
                       <option key={tile.index} value={tile.index}>
                         {tile.name}
@@ -376,7 +547,7 @@ export default function Monopoly() {
                         <Button
                           variant="outline"
                           onClick={() => buildMonopoly(selectedTileIndex, buildCount)}
-                          disabled={!buildableTiles.some((tile) => tile.index === selectedTileIndex)}
+                          disabled={!ownedTiles.some((tile) => tile.index === selectedTileIndex && tile.type === 'property')}
                         >
                           Construire
                         </Button>
@@ -392,14 +563,14 @@ export default function Monopoly() {
                         <Button
                           variant="outline"
                           onClick={() => sellMonopoly(selectedTileIndex, sellCount)}
-                          disabled={!buildableTiles.some((tile) => tile.index === selectedTileIndex)}
+                          disabled={!ownedTiles.some((tile) => tile.index === selectedTileIndex && tile.type === 'property')}
                         >
                           Vendre
                         </Button>
                       </div>
                       <div className="flex items-center gap-2">
                         <Button variant="outline" className="flex-1" onClick={() => mortgageMonopoly(selectedTileIndex)}>
-                          Hypothequer
+                          Hypothéquer
                         </Button>
                         <Button variant="outline" className="flex-1" onClick={() => unmortgageMonopoly(selectedTileIndex)}>
                           Lever
@@ -411,48 +582,35 @@ export default function Monopoly() {
               )}
             </div>
 
-            <div className="rounded-lg border border-border/50 p-4 space-y-2">
-              <p className="text-sm font-medium">Joueurs</p>
-              <div className="space-y-2">
-                {monopolyGame.players.map((player) => (
-                  <div
-                    key={player.userId}
-                    className={cn(
-                      'flex items-center justify-between text-xs rounded border border-border/40 px-2 py-2',
-                      player.userId === monopolyGame.currentPlayerId && 'border-foreground/60'
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
+            <div className="rounded-lg border border-border/50 p-4 space-y-3">
+              <p className="text-sm font-medium">Mes propriétés</p>
+              {ownedTiles.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Aucune propriété pour le moment.</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {ownedTiles.map((tile) => (
+                    <button
+                      key={tile.index}
+                      className={cn(
+                        'monopoly-mini-card',
+                        tile.mortgaged && 'is-mortgaged'
+                      )}
+                      onClick={() => setSelectedTileIndex(tile.index)}
+                    >
                       <span
-                        className="h-2 w-2 rounded-full"
-                        style={{ backgroundColor: player.usernameColor || '#999' }}
+                        className="monopoly-mini-card-color"
+                        style={{ backgroundColor: tile.color ? colorMap[tile.color] : '#9CA3AF' }}
                       />
-                      <span style={player.usernameColor ? { color: player.usernameColor } : undefined}>
-                        {player.username}
-                        {player.userId === user?.id && ' (toi)'}
-                        {partyMembers.find((m) => m.userId === player.userId)?.isLeader && (
-                          <Crown className="inline-block ml-1 h-3 w-3 text-yellow-500" />
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <span>${player.cash}</span>
-                      {player.inJail && <span>Prison</span>}
-                      {player.isBankrupt && <span>Out</span>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-lg border border-border/50 p-4 space-y-2">
-              <p className="text-sm font-medium">Journal</p>
-              <div className="space-y-1 text-xs text-muted-foreground max-h-40 overflow-y-auto">
-                {monopolyGame.log.length === 0 && <p>Aucun evenement pour le moment.</p>}
-                {monopolyGame.log.map((entry, index) => (
-                  <p key={`${entry}-${index}`}>{entry}</p>
-                ))}
-              </div>
+                      <span className="monopoly-mini-card-name">{tile.name}</span>
+                      {tile.houses > 0 && (
+                        <span className="monopoly-mini-card-houses">
+                          {tile.houses >= 5 ? 'Hôtel' : `${tile.houses}m`}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <Button variant="outline" onClick={leaveMonopoly}>
@@ -461,6 +619,119 @@ export default function Monopoly() {
           </aside>
         </div>
       )}
+
+      <Dialog open={selectedTileIndex !== null && !!selectedTile} onOpenChange={() => setSelectedTileIndex(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-normal">{selectedTile?.name}</DialogTitle>
+          </DialogHeader>
+          {selectedTile && (
+            <div className="space-y-4">
+              <div className="monopoly-property-card">
+                <div
+                  className="monopoly-property-card-header"
+                  style={{ backgroundColor: selectedTile.color ? colorMap[selectedTile.color] : '#111827' }}
+                >
+                  {selectedTile.name}
+                </div>
+                <div className="monopoly-property-card-body">
+                  {renderPropertyDetails(selectedTile)}
+                </div>
+                {selectedTile.price && (
+                  <div className="monopoly-property-card-footer">
+                    <div>Valeur hypothèque: {formatMoney(Math.floor(selectedTile.price / 2))}</div>
+                    {selectedTile.houseCost && (
+                      <div>Coût maison: {formatMoney(selectedTile.houseCost)}</div>
+                    )}
+                  </div>
+                )}
+              </div>
+              {isMyTurn && selectedTile.ownerId === user?.id && (
+                <div className="space-y-2">
+                  {selectedTile.type === 'property' && (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min={1}
+                        className="w-full"
+                        value={buildCount}
+                        onChange={(e) => setBuildCount(Number(e.target.value))}
+                      />
+                      <Button
+                        variant="outline"
+                        onClick={() => buildMonopoly(selectedTile.index, buildCount)}
+                      >
+                        Construire
+                      </Button>
+                    </div>
+                  )}
+                  {selectedTile.type === 'property' && (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min={1}
+                        className="w-full"
+                        value={sellCount}
+                        onChange={(e) => setSellCount(Number(e.target.value))}
+                      />
+                      <Button
+                        variant="outline"
+                        onClick={() => sellMonopoly(selectedTile.index, sellCount)}
+                      >
+                        Vendre
+                      </Button>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" className="flex-1" onClick={() => mortgageMonopoly(selectedTile.index)}>
+                      Hypothéquer
+                    </Button>
+                    <Button variant="outline" className="flex-1" onClick={() => unmortgageMonopoly(selectedTile.index)}>
+                      Lever
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!pendingPurchase} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-normal">Acheter une propriété ?</DialogTitle>
+          </DialogHeader>
+          {pendingPurchase && monopolyGame && (
+            <div className="space-y-4">
+              <div className="monopoly-property-card">
+                <div
+                  className="monopoly-property-card-header"
+                  style={{
+                    backgroundColor: monopolyGame.tiles[pendingPurchase.tileIndex].color
+                      ? colorMap[monopolyGame.tiles[pendingPurchase.tileIndex].color as string]
+                      : '#111827',
+                  }}
+                >
+                  {monopolyGame.tiles[pendingPurchase.tileIndex].name}
+                </div>
+                <div className="monopoly-property-card-body">
+                  {renderPropertyDetails(monopolyGame.tiles[pendingPurchase.tileIndex])}
+                </div>
+                <div className="monopoly-property-card-footer">
+                  Prix: {formatMoney(pendingPurchase.price)}
+                </div>
+              </div>
+              <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={declineMonopoly}>
+                  Passer
+                </Button>
+                <Button onClick={buyMonopoly}>Acheter</Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!monopolyPlayAgainPrompt} onOpenChange={() => {}}>
         <DialogContent className="sm:max-w-md">
@@ -498,7 +769,7 @@ export default function Monopoly() {
                 </Button>
               </>
             ) : (
-              <div className="text-xs text-muted-foreground">Reponse envoyee.</div>
+              <div className="text-xs text-muted-foreground">Réponse envoyée.</div>
             )}
           </DialogFooter>
         </DialogContent>
@@ -507,7 +778,7 @@ export default function Monopoly() {
       <Dialog open={!!monopolyGameOver && !monopolyPlayAgainPrompt} onOpenChange={clearMonopolyGameOver}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-normal">Partie terminee</DialogTitle>
+            <DialogTitle className="font-normal">Partie terminée</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">Gagnant: {monopolyGameOver?.winnerUsername || '—'}</p>
@@ -515,7 +786,7 @@ export default function Monopoly() {
               {monopolyGameOver?.standings.map((player) => (
                 <div key={player.userId} className="flex items-center justify-between">
                   <span>{player.username}</span>
-                  <span className="text-muted-foreground">${player.cash}</span>
+                  <span className="text-muted-foreground">{formatMoney(player.cash)}</span>
                 </div>
               ))}
             </div>

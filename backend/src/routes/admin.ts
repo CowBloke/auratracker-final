@@ -5,10 +5,12 @@ import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { validate, createNftSchema } from '../middleware/validation.js';
 import { logAdmin, logSuggestion, logBan } from '../utils/logger.js';
 import { isAllowedImageUrl } from '../utils/uploads.js';
+import { BASE_MONOPOLY_BOARD, getMonopolyBoardNames } from '../socket/monopoly.js';
 
 const router = Router();
 const ANNOUNCEMENT_KEY = 'topbar_announcement';
 const ANNOUNCEMENT_MAX_LENGTH = 120;
+const MONOPOLY_BOARD_NAMES_KEY = 'monopoly_board_names';
 
 // Middleware to check if user is admin
 const requireAdmin = (req: AuthRequest, res: Response, next: Function) => {
@@ -1477,6 +1479,78 @@ router.put('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, r
   } catch (error) {
     console.error('Admin bulk update settings error:', error);
     res.status(500).json({ error: 'Failed to update settings' });
+  }
+});
+
+// ========== MONOPOLY BOARD MANAGEMENT ==========
+
+router.get('/monopoly/board', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    const boardNames = await getMonopolyBoardNames();
+    const tiles = BASE_MONOPOLY_BOARD.map((tile, index) => ({
+      index: tile.index,
+      name: boardNames[index] || tile.name,
+      type: tile.type,
+      color: tile.color || null,
+    }));
+
+    res.json({ tiles });
+  } catch (error) {
+    console.error('Admin get monopoly board error:', error);
+    res.status(500).json({ error: 'Failed to load monopoly board' });
+  }
+});
+
+router.put('/monopoly/board', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { names, tiles } = req.body as {
+      names?: string[];
+      tiles?: Array<{ index: number; name: string }>;
+    };
+
+    const overrides = new Map<number, string>();
+
+    if (Array.isArray(names)) {
+      names.forEach((name, index) => {
+        if (typeof name === 'string') {
+          overrides.set(index, name);
+        }
+      });
+    }
+
+    if (Array.isArray(tiles)) {
+      tiles.forEach((tile) => {
+        if (typeof tile?.index === 'number' && typeof tile?.name === 'string') {
+          overrides.set(tile.index, tile.name);
+        }
+      });
+    }
+
+    const sanitized = BASE_MONOPOLY_BOARD.map((tile, index) => {
+      const candidate = overrides.get(index);
+      if (typeof candidate === 'string') {
+        const trimmed = candidate.trim();
+        if (trimmed.length > 0) {
+          return trimmed.slice(0, 60);
+        }
+      }
+      return tile.name;
+    });
+
+    const setting = await prisma.gameSettings.upsert({
+      where: { key: MONOPOLY_BOARD_NAMES_KEY },
+      create: { key: MONOPOLY_BOARD_NAMES_KEY, value: JSON.stringify(sanitized) },
+      update: { value: JSON.stringify(sanitized) },
+    });
+
+    logAdmin('monopoly_board_update', req.user!.id, req.user!.username, undefined, undefined, {
+      key: setting.key,
+    });
+
+    res.json({ names: sanitized });
+  } catch (error) {
+    console.error('Admin update monopoly board error:', error);
+    res.status(500).json({ error: 'Failed to update monopoly board' });
   }
 });
 
