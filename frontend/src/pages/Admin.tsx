@@ -225,10 +225,11 @@ export default function Admin() {
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState<{ username: string; aura: number; money: number; dailyAuraLimit: number }>({
+  const [editValues, setEditValues] = useState<{ username: string; aura: number; money: number; auraCoinBalance: number; dailyAuraLimit: number }>({
     username: '',
     aura: 0,
     money: 0,
+    auraCoinBalance: 0,
     dailyAuraLimit: 50,
   });
   const [editPassword, setEditPassword] = useState('');
@@ -1101,6 +1102,7 @@ export default function Admin() {
       username: u.username,
       aura: u.aura,
       money: u.money,
+      auraCoinBalance: u.auraCoinBalance,
       dailyAuraLimit: u.dailyAuraLimit,
     });
     setEditPassword('');
@@ -1723,7 +1725,7 @@ export default function Admin() {
                         />
                       </div>
 
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-4 gap-4">
                         <div className="space-y-1">
                           <label className="text-xs text-muted-foreground">Aura</label>
                           <Input
@@ -1739,6 +1741,16 @@ export default function Admin() {
                             type="number"
                             value={editValues.money}
                             onChange={(e) => setEditValues(prev => ({ ...prev, money: parseInt(e.target.value) || 0 }))}
+                            className="h-9 bg-transparent border-border/50"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs text-muted-foreground">Aura Coin</label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={editValues.auraCoinBalance}
+                            onChange={(e) => setEditValues(prev => ({ ...prev, auraCoinBalance: parseFloat(e.target.value) || 0 }))}
                             className="h-9 bg-transparent border-border/50"
                           />
                         </div>
@@ -1792,6 +1804,9 @@ export default function Admin() {
                           </div>
                           <div className="text-right">
                             <p className="tabular-nums">${u.money.toLocaleString()}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="tabular-nums">{u.auraCoinBalance.toFixed(2)} AC</p>
                           </div>
                           <div className="text-right">
                             <p className="tabular-nums">{u.dailyAuraGiven}/{u.dailyAuraLimit} donné</p>

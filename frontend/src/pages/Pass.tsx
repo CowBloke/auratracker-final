@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import { passApi } from '@/services/api';
 
 const rewardSteps = [25, 40, 60, 90, 130, 180, 250];
 const rewardStepGrowth = 50;
@@ -10,28 +11,6 @@ const getRewardForDay = (day: number) => {
   return rewardSteps[rewardSteps.length - 1] + (day - rewardSteps.length) * rewardStepGrowth;
 };
 
-const getLocalDateKey = (date: Date) => {
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, '0');
-  const day = `${date.getDate()}`.padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
-const parseDateKey = (key: string) => {
-  const [year, month, day] = key.split('-').map(Number);
-  return new Date(year, month - 1, day);
-};
-
-const getDayDiff = (fromKey: string, toKey: string) => {
-  const from = parseDateKey(fromKey);
-  const to = parseDateKey(toKey);
-  const diffMs = to.getTime() - from.getTime();
-  return Math.floor(diffMs / (1000 * 60 * 60 * 24));
-};
-
-const getNextReset = (now: Date) => {
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0);
-};
 
 const formatCountdown = (ms: number) => {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
@@ -52,92 +31,95 @@ export default function Pass() {
   const [status, setStatus] = useState<ClaimStatus>('available');
   const [message, setMessage] = useState<string | null>(null);
   const [resetNotice, setResetNotice] = useState(false);
-
-  const storageKey = useMemo(() => (user ? `daily-pass:${user.id}` : null), [user?.id]);
+  const [claimDay, setClaimDay] = useState(1);
+  const [claimReward, setClaimReward] = useState(0);
+  const [nextReward, setNextReward] = useState(0);
+  const [nextReset, setNextReset] = useState<Date | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [claiming, setClaiming] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
 
-  const todayKey = useMemo(() => getLocalDateKey(now), [now]);
-  const nextReset = useMemo(() => getNextReset(now), [now]);
-  const countdown = useMemo(() => formatCountdown(nextReset.getTime() - now.getTime()), [nextReset, now]);
-
+  // Fetch pass status from server
   useEffect(() => {
-    if (!storageKey) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
-    const raw = localStorage.getItem(storageKey);
-    let storedStreak = 0;
-    let storedLastClaim: string | null = null;
-
-    if (raw) {
+    const fetchStatus = async () => {
       try {
-        const parsed = JSON.parse(raw);
-        storedStreak = typeof parsed.streak === 'number' ? parsed.streak : 0;
-        storedLastClaim = typeof parsed.lastClaimDate === 'string' ? parsed.lastClaimDate : null;
-      } catch {
-        storedStreak = 0;
-        storedLastClaim = null;
+        setLoading(true);
+        const response = await passApi.getStatus();
+        const data = response.data;
+        
+        setStreak(data.streak);
+        setStatus(data.status);
+        setResetNotice(data.resetNotice);
+        setClaimDay(data.claimDay);
+        setClaimReward(data.claimReward);
+        setNextReward(data.nextReward);
+        setNextReset(new Date(data.nextReset));
+      } catch (error) {
+        console.error('Failed to fetch pass status:', error);
+      } finally {
+        setLoading(false);
       }
-    }
+    };
 
-    if (!storedLastClaim) {
-      setStatus('available');
-      setStreak(storedStreak);
-      setResetNotice(false);
-      return;
-    }
+    fetchStatus();
+    
+    // Refresh status every minute
+    const refreshInterval = setInterval(fetchStatus, 60000);
+    return () => clearInterval(refreshInterval);
+  }, [user]);
 
-    const dayDiff = getDayDiff(storedLastClaim, todayKey);
-    if (dayDiff === 0) {
+  const countdown = useMemo(() => {
+    if (!nextReset) return '00:00:00';
+    return formatCountdown(nextReset.getTime() - now.getTime());
+  }, [nextReset, now]);
+
+  const handleClaim = async () => {
+    if (status !== 'available' || claiming) return;
+
+    try {
+      setClaiming(true);
+      const response = await passApi.claim();
+      const data = response.data;
+
       setStatus('claimed');
-      setStreak(storedStreak);
+      setStreak(data.streak);
+      setClaimDay(data.claimDay);
+      setNextReward(data.nextReward);
       setResetNotice(false);
-      return;
+
+      // Update balance
+      updateBalance(user?.aura || 0, data.newBalance.money);
+
+      setMessage(`Récompense récupérée : +$${data.reward}`);
+      setTimeout(() => setMessage(null), 3000);
+    } catch (error: any) {
+      console.error('Failed to claim reward:', error);
+      const errorMessage = error.response?.data?.error || 'Erreur lors de la récupération de la récompense';
+      setMessage(errorMessage);
+      setTimeout(() => setMessage(null), 3000);
+    } finally {
+      setClaiming(false);
     }
-
-    if (dayDiff === 1) {
-      setStatus('available');
-      setStreak(storedStreak);
-      setResetNotice(false);
-      return;
-    }
-
-    const resetPayload = { streak: 0, lastClaimDate: null };
-    localStorage.setItem(storageKey, JSON.stringify(resetPayload));
-    setStatus('available');
-    setStreak(0);
-    setResetNotice(true);
-  }, [storageKey, todayKey]);
-
-  const persistState = (nextStreak: number, nextClaimDate: string) => {
-    if (!storageKey) return;
-    localStorage.setItem(storageKey, JSON.stringify({ streak: nextStreak, lastClaimDate: nextClaimDate }));
   };
 
-  const handleClaim = () => {
-    if (status !== 'available') return;
-
-    const nextStreak = streak + 1;
-    const reward = getRewardForDay(nextStreak);
-    setStatus('claimed');
-    setStreak(nextStreak);
-    setResetNotice(false);
-    persistState(nextStreak, todayKey);
-
-    if (user) {
-      updateBalance(user.aura, user.money + reward);
-    }
-
-    setMessage(`Récompense récupérée : +$${reward}`);
-    setTimeout(() => setMessage(null), 3000);
-  };
-
-  const claimDay = status === 'claimed' ? streak : streak + 1;
-  const claimReward = getRewardForDay(claimDay);
-  const nextReward = getRewardForDay(claimDay + 1);
   const streakProgress = Math.min((streak / rewardSteps.length) * 100, 100);
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto py-12 px-4">
+        <p className="text-muted-foreground">Chargement...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
@@ -179,15 +161,15 @@ export default function Pass() {
             <div className="flex flex-wrap items-center gap-3">
               <button
                 onClick={handleClaim}
-                disabled={status === 'claimed'}
+                disabled={status === 'claimed' || claiming}
                 className={cn(
                   "px-4 py-2 text-sm border transition-colors",
-                  status === 'claimed'
+                  status === 'claimed' || claiming
                     ? "border-border/30 text-muted-foreground/50 cursor-not-allowed"
                     : "border-foreground text-foreground hover:bg-foreground hover:text-background"
                 )}
               >
-                {status === 'claimed' ? 'Récompense récupérée' : 'Récupérer'}
+                {claiming ? 'Récupération...' : status === 'claimed' ? 'Récompense récupérée' : 'Récupérer'}
               </button>
               {message && <span className="text-sm text-muted-foreground">{message}</span>}
               {resetNotice && (

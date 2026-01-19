@@ -85,6 +85,34 @@ export const economyApi = {
     api.post('/economy/gift-aura', data),
 };
 
+// Pass API
+export interface PassStatus {
+  streak: number;
+  status: 'available' | 'claimed';
+  resetNotice: boolean;
+  claimDay: number;
+  claimReward: number;
+  nextReward: number;
+  nextReset: string;
+}
+
+export interface PassClaimResponse {
+  success: boolean;
+  reward: number;
+  streak: number;
+  claimDay: number;
+  nextReward: number;
+  newBalance: {
+    money: number;
+    aura: number;
+  };
+}
+
+export const passApi = {
+  getStatus: () => api.get<PassStatus>('/pass/status'),
+  claim: () => api.post<PassClaimResponse>('/pass/claim'),
+};
+
 // Marketplace API
 export interface Nft {
   id: string;
@@ -352,6 +380,7 @@ export interface AdminUser {
   email: string;
   aura: number;
   money: number;
+  auraCoinBalance: number;
   isAdmin: boolean;
   isChatMuted: boolean;
   dailyAuraGiven: number;
@@ -542,7 +571,7 @@ const runRareAction = (data: AdminRareAction) => api.post('/admin/rare', data);
 export const adminApi = {
   runRareAction,
   getUsers: () => api.get<{ users: AdminUser[] }>('/admin/users'),
-  updateUser: (id: string, data: { username?: string; aura?: number; money?: number; dailyAuraLimit?: number; password?: string; isChatMuted?: boolean }) =>
+  updateUser: (id: string, data: { username?: string; aura?: number; money?: number; auraCoinBalance?: number; dailyAuraLimit?: number; password?: string; isChatMuted?: boolean }) =>
     api.put<{ user: AdminUser }>(`/admin/users/${id}`, data),
   deleteUser: (id: string) => api.delete<{ success: boolean; message: string }>(`/admin/users/${id}`),
   getBadges: () => api.get<{ badges: Badge[] }>('/admin/badges'),
