@@ -84,6 +84,7 @@ const gameItems = [
   { to: '/games/clash', label: 'Clash', icon: Swords },
   { to: '/games/doodle-jump', label: 'Doodle Jump', icon: ArrowUp },
   { to: '/games/casino', label: 'Casino', icon: Dices },
+  { to: '/games/bataille-navale', label: 'Bataille Navale', icon: Swords },
 ];
 
 export default function AppSidebar() {
