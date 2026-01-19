@@ -1,5 +1,17 @@
 import { Socket, Server } from 'socket.io';
 
+type RTCSessionDescriptionInit = {
+  type: 'offer' | 'answer' | 'pranswer' | 'rollback';
+  sdp?: string;
+};
+
+type RTCIceCandidateInit = {
+  candidate?: string;
+  sdpMid?: string | null;
+  sdpMLineIndex?: number | null;
+  usernameFragment?: string | null;
+};
+
 // Store active webcam users
 const activeWebcamUsers = new Set<string>();
 const userSocketMap = new Map<string, string>(); // userId -> socketId
