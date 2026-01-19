@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { adminApi, uploadsApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, Badge, UserBadge, Nft } from '../services/api';
+import { adminApi, uploadsApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, Badge, UserBadge, Nft, MonopolyBoardTile } from '../services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -171,6 +171,17 @@ const GAME_TYPES = [
   { value: 'casino', label: 'Casino' },
 ];
 
+const MONOPOLY_COLOR_MAP: Record<string, string> = {
+  brown: '#8B5A2B',
+  lightblue: '#6EC6E8',
+  pink: '#E573A7',
+  orange: '#F59E0B',
+  red: '#EF4444',
+  yellow: '#FCD34D',
+  green: '#22C55E',
+  darkblue: '#1D4ED8',
+};
+
 interface ItemFormData {
   name: string;
   description: string;
@@ -224,7 +235,7 @@ export default function Admin() {
   const [mutingUser, setMutingUser] = useState<string | null>(null);
   const [clearingChat, setClearingChat] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'pending' | 'users' | 'items' | 'badges' | 'chat' | 'bugs' | 'bans' | 'logs' | 'announcement' | 'attention' | 'settings'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'users' | 'items' | 'badges' | 'chat' | 'bugs' | 'bans' | 'logs' | 'announcement' | 'attention' | 'settings' | 'monopoly'>('pending');
   const [inventoryDialogOpen, setInventoryDialogOpen] = useState(false);
   const [inventoryUser, setInventoryUser] = useState<AdminUser | null>(null);
   const [inventoryItems, setInventoryItems] = useState<AdminInventoryItem[]>([]);
@@ -326,6 +337,10 @@ export default function Admin() {
     bombparty_wpp_hard: '100',
     bombparty_3letter_start_round: '10',
   });
+  const [monopolyBoard, setMonopolyBoard] = useState<MonopolyBoardTile[]>([]);
+  const [loadingMonopolyBoard, setLoadingMonopolyBoard] = useState(false);
+  const [savingMonopolyBoard, setSavingMonopolyBoard] = useState(false);
+  const [monopolyBoardEdits, setMonopolyBoardEdits] = useState<Record<number, string>>({});
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
   const [maintenanceMessage, setMaintenanceMessage] = useState('');
   const [savingMaintenance, setSavingMaintenance] = useState(false);
@@ -383,6 +398,7 @@ export default function Admin() {
     fetchLogs();
     fetchLogStats();
     fetchSettings();
+    fetchMonopolyBoard();
   }, []);
 
   useEffect(() => {
@@ -618,6 +634,47 @@ export default function Admin() {
       showMessage('error', 'Erreur lors de la sauvegarde');
     } finally {
       setSavingSettings(false);
+    }
+  };
+
+  const fetchMonopolyBoard = async () => {
+    try {
+      setLoadingMonopolyBoard(true);
+      const res = await adminApi.getMonopolyBoard();
+      setMonopolyBoard(res.data.tiles);
+      const nextEdits: Record<number, string> = {};
+      res.data.tiles.forEach((tile) => {
+        nextEdits[tile.index] = tile.name;
+      });
+      setMonopolyBoardEdits(nextEdits);
+    } catch (error) {
+      console.error('Failed to fetch monopoly board:', error);
+      showMessage('error', 'Erreur lors du chargement du plateau Monopoly');
+    } finally {
+      setLoadingMonopolyBoard(false);
+    }
+  };
+
+  const saveMonopolyBoard = async () => {
+    try {
+      setSavingMonopolyBoard(true);
+      const names = monopolyBoard.map((tile) => monopolyBoardEdits[tile.index] ?? tile.name);
+      const res = await adminApi.updateMonopolyBoard({ names });
+      const updated = res.data.names;
+      setMonopolyBoard((prev) =>
+        prev.map((tile, index) => ({ ...tile, name: updated[index] || tile.name }))
+      );
+      const nextEdits: Record<number, string> = {};
+      updated.forEach((name, index) => {
+        nextEdits[index] = name;
+      });
+      setMonopolyBoardEdits(nextEdits);
+      showMessage('success', 'Plateau Monopoly mis à jour');
+    } catch (error) {
+      console.error('Failed to save monopoly board:', error);
+      showMessage('error', 'Erreur lors de la sauvegarde du plateau Monopoly');
+    } finally {
+      setSavingMonopolyBoard(false);
     }
   };
 
@@ -1419,6 +1476,17 @@ export default function Admin() {
             )}
           >
             Paramètres
+          </button>
+          <button
+            onClick={() => setActiveTab('monopoly')}
+            className={cn(
+              "px-4 py-2 text-sm border transition-colors",
+              activeTab === 'monopoly'
+                ? "border-foreground text-foreground"
+                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+            )}
+          >
+            Monopoly
           </button>
         </div>
 
@@ -3221,6 +3289,73 @@ export default function Admin() {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+          </div>
+        )}
+
+        {/* Monopoly Board Tab */}
+        {activeTab === 'monopoly' && (
+          <div className="space-y-6">
+          <div className="h-px bg-border" />
+
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
+                Plateau Monopoly
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Modifie rapidement les noms des propriétés, gares et compagnies.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={fetchMonopolyBoard} disabled={loadingMonopolyBoard}>
+                {loadingMonopolyBoard ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Recharger'}
+              </Button>
+              <Button onClick={saveMonopolyBoard} disabled={savingMonopolyBoard || loadingMonopolyBoard}>
+                {savingMonopolyBoard ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                Enregistrer
+              </Button>
+            </div>
+          </div>
+
+          {loadingMonopolyBoard ? (
+            <div className="flex justify-center py-12">
+              <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {monopolyBoard.filter((tile) => ['property', 'railroad', 'utility'].includes(tile.type)).map((tile) => (
+                <div
+                  key={tile.index}
+                  className="flex flex-col md:flex-row md:items-center gap-3 border border-border/30 rounded-lg p-3"
+                >
+                  <div className="flex items-center gap-3 min-w-[140px]">
+                    <span className="text-xs text-muted-foreground w-8">#{tile.index}</span>
+                    <span
+                      className="h-2 w-8 rounded-full"
+                      style={{ backgroundColor: tile.color ? MONOPOLY_COLOR_MAP[tile.color] : 'hsl(var(--muted-foreground))' }}
+                    />
+                    <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                      {tile.type === 'property' ? 'Propriété' : tile.type === 'railroad' ? 'Gare' : 'Compagnie'}
+                    </span>
+                  </div>
+                  <Input
+                    value={monopolyBoardEdits[tile.index] ?? tile.name}
+                    onChange={(e) =>
+                      setMonopolyBoardEdits((prev) => ({
+                        ...prev,
+                        [tile.index]: e.target.value,
+                      }))
+                    }
+                    className="flex-1 bg-transparent"
+                  />
+                </div>
+              ))}
             </div>
           )}
           </div>
