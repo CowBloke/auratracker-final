@@ -9,9 +9,18 @@ const router = Router();
 // Game reward configuration
 const GAME_REWARDS = {
   doodle_jump: {
-    moneyPerScore: 0.1, // 1 money per 10 score
-    auraForNewHighScore: 50,
     minScoreForReward: 100,
+    // Progressive rewards based on score
+    // Base money reward increases with score tiers
+    baseMoneyMultiplier: 0.05, // Base multiplier
+    scoreTiers: [
+      { minScore: 0, moneyMultiplier: 0.05, auraBonus: 0 },      // 0-499: 0.05x score
+      { minScore: 500, moneyMultiplier: 0.08, auraBonus: 5 },    // 500-999: 0.08x score + 5 aura
+      { minScore: 1000, moneyMultiplier: 0.12, auraBonus: 10 },  // 1000-1999: 0.12x score + 10 aura
+      { minScore: 2000, moneyMultiplier: 0.18, auraBonus: 20 },  // 2000-3999: 0.18x score + 20 aura
+      { minScore: 4000, moneyMultiplier: 0.25, auraBonus: 35 },  // 4000-7999: 0.25x score + 35 aura
+      { minScore: 8000, moneyMultiplier: 0.35, auraBonus: 50 },  // 8000+: 0.35x score + 50 aura
+    ],
   },
   casino: {
     auraForBigWin: 10, // For wins >= 10x bet
@@ -20,6 +29,37 @@ const GAME_REWARDS = {
     hugeWinMultiplier: 50,
   },
 };
+
+// Calculate progressive rewards for Doodle Jump based on score
+function calculateDoodleJumpRewards(score: number, isNewHighScore: boolean): { money: number; aura: number } {
+  const config = GAME_REWARDS.doodle_jump;
+  
+  if (score < config.minScoreForReward) {
+    return { money: 0, aura: 0 };
+  }
+
+  // Find the appropriate tier for this score
+  let selectedTier = config.scoreTiers[0];
+  for (let i = config.scoreTiers.length - 1; i >= 0; i--) {
+    if (score >= config.scoreTiers[i].minScore) {
+      selectedTier = config.scoreTiers[i];
+      break;
+    }
+  }
+
+  // Calculate money reward based on tier multiplier
+  const moneyReward = Math.floor(score * selectedTier.moneyMultiplier);
+  
+  // Calculate aura reward: base tier bonus + bonus for new high score
+  let auraReward = selectedTier.auraBonus;
+  if (isNewHighScore) {
+    // Additional bonus for beating your own record (scales with score)
+    const highScoreBonus = Math.min(Math.floor(score / 1000) * 10, 100);
+    auraReward += highScoreBonus;
+  }
+
+  return { money: moneyReward, aura: auraReward };
+}
 
 // Get game stats for a user
 router.get('/:gameType/stats/:userId', authMiddleware, async (req: AuthRequest, res: Response) => {
@@ -96,13 +136,9 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
     let moneyReward = 0;
     
     if (gameType === 'doodle_jump') {
-      const config = GAME_REWARDS.doodle_jump;
-      if (score >= config.minScoreForReward) {
-        moneyReward = Math.floor(score * config.moneyPerScore);
-      }
-      if (isNewHighScore && score >= config.minScoreForReward) {
-        auraReward = config.auraForNewHighScore;
-      }
+      const rewards = calculateDoodleJumpRewards(score, isNewHighScore);
+      moneyReward = rewards.money;
+      auraReward = rewards.aura;
     } else if (gameType === 'casino' && bet) {
       // Casino: score is the win amount, bet is deducted, netGain = score - bet
       // Deduct bet first, then add winnings
