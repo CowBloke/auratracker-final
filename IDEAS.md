@@ -31,3 +31,6 @@
 - temp ban
 - jeux a 2
 - pertes casino
+- marché 
+- effet echelle
+- resend
