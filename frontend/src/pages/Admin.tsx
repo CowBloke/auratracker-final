@@ -191,6 +191,8 @@ interface ItemFormData {
   imageUrl: string;
   effectType: string;
   effectValue: string;
+  bonusAura?: number;
+  bonusMoney?: number;
 }
 
 interface NftFormData {
@@ -209,6 +211,8 @@ const defaultItemForm: ItemFormData = {
   imageUrl: '',
   effectType: 'USERNAME_COLOR',
   effectValue: '',
+  bonusAura: 0,
+  bonusMoney: 0,
 };
 
 const defaultNftForm: NftFormData = {
@@ -902,11 +906,21 @@ export default function Admin() {
   };
 
   // Parse effect string to get type and value
-  const parseEffect = (effectStr: string | null): { type: string; value: string } => {
+  const parseEffect = (effectStr: string | null): { type: string; value: string; bonusAura?: number; bonusMoney?: number } => {
     if (!effectStr) return { type: 'USERNAME_COLOR', value: '' };
     try {
       const effect = JSON.parse(effectStr);
-      return { type: effect.type || 'USERNAME_COLOR', value: effect.value || '' };
+      // Determine effect type from the effect object
+      let effectType = effect.type || 'USERNAME_COLOR';
+      if (effect.bonusAura !== undefined) effectType = 'BONUS_AURA';
+      if (effect.bonusMoney !== undefined) effectType = 'BONUS_MONEY';
+      
+      return { 
+        type: effectType, 
+        value: effect.value || '', 
+        bonusAura: effect.bonusAura,
+        bonusMoney: effect.bonusMoney,
+      };
     } catch {
       return { type: 'USERNAME_COLOR', value: '' };
     }
@@ -924,7 +938,7 @@ export default function Admin() {
   // Open dialog for editing item
   const openEditItemDialog = (item: ShopItem) => {
     setEditingItem(item);
-    const { type: effectType, value: effectValue } = parseEffect(item.effect);
+    const { type: effectType, value: effectValue, bonusAura, bonusMoney } = parseEffect(item.effect);
     setItemForm({
       name: item.name,
       description: item.description,
@@ -933,6 +947,8 @@ export default function Admin() {
       imageUrl: item.imageUrl || '',
       effectType,
       effectValue,
+      bonusAura: bonusAura || 0,
+      bonusMoney: bonusMoney || 0,
     });
     setItemImageDataUrl('');
     setItemImageInputMode(item.imageUrl ? 'url' : 'upload');
@@ -948,11 +964,22 @@ export default function Admin() {
 
     setSavingItem(true);
     try {
-      // Build effect JSON
-      const effect = JSON.stringify({
-        type: itemForm.effectType,
-        value: itemForm.effectValue,
-      });
+      // Build effect JSON based on effect type
+      let effect: string;
+      if (itemForm.effectType === 'BONUS_AURA') {
+        effect = JSON.stringify({
+          bonusAura: itemForm.bonusAura || 0,
+        });
+      } else if (itemForm.effectType === 'BONUS_MONEY') {
+        effect = JSON.stringify({
+          bonusMoney: itemForm.bonusMoney || 0,
+        });
+      } else {
+        effect = JSON.stringify({
+          type: itemForm.effectType,
+          value: itemForm.effectValue,
+        });
+      }
 
       let uploadedUrl = itemForm.imageUrl.trim() || undefined;
       if (itemImageInputMode === 'upload' && itemImageDataUrl) {
@@ -3948,7 +3975,18 @@ export default function Admin() {
               <label className="text-sm text-muted-foreground">Effet</label>
               <Select
                 value={itemForm.effectType}
-                onValueChange={(value) => setItemForm(prev => ({ ...prev, effectType: value }))}
+                onValueChange={(value) => {
+                  setItemForm(prev => {
+                    // Reset values when changing effect type
+                    const resetValues: Partial<ItemFormData> = {
+                      effectType: value,
+                      effectValue: '',
+                      bonusAura: 0,
+                      bonusMoney: 0,
+                    };
+                    return { ...prev, ...resetValues };
+                  });
+                }}
               >
                 <SelectTrigger className="bg-transparent">
                   <SelectValue />
@@ -3965,6 +4003,55 @@ export default function Admin() {
                 {EFFECT_TYPES.find(e => e.value === itemForm.effectType)?.description}
               </p>
             </div>
+
+            {/* Bonus Aura field - only show for BONUS_AURA effect type */}
+            {itemForm.effectType === 'BONUS_AURA' && (
+              <div className="space-y-2">
+                <label className="text-sm text-muted-foreground">Valeur Bonus Aura</label>
+                <Input
+                  type="number"
+                  value={itemForm.bonusAura || 0}
+                  onChange={(e) => setItemForm(prev => ({ ...prev, bonusAura: parseInt(e.target.value) || 0 }))}
+                  placeholder="0"
+                  className="bg-transparent"
+                  min="0"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Montant d'aura donné à l'utilisation de l'objet
+                </p>
+              </div>
+            )}
+
+            {/* Bonus Money field - only show for BONUS_MONEY effect type */}
+            {itemForm.effectType === 'BONUS_MONEY' && (
+              <div className="space-y-2">
+                <label className="text-sm text-muted-foreground">Valeur Bonus Argent</label>
+                <Input
+                  type="number"
+                  value={itemForm.bonusMoney || 0}
+                  onChange={(e) => setItemForm(prev => ({ ...prev, bonusMoney: parseInt(e.target.value) || 0 }))}
+                  placeholder="0"
+                  className="bg-transparent"
+                  min="0"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Montant d'argent donné à l'utilisation de l'objet
+                </p>
+              </div>
+            )}
+
+            {/* Effect value field - only show for other effect types */}
+            {itemForm.effectType !== 'BONUS_AURA' && itemForm.effectType !== 'BONUS_MONEY' && (
+              <div className="space-y-2">
+                <label className="text-sm text-muted-foreground">Valeur de l'effet</label>
+                <Input
+                  value={itemForm.effectValue}
+                  onChange={(e) => setItemForm(prev => ({ ...prev, effectValue: e.target.value }))}
+                  placeholder="Valeur de l'effet"
+                  className="bg-transparent"
+                />
+              </div>
+            )}
           </div>
 
           <DialogFooter>
