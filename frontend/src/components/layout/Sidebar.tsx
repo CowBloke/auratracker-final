@@ -6,13 +6,11 @@ import {
   LayoutDashboard,
   Gamepad2,
   Trophy,
-  Store,
   Users,
   Flag,
   Backpack,
   Lightbulb,
   BookOpen,
-  Bug,
   Shield,
   Coins,
   Swords,
@@ -21,11 +19,9 @@ import {
   LineChart,
   Search,
   Ticket,
-  History,
   BarChart3,
   Image,
   ShoppingCart,
-  Video,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -62,15 +58,12 @@ const navItems = [
   { to: '/leaderboards', label: 'Classement', icon: Trophy },
   { to: '/gallery', label: 'Galerie', icon: Image },
   { to: '/market', label: 'Marché', icon: ShoppingCart },
-  { to: '/marketplace', label: 'NFT', icon: Store },
   { to: '/party', label: 'Party', icon: Users },
-  { to: '/webcam', label: 'Webcam', icon: Video },
   { to: '/clans', label: 'Clans', icon: Flag },
   { to: '/inventory', label: 'Inventaire', icon: Backpack },
   { to: '/pass', label: 'Pass', icon: Ticket },
   { to: '/suggestions', label: 'Suggestions', icon: Lightbulb },
-  { to: '/rules', label: 'Règlement', icon: BookOpen },
-  { to: '/changelog', label: 'Changelog', icon: History },
+  { to: '/rules', label: 'Infos', icon: BookOpen },
 ];
 
 const adminItems = [
@@ -335,26 +328,6 @@ export default function AppSidebar() {
                 </SidebarMenuItem>
               );
             })}
-
-            {/* Bug Report Link */}
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={location.pathname === '/report-bug'}
-                tooltip="Reporter un bug"
-                className={cn(
-                  "h-9 px-3 text-sm font-normal",
-                  location.pathname === '/report-bug'
-                    ? "text-foreground bg-muted/50"
-                    : "text-muted-foreground hover:text-foreground hover:bg-transparent"
-                )}
-              >
-                <NavLink to="/report-bug">
-                  <Bug className="h-4 w-4" />
-                  <span className="group-data-[collapsible=icon]:hidden">Reporter un bug</span>
-                </NavLink>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
 
             {/* Admin items (only for admins) */}
             {user?.isAdmin && adminItems.map((item) => {

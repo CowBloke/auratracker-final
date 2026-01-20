@@ -8,14 +8,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { resolveImageUrl } from '@/lib/images';
 import { BadgeWithTooltip } from '@/components/ui/badge-tooltip';
 
-const nftRarityLabels: Record<string, string> = {
-  COMMON: 'Commun',
-  UNCOMMON: 'Inhabituel',
-  RARE: 'Rare',
-  EPIC: 'Épique',
-  LEGENDARY: 'Légendaire',
-};
-
 interface ProfileUser {
   id: string;
   username: string;
@@ -45,20 +37,6 @@ interface ProfileUser {
     highScore: number;
     totalPlayed: number;
   }>;
-  displayedNft?: {
-    id: string;
-    purchasePrice: number;
-    acquiredAt: string;
-    nft: {
-      id: string;
-      name: string;
-      description: string;
-      imageUrl: string;
-      rarity: 'COMMON' | 'UNCOMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
-      createdAt: string;
-      price: number;
-    };
-  } | null;
 }
 
 interface Rankings {
@@ -292,53 +270,6 @@ export default function Profile() {
         ) : (
           <p className={profileUser.bio ? 'text-foreground' : 'text-muted-foreground italic'}>
             {profileUser.bio || (isOwnProfile ? 'Ajoute une description pour te présenter aux autres joueurs.' : 'Aucune description.')}
-          </p>
-        )}
-      </section>
-
-      <section className="space-y-4">
-        <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
-          NFT affiché
-        </h2>
-        {profileUser.displayedNft ? (
-          <div className="flex items-center gap-4 border border-border/40 p-4">
-            <div className="w-16 h-16 bg-muted/30 flex items-center justify-center rounded shrink-0 overflow-hidden">
-              {profileUser.displayedNft.nft.imageUrl ? (
-                <img
-                  src={resolveImageUrl(profileUser.displayedNft.nft.imageUrl)}
-                  alt={profileUser.displayedNft.nft.name}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-              ) : null}
-            </div>
-            <div className="space-y-1 flex-1 min-w-0">
-              <div className="flex items-center gap-3">
-                <h3 className="text-lg font-medium truncate">
-                  {profileUser.displayedNft.nft.name}
-                </h3>
-                <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                  {nftRarityLabels[profileUser.displayedNft.nft.rarity] || profileUser.displayedNft.nft.rarity}
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground truncate">
-                {profileUser.displayedNft.nft.description}
-              </p>
-              <div className="text-xs text-muted-foreground/80 flex items-center gap-4">
-                <span>
-                  Créé le {new Date(profileUser.displayedNft.nft.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}
-                </span>
-                <span>
-                  Prix d'achat ${profileUser.displayedNft.purchasePrice}
-                </span>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Aucun NFT affiché.
           </p>
         )}
       </section>

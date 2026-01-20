@@ -1,6 +1,5 @@
 import {
   Bomb,
-  Bug,
   Coins,
   Dice5,
   Gamepad2,
@@ -9,11 +8,9 @@ import {
   MapPin,
   Package,
   ScrollText,
-  History,
   Shield,
   Swords,
   Trophy,
-  ShoppingBag,
   User,
   Users,
   LineChart,
@@ -35,16 +32,13 @@ const pageMatchers: Array<{ test: (path: string) => boolean; label: string; icon
   { test: (path) => path.startsWith('/games/market'), label: 'Salle de marche', icon: LineChart },
   { test: (path) => path.startsWith('/games/aura-coin'), label: 'Aura Coin', icon: Coins },
   { test: (path) => path.startsWith('/games'), label: 'Jeux', icon: Gamepad2 },
-  { test: (path) => path.startsWith('/marketplace'), label: 'Marketplace', icon: ShoppingBag },
   { test: (path) => path.startsWith('/leaderboards'), label: 'Classements', icon: Trophy },
   { test: (path) => path.startsWith('/party'), label: 'Groupe', icon: Users },
   { test: (path) => path.startsWith('/inventory'), label: 'Inventaire', icon: Package },
   { test: (path) => path.startsWith('/profile'), label: 'Profil', icon: User },
   { test: (path) => path.startsWith('/admin'), label: 'Admin', icon: Shield },
-  { test: (path) => path.startsWith('/rules'), label: 'Regles', icon: ScrollText },
-  { test: (path) => path.startsWith('/changelog'), label: 'Changelog', icon: History },
+  { test: (path) => path.startsWith('/rules'), label: 'Infos', icon: ScrollText },
   { test: (path) => path.startsWith('/suggestions'), label: 'Suggestions', icon: Lightbulb },
-  { test: (path) => path.startsWith('/report-bug'), label: 'Signaler un bug', icon: Bug },
 ];
 
 export function getPageMeta(path?: string | null): PageMeta {

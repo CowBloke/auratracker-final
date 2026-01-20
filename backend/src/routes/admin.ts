@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
-import { validate, createNftSchema, adminRareActionSchema } from '../middleware/validation.js';
+import { validate, adminRareActionSchema } from '../middleware/validation.js';
 import { logAdmin, logSuggestion, logBan } from '../utils/logger.js';
 import { isAllowedImageUrl } from '../utils/uploads.js';
 
@@ -183,91 +183,6 @@ router.delete('/items/:id', authMiddleware, requireAdmin, async (req: AuthReques
   } catch (error) {
     console.error('Admin delete item error:', error);
     res.status(500).json({ error: 'Failed to delete item' });
-  }
-});
-
-// ========== NFT MANAGEMENT ==========
-
-// Get all NFTs (admin view)
-router.get('/nfts', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
-  try {
-    const nfts = await prisma.nft.findMany({
-      orderBy: { createdAt: 'desc' },
-    });
-    res.json({ nfts });
-  } catch (error) {
-    console.error('Admin get NFTs error:', error);
-    res.status(500).json({ error: 'Failed to get NFTs' });
-  }
-});
-
-// Create NFT
-router.post('/nfts', authMiddleware, requireAdmin, validate(createNftSchema), async (req: AuthRequest, res: Response) => {
-  try {
-    const { name, description, price, imageUrl, rarity } = req.body;
-
-    if (!isAllowedImageUrl(imageUrl)) {
-      return res.status(400).json({ error: 'Image must be uploaded or a valid URL' });
-    }
-
-    const nft = await prisma.nft.create({
-      data: {
-        name,
-        description,
-        price: parseInt(price) || 0,
-        imageUrl,
-        rarity,
-      },
-    });
-
-    res.status(201).json({ nft });
-  } catch (error) {
-    console.error('Admin create NFT error:', error);
-    res.status(500).json({ error: 'Failed to create NFT' });
-  }
-});
-
-// Update NFT
-router.put('/nfts/:id', authMiddleware, requireAdmin, validate(createNftSchema), async (req: AuthRequest, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { name, description, price, imageUrl, rarity } = req.body;
-
-    if (!isAllowedImageUrl(imageUrl)) {
-      return res.status(400).json({ error: 'Image must be uploaded or a valid URL' });
-    }
-
-    const nft = await prisma.nft.update({
-      where: { id },
-      data: {
-        name,
-        description,
-        price: parseInt(price) || 0,
-        imageUrl,
-        rarity,
-      },
-    });
-
-    res.json({ nft });
-  } catch (error) {
-    console.error('Admin update NFT error:', error);
-    res.status(500).json({ error: 'Failed to update NFT' });
-  }
-});
-
-// Delete NFT
-router.delete('/nfts/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
-  try {
-    const { id } = req.params;
-
-    await prisma.nft.delete({
-      where: { id },
-    });
-
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Admin delete NFT error:', error);
-    res.status(500).json({ error: 'Failed to delete NFT' });
   }
 });
 
@@ -876,55 +791,6 @@ router.post('/rare', authMiddleware, requireAdmin, validate(adminRareActionSchem
           stderr: errorOutput,
         });
       }
-    }
-
-    if (action === 'nft_refund_all') {
-      const result = await prisma.$transaction(async (tx) => {
-        const refundTotals = await tx.userNft.groupBy({
-          by: ['userId'],
-          _sum: { purchasePrice: true },
-        });
-
-        const refundUpdates = refundTotals
-          .map((refund) => ({
-            userId: refund.userId,
-            total: refund._sum.purchasePrice ?? 0,
-          }))
-          .filter((refund) => refund.total > 0)
-          .map((refund) =>
-            tx.user.update({
-              where: { id: refund.userId },
-              data: { money: { increment: refund.total } },
-              select: { id: true },
-            })
-          );
-
-        await Promise.all(refundUpdates);
-
-        const deletedUserNfts = await tx.userNft.deleteMany({});
-        const deletedNfts = await tx.nft.deleteMany({});
-        const totalRefunded = refundTotals.reduce((sum, refund) => sum + (refund._sum.purchasePrice ?? 0), 0);
-
-        return {
-          totalRefunded,
-          usersRefunded: refundUpdates.length,
-          userNftsDeleted: deletedUserNfts.count,
-          nftsDeleted: deletedNfts.count,
-        };
-      });
-
-      logAdmin('nft_refund_all', req.user!.id, req.user!.username, undefined, undefined, {
-        totalRefunded: result.totalRefunded,
-        usersRefunded: result.usersRefunded,
-        nftsDeleted: result.nftsDeleted,
-        userNftsDeleted: result.userNftsDeleted,
-      });
-
-      return res.json({
-        success: true,
-        message: `Refunded ${result.totalRefunded} and removed ${result.userNftsDeleted} user NFT(s).`,
-        ...result,
-      });
     }
 
     return res.status(400).json({ error: 'Unknown admin action' });

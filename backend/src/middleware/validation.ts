@@ -73,23 +73,6 @@ export const useItemSchema = z.object({
   }).optional(),
 });
 
-// NFT schemas
-export const createNftSchema = z.object({
-  name: z.string().min(1).max(100),
-  description: z.string().min(1).max(500),
-  price: z.number().int().min(0),
-  imageUrl: z.string().min(1),
-  rarity: z.enum(['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY']),
-});
-
-export const purchaseNftSchema = z.object({
-  nftId: z.string().uuid(),
-});
-
-export const displayNftSchema = z.object({
-  userNftId: z.string().uuid().nullable().optional(),
-});
-
 // Admin rare actions
 export const adminRareActionSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('chat_clear') }),
@@ -98,7 +81,6 @@ export const adminRareActionSchema = z.discriminatedUnion('action', [
     action: z.literal('reset_extreme_aura'),
     threshold: z.number().int().min(1).optional(),
   }),
-  z.object({ action: z.literal('nft_refund_all') }),
 ]);
 
 // Game schemas

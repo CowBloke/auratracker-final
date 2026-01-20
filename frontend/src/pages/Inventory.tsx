@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { marketplaceApi, uploadsApi, UserNft } from '../services/api';
+import { marketplaceApi, uploadsApi } from '../services/api';
 import { Loader2, Palette, Camera, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -37,16 +37,8 @@ interface ItemEffect {
 
 const typeLabels: Record<string, string> = {
   CONSUMABLE: 'Consommable',
-  COSMETIC: 'Cosmétique',
-  UPGRADE: 'Amélioration',
-};
-
-const nftRarityLabels: Record<string, string> = {
-  COMMON: 'Commun',
-  UNCOMMON: 'Inhabituel',
-  RARE: 'Rare',
-  EPIC: 'Épique',
-  LEGENDARY: 'Légendaire',
+  COSMETIC: 'CosmÇ¸tique',
+  UPGRADE: 'AmÇ¸lioration',
 };
 
 const PRESET_COLORS = [
@@ -59,14 +51,9 @@ const PRESET_COLORS = [
 export default function Inventory() {
   const { user, refreshUser } = useAuth();
   const [items, setItems] = useState<UserItem[]>([]);
-  const [nfts, setNfts] = useState<UserNft[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingNfts, setLoadingNfts] = useState(true);
   const [using, setUsing] = useState<string | null>(null);
-  const [displayingNft, setDisplayingNft] = useState<string | null>(null);
-  const [displayedNftId, setDisplayedNftId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'items' | 'nfts'>('items');
 
   // Color picker state
   const [colorDialogOpen, setColorDialogOpen] = useState(false);
@@ -84,7 +71,6 @@ export default function Inventory() {
   useEffect(() => {
     if (user) {
       fetchInventory();
-      fetchNftInventory();
     }
   }, [user]);
 
@@ -97,19 +83,6 @@ export default function Inventory() {
       console.error('Failed to fetch inventory:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchNftInventory = async () => {
-    try {
-      setLoadingNfts(true);
-      const response = await marketplaceApi.getNftInventory(user!.id);
-      setNfts(response.data.items);
-      setDisplayedNftId(response.data.displayedNftId);
-    } catch (error) {
-      console.error('Failed to fetch NFT inventory:', error);
-    } finally {
-      setLoadingNfts(false);
     }
   };
 
@@ -155,13 +128,13 @@ export default function Inventory() {
       await refreshUser();
       await fetchInventory();
       
-      let effectText = `${userItem.item.name} utilisé`;
+      let effectText = `${userItem.item.name} utilisÇ¸`;
       if (response.data.effect) {
         if (response.data.effect.bonusAura) {
-          effectText += ` → +${response.data.effect.bonusAura} aura`;
+          effectText += ` ƒÅ' +${response.data.effect.bonusAura} aura`;
         }
         if (response.data.effect.bonusMoney) {
-          effectText += ` → +$${response.data.effect.bonusMoney}`;
+          effectText += ` ƒÅ' +$${response.data.effect.bonusMoney}`;
         }
       }
       
@@ -170,7 +143,7 @@ export default function Inventory() {
     } catch (error: any) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.error || 'Échec',
+        text: error.response?.data?.error || 'Ç%chec',
       });
     } finally {
       setUsing(null);
@@ -189,13 +162,13 @@ export default function Inventory() {
       await refreshUser();
       await fetchInventory();
       
-      setMessage({ type: 'success', text: `Couleur de pseudo appliquée: ${selectedColor}` });
+      setMessage({ type: 'success', text: `Couleur de pseudo appliquÇ¸e: ${selectedColor}` });
       setTimeout(() => setMessage(null), 3000);
       setColorDialogOpen(false);
     } catch (error: any) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.error || 'Échec',
+        text: error.response?.data?.error || 'Ç%chec',
       });
     } finally {
       setUsing(null);
@@ -228,37 +201,17 @@ export default function Inventory() {
       await refreshUser();
       await fetchInventory();
       
-      setMessage({ type: 'success', text: 'Photo de profil appliquée' });
+      setMessage({ type: 'success', text: 'Photo de profil appliquÇ¸e' });
       setTimeout(() => setMessage(null), 3000);
       setImageDialogOpen(false);
     } catch (error: any) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.error || 'Échec',
+        text: error.response?.data?.error || 'Ç%chec',
       });
     } finally {
       setUsing(null);
       setImageItem(null);
-    }
-  };
-
-  const handleDisplayNft = async (userNftId: string | null) => {
-    if (displayingNft) return;
-
-    try {
-      setDisplayingNft(userNftId ?? displayedNftId ?? 'clear');
-      setMessage(null);
-      const res = await marketplaceApi.setDisplayedNft(userNftId);
-      setDisplayedNftId(res.data.displayedNftId);
-      setMessage({ type: 'success', text: userNftId ? 'NFT affiché sur le profil' : 'NFT retiré du profil' });
-      setTimeout(() => setMessage(null), 3000);
-    } catch (error: any) {
-      setMessage({
-        type: 'error',
-        text: error.response?.data?.error || 'Échec',
-      });
-    } finally {
-      setDisplayingNft(null);
     }
   };
 
@@ -312,7 +265,7 @@ export default function Inventory() {
             </h1>
           </div>
           <div className="text-right text-sm text-muted-foreground tabular-nums">
-            {items.length} objet{items.length !== 1 ? 's' : ''} • {nfts.length} NFT{nfts.length !== 1 ? 's' : ''}
+            {items.length} objet{items.length !== 1 ? 's' : ''}
           </div>
         </div>
       </header>
@@ -328,137 +281,32 @@ export default function Inventory() {
       )}
 
       <div className="space-y-6">
-        <div className="flex gap-2">
-          <button
-            onClick={() => setActiveTab('items')}
-            className={cn(
-              "px-4 py-2 text-sm border transition-colors",
-              activeTab === 'items'
-                ? "border-foreground text-foreground"
-                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-            )}
-          >
-            Objets
-          </button>
-          <button
-            onClick={() => setActiveTab('nfts')}
-            className={cn(
-              "px-4 py-2 text-sm border transition-colors",
-              activeTab === 'nfts'
-                ? "border-foreground text-foreground"
-                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-            )}
-          >
-            NFT
-          </button>
-        </div>
+        {/* Divider */}
+        <div className="h-px bg-border" />
 
-        {activeTab === 'items' && (
-          <div className="space-y-6">
-          {/* Divider */}
-          <div className="h-px bg-border" />
-
-          {/* Items */}
-          {items.length === 0 ? (
-            <p className="text-center text-muted-foreground py-12">
-              Inventaire vide
-            </p>
-          ) : (
-            <div className="space-y-0">
-              {items.map((userItem) => {
-                const effect = parseEffect(userItem.item.effect);
-                const effectIcon = getEffectIcon(effect);
-                const effectLabel = getEffectLabel(effect);
-                
-                return (
-                  <div
-                    key={userItem.id}
-                    className="flex items-center justify-between py-6 border-b border-border/30 last:border-0"
-                  >
-                    <div className="flex items-center gap-4 flex-1">
-                      {/* Item Image */}
-                      {userItem.item.imageUrl ? (
-                        <img 
-                          src={resolveImageUrl(userItem.item.imageUrl)} 
-                          alt={userItem.item.name}
-                          className="w-14 h-14 object-cover rounded shrink-0"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                        <div className="w-14 h-14 bg-muted/30 flex items-center justify-center rounded shrink-0">
-                          <Package className="w-6 h-6 text-muted-foreground" />
-                        </div>
-                      )}
-                      
-                      <div className="space-y-1 flex-1 min-w-0">
-                        <div className="flex items-center gap-4">
-                          <h2 className="text-lg font-medium truncate">{userItem.item.name}</h2>
-                          <span className="text-xs text-muted-foreground uppercase tracking-wide shrink-0">
-                            {typeLabels[userItem.item.type]}
-                          </span>
-                          <span className="text-xs text-muted-foreground shrink-0">
-                            ×{userItem.quantity}
-                          </span>
-                        </div>
-                        <p className="text-sm text-muted-foreground max-w-md truncate">
-                          {userItem.item.description}
-                        </p>
-                        {effectLabel && (
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground/80">
-                            {effectIcon}
-                            <span>{effectLabel}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {(userItem.item.type === 'CONSUMABLE' || userItem.item.type === 'COSMETIC') && (
-                      <button
-                        onClick={() => handleUseItem(userItem)}
-                        disabled={using === userItem.id}
-                        className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 ml-4 shrink-0"
-                      >
-                        {using === userItem.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          'Utiliser'
-                        )}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          </div>
-        )}
-
-        {activeTab === 'nfts' && (
-          <div className="space-y-6">
-          <div className="h-px bg-border" />
-
-          {loadingNfts ? (
-            <div className="flex justify-center py-12">
-              <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
-            </div>
-          ) : nfts.length === 0 ? (
-            <p className="text-center text-muted-foreground py-12">
-              Aucun NFT dans l'inventaire
-            </p>
-          ) : (
-            <div className="space-y-0">
-              {nfts.map((userNft) => (
+        {/* Items */}
+        {items.length === 0 ? (
+          <p className="text-center text-muted-foreground py-12">
+            Inventaire vide
+          </p>
+        ) : (
+          <div className="space-y-0">
+            {items.map((userItem) => {
+              const effect = parseEffect(userItem.item.effect);
+              const effectIcon = getEffectIcon(effect);
+              const effectLabel = getEffectLabel(effect);
+              
+              return (
                 <div
-                  key={userNft.id}
+                  key={userItem.id}
                   className="flex items-center justify-between py-6 border-b border-border/30 last:border-0"
                 >
                   <div className="flex items-center gap-4 flex-1">
-                    {userNft.nft.imageUrl ? (
+                    {/* Item Image */}
+                    {userItem.item.imageUrl ? (
                       <img 
-                        src={resolveImageUrl(userNft.nft.imageUrl)} 
-                        alt={userNft.nft.name}
+                        src={resolveImageUrl(userItem.item.imageUrl)} 
+                        alt={userItem.item.name}
                         className="w-14 h-14 object-cover rounded shrink-0"
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = 'none';
@@ -472,45 +320,42 @@ export default function Inventory() {
                     
                     <div className="space-y-1 flex-1 min-w-0">
                       <div className="flex items-center gap-4">
-                        <h2 className="text-lg font-medium truncate">{userNft.nft.name}</h2>
+                        <h2 className="text-lg font-medium truncate">{userItem.item.name}</h2>
                         <span className="text-xs text-muted-foreground uppercase tracking-wide shrink-0">
-                          {nftRarityLabels[userNft.nft.rarity] || userNft.nft.rarity}
+                          {typeLabels[userItem.item.type]}
+                        </span>
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          Ç-{userItem.quantity}
                         </span>
                       </div>
                       <p className="text-sm text-muted-foreground max-w-md truncate">
-                        {userNft.nft.description}
+                        {userItem.item.description}
                       </p>
-                      <div className="text-xs text-muted-foreground/80 flex items-center gap-4">
-                        <span>Acheté ${userNft.purchasePrice}</span>
-                        <span>
-                          Ajouté le {new Date(userNft.acquiredAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </span>
-                      </div>
+                      {effectLabel && (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground/80">
+                          {effectIcon}
+                          <span>{effectLabel}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   
-                  <button
-                    onClick={() => handleDisplayNft(displayedNftId === userNft.id ? null : userNft.id)}
-                    disabled={displayingNft === userNft.id}
-                    className={cn(
-                      "px-4 py-2 text-sm border transition-colors ml-4 shrink-0",
-                      displayedNftId === userNft.id
-                        ? "border-foreground text-foreground hover:bg-foreground hover:text-background"
-                        : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-                    )}
-                  >
-                    {displayingNft === userNft.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : displayedNftId === userNft.id ? (
-                      'Retirer'
-                    ) : (
-                      'Afficher'
-                    )}
-                  </button>
+                  {(userItem.item.type === 'CONSUMABLE' || userItem.item.type === 'COSMETIC') && (
+                    <button
+                      onClick={() => handleUseItem(userItem)}
+                      disabled={using === userItem.id}
+                      className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 ml-4 shrink-0"
+                    >
+                      {using === userItem.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        'Utiliser'
+                      )}
+                    </button>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
+              );
+            })}
           </div>
         )}
       </div>
@@ -524,7 +369,7 @@ export default function Inventory() {
               Choisir une couleur
             </DialogTitle>
             <DialogDescription>
-              Sélectionnez la couleur de votre pseudo dans le chat.
+              SÇ¸lectionnez la couleur de votre pseudo dans le chat.
             </DialogDescription>
           </DialogHeader>
 
@@ -608,7 +453,7 @@ export default function Inventory() {
               Photo de profil
             </DialogTitle>
             <DialogDescription>
-              Importez votre photo de profil qui sera affichée dans le chat.
+              Importez votre photo de profil qui sera affichÇ¸e dans le chat.
             </DialogDescription>
           </DialogHeader>
 

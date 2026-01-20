@@ -60,7 +60,7 @@ export const authApi = {
 
 // Uploads API
 export const uploadsApi = {
-  uploadImage: (data: { purpose: 'suggestion' | 'item' | 'nft' | 'profile'; imageData: string }) =>
+  uploadImage: (data: { purpose: 'suggestion' | 'item' | 'profile'; imageData: string }) =>
     api.post<{ url: string }>('/uploads', data),
 };
 
@@ -114,23 +114,6 @@ export const passApi = {
 };
 
 // Marketplace API
-export interface Nft {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  imageUrl: string;
-  rarity: 'COMMON' | 'UNCOMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
-  createdAt: string;
-}
-
-export interface UserNft {
-  id: string;
-  purchasePrice: number;
-  acquiredAt: string;
-  nft: Nft;
-}
-
 export const marketplaceApi = {
   getItems: (params?: { type?: string; page?: number; limit?: number }) =>
     api.get('/marketplace/items', { params }),
@@ -139,14 +122,6 @@ export const marketplaceApi = {
   getInventory: (userId: string) => api.get(`/marketplace/inventory/${userId}`),
   useItem: (userItemId: string, effectData?: { color?: string; imageUrl?: string }) => 
     api.post('/marketplace/use-item', { userItemId, effectData }),
-  getNfts: (params?: { rarity?: string; page?: number; limit?: number }) =>
-    api.get('/marketplace/nfts', { params }),
-  purchaseNft: (data: { nftId: string }) =>
-    api.post('/marketplace/nfts/purchase', data),
-  getNftInventory: (userId: string) =>
-    api.get<{ items: UserNft[]; displayedNftId: string | null }>(`/marketplace/nfts/inventory/${userId}`),
-  setDisplayedNft: (userNftId: string | null) =>
-    api.post<{ success: boolean; displayedNftId: string | null }>('/marketplace/nfts/display', { userNftId }),
   // Admin
   createItem: (data: {
     name: string;
@@ -844,8 +819,7 @@ export interface LogStats {
 type AdminRareAction =
   | { action: 'chat_clear' }
   | { action: 'deploy' }
-  | { action: 'reset_extreme_aura'; threshold?: number }
-  | { action: 'nft_refund_all' };
+  | { action: 'reset_extreme_aura'; threshold?: number };
 
 const runRareAction = (data: AdminRareAction) => api.post('/admin/rare', data);
 
@@ -897,23 +871,6 @@ export const adminApi = {
     effect?: string;
   }) => api.put<{ item: ShopItem }>(`/admin/items/${id}`, data),
   deleteItem: (id: string) => api.delete<{ success: boolean }>(`/admin/items/${id}`),
-  // NFT management
-  getNfts: () => api.get<{ nfts: Nft[] }>('/admin/nfts'),
-  createNft: (data: {
-    name: string;
-    description: string;
-    price: number;
-    imageUrl: string;
-    rarity: 'COMMON' | 'UNCOMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
-  }) => api.post<{ nft: Nft }>('/admin/nfts', data),
-  updateNft: (id: string, data: {
-    name: string;
-    description: string;
-    price: number;
-    imageUrl: string;
-    rarity: 'COMMON' | 'UNCOMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
-  }) => api.put<{ nft: Nft }>(`/admin/nfts/${id}`, data),
-  deleteNft: (id: string) => api.delete<{ success: boolean }>(`/admin/nfts/${id}`),
   // Bug reports management
   getBugReports: () => api.get<{ bugReports: BugReport[] }>('/admin/bugs'),
   updateBugReport: (id: string, data: { status: 'PENDING' | 'DONE' }) =>
@@ -956,8 +913,6 @@ export const adminApi = {
   // Reset extreme aura values
   resetExtremeAura: (threshold?: number) =>
     runRareAction({ action: 'reset_extreme_aura', threshold }) as Promise<{ data: { success: boolean; message: string; usersReset: number; users: { id: string; username: string; oldAura: string }[] } }>,
-  refundAllNfts: () =>
-    runRareAction({ action: 'nft_refund_all' }) as Promise<{ data: { success: boolean; message: string; totalRefunded: number; usersRefunded: number; userNftsDeleted: number; nftsDeleted: number } }>,
 };
 
 export const maintenanceApi = {
