@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { adminApi, uploadsApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, Badge, UserBadge, Nft } from '../services/api';
+import { adminApi, uploadsApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, Badge, UserBadge } from '../services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -43,14 +43,6 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
   CONSUMABLE: 'Consommable',
   COSMETIC: 'Cosmétique',
   UPGRADE: 'Amélioration',
-};
-
-const NFT_RARITY_LABELS: Record<string, string> = {
-  COMMON: 'Commun',
-  UNCOMMON: 'Inhabituel',
-  RARE: 'Rare',
-  EPIC: 'Épique',
-  LEGENDARY: 'Légendaire',
 };
 
 const ANNOUNCEMENT_MAX_LENGTH = 120;
@@ -108,10 +100,6 @@ const ACTION_LABELS: Record<string, string> = {
   item_use: 'Utilisation objet',
   item_create: 'Objet créé',
   item_delete: 'Objet supprimé',
-  nft_purchase: 'Achat NFT',
-  nft_create: 'NFT créé',
-  nft_update: 'NFT modifié',
-  nft_delete: 'NFT supprimé',
   // Admin
   user_update: 'Utilisateur modifié',
   user_delete: 'Utilisateur supprimé',
@@ -125,7 +113,6 @@ const ACTION_LABELS: Record<string, string> = {
   badge_create: 'Badge créé',
   badge_assign: 'Badge attribué',
   badge_remove: 'Badge retiré',
-  nft_refund_all: 'NFT remboursés',
   // Ban
   ban_create: 'Bannissement créé',
   ban_remove: 'Bannissement levé',
@@ -184,14 +171,6 @@ interface ItemFormData {
   bonusMoney?: number;
 }
 
-interface NftFormData {
-  name: string;
-  description: string;
-  price: number;
-  imageUrl: string;
-  rarity: 'COMMON' | 'UNCOMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
-}
-
 const defaultItemForm: ItemFormData = {
   name: '',
   description: '',
@@ -202,14 +181,6 @@ const defaultItemForm: ItemFormData = {
   effectValue: '',
   bonusAura: 0,
   bonusMoney: 0,
-};
-
-const defaultNftForm: NftFormData = {
-  name: '',
-  description: '',
-  price: 0,
-  imageUrl: '',
-  rarity: 'COMMON',
 };
 
 export default function Admin() {
@@ -253,17 +224,6 @@ export default function Admin() {
   const [itemImageInputMode, setItemImageInputMode] = useState<'upload' | 'url'>('upload');
   const [savingItem, setSavingItem] = useState(false);
   const [deletingItem, setDeletingItem] = useState<string | null>(null);
-
-  // NFT state
-  const [nfts, setNfts] = useState<Nft[]>([]);
-  const [loadingNfts, setLoadingNfts] = useState(false);
-  const [nftDialogOpen, setNftDialogOpen] = useState(false);
-  const [editingNft, setEditingNft] = useState<Nft | null>(null);
-  const [nftForm, setNftForm] = useState<NftFormData>(defaultNftForm);
-  const [nftImageDataUrl, setNftImageDataUrl] = useState('');
-  const [nftImageInputMode, setNftImageInputMode] = useState<'upload' | 'url'>('upload');
-  const [savingNft, setSavingNft] = useState(false);
-  const [deletingNft, setDeletingNft] = useState<string | null>(null);
 
   // Badge management state
   const [badges, setBadges] = useState<Badge[]>([]);
@@ -346,9 +306,6 @@ export default function Admin() {
   // Reset extreme aura state
   const [resettingAura, setResettingAura] = useState(false);
   const [resetAuraResult, setResetAuraResult] = useState<{ success: boolean; message: string; usersReset: number; users: { id: string; username: string; oldAura: string }[] } | null>(null);
-  const [refundingNfts, setRefundingNfts] = useState(false);
-  const [refundNftsResult, setRefundNftsResult] = useState<{ success: boolean; message: string; totalRefunded: number; usersRefunded: number; userNftsDeleted: number; nftsDeleted: number } | null>(null);
-
   const toggleLogExpand = (logId: string) => {
     setExpandedLogIds(prev => {
       const next = new Set(prev);
@@ -384,7 +341,6 @@ export default function Admin() {
   useEffect(() => {
     fetchUsers();
     fetchItems();
-    fetchNfts();
     fetchBadges();
     fetchBugReports();
     fetchPendingUsers();
@@ -424,19 +380,6 @@ export default function Admin() {
       showMessage('error', 'Erreur lors du chargement des objets');
     } finally {
       setLoadingItems(false);
-    }
-  };
-
-  const fetchNfts = async () => {
-    try {
-      setLoadingNfts(true);
-      const res = await adminApi.getNfts();
-      setNfts(res.data.nfts);
-    } catch (error) {
-      console.error('Failed to fetch NFTs:', error);
-      showMessage('error', 'Erreur lors du chargement des NFTs');
-    } finally {
-      setLoadingNfts(false);
     }
   };
 
@@ -715,32 +658,6 @@ export default function Admin() {
     }
   };
 
-  const refundAllNfts = async () => {
-    try {
-      setRefundingNfts(true);
-      setRefundNftsResult(null);
-      const res = await adminApi.refundAllNfts();
-      setRefundNftsResult(res.data);
-      showMessage('success', res.data.message);
-      fetchNfts();
-      fetchUsers();
-    } catch (error: unknown) {
-      console.error('Refund NFTs failed:', error);
-      const errorData = (error as { response?: { data?: { message?: string } } })?.response?.data;
-      setRefundNftsResult({
-        success: false,
-        message: errorData?.message || 'Erreur lors du remboursement des NFTs',
-        totalRefunded: 0,
-        usersRefunded: 0,
-        userNftsDeleted: 0,
-        nftsDeleted: 0,
-      });
-      showMessage('error', 'Erreur lors du remboursement des NFTs');
-    } finally {
-      setRefundingNfts(false);
-    }
-  };
-
   const openBanDialog = (userId: string) => {
     setBanUserId(userId);
     setBanReason('');
@@ -974,95 +891,6 @@ export default function Admin() {
       showMessage('error', error.response?.data?.error || 'Erreur');
     } finally {
       setDeletingItem(null);
-    }
-  };
-
-  // Open dialog for creating new NFT
-  const openCreateNftDialog = () => {
-    setEditingNft(null);
-    setNftForm(defaultNftForm);
-    setNftImageDataUrl('');
-    setNftImageInputMode('upload');
-    setNftDialogOpen(true);
-  };
-
-  // Open dialog for editing NFT
-  const openEditNftDialog = (nft: Nft) => {
-    setEditingNft(nft);
-    setNftForm({
-      name: nft.name,
-      description: nft.description,
-      price: nft.price,
-      imageUrl: nft.imageUrl,
-      rarity: nft.rarity,
-    });
-    setNftImageDataUrl('');
-    setNftImageInputMode(nft.imageUrl ? 'url' : 'upload');
-    setNftDialogOpen(true);
-  };
-
-  // Save NFT (create or update)
-  const saveNft = async () => {
-    if (!nftForm.name.trim() || !nftForm.description.trim()) {
-      showMessage('error', 'Nom et description requis');
-      return;
-    }
-    if (!nftImageDataUrl && !nftForm.imageUrl.trim()) {
-      showMessage('error', 'Image requise');
-      return;
-    }
-
-    setSavingNft(true);
-    try {
-      let uploadedUrl = nftForm.imageUrl.trim();
-      if (nftImageInputMode === 'upload' && nftImageDataUrl) {
-        const uploadRes = await uploadsApi.uploadImage({
-          purpose: 'nft',
-          imageData: nftImageDataUrl,
-        });
-        uploadedUrl = uploadRes.data.url;
-      }
-      if (nftImageInputMode === 'url' && nftForm.imageUrl.trim()) {
-        uploadedUrl = nftForm.imageUrl.trim();
-      }
-
-      const data = {
-        name: nftForm.name.trim(),
-        description: nftForm.description.trim(),
-        price: nftForm.price,
-        imageUrl: uploadedUrl,
-        rarity: nftForm.rarity,
-      };
-
-      if (editingNft) {
-        const res = await adminApi.updateNft(editingNft.id, data);
-        setNfts(prev => prev.map(n => n.id === editingNft.id ? res.data.nft : n));
-        showMessage('success', 'NFT modifié');
-      } else {
-        const res = await adminApi.createNft(data);
-        setNfts(prev => [res.data.nft, ...prev]);
-        showMessage('success', 'NFT créé');
-      }
-      setNftDialogOpen(false);
-      setNftImageDataUrl('');
-    } catch (error: any) {
-      showMessage('error', error.response?.data?.error || 'Erreur');
-    } finally {
-      setSavingNft(false);
-    }
-  };
-
-  // Delete NFT
-  const deleteNft = async (id: string) => {
-    setDeletingNft(id);
-    try {
-      await adminApi.deleteNft(id);
-      setNfts(prev => prev.filter(n => n.id !== id));
-      showMessage('success', 'NFT supprimé');
-    } catch (error: any) {
-      showMessage('error', error.response?.data?.error || 'Erreur');
-    } finally {
-      setDeletingNft(null);
     }
   };
 
@@ -2000,120 +1828,6 @@ export default function Admin() {
             </div>
           )}
 
-          <div className="h-px bg-border mt-10" />
-
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
-              Gestion des NFTs du marché
-            </h2>
-            <Button
-              onClick={openCreateNftDialog}
-              className="h-9"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Nouveau NFT
-            </Button>
-          </div>
-
-          {loadingNfts ? (
-            <div className="flex justify-center py-12">
-              <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
-            </div>
-          ) : nfts.length === 0 ? (
-            <p className="text-center text-muted-foreground py-12">
-              Aucun NFT créé
-            </p>
-          ) : (
-            <div className="space-y-0">
-              {nfts.map((nft) => (
-                <div
-                  key={nft.id}
-                  className="py-4 border-b border-border/30 last:border-0"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4 min-w-0 flex-1">
-                      {nft.imageUrl ? (
-                        <img 
-                          src={resolveImageUrl(nft.imageUrl)} 
-                          alt={nft.name}
-                          className="w-10 h-10 object-cover rounded"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 bg-muted/30 flex items-center justify-center rounded">
-                          <Package className="w-5 h-5 text-muted-foreground" />
-                        </div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium truncate">{nft.name}</span>
-                          <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                            {NFT_RARITY_LABELS[nft.rarity] || nft.rarity}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {nft.description}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-6">
-                      <div className="text-right text-sm text-muted-foreground">
-                        <p className="tabular-nums">${nft.price}</p>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => openEditNftDialog(nft)}
-                          className="h-8 border-border/50"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10"
-                              disabled={deletingNft === nft.id}
-                            >
-                              {deletingNft === nft.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle className="flex items-center gap-2">
-                                <AlertTriangle className="h-5 w-5 text-destructive" />
-                                Supprimer {nft.name} ?
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Le NFT sera supprimé du marché. Les utilisateurs qui l'ont acheté le garderont.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Annuler</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => deleteNft(nft.id)}
-                                className="bg-destructive hover:bg-destructive/90"
-                              >
-                                Supprimer
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
           </div>
         )}
 
@@ -3151,80 +2865,6 @@ export default function Admin() {
                 </p>
               </div>
 
-              {/* NFT Refund Section */}
-              <div className="space-y-4 pt-8 border-t border-border/30">
-                <h3 className="text-lg font-medium">Supprimer tous les NFTs et rembourser</h3>
-                <p className="text-sm text-muted-foreground">
-                  Supprime tous les NFTs (catalogue et inventaires) et rembourse le prix d'achat à chaque joueur.
-                </p>
-
-                <div className="flex items-center gap-4">
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        disabled={refundingNfts}
-                        className="border-red-500/50 text-red-500 hover:bg-red-500/10"
-                      >
-                        {refundingNfts ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Remboursement en cours...
-                          </>
-                        ) : (
-                          <>
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Rembourser et supprimer
-                          </>
-                        )}
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                          <AlertTriangle className="h-5 w-5 text-red-500" />
-                          Supprimer tous les NFTs ?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Cette action supprime tous les NFTs du catalogue et des inventaires, puis rembourse les joueurs. Cette action est irréversible.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Annuler</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={refundAllNfts}
-                          className="bg-red-500 hover:bg-red-600"
-                        >
-                          Supprimer et rembourser
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-
-                {refundNftsResult && (
-                  <div className={cn(
-                    "p-4 border rounded-lg space-y-2",
-                    refundNftsResult.success
-                      ? "border-green-500/50 bg-green-500/10"
-                      : "border-red-500/50 bg-red-500/10"
-                  )}>
-                    <p className={cn(
-                      "text-sm font-medium",
-                      refundNftsResult.success ? "text-green-400" : "text-red-400"
-                    )}>
-                      {refundNftsResult.success ? 'Remboursement réussi' : 'Échec du remboursement'}
-                    </p>
-                    <p className="text-sm text-muted-foreground">{refundNftsResult.message}</p>
-                    {refundNftsResult.success && (
-                      <div className="text-xs text-muted-foreground">
-                        {refundNftsResult.usersRefunded} utilisateur(s) remboursé(s) • {refundNftsResult.userNftsDeleted} NFT(s) retiré(s) • {refundNftsResult.nftsDeleted} NFT(s) supprimé(s) • {refundNftsResult.totalRefunded} $ remboursés
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
               {/* Reset Extreme Aura Section */}
               <div className="space-y-4 pt-8 border-t border-border/30">
                 <h3 className="text-lg font-medium">Réinitialiser les valeurs d'aura extrêmes</h3>
@@ -3942,171 +3582,6 @@ export default function Admin() {
         </DialogContent>
       </Dialog>
 
-      {/* NFT Create/Edit Dialog */}
-      <Dialog open={nftDialogOpen} onOpenChange={setNftDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {editingNft ? 'Modifier le NFT' : 'Créer un NFT'}
-            </DialogTitle>
-            <DialogDescription>
-              {editingNft ? 'Modifiez les propriétés du NFT.' : 'Ajoutez un NFT au marché.'}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm text-muted-foreground">Nom</label>
-              <Input
-                value={nftForm.name}
-                onChange={(e) => setNftForm(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="Nom du NFT"
-                className="bg-transparent"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm text-muted-foreground">Description</label>
-              <Textarea
-                value={nftForm.description}
-                onChange={(e) => setNftForm(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Description du NFT"
-                className="bg-transparent resize-none"
-                rows={3}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm text-muted-foreground">Rareté</label>
-                <Select
-                  value={nftForm.rarity}
-                  onValueChange={(value) => setNftForm(prev => ({ ...prev, rarity: value as NftFormData['rarity'] }))}
-                >
-                  <SelectTrigger className="bg-transparent">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(NFT_RARITY_LABELS).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm text-muted-foreground">Prix ($)</label>
-                <Input
-                  type="number"
-                  value={nftForm.price}
-                  onChange={(e) => setNftForm(prev => ({ ...prev, price: parseInt(e.target.value) || 0 }))}
-                  className="bg-transparent"
-                  min={0}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm text-muted-foreground">Image</label>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant={nftImageInputMode === 'upload' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setNftImageInputMode('upload')}
-                >
-                  Upload
-                </Button>
-                <Button
-                  type="button"
-                  variant={nftImageInputMode === 'url' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setNftImageInputMode('url')}
-                >
-                  URL
-                </Button>
-              </div>
-              {nftImageInputMode === 'upload' ? (
-                <Input
-                  type="file"
-                  accept="image/*"
-                  className="bg-transparent"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) {
-                      setNftImageDataUrl('');
-                      return;
-                    }
-                    try {
-                      const dataUrl = await readFileAsDataUrl(file);
-                      setNftImageDataUrl(dataUrl);
-                    } catch (error) {
-                      console.error('Failed to read image:', error);
-                      setNftImageDataUrl('');
-                    }
-                  }}
-                />
-              ) : (
-                <Input
-                  value={nftForm.imageUrl}
-                  onChange={(e) => setNftForm(prev => ({ ...prev, imageUrl: e.target.value }))}
-                  placeholder="https://..."
-                  className="bg-transparent"
-                />
-              )}
-              {(nftImageDataUrl || nftForm.imageUrl) && (
-                <div className="relative">
-                  <img
-                    src={
-                      nftImageInputMode === 'upload'
-                        ? nftImageDataUrl || ''
-                        : resolveImageUrl(nftForm.imageUrl)
-                    }
-                    alt="Preview"
-                    className="max-h-40 rounded-md object-cover border border-border/30"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setNftImageDataUrl('');
-                      setNftForm(prev => ({ ...prev, imageUrl: '' }));
-                    }}
-                    className="absolute top-2 right-2 h-7 w-7 flex items-center justify-center bg-background/80 border border-border rounded-full text-muted-foreground hover:text-foreground"
-                    aria-label="Retirer l'image"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setNftDialogOpen(false)}
-            >
-              Annuler
-            </Button>
-            <Button
-              onClick={saveNft}
-              disabled={savingNft}
-            >
-              {savingNft ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Save className="h-4 w-4 mr-2" />
-              )}
-              {editingNft ? 'Modifier' : 'Créer'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -11,7 +11,6 @@ const MAX_BYTES = 10 * 1024 * 1024;
 const PURPOSE_DIR: Record<string, string> = {
   suggestion: 'suggestions',
   item: 'items',
-  nft: 'nfts',
   profile: 'profiles',
 };
 const ALLOWED_MIME: Record<string, string> = {

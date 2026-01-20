@@ -15,7 +15,6 @@ import Zenith from './pages/Zenith';
 import Rift from './pages/Rift';
 import MarketHall from './pages/MarketHall';
 import MarketTrade from './pages/MarketTrade';
-import Marketplace from './pages/Marketplace';
 import Leaderboards from './pages/Leaderboards';
 import Profile from './pages/Profile';
 import Inventory from './pages/Inventory';
@@ -32,13 +31,10 @@ import PlayerMarket from './pages/PlayerMarket';
 import GalleryAdmin from './pages/GalleryAdmin';
 import Rules from './pages/Rules';
 import Suggestions from './pages/Suggestions';
-import ReportBug from './pages/ReportBug';
 import Pass from './pages/Pass';
-import Changelog from './pages/Changelog';
 import Maintenance from './pages/Maintenance';
 import Settings from './pages/Settings';
 import Banned from './pages/Banned';
-import Webcam from './pages/Webcam';
 import { maintenanceApi } from './services/api';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -138,7 +134,6 @@ function App() {
         <Route path="games/bataille-navale" element={<BatailleNavale />} />
         <Route path="games/polymarket" element={<Polymarket />} />
         <Route path="polymarket" element={<Polymarket />} />
-        <Route path="marketplace" element={<Marketplace />} />
         <Route path="leaderboards" element={<Leaderboards />} />
         <Route path="party" element={<Party />} />
         <Route path="clans" element={<Clans />} />
@@ -151,11 +146,8 @@ function App() {
         <Route path="market" element={<PlayerMarket />} />
         <Route path="rules" element={<Rules />} />
         <Route path="pass" element={<Pass />} />
-        <Route path="changelog" element={<Changelog />} />
         <Route path="suggestions" element={<Suggestions />} />
-        <Route path="report-bug" element={<ReportBug />} />
         <Route path="settings" element={<Settings />} />
-        <Route path="webcam" element={<Webcam />} />
       </Route>
     </Routes>
   );

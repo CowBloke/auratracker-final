@@ -30,14 +30,11 @@ model User {
   usernameColor      String? // Custom username color for chat (hex)
   profilePicture     String? // Custom profile picture URL for chat
   bio                String? // User bio/description
-  displayedNftId     String?   @unique // Selected NFT to show on profile
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
   // Relations
   ownedItems            UserItem[]
-  ownedNfts             UserNft[]
-  displayedNft          UserNft?               @relation("DisplayedNft", fields: [displayedNftId], references: [id], onDelete: SetNull)
   sentTransfers         Transfer[]             @relation("SentTransfers")
   receivedTransfers     Transfer[]             @relation("ReceivedTransfers")
   gameStats             GameStats[]
@@ -118,35 +115,6 @@ model Item {
   createdAt   DateTime  @default(now())
 
   userItems UserItem[]
-}
-
-// NFT Model
-model Nft {
-  id          String   @id @default(uuid())
-  name        String
-  description String
-  price       Int
-  imageUrl    String
-  rarity      String
-  createdAt   DateTime @default(now())
-
-  userNfts UserNft[]
-}
-
-// User NFT Inventory
-model UserNft {
-  id            String   @id @default(uuid())
-  userId        String
-  nftId         String
-  purchasePrice Int
-  acquiredAt    DateTime @default(now())
-
-  user        User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  nft         Nft   @relation(fields: [nftId], references: [id], onDelete: Cascade)
-  displayedBy User? @relation("DisplayedNft")
-
-  @@index([userId])
-  @@index([nftId])
 }
 
 // User Inventory

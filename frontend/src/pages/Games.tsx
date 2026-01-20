@@ -7,7 +7,7 @@ const games = [
     description: 'Trouve des mots contenant les lettres avant que la bombe explose.',
     type: 'Party',
     requiresParty: true,
-    image: '/images/games/bomb-party.png',
+    image: '/images/games/bombparty.png',
   },
   {
     id: 'poker',
@@ -15,7 +15,7 @@ const games = [
     description: "Hold'em minimaliste en party, blindes fixes et rounds rapides.",
     type: 'Party',
     requiresParty: true,
-    image: '/images/games/poker.jpg',
+    image: '/images/games/poker.png',
   },
   {
     id: 'petit-bac',
@@ -23,7 +23,7 @@ const games = [
     description: 'Remplis les categories avec la bonne lettre avant la fin du temps.',
     type: 'Party',
     requiresParty: true,
-    image: '/images/games/petit-bac.jpg',
+    image: '/images/games/petitbac.png',
   },
   {
     id: 'bataille-navale',
@@ -31,7 +31,7 @@ const games = [
     description: 'Place tes bateaux et coule ceux de ton adversaire.',
     type: 'Duel',
     requiresParty: true,
-    image: '/images/games/bataille-navale.png',
+    image: '/images/games/bataillenavale.png',
   },
   {
     id: 'clash',
@@ -45,7 +45,7 @@ const games = [
     name: 'Doodle Jump',
     description: 'Saute le plus haut possible pour gagner des récompenses.',
     type: 'Score',
-    image: '/images/games/doodle-jump.png',
+    image: '/images/games/doodlejump.png',
   },
   {
     id: 'casino',
@@ -66,7 +66,7 @@ const games = [
     name: 'Aura Coin',
     description: 'Trade la cryptomonnaie virtuelle. Achète bas, vends haut.',
     type: 'Trading',
-    image: '/images/games/aura-coin.png',
+    image: '/images/games/auracoin.png',
   },
 ];
 
