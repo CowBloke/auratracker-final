@@ -58,11 +58,7 @@ export const authApi = {
   me: () => api.get('/auth/me'),
 };
 
-// Uploads API
-export const uploadsApi = {
-  uploadImage: (data: { purpose: 'suggestion' | 'item' | 'profile'; imageData: string }) =>
-    api.post<{ url: string }>('/uploads', data),
-};
+// Uploads API - Deprecated: File uploads are no longer supported, only URL-based images are allowed
 
 // Users API
 export const usersApi = {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ImageIcon, Loader2, Plus, ShieldCheck, Users, X, Check, UserX, Crown } from 'lucide-react';
-import { clansApi, ClanDetail, ClanSummary, uploadsApi } from '@/services/api';
+import { Loader2, Plus, ShieldCheck, Users, X, Check, UserX, Crown } from 'lucide-react';
+import { clansApi, ClanDetail, ClanSummary } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,7 +8,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { readFileAsDataUrl } from '@/lib/uploads';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
 
@@ -37,8 +36,6 @@ export default function Clans() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [isPublic, setIsPublic] = useState(true);
-  const [imageInputMode, setImageInputMode] = useState<'upload' | 'url'>('upload');
-  const [imageDataUrl, setImageDataUrl] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -87,22 +84,10 @@ export default function Clans() {
     setName('');
     setDescription('');
     setIsPublic(true);
-    setImageInputMode('upload');
-    setImageDataUrl('');
     setImageUrl('');
     setFormError(null);
   };
 
-  const handleImageFile = async (file: File) => {
-    try {
-      const dataUrl = await readFileAsDataUrl(file);
-      setImageDataUrl(dataUrl);
-      setFormError(null);
-    } catch (error) {
-      console.error('Failed to read image:', error);
-      setFormError("L'image est trop lourde ou invalide.");
-    }
-  };
 
   const handleCreateClan = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -116,14 +101,7 @@ export default function Clans() {
 
     setCreating(true);
     try {
-      let finalImageUrl: string | undefined;
-      if (imageInputMode === 'upload' && imageDataUrl) {
-        const uploadResponse = await uploadsApi.uploadImage({ purpose: 'profile', imageData: imageDataUrl });
-        finalImageUrl = uploadResponse.data.url;
-      }
-      if (imageInputMode === 'url' && imageUrl.trim()) {
-        finalImageUrl = imageUrl.trim();
-      }
+      const finalImageUrl = imageUrl.trim() || undefined;
 
       const res = await clansApi.create({
         name: name.trim(),
@@ -258,48 +236,11 @@ export default function Clans() {
               <Switch checked={isPublic} onCheckedChange={setIsPublic} />
             </div>
             <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant={imageInputMode === 'upload' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setImageInputMode('upload')}
-                >
-                  Upload
-                </Button>
-                <Button
-                  type="button"
-                  variant={imageInputMode === 'url' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setImageInputMode('url')}
-                >
-                  URL
-                </Button>
-              </div>
-              {imageInputMode === 'upload' ? (
-                <div className="space-y-2">
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) handleImageFile(file);
-                    }}
-                  />
-                  {imageDataUrl ? (
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      <ImageIcon className="h-4 w-4" />
-                      Image chargee
-                    </div>
-                  ) : null}
-                </div>
-              ) : (
-                <Input
-                  placeholder="https://..."
-                  value={imageUrl}
-                  onChange={(event) => setImageUrl(event.target.value)}
-                />
-              )}
+              <Input
+                placeholder="https://..."
+                value={imageUrl}
+                onChange={(event) => setImageUrl(event.target.value)}
+              />
             </div>
             {formError ? (
               <Alert variant="destructive">
