@@ -186,6 +186,7 @@ router.post('/select', authMiddleware, async (req: AuthRequest, res: Response) =
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
+    const userId = req.user.id;
     const { questIds } = req.body;
 
     if (!Array.isArray(questIds) || questIds.length !== 3) {
@@ -200,7 +201,7 @@ router.post('/select', authMiddleware, async (req: AuthRequest, res: Response) =
     // Check if user already selected quests today
     const existingSelections = await prisma.userDailyQuest.findMany({
       where: {
-        userId: req.user.id,
+        userId,
         questDate: {
           gte: today,
           lt: endOfDay,
@@ -228,25 +229,27 @@ router.post('/select', authMiddleware, async (req: AuthRequest, res: Response) =
     }
 
     // Create user quest selections and progress
-    const userQuests = await prisma.$transaction(
-      quests.map((quest) =>
-        prisma.userDailyQuest.create({
-          data: {
-            userId: req.user.id,
-            questId: quest.id,
-            questDate: today,
-          },
-          include: {
-            quest: true,
-          },
-        }).then((userQuest) =>
-          prisma.userQuestProgress.create({
+    const userQuests = await prisma.$transaction(async (tx) =>
+      Promise.all(
+        quests.map(async (quest) => {
+          const userQuest = await tx.userDailyQuest.create({
+            data: {
+              userId,
+              questId: quest.id,
+              questDate: today,
+            },
+            include: {
+              quest: true,
+            },
+          });
+          await tx.userQuestProgress.create({
             data: {
               userQuestId: userQuest.id,
               currentValue: 0,
             },
-          }).then(() => userQuest)
-        )
+          });
+          return userQuest;
+        })
       )
     );
 
