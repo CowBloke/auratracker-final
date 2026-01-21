@@ -52,14 +52,14 @@ const games = [
     name: '2048',
     description: 'Fusionne les tuiles pour atteindre 2048 et gagner des récompenses.',
     type: 'Score',
-    image: '/images/games/auracoin.png', // Placeholder, peut être remplacé plus tard
+    image: '/images/games/2048.png', // Placeholder, peut être remplacé plus tard
   },
   {
     id: 'flappy-bird',
     name: 'Flappy Bird',
     description: 'Évite les tuyaux et survole le plus loin possible pour gagner des récompenses.',
     type: 'Score',
-    image: '/images/games/doodlejump.png', // Placeholder, peut être remplacé plus tard
+    image: '/images/games/flappybird.png', // Placeholder, peut être remplacé plus tard
   },
   {
     id: 'casino',
@@ -73,7 +73,7 @@ const games = [
     name: 'Salle de marche',
     description: 'Investis sur plusieurs cryptos avec une interface pro.',
     type: 'Trading',
-    image: '/images/games/market.jpg',
+    image: '/images/games/market.png',
   },
   {
     id: 'aura-coin',
