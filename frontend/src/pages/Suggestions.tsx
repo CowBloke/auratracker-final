@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { suggestionsApi, Suggestion } from '../services/api';
-import { ChevronUp, ChevronDown, Loader2, Plus, ImageIcon, Trash2, X } from 'lucide-react';
+import { ChevronUp, ChevronDown, Loader2, Plus, Trash2, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
