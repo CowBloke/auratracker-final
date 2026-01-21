@@ -3,6 +3,7 @@ import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { validate, gameCompleteSchema } from '../middleware/validation.js';
 import { logGame, logAdmin } from '../utils/logger.js';
+import { checkQuestProgress } from './quests.js';
 
 const router = Router();
 
@@ -320,6 +321,32 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
         newHighScore: score,
         previousHighScore: currentStats?.highScore || 0,
       });
+    }
+
+    // Check quest progress
+    if (gameType === 'doodle_jump') {
+      await checkQuestProgress(req.user.id, 'DOODLE_JUMP_SCORE', score);
+      await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
+      if (won) {
+        await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
+      }
+    } else if (gameType === 'game_2048') {
+      await checkQuestProgress(req.user.id, 'GAME_2048_SCORE', score);
+      await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
+      if (won) {
+        await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
+      }
+    } else if (gameType === 'flappy_bird') {
+      await checkQuestProgress(req.user.id, 'FLAPPY_BIRD_SCORE', score);
+      await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
+      if (won) {
+        await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
+      }
+    } else if (gameType === 'casino') {
+      await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
+      if (won) {
+        await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
+      }
     }
 
     res.json({

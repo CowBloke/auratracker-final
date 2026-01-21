@@ -1,5 +1,6 @@
 import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
+import { checkQuestProgress } from '../routes/quests.js';
 
 interface PetitBacPlayer {
   userId: string;
@@ -518,6 +519,15 @@ async function endGame(game: PetitBacGame, io: Server) {
   };
 
   activeGames.delete(game.partyId);
+
+  // Check quest progress for all players
+  for (const player of game.players) {
+    await checkQuestProgress(player.userId, 'PETIT_BAC_PLAYS', 1);
+    await checkQuestProgress(player.userId, 'PLAY_GAMES', 1);
+    if (winners.some((w) => w.userId === player.userId)) {
+      await checkQuestProgress(player.userId, 'WIN_GAMES', 1);
+    }
+  }
 
   const playAgainPrompt: PendingPlayAgainPrompt = {
     partyId: game.partyId,

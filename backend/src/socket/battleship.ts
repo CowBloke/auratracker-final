@@ -1,5 +1,6 @@
 import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
+import { checkQuestProgress } from '../routes/quests.js';
 
 interface BattleshipPlayer {
   userId: string;
@@ -209,6 +210,13 @@ async function endGame(game: BattleshipGame, io: Server, winnerId: string) {
       aura: updatedLoser.aura,
       money: updatedLoser.money,
     });
+
+    // Check quest progress
+    await checkQuestProgress(winnerId, 'BATTLESHIP_PLAYS', 1);
+    await checkQuestProgress(winnerId, 'PLAY_GAMES', 1);
+    await checkQuestProgress(winnerId, 'WIN_GAMES', 1);
+    await checkQuestProgress(loser.userId, 'BATTLESHIP_PLAYS', 1);
+    await checkQuestProgress(loser.userId, 'PLAY_GAMES', 1);
   } catch (error) {
     console.error('Error updating rewards:', error);
   }

@@ -34,6 +34,7 @@ import polymarketRoutes from './routes/polymarket.js';
 import passRoutes from './routes/pass.js';
 import galleryRoutes from './routes/gallery.js';
 import marketRoutes from './routes/market.js';
+import questsRoutes from './routes/quests.js';
 
 // Socket handlers
 import { setupChatHandlers } from './socket/chat.js';
@@ -97,6 +98,7 @@ app.use('/api/polymarket', polymarketRoutes);
 app.use('/api/pass', passRoutes);
 app.use('/api/gallery', galleryRoutes);
 app.use('/api/market', marketRoutes);
+app.use('/api/quests', questsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
