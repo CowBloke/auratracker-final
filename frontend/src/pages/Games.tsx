@@ -48,6 +48,13 @@ const games = [
     image: '/images/games/doodlejump.png',
   },
   {
+    id: 'game-2048',
+    name: '2048',
+    description: 'Fusionne les tuiles pour atteindre 2048 et gagner des récompenses.',
+    type: 'Score',
+    image: '/images/games/auracoin.png', // Placeholder, peut être remplacé plus tard
+  },
+  {
     id: 'casino',
     name: 'Casino',
     description: 'Choisis entre machine à sous et roulette animée.',
@@ -86,6 +93,9 @@ export default function Games() {
   }
   if (game.id === 'bataille-navale') {
     return '/games/bataille-navale';
+  }
+  if (game.id === 'game-2048') {
+    return '/games/2048';
   }
     return `/games/${game.id}`;
   };

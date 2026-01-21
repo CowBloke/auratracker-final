@@ -22,6 +22,18 @@ const GAME_REWARDS = {
       { minScore: 8000, moneyMultiplier: 0.35, auraBonus: 50 },  // 8000+: 0.35x score + 50 aura
     ],
   },
+  game_2048: {
+    minScoreForReward: 512,
+    // Progressive rewards based on highest tile reached
+    scoreTiers: [
+      { minScore: 512, moneyMultiplier: 0.1, auraBonus: 2 },      // 512-1023: 0.1x score + 2 aura
+      { minScore: 1024, moneyMultiplier: 0.15, auraBonus: 5 },    // 1024-2047: 0.15x score + 5 aura
+      { minScore: 2048, moneyMultiplier: 0.2, auraBonus: 10 },    // 2048-4095: 0.2x score + 10 aura
+      { minScore: 4096, moneyMultiplier: 0.3, auraBonus: 20 },    // 4096-8191: 0.3x score + 20 aura
+      { minScore: 8192, moneyMultiplier: 0.4, auraBonus: 35 },    // 8192-16383: 0.4x score + 35 aura
+      { minScore: 16384, moneyMultiplier: 0.5, auraBonus: 50 },   // 16384+: 0.5x score + 50 aura
+    ],
+  },
   casino: {
     auraForBigWin: 10, // For wins >= 10x bet
     bigWinMultiplier: 10,
@@ -55,6 +67,37 @@ function calculateDoodleJumpRewards(score: number, isNewHighScore: boolean): { m
   if (isNewHighScore) {
     // Additional bonus for beating your own record (scales with score)
     const highScoreBonus = Math.min(Math.floor(score / 1000) * 10, 100);
+    auraReward += highScoreBonus;
+  }
+
+  return { money: moneyReward, aura: auraReward };
+}
+
+// Calculate progressive rewards for 2048 based on score
+function calculate2048Rewards(score: number, isNewHighScore: boolean): { money: number; aura: number } {
+  const config = GAME_REWARDS.game_2048;
+  
+  if (score < config.minScoreForReward) {
+    return { money: 0, aura: 0 };
+  }
+
+  // Find the appropriate tier for this score
+  let selectedTier = config.scoreTiers[0];
+  for (let i = config.scoreTiers.length - 1; i >= 0; i--) {
+    if (score >= config.scoreTiers[i].minScore) {
+      selectedTier = config.scoreTiers[i];
+      break;
+    }
+  }
+
+  // Calculate money reward based on tier multiplier
+  const moneyReward = Math.floor(score * selectedTier.moneyMultiplier);
+  
+  // Calculate aura reward: base tier bonus + bonus for new high score
+  let auraReward = selectedTier.auraBonus;
+  if (isNewHighScore) {
+    // Additional bonus for beating your own record (scales with score)
+    const highScoreBonus = Math.min(Math.floor(score / 2048) * 5, 50);
     auraReward += highScoreBonus;
   }
 
@@ -137,6 +180,10 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
     
     if (gameType === 'doodle_jump') {
       const rewards = calculateDoodleJumpRewards(score, isNewHighScore);
+      moneyReward = rewards.money;
+      auraReward = rewards.aura;
+    } else if (gameType === 'game_2048') {
+      const rewards = calculate2048Rewards(score, isNewHighScore);
       moneyReward = rewards.money;
       auraReward = rewards.aura;
     } else if (gameType === 'casino' && bet) {

@@ -14,7 +14,7 @@ interface Ranking {
   totalPlayed?: number;
 }
 
-type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'casino' | 'casino_losses' | 'games_played' | 'bombparty';
+type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'game_2048' | 'casino' | 'casino_losses' | 'games_played' | 'bombparty';
 
 const categories: { id: Category; name: string; valueLabel: string }[] = [
   { id: 'aura', name: 'Aura', valueLabel: 'aura' },
@@ -22,6 +22,7 @@ const categories: { id: Category; name: string; valueLabel: string }[] = [
   { id: 'total_money', name: 'Argent total', valueLabel: '$' },
   { id: 'auracoin', name: 'Aura Coin', valueLabel: 'AC' },
   { id: 'doodle_jump', name: 'Doodle Jump', valueLabel: 'score' },
+  { id: 'game_2048', name: '2048', valueLabel: 'score' },
   { id: 'casino', name: 'Casino', valueLabel: '$' },
   { id: 'casino_losses', name: 'Pertes Casino', valueLabel: '$' },
   { id: 'bombparty', name: 'Bomb Party', valueLabel: 'victoires' },
