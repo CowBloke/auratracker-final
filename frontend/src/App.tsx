@@ -37,6 +37,7 @@ import Pass from './pages/Pass';
 import Maintenance from './pages/Maintenance';
 import Settings from './pages/Settings';
 import Banned from './pages/Banned';
+import Quests from './pages/Quests';
 import { maintenanceApi } from './services/api';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -61,9 +62,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   const location = useLocation();
-  const [maintenanceStatus, setMaintenanceStatus] = useState<{ enabled: boolean; message: string }>({
+  const [maintenanceStatus, setMaintenanceStatus] = useState<{ enabled: boolean; message: string; pages: string[] }>({
     enabled: false,
     message: '',
+    pages: [],
   });
   const [maintenanceLoading, setMaintenanceLoading] = useState(true);
 
@@ -77,10 +79,11 @@ function App() {
         setMaintenanceStatus({
           enabled: res.data.enabled,
           message: res.data.message || '',
+          pages: res.data.pages || [],
         });
       } catch (error) {
         if (!isActive) return;
-        setMaintenanceStatus({ enabled: false, message: '' });
+        setMaintenanceStatus({ enabled: false, message: '', pages: [] });
       } finally {
         if (isActive) {
           setMaintenanceLoading(false);
@@ -96,13 +99,49 @@ function App() {
     };
   }, []);
 
-  if (
-    !maintenanceLoading &&
-    maintenanceStatus.enabled &&
-    !location.pathname.startsWith('/admin') &&
-    location.pathname !== '/login' &&
-    location.pathname !== '/banned'
-  ) {
+  // Vérifier si la page actuelle est en maintenance
+  const isCurrentPageInMaintenance = () => {
+    if (maintenanceLoading || maintenanceStatus.pages.length === 0) {
+      return false;
+    }
+
+    // Toujours permettre l'accès aux pages admin, login et banned
+    if (
+      location.pathname.startsWith('/admin') ||
+      location.pathname === '/login' ||
+      location.pathname === '/banned'
+    ) {
+      return false;
+    }
+
+    // Vérifier si le chemin actuel correspond à une page en maintenance
+    const currentPath = location.pathname;
+    
+    // Si "/" est dans la liste, toutes les pages sont en maintenance (sauf exceptions ci-dessus)
+    if (maintenanceStatus.pages.includes('/')) {
+      return true;
+    }
+    
+    // Vérifier les correspondances exactes
+    if (maintenanceStatus.pages.includes(currentPath)) {
+      return true;
+    }
+
+    // Vérifier les correspondances par préfixe (pour les routes dynamiques comme /profile/:userId)
+    for (const pagePath of maintenanceStatus.pages) {
+      if (pagePath !== '/' && currentPath.startsWith(pagePath)) {
+        // S'assurer que c'est une correspondance complète (pas juste un préfixe partiel)
+        // Par exemple, "/games" devrait correspondre à "/games" et "/games/..." mais pas à "/games123"
+        if (currentPath === pagePath || currentPath.startsWith(pagePath + '/')) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  };
+
+  if (!maintenanceLoading && isCurrentPageInMaintenance()) {
     return <Maintenance message={maintenanceStatus.message} />;
   }
 
@@ -150,6 +189,7 @@ function App() {
         <Route path="market" element={<PlayerMarket />} />
         <Route path="rules" element={<Rules />} />
         <Route path="pass" element={<Pass />} />
+        <Route path="quests" element={<Quests />} />
         <Route path="suggestions" element={<Suggestions />} />
         <Route path="settings" element={<Settings />} />
       </Route>

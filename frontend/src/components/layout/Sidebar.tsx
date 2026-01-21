@@ -22,6 +22,7 @@ import {
   BarChart3,
   Image,
   ShoppingCart,
+  Target,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -62,6 +63,7 @@ const navItems = [
   { to: '/clans', label: 'Clans', icon: Flag },
   { to: '/inventory', label: 'Inventaire', icon: Backpack },
   { to: '/pass', label: 'Pass', icon: Ticket },
+  { to: '/quests', label: 'Quêtes', icon: Target },
   { to: '/suggestions', label: 'Suggestions', icon: Lightbulb },
   { to: '/rules', label: 'Infos', icon: BookOpen },
 ];

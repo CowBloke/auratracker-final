@@ -1,5 +1,6 @@
 import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
+import { checkQuestProgress } from '../routes/quests.js';
 
 type Stage = 'preflop' | 'flop' | 'turn' | 'river' | 'showdown';
 type PokerAction = 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'all-in';
@@ -323,14 +324,14 @@ const startTurnTimer = (game: PokerGame, io: Server) => {
     clearTimeout(game.turnTimer);
   }
   game.turnStartTime = Date.now();
-  game.turnTimer = setTimeout(() => {
+  game.turnTimer = setTimeout(async () => {
     const current = game.players[game.currentPlayerIndex];
     if (!current || current.hasFolded || current.isAllIn || current.isEliminated) {
       return;
     }
     // Auto-check if possible, otherwise fold
     const canCheck = current.bet === game.highestBet;
-    handleAction(game.partyId, current.userId, canCheck ? 'check' : 'fold', undefined, io, true);
+    await handleAction(game.partyId, current.userId, canCheck ? 'check' : 'fold', undefined, io, true);
   }, ACTION_TIME_LIMIT);
 };
 
@@ -368,7 +369,7 @@ const getNextActionPlayer = (game: PokerGame, fromIndex: number) => {
 
 const hasActionablePlayers = (game: PokerGame) => game.players.some(actionable);
 
-const moveToNextStage = (game: PokerGame, io: Server) => {
+const moveToNextStage = async (game: PokerGame, io: Server) => {
   clearTurnTimer(game);
 
   if (game.stage === 'preflop') {
@@ -397,7 +398,7 @@ const moveToNextStage = (game: PokerGame, io: Server) => {
     while (game.communityCards.length < 5 && game.deck.length > 0) {
       game.communityCards.push(game.deck.pop()!);
     }
-    finishHand(game, io);
+    await finishHand(game, io);
     return;
   }
 
@@ -432,7 +433,7 @@ const buildSidePots = (game: PokerGame) => {
   return pots;
 };
 
-const finishHand = (game: PokerGame, io: Server) => {
+const finishHand = async (game: PokerGame, io: Server) => {
   clearTurnTimer(game);
   game.stage = 'showdown';
 
@@ -535,13 +536,13 @@ const finishHand = (game: PokerGame, io: Server) => {
   const contenders = game.players.filter((p) => !p.isEliminated);
   const reachedHandCap = game.handNumber >= game.maxHands;
   if (contenders.length <= 1 || reachedHandCap) {
-    endMatch(game, io);
+    await endMatch(game, io);
     return;
   }
 
   // Start next hand after short pause
-  setTimeout(() => {
-    startHand(game, io);
+  setTimeout(async () => {
+    await startHand(game, io);
   }, 1500);
 };
 
@@ -558,11 +559,11 @@ const postBlind = (player: PokerPlayer, amount: number) => {
   return commit;
 };
 
-const startHand = (game: PokerGame, io: Server) => {
+const startHand = async (game: PokerGame, io: Server) => {
   clearTurnTimer(game);
   const contenders = game.players.filter((p) => !p.isEliminated && p.chips > 0);
   if (contenders.length < 2) {
-    endMatch(game, io);
+    await endMatch(game, io);
     return;
   }
 
@@ -619,7 +620,7 @@ const startHand = (game: PokerGame, io: Server) => {
   game.currentPlayerIndex = getNextActionPlayer(game, game.bigBlindIndex);
 
   if (!hasActionablePlayers(game) || game.currentPlayerIndex === -1) {
-    moveToNextStage(game, io);
+    await moveToNextStage(game, io);
     return;
   }
 
@@ -627,7 +628,7 @@ const startHand = (game: PokerGame, io: Server) => {
   emitState(game, io);
 };
 
-const handleAction = (
+const handleAction = async (
   partyId: string,
   userId: string,
   action: PokerAction,
@@ -756,20 +757,20 @@ const handleAction = (
   // Everyone folded except one
   const remaining = game.players.filter((p) => !p.hasFolded && !p.isEliminated);
   if (remaining.length <= 1) {
-    finishHand(game, io);
+    await finishHand(game, io);
     return;
   }
 
   // Advance betting round if complete
   if (isBettingRoundComplete(game)) {
-    moveToNextStage(game, io);
+    await moveToNextStage(game, io);
     return;
   }
 
   // Next player
   const next = getNextActionPlayer(game, playerIndex);
   if (next === -1) {
-    moveToNextStage(game, io);
+    await moveToNextStage(game, io);
     return;
   }
   game.currentPlayerIndex = next;
@@ -777,7 +778,7 @@ const handleAction = (
   emitState(game, io);
 };
 
-const endMatch = (game: PokerGame, io: Server) => {
+const endMatch = async (game: PokerGame, io: Server) => {
   clearTurnTimer(game);
   const active = game.players.filter((p) => !p.isEliminated);
   const winner = active.reduce(
@@ -794,6 +795,15 @@ const endMatch = (game: PokerGame, io: Server) => {
   };
 
   activeGames.delete(game.partyId);
+
+  // Check quest progress for all players
+  for (const player of game.players) {
+    await checkQuestProgress(player.userId, 'POKER_PLAYS', 1);
+    await checkQuestProgress(player.userId, 'PLAY_GAMES', 1);
+    if (player.userId === winner?.userId) {
+      await checkQuestProgress(player.userId, 'WIN_GAMES', 1);
+    }
+  }
 
   io.to(`party:${game.partyId}`).emit('poker:game-over', gameOver);
 
@@ -918,7 +928,7 @@ const resolvePlayAgainPrompt = (partyId: string, io: Server) => {
       where: { partyId, userId: { in: rejoiners } },
       include: { user: { select: { id: true, username: true, usernameColor: true } } },
     })
-    .then((members) => {
+    .then(async (members) => {
       if (members.length < 2) {
         io.to(`party:${partyId}`).emit('poker:play-again-cancelled', {
           reason: 'Pas assez de joueurs dans la party',
@@ -968,7 +978,7 @@ const resolvePlayAgainPrompt = (partyId: string, io: Server) => {
       };
 
       activeGames.set(partyId, game);
-      startHand(game, io);
+      await startHand(game, io);
     })
     .catch((err) => {
       console.error('Failed to restart poker game', err);
@@ -1062,12 +1072,12 @@ export const setupPokerHandlers = (socket: Socket, io: Server) => {
     }
   });
 
-  socket.on('poker:action', (data: { partyId: string; userId: string; action: PokerAction; amount?: number }) => {
+  socket.on('poker:action', async (data: { partyId: string; userId: string; action: PokerAction; amount?: number }) => {
     playerSockets.set(data.userId, socket.id);
-    handleAction(data.partyId, data.userId, data.action, data.amount, io);
+    await handleAction(data.partyId, data.userId, data.action, data.amount, io);
   });
 
-  socket.on('poker:leave', (data: { partyId: string; userId: string }) => {
+  socket.on('poker:leave', async (data: { partyId: string; userId: string }) => {
     const game = activeGames.get(data.partyId);
     if (!game) return;
     const player = game.players.find((p) => p.userId === data.userId);
@@ -1080,7 +1090,7 @@ export const setupPokerHandlers = (socket: Socket, io: Server) => {
       if (next !== -1) game.currentPlayerIndex = next;
     }
     if (game.players.filter((p) => !p.isEliminated && !p.hasFolded).length <= 1) {
-      finishHand(game, io);
+      await finishHand(game, io);
     } else {
       emitState(game, io);
     }

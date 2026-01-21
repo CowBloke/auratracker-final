@@ -71,6 +71,9 @@ model User {
   marketListings      MarketListing[]      @relation("MarketSeller")
   marketPurchases     MarketListing[]      @relation("MarketBuyer")
 
+  // Daily Quests relations
+  dailyQuests         UserDailyQuest[]
+
   @@index([aura])
   @@index([money])
 }
@@ -770,4 +773,61 @@ model MarketListing {
   @@index([listingType])
   @@index([createdAt])
   @@index([soldAt])
+}
+
+// ============================================
+// DAILY QUESTS SYSTEM
+// ============================================
+
+// Daily Quest Template (10 quests generated each day)
+model DailyQuest {
+  id          String   @id @default(uuid())
+  questType   String // "JOIN_PARTIES", "DOODLE_JUMP_SCORE", "GAME_2048_SCORE", "FLAPPY_BIRD_SCORE", "BOMB_PARTY_PLAYS", "POKER_PLAYS", "PETIT_BAC_PLAYS", "BATTLESHIP_PLAYS", "WIN_GAMES", "PLAY_GAMES"
+  title       String
+  description String
+  targetValue Int // Target value (e.g., 3 parties, 1000 score)
+  moneyReward Int // Money reward
+  auraReward  Int // Aura reward
+  questDate   DateTime @default(now()) // Date of the quest (used to group quests by day)
+  createdAt   DateTime @default(now())
+
+  userSelections UserDailyQuest[]
+
+  @@index([questDate])
+  @@index([questType])
+}
+
+// User's selected daily quests (max 3 per day)
+model UserDailyQuest {
+  id          String   @id @default(uuid())
+  userId      String
+  questId     String
+  questDate   DateTime // Date of the quest
+  selectedAt  DateTime @default(now())
+  isCompleted Boolean  @default(false)
+  completedAt DateTime?
+  isClaimed   Boolean  @default(false)
+  claimedAt   DateTime?
+
+  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quest DailyQuest  @relation(fields: [questId], references: [id], onDelete: Cascade)
+  progress UserQuestProgress?
+
+  @@unique([userId, questId, questDate])
+  @@index([userId])
+  @@index([questId])
+  @@index([questDate])
+  @@index([isCompleted])
+}
+
+// User's progress on their selected quests
+model UserQuestProgress {
+  id              String   @id @default(uuid())
+  userQuestId     String   @unique
+  currentValue    Int      @default(0) // Current progress value
+  lastUpdated     DateTime @default(now())
+
+  userQuest UserDailyQuest @relation(fields: [userQuestId], references: [id], onDelete: Cascade)
+
+  @@index([userQuestId])
 }

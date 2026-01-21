@@ -5,6 +5,7 @@ import { sendActivePokerState, sendPendingPokerPlayAgainPrompt } from './poker.j
 import { sendPendingPetitBacPlayAgainPrompt, sendActivePetitBacGameState } from './petitbac.js';
 import { sendActiveBattleshipState } from './battleship.js';
 import { logParty } from '../utils/logger.js';
+import { checkQuestProgress } from '../routes/quests.js';
 
 interface PartyInvite {
   partyId: string;
@@ -347,6 +348,9 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
         where: { id: partyId },
         data: { lastActivity: new Date() },
       });
+      
+      // Check quest progress for joining parties
+      await checkQuestProgress(userId, 'JOIN_PARTIES', 1);
       
       // Join socket room
       socket.join(`party:${partyId}`);

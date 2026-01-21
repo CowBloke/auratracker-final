@@ -3,6 +3,7 @@ import { prisma } from '../server.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import { checkQuestProgress } from '../routes/quests.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -789,6 +790,13 @@ async function endGame(game: BombPartyGame, io: Server) {
           aura: updatedUser.aura,
           money: updatedUser.money,
         });
+      }
+
+      // Check quest progress
+      await checkQuestProgress(player.userId, 'BOMB_PARTY_PLAYS', 1);
+      await checkQuestProgress(player.userId, 'PLAY_GAMES', 1);
+      if (player.userId === winner?.userId) {
+        await checkQuestProgress(player.userId, 'WIN_GAMES', 1);
       }
     } catch (error) {
       console.error('Failed to update stats for player:', player.userId, error);

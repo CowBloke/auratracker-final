@@ -916,7 +916,7 @@ export const adminApi = {
 };
 
 export const maintenanceApi = {
-  getStatus: () => api.get<{ enabled: boolean; message: string }>('/maintenance'),
+  getStatus: () => api.get<{ enabled: boolean; message: string; pages: string[] }>('/maintenance'),
 };
 
 // Bug report API (for regular users)
@@ -1236,6 +1236,50 @@ export const polymarketApi = {
     api.get<{ bets: PolymarketBet[] }>('/polymarket/bets/all', { params: { limit } }),
   placeBet: (data: { eventId: string; prediction: 'YES' | 'NO'; amount: number }) =>
     api.post<{ bet: PolymarketBet }>('/polymarket/bets', data),
+};
+
+// Daily Quests API
+export interface DailyQuest {
+  id: string;
+  questType: string;
+  title: string;
+  description: string;
+  targetValue: number;
+  moneyReward: number;
+  auraReward: number;
+  questDate: string;
+  createdAt: string;
+}
+
+export interface UserDailyQuest {
+  id: string;
+  userId: string;
+  questId: string;
+  questDate: string;
+  selectedAt: string;
+  isCompleted: boolean;
+  completedAt: string | null;
+  isClaimed: boolean;
+  claimedAt: string | null;
+  quest: DailyQuest;
+  progress: {
+    id: string;
+    currentValue: number;
+    lastUpdated: string;
+  } | null;
+}
+
+export const questsApi = {
+  getDaily: () => api.get<{ quests: DailyQuest[] }>('/quests/daily'),
+  select: (questIds: string[]) =>
+    api.post<{ success: boolean; userQuests: UserDailyQuest[] }>('/quests/select', { questIds }),
+  getMyQuests: () => api.get<{ userQuests: UserDailyQuest[] }>('/quests/my-quests'),
+  claim: (questIds: string[]) =>
+    api.post<{
+      success: boolean;
+      rewards: { money: number; aura: number };
+      claimedQuests: number;
+    }>('/quests/claim', { questIds }),
 };
 
 export default api;
