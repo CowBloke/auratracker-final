@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Games from './pages/Games';
 import DoodleJump from './pages/DoodleJump';
 import Game2048 from './pages/Game2048';
+import FlappyBird from './pages/FlappyBird';
 import Clash from './pages/Clash';
 import Casino from './pages/Casino';
 import AuraCoin from './pages/AuraCoin';
@@ -122,6 +123,7 @@ function App() {
         <Route path="games" element={<Games />} />
         <Route path="games/doodle-jump" element={<DoodleJump />} />
         <Route path="games/2048" element={<Game2048 />} />
+        <Route path="games/flappy-bird" element={<FlappyBird />} />
         <Route path="games/clash" element={<Clash />} />
         <Route path="games/casino" element={<Casino />} />
         <Route path="games/market" element={<MarketHall />} />

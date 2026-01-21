@@ -55,6 +55,13 @@ const games = [
     image: '/images/games/auracoin.png', // Placeholder, peut être remplacé plus tard
   },
   {
+    id: 'flappy-bird',
+    name: 'Flappy Bird',
+    description: 'Évite les tuyaux et survole le plus loin possible pour gagner des récompenses.',
+    type: 'Score',
+    image: '/images/games/doodlejump.png', // Placeholder, peut être remplacé plus tard
+  },
+  {
     id: 'casino',
     name: 'Casino',
     description: 'Choisis entre machine à sous et roulette animée.',
@@ -96,6 +103,9 @@ export default function Games() {
   }
   if (game.id === 'game-2048') {
     return '/games/2048';
+  }
+  if (game.id === 'flappy-bird') {
+    return '/games/flappy-bird';
   }
     return `/games/${game.id}`;
   };
