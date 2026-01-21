@@ -10,6 +10,7 @@ type LeaderboardCategory =
   | 'total_money'
   | 'doodle_jump'
   | 'game_2048'
+  | 'flappy_bird'
   | 'casino'
   | 'casino_losses'
   | 'games_played'
@@ -135,6 +136,29 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
       case 'game_2048':
         rankings = await prisma.gameStats.findMany({
           where: { gameType: 'game_2048', user: { isAdmin: false } },
+          select: {
+            userId: true,
+            highScore: true,
+            user: {
+              select: { username: true, usernameColor: true },
+            },
+          },
+          orderBy: { highScore: 'desc' },
+          take: parseInt(limit as string),
+          skip: parseInt(offset as string),
+        });
+        rankings = rankings.map((s, i) => ({
+          rank: parseInt(offset as string) + i + 1,
+          userId: s.userId,
+          username: s.user.username,
+          usernameColor: s.user.usernameColor,
+          value: s.highScore,
+        }));
+        break;
+        
+      case 'flappy_bird':
+        rankings = await prisma.gameStats.findMany({
+          where: { gameType: 'flappy_bird', user: { isAdmin: false } },
           select: {
             userId: true,
             highScore: true,

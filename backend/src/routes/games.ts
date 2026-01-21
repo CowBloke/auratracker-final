@@ -34,6 +34,19 @@ const GAME_REWARDS = {
       { minScore: 16384, moneyMultiplier: 0.5, auraBonus: 50 },   // 16384+: 0.5x score + 50 aura
     ],
   },
+  flappy_bird: {
+    minScoreForReward: 10,
+    // Progressive rewards based on score (pipes passed)
+    scoreTiers: [
+      { minScore: 0, moneyMultiplier: 0.1, auraBonus: 0 },       // 0-9: 0.1x score
+      { minScore: 10, moneyMultiplier: 0.15, auraBonus: 2 },      // 10-24: 0.15x score + 2 aura
+      { minScore: 25, moneyMultiplier: 0.2, auraBonus: 5 },       // 25-49: 0.2x score + 5 aura
+      { minScore: 50, moneyMultiplier: 0.25, auraBonus: 10 },    // 50-99: 0.25x score + 10 aura
+      { minScore: 100, moneyMultiplier: 0.3, auraBonus: 20 },    // 100-199: 0.3x score + 20 aura
+      { minScore: 200, moneyMultiplier: 0.4, auraBonus: 35 },    // 200-499: 0.4x score + 35 aura
+      { minScore: 500, moneyMultiplier: 0.5, auraBonus: 50 },     // 500+: 0.5x score + 50 aura
+    ],
+  },
   casino: {
     auraForBigWin: 10, // For wins >= 10x bet
     bigWinMultiplier: 10,
@@ -98,6 +111,37 @@ function calculate2048Rewards(score: number, isNewHighScore: boolean): { money: 
   if (isNewHighScore) {
     // Additional bonus for beating your own record (scales with score)
     const highScoreBonus = Math.min(Math.floor(score / 2048) * 5, 50);
+    auraReward += highScoreBonus;
+  }
+
+  return { money: moneyReward, aura: auraReward };
+}
+
+// Calculate progressive rewards for Flappy Bird based on score
+function calculateFlappyBirdRewards(score: number, isNewHighScore: boolean): { money: number; aura: number } {
+  const config = GAME_REWARDS.flappy_bird;
+  
+  if (score < config.minScoreForReward) {
+    return { money: 0, aura: 0 };
+  }
+
+  // Find the appropriate tier for this score
+  let selectedTier = config.scoreTiers[0];
+  for (let i = config.scoreTiers.length - 1; i >= 0; i--) {
+    if (score >= config.scoreTiers[i].minScore) {
+      selectedTier = config.scoreTiers[i];
+      break;
+    }
+  }
+
+  // Calculate money reward based on tier multiplier
+  const moneyReward = Math.floor(score * selectedTier.moneyMultiplier);
+  
+  // Calculate aura reward: base tier bonus + bonus for new high score
+  let auraReward = selectedTier.auraBonus;
+  if (isNewHighScore) {
+    // Additional bonus for beating your own record (scales with score)
+    const highScoreBonus = Math.min(Math.floor(score / 50) * 5, 50);
     auraReward += highScoreBonus;
   }
 
@@ -184,6 +228,10 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       auraReward = rewards.aura;
     } else if (gameType === 'game_2048') {
       const rewards = calculate2048Rewards(score, isNewHighScore);
+      moneyReward = rewards.money;
+      auraReward = rewards.aura;
+    } else if (gameType === 'flappy_bird') {
+      const rewards = calculateFlappyBirdRewards(score, isNewHighScore);
       moneyReward = rewards.money;
       auraReward = rewards.aura;
     } else if (gameType === 'casino' && bet) {
