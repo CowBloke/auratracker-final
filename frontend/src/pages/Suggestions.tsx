@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { suggestionsApi, uploadsApi, Suggestion } from '../services/api';
+import { suggestionsApi, Suggestion } from '../services/api';
 import { ChevronUp, ChevronDown, Loader2, Plus, ImageIcon, Trash2, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/dialog';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
-import { readFileAsDataUrl } from '@/lib/uploads';
 import { resolveImageUrl } from '@/lib/images';
 
 export default function Suggestions() {
@@ -32,9 +31,7 @@ export default function Suggestions() {
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [imageDataUrl, setImageDataUrl] = useState('');
   const [imageUrl, setImageUrl] = useState('');
-  const [imageInputMode, setImageInputMode] = useState<'upload' | 'url'>('upload');
 
   // Calculate boost based on suggestion age
   const calculateBoost = (createdAt: string, status: string): number => {
@@ -87,17 +84,7 @@ export default function Suggestions() {
 
     setSubmitting(true);
     try {
-      let uploadedUrl: string | undefined;
-      if (imageInputMode === 'upload' && imageDataUrl) {
-        const uploadRes = await uploadsApi.uploadImage({
-          purpose: 'suggestion',
-          imageData: imageDataUrl,
-        });
-        uploadedUrl = uploadRes.data.url;
-      }
-      if (imageInputMode === 'url' && imageUrl.trim()) {
-        uploadedUrl = imageUrl.trim();
-      }
+      const uploadedUrl = imageUrl.trim() || undefined;
 
       const res = await suggestionsApi.create({
         title: title.trim(),
@@ -127,7 +114,6 @@ export default function Suggestions() {
       });
       setTitle('');
       setDescription('');
-      setImageDataUrl('');
       setImageUrl('');
       setDialogOpen(false);
     } catch (error) {
@@ -633,9 +619,7 @@ export default function Suggestions() {
           onOpenChange={(open) => {
             setDialogOpen(open);
             if (!open) {
-              setImageDataUrl('');
               setImageUrl('');
-              setImageInputMode('upload');
             }
           }}
         >
@@ -668,76 +652,22 @@ export default function Suggestions() {
                 </p>
               </div>
               <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setImageInputMode('upload')}
-                    className={cn(
-                      "px-3 py-1.5 text-xs border transition-colors",
-                      imageInputMode === 'upload'
-                        ? "border-foreground text-foreground"
-                        : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-                    )}
-                  >
-                    Upload
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setImageInputMode('url')}
-                    className={cn(
-                      "px-3 py-1.5 text-xs border transition-colors",
-                      imageInputMode === 'url'
-                        ? "border-foreground text-foreground"
-                        : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-                    )}
-                  >
-                    URL
-                  </button>
-                </div>
-                {imageInputMode === 'upload' ? (
-                  <>
-                    <div className="relative">
-                      <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        className="h-12 bg-transparent border-border/50 pl-10"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) {
-                            setImageDataUrl('');
-                            return;
-                          }
-                          try {
-                            const dataUrl = await readFileAsDataUrl(file);
-                            setImageDataUrl(dataUrl);
-                          } catch (error) {
-                            console.error('Failed to read image:', error);
-                            setImageDataUrl('');
-                          }
-                        }}
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <Input
-                    value={imageUrl}
-                    onChange={(e) => setImageUrl(e.target.value)}
-                    placeholder="https://..."
-                    className="h-12 bg-transparent border-border/50"
-                  />
-                )}
-                {(imageInputMode === 'upload' ? imageDataUrl : imageUrl) && (
+                <Input
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="h-12 bg-transparent border-border/50"
+                />
+                {imageUrl && (
                   <div className="relative">
                     <img
-                      src={imageInputMode === 'upload' ? imageDataUrl : imageUrl}
+                      src={imageUrl}
                       alt="Preview"
                       className="max-h-40 rounded-md object-cover border border-border/30"
                     />
                     <button
                       type="button"
                       onClick={() => {
-                        setImageDataUrl('');
                         setImageUrl('');
                       }}
                       className="absolute top-2 right-2 h-7 w-7 flex items-center justify-center bg-background/80 border border-border rounded-full text-muted-foreground hover:text-foreground"

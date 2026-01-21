@@ -1,8 +1,3 @@
-export const isUploadPath = (value?: string | null) => {
-  if (typeof value !== 'string') return false;
-  return value.startsWith('/uploads/') || value.startsWith('/api/uploads/');
-};
-
 export const isRemoteImageUrl = (value?: string | null) => {
   if (typeof value !== 'string') return false;
   try {
@@ -14,5 +9,5 @@ export const isRemoteImageUrl = (value?: string | null) => {
 };
 
 export const isAllowedImageUrl = (value?: string | null) => {
-  return isUploadPath(value) || isRemoteImageUrl(value);
+  return isRemoteImageUrl(value);
 };

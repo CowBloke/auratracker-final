@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { adminApi, uploadsApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, Badge, UserBadge } from '../services/api';
+import { adminApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, Badge, UserBadge } from '../services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -29,7 +29,6 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
-import { readFileAsDataUrl } from '@/lib/uploads';
 
 // Effect types for items
 const EFFECT_TYPES = [
@@ -251,8 +250,6 @@ export default function Admin() {
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ShopItem | null>(null);
   const [itemForm, setItemForm] = useState<ItemFormData>(defaultItemForm);
-  const [itemImageDataUrl, setItemImageDataUrl] = useState('');
-  const [itemImageInputMode, setItemImageInputMode] = useState<'upload' | 'url'>('upload');
   const [savingItem, setSavingItem] = useState(false);
   const [deletingItem, setDeletingItem] = useState<string | null>(null);
 
@@ -843,8 +840,6 @@ export default function Admin() {
   const openCreateItemDialog = () => {
     setEditingItem(null);
     setItemForm(defaultItemForm);
-    setItemImageDataUrl('');
-    setItemImageInputMode('upload');
     setItemDialogOpen(true);
   };
 
@@ -863,8 +858,6 @@ export default function Admin() {
       bonusAura: bonusAura || 0,
       bonusMoney: bonusMoney || 0,
     });
-    setItemImageDataUrl('');
-    setItemImageInputMode(item.imageUrl ? 'url' : 'upload');
     setItemDialogOpen(true);
   };
 
@@ -894,17 +887,7 @@ export default function Admin() {
         });
       }
 
-      let uploadedUrl = itemForm.imageUrl.trim() || undefined;
-      if (itemImageInputMode === 'upload' && itemImageDataUrl) {
-        const uploadRes = await uploadsApi.uploadImage({
-          purpose: 'item',
-          imageData: itemImageDataUrl,
-        });
-        uploadedUrl = uploadRes.data.url;
-      }
-      if (itemImageInputMode === 'url' && itemForm.imageUrl.trim()) {
-        uploadedUrl = itemForm.imageUrl.trim();
-      }
+      const uploadedUrl = itemForm.imageUrl.trim() || undefined;
 
       const data = {
         name: itemForm.name.trim(),
@@ -925,7 +908,6 @@ export default function Admin() {
         showMessage('success', 'Objet créé');
       }
       setItemDialogOpen(false);
-      setItemImageDataUrl('');
     } catch (error: any) {
       showMessage('error', error.response?.data?.error || 'Erreur');
     } finally {
@@ -3491,61 +3473,17 @@ export default function Admin() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm text-muted-foreground">Image (optionnel)</label>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant={itemImageInputMode === 'upload' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setItemImageInputMode('upload')}
-                >
-                  Upload
-                </Button>
-                <Button
-                  type="button"
-                  variant={itemImageInputMode === 'url' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setItemImageInputMode('url')}
-                >
-                  URL
-                </Button>
-              </div>
-              {itemImageInputMode === 'upload' ? (
-                <Input
-                  type="file"
-                  accept="image/*"
-                  className="bg-transparent"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) {
-                      setItemImageDataUrl('');
-                      return;
-                    }
-                    try {
-                      const dataUrl = await readFileAsDataUrl(file);
-                      setItemImageDataUrl(dataUrl);
-                    } catch (error) {
-                      console.error('Failed to read image:', error);
-                      setItemImageDataUrl('');
-                    }
-                  }}
-                />
-              ) : (
-                <Input
-                  value={itemForm.imageUrl}
-                  onChange={(e) => setItemForm(prev => ({ ...prev, imageUrl: e.target.value }))}
-                  placeholder="https://..."
-                  className="bg-transparent"
-                />
-              )}
-              {(itemImageDataUrl || itemForm.imageUrl) && (
+              <label className="text-sm text-muted-foreground">Image (optionnel - URL uniquement)</label>
+              <Input
+                value={itemForm.imageUrl}
+                onChange={(e) => setItemForm(prev => ({ ...prev, imageUrl: e.target.value }))}
+                placeholder="https://..."
+                className="bg-transparent"
+              />
+              {itemForm.imageUrl && (
                 <div className="relative">
                   <img
-                    src={
-                      itemImageInputMode === 'upload'
-                        ? itemImageDataUrl || ''
-                        : resolveImageUrl(itemForm.imageUrl)
-                    }
+                    src={resolveImageUrl(itemForm.imageUrl)}
                     alt="Preview"
                     className="max-h-40 rounded-md object-cover border border-border/30"
                     onError={(e) => {
@@ -3555,7 +3493,6 @@ export default function Admin() {
                   <button
                     type="button"
                     onClick={() => {
-                      setItemImageDataUrl('');
                       setItemForm(prev => ({ ...prev, imageUrl: '' }));
                     }}
                     className="absolute top-2 right-2 h-7 w-7 flex items-center justify-center bg-background/80 border border-border rounded-full text-muted-foreground hover:text-foreground"

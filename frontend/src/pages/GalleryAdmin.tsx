@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { galleryApi, uploadsApi } from '../services/api';
+import { galleryApi } from '../services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,7 +16,6 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
-import { readFileAsDataUrl } from '@/lib/uploads';
 
 interface PaintingWithCopies {
   id: string;
@@ -72,8 +71,6 @@ export default function GalleryAdmin() {
     description: '',
     imageUrl: '',
   });
-  const [imageDataUrl, setImageDataUrl] = useState('');
-  const [imageInputMode, setImageInputMode] = useState<'upload' | 'url'>('upload');
   const [creating, setCreating] = useState(false);
 
   // Vault/unvault state
@@ -112,14 +109,7 @@ export default function GalleryAdmin() {
       setCreating(true);
       setMessage(null);
 
-      let finalImageUrl = formData.imageUrl;
-      if (imageInputMode === 'upload' && imageDataUrl) {
-        const uploadRes = await uploadsApi.uploadImage({
-          purpose: 'item',
-          imageData: imageDataUrl,
-        });
-        finalImageUrl = uploadRes.data.url;
-      }
+      const finalImageUrl = formData.imageUrl;
 
       if (!finalImageUrl) {
         setMessage({ type: 'error', text: 'Une image est requise' });
@@ -137,7 +127,6 @@ export default function GalleryAdmin() {
       await fetchAnalytics();
       setCreateDialogOpen(false);
       setFormData({ title: '', artist: '', description: '', imageUrl: '' });
-      setImageDataUrl('');
 
       setMessage({ type: 'success', text: 'Tableau créé avec 6 copies' });
       setTimeout(() => setMessage(null), 3000);
@@ -452,59 +441,19 @@ export default function GalleryAdmin() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Image *</label>
-              <div className="flex items-center gap-2 mb-2">
-                <Button
-                  type="button"
-                  variant={imageInputMode === 'upload' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setImageInputMode('upload')}
-                >
-                  Upload
-                </Button>
-                <Button
-                  type="button"
-                  variant={imageInputMode === 'url' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setImageInputMode('url')}
-                >
-                  URL
-                </Button>
-              </div>
-              {imageInputMode === 'upload' ? (
-                <Input
-                  type="file"
-                  accept="image/*"
-                  className="bg-transparent"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) {
-                      setImageDataUrl('');
-                      return;
-                    }
-                    try {
-                      const dataUrl = await readFileAsDataUrl(file);
-                      setImageDataUrl(dataUrl);
-                    } catch (error) {
-                      console.error('Failed to read image:', error);
-                      setImageDataUrl('');
-                    }
-                  }}
-                />
-              ) : (
-                <Input
-                  value={formData.imageUrl}
-                  onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                  placeholder="https://..."
-                  className="bg-transparent"
-                />
-              )}
+              <label className="text-sm font-medium">Image * (URL uniquement)</label>
+              <Input
+                value={formData.imageUrl}
+                onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                placeholder="https://..."
+                className="bg-transparent"
+              />
 
               {/* Preview */}
-              {(imageInputMode === 'upload' ? imageDataUrl : formData.imageUrl) && (
+              {formData.imageUrl && (
                 <div className="mt-2 w-32 h-32 rounded overflow-hidden border border-border">
                   <img
-                    src={imageInputMode === 'upload' ? imageDataUrl : formData.imageUrl}
+                    src={formData.imageUrl}
                     alt="Preview"
                     className="w-full h-full object-cover"
                     onError={(e) => {
@@ -526,7 +475,7 @@ export default function GalleryAdmin() {
                 creating ||
                 !formData.title ||
                 !formData.artist ||
-                (imageInputMode === 'upload' ? !imageDataUrl : !formData.imageUrl)
+                !formData.imageUrl
               }
             >
               {creating ? (

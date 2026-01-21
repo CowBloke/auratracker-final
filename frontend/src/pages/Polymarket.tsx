@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { polymarketApi, uploadsApi, PolymarketEvent, PolymarketSuggestion, PolymarketBet } from '../services/api';
+import { polymarketApi, PolymarketEvent, PolymarketSuggestion, PolymarketBet } from '../services/api';
 import {
   Loader2, Plus, Calendar,
   CheckCircle2, XCircle, DollarSign, Users,
@@ -24,7 +24,6 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { readFileAsDataUrl } from '@/lib/uploads';
 import { resolveImageUrl } from '@/lib/images';
 import { toast } from '@/hooks/use-toast';
 
@@ -43,9 +42,7 @@ export default function Polymarket() {
   const [suggestionSubmitting, setSuggestionSubmitting] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [imageDataUrl, setImageDataUrl] = useState('');
   const [imageUrl, setImageUrl] = useState('');
-  const [imageInputMode, setImageInputMode] = useState<'upload' | 'url'>('upload');
   const [eventDate, setEventDate] = useState('');
   
   // Bet dialog
@@ -100,17 +97,7 @@ export default function Polymarket() {
 
     setSuggestionSubmitting(true);
     try {
-      let uploadedUrl: string | undefined;
-      if (imageInputMode === 'upload' && imageDataUrl) {
-        const uploadRes = await uploadsApi.uploadImage({
-          purpose: 'suggestion',
-          imageData: imageDataUrl,
-        });
-        uploadedUrl = uploadRes.data.url;
-      }
-      if (imageInputMode === 'url' && imageUrl.trim()) {
-        uploadedUrl = imageUrl.trim();
-      }
+      const uploadedUrl = imageUrl.trim() || undefined;
 
       await polymarketApi.createSuggestion({
         title: title.trim(),
@@ -126,7 +113,6 @@ export default function Polymarket() {
       
       setTitle('');
       setDescription('');
-      setImageDataUrl('');
       setImageUrl('');
       setEventDate('');
       setSuggestionDialogOpen(false);
@@ -732,36 +718,15 @@ export default function Polymarket() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Image (optionnel)</label>
-              <Tabs value={imageInputMode} onValueChange={(v) => setImageInputMode(v as any)}>
-                <TabsList>
-                  <TabsTrigger value="upload">Upload</TabsTrigger>
-                  <TabsTrigger value="url">URL</TabsTrigger>
-                </TabsList>
-                <TabsContent value="upload" className="space-y-2">
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const dataUrl = await readFileAsDataUrl(file);
-                        setImageDataUrl(dataUrl);
-                      }
-                    }}
-                  />
-                  {imageDataUrl && (
-                    <img src={imageDataUrl} alt="Preview" className="w-full h-48 object-cover rounded-md" />
-                  )}
-                </TabsContent>
-                <TabsContent value="url" className="space-y-2">
-                  <Input
-                    value={imageUrl}
-                    onChange={(e) => setImageUrl(e.target.value)}
-                    placeholder="https://..."
-                  />
-                </TabsContent>
-              </Tabs>
+              <label className="text-sm font-medium">Image (optionnel - URL uniquement)</label>
+              <Input
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                placeholder="https://..."
+              />
+              {imageUrl && (
+                <img src={imageUrl} alt="Preview" className="w-full h-48 object-cover rounded-md mt-2" />
+              )}
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setSuggestionDialogOpen(false)}>
