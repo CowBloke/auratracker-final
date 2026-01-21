@@ -30,3 +30,4 @@
 - mettre en avant partys
 - recompenses aura bombparty
 - donation
+- delete auracoin

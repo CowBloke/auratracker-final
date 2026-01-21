@@ -9,6 +9,7 @@ type LeaderboardCategory =
   | 'money'
   | 'total_money'
   | 'doodle_jump'
+  | 'game_2048'
   | 'casino'
   | 'casino_losses'
   | 'games_played'
@@ -111,6 +112,29 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
       case 'doodle_jump':
         rankings = await prisma.gameStats.findMany({
           where: { gameType: 'doodle_jump', user: { isAdmin: false } },
+          select: {
+            userId: true,
+            highScore: true,
+            user: {
+              select: { username: true, usernameColor: true },
+            },
+          },
+          orderBy: { highScore: 'desc' },
+          take: parseInt(limit as string),
+          skip: parseInt(offset as string),
+        });
+        rankings = rankings.map((s, i) => ({
+          rank: parseInt(offset as string) + i + 1,
+          userId: s.userId,
+          username: s.user.username,
+          usernameColor: s.user.usernameColor,
+          value: s.highScore,
+        }));
+        break;
+        
+      case 'game_2048':
+        rankings = await prisma.gameStats.findMany({
+          where: { gameType: 'game_2048', user: { isAdmin: false } },
           select: {
             userId: true,
             highScore: true,
@@ -327,6 +351,26 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
           const higherScores = await prisma.gameStats.count({
             where: {
               gameType: 'doodle_jump',
+              highScore: { gt: userStats.highScore },
+              user: { isAdmin: false },
+            },
+          });
+          userRank = higherScores + 1;
+        }
+      } else if (category === 'game_2048') {
+        // Calculate user's rank even if not in top rankings
+        const userStats = await prisma.gameStats.findUnique({
+          where: {
+            userId_gameType: {
+              userId: req.user.id,
+              gameType: 'game_2048',
+            },
+          },
+        });
+        if (userStats) {
+          const higherScores = await prisma.gameStats.count({
+            where: {
+              gameType: 'game_2048',
               highScore: { gt: userStats.highScore },
               user: { isAdmin: false },
             },
