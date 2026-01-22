@@ -323,6 +323,7 @@ export default function Admin() {
   });
   const [maintenanceMessage, setMaintenanceMessage] = useState('');
   const [maintenancePages, setMaintenancePages] = useState<string[]>([]);
+  const [maintenanceEndDate, setMaintenanceEndDate] = useState<string>('');
   const [savingMaintenance, setSavingMaintenance] = useState(false);
   const [announcementMessage, setAnnouncementMessage] = useState('');
   const [savingAnnouncement, setSavingAnnouncement] = useState(false);
@@ -609,6 +610,24 @@ export default function Admin() {
         }
       }
       setMaintenancePages(pages);
+      
+      // Charger la date de fin de maintenance
+      if (res.data.settings.maintenance_end_date && res.data.settings.maintenance_end_date.trim() !== '') {
+        // Convertir la date ISO en format datetime-local (YYYY-MM-DDTHH:mm)
+        const date = new Date(res.data.settings.maintenance_end_date);
+        if (!isNaN(date.getTime())) {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          const hours = String(date.getHours()).padStart(2, '0');
+          const minutes = String(date.getMinutes()).padStart(2, '0');
+          setMaintenanceEndDate(`${year}-${month}-${day}T${hours}:${minutes}`);
+        } else {
+          setMaintenanceEndDate('');
+        }
+      } else {
+        setMaintenanceEndDate('');
+      }
     } catch (error) {
       console.error('Failed to fetch settings:', error);
       showMessage('error', 'Erreur lors du chargement des paramètres');
@@ -662,11 +681,25 @@ export default function Admin() {
   const saveMaintenance = async () => {
     try {
       setSavingMaintenance(true);
-      await adminApi.updateSettings({
+      const settings: Record<string, string> = {
         maintenance_enabled: maintenancePages.length > 0 ? 'true' : 'false',
         maintenance_message: maintenanceMessage.trim(),
         maintenance_pages: JSON.stringify(maintenancePages),
-      });
+      };
+      
+      // Ajouter la date de fin si elle est définie
+      if (maintenanceEndDate && maintenanceEndDate.trim()) {
+        // Convertir le format datetime-local en ISO string
+        const date = new Date(maintenanceEndDate);
+        if (!isNaN(date.getTime())) {
+          settings.maintenance_end_date = date.toISOString();
+        }
+      } else {
+        // Si la date est vide, supprimer le setting en mettant une chaîne vide
+        settings.maintenance_end_date = '';
+      }
+      
+      await adminApi.updateSettings(settings);
       showMessage('success', 'Maintenance mise à jour');
       fetchSettings();
     } catch (error) {
@@ -2810,6 +2843,19 @@ export default function Admin() {
                 />
                 <p className="text-xs text-muted-foreground">
                   Ce texte s'affichera sur la page de maintenance.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Date et heure de fin de maintenance (optionnel)</label>
+                <Input
+                  type="datetime-local"
+                  value={maintenanceEndDate}
+                  onChange={(e) => setMaintenanceEndDate(e.target.value)}
+                  className="max-w-md"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Si définie, un compte à rebours s'affichera sur la page de maintenance. Laissez vide pour ne pas afficher de compte à rebours.
                 </p>
               </div>
 

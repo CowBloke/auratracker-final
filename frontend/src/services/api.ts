@@ -912,7 +912,7 @@ export const adminApi = {
 };
 
 export const maintenanceApi = {
-  getStatus: () => api.get<{ enabled: boolean; message: string; pages: string[] }>('/maintenance'),
+  getStatus: () => api.get<{ enabled: boolean; message: string; pages: string[]; endDate: string | null }>('/maintenance'),
 };
 
 // Bug report API (for regular users)
