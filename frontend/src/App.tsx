@@ -63,10 +63,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   const location = useLocation();
-  const [maintenanceStatus, setMaintenanceStatus] = useState<{ enabled: boolean; message: string; pages: string[] }>({
+  const [maintenanceStatus, setMaintenanceStatus] = useState<{ enabled: boolean; message: string; pages: string[]; endDate: string | null }>({
     enabled: false,
     message: '',
     pages: [],
+    endDate: null,
   });
   const [maintenanceLoading, setMaintenanceLoading] = useState(true);
 
@@ -81,10 +82,11 @@ function App() {
           enabled: res.data.enabled,
           message: res.data.message || '',
           pages: res.data.pages || [],
+          endDate: res.data.endDate || null,
         });
       } catch (error) {
         if (!isActive) return;
-        setMaintenanceStatus({ enabled: false, message: '', pages: [] });
+        setMaintenanceStatus({ enabled: false, message: '', pages: [], endDate: null });
       } finally {
         if (isActive) {
           setMaintenanceLoading(false);
@@ -143,7 +145,7 @@ function App() {
   };
 
   if (!maintenanceLoading && isCurrentPageInMaintenance()) {
-    return <Maintenance message={maintenanceStatus.message} />;
+    return <Maintenance message={maintenanceStatus.message} endDate={maintenanceStatus.endDate} />;
   }
 
   return (
