@@ -484,6 +484,90 @@ router.post('/:id/requests/:requestId/reject', authMiddleware, async (req: AuthR
   }
 });
 
+// Leave a clan
+router.delete('/:id/leave', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Find the member
+    const member = await prisma.clanMember.findUnique({
+      where: {
+        clanId_userId: {
+          clanId: id,
+          userId,
+        },
+      },
+      select: {
+        id: true,
+        isLeader: true,
+      },
+    });
+
+    if (!member) {
+      return res.status(404).json({ error: 'Tu n\'es pas membre de ce clan.' });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // If the member is the leader, handle leadership transfer or clan deletion
+      if (member.isLeader) {
+        const remainingMembers = await tx.clanMember.findMany({
+          where: {
+            clanId: id,
+            userId: { not: userId },
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                aura: true,
+              },
+            },
+          },
+          orderBy: {
+            user: { aura: 'desc' },
+          },
+        });
+
+        // If there are remaining members, transfer leadership to the one with highest aura
+        if (remainingMembers.length > 0) {
+          const newLeader = remainingMembers[0];
+          await tx.clanMember.update({
+            where: { id: newLeader.id },
+            data: { isLeader: true },
+          });
+          // Update clan owner
+          await tx.clan.update({
+            where: { id },
+            data: { ownerId: newLeader.userId },
+          });
+        } else {
+          // If no remaining members, delete the clan
+          await tx.clan.delete({
+            where: { id },
+          });
+          // The member will be deleted by cascade
+          return;
+        }
+      }
+
+      // Remove the member
+      await tx.clanMember.delete({
+        where: { id: member.id },
+      });
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Leave clan error:', error);
+    res.status(500).json({ error: 'Failed to leave clan' });
+  }
+});
+
 // Remove a member from the clan (leader only)
 router.delete('/:id/members/:targetUserId', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {

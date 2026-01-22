@@ -563,6 +563,7 @@ export const clansApi = {
   create: (data: { name: string; description?: string; imageUrl?: string; isPublic?: boolean }) =>
     api.post<{ clan: ClanSummary }>('/clans', data),
   join: (id: string) => api.post<{ status: 'joined' | 'requested'; requestId?: string }>(`/clans/${id}/join`),
+  leave: (id: string) => api.delete(`/clans/${id}/leave`),
   acceptRequest: (clanId: string, requestId: string) =>
     api.post(`/clans/${clanId}/requests/${requestId}/accept`),
   rejectRequest: (clanId: string, requestId: string) =>
