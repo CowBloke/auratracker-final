@@ -40,6 +40,7 @@ import Settings from './pages/Settings';
 import Banned from './pages/Banned';
 import Quests from './pages/Quests';
 import Solitaire from './pages/Solitaire';
+import Webcam from './pages/Webcam';
 import { maintenanceApi } from './services/api';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -198,6 +199,7 @@ function App() {
         <Route path="quests" element={<Quests />} />
         <Route path="suggestions" element={<Suggestions />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="webcam" element={<Webcam />} />
       </Route>
     </Routes>
   );

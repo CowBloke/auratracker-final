@@ -46,6 +46,7 @@ import { setupPokerHandlers } from './socket/poker.js';
 import { setupPetitBacHandlers } from './socket/petitbac.js';
 import { setupBattleshipHandlers } from './socket/battleship.js';
 import { setupRussianRouletteHandlers, startRussianRouletteCleanup } from './socket/russianroulette.js';
+import { setupWebcamHandlers } from './socket/webcam.js';
 
 // Logger
 import { initLogger } from './utils/logger.js';
@@ -163,6 +164,7 @@ io.on('connection', (socket) => {
   setupPetitBacHandlers(socket, io);
   setupBattleshipHandlers(socket, io);
   setupRussianRouletteHandlers(socket, io);
+  setupWebcamHandlers(socket, io);
   
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.id}`);
