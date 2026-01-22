@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
-import { ArrowLeft, Play, Skull, Crown, Trophy, Users, RotateCcw, LogOut, Check, X, Target } from 'lucide-react';
+import { ArrowLeft, Play, Skull, Crown, Trophy, RotateCcw, LogOut, Check, X, Target } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -47,7 +47,7 @@ export default function RussianRoulette() {
   } = useSocket();
 
   const [gameState, setGameState] = useState<RussianRouletteState | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error] = useState<string | null>(null);
   const [hasRespondedJoin, setHasRespondedJoin] = useState(false);
   const [hasRespondedPlayAgain, setHasRespondedPlayAgain] = useState(false);
   const [joinTimeLeft, setJoinTimeLeft] = useState(100);
