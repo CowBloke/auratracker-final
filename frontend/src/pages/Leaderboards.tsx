@@ -25,8 +25,8 @@ const categories: { id: Category; name: string; valueLabel: string }[] = [
   { id: 'game_2048', name: '2048', valueLabel: 'score' },
   { id: 'flappy_bird', name: 'Flappy Bird', valueLabel: 'score' },
   { id: 'solitaire', name: 'Solitaire', valueLabel: 'score' },
-  { id: 'casino', name: 'Casino', valueLabel: '$' },
-  { id: 'casino_losses', name: 'Pertes Casino', valueLabel: '$' },
+  { id: 'casino', name: 'Gains Casino (partie unique)', valueLabel: '$' },
+  { id: 'casino_losses', name: 'Pertes Casino (totales)', valueLabel: '$' },
   { id: 'bombparty', name: 'Bomb Party', valueLabel: 'victoires' },
   { id: 'games_played', name: 'Parties', valueLabel: 'jeux' },
 ];
