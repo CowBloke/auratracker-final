@@ -154,6 +154,38 @@
 }
 
 @layer utilities {
+  /* 2048 tile animations - use scale as separate property to not interfere with translate */
+  @keyframes tile-appear {
+    0% {
+      scale: 0;
+      opacity: 0;
+    }
+    100% {
+      scale: 1;
+      opacity: 1;
+    }
+  }
+
+  @keyframes tile-merge {
+    0% {
+      scale: 1;
+    }
+    50% {
+      scale: 1.03;
+    }
+    100% {
+      scale: 1;
+    }
+  }
+
+  .animate-tile-appear {
+    animation: tile-appear 200ms ease-out;
+  }
+
+  .animate-tile-merge {
+    animation: tile-merge 200ms ease-out;
+  }
+
   .text-gradient {
     @apply bg-clip-text text-transparent bg-gradient-to-r;
   }
