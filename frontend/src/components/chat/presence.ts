@@ -14,6 +14,7 @@ import {
   User,
   Users,
   LineChart,
+  Video,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -34,6 +35,7 @@ const pageMatchers: Array<{ test: (path: string) => boolean; label: string; icon
   { test: (path) => path.startsWith('/games'), label: 'Jeux', icon: Gamepad2 },
   { test: (path) => path.startsWith('/leaderboards'), label: 'Classements', icon: Trophy },
   { test: (path) => path.startsWith('/party'), label: 'Groupe', icon: Users },
+  { test: (path) => path.startsWith('/webcam'), label: 'Webcam', icon: Video },
   { test: (path) => path.startsWith('/inventory'), label: 'Inventaire', icon: Package },
   { test: (path) => path.startsWith('/profile'), label: 'Profil', icon: User },
   { test: (path) => path.startsWith('/admin'), label: 'Admin', icon: Shield },

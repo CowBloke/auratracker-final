@@ -8,9 +8,10 @@ import PetitBacJoinPrompt from '../game/PetitBacJoinPrompt';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocket } from '@/contexts/SocketContext';
+import { useWebcam } from '@/contexts/WebcamContext';
 import { useCallback, useEffect, useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronUp, Maximize2, Minimize2, Users, LogOut, Bomb, Gamepad2, Trash2, UserPlus } from 'lucide-react';
+import { ChevronDown, ChevronUp, Maximize2, Minimize2, Users, LogOut, Bomb, Gamepad2, Trash2, UserPlus, Camera, CameraOff } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getPageMeta } from '@/components/chat/presence';
 import { resolveImageUrl } from '@/lib/images';
@@ -43,7 +44,8 @@ export default function Layout() {
     deleteParty, 
     bombPartyGame, 
     petitBacGame, 
-    sendMessage 
+    sendMessage,
+    socket: contextSocket
   } = useSocket();
   const location = useLocation();
   const navigate = useNavigate();
@@ -51,6 +53,7 @@ export default function Layout() {
   const [showParty, setShowParty] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [announcement, setAnnouncement] = useState('');
+  const { isWebcamActive, toggleWebcam, webcamActiveCount } = useWebcam();
   const isGameRoute = location.pathname.startsWith('/games/');
   
   const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
@@ -73,6 +76,17 @@ export default function Layout() {
       setCurrentPage(location.pathname);
     }
   }, [connected, location.pathname, setCurrentPage]);
+
+  // Mettre à jour la page actuelle pour la webcam quand on change de route
+  useEffect(() => {
+    if (isWebcamActive && contextSocket && user && contextSocket.connected) {
+      contextSocket.emit('webcam:update-page', {
+        userId: user.id,
+        currentPage: location.pathname,
+      });
+    }
+  }, [isWebcamActive, contextSocket, user, location.pathname]);
+
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -104,6 +118,7 @@ export default function Layout() {
       isMounted = false;
     };
   }, []);
+
 
   const toggleFullscreen = useCallback(async () => {
     try {
@@ -283,6 +298,31 @@ export default function Layout() {
                       <span className="text-muted-foreground">
                         {connected ? 'online' : 'offline'}
                       </span>
+                    </div>
+                    
+                    {/* Webcam button */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={toggleWebcam}
+                        className={cn(
+                          "relative flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors",
+                          isWebcamActive
+                            ? "border-primary/50 bg-primary/10 text-primary hover:bg-primary/20"
+                            : "border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                        )}
+                        title={isWebcamActive ? 'Désactiver la webcam' : 'Activer la webcam'}
+                      >
+                        {isWebcamActive ? (
+                          <CameraOff className="h-4 w-4" />
+                        ) : (
+                          <Camera className="h-4 w-4" />
+                        )}
+                        <span className="text-sm">Webcam</span>
+                        <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 text-xs font-semibold text-white bg-primary rounded-full border-2 border-background">
+                          {webcamActiveCount}
+                        </span>
+                      </button>
                     </div>
                     <div className="relative">
                       <Collapsible open={showUsers} onOpenChange={setShowUsers}>
