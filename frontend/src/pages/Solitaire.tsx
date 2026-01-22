@@ -105,16 +105,13 @@ const canPlaceOnTableau = (card: Card, targetPile: Card[]): boolean => {
 
 const canPlaceOnFoundation = (card: Card, foundationIndex: number, foundations: Card[][]): boolean => {
   const foundation = foundations[foundationIndex];
-  const targetSuit = SUITS[foundationIndex];
-  
-  if (card.suit !== targetSuit) return false;
-  
+
   if (foundation.length === 0) {
-    return card.rank === 1; // Only Aces can start a foundation
+    return card.rank === 1; // Any Ace can start a foundation
   }
-  
+
   const topCard = foundation[foundation.length - 1];
-  return card.rank === topCard.rank + 1;
+  return card.suit === topCard.suit && card.rank === topCard.rank + 1;
 };
 
 const calculateScore = (moves: number, timeSeconds: number, won: boolean): number => {
@@ -456,9 +453,9 @@ export default function Solitaire() {
         return (
           <div
             className={cn(
-              "w-16 h-24 rounded-lg border-2 border-border/50 bg-gradient-to-br from-blue-900 to-blue-950 cursor-pointer select-none",
-              "flex items-center justify-center"
-            )}
+            "w-16 h-24 rounded-lg border-2 border-border/50 bg-blue-900 cursor-pointer select-none",
+            "flex items-center justify-center"
+          )}
             style={{ marginTop: stackOffset > 0 ? -80 : 0 }}
             onClick={onClick}
           >
@@ -470,9 +467,9 @@ export default function Solitaire() {
       return (
         <div
           className={cn(
-            "w-16 h-24 rounded-lg border-2 bg-white dark:bg-zinc-900 cursor-pointer select-none transition-shadow",
+            "w-16 h-24 rounded-lg border-2 bg-white cursor-pointer select-none transition-shadow",
             isDragging && "shadow-xl scale-105",
-            isRed ? "text-red-500" : "text-zinc-900 dark:text-white",
+            isRed ? "text-red-600" : "text-zinc-900",
             "border-border/50 hover:border-foreground/30"
           )}
           style={{ marginTop: stackOffset > 0 ? -80 : 0 }}
@@ -502,17 +499,31 @@ export default function Solitaire() {
     };
   }, []);
 
-  const EmptySlot = ({ onClick, onDrop, suit }: { onClick?: () => void; onDrop?: () => void; suit?: Suit }) => (
+  const EmptySlot = ({
+    onClick,
+    onDrop,
+    suit,
+    highlight = false,
+  }: {
+    onClick?: () => void;
+    onDrop?: () => void;
+    suit?: Suit;
+    highlight?: boolean;
+  }) => (
     <div
       className={cn(
-        "w-16 h-24 rounded-lg border-2 border-dashed border-border/30 cursor-pointer",
-        "flex items-center justify-center text-muted-foreground/30"
+        "w-16 h-24 rounded-lg border-2 border-dashed cursor-pointer",
+        highlight
+          ? "border-amber-500/70 bg-amber-500/10 text-amber-500/70"
+          : "border-border/30 text-muted-foreground/30",
+        "flex items-center justify-center"
       )}
       onClick={onClick}
       onDragOver={(e) => e.preventDefault()}
       onDrop={onDrop}
     >
       {suit && <span className="text-2xl opacity-30">{SUIT_SYMBOLS[suit]}</span>}
+      {!suit && highlight && <span className="text-lg font-semibold">A</span>}
     </div>
   );
 
@@ -552,7 +563,7 @@ export default function Solitaire() {
             <div className="flex flex-col items-center justify-center py-20 space-y-4">
               <p className="text-lg font-medium text-center">
                 Empile toutes les cartes sur les fondations<br />
-                de l'As au Roi par couleur.
+                de l'As au Roi, par couleur.
               </p>
               <Button onClick={initGame} variant="outline" className="border-foreground">
                 <Play className="h-4 w-4 mr-2" />
@@ -617,7 +628,7 @@ export default function Solitaire() {
                         onDragStart={() => handleDragStart([foundation[foundation.length - 1]], 'foundation', i)}
                       />
                     ) : (
-                      <EmptySlot suit={SUITS[i]} onDrop={() => handleDrop('foundation', i)} />
+                      <EmptySlot highlight onDrop={() => handleDrop('foundation', i)} />
                     )}
                   </div>
                 ))}
@@ -816,6 +827,7 @@ export default function Solitaire() {
               <p>• Empile les cartes de l'As au Roi sur les fondations</p>
               <p>• Les colonnes alternent rouge/noir en ordre décroissant</p>
               <p>• Seuls les Rois peuvent remplir une colonne vide</p>
+              <p>• Tout As peut commencer une fondation libre</p>
               <p>• Double-clic pour envoyer automatiquement aux fondations</p>
             </div>
           </section>
