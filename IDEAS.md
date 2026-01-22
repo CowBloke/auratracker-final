@@ -29,3 +29,5 @@
 - recompenses aura bombparty
 - donation
 - delete auracoin
+- envoyer mails quand accepté sur le site avec présentation
+- ajouter compteurs inscrits et motiver

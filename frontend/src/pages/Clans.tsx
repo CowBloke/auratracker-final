@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, Plus, ShieldCheck, Users, X, Check, UserX, Crown } from 'lucide-react';
+import { Loader2, Plus, ShieldCheck, Users, X, Check, UserX, Crown, LogOut } from 'lucide-react';
 import { clansApi, ClanDetail, ClanSummary } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -175,6 +175,25 @@ export default function Clans() {
     } catch (error: any) {
       console.error('Failed to remove member:', error);
       setMessage({ type: 'error', text: error.response?.data?.error || 'Impossible de retirer ce membre.' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleLeave = async () => {
+    if (!selectedClan) return;
+    if (!confirm('Es-tu sur de vouloir quitter ce clan ?')) return;
+    setActionLoading(true);
+    setMessage(null);
+    try {
+      await clansApi.leave(selectedClan.id);
+      setMessage({ type: 'success', text: 'Tu as quitte le clan.' });
+      await fetchClans();
+      setSelectedClanId(null);
+      setSelectedClan(null);
+    } catch (error: any) {
+      console.error('Failed to leave clan:', error);
+      setMessage({ type: 'error', text: error.response?.data?.error || 'Impossible de quitter le clan.' });
     } finally {
       setActionLoading(false);
     }
@@ -397,15 +416,33 @@ export default function Clans() {
                     <p className="text-sm text-muted-foreground">Creation</p>
                   </div>
                 </div>
-                {!selectedClan.viewer.isMember && !selectedClan.viewer.hasPendingRequest && (
-                  <button
-                    onClick={handleJoin}
-                    disabled={actionLoading}
-                    className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors disabled:opacity-50"
-                  >
-                    {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : selectedClan.isPublic ? 'Rejoindre' : 'Demander'}
-                  </button>
-                )}
+                <div className="flex gap-2">
+                  {!selectedClan.viewer.isMember && !selectedClan.viewer.hasPendingRequest && (
+                    <button
+                      onClick={handleJoin}
+                      disabled={actionLoading}
+                      className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors disabled:opacity-50"
+                    >
+                      {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : selectedClan.isPublic ? 'Rejoindre' : 'Demander'}
+                    </button>
+                  )}
+                  {selectedClan.viewer.isMember && (
+                    <button
+                      onClick={handleLeave}
+                      disabled={actionLoading}
+                      className="flex items-center gap-2 px-4 py-2 text-sm border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors disabled:opacity-50"
+                    >
+                      {actionLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <LogOut className="h-4 w-4" />
+                          Quitter le clan
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="border border-border rounded-lg p-6 space-y-6">
                 <div className="space-y-4">
