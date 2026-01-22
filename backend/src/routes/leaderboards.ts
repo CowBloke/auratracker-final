@@ -11,10 +11,12 @@ type LeaderboardCategory =
   | 'doodle_jump'
   | 'game_2048'
   | 'flappy_bird'
+  | 'solitaire'
   | 'casino'
   | 'casino_losses'
   | 'games_played'
-  | 'bombparty';
+  | 'bombparty'
+  | 'russian_roulette';
 
 // Get leaderboard by category
 router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response) => {
@@ -178,6 +180,33 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
           value: s.highScore,
         }));
         break;
+
+      case 'solitaire':
+        rankings = await prisma.gameStats.findMany({
+          where: { gameType: 'solitaire', user: { isAdmin: false } },
+          select: {
+            userId: true,
+            highScore: true,
+            wins: true,
+            totalPlayed: true,
+            user: {
+              select: { username: true, usernameColor: true },
+            },
+          },
+          orderBy: { highScore: 'desc' },
+          take: parseInt(limit as string),
+          skip: parseInt(offset as string),
+        });
+        rankings = rankings.map((s, i) => ({
+          rank: parseInt(offset as string) + i + 1,
+          userId: s.userId,
+          username: s.user.username,
+          usernameColor: s.user.usernameColor,
+          value: s.highScore,
+          wins: s.wins,
+          totalPlayed: s.totalPlayed,
+        }));
+        break;
         
       case 'casino':
         rankings = await prisma.gameStats.findMany({
@@ -330,6 +359,35 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
           totalPlayed: s.totalPlayed,
         }));
         break;
+
+      case 'russian_roulette':
+        rankings = await prisma.gameStats.findMany({
+          where: { gameType: 'russian_roulette', user: { isAdmin: false } },
+          select: {
+            userId: true,
+            highScore: true,
+            wins: true,
+            losses: true,
+            totalPlayed: true,
+            user: {
+              select: { username: true, usernameColor: true },
+            },
+          },
+          orderBy: { highScore: 'desc' },
+          take: parseInt(limit as string),
+          skip: parseInt(offset as string),
+        });
+        rankings = rankings.map((s, i) => ({
+          rank: parseInt(offset as string) + i + 1,
+          userId: s.userId,
+          username: s.user.username,
+          usernameColor: s.user.usernameColor,
+          value: s.highScore,
+          wins: s.wins,
+          losses: s.losses,
+          totalPlayed: s.totalPlayed,
+        }));
+        break;
         
       default:
         return res.status(400).json({ error: 'Invalid category' });
@@ -413,6 +471,25 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
             },
           });
           userRank = higherWins + 1;
+        }
+      } else if (category === 'russian_roulette') {
+        const userStats = await prisma.gameStats.findUnique({
+          where: {
+            userId_gameType: {
+              userId: req.user.id,
+              gameType: 'russian_roulette',
+            },
+          },
+        });
+        if (userStats) {
+          const higherScores = await prisma.gameStats.count({
+            where: {
+              gameType: 'russian_roulette',
+              highScore: { gt: userStats.highScore },
+              user: { isAdmin: false },
+            },
+          });
+          userRank = higherScores + 1;
         }
       } else if (category === 'total_money') {
         const priceToUse = totalMoneyPrice ?? 100;

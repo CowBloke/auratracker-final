@@ -72,6 +72,22 @@ const QUEST_TEMPLATES = [
     auraRewards: [5, 10, 15],
   },
   {
+    questType: 'SOLITAIRE_PLAYS',
+    title: 'Jouer au Solitaire',
+    description: 'Joue {target} parties de Solitaire',
+    targetValues: [2, 3, 5],
+    moneyRewards: [100, 200, 300],
+    auraRewards: [5, 10, 15],
+  },
+  {
+    questType: 'SOLITAIRE_WINS',
+    title: 'Gagner au Solitaire',
+    description: 'Gagne {target} parties de Solitaire',
+    targetValues: [1, 2, 3],
+    moneyRewards: [150, 300, 500],
+    auraRewards: [15, 30, 50],
+  },
+  {
     questType: 'WIN_GAMES',
     title: 'Gagner des parties',
     description: 'Gagne {target} parties',
@@ -428,6 +444,11 @@ export async function checkQuestProgress(
       if (questType === 'DOODLE_JUMP_SCORE' || questType === 'GAME_2048_SCORE' || questType === 'FLAPPY_BIRD_SCORE') {
         // For score quests, update if new value is higher
         newValue = Math.max(progress.currentValue, value);
+      } else if (questType === 'SOLITAIRE_WINS') {
+        // Only increment if value is 1 (meaning a win)
+        if (value === 1) {
+          newValue = progress.currentValue + 1;
+        }
       } else {
         // For count quests, increment
         newValue = progress.currentValue + value;

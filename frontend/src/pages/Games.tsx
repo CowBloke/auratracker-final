@@ -26,6 +26,14 @@ const games = [
     image: '/images/games/petitbac.png',
   },
   {
+    id: 'russian-roulette',
+    name: 'Roulette Russe',
+    description: '1/6 chance de perdre à chaque tour. Le dernier survivant gagne.',
+    type: 'Party',
+    requiresParty: true,
+    image: '/images/games/russianroulette.png',
+  },
+  {
     id: 'bataille-navale',
     name: 'Bataille Navale',
     description: 'Place tes bateaux et coule ceux de ton adversaire.',
@@ -82,6 +90,13 @@ const games = [
     type: 'Trading',
     image: '/images/games/auracoin.png',
   },
+  {
+    id: 'solitaire',
+    name: 'Solitaire',
+    description: 'Le classique jeu de cartes. Empile les cartes pour gagner.',
+    type: 'Score',
+    image: '/images/games/solitaire.png',
+  },
 ];
 
 export default function Games() {
@@ -98,6 +113,9 @@ export default function Games() {
   if (game.id === 'petit-bac') {
     return '/games/petit-bac';
   }
+  if (game.id === 'russian-roulette') {
+    return '/games/russian-roulette';
+  }
   if (game.id === 'bataille-navale') {
     return '/games/bataille-navale';
   }
@@ -106,6 +124,9 @@ export default function Games() {
   }
   if (game.id === 'flappy-bird') {
     return '/games/flappy-bird';
+  }
+  if (game.id === 'solitaire') {
+    return '/games/solitaire';
   }
     return `/games/${game.id}`;
   };
