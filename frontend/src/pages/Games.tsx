@@ -82,13 +82,6 @@ const games = [
     type: 'Trading',
     image: '/images/games/auracoin.png',
   },
-  {
-    id: 'cemantix',
-    name: 'Cemantix',
-    description: 'Devine le mot du jour en proposant des mots et en recevant des indices de similarité.',
-    type: 'Mots',
-    image: '/images/games/cemantix.png',
-  },
 ];
 
 export default function Games() {
@@ -113,9 +106,6 @@ export default function Games() {
   }
   if (game.id === 'flappy-bird') {
     return '/games/flappy-bird';
-  }
-  if (game.id === 'cemantix') {
-    return '/games/cemantix';
   }
     return `/games/${game.id}`;
   };

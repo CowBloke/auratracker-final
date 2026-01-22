@@ -38,7 +38,6 @@ import Maintenance from './pages/Maintenance';
 import Settings from './pages/Settings';
 import Banned from './pages/Banned';
 import Quests from './pages/Quests';
-import Cemantix from './pages/Cemantix';
 import { maintenanceApi } from './services/api';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -178,7 +177,6 @@ function App() {
         <Route path="games/poker" element={<Poker />} />
         <Route path="games/petit-bac" element={<PetitBac />} />
         <Route path="games/bataille-navale" element={<BatailleNavale />} />
-        <Route path="games/cemantix" element={<Cemantix />} />
         <Route path="games/polymarket" element={<Polymarket />} />
         <Route path="polymarket" element={<Polymarket />} />
         <Route path="leaderboards" element={<Leaderboards />} />
