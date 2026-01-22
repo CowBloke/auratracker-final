@@ -24,15 +24,12 @@ const GAME_REWARDS = {
     ],
   },
   game_2048: {
-    minScoreForReward: 512,
+    minScoreForReward: 16384, // Only give money rewards for extremely high scores
     // Progressive rewards based on highest tile reached
+    // Aura is only given if player reaches 2048 (won = true)
+    // Money is only given for extremely high scores to prevent farming
     scoreTiers: [
-      { minScore: 512, moneyMultiplier: 0.1, auraBonus: 2 },      // 512-1023: 0.1x score + 2 aura
-      { minScore: 1024, moneyMultiplier: 0.15, auraBonus: 5 },    // 1024-2047: 0.15x score + 5 aura
-      { minScore: 2048, moneyMultiplier: 0.2, auraBonus: 10 },    // 2048-4095: 0.2x score + 10 aura
-      { minScore: 4096, moneyMultiplier: 0.3, auraBonus: 20 },    // 4096-8191: 0.3x score + 20 aura
-      { minScore: 8192, moneyMultiplier: 0.4, auraBonus: 35 },    // 8192-16383: 0.4x score + 35 aura
-      { minScore: 16384, moneyMultiplier: 0.5, auraBonus: 50 },   // 16384+: 0.5x score + 50 aura
+      { minScore: 16384, moneyMultiplier: 0.0003, auraBonus: 50 },   // 16384+: 0.0003x score + 50 aura (only if won)
     ],
   },
   flappy_bird: {
@@ -88,7 +85,8 @@ function calculateDoodleJumpRewards(score: number, isNewHighScore: boolean): { m
 }
 
 // Calculate progressive rewards for 2048 based on score
-function calculate2048Rewards(score: number, isNewHighScore: boolean): { money: number; aura: number } {
+// Aura is only given if player reaches 2048 (won = true)
+function calculate2048Rewards(score: number, isNewHighScore: boolean, won: boolean): { money: number; aura: number } {
   const config = GAME_REWARDS.game_2048;
   
   if (score < config.minScoreForReward) {
@@ -107,12 +105,15 @@ function calculate2048Rewards(score: number, isNewHighScore: boolean): { money: 
   // Calculate money reward based on tier multiplier
   const moneyReward = Math.floor(score * selectedTier.moneyMultiplier);
   
-  // Calculate aura reward: base tier bonus + bonus for new high score
-  let auraReward = selectedTier.auraBonus;
-  if (isNewHighScore) {
-    // Additional bonus for beating your own record (scales with score)
-    const highScoreBonus = Math.min(Math.floor(score / 2048) * 5, 50);
-    auraReward += highScoreBonus;
+  // Calculate aura reward: only if player reached 2048 (won = true)
+  let auraReward = 0;
+  if (won) {
+    auraReward = selectedTier.auraBonus;
+    if (isNewHighScore) {
+      // Additional bonus for beating your own record (scales with score)
+      const highScoreBonus = Math.min(Math.floor(score / 2048) * 5, 50);
+      auraReward += highScoreBonus;
+    }
   }
 
   return { money: moneyReward, aura: auraReward };
@@ -228,7 +229,7 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       moneyReward = rewards.money;
       auraReward = rewards.aura;
     } else if (gameType === 'game_2048') {
-      const rewards = calculate2048Rewards(score, isNewHighScore);
+      const rewards = calculate2048Rewards(score, isNewHighScore, won || false);
       moneyReward = rewards.money;
       auraReward = rewards.aura;
     } else if (gameType === 'flappy_bird') {

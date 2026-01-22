@@ -282,7 +282,7 @@ export default function Game2048() {
     try {
       const response = await gamesApi.complete('game_2048', {
         score: finalScore,
-        won: won || finalScore > 0,
+        won: won, // Only true if player reached 2048 tile
       });
       
       setRewards({
