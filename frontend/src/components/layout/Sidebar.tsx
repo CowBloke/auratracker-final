@@ -23,6 +23,7 @@ import {
   Image,
   ShoppingCart,
   Target,
+  Layers,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -80,6 +81,7 @@ const gameItems = [
   { to: '/games/doodle-jump', label: 'Doodle Jump', icon: ArrowUp },
   { to: '/games/casino', label: 'Casino', icon: Dices },
   { to: '/games/bataille-navale', label: 'Bataille Navale', icon: Swords },
+  { to: '/games/solitaire', label: 'Solitaire', icon: Layers },
 ];
 
 export default function AppSidebar() {

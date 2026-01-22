@@ -26,6 +26,7 @@ import BombParty from './pages/BombParty';
 import Poker from './pages/Poker';
 import PetitBac from './pages/PetitBac';
 import BatailleNavale from './pages/BatailleNavale';
+import RussianRoulette from './pages/RussianRoulette';
 import Polymarket from './pages/Polymarket';
 import Admin from './pages/Admin';
 import Gallery from './pages/Gallery';
@@ -38,6 +39,7 @@ import Maintenance from './pages/Maintenance';
 import Settings from './pages/Settings';
 import Banned from './pages/Banned';
 import Quests from './pages/Quests';
+import Solitaire from './pages/Solitaire';
 import { maintenanceApi } from './services/api';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -176,7 +178,9 @@ function App() {
         <Route path="games/bomb-party" element={<BombParty />} />
         <Route path="games/poker" element={<Poker />} />
         <Route path="games/petit-bac" element={<PetitBac />} />
+        <Route path="games/russian-roulette" element={<RussianRoulette />} />
         <Route path="games/bataille-navale" element={<BatailleNavale />} />
+        <Route path="games/solitaire" element={<Solitaire />} />
         <Route path="games/polymarket" element={<Polymarket />} />
         <Route path="polymarket" element={<Polymarket />} />
         <Route path="leaderboards" element={<Leaderboards />} />

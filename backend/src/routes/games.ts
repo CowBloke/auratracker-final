@@ -23,6 +23,20 @@ const GAME_REWARDS = {
       { minScore: 8000, moneyMultiplier: 0.35, auraBonus: 50 },  // 8000+: 0.35x score + 50 aura
     ],
   },
+  solitaire: {
+    // Rewards only for completed games (won = true)
+    // Score is calculated as: 10000 - (time in seconds) - (moves * 2) + bonus
+    // Higher score = faster time + fewer moves
+    minScoreForReward: 0, // Always give rewards for wins
+    scoreTiers: [
+      { minScore: 0, moneyReward: 50, auraBonus: 5 },         // Slow win
+      { minScore: 5000, moneyReward: 100, auraBonus: 10 },    // Decent win
+      { minScore: 7000, moneyReward: 150, auraBonus: 15 },    // Good win
+      { minScore: 8000, moneyReward: 200, auraBonus: 25 },    // Great win
+      { minScore: 9000, moneyReward: 300, auraBonus: 40 },    // Excellent win
+      { minScore: 9500, moneyReward: 500, auraBonus: 60 },    // Perfect win
+    ],
+  },
   game_2048: {
     minScoreForReward: 16384, // Only give money rewards for extremely high scores
     // Progressive rewards based on highest tile reached
@@ -150,6 +164,39 @@ function calculateFlappyBirdRewards(score: number, isNewHighScore: boolean): { m
   return { money: moneyReward, aura: auraReward };
 }
 
+// Calculate rewards for Solitaire based on score (only for wins)
+// Score formula: 10000 - time(seconds) - moves*2
+function calculateSolitaireRewards(score: number, isNewHighScore: boolean, won: boolean): { money: number; aura: number } {
+  // No rewards for losses
+  if (!won) {
+    return { money: 0, aura: 0 };
+  }
+
+  const config = GAME_REWARDS.solitaire;
+
+  // Find the appropriate tier for this score
+  let selectedTier = config.scoreTiers[0];
+  for (let i = config.scoreTiers.length - 1; i >= 0; i--) {
+    if (score >= config.scoreTiers[i].minScore) {
+      selectedTier = config.scoreTiers[i];
+      break;
+    }
+  }
+
+  // Fixed money reward based on tier
+  let moneyReward = selectedTier.moneyReward;
+  
+  // Calculate aura reward
+  let auraReward = selectedTier.auraBonus;
+  if (isNewHighScore) {
+    // Additional bonus for beating your own record
+    const highScoreBonus = Math.min(Math.floor(score / 1000) * 5, 30);
+    auraReward += highScoreBonus;
+  }
+
+  return { money: moneyReward, aura: auraReward };
+}
+
 // Get game stats for a user
 router.get('/:gameType/stats/:userId', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
@@ -234,6 +281,10 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       auraReward = rewards.aura;
     } else if (gameType === 'flappy_bird') {
       const rewards = calculateFlappyBirdRewards(score, isNewHighScore);
+      moneyReward = rewards.money;
+      auraReward = rewards.aura;
+    } else if (gameType === 'solitaire') {
+      const rewards = calculateSolitaireRewards(score, isNewHighScore, won || false);
       moneyReward = rewards.money;
       auraReward = rewards.aura;
     } else if (gameType === 'casino' && bet) {
@@ -343,7 +394,19 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       if (won) {
         await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
       }
+    } else if (gameType === 'solitaire') {
+      await checkQuestProgress(req.user.id, 'SOLITAIRE_PLAYS', 1);
+      await checkQuestProgress(req.user.id, 'SOLITAIRE_WINS', won ? 1 : 0);
+      await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
+      if (won) {
+        await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
+      }
     } else if (gameType === 'casino') {
+      await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
+      if (won) {
+        await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
+      }
+    } else if (gameType === 'russian_roulette') {
       await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
       if (won) {
         await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);

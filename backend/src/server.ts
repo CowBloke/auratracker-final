@@ -35,6 +35,7 @@ import passRoutes from './routes/pass.js';
 import galleryRoutes from './routes/gallery.js';
 import marketRoutes from './routes/market.js';
 import questsRoutes from './routes/quests.js';
+import solitaireRoutes from './routes/solitaire.js';
 
 // Socket handlers
 import { setupChatHandlers } from './socket/chat.js';
@@ -44,6 +45,7 @@ import { setupBombPartyHandlers, startBombPartyCleanup } from './socket/bombpart
 import { setupPokerHandlers } from './socket/poker.js';
 import { setupPetitBacHandlers } from './socket/petitbac.js';
 import { setupBattleshipHandlers } from './socket/battleship.js';
+import { setupRussianRouletteHandlers, startRussianRouletteCleanup } from './socket/russianroulette.js';
 
 // Logger
 import { initLogger } from './utils/logger.js';
@@ -99,6 +101,7 @@ app.use('/api/pass', passRoutes);
 app.use('/api/gallery', galleryRoutes);
 app.use('/api/market', marketRoutes);
 app.use('/api/quests', questsRoutes);
+app.use('/api/solitaire', solitaireRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -159,6 +162,7 @@ io.on('connection', (socket) => {
   setupPokerHandlers(socket, io);
   setupPetitBacHandlers(socket, io);
   setupBattleshipHandlers(socket, io);
+  setupRussianRouletteHandlers(socket, io);
   
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.id}`);
@@ -179,6 +183,8 @@ const start = async () => {
 
     // Start bomb party game cleanup
     startBombPartyCleanup(io);
+    // Start russian roulette game cleanup
+    startRussianRouletteCleanup(io);
 
     httpServer.listen(config.port, () => {
       console.log(`Server running on port ${config.port}`);

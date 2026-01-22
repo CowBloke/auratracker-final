@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Socket } from 'socket.io-client';
-import { initSocket, connectSocket, disconnectSocket, chatEvents, partyEvents, gameEvents, bombPartyEvents, pokerEvents, petitBacEvents } from '../services/socket';
+import { initSocket, connectSocket, disconnectSocket, chatEvents, partyEvents, gameEvents, bombPartyEvents, pokerEvents, petitBacEvents, russianRouletteEvents } from '../services/socket';
 import { storeBanInfo } from '../services/ban';
 import { useAuth } from './AuthContext';
 
@@ -333,6 +333,52 @@ interface PetitBacPlayAgainPrompt {
   leaveCount: number;
 }
 
+interface RussianRoulettePlayer {
+  userId: string;
+  username: string;
+  usernameColor?: string | null;
+  isAlive: boolean;
+  roundsSurvived: number;
+  isEliminated: boolean;
+}
+
+interface RussianRouletteGameState {
+  players: RussianRoulettePlayer[];
+  currentPlayerIndex: number;
+  round: number;
+  isActive: boolean;
+  isYourTurn?: boolean;
+  lastShot?: {
+    playerId: string;
+    playerUsername: string;
+    fired: boolean;
+  };
+}
+
+interface RussianRouletteGameOver {
+  winnerId: string | null;
+  winnerUsername: string | null;
+  players: Array<{
+    userId: string;
+    username: string;
+    roundsSurvived: number;
+    isWinner: boolean;
+    rewards: { aura: number; money: number };
+  }>;
+}
+
+interface RussianRouletteJoinPrompt {
+  partyId: string;
+  timeout: number;
+  startTime: number;
+}
+
+interface RussianRoulettePlayAgainPrompt {
+  partyId: string;
+  timeout: number;
+  startTime: number;
+  gameOverData: RussianRouletteGameOver;
+}
 
 interface SocketContextType {
   socket: Socket | null;
@@ -405,6 +451,17 @@ interface SocketContextType {
   submitPetitBac: (answers: Record<string, string>) => void;
   leavePetitBac: () => void;
   respondToPetitBacPlayAgainPrompt: (playAgain: boolean) => void;
+  // Russian Roulette
+  russianRouletteGame: RussianRouletteGameState | null;
+  russianRouletteGameOver: RussianRouletteGameOver | null;
+  russianRouletteJoinPrompt: RussianRouletteJoinPrompt | null;
+  russianRoulettePlayAgainPrompt: RussianRoulettePlayAgainPrompt | null;
+  startRussianRoulette: () => void;
+  respondToRussianRouletteJoin: (accepted: boolean) => void;
+  pullTriggerRussianRoulette: () => void;
+  leaveRussianRoulette: () => void;
+  respondToRussianRoulettePlayAgain: (playAgain: boolean) => void;
+  clearRussianRouletteGameOver: () => void;
 }
 
 const SocketContext = createContext<SocketContextType | null>(null);
@@ -452,6 +509,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [petitBacRoundResult, setPetitBacRoundResult] = useState<PetitBacRoundResult | null>(null);
   const [petitBacJoinPrompt, setPetitBacJoinPrompt] = useState<PetitBacJoinPrompt | null>(null);
   const [petitBacPlayAgainPrompt, setPetitBacPlayAgainPrompt] = useState<PetitBacPlayAgainPrompt | null>(null);
+
+  // Russian Roulette state
+  const [russianRouletteGame, setRussianRouletteGame] = useState<RussianRouletteGameState | null>(null);
+  const [russianRouletteGameOver, setRussianRouletteGameOver] = useState<RussianRouletteGameOver | null>(null);
+  const [russianRouletteJoinPrompt, setRussianRouletteJoinPrompt] = useState<RussianRouletteJoinPrompt | null>(null);
+  const [russianRoulettePlayAgainPrompt, setRussianRoulettePlayAgainPrompt] = useState<RussianRoulettePlayAgainPrompt | null>(null);
 
 
   useEffect(() => {
@@ -1044,6 +1107,57 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setPetitBacPlayAgainPrompt(null);
       });
 
+      // Russian Roulette events
+      s.on('russianroulette:game-started', (game: RussianRouletteGameState) => {
+        setRussianRouletteGame(game);
+        setRussianRouletteGameOver(null);
+        setRussianRouletteJoinPrompt(null);
+        setRussianRoulettePlayAgainPrompt(null);
+      });
+
+      s.on('russianroulette:state', (game: RussianRouletteGameState) => {
+        setRussianRouletteGame(game);
+      });
+
+      s.on('russianroulette:game-over', (data: RussianRouletteGameOver) => {
+        setRussianRouletteGameOver(data);
+        setRussianRouletteGame(null);
+      });
+
+      s.on('russianroulette:game-cancelled', () => {
+        setRussianRouletteGame(null);
+        setRussianRouletteGameOver(null);
+      });
+
+      s.on('russianroulette:join-prompt', (data: { partyId: string; timeout: number }) => {
+        setRussianRouletteJoinPrompt({
+          ...data,
+          startTime: Date.now(),
+        });
+      });
+
+      s.on('russianroulette:join-cancelled', () => {
+        setRussianRouletteJoinPrompt(null);
+      });
+
+      s.on('russianroulette:play-again-prompt', (data: {
+        partyId: string;
+        timeout: number;
+        gameOverData: RussianRouletteGameOver;
+      }) => {
+        setRussianRoulettePlayAgainPrompt({
+          ...data,
+          startTime: Date.now(),
+        });
+      });
+
+      s.on('russianroulette:play-again-resolved', () => {
+        setRussianRoulettePlayAgainPrompt(null);
+      });
+
+      s.on('russianroulette:error', (data: { message: string }) => {
+        console.error('Russian Roulette error:', data.message);
+      });
 
       return () => {
         disconnectSocket();
@@ -1281,6 +1395,42 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Russian Roulette actions
+  const startRussianRoulette = () => {
+    if (user && currentParty) {
+      russianRouletteEvents.start(user.id, currentParty.id);
+    }
+  };
+
+  const respondToRussianRouletteJoin = (accepted: boolean) => {
+    if (user && russianRouletteJoinPrompt) {
+      russianRouletteEvents.respondToJoin(russianRouletteJoinPrompt.partyId, user.id, accepted);
+    }
+  };
+
+  const pullTriggerRussianRoulette = () => {
+    if (user && currentParty) {
+      russianRouletteEvents.pullTrigger(currentParty.id, user.id);
+    }
+  };
+
+  const leaveRussianRoulette = () => {
+    if (user && currentParty) {
+      russianRouletteEvents.leave(currentParty.id, user.id);
+    }
+    setRussianRouletteGame(null);
+  };
+
+  const respondToRussianRoulettePlayAgain = (playAgain: boolean) => {
+    if (user && russianRoulettePlayAgainPrompt) {
+      russianRouletteEvents.respondToPlayAgain(russianRoulettePlayAgainPrompt.partyId, user.id, playAgain);
+    }
+  };
+
+  const clearRussianRouletteGameOver = () => {
+    setRussianRouletteGameOver(null);
+    setRussianRouletteGame(null);
+  };
 
   return (
     <SocketContext.Provider
@@ -1349,6 +1499,16 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         submitPetitBac,
         leavePetitBac,
         respondToPetitBacPlayAgainPrompt,
+        russianRouletteGame,
+        russianRouletteGameOver,
+        russianRouletteJoinPrompt,
+        russianRoulettePlayAgainPrompt,
+        startRussianRoulette,
+        respondToRussianRouletteJoin,
+        pullTriggerRussianRoulette,
+        leaveRussianRoulette,
+        respondToRussianRoulettePlayAgain,
+        clearRussianRouletteGameOver,
       }}
     >
       {children}
