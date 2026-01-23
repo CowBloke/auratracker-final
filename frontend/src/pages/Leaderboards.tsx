@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { auraCoinApi, AuraCoinLeaderboardEntry, leaderboardsApi } from '../services/api';
 import { cn } from '@/lib/utils';
@@ -37,6 +38,10 @@ export default function Leaderboards() {
   const [rankings, setRankings] = useState<Ranking[]>([]);
   const [userRank, setUserRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const navItems = useMemo(() => ([
+    { to: '/leaderboards', label: 'Classements', end: true },
+    { to: '/leaderboards/nombres', label: 'Nombres' },
+  ]), []);
 
   useEffect(() => {
     fetchRankings();
@@ -111,6 +116,25 @@ export default function Leaderboards() {
           )}
         </div>
       </header>
+
+      {/* Category Selector */}
+      <div className="flex flex-wrap gap-2">
+        {navItems.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.end}
+            className={({ isActive }) => cn(
+              "px-4 py-2 text-sm border transition-colors",
+              isActive
+                ? "border-foreground text-foreground"
+                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+            )}
+          >
+            {item.label}
+          </NavLink>
+        ))}
+      </div>
 
       {/* Category Selector */}
       <div className="flex flex-wrap gap-2">
