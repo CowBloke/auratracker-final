@@ -4,7 +4,6 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AuthProvider } from './contexts/AuthContext';
 import { SocketProvider } from './contexts/SocketContext';
-import { WebcamProvider } from './contexts/WebcamContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as SonnerToaster } from '@/components/ui/sonner';
@@ -16,11 +15,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <ThemeProvider>
         <AuthProvider>
           <SocketProvider>
-            <WebcamProvider>
-              <App />
-              <Toaster />
-              <SonnerToaster />
-            </WebcamProvider>
+            <App />
+            <Toaster />
+            <SonnerToaster />
           </SocketProvider>
         </AuthProvider>
       </ThemeProvider>
