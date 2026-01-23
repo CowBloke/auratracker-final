@@ -2,6 +2,7 @@
 - Makeitmeme
 - loup garou
 - mariokart 2D avec temps à comprarer
+- cemantix
 
 # Idées
 - grand jeux à part : entrepreneur : créer entreprise avec salariés, parts de marché, actions, carte payer rues, propriétés etc
@@ -16,3 +17,15 @@
 - cote qui change en fonctiion des inestissements
 - grand musé pour visiter tout le monde
 - guerres de clans
+- gains totaux casino
+- cemantix
+- -- force pur le deploy
+- sondage chat
+- fix lag 20 users
+- auracoin/echelles
+- fix aura recompense bataille navale
+- clear pertes caino tricheurs
+- logs navale
+- reset pass
+- mettre en avant partys
+- recompenses aura bombparty
