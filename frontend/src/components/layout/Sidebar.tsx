@@ -24,7 +24,6 @@ import {
   ShoppingCart,
   Target,
   Layers,
-  Video,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -62,7 +61,6 @@ const navItems = [
   { to: '/gallery', label: 'Galerie', icon: Image },
   { to: '/market', label: 'Marché', icon: ShoppingCart },
   { to: '/party', label: 'Party', icon: Users },
-  { to: '/webcam', label: 'Webcam', icon: Video },
   { to: '/clans', label: 'Clans', icon: Flag },
   { to: '/inventory', label: 'Inventaire', icon: Backpack },
   { to: '/pass', label: 'Pass', icon: Ticket },

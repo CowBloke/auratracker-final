@@ -216,23 +216,4 @@ export const russianRouletteEvents = {
   },
 };
 
-// Webcam events
-export const webcamEvents = {
-  join: (userId: string, username: string, usernameColor?: string | null, profilePicture?: string | null, currentPage?: string | null) => {
-    socket?.emit('webcam:join', { userId, username, usernameColor, profilePicture, currentPage });
-  },
-  leave: (userId: string) => {
-    socket?.emit('webcam:leave', { userId });
-  },
-  offer: (targetUserId: string, targetSocketId: string, offer: RTCSessionDescriptionInit) => {
-    socket?.emit('webcam:offer', { targetUserId, targetSocketId, offer });
-  },
-  answer: (targetUserId: string, targetSocketId: string, answer: RTCSessionDescriptionInit) => {
-    socket?.emit('webcam:answer', { targetUserId, targetSocketId, answer });
-  },
-  iceCandidate: (targetUserId: string, targetSocketId: string, candidate: RTCIceCandidateInit) => {
-    socket?.emit('webcam:ice-candidate', { targetUserId, targetSocketId, candidate });
-  },
-};
-
 export default socket;
