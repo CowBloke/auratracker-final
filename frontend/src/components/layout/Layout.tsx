@@ -43,8 +43,7 @@ export default function Layout() {
     deleteParty, 
     bombPartyGame, 
     petitBacGame, 
-    sendMessage,
-    socket: contextSocket
+    sendMessage
   } = useSocket();
   const location = useLocation();
   const navigate = useNavigate();
