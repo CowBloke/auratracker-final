@@ -73,6 +73,8 @@ model User {
 
   // Daily Quests relations
   dailyQuests         UserDailyQuest[]
+  cemantixAttempts    CemantixAttempt[]
+  cemantixStats       CemantixStats?
 
   @@index([aura])
   @@index([money])
@@ -830,4 +832,60 @@ model UserQuestProgress {
   userQuest UserDailyQuest @relation(fields: [userQuestId], references: [id], onDelete: Cascade)
 
   @@index([userQuestId])
+}
+
+// ============================================
+// CEMANTIX SYSTEM
+// ============================================
+
+// Daily Word (one word per day for all users)
+model DailyWord {
+  id        String   @id @default(uuid())
+  word      String   @unique
+  wordDate  DateTime @unique // Date for which this word is active (YYYY-MM-DD at midnight)
+  createdAt DateTime @default(now())
+
+  attempts CemantixAttempt[]
+
+  @@index([wordDate])
+}
+
+// Cemantix Attempt (user's guess attempt)
+model CemantixAttempt {
+  id          String   @id @default(uuid())
+  userId      String
+  dailyWordId String
+  guess       String
+  similarity  Float // Similarity score (0-100)
+  isCorrect   Boolean @default(false)
+  attemptNumber Int // Which attempt this was (1, 2, 3, etc.)
+  createdAt   DateTime @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dailyWord DailyWord @relation(fields: [dailyWordId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([dailyWordId])
+  @@index([createdAt])
+}
+
+// Cemantix Stats (user statistics)
+model CemantixStats {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  totalGames      Int      @default(0) // Days played
+  totalWins       Int      @default(0) // Days won (found the word)
+  currentStreak   Int      @default(0) // Current win streak
+  longestStreak   Int      @default(0) // Longest win streak
+  averageAttempts Float    @default(0) // Average attempts to find word
+  totalAttempts   Int      @default(0) // Total attempts across all games
+  lastPlayedDate  DateTime? // Last date played
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([totalWins])
+  @@index([currentStreak])
+  @@index([longestStreak])
 }

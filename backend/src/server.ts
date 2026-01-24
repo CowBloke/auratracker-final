@@ -35,6 +35,7 @@ import passRoutes from './routes/pass.js';
 import galleryRoutes from './routes/gallery.js';
 import marketRoutes from './routes/market.js';
 import questsRoutes from './routes/quests.js';
+import cemantixRoutes from './routes/cemantix.js';
 
 // Socket handlers
 import { setupChatHandlers } from './socket/chat.js';
@@ -99,6 +100,7 @@ app.use('/api/pass', passRoutes);
 app.use('/api/gallery', galleryRoutes);
 app.use('/api/market', marketRoutes);
 app.use('/api/quests', questsRoutes);
+app.use('/api/cemantix', cemantixRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
