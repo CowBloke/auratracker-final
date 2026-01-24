@@ -1,13 +1,13 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { adminApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, Badge, UserBadge } from '../services/api';
+import { adminApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, Badge, UserBadge, cemantixApi } from '../services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Swords, Rocket, Download } from 'lucide-react';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Swords, Rocket, Download, BookOpen } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -232,7 +232,7 @@ export default function Admin() {
   const [mutingUser, setMutingUser] = useState<string | null>(null);
   const [clearingChat, setClearingChat] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'pending' | 'users' | 'items' | 'badges' | 'chat' | 'bugs' | 'bans' | 'logs' | 'announcement' | 'attention' | 'settings'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'users' | 'items' | 'badges' | 'chat' | 'bugs' | 'bans' | 'logs' | 'announcement' | 'attention' | 'settings' | 'cemantix'>('pending');
   const [inventoryDialogOpen, setInventoryDialogOpen] = useState(false);
   const [inventoryUser, setInventoryUser] = useState<AdminUser | null>(null);
   const [inventoryItems, setInventoryItems] = useState<AdminInventoryItem[]>([]);
@@ -334,6 +334,13 @@ export default function Admin() {
   // Reset extreme aura state
   const [resettingAura, setResettingAura] = useState(false);
   const [resetAuraResult, setResetAuraResult] = useState<{ success: boolean; message: string; usersReset: number; users: { id: string; username: string; oldAura: string }[] } | null>(null);
+
+  // Cemantix state
+  const [cemantixWord, setCemantixWord] = useState<string | null>(null);
+  const [cemantixLoading, setCemantixLoading] = useState(false);
+  const [cemantixFoundCount, setCemantixFoundCount] = useState(0);
+  const [cemantixCountdown, setCemantixCountdown] = useState(0);
+
   const toggleLogExpand = (logId: string) => {
     setExpandedLogIds(prev => {
       const next = new Set(prev);
@@ -385,6 +392,23 @@ export default function Admin() {
       setUserBadges([]);
     }
   }, [badgeUserId]);
+
+  useEffect(() => {
+    if (activeTab === 'cemantix') {
+      fetchCemantixWord();
+      // Update countdown every second
+      const interval = setInterval(() => {
+        setCemantixCountdown(prev => {
+          if (prev <= 1000) {
+            fetchCemantixWord();
+            return 0;
+          }
+          return prev - 1000;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [activeTab]);
 
   const fetchUsers = async () => {
     try {
@@ -484,6 +508,29 @@ export default function Admin() {
     } finally {
       setLoadingLogs(false);
     }
+  };
+
+  const fetchCemantixWord = async () => {
+    try {
+      setCemantixLoading(true);
+      const res = await cemantixApi.getToday();
+      // Admin can always see the word (backend returns it for admins)
+      setCemantixWord(res.data.word);
+      setCemantixFoundCount(res.data.foundCount);
+      setCemantixCountdown(res.data.countdown);
+    } catch (error) {
+      console.error('Failed to fetch Cemantix word:', error);
+      showMessage('error', 'Erreur lors du chargement du mot Cemantix');
+    } finally {
+      setCemantixLoading(false);
+    }
+  };
+
+  const formatCountdown = (ms: number) => {
+    const hours = Math.floor(ms / (1000 * 60 * 60));
+    const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((ms % (1000 * 60)) / 1000);
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
   const handleDownloadLogs = async () => {
@@ -1341,6 +1388,18 @@ export default function Admin() {
             )}
           >
             Paramètres
+          </button>
+          <button
+            onClick={() => setActiveTab('cemantix')}
+            className={cn(
+              "px-4 py-2 text-sm border transition-colors flex items-center gap-2",
+              activeTab === 'cemantix'
+                ? "border-foreground text-foreground"
+                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+            )}
+          >
+            <BookOpen className="h-4 w-4" />
+            Cemantix
           </button>
         </div>
 
@@ -3102,6 +3161,58 @@ export default function Admin() {
           )}
           </div>
         )}
+
+        {/* Cemantix Tab */}
+        {activeTab === 'cemantix' && (
+          <div className="space-y-6">
+          <div className="h-px bg-border" />
+
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
+              Cemantix - Mot du jour
+            </h2>
+          </div>
+
+          {cemantixLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 border border-border/30 rounded-lg">
+                  <div className="text-sm text-muted-foreground mb-2">Mot du jour</div>
+                  <div className="text-2xl font-bold">
+                    {cemantixWord || 'Chargement...'}
+                  </div>
+                </div>
+
+                <div className="p-4 border border-border/30 rounded-lg">
+                  <div className="text-sm text-muted-foreground mb-2">Ont trouvé</div>
+                  <div className="text-2xl font-bold">
+                    {cemantixFoundCount}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">utilisateur{cemantixFoundCount > 1 ? 's' : ''}</div>
+                </div>
+
+                <div className="p-4 border border-border/30 rounded-lg">
+                  <div className="text-sm text-muted-foreground mb-2">Nouveau mot dans</div>
+                  <div className="text-2xl font-bold font-mono">
+                    {formatCountdown(cemantixCountdown)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 border border-border/30 rounded-lg bg-muted/20">
+                <p className="text-sm text-muted-foreground">
+                  <strong>Note:</strong> En tant qu'administrateur, vous pouvez voir le mot du jour même si vous ne l'avez pas encore trouvé.
+                  Les utilisateurs normaux ne verront le mot que s'ils l'ont trouvé.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       </div>
 
