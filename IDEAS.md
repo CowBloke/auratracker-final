@@ -31,3 +31,7 @@
 - delete auracoin
 - envoyer mails quand accepté sur le site avec présentation : Resend
 - ajouter compteurs inscrits et motiver
+- vra/faux pseudo
+- page bloqu" avec retour button
+- badges promo/classe
+- pop up
