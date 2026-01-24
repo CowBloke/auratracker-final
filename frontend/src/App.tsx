@@ -18,6 +18,7 @@ import Rift from './pages/Rift';
 import MarketHall from './pages/MarketHall';
 import MarketTrade from './pages/MarketTrade';
 import Leaderboards from './pages/Leaderboards';
+import Numbers from './pages/Numbers';
 import Profile from './pages/Profile';
 import Inventory from './pages/Inventory';
 import Party from './pages/Party';
@@ -184,6 +185,7 @@ function App() {
         <Route path="games/polymarket" element={<Polymarket />} />
         <Route path="polymarket" element={<Polymarket />} />
         <Route path="leaderboards" element={<Leaderboards />} />
+        <Route path="leaderboards/nombres" element={<Numbers />} />
         <Route path="party" element={<Party />} />
         <Route path="clans" element={<Clans />} />
         <Route path="inventory" element={<Inventory />} />
