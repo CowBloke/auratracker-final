@@ -42,6 +42,8 @@ import Banned from './pages/Banned';
 import Quests from './pages/Quests';
 import Solitaire from './pages/Solitaire';
 import { maintenanceApi } from './services/api';
+import Blocked from './pages/Blocked';
+import { BLOCKABLE_PAGES } from './config/blockedPages';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -65,11 +67,20 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   const location = useLocation();
-  const [maintenanceStatus, setMaintenanceStatus] = useState<{ enabled: boolean; message: string; pages: string[]; endDate: string | null }>({
+  const [maintenanceStatus, setMaintenanceStatus] = useState<{
+    enabled: boolean;
+    message: string;
+    pages: string[];
+    endDate: string | null;
+    blockedPages: string[];
+    blockedMessage: string;
+  }>({
     enabled: false,
     message: '',
     pages: [],
     endDate: null,
+    blockedPages: [],
+    blockedMessage: '',
   });
   const [maintenanceLoading, setMaintenanceLoading] = useState(true);
 
@@ -85,10 +96,12 @@ function App() {
           message: res.data.message || '',
           pages: res.data.pages || [],
           endDate: res.data.endDate || null,
+          blockedPages: res.data.blockedPages || [],
+          blockedMessage: res.data.blockedMessage || '',
         });
       } catch (error) {
         if (!isActive) return;
-        setMaintenanceStatus({ enabled: false, message: '', pages: [], endDate: null });
+        setMaintenanceStatus({ enabled: false, message: '', pages: [], endDate: null, blockedPages: [], blockedMessage: '' });
       } finally {
         if (isActive) {
           setMaintenanceLoading(false);
@@ -123,8 +136,45 @@ function App() {
     return true;
   };
 
+  const isCurrentPageBlocked = () => {
+    if (maintenanceLoading) {
+      return false;
+    }
+
+    if (
+      location.pathname.startsWith('/admin') ||
+      location.pathname === '/login' ||
+      location.pathname === '/register'
+    ) {
+      return false;
+    }
+
+    if (!maintenanceStatus.blockedPages || maintenanceStatus.blockedPages.length === 0) {
+      return false;
+    }
+
+    return BLOCKABLE_PAGES.some((page) => {
+      if (!maintenanceStatus.blockedPages.includes(page.key)) {
+        return false;
+      }
+
+      if (page.path === '/') {
+        return location.pathname === '/';
+      }
+
+      return (
+        location.pathname === page.path ||
+        location.pathname.startsWith(`${page.path}/`)
+      );
+    });
+  };
+
   if (!maintenanceLoading && isCurrentPageInMaintenance()) {
     return <Maintenance message={maintenanceStatus.message} endDate={maintenanceStatus.endDate} />;
+  }
+
+  if (!maintenanceLoading && isCurrentPageBlocked()) {
+    return <Blocked message={maintenanceStatus.blockedMessage} />;
   }
 
   return (

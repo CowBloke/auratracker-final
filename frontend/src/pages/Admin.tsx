@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
+import { BLOCKABLE_PAGES } from '@/config/blockedPages';
 
 // Effect types for items
 const EFFECT_TYPES = [
@@ -201,7 +202,7 @@ export default function Admin() {
   const [mutingUser, setMutingUser] = useState<string | null>(null);
   const [clearingChat, setClearingChat] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'pending' | 'users' | 'items' | 'badges' | 'chat' | 'bugs' | 'bans' | 'logs' | 'announcement' | 'attention' | 'settings'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'users' | 'items' | 'badges' | 'chat' | 'bugs' | 'bans' | 'logs' | 'announcement' | 'attention' | 'blocks' | 'settings'>('pending');
   const [inventoryDialogOpen, setInventoryDialogOpen] = useState(false);
   const [inventoryUser, setInventoryUser] = useState<AdminUser | null>(null);
   const [inventoryItems, setInventoryItems] = useState<AdminInventoryItem[]>([]);
@@ -294,6 +295,9 @@ export default function Admin() {
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
   const [maintenanceEndDate, setMaintenanceEndDate] = useState<string>('');
   const [savingMaintenance, setSavingMaintenance] = useState(false);
+  const [blockedPages, setBlockedPages] = useState<string[]>([]);
+  const [blockedMessage, setBlockedMessage] = useState('');
+  const [savingBlocks, setSavingBlocks] = useState(false);
   const [announcementMessage, setAnnouncementMessage] = useState('');
   const [savingAnnouncement, setSavingAnnouncement] = useState(false);
 
@@ -520,6 +524,23 @@ export default function Admin() {
         bombparty_3letter_start_round: res.data.settings.bombparty_3letter_start_round || '10',
       });
       setMaintenanceMessage(res.data.settings.maintenance_message || '');
+      setBlockedMessage(res.data.settings.blocked_message || '');
+
+      if (res.data.settings.blocked_pages) {
+        try {
+          const parsed = JSON.parse(res.data.settings.blocked_pages);
+          if (Array.isArray(parsed)) {
+            const unique = Array.from(new Set(parsed.filter((p: unknown) => typeof p === 'string')));
+            setBlockedPages(unique);
+          } else {
+            setBlockedPages([]);
+          }
+        } catch {
+          setBlockedPages([]);
+        }
+      } else {
+        setBlockedPages([]);
+      }
       
       // Déterminer si la maintenance est activée : priorité au flag dédié, fallback legacy pages
       const enabledFromFlag = res.data.settings.maintenance_enabled === 'true';
@@ -631,6 +652,33 @@ export default function Admin() {
       showMessage('error', 'Erreur lors de la sauvegarde');
     } finally {
       setSavingMaintenance(false);
+    }
+  };
+
+  const toggleBlockedPage = (pageKey: string) => {
+    setBlockedPages(prev => {
+      if (prev.includes(pageKey)) {
+        return prev.filter(key => key !== pageKey);
+      }
+      return [...prev, pageKey];
+    });
+  };
+
+  const saveBlockedPages = async () => {
+    try {
+      setSavingBlocks(true);
+      const uniquePages = Array.from(new Set(blockedPages)).sort();
+      await adminApi.updateSettings({
+        blocked_pages: JSON.stringify(uniquePages),
+        blocked_message: blockedMessage.trim(),
+      });
+      showMessage('success', 'Blocage des pages mis à jour');
+      fetchSettings();
+    } catch (error) {
+      console.error('Failed to save page blocks:', error);
+      showMessage('error', 'Erreur lors de la sauvegarde du blocage');
+    } finally {
+      setSavingBlocks(false);
     }
   };
 
@@ -1324,6 +1372,17 @@ export default function Admin() {
             )}
           >
             Attention
+          </button>
+          <button
+            onClick={() => setActiveTab('blocks')}
+            className={cn(
+              "px-4 py-2 text-sm border transition-colors",
+              activeTab === 'blocks'
+                ? "border-foreground text-foreground"
+                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+            )}
+          >
+            Blocage
           </button>
           <button
             onClick={() => setActiveTab('settings')}
@@ -2787,6 +2846,102 @@ export default function Admin() {
                     <Save className="h-4 w-4 mr-2" />
                   )}
                   Sauvegarder la maintenance
+                </Button>
+              </div>
+            </div>
+          )}
+          </div>
+        )}
+
+        {/* Blocks Tab */}
+        {activeTab === 'blocks' && (
+          <div className="space-y-6">
+          <div className="h-px bg-border" />
+
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
+              Blocage de pages
+            </h2>
+          </div>
+
+          {loadingSettings ? (
+            <div className="flex justify-center py-12">
+              <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Message affiché sur la page bloquée</label>
+                <Textarea
+                  value={blockedMessage}
+                  onChange={(e) => setBlockedMessage(e.target.value)}
+                  placeholder="Ex: Cette page est momentanément désactivée."
+                  className="min-h-[100px]"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Laisser vide pour utiliser le message par défaut.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium">Pages à bloquer</h3>
+                  <span className="text-xs text-muted-foreground">
+                    {blockedPages.length} sélectionnée{blockedPages.length > 1 ? 's' : ''}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {Object.entries(
+                    BLOCKABLE_PAGES.reduce<Record<string, typeof BLOCKABLE_PAGES>>((acc, page) => {
+                      acc[page.category] = acc[page.category] || [];
+                      acc[page.category].push(page);
+                      return acc;
+                    }, {} as Record<string, typeof BLOCKABLE_PAGES>)
+                  ).map(([category, pages]) => (
+                    <div
+                      key={category}
+                      className="p-4 border border-border/30 rounded-lg bg-muted/10 space-y-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm font-semibold">{category}</div>
+                        <span className="text-xs text-muted-foreground">
+                          {pages.filter(p => blockedPages.includes(p.key)).length}/{pages.length}
+                        </span>
+                      </div>
+                      <div className="space-y-3">
+                        {pages.map((page) => (
+                          <div
+                            key={page.key}
+                            className="flex items-center justify-between"
+                          >
+                            <div>
+                              <div className="text-sm font-medium">{page.label}</div>
+                              <div className="text-xs text-muted-foreground">{page.path}</div>
+                            </div>
+                            <Switch
+                              checked={blockedPages.includes(page.key)}
+                              onCheckedChange={() => toggleBlockedPage(page.key)}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  onClick={saveBlockedPages}
+                  disabled={savingBlocks}
+                >
+                  {savingBlocks ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  Sauvegarder le blocage
                 </Button>
               </div>
             </div>

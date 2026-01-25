@@ -913,7 +913,14 @@ export const adminApi = {
 };
 
 export const maintenanceApi = {
-  getStatus: () => api.get<{ enabled: boolean; message: string; pages: string[]; endDate: string | null }>('/maintenance'),
+  getStatus: () => api.get<{
+    enabled: boolean;
+    message: string;
+    pages: string[];
+    endDate: string | null;
+    blockedPages?: string[];
+    blockedMessage?: string;
+  }>('/maintenance'),
 };
 
 // Bug report API (for regular users)
