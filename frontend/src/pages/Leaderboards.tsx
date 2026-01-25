@@ -3,8 +3,8 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { auraCoinApi, AuraCoinLeaderboardEntry, leaderboardsApi } from '../services/api';
 import PageLayout from '@/components/layout/PageLayout';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 
@@ -36,9 +36,13 @@ const categories: { id: Category; name: string; valueLabel: string }[] = [
   { id: 'games_played', name: 'Parties', valueLabel: 'jeux' },
 ];
 
+const economyCategories: Category[] = ['aura', 'money', 'total_money', 'auracoin'];
+const gameCategories: Category[] = ['doodle_jump', 'game_2048', 'flappy_bird', 'solitaire', 'casino', 'casino_losses', 'bombparty', 'games_played'];
+
 export default function Leaderboards() {
   const { user } = useAuth();
   const [category, setCategory] = useState<Category>('aura');
+  const [activeTab, setActiveTab] = useState<'economy' | 'games'>('economy');
   const [rankings, setRankings] = useState<Ranking[]>([]);
   const [userRank, setUserRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,6 +50,15 @@ export default function Leaderboards() {
     { to: '/leaderboards', label: 'Classements', end: true },
     { to: '/leaderboards/nombres', label: 'Nombres' },
   ]), []);
+
+  // Update activeTab when category changes
+  useEffect(() => {
+    if (economyCategories.includes(category)) {
+      setActiveTab('economy');
+    } else if (gameCategories.includes(category)) {
+      setActiveTab('games');
+    }
+  }, [category]);
 
   useEffect(() => {
     fetchRankings();
@@ -110,7 +123,7 @@ export default function Leaderboards() {
         </div>
       )}
 
-      {/* Category Selector */}
+      {/* Navigation */}
       <div className="flex flex-wrap gap-2">
         {navItems.map((item) => (
           <NavLink
@@ -129,24 +142,55 @@ export default function Leaderboards() {
         ))}
       </div>
 
-      {/* Category Selector */}
-      <div className="flex flex-wrap gap-2">
-        {categories.map((cat) => (
-          <Button
-            key={cat.id}
-            variant={category === cat.id ? "default" : "outline"}
-            size="sm"
-            onClick={() => setCategory(cat.id)}
-            className={cn(
-              category === cat.id
-                ? "border-foreground"
-                : "border-border/30"
-            )}
-          >
-            {cat.name}
-          </Button>
-        ))}
-      </div>
+      {/* Category Tabs */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'economy' | 'games')}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="economy">Économie</TabsTrigger>
+          <TabsTrigger value="games">Jeux</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="economy" className={SPACING.SECTION_SPACING}>
+          <div className="flex flex-wrap gap-2">
+            {categories
+              .filter((cat) => economyCategories.includes(cat.id))
+              .map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setCategory(cat.id)}
+                  className={cn(
+                    "px-4 py-2 text-sm border transition-colors rounded-md",
+                    category === cat.id
+                      ? "border-foreground text-foreground bg-muted"
+                      : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                  )}
+                >
+                  {cat.name}
+                </button>
+              ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="games" className={SPACING.SECTION_SPACING}>
+          <div className="flex flex-wrap gap-2">
+            {categories
+              .filter((cat) => gameCategories.includes(cat.id))
+              .map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setCategory(cat.id)}
+                  className={cn(
+                    "px-4 py-2 text-sm border transition-colors rounded-md",
+                    category === cat.id
+                      ? "border-foreground text-foreground bg-muted"
+                      : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                  )}
+                >
+                  {cat.name}
+                </button>
+              ))}
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Rankings */}
       <div>
