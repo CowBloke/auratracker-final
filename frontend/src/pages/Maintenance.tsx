@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 
 interface MaintenanceProps {
   message?: string;
@@ -51,7 +52,7 @@ export default function Maintenance({ message, endDate }: MaintenanceProps) {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-6">
-      <div className="max-w-2xl text-center space-y-6">
+      <div className="max-w-5xl text-center space-y-6">
         <div className="text-3xl font-semibold text-foreground">
           Site en maintenance
         </div>
@@ -100,6 +101,41 @@ export default function Maintenance({ message, endDate }: MaintenanceProps) {
             </div>
           </div>
         )}
+
+        <div className="space-y-4">
+          <div className="text-lg font-medium text-foreground">
+            En attendant, choisis ton ambiance :
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            <Link
+              to="/maintenance/wallace-gromit"
+              className="rounded-xl border border-border/50 bg-muted/20 p-5 text-left transition hover:-translate-y-1 hover:border-border"
+            >
+              <div className="text-sm font-semibold text-foreground">Wallace & Gromit</div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Installe-toi confortablement, prends du pop-corn et lance un episode culte.
+              </p>
+            </Link>
+            <Link
+              to="/maintenance/news"
+              className="rounded-xl border border-border/50 bg-muted/20 p-5 text-left transition hover:-translate-y-1 hover:border-border"
+            >
+              <div className="text-sm font-semibold text-foreground">News lounge</div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Feuillette une selection d'articles courts pour passer le temps.
+              </p>
+            </Link>
+            <Link
+              to="/maintenance/musique"
+              className="rounded-xl border border-border/50 bg-muted/20 p-5 text-left transition hover:-translate-y-1 hover:border-border"
+            >
+              <div className="text-sm font-semibold text-foreground">Playlist AuraTracker</div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Detends-toi avec la playlist speciale AuraTracker et laisse la musique faire le reste.
+              </p>
+            </Link>
+          </div>
+        </div>
 
         {message && message.trim().length > 0 && (
           <div className="border border-border/40 bg-muted/20 rounded-lg p-4 text-sm text-foreground">
