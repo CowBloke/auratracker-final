@@ -193,7 +193,7 @@ export default function BatailleNavale() {
   // Not in a party
   if (!currentParty) {
     return (
-      <div className="max-w-6xl mx-auto py-12 px-4 space-y-8">
+      <div className="max-w-4xl mx-auto py-12 px-6 space-y-8">
         <Link
           to="/games"
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -222,7 +222,7 @@ export default function BatailleNavale() {
   // Lobby (no game active)
   if (!gameState) {
     return (
-      <div className="max-w-6xl mx-auto py-12 px-4 space-y-16">
+      <div className="max-w-4xl mx-auto py-12 px-6 space-y-16">
         <section className="space-y-4">
           <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
             Joueurs dans le duel ({partyMembers.length}/2)
@@ -281,7 +281,7 @@ export default function BatailleNavale() {
 
   // Game active
   return (
-    <div className="max-w-6xl mx-auto py-12 px-4 space-y-8">
+    <div className="max-w-4xl mx-auto py-12 px-6 space-y-8">
       <div className="flex items-center justify-between">
         <button
           onClick={handleLeave}

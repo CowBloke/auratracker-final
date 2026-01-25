@@ -218,7 +218,7 @@ export default function PlayerMarket() {
 
   return (
     <>
-      <PageLayout>
+      <PageLayout variant="compact">
         {/* Header */}
         <div className="flex items-center justify-end">
           <div className={cn("text-right", TYPOGRAPHY.SMALL, "text-muted-foreground tabular-nums")}>

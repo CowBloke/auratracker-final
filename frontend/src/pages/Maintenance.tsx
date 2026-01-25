@@ -54,8 +54,8 @@ export default function Maintenance({ message, endDate }: MaintenanceProps) {
   }, [endDate]);
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-6">
-      <div className="max-w-5xl text-center space-y-6">
+    <div className="min-h-screen bg-background flex items-center justify-center py-12 px-6">
+      <div className="max-w-4xl text-center space-y-6">
         <div className={TYPOGRAPHY.H2}>
           Site en maintenance
         </div>

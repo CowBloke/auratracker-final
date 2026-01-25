@@ -233,7 +233,7 @@ export default function Inventory() {
 
   if (loading) {
     return (
-      <PageLayout>
+      <PageLayout variant="compact">
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
         </div>

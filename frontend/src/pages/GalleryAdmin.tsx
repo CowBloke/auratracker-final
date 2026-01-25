@@ -176,7 +176,7 @@ export default function GalleryAdmin() {
 
   return (
     <>
-      <PageLayout>
+      <PageLayout variant="compact">
         {/* Header */}
         <div className="flex items-center justify-end">
           <Button onClick={() => setCreateDialogOpen(true)}>

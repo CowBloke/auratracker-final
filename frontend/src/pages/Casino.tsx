@@ -134,7 +134,7 @@ export default function Casino() {
   const [slotBet, setSlotBet] = useState(50);
 
   return (
-    <div className="max-w-6xl mx-auto py-12 px-4 space-y-8">
+    <div className="max-w-4xl mx-auto py-12 px-6 space-y-8">
       <p className="text-muted-foreground">
         Choisis ta table: machine à sous classique ou roulette animée.
       </p>
@@ -830,7 +830,7 @@ function SlotMachineGame({ onBetChange }: { onBetChange?: (value: number) => voi
   const canSpin = user && user.money >= bet && !spinning;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto py-12 px-6 space-y-8">
       <div className="flex flex-wrap justify-center gap-2">
         {BET_STEPS.map((step) => (
           <button

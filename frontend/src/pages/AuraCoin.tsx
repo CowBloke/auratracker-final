@@ -261,7 +261,7 @@ export default function AuraCoin() {
   };
 
   return (
-    <PageLayout>
+    <PageLayout variant="compact">
       {/* Main Trading Card */}
       <Card className="border-border/40">
         <CardContent className={SPACING.SECTION_SPACING}>

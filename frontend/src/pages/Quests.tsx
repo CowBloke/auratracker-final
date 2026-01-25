@@ -117,7 +117,7 @@ export default function Quests() {
 
   if (loading) {
     return (
-      <PageLayout>
+      <PageLayout variant="compact">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-muted rounded w-1/4"></div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -135,7 +135,7 @@ export default function Quests() {
   const canSelectNewQuests = !hasSelectedQuests && dailyQuests.length > 0;
 
   return (
-    <PageLayout>
+    <PageLayout variant="compact">
       <div className="flex items-center justify-between">
         <div>
           <p className={cn(TYPOGRAPHY.MUTED, "mt-2")}>

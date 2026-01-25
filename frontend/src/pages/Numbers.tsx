@@ -173,7 +173,7 @@ export default function Numbers() {
   ]), []);
 
   return (
-    <PageLayout>
+    <PageLayout variant="compact">
       <div className="flex flex-wrap gap-2">
         {navItems.map((item) => (
           <NavLink

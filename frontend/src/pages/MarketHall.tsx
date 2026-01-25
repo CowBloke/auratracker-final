@@ -146,7 +146,7 @@ export default function MarketHall() {
   }, [auraTransactions, simTransactions]);
 
   return (
-    <PageLayout>
+    <PageLayout variant="compact">
       <div className="flex items-center justify-end">
         <div className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tabular-nums")}>
           {auraHistory.length ? `${auraHistory.length} points` : 'Chargement...'}

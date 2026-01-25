@@ -269,7 +269,7 @@ export default function Clash() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto py-12 px-4 space-y-16">
+    <div className="max-w-4xl mx-auto py-12 px-6 space-y-16">
       {/* Stats */}
       <div className="flex items-center justify-end gap-4 text-sm text-muted-foreground tabular-nums">
         <span>{trophies} 🏆</span>

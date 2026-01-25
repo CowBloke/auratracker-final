@@ -20,7 +20,7 @@ export default function Banned() {
       : 'Temporaire';
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+    <div className="min-h-screen bg-background flex items-center justify-center py-12 px-6">
       <div className="w-full max-w-md space-y-6 text-center">
         <div className="space-y-2">
           <p className={TYPOGRAPHY.SMALL}>

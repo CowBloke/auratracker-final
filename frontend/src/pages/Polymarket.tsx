@@ -304,7 +304,7 @@ export default function Polymarket() {
 
   return (
     <>
-      <PageLayout>
+      <PageLayout variant="compact">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="events">Événements</TabsTrigger>

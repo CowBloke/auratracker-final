@@ -77,8 +77,8 @@ export default function MusicLounge() {
   };
 
   return (
-    <div className="min-h-screen bg-background px-6 py-10 text-foreground">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
+    <div className="min-h-screen bg-background px-6 py-12 text-foreground">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
         <div className="rounded-3xl border border-border/40 bg-gradient-to-br from-emerald-500/20 via-background to-background p-8">
           <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
             Une interface inspiree des players modernes pour patienter. Depose tes fichiers mp3 dans

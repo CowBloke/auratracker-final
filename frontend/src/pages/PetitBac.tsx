@@ -101,7 +101,7 @@ export default function PetitBac() {
 
   if (!currentParty) {
     return (
-      <div className="max-w-6xl mx-auto py-12 px-4 space-y-8">
+      <div className="max-w-4xl mx-auto py-12 px-6 space-y-8">
         <Link
           to="/games"
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -130,7 +130,7 @@ export default function PetitBac() {
 
   if (!petitBacGame) {
     return (
-      <div className="max-w-6xl mx-auto py-12 px-4 space-y-8">
+      <div className="max-w-4xl mx-auto py-12 px-6 space-y-8">
         <Link
           to="/games"
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -249,7 +249,7 @@ export default function PetitBac() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto py-12 px-4 space-y-8">
+    <div className="max-w-4xl mx-auto py-12 px-6 space-y-8">
       <div className="flex items-center justify-between">
         <Link
           to="/games"

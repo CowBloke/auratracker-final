@@ -531,7 +531,7 @@ export default function Solitaire() {
   // RENDER
   // ============================================
   return (
-    <div className="max-w-6xl mx-auto py-12 px-4 space-y-8">
+    <div className="max-w-4xl mx-auto py-12 px-6 space-y-8">
       {/* Game Area */}
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Game Board */}

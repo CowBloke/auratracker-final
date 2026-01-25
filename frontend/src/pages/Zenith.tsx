@@ -163,7 +163,7 @@ export default function Zenith() {
   };
 
   return (
-    <PageLayout>
+    <PageLayout variant="compact">
       {/* Main Trading Card */}
       <Card className="border-border/40">
         <CardContent className={SPACING.SECTION_SPACING}>

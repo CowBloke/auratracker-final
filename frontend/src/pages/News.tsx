@@ -27,8 +27,8 @@ const articles = [
 
 export default function News() {
   return (
-    <div className="min-h-screen bg-background px-6 py-10 text-foreground">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-10">
+    <div className="min-h-screen bg-background px-6 py-12 text-foreground">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-10">
         <p className="text-base text-muted-foreground">
           Un petit fil d'articles a partager. Remplace les liens par tes propres recommandations.
         </p>

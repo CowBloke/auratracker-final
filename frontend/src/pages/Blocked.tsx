@@ -20,7 +20,7 @@ export default function Blocked({ message }: BlockedProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-6">
+    <div className="min-h-screen bg-background flex items-center justify-center py-12 px-6">
       <div className="max-w-2xl text-center space-y-6">
         <div className="flex justify-center">
           <ArrowLeftCircle className="h-14 w-14 text-muted-foreground" />

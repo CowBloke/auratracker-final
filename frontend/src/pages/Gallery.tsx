@@ -218,7 +218,7 @@ export default function Gallery() {
 
   return (
     <>
-      <PageLayout>
+      <PageLayout variant="compact">
         {/* Header */}
         <div className="flex items-center justify-end">
         <div className="text-right text-sm text-muted-foreground tabular-nums">

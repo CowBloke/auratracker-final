@@ -445,7 +445,7 @@ export default function Game2048() {
   };
   
   return (
-    <div className="max-w-6xl mx-auto py-12 px-4 space-y-8">
+    <div className="max-w-4xl mx-auto py-12 px-6 space-y-8">
       <div className="flex items-center justify-end">
         <div className="text-right text-sm text-muted-foreground tabular-nums">
           <div className="text-3xl font-light text-foreground">{score.toLocaleString()}</div>

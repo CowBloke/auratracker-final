@@ -189,7 +189,7 @@ export default function Poker() {
 
   if (!currentParty) {
     return (
-      <div className="max-w-6xl mx-auto py-12 px-4 space-y-8">
+      <div className="max-w-4xl mx-auto py-12 px-6 space-y-8">
         <Link
           to="/games"
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -224,7 +224,7 @@ export default function Poker() {
   const lobby = !pokerGame;
 
   return (
-    <div className="max-w-6xl mx-auto py-12 px-4 space-y-10">
+    <div className="max-w-4xl mx-auto py-12 px-6 space-y-10">
       {lobby ? (
         <div className="space-y-12">
           <section className="space-y-2">
