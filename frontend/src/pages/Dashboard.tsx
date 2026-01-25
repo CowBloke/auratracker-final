@@ -98,7 +98,7 @@ const defaultShortcuts = ['doodle-jump', 'flappy-bird', 'bomb-party', '2048'];
 
 export default function Dashboard() {
   const { user, refreshUser } = useAuth();
-  const { onlineUsers, publicParties, fetchPublicParties } = useSocket();
+  const { fetchPublicParties } = useSocket();
   const [recentTransfers, setRecentTransfers] = useState<Transfer[]>([]);
   const [userRank, setUserRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -320,17 +320,11 @@ export default function Dashboard() {
   }
 
   return (
-    <PageLayout variant="compact">
+    <PageLayout variant="compact" className="space-y-8">
       {/* Stats */}
       <Card className="border-border/40">
         <CardContent className="p-8 md:p-10">
           <div className={cn("space-y-2 text-center", SPACING.TIGHT_SPACING)}>
-            <p className={TYPOGRAPHY.MUTED}>
-              {onlineUsers.length} en ligne
-            </p>
-            <p className={TYPOGRAPHY.MUTED}>
-              {publicParties.length} parties actives
-            </p>
             <p
               className={cn(TYPOGRAPHY.H1, "md:text-5xl")}
               style={user?.usernameColor ? { color: user.usernameColor } : undefined}
