@@ -330,6 +330,9 @@ export default function Dashboard() {
         <p className="text-sm text-muted-foreground tracking-wide uppercase">
           {onlineUsers.length} en ligne
         </p>
+        <p className="text-sm text-muted-foreground tracking-wide uppercase">
+          {publicParties.length} parties actives
+        </p>
         <h1
           className="text-5xl md:text-7xl font-light tracking-tight"
           style={user?.usernameColor ? { color: user.usernameColor } : undefined}
@@ -428,7 +431,7 @@ export default function Dashboard() {
       </section>
 
       {/* Primary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
         <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 space-y-2">
           <p className="text-3xl md:text-4xl font-light tabular-nums">
             {user?.aura.toLocaleString()}
@@ -446,12 +449,6 @@ export default function Dashboard() {
             #{userRank || '-'}
           </p>
           <p className="text-sm text-muted-foreground">rang</p>
-        </div>
-        <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 space-y-2">
-          <p className="text-3xl md:text-4xl font-light tabular-nums">
-            {publicParties.length}
-          </p>
-          <p className="text-sm text-muted-foreground">parties actives</p>
         </div>
         <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 space-y-2">
           <p className="text-3xl md:text-4xl font-light tabular-nums">
