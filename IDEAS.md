@@ -37,3 +37,7 @@
 - guerres de clans
 - topbar parties en ligne
 - scooby serie
+- classe comme prenom ajouter sql raw
+- monopoly
+- FIX les autres coins
+- ajouter logs coins, jeux, etc.
