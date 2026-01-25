@@ -189,8 +189,9 @@ export default function Admin() {
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState<{ username: string; aura: number; money: number; auraCoinBalance: number; dailyAuraLimit: number }>({
+  const [editValues, setEditValues] = useState<{ username: string; firstName: string; aura: number; money: number; auraCoinBalance: number; dailyAuraLimit: number }>({
     username: '',
+    firstName: '',
     aura: 0,
     money: 0,
     auraCoinBalance: 0,
@@ -975,6 +976,7 @@ export default function Admin() {
     setEditingUser(u.id);
     setEditValues({
       username: u.username,
+      firstName: u.firstName || '',
       aura: u.aura,
       money: u.money,
       auraCoinBalance: u.auraCoinBalance,
@@ -1441,6 +1443,9 @@ export default function Admin() {
                       <p className="text-xs text-muted-foreground mt-1">
                         {u.email}
                       </p>
+                      <p className="text-xs text-muted-foreground/80 mt-0.5">
+                        Prénom: {u.firstName ? u.firstName : 'Non défini'}
+                      </p>
                       <p className="text-xs text-muted-foreground/60 mt-0.5">
                         Demandé le {new Date(u.createdAt).toLocaleDateString('fr-FR', { 
                           day: 'numeric', 
@@ -1527,7 +1532,7 @@ export default function Admin() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Rechercher par pseudo..."
+              placeholder="Rechercher par pseudo ou prénom..."
               value={userSearchQuery}
               onChange={(e) => setUserSearchQuery(e.target.value)}
               className="pl-9 bg-transparent border-border/50 h-9"
@@ -1541,7 +1546,8 @@ export default function Admin() {
           ) : (() => {
             const filteredUsers = userSearchQuery.trim()
               ? users.filter(u => 
-                  u.username.toLowerCase().includes(userSearchQuery.toLowerCase())
+                  u.username.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+                  (u.firstName || '').toLowerCase().includes(userSearchQuery.toLowerCase())
                 )
               : users;
             
@@ -1597,6 +1603,17 @@ export default function Admin() {
                           value={editValues.username}
                           onChange={(e) => setEditValues(prev => ({ ...prev, username: e.target.value }))}
                           className="h-9 bg-transparent border-border/50"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">Prénom</label>
+                        <Input
+                          type="text"
+                          value={editValues.firstName}
+                          onChange={(e) => setEditValues(prev => ({ ...prev, firstName: e.target.value }))}
+                          className="h-9 bg-transparent border-border/50"
+                          placeholder="Non défini"
                         />
                       </div>
 
@@ -1669,6 +1686,9 @@ export default function Admin() {
                             )}
                           </div>
                           <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                          <p className="text-xs text-muted-foreground/80 truncate">
+                            Prénom: {u.firstName ? u.firstName : 'Non défini'}
+                          </p>
                         </div>
                       </div>
                       

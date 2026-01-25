@@ -28,6 +28,7 @@ router.get('/pending-users', authMiddleware, requireAdmin, async (req: AuthReque
       select: {
         id: true,
         username: true,
+        firstName: true,
         email: true,
         createdAt: true,
       },
@@ -361,6 +362,7 @@ router.get('/users', authMiddleware, requireAdmin, async (req: AuthRequest, res:
       select: {
         id: true,
         username: true,
+        firstName: true,
         email: true,
         aura: true,
         money: true,
@@ -389,10 +391,10 @@ router.get('/users', authMiddleware, requireAdmin, async (req: AuthRequest, res:
 router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { aura, money, auraCoinBalance, dailyAuraLimit, username, password, isChatMuted } = req.body;
+    const { aura, money, auraCoinBalance, dailyAuraLimit, username, firstName, password, isChatMuted } = req.body;
 
     // Build update data
-    const updateData: { aura?: number; money?: number; auraCoinBalance?: number; dailyAuraLimit?: number; username?: string; passwordHash?: string; isChatMuted?: boolean } = {};
+    const updateData: { aura?: number; money?: number; auraCoinBalance?: number; dailyAuraLimit?: number; username?: string; firstName?: string | null; passwordHash?: string; isChatMuted?: boolean } = {};
 
     if (username !== undefined) {
       if (typeof username !== 'string') {
@@ -413,6 +415,23 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
         return res.status(400).json({ error: 'Username already taken' });
       }
       updateData.username = trimmedUsername;
+    }
+
+    if (firstName !== undefined) {
+      if (firstName === null) {
+        updateData.firstName = null;
+      } else if (typeof firstName === 'string') {
+        const trimmedFirstName = firstName.trim();
+        if (trimmedFirstName.length === 0) {
+          updateData.firstName = null;
+        } else if (trimmedFirstName.length > 50) {
+          return res.status(400).json({ error: 'First name must be 50 characters or less' });
+        } else {
+          updateData.firstName = trimmedFirstName;
+        }
+      } else {
+        return res.status(400).json({ error: 'Invalid first name' });
+      }
     }
     
     if (aura !== undefined) {
@@ -447,7 +466,7 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
     // Get old user data for logging
     const oldUser = await prisma.user.findUnique({
       where: { id },
-      select: { username: true, aura: true, money: true, auraCoinBalance: true, dailyAuraLimit: true, isChatMuted: true },
+      select: { username: true, firstName: true, aura: true, money: true, auraCoinBalance: true, dailyAuraLimit: true, isChatMuted: true },
     });
 
     const user = await prisma.user.update({
@@ -456,6 +475,7 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
       select: {
         id: true,
         username: true,
+        firstName: true,
         email: true,
         aura: true,
         money: true,
@@ -481,6 +501,7 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
       passwordChanged: Boolean(updateData.passwordHash),
       oldValues: {
         username: oldUser?.username,
+        firstName: oldUser?.firstName,
         aura: oldUser?.aura,
         money: oldUser?.money,
         auraCoinBalance: oldUser?.auraCoinBalance,

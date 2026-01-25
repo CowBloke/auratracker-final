@@ -15,6 +15,10 @@ import {
 } from '@/components/ui/form';
 
 const registerSchema = z.object({
+  firstName: z.string()
+    .trim()
+    .min(1, 'Prénom requis')
+    .max(50, 'Maximum 50 caractères'),
   username: z.string()
     .min(3, 'Minimum 3 caractères')
     .max(20, 'Maximum 20 caractères'),
@@ -36,6 +40,7 @@ export default function Register() {
   const form = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
+      firstName: '',
       username: '',
       email: '',
       password: '',
@@ -49,6 +54,7 @@ export default function Register() {
       setLoading(true);
       await authApi.register({
         username: data.username,
+        firstName: data.firstName,
         email: data.email,
         password: data.password,
       });
@@ -111,6 +117,24 @@ export default function Register() {
         {/* Form */}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="firstName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <Input
+                      type="text"
+                      placeholder="Prénom (réel)"
+                      className="h-12 bg-transparent border-border/50 text-center"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage className="text-center" />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="username"

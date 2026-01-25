@@ -11,6 +11,7 @@ datasource db {
 model User {
   id                 String    @id @default(uuid())
   username           String    @unique
+  firstName          String? // Real first name
   email              String    @unique
   passwordHash       String
   aura               BigInt    @default(0)
@@ -831,4 +832,3 @@ model UserQuestProgress {
 
   @@index([userQuestId])
 }
-
