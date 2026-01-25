@@ -694,21 +694,7 @@ export default function DoodleJump() {
   // ============================================
   return (
     <div className="max-w-6xl mx-auto py-12 px-4 space-y-8">
-      {/* Header */}
-      <header className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <Link
-              to="/games"
-              className="text-sm text-muted-foreground tracking-wide uppercase hover:text-foreground transition-colors"
-            >
-              &larr; Jeux
-            </Link>
-            <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-              Doodle Jump
-            </h1>
-          </div>
-          <div className="flex items-center gap-4">
+      <div className="flex items-center justify-end gap-4">
             <div className="relative" data-skin-selector>
               <button
                 onClick={() => setShowSkinSelector(!showSkinSelector)}
@@ -762,8 +748,6 @@ export default function DoodleJump() {
               <div>Record: {highScore.toLocaleString()}</div>
             </div>
           </div>
-        </div>
-      </header>
 
       {/* Game Area with Leaderboard */}
       <div className="flex justify-center gap-6">

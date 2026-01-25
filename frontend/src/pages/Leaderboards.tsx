@@ -98,24 +98,13 @@ export default function Leaderboards() {
 
   return (
     <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
-      {/* Header */}
-      <header className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground tracking-wide uppercase">
-              Compétition
-            </p>
-            <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-              Classement
-            </h1>
+      {userRank && (
+        <div className="flex items-center justify-end">
+          <div className="text-right text-sm text-muted-foreground tabular-nums">
+            #{userRank}
           </div>
-          {userRank && (
-            <div className="text-right text-sm text-muted-foreground tabular-nums">
-              #{userRank}
-            </div>
-          )}
         </div>
-      </header>
+      )}
 
       {/* Category Selector */}
       <div className="flex flex-wrap gap-2">
@@ -153,9 +142,6 @@ export default function Leaderboards() {
           </button>
         ))}
       </div>
-
-      {/* Divider */}
-      <div className="h-px bg-border" />
 
       {/* Rankings */}
       <section>

@@ -6,3 +6,4 @@
 - FIX token
 - logs poker, roulette russe, bataille navale
 - clear casino cheaters
+- fix marché

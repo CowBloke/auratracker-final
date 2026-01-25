@@ -110,17 +110,6 @@ export default function PetitBac() {
           Jeux
         </Link>
 
-        <header className="space-y-2">
-          <p className="text-sm text-muted-foreground tracking-wide uppercase">
-            Jeu multijoueur
-          </p>
-          <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-            Petit Bac
-          </h1>
-        </header>
-
-        <div className="h-px bg-border" />
-
         <div className="text-center py-20 space-y-6">
           <div>
             <p className="text-sm text-muted-foreground">
@@ -149,17 +138,6 @@ export default function PetitBac() {
           <ArrowLeft className="h-4 w-4" />
           Jeux
         </Link>
-
-        <header className="space-y-2">
-          <p className="text-sm text-muted-foreground tracking-wide uppercase">
-            Jeu multijoueur
-          </p>
-          <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-            Petit Bac
-          </h1>
-        </header>
-
-        <div className="h-px bg-border" />
 
         <div className="grid gap-6">
           <div className="text-sm text-muted-foreground">

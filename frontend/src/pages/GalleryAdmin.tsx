@@ -173,22 +173,12 @@ export default function GalleryAdmin() {
   return (
     <div className="max-w-6xl mx-auto py-12 px-4 space-y-8">
       {/* Header */}
-      <header className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground tracking-wide uppercase">
-              Administration
-            </p>
-            <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-              Galerie
-            </h1>
-          </div>
-          <Button onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Nouveau tableau
+      <div className="flex items-center justify-end">
+        <Button onClick={() => setCreateDialogOpen(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          Nouveau tableau
           </Button>
         </div>
-      </header>
 
       {/* Message */}
       {message && (

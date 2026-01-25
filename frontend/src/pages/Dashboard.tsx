@@ -316,22 +316,22 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-4xl mx-auto py-12 px-4 space-y-6">
-      {/* Header */}
+      {/* Stats */}
       <section className="rounded-3xl border border-border/50 bg-muted/20 p-8 md:p-10">
-        <header className="space-y-2 text-center">
+        <div className="space-y-2 text-center">
           <p className="text-sm text-muted-foreground tracking-wide uppercase">
             {onlineUsers.length} en ligne
           </p>
           <p className="text-sm text-muted-foreground tracking-wide uppercase">
             {publicParties.length} parties actives
           </p>
-          <h1
+          <p
             className="text-3xl md:text-5xl font-light tracking-tight"
             style={user?.usernameColor ? { color: user.usernameColor } : undefined}
           >
             {welcomeMessage || `Bienvenue, ${user?.username ?? ''}`}
-          </h1>
-        </header>
+          </p>
+        </div>
       </section>
 
       {/* Shortcuts */}
@@ -470,8 +470,6 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* Divider */}
-      <div className="h-px bg-border" />
 
       {/* Gift Section */}
       <section className="space-y-4">
@@ -620,8 +618,6 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* Divider */}
-      <div className="h-px bg-border" />
 
       {/* Recent Activity */}
       <section className="space-y-6">

@@ -171,10 +171,10 @@ export default function RussianRoulette() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold flex items-center gap-2">
+              <div className="text-3xl font-bold flex items-center gap-2">
                 <Target className="h-8 w-8 text-red-500" />
                 Roulette Russe
-              </h1>
+              </div>
               <p className="text-muted-foreground">1/6 chance de perdre à chaque tour</p>
             </div>
           </div>

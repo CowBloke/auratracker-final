@@ -204,20 +204,8 @@ export default function MarketTrade() {
 
   return (
     <div className="max-w-4xl mx-auto py-12 px-4 space-y-12">
-      <header className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <Link
-              to="/games/market"
-              className="text-sm text-muted-foreground tracking-wide uppercase hover:text-foreground transition-colors"
-            >
-              ← Salle de marche
-            </Link>
-            <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-              {coin.name}
-            </h1>
-          </div>
-          <div className="text-right">
+      <div className="flex items-center justify-end">
+        <div className="text-right">
             <div className="flex items-center gap-2 justify-end">
               <span className="text-3xl font-light tabular-nums">
                 ${currentPrice.toFixed(2)}
@@ -235,7 +223,6 @@ export default function MarketTrade() {
             <p className="text-sm text-muted-foreground">Fee {(coin.feePercentage * 100).toFixed(1)}%</p>
           </div>
         </div>
-      </header>
 
       <div className="border border-border/30 p-6">
         <div className="flex items-center justify-between mb-4">

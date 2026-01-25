@@ -173,17 +173,6 @@ export default function BombParty() {
           Jeux
         </Link>
 
-        <header className="space-y-2">
-          <p className="text-sm text-muted-foreground tracking-wide uppercase">
-            Jeu multijoueur
-          </p>
-          <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-            Bomb Party
-          </h1>
-        </header>
-
-        <div className="h-px bg-border" />
-
         <div className="text-center py-20 space-y-6">
           <div>
             <p className="text-sm text-muted-foreground">
@@ -206,25 +195,6 @@ export default function BombParty() {
   if (!bombPartyGame) {
     return (
       <div className="max-w-6xl mx-auto py-12 px-4 space-y-16">
-        {/* Header */}
-        <header className="space-y-2">
-          <Link
-            to="/games"
-            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-4"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Jeux
-          </Link>
-          <p className="text-sm text-muted-foreground tracking-wide uppercase">
-            Jeu multijoueur
-          </p>
-          <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-            Bomb Party
-          </h1>
-        </header>
-
-        <div className="h-px bg-border" />
-
         {/* Players in party */}
         <section className="space-y-4">
           <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
@@ -545,21 +515,14 @@ export default function BombParty() {
   // Game active
   return (
     <div className="max-w-6xl mx-auto py-12 px-4 space-y-8">
-      {/* Header */}
-      <header className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground tracking-wide uppercase">
-            Round {bombPartyGame?.round || 0}
-          </p>
-          <h1 className="text-3xl font-light tracking-tight">Bomb Party</h1>
-        </div>
+      <div className="flex items-center justify-end">
         <button
           onClick={leaveBombParty}
           className="px-4 py-2 text-sm border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
         >
           Quitter
         </button>
-      </header>
+      </div>
 
       {/* Players */}
       <section className="space-y-2">

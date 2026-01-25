@@ -302,21 +302,6 @@ export default function Polymarket() {
 
   return (
     <div className="max-w-6xl mx-auto py-8 px-4 space-y-8">
-      <header className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground tracking-wide uppercase">
-              Marché de prédiction
-            </p>
-            <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-              Polymarket
-            </h1>
-          </div>
-        </div>
-      </header>
-
-      <div className="h-px bg-border" />
-
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="events">Événements</TabsTrigger>

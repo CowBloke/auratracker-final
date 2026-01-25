@@ -145,28 +145,17 @@ export default function Party() {
   const selectedGameId = partySelectedGame?.gameId;
   return (
     <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
-      {/* Header */}
-      <header className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground tracking-wide uppercase">
-              Multijoueur
-            </p>
-            <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-              Party
-            </h1>
-          </div>
-          {!currentParty && (
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              Créer
-            </button>
-          )}
+      {!currentParty && (
+        <div className="flex items-center justify-end">
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            Créer
+          </button>
         </div>
-      </header>
+      )}
 
       {/* Invites */}
       {partyInvites.length > 0 && (
@@ -206,8 +195,6 @@ export default function Party() {
         </section>
       )}
 
-      {/* Divider */}
-      <div className="h-px bg-border" />
 
       {/* Duels Section */}
       {!currentParty && (
@@ -309,7 +296,6 @@ export default function Party() {
       )}
 
       {/* Divider */}
-      {!currentParty && <div className="h-px bg-border" />}
 
       {/* Current Party or Public Parties */}
       {currentParty ? (

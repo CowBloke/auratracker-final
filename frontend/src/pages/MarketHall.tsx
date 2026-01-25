@@ -143,21 +143,11 @@ export default function MarketHall() {
 
   return (
     <div className="max-w-6xl mx-auto py-12 px-4 space-y-16">
-      <header className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground tracking-wide uppercase">
-              Trading
-            </p>
-            <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-              Salle de marche
-            </h1>
-          </div>
-          <div className="text-right text-sm text-muted-foreground tabular-nums">
-            {auraHistory.length ? `${auraHistory.length} points` : 'Chargement...'}
-          </div>
+      <div className="flex items-center justify-end">
+        <div className="text-right text-sm text-muted-foreground tabular-nums">
+          {auraHistory.length ? `${auraHistory.length} points` : 'Chargement...'}
         </div>
-      </header>
+      </div>
 
       <section className="grid gap-4 md:grid-cols-2">
         {coinViews.map((coin) => {
@@ -205,8 +195,6 @@ export default function MarketHall() {
           );
         })}
       </section>
-
-      <div className="h-px bg-border" />
 
       <section className="space-y-6">
         <div className="flex items-center justify-between">

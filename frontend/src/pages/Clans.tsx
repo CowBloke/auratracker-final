@@ -206,21 +206,15 @@ export default function Clans() {
 
   return (
     <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
-      <header className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground tracking-wide uppercase">Communautes</p>
-            <h1 className="text-5xl md:text-7xl font-light tracking-tight">Clans</h1>
-          </div>
-          <button 
-            onClick={() => setDialogOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            Creer un clan (100$)
-          </button>
-        </div>
-      </header>
+      <div className="flex items-center justify-end">
+        <button 
+          onClick={() => setDialogOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+        >
+          <Plus className="h-4 w-4" />
+          Creer un clan (100$)
+        </button>
+      </div>
 
       <Dialog open={dialogOpen} onOpenChange={(open) => {
         setDialogOpen(open);

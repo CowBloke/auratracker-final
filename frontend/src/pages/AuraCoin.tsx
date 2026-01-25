@@ -257,17 +257,6 @@ export default function AuraCoin() {
   return (
     <div className="max-w-6xl mx-auto py-12 px-4 space-y-6">
       {/* Header */}
-      <header>
-        <Link
-          to="/games"
-          className="text-sm text-muted-foreground tracking-wide uppercase hover:text-foreground transition-colors"
-        >
-          ← Jeux
-        </Link>
-        <h1 className="text-4xl md:text-5xl font-light tracking-tight mt-2">
-          Aura Coin
-        </h1>
-      </header>
 
       {/* Main Trading Card */}
       <div className="border border-border/30 p-6 space-y-5">

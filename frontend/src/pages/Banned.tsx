@@ -21,7 +21,6 @@ export default function Banned() {
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <div className="w-full max-w-md space-y-6 text-center">
         <div className="space-y-2">
-          <h1 className="text-3xl font-light tracking-tight">Acces refuse</h1>
           <p className="text-sm text-muted-foreground">
             Votre compte est actuellement banni.
           </p>

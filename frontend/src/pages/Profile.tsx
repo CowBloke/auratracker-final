@@ -157,40 +157,35 @@ export default function Profile() {
 
   return (
     <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
-      {/* Header */}
-      <header className="space-y-2">
-        <div className="flex items-start gap-6">
-          {/* Profile Picture */}
-          {profileUser.profilePicture ? (
-            <img 
-              src={resolveImageUrl(profileUser.profilePicture)} 
-              alt={profileUser.username}
-              className="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover border-2 border-border shrink-0"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
-          ) : (
-            <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-muted/30 flex items-center justify-center border-2 border-border shrink-0">
-              <span 
-                className="text-3xl md:text-4xl font-light"
-                style={profileUser.usernameColor ? { color: profileUser.usernameColor } : undefined}
-              >
-                {profileUser.username.slice(0, 2).toUpperCase()}
-              </span>
-            </div>
-          )}
-          
-          <div className="flex-1 min-w-0">
-            <p className="text-sm text-muted-foreground tracking-wide uppercase">
-              Profil {isOwnProfile && '(toi)'}
-            </p>
-            <h1 
-              className="text-5xl md:text-7xl font-light tracking-tight truncate"
+      {/* Profile Picture */}
+      <div className="flex items-start gap-6">
+        {profileUser.profilePicture ? (
+          <img 
+            src={resolveImageUrl(profileUser.profilePicture)} 
+            alt={profileUser.username}
+            className="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover border-2 border-border shrink-0"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+          />
+        ) : (
+          <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-muted/30 flex items-center justify-center border-2 border-border shrink-0">
+            <span 
+              className="text-3xl md:text-4xl font-light"
               style={profileUser.usernameColor ? { color: profileUser.usernameColor } : undefined}
             >
+              {profileUser.username.slice(0, 2).toUpperCase()}
+            </span>
+          </div>
+        )}
+        
+        <div className="flex-1 min-w-0">
+          <p 
+            className="text-5xl md:text-7xl font-light tracking-tight truncate"
+            style={profileUser.usernameColor ? { color: profileUser.usernameColor } : undefined}
+            >
               {profileUser.username}
-            </h1>
+            </p>
             {profileUser.badges?.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-3">
                 {profileUser.badges.map((badge) => (
@@ -208,7 +203,6 @@ export default function Profile() {
             </p>
           </div>
         </div>
-      </header>
 
       {/* Bio Section */}
       <section className="space-y-4">
@@ -274,8 +268,6 @@ export default function Profile() {
         )}
       </section>
 
-      {/* Divider */}
-      <div className="h-px bg-border" />
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-8 md:gap-12">
@@ -328,8 +320,6 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* Divider */}
-      <div className="h-px bg-border" />
 
       {/* Game Stats */}
       <section className="space-y-6">

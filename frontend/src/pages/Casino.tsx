@@ -135,23 +135,10 @@ export default function Casino() {
 
   return (
     <div className="max-w-6xl mx-auto py-12 px-4 space-y-8">
-      <header className="space-y-3">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <Link
-              to="/games"
-              className="text-sm text-muted-foreground tracking-wide uppercase hover:text-foreground transition-colors"
-            >
-              ← Jeux
-            </Link>
-            <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-              Casino
-            </h1>
-            <p className="text-muted-foreground">
-              Choisis ta table: machine à sous classique ou roulette animée.
-            </p>
-          </div>
-          {activeGame && (
+      <p className="text-muted-foreground">
+        Choisis ta table: machine à sous classique ou roulette animée.
+      </p>
+      {activeGame && (
             <div className="flex flex-col items-end gap-2 text-right">
               <button
                 onClick={() => setActiveGame(null)}
@@ -170,8 +157,6 @@ export default function Casino() {
               </div>
             </div>
           )}
-        </div>
-      </header>
 
       {activeGame ? (
         <div className="space-y-4">

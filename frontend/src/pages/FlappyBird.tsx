@@ -406,29 +406,6 @@ export default function FlappyBird() {
   // ============================================
   return (
     <div className="max-w-6xl mx-auto py-12 px-4 space-y-8">
-      {/* Header */}
-      <header className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <Link
-              to="/games"
-              className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-4"
-            >
-              <X className="h-4 w-4" />
-              Jeux
-            </Link>
-            <p className="text-sm text-muted-foreground tracking-wide uppercase">
-              Jeu solo
-            </p>
-            <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-              Flappy Bird
-            </h1>
-          </div>
-        </div>
-      </header>
-
-      <div className="h-px bg-border" />
-
       {/* Game Area */}
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Canvas */}

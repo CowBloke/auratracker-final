@@ -597,24 +597,16 @@ export default function Suggestions() {
 
   return (
     <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
-      {/* Header */}
-      <header className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground tracking-wide uppercase">
-              Proposez vos idées
-            </p>
-            <h1 className="text-5xl md:text-7xl font-light tracking-tight">Suggestions</h1>
-          </div>
-          <button
-            onClick={() => setDialogOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            Créer
-          </button>
-        </div>
-        <Dialog
+      <div className="flex items-center justify-end">
+        <button
+          onClick={() => setDialogOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+        >
+          <Plus className="h-4 w-4" />
+          Créer
+        </button>
+      </div>
+      <Dialog
           open={dialogOpen}
           onOpenChange={(open) => {
             setDialogOpen(open);
@@ -701,7 +693,6 @@ export default function Suggestions() {
             </form>
           </DialogContent>
         </Dialog>
-      </header>
 
       {/* Tab Selector */}
       <div className="flex flex-wrap gap-2">
@@ -729,8 +720,6 @@ export default function Suggestions() {
         </button>
       </div>
 
-      {/* Divider */}
-      <div className="h-px bg-border" />
 
       {/* Content */}
       <section>

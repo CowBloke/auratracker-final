@@ -55,14 +55,6 @@ export default function Settings() {
 
   return (
     <div className="max-w-4xl mx-auto py-12 px-4 space-y-12">
-      <header className="space-y-2">
-        <p className="text-sm text-muted-foreground tracking-wide uppercase">
-          Preferences
-        </p>
-        <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-          Reglages
-        </h1>
-      </header>
 
       <section className="space-y-6">
         <div>
@@ -108,8 +100,6 @@ export default function Settings() {
           })}
         </div>
       </section>
-
-      <div className="h-px bg-border" />
 
       <section className="space-y-6">
         <div>

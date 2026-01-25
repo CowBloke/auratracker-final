@@ -198,17 +198,6 @@ export default function Poker() {
           Jeux
         </Link>
 
-        <header className="space-y-2">
-          <p className="text-sm text-muted-foreground tracking-wide uppercase">
-            Jeu multijoueur
-          </p>
-          <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-            Poker
-          </h1>
-        </header>
-
-        <div className="h-px bg-border" />
-
         <div className="text-center py-20 space-y-6">
           <div>
             <p className="text-sm text-muted-foreground">
@@ -236,24 +225,6 @@ export default function Poker() {
 
   return (
     <div className="max-w-6xl mx-auto py-12 px-4 space-y-10">
-      <header className="space-y-2">
-        <Link
-          to="/games"
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Jeux
-        </Link>
-        <p className="text-sm text-muted-foreground tracking-wide uppercase">
-          Jeu multijoueur
-        </p>
-        <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-          Poker
-        </h1>
-      </header>
-
-      <div className="h-px bg-border" />
-
       {lobby ? (
         <div className="space-y-12">
           <section className="space-y-2">

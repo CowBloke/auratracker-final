@@ -8,7 +8,7 @@ import PetitBacJoinPrompt from '../game/PetitBacJoinPrompt';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocket } from '@/contexts/SocketContext';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronUp, Maximize2, Minimize2, Users, LogOut, Bomb, Gamepad2, Trash2, UserPlus } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -17,6 +17,14 @@ import { resolveImageUrl } from '@/lib/images';
 import { usersApi } from '@/services/api';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
 
 function ChatBubbleContainer() {
   const { open } = useChatSidebar();
@@ -119,6 +127,112 @@ export default function Layout() {
     }
   }, []);
 
+  // Map routes to page names for breadcrumb
+  const getPageName = (pathname: string): string => {
+    const routeMap: Record<string, string> = {
+      '/': 'Dashboard',
+      '/games': 'Jeux',
+      '/games/doodle-jump': 'Doodle Jump',
+      '/games/2048': '2048',
+      '/games/flappy-bird': 'Flappy Bird',
+      '/games/clash': 'Clash',
+      '/games/casino': 'Casino',
+      '/games/market': 'Market Hall',
+      '/games/aura-coin': 'Aura Coin',
+      '/games/market/solaris': 'Solaris',
+      '/games/market/zenith': 'Zenith',
+      '/games/market/rift': 'Rift',
+      '/games/bomb-party': 'Bomb Party',
+      '/games/poker': 'Poker',
+      '/games/petit-bac': 'Petit Bac',
+      '/games/russian-roulette': 'Russian Roulette',
+      '/games/bataille-navale': 'Bataille Navale',
+      '/games/solitaire': 'Solitaire',
+      '/games/polymarket': 'Polymarket',
+      '/polymarket': 'Polymarket',
+      '/leaderboards': 'Classements',
+      '/leaderboards/nombres': 'Nombres',
+      '/party': 'Party',
+      '/clans': 'Clans',
+      '/inventory': 'Inventaire',
+      '/profile': 'Profil',
+      '/admin': 'Admin',
+      '/admin/gallery': 'Admin Gallery',
+      '/gallery': 'Galerie',
+      '/market': 'Market',
+      '/rules': 'Règles',
+      '/pass': 'Pass',
+      '/quests': 'Quêtes',
+      '/suggestions': 'Suggestions',
+      '/settings': 'Paramètres',
+    };
+
+    // Check exact match first
+    if (routeMap[pathname]) {
+      return routeMap[pathname];
+    }
+
+    // Check for dynamic routes
+    if (pathname.startsWith('/profile/')) {
+      return 'Profil';
+    }
+    if (pathname.startsWith('/gallery/')) {
+      return 'Galerie';
+    }
+    if (pathname.startsWith('/games/market/')) {
+      const coinId = pathname.split('/games/market/')[1];
+      if (coinId && coinId !== 'solaris' && coinId !== 'zenith' && coinId !== 'rift') {
+        return 'Market Trade';
+      }
+    }
+
+    // Fallback: capitalize first letter and replace dashes with spaces
+    return pathname
+      .split('/')
+      .filter(Boolean)
+      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' '))
+      .join(' / ') || 'Dashboard';
+  };
+
+  const breadcrumbItems = useMemo(() => {
+    const pathSegments = location.pathname.split('/').filter(Boolean);
+    const items = [];
+
+    // If on root, just show Dashboard
+    if (location.pathname === '/') {
+      return [{ label: 'Dashboard', path: '/' }];
+    }
+
+    // Always add Dashboard as first item for other pages
+    items.push({
+      label: 'Dashboard',
+      path: '/',
+    });
+
+    // Build breadcrumb from path segments
+    let currentPath = '';
+    pathSegments.forEach((segment, index) => {
+      currentPath += `/${segment}`;
+      const isLast = index === pathSegments.length - 1;
+      
+      if (isLast) {
+        items.push({
+          label: getPageName(location.pathname),
+          path: currentPath,
+        });
+      } else {
+        // For intermediate segments, try to get a meaningful name
+        const segmentName = getPageName(currentPath);
+        items.push({
+          label: segmentName,
+          path: currentPath,
+        });
+      }
+    });
+
+    return items;
+  }, [location.pathname]);
+
   return (
     <ChatSidebarProvider>
       <div className="min-h-screen bg-background flex">
@@ -134,6 +248,27 @@ export default function Layout() {
                     <span className="truncate">{announcement}</span>
                   </div>
                 )}
+                <Breadcrumb>
+                  <BreadcrumbList>
+                    {breadcrumbItems.map((item, index) => {
+                      const isLast = index === breadcrumbItems.length - 1;
+                      return (
+                        <div key={item.path} className="flex items-center gap-1.5">
+                          {index > 0 && <BreadcrumbSeparator />}
+                          <BreadcrumbItem>
+                            {isLast ? (
+                              <BreadcrumbPage>{item.label}</BreadcrumbPage>
+                            ) : (
+                              <BreadcrumbLink asChild>
+                                <Link to={item.path}>{item.label}</Link>
+                              </BreadcrumbLink>
+                            )}
+                          </BreadcrumbItem>
+                        </div>
+                      );
+                    })}
+                  </BreadcrumbList>
+                </Breadcrumb>
               </div>
 
               <div className="flex items-center gap-4">

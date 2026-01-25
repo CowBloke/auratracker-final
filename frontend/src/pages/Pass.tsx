@@ -123,23 +123,9 @@ export default function Pass() {
 
   return (
     <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
-      {/* Header */}
-      <header className="space-y-2">
-        <div>
-          <p className="text-sm text-muted-foreground tracking-wide uppercase">
-            Fidélité
-          </p>
-          <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-            Pass quotidien
-          </h1>
-        </div>
-        <p className="text-sm text-muted-foreground max-w-2xl">
-          Connecte-toi chaque jour pour monter les paliers. Un jour manqué remet la série à zéro.
-        </p>
-      </header>
-
-      {/* Divider */}
-      <div className="h-px bg-border" />
+      <p className="text-sm text-muted-foreground max-w-2xl">
+        Connecte-toi chaque jour pour monter les paliers. Un jour manqué remet la série à zéro.
+      </p>
 
       {/* Main Section */}
       <section className="space-y-6">
@@ -214,7 +200,6 @@ export default function Pass() {
       </section>
 
       {/* Divider */}
-      <div className="h-px bg-border" />
 
       {/* Paliers */}
       <section className="space-y-6">

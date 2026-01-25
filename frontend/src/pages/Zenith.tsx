@@ -158,19 +158,6 @@ export default function Zenith() {
 
   return (
     <div className="max-w-6xl mx-auto py-12 px-4 space-y-6">
-      {/* Header */}
-      <header>
-        <Link
-          to="/games/market"
-          className="text-sm text-muted-foreground tracking-wide uppercase hover:text-foreground transition-colors"
-        >
-          ← Salle de marché
-        </Link>
-        <h1 className="text-4xl md:text-5xl font-light tracking-tight mt-2">
-          Zenith
-        </h1>
-      </header>
-
       {/* Main Trading Card */}
       <div className="border border-border/30 p-6 space-y-5">
         {/* Balances and Current Price */}

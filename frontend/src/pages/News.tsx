@@ -29,13 +29,9 @@ export default function News() {
   return (
     <div className="min-h-screen bg-background px-6 py-10 text-foreground">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-10">
-        <header className="space-y-3">
-          <p className="text-sm uppercase tracking-[0.35em] text-muted-foreground">News lounge</p>
-          <h1 className="text-3xl font-semibold">Articles a lire pendant la maintenance</h1>
-          <p className="text-base text-muted-foreground">
-            Un petit fil d'articles a partager. Remplace les liens par tes propres recommandations.
-          </p>
-        </header>
+        <p className="text-base text-muted-foreground">
+          Un petit fil d'articles a partager. Remplace les liens par tes propres recommandations.
+        </p>
 
         <div className="grid gap-6 md:grid-cols-3">
           {articles.map((article) => (

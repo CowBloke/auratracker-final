@@ -169,15 +169,6 @@ export default function Numbers() {
 
   return (
     <div className="max-w-5xl mx-auto py-12 px-4 space-y-12">
-      <header className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground tracking-wide uppercase">Apercu</p>
-            <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-              Nombres
-            </h1>
-          </div>
-        </div>
         <div className="flex flex-wrap gap-2">
           {navItems.map((item) => (
             <NavLink
@@ -195,9 +186,6 @@ export default function Numbers() {
             </NavLink>
           ))}
         </div>
-      </header>
-
-      <div className="h-px bg-border" />
 
       {loading ? (
         <div className="flex justify-center py-12">

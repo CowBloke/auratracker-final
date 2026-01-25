@@ -270,22 +270,14 @@ export default function Clash() {
 
   return (
     <div className="max-w-6xl mx-auto py-12 px-4 space-y-16">
-      {/* Header */}
-      <header className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground tracking-wide uppercase">Stratégie</p>
-            <h1 className="text-5xl md:text-7xl font-light tracking-tight">Clash</h1>
-          </div>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground tabular-nums">
-            <span>{trophies} 🏆</span>
-            <span>{defenseRating} 🛡️</span>
-            {shieldUntil && new Date() < shieldUntil && (
-              <span>Bouclier: {formatTimeRemaining(shieldUntil)}</span>
-            )}
-          </div>
-        </div>
-      </header>
+      {/* Stats */}
+      <div className="flex items-center justify-end gap-4 text-sm text-muted-foreground tabular-nums">
+        <span>{trophies} 🏆</span>
+        <span>{defenseRating} 🛡️</span>
+        {shieldUntil && new Date() < shieldUntil && (
+          <span>Bouclier: {formatTimeRemaining(shieldUntil)}</span>
+        )}
+      </div>
 
       {/* Tabs */}
       <div className="flex gap-2">
@@ -304,9 +296,6 @@ export default function Clash() {
           </button>
         ))}
       </div>
-
-      {/* Divider */}
-      <div className="h-px bg-border" />
 
       {/* Base View */}
       {viewMode === 'base' && (

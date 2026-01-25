@@ -193,17 +193,9 @@ export default function Rules() {
   return (
     <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
       {/* Header */}
-      <header className="space-y-2">
-        <p className="text-sm text-muted-foreground tracking-wide uppercase">
-          Infos & communauté
-        </p>
-        <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-          Règles, changelog, bugs
-        </h1>
-        <p className="text-sm text-muted-foreground max-w-2xl">
-          Tout est rassemblé ici : règlement, notes de version et signalement de bugs.
-        </p>
-      </header>
+      <p className="text-sm text-muted-foreground max-w-2xl">
+        Tout est rassemblé ici : règlement, notes de version et signalement de bugs.
+      </p>
 
       {/* Divider */}
       <div className="h-px bg-border" />

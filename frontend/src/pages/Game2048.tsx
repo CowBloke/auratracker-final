@@ -446,26 +446,12 @@ export default function Game2048() {
   
   return (
     <div className="max-w-6xl mx-auto py-12 px-4 space-y-8">
-      {/* Header */}
-      <header className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <Link
-              to="/games"
-              className="text-sm text-muted-foreground tracking-wide uppercase hover:text-foreground transition-colors"
-            >
-              &larr; Jeux
-            </Link>
-            <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-              2048
-            </h1>
-          </div>
-          <div className="text-right text-sm text-muted-foreground tabular-nums">
-            <div className="text-3xl font-light text-foreground">{score.toLocaleString()}</div>
-            <div>Record: {highScore.toLocaleString()}</div>
-          </div>
+      <div className="flex items-center justify-end">
+        <div className="text-right text-sm text-muted-foreground tabular-nums">
+          <div className="text-3xl font-light text-foreground">{score.toLocaleString()}</div>
+          <div>Record: {highScore.toLocaleString()}</div>
         </div>
-      </header>
+      </div>
       
       {/* Game Area with Leaderboard */}
       <div className="flex justify-center gap-6 flex-wrap">

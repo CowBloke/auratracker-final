@@ -214,22 +214,12 @@ export default function PlayerMarket() {
   return (
     <div className="max-w-5xl mx-auto py-12 px-4 space-y-8">
       {/* Header */}
-      <header className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground tracking-wide uppercase">
-              Échanges
-            </p>
-            <h1 className="text-5xl md:text-7xl font-light tracking-tight">
-              Marché
-            </h1>
-          </div>
-          <div className="text-right text-sm text-muted-foreground tabular-nums">
-            <div>{user?.aura.toLocaleString()} aura</div>
-            <div>${user?.money.toLocaleString()}</div>
-          </div>
+      <div className="flex items-center justify-end">
+        <div className="text-right text-sm text-muted-foreground tabular-nums">
+          <div>{user?.aura.toLocaleString()} aura</div>
+          <div>${user?.money.toLocaleString()}</div>
         </div>
-      </header>
+      </div>
 
       {/* Message */}
       {message && (
