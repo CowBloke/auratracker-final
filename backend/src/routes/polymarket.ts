@@ -48,10 +48,10 @@ router.get('/suggestions', authMiddleware, async (req: AuthRequest, res: Respons
 // Create a suggestion
 router.post('/suggestions', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { title, description, imageUrl, eventDate } = req.body;
+    const { title, description, imageUrl, eventDate, suggestedYesOdds, suggestedNoOdds } = req.body;
 
-    if (!title || !description || !eventDate) {
-      return res.status(400).json({ error: 'Title, description, and event date are required' });
+    if (!title || !description) {
+      return res.status(400).json({ error: 'Title and description are required' });
     }
 
     if (title.length > 200) {
@@ -62,13 +62,28 @@ router.post('/suggestions', authMiddleware, async (req: AuthRequest, res: Respon
       return res.status(400).json({ error: 'Description must be less than 2000 characters' });
     }
 
-    const eventDateObj = new Date(eventDate);
-    if (isNaN(eventDateObj.getTime())) {
-      return res.status(400).json({ error: 'Invalid event date' });
+    let eventDateObj: Date | null = null;
+    if (eventDate) {
+      eventDateObj = new Date(eventDate);
+      if (isNaN(eventDateObj.getTime())) {
+        return res.status(400).json({ error: 'Invalid event date' });
+      }
+
+      if (eventDateObj <= new Date()) {
+        return res.status(400).json({ error: 'Event date must be in the future' });
+      }
     }
 
-    if (eventDateObj <= new Date()) {
-      return res.status(400).json({ error: 'Event date must be in the future' });
+    const hasSuggestedYesOdds = suggestedYesOdds !== undefined && suggestedYesOdds !== null && suggestedYesOdds !== '';
+    const hasSuggestedNoOdds = suggestedNoOdds !== undefined && suggestedNoOdds !== null && suggestedNoOdds !== '';
+    if (hasSuggestedYesOdds !== hasSuggestedNoOdds) {
+      return res.status(400).json({ error: 'Both suggested odds are required when proposing odds' });
+    }
+    if (hasSuggestedYesOdds && parseFloat(suggestedYesOdds) <= 1) {
+      return res.status(400).json({ error: 'Suggested yes odds must be greater than 1' });
+    }
+    if (hasSuggestedNoOdds && parseFloat(suggestedNoOdds) <= 1) {
+      return res.status(400).json({ error: 'Suggested no odds must be greater than 1' });
     }
 
     if (imageUrl && !isAllowedImageUrl(imageUrl)) {
@@ -82,6 +97,8 @@ router.post('/suggestions', authMiddleware, async (req: AuthRequest, res: Respon
         description: description.trim(),
         imageUrl: imageUrl?.trim() || null,
         eventDate: eventDateObj,
+        suggestedYesOdds: hasSuggestedYesOdds ? parseFloat(suggestedYesOdds) : null,
+        suggestedNoOdds: hasSuggestedNoOdds ? parseFloat(suggestedNoOdds) : null,
       },
       include: {
         user: {
@@ -365,7 +382,7 @@ router.patch('/events/:id', authMiddleware, requireAdmin, async (req: AuthReques
 router.post('/suggestions/:id/approve', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { yesOdds, noOdds } = req.body;
+    const { yesOdds, noOdds, eventDate } = req.body;
 
     if (!yesOdds || !noOdds) {
       return res.status(400).json({ error: 'Yes and no odds are required' });
@@ -387,6 +404,18 @@ router.post('/suggestions/:id/approve', authMiddleware, requireAdmin, async (req
       return res.status(400).json({ error: 'Suggestion already reviewed' });
     }
 
+    let eventDateObj: Date | null = null;
+    if (eventDate) {
+      eventDateObj = new Date(eventDate);
+      if (isNaN(eventDateObj.getTime())) {
+        return res.status(400).json({ error: 'Invalid event date' });
+      }
+    } else if (suggestion.eventDate) {
+      eventDateObj = suggestion.eventDate;
+    } else {
+      return res.status(400).json({ error: 'Event date is required to approve this suggestion' });
+    }
+
     // Create event from suggestion
     const event = await prisma.polymarketEvent.create({
       data: {
@@ -394,7 +423,7 @@ router.post('/suggestions/:id/approve', authMiddleware, requireAdmin, async (req
         title: suggestion.title,
         description: suggestion.description,
         imageUrl: suggestion.imageUrl,
-        eventDate: suggestion.eventDate,
+        eventDate: eventDateObj,
         yesOdds: parseFloat(yesOdds),
         noOdds: parseFloat(noOdds),
       },

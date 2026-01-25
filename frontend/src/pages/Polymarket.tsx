@@ -44,6 +44,8 @@ export default function Polymarket() {
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [eventDate, setEventDate] = useState('');
+  const [suggestedYesOdds, setSuggestedYesOdds] = useState('');
+  const [suggestedNoOdds, setSuggestedNoOdds] = useState('');
   
   // Bet dialog
   const [betDialogOpen, setBetDialogOpen] = useState(false);
@@ -60,7 +62,15 @@ export default function Polymarket() {
   const [selectedEventForResolve, setSelectedEventForResolve] = useState<PolymarketEvent | null>(null);
   const [yesOdds, setYesOdds] = useState('');
   const [noOdds, setNoOdds] = useState('');
+  const [approveEventDate, setApproveEventDate] = useState('');
   const [resolution, setResolution] = useState<'YES' | 'NO'>('YES');
+
+  const formatDateTimeLocal = (value?: string | null) => {
+    if (!value) return '';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return '';
+    return parsed.toISOString().slice(0, 16);
+  };
 
   useEffect(() => {
     fetchData();
@@ -93,18 +103,58 @@ export default function Polymarket() {
 
   const handleCreateSuggestion = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !description.trim() || !eventDate) return;
+    if (!title.trim() || !description.trim()) return;
+
+    const hasSuggestedYesOdds = suggestedYesOdds.trim() !== '';
+    const hasSuggestedNoOdds = suggestedNoOdds.trim() !== '';
+    if (hasSuggestedYesOdds !== hasSuggestedNoOdds) {
+      toast({
+        title: 'Erreur',
+        description: 'Veuillez renseigner les deux cotes (Oui et Non) ou laisser vide.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    let parsedYesOdds: number | undefined;
+    let parsedNoOdds: number | undefined;
+    if (hasSuggestedYesOdds && hasSuggestedNoOdds) {
+      parsedYesOdds = parseFloat(suggestedYesOdds);
+      parsedNoOdds = parseFloat(suggestedNoOdds);
+      if (!Number.isFinite(parsedYesOdds) || !Number.isFinite(parsedNoOdds) || parsedYesOdds <= 1 || parsedNoOdds <= 1) {
+        toast({
+          title: 'Erreur',
+          description: 'Les cotes doivent Ãªtre des nombres supÃ©rieurs Ã  1.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
 
     setSuggestionSubmitting(true);
     try {
       const uploadedUrl = imageUrl.trim() || undefined;
-
-      await polymarketApi.createSuggestion({
+      const payload: {
+        title: string;
+        description: string;
+        imageUrl?: string;
+        eventDate?: string;
+        suggestedYesOdds?: number;
+        suggestedNoOdds?: number;
+      } = {
         title: title.trim(),
         description: description.trim(),
         imageUrl: uploadedUrl,
-        eventDate,
-      });
+      };
+      if (eventDate.trim()) {
+        payload.eventDate = eventDate;
+      }
+      if (parsedYesOdds !== undefined && parsedNoOdds !== undefined) {
+        payload.suggestedYesOdds = parsedYesOdds;
+        payload.suggestedNoOdds = parsedNoOdds;
+      }
+
+      await polymarketApi.createSuggestion(payload);
       
       toast({
         title: 'Suggestion créée',
@@ -115,6 +165,8 @@ export default function Polymarket() {
       setDescription('');
       setImageUrl('');
       setEventDate('');
+      setSuggestedYesOdds('');
+      setSuggestedNoOdds('');
       setSuggestionDialogOpen(false);
       fetchData();
     } catch (error: any) {
@@ -161,11 +213,20 @@ export default function Polymarket() {
 
   const handleApproveSuggestion = async () => {
     if (!selectedSuggestion || !yesOdds || !noOdds) return;
+    if (!selectedSuggestion.eventDate && !approveEventDate) {
+      toast({
+        title: 'Erreur',
+        description: 'Merci de renseigner une date de rÃ©alisation avant dâ€™approuver.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     try {
       await polymarketApi.approveSuggestion(selectedSuggestion.id, {
         yesOdds: parseFloat(yesOdds),
         noOdds: parseFloat(noOdds),
+        eventDate: approveEventDate || undefined,
       });
       
       toast({
@@ -177,6 +238,7 @@ export default function Polymarket() {
       setSelectedSuggestion(null);
       setYesOdds('');
       setNoOdds('');
+      setApproveEventDate('');
       fetchData();
     } catch (error: any) {
       toast({
@@ -281,125 +343,119 @@ export default function Polymarket() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-4">
               {openEvents.map((event) => {
                 const userBet = bets.find((b) => b.eventId === event.id);
                 const canBet = !userBet && event.status === 'OPEN' && new Date(event.eventDate) > new Date();
+                const totalYes = event.totalYes || 0;
+                const totalNo = event.totalNo || 0;
+                const totalVolume = totalYes + totalNo;
+                const yesPercent = totalVolume > 0 ? (totalYes / totalVolume) * 100 : 50;
+                const noPercent = totalVolume > 0 ? (totalNo / totalVolume) * 100 : 50;
                 
                 return (
                   <Card key={event.id} className="overflow-hidden">
-                    {event.imageUrl && (
-                      <div className="h-48 overflow-hidden">
-                        <img
-                          src={resolveImageUrl(event.imageUrl)}
-                          alt={event.title}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    )}
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <CardTitle className="text-xl">{event.title}</CardTitle>
-                        <Badge variant={event.status === 'OPEN' ? 'default' : 'secondary'}>
-                          {event.status === 'OPEN' ? 'Ouvert' : event.status}
-                        </Badge>
-                      </div>
-                      <CardDescription className="line-clamp-2">
-                        {event.description}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Calendar className="h-4 w-4" />
-                        <span>{new Date(event.eventDate).toLocaleDateString('fr-FR', {
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric',
-                        })}</span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">Oui</span>
-                            <span className="font-semibold">{event.yesOdds.toFixed(2)}x</span>
+                    <div className="flex flex-col md:flex-row">
+                      <div className="md:w-56 md:shrink-0">
+                        {event.imageUrl ? (
+                          <img
+                            src={resolveImageUrl(event.imageUrl)}
+                            alt={event.title}
+                            className="w-full h-48 md:h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-48 md:h-full bg-muted/40 flex items-center justify-center text-xs text-muted-foreground">
+                            Sans image
                           </div>
-                          <div className="h-2 bg-muted rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-green-500"
-                              style={{
-                                width: `${(event.totalYes || 0) / ((event.totalVolume || 1) || 1) * 100}%`,
-                              }}
-                            />
+                        )}
+                      </div>
+                      <div className="flex-1 p-6 flex flex-col gap-5">
+                        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                          <div className="space-y-2">
+                            <div className="flex items-start gap-3">
+                              <CardTitle className="text-xl">{event.title}</CardTitle>
+                              <Badge variant={event.status === 'OPEN' ? 'default' : 'secondary'} className="mt-1">
+                                {event.status === 'OPEN' ? 'Ouvert' : event.status}
+                              </Badge>
+                            </div>
+                            <CardDescription className="line-clamp-2">
+                              {event.description}
+                            </CardDescription>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Calendar className="h-4 w-4" />
+                              <span>{new Date(event.eventDate).toLocaleDateString('fr-FR', {
+                                day: 'numeric',
+                                month: 'long',
+                                year: 'numeric',
+                              })}</span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <span>Oui</span>
+                                <span className="font-semibold text-foreground">{event.yesOdds.toFixed(2)}x</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span>Non</span>
+                                <span className="font-semibold text-foreground">{event.noOdds.toFixed(2)}x</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <Users className="h-4 w-4" />
+                                <span>{event.betCount || 0} paris</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <DollarSign className="h-4 w-4" />
+                                <span>{event.totalVolume || 0} total</span>
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            {event.totalYes || 0} misé
+                          <div className="flex flex-col items-end gap-2 md:min-w-[140px]">
+                            {userBet && (
+                              <div className="p-3 bg-muted rounded-md text-right w-full">
+                                <div className="text-sm font-medium">Votre pari</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {userBet.prediction === 'YES' ? 'Oui' : 'Non'} - {userBet.amount} misé
+                                </div>
+                              </div>
+                            )}
+                            {canBet && (
+                              <Button
+                                className="w-full"
+                                onClick={() => {
+                                  setSelectedEvent(event);
+                                  setBetDialogOpen(true);
+                                }}
+                              >
+                                Parier
+                              </Button>
+                            )}
+                            {user?.isAdmin && event.status === 'OPEN' && (
+                              <Button
+                                variant="outline"
+                                className="w-full"
+                                onClick={() => {
+                                  setSelectedEventForResolve(event);
+                                  setResolveDialogOpen(true);
+                                }}
+                              >
+                                Résoudre
+                              </Button>
+                            )}
                           </div>
                         </div>
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">Non</span>
-                            <span className="font-semibold">{event.noOdds.toFixed(2)}x</span>
+                        <div className="mt-auto space-y-2">
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>Oui {totalYes}</span>
+                            <span>Non {totalNo}</span>
                           </div>
-                          <div className="h-2 bg-muted rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-red-500"
-                              style={{
-                                width: `${(event.totalNo || 0) / ((event.totalVolume || 1) || 1) * 100}%`,
-                              }}
-                            />
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {event.totalNo || 0} misé
+                          <div className="h-2 w-full rounded-full overflow-hidden bg-muted flex">
+                            <div className="h-full bg-green-500" style={{ width: `${yesPercent}%` }} />
+                            <div className="h-full bg-red-500" style={{ width: `${noPercent}%` }} />
                           </div>
                         </div>
                       </div>
-
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Users className="h-4 w-4" />
-                          <span>{event.betCount || 0} paris</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <DollarSign className="h-4 w-4" />
-                          <span>{event.totalVolume || 0} total</span>
-                        </div>
-                      </div>
-
-                      {userBet && (
-                        <div className="p-3 bg-muted rounded-md">
-                          <div className="text-sm font-medium">Votre pari</div>
-                          <div className="text-xs text-muted-foreground">
-                            {userBet.prediction === 'YES' ? 'Oui' : 'Non'} - {userBet.amount} misé
-                          </div>
-                        </div>
-                      )}
-
-                      {canBet && (
-                        <Button
-                          className="w-full"
-                          onClick={() => {
-                            setSelectedEvent(event);
-                            setBetDialogOpen(true);
-                          }}
-                        >
-                          Parier
-                        </Button>
-                      )}
-
-                      {user?.isAdmin && event.status === 'OPEN' && (
-                        <Button
-                          variant="outline"
-                          className="w-full"
-                          onClick={() => {
-                            setSelectedEventForResolve(event);
-                            setResolveDialogOpen(true);
-                          }}
-                        >
-                          Résoudre
-                        </Button>
-                      )}
-                    </CardContent>
+                    </div>
                   </Card>
                 );
               })}
@@ -481,8 +537,15 @@ export default function Polymarket() {
                     </CardHeader>
                     <CardContent>
                       <div className="text-sm text-muted-foreground">
-                        Date de l'événement: {new Date(suggestion.eventDate).toLocaleDateString('fr-FR')}
+                        Date de l'événement: {suggestion.eventDate
+                          ? new Date(suggestion.eventDate).toLocaleDateString('fr-FR')
+                          : 'Non renseignée'}
                       </div>
+                      {suggestion.suggestedYesOdds && suggestion.suggestedNoOdds && (
+                        <div className="text-sm text-muted-foreground mt-1">
+                          Cotes proposées: Oui {suggestion.suggestedYesOdds.toFixed(2)}x / Non {suggestion.suggestedNoOdds.toFixed(2)}x
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 ))
@@ -644,8 +707,15 @@ export default function Polymarket() {
                             />
                           )}
                           <div className="text-sm text-muted-foreground">
-                            Date: {new Date(suggestion.eventDate).toLocaleDateString('fr-FR')}
+                            Date: {suggestion.eventDate
+                              ? new Date(suggestion.eventDate).toLocaleDateString('fr-FR')
+                              : 'Non renseignée'}
                           </div>
+                          {suggestion.suggestedYesOdds && suggestion.suggestedNoOdds && (
+                            <div className="text-sm text-muted-foreground">
+                              Cotes proposées: Oui {suggestion.suggestedYesOdds.toFixed(2)}x / Non {suggestion.suggestedNoOdds.toFixed(2)}x
+                            </div>
+                          )}
                           <div className="text-sm text-muted-foreground">
                             Par: {suggestion.user.username}
                           </div>
@@ -654,6 +724,17 @@ export default function Polymarket() {
                               size="sm"
                               onClick={() => {
                                 setSelectedSuggestion(suggestion);
+                                setYesOdds(
+                                  suggestion.suggestedYesOdds !== null && suggestion.suggestedYesOdds !== undefined
+                                    ? suggestion.suggestedYesOdds.toString()
+                                    : ''
+                                );
+                                setNoOdds(
+                                  suggestion.suggestedNoOdds !== null && suggestion.suggestedNoOdds !== undefined
+                                    ? suggestion.suggestedNoOdds.toString()
+                                    : ''
+                                );
+                                setApproveEventDate(formatDateTimeLocal(suggestion.eventDate));
                                 setApproveDialogOpen(true);
                               }}
                             >
@@ -709,14 +790,33 @@ export default function Polymarket() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Date de réalisation</label>
+              <label className="text-sm font-medium">Date de réalisation (optionnel)</label>
               <Input
                 type="datetime-local"
                 value={eventDate}
                 onChange={(e) => setEventDate(e.target.value)}
-                required
               />
             </div>
+            <div>
+              <label className="text-sm font-medium">Cotes proposées (optionnel)</label>
+              <div className="grid grid-cols-2 gap-3 mt-2">
+                <Input
+                  type="number"
+                  value={suggestedYesOdds}
+                  onChange={(e) => setSuggestedYesOdds(e.target.value)}
+                  placeholder="Oui (ex: 1.5)"
+                  step="0.1"
+                  min="1.01"
+                />
+                <Input
+                  type="number"
+                  value={suggestedNoOdds}
+                  onChange={(e) => setSuggestedNoOdds(e.target.value)}
+                  placeholder="Non (ex: 2.0)"
+                  step="0.1"
+                  min="1.01"
+                />
+              </div>
             <div>
               <label className="text-sm font-medium">Image (optionnel - URL uniquement)</label>
               <Input
@@ -851,11 +951,27 @@ export default function Polymarket() {
                 required
               />
             </div>
+            <div>
+              <label className="text-sm font-medium">Date de rÃ©alisation</label>
+              <Input
+                type="datetime-local"
+                value={approveEventDate}
+                onChange={(e) => setApproveEventDate(e.target.value)}
+              />
+              {!selectedSuggestion?.eventDate && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Requis si la suggestion n'a pas de date.
+                </p>
+              )}
+            </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setApproveDialogOpen(false)}>
                 Annuler
               </Button>
-              <Button onClick={handleApproveSuggestion} disabled={!yesOdds || !noOdds}>
+              <Button
+                onClick={handleApproveSuggestion}
+                disabled={!yesOdds || !noOdds || (!selectedSuggestion?.eventDate && !approveEventDate)}
+              >
                 Approuver
               </Button>
             </div>
