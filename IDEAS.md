@@ -22,16 +22,19 @@
 - fix lag 20 users
 - auracoin/echelles
 - fix aura recompense bataille navale
-- clear pertes caino tricheurs
-- logs navale
-- reset pass
-- mettre en avant partys
 - recompenses aura bombparty
-- donation
-- delete auracoin
-- envoyer mails quand accepté sur le site avec présentation : Resend
-- ajouter compteurs inscrits et motiver
-- vra/faux pseudo
-- page bloqu" avec retour button
+- auracoin : ne plus varier en fonction des achats
+- envoyer mails quand accepté sur le site avec présentation : Resend vérifier si domaine = saintdo
+- vrai/faux pseudo
+- page bloqué avec retour button : page maintenance par page/page maintennace globale
 - badges promo/classe
 - pop up
+- photo background chat bulle
+- chat in den clan
+- chat in den partys
+- party liste topbar
+- changer le message d'erreur : erreur plus de tableaux
+- page maintenace : news, music, wallace and gromit
+- notifications : par mail et bureau
+- redirection sur créer un compte : bienvenue
+- tous les raccorucis des jeux dans l'accordion de la sidebar
