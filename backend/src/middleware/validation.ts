@@ -24,6 +24,7 @@ export const validate = (schema: ZodSchema) => {
 // Auth schemas
 export const registerSchema = z.object({
   username: z.string().min(3).max(20),
+  firstName: z.string().trim().min(1).max(50),
   email: z.string().email(),
   password: z.string().min(6).max(100),
 });

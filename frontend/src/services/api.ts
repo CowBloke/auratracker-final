@@ -50,7 +50,7 @@ api.interceptors.response.use(
 
 // Auth API
 export const authApi = {
-  register: (data: { username: string; email: string; password: string }) =>
+  register: (data: { username: string; firstName: string; email: string; password: string }) =>
     api.post('/auth/register', data),
   login: (data: { username: string; password: string }) =>
     api.post('/auth/login', data),
@@ -636,6 +636,7 @@ export const clashApi = {
 export interface AdminUser {
   id: string;
   username: string;
+  firstName: string | null;
   email: string;
   aura: number;
   money: number;
@@ -667,6 +668,7 @@ export interface UserBadge {
 export interface PendingUser {
   id: string;
   username: string;
+  firstName: string | null;
   email: string;
   createdAt: string;
 }
@@ -823,7 +825,7 @@ const runRareAction = (data: AdminRareAction) => api.post('/admin/rare', data);
 export const adminApi = {
   runRareAction,
   getUsers: () => api.get<{ users: AdminUser[] }>('/admin/users'),
-  updateUser: (id: string, data: { username?: string; aura?: number; money?: number; auraCoinBalance?: number; dailyAuraLimit?: number; password?: string; isChatMuted?: boolean }) =>
+  updateUser: (id: string, data: { username?: string; firstName?: string | null; aura?: number; money?: number; auraCoinBalance?: number; dailyAuraLimit?: number; password?: string; isChatMuted?: boolean }) =>
     api.put<{ user: AdminUser }>(`/admin/users/${id}`, data),
   deleteUser: (id: string) => api.delete<{ success: boolean; message: string }>(`/admin/users/${id}`),
   getBadges: () => api.get<{ badges: Badge[] }>('/admin/badges'),
