@@ -41,6 +41,9 @@ import Settings from './pages/Settings';
 import Banned from './pages/Banned';
 import Quests from './pages/Quests';
 import Solitaire from './pages/Solitaire';
+import WallaceGromit from './pages/WallaceGromit';
+import News from './pages/News';
+import MusicLounge from './pages/MusicLounge';
 import { maintenanceApi } from './services/api';
 import Blocked from './pages/Blocked';
 import { BLOCKABLE_PAGES } from './config/blockedPages';
@@ -59,7 +62,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
   
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/register" replace />;
   }
   
   return <>{children}</>;
@@ -126,6 +129,7 @@ function App() {
     // Toujours permettre l'accès aux pages admin, login et register
     if (
       location.pathname.startsWith('/admin') ||
+      location.pathname.startsWith('/maintenance') ||
       location.pathname === '/login' ||
       location.pathname === '/register'
     ) {
@@ -143,6 +147,7 @@ function App() {
 
     if (
       location.pathname.startsWith('/admin') ||
+      location.pathname.startsWith('/maintenance') ||
       location.pathname === '/login' ||
       location.pathname === '/register'
     ) {
@@ -182,6 +187,9 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/banned" element={<Banned />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/maintenance/wallace-gromit" element={<WallaceGromit />} />
+      <Route path="/maintenance/news" element={<News />} />
+      <Route path="/maintenance/musique" element={<MusicLounge />} />
       <Route
         path="/"
         element={

@@ -19,8 +19,6 @@
 - gains totaux casino
 - -- force pur le deploy
 - sondage chat
-- fix lag 20 users
-- auracoin/echelles
 - fix aura recompense bataille navale
 - recompenses aura bombparty
 - auracoin : ne plus varier en fonction des achats
@@ -37,5 +35,4 @@
 - page maintenace : news, music, wallace and gromit
 - notifications : par mail et bureau
 - redirection sur créer un compte : bienvenue
-- tous les raccorucis des jeux dans l'accordion de la sidebar
 - guerres de clans
