@@ -56,6 +56,31 @@ interface GameShortcut {
 
 const shortcutStorageKey = 'auratracker:dashboard-shortcuts';
 
+const welcomeTemplates = [
+  'Bienvenue, {username}',
+  'Heureux de te revoir {username}, prêt pour AuraTracker ?',
+  'Salut {username} ! On lance une partie ?',
+  'Yo {username}, le crew t’attend.',
+  'Hey {username}, tu reviens charger l’aura ?',
+  '{username}, ça faisait longtemps !',
+  'Content de te revoir {username} !',
+  'Re {username} — place au fun.',
+  'Prêt à tout éclater, {username} ?',
+  'Bon retour {username}, ça va chauffer.',
+  '{username}, on remet ça ?',
+  'Bienvenue à bord, {username}.',
+  'Hello {username}, ça part en jeux ?',
+  '{username}, le tableau de bord est prêt.',
+  'Heureux de te revoir {username} !',
+  'Bon retour {username}, ready ?',
+];
+
+const pickWelcomeMessage = (username?: string) => {
+  const name = username || 'toi';
+  const template = welcomeTemplates[Math.floor(Math.random() * welcomeTemplates.length)];
+  return template.replace('{username}', name);
+};
+
 const gameShortcuts: GameShortcut[] = [
   { id: 'bomb-party', label: 'Bomb Party', path: '/games/bomb-party', description: 'Mots explosifs en équipe.' },
   { id: 'poker', label: 'Poker', path: '/games/poker', description: 'Table rapide, mise prudente.' },
@@ -97,6 +122,7 @@ export default function Dashboard() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [hasMoreHistory, setHasMoreHistory] = useState(true);
   const [now, setNow] = useState(new Date());
+  const [welcomeMessage, setWelcomeMessage] = useState(() => pickWelcomeMessage(user?.username));
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [shortcutsLoaded, setShortcutsLoaded] = useState(false);
   const [shortcutWidgets, setShortcutWidgets] = useState<string[]>(defaultShortcuts);
@@ -114,6 +140,11 @@ export default function Dashboard() {
     }, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (!user?.username) return;
+    setWelcomeMessage(pickWelcomeMessage(user.username));
+  }, [user?.username]);
 
   // Calculate countdown to next reset
   const resetCountdown = useMemo(() => {
@@ -294,6 +325,19 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
+      {/* Header */}
+      <header className="space-y-2 text-center">
+        <p className="text-sm text-muted-foreground tracking-wide uppercase">
+          {onlineUsers.length} en ligne
+        </p>
+        <h1
+          className="text-5xl md:text-7xl font-light tracking-tight"
+          style={user?.usernameColor ? { color: user.usernameColor } : undefined}
+        >
+          {welcomeMessage || `Bienvenue, ${user?.username ?? ''}`}
+        </h1>
+      </header>
+
       {/* Shortcuts */}
       <section className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -382,19 +426,6 @@ export default function Dashboard() {
           )}
         </div>
       </section>
-
-      {/* Header */}
-      <header className="space-y-2 text-center">
-        <p className="text-sm text-muted-foreground tracking-wide uppercase">
-          {onlineUsers.length} en ligne
-        </p>
-        <h1 
-          className="text-5xl md:text-7xl font-light tracking-tight"
-          style={user?.usernameColor ? { color: user.usernameColor } : undefined}
-        >
-          {user?.username}
-        </h1>
-      </header>
 
       {/* Primary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
