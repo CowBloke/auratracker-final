@@ -418,13 +418,7 @@ export default function Dashboard() {
                   </>
                 )}
                 <div className="relative z-10 flex h-full flex-col justify-end gap-1">
-                  <span className={cn("text-xs uppercase tracking-[0.2em]", shortcut.image ? "text-white/70" : "text-muted-foreground")}>
-                    Jeu
-                  </span>
                   <h3 className="text-lg font-semibold">{shortcut.label}</h3>
-                  <p className={cn("text-sm", shortcut.image ? "text-white/80" : "text-muted-foreground")}>
-                    {shortcut.description}
-                  </p>
                 </div>
               </Link>
             ))

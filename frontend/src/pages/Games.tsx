@@ -171,13 +171,7 @@ export default function Games() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
                 <div className="relative z-10 flex h-full flex-col justify-end p-5 text-white">
-                  <span className="text-[11px] uppercase tracking-[0.2em] text-white/70">
-                    {game.type}
-                  </span>
                   <h3 className="text-xl font-semibold">{game.name}</h3>
-                  <p className="text-sm text-white/80 line-clamp-3">
-                    {game.description}
-                  </p>
                 </div>
               </Link>
             ))}
@@ -203,13 +197,7 @@ export default function Games() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
                 <div className="relative z-10 flex h-full flex-col justify-end p-5 text-white">
-                  <span className="text-[11px] uppercase tracking-[0.2em] text-white/70">
-                    {game.type}
-                  </span>
                   <h3 className="text-xl font-semibold">{game.name}</h3>
-                  <p className="text-sm text-white/80 line-clamp-3">
-                    {game.description}
-                  </p>
                 </div>
               </Link>
             ))}
