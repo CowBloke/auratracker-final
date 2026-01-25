@@ -32,8 +32,6 @@ import maintenanceRoutes from './routes/maintenance.js';
 import clansRoutes from './routes/clans.js';
 import polymarketRoutes from './routes/polymarket.js';
 import passRoutes from './routes/pass.js';
-import galleryRoutes from './routes/gallery.js';
-import marketRoutes from './routes/market.js';
 import questsRoutes from './routes/quests.js';
 import solitaireRoutes from './routes/solitaire.js';
 
@@ -98,8 +96,6 @@ app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/clans', clansRoutes);
 app.use('/api/polymarket', polymarketRoutes);
 app.use('/api/pass', passRoutes);
-app.use('/api/gallery', galleryRoutes);
-app.use('/api/market', marketRoutes);
 app.use('/api/quests', questsRoutes);
 app.use('/api/solitaire', solitaireRoutes);
 

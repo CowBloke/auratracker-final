@@ -65,12 +65,6 @@ model User {
   polymarketSuggestions PolymarketSuggestion[]
   polymarketBets        PolymarketBet[]
 
-  // Gallery & Market relations
-  ownedPaintings      PaintingCopy[]       @relation("OwnedPaintings")
-  gallery             UserGallery?
-  artPackagePurchases ArtPackagePurchase[]
-  marketListings      MarketListing[]      @relation("MarketSeller")
-  marketPurchases     MarketListing[]      @relation("MarketBuyer")
 
   // Daily Quests relations
   dailyQuests         UserDailyQuest[]
@@ -131,7 +125,6 @@ model UserItem {
 
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   item          Item           @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  marketListing MarketListing?
 
   @@unique([userId, itemId])
 }
@@ -680,103 +673,6 @@ model PolymarketBet {
   @@index([createdAt])
 }
 
-// ============================================
-// GALLERY SYSTEM
-// ============================================
-
-// Painting (Artwork definition by admin)
-model Painting {
-  id          String   @id @default(uuid())
-  title       String
-  artist      String
-  description String?
-  imageUrl    String
-  isVaulted   Boolean  @default(false) // Removed from acquisition pool
-  createdAt   DateTime @default(now())
-
-  copies PaintingCopy[]
-
-  @@index([isVaulted])
-}
-
-// PaintingCopy (Individual copy with rarity)
-// Each painting has 6 copies: 3 common, 2 rare, 1 golden
-model PaintingCopy {
-  id              String    @id @default(uuid())
-  paintingId      String
-  rarity          String // COMMON, RARE, GOLDEN
-  copyNumber      Int // 1, 2, or 3 for common; 1 or 2 for rare; 1 for golden
-  ownerId         String? // null if not yet acquired
-  inGallery       Boolean   @default(false) // true if displayed in owner's gallery
-  galleryPosition Int? // Position in gallery (0-19)
-  acquiredAt      DateTime?
-
-  painting      Painting       @relation(fields: [paintingId], references: [id], onDelete: Cascade)
-  owner         User?          @relation("OwnedPaintings", fields: [ownerId], references: [id], onDelete: SetNull)
-  marketListing MarketListing? @relation("PaintingListing")
-
-  @@unique([paintingId, rarity, copyNumber])
-  @@index([ownerId])
-  @@index([rarity])
-  @@index([inGallery])
-}
-
-// User Gallery Settings
-model UserGallery {
-  id              String    @id @default(uuid())
-  userId          String    @unique
-  backgroundColor String    @default("#1a1a2e") // Gallery wall color
-  lastNpcVisit    DateTime? // Last time NPCs visited
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-// Art Package Purchase Record (tracks daily packages)
-model ArtPackagePurchase {
-  id             String   @id @default(uuid())
-  userId         String
-  packageTier    Int // 1, 2, or 3
-  cost           Int
-  paintingCopyId String? // The copy received
-  purchasedAt    DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([purchasedAt])
-}
-
-// ============================================
-// PLAYER-OWNED MARKET
-// ============================================
-
-// Market Listing (for paintings and items)
-model MarketListing {
-  id          String    @id @default(uuid())
-  sellerId    String
-  listingType String // PAINTING, ITEM
-  price       Int // Price in money
-  createdAt   DateTime  @default(now())
-  soldAt      DateTime?
-  buyerId     String? // User who bought (null if not sold)
-
-  // For PAINTING type
-  paintingCopyId String?       @unique
-  paintingCopy   PaintingCopy? @relation("PaintingListing", fields: [paintingCopyId], references: [id], onDelete: Cascade)
-
-  // For ITEM type
-  userItemId String?   @unique
-  userItem   UserItem? @relation(fields: [userItemId], references: [id], onDelete: Cascade)
-  quantity   Int       @default(1) // For items that can stack
-
-  seller User  @relation("MarketSeller", fields: [sellerId], references: [id], onDelete: Cascade)
-  buyer  User? @relation("MarketBuyer", fields: [buyerId], references: [id], onDelete: SetNull)
-
-  @@index([sellerId])
-  @@index([listingType])
-  @@index([createdAt])
-  @@index([soldAt])
-}
 
 // ============================================
 // DAILY QUESTS SYSTEM

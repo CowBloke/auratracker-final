@@ -157,9 +157,6 @@ export default function Layout() {
       '/inventory': 'Inventaire',
       '/profile': 'Profil',
       '/admin': 'Admin',
-      '/admin/gallery': 'Admin Gallery',
-      '/gallery': 'Galerie',
-      '/market': 'Market',
       '/rules': 'Règles',
       '/pass': 'Pass',
       '/quests': 'Quêtes',
@@ -175,9 +172,6 @@ export default function Layout() {
     // Check for dynamic routes
     if (pathname.startsWith('/profile/')) {
       return 'Profil';
-    }
-    if (pathname.startsWith('/gallery/')) {
-      return 'Galerie';
     }
     if (pathname.startsWith('/games/market/')) {
       const coinId = pathname.split('/games/market/')[1];

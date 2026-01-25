@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { auraCoinApi, bombPartyApi, clansApi, leaderboardsApi, marketApi, usersApi } from '../services/api';
+import { auraCoinApi, bombPartyApi, clansApi, leaderboardsApi, usersApi } from '../services/api';
 import PageLayout from '@/components/layout/PageLayout';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
@@ -71,10 +71,9 @@ export default function Numbers() {
     const fetchNumbers = async () => {
       try {
         setLoading(true);
-        const [usersRes, clansRes, marketRes, promptsRes, priceRes, gamesPlayedRes] = await Promise.all([
+        const [usersRes, clansRes, promptsRes, priceRes, gamesPlayedRes] = await Promise.all([
           usersApi.getAll(),
           clansApi.list(),
-          marketApi.getStats(),
           bombPartyApi.getPromptStats(),
           auraCoinApi.getPrice(24),
           leaderboardsApi.get('games_played', { limit: 1000 }),
@@ -96,9 +95,6 @@ export default function Numbers() {
         const clans = clansRes.data.clans || [];
         const totalClans = clans.length;
         const totalClanMembers = clans.reduce((sum, clan) => sum + (clan.memberCount || 0), 0);
-
-        const marketActiveListings = marketRes.data.activeListings || 0;
-        const marketTotalSales = marketRes.data.totalSales || 0;
 
         const promptStats = promptsRes.data;
 
@@ -129,13 +125,6 @@ export default function Numbers() {
             items: [
               { label: 'Jeux disponibles', value: formatNumber(gamesCatalog.length), hint: gamesCatalog.join(', ') + '.' },
               { label: 'Parties jouees (tous jeux)', value: formatNumber(totalGamesPlayed), hint: 'Total cumule des parties enregistrees.' },
-            ],
-          },
-          {
-            title: 'Marche',
-            items: [
-              { label: 'Annonces en ligne', value: formatNumber(marketActiveListings), hint: "Nombre d'objets en vente actuellement." },
-              { label: 'Ventes realisees', value: formatNumber(marketTotalSales), hint: 'Total des transactions finalisees.' },
             ],
           },
           {

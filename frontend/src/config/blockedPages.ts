@@ -30,8 +30,6 @@ export const BLOCKABLE_PAGES: BlockablePage[] = [
   { key: 'suggestions', path: '/suggestions', label: 'Suggestions', category: 'Communauté' },
   { key: 'inventory', path: '/inventory', label: 'Inventaire', category: 'Profil' },
   { key: 'profile', path: '/profile', label: 'Profils', category: 'Profil' },
-  { key: 'gallery', path: '/gallery', label: 'Galerie', category: 'Profil' },
-  { key: 'market', path: '/market', label: 'Marché joueurs', category: 'Économie' },
   { key: 'pass', path: '/pass', label: 'Pass', category: 'Général' },
   { key: 'quests', path: '/quests', label: 'Quêtes', category: 'Général' },
   { key: 'rules', path: '/rules', label: 'Règles', category: 'Général' },

@@ -58,8 +58,6 @@ interface SearchUser {
 
 const navItems = [
   { to: '/leaderboards', label: 'Classement', icon: Trophy },
-  { to: '/gallery', label: 'Galerie', icon: Image },
-  { to: '/market', label: 'Marché', icon: ShoppingCart },
   { to: '/party', label: 'Party', icon: Users },
   { to: '/clans', label: 'Clans', icon: Flag },
   { to: '/inventory', label: 'Inventaire', icon: Backpack },
@@ -71,7 +69,6 @@ const navItems = [
 
 const adminItems = [
   { to: '/admin', label: 'Administration', icon: Shield },
-  { to: '/admin/gallery', label: 'Galerie (Admin)', icon: Image },
 ];
 
 const gameItems = [

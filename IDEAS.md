@@ -12,7 +12,6 @@
 - animation/événements échecs
 - messagerie (avec le notifs : par ex nouvelle demande d'adhésion au club)
 - resend
-- supprimer anceins NFT
 - cote qui change en fonctiion des inestissements
 - grand musé pour visiter tout le monde
 - guerres de clans

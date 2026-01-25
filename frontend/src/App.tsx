@@ -30,9 +30,6 @@ import BatailleNavale from './pages/BatailleNavale';
 import RussianRoulette from './pages/RussianRoulette';
 import Polymarket from './pages/Polymarket';
 import Admin from './pages/Admin';
-import Gallery from './pages/Gallery';
-import PlayerMarket from './pages/PlayerMarket';
-import GalleryAdmin from './pages/GalleryAdmin';
 import Rules from './pages/Rules';
 import Suggestions from './pages/Suggestions';
 import Pass from './pages/Pass';
@@ -226,10 +223,6 @@ function App() {
         <Route path="inventory" element={<Inventory />} />
         <Route path="profile/:userId?" element={<Profile />} />
         <Route path="admin" element={<Admin />} />
-        <Route path="admin/gallery" element={<GalleryAdmin />} />
-        <Route path="gallery" element={<Gallery />} />
-        <Route path="gallery/:userId" element={<Gallery />} />
-        <Route path="market" element={<PlayerMarket />} />
         <Route path="rules" element={<Rules />} />
         <Route path="pass" element={<Pass />} />
         <Route path="quests" element={<Quests />} />

@@ -912,7 +912,6 @@ Headers: {
 7. **Mobile App** (React Native or PWA)
 8. **Replay System** for all games
 9. **Tournament Mode**
-10. **NFT-style unique items** (if desired)
 
 ---
 
