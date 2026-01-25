@@ -622,7 +622,9 @@ model PolymarketSuggestion {
   title       String
   description String
   imageUrl    String?
-  eventDate   DateTime // Date de réalisation de l'événement
+  eventDate   DateTime? // Date de réalisation de l’événement
+  suggestedYesOdds Float? // Cote suggérée pour "Oui"
+  suggestedNoOdds  Float? // Cote suggérée pour "Non"
   status      String    @default("PENDING") // PENDING, APPROVED, REJECTED
   createdAt   DateTime  @default(now())
   reviewedAt  DateTime?

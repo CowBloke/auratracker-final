@@ -970,7 +970,9 @@ export interface PolymarketSuggestion {
   title: string;
   description: string;
   imageUrl: string | null;
-  eventDate: string;
+  eventDate: string | null;
+  suggestedYesOdds?: number | null;
+  suggestedNoOdds?: number | null;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   createdAt: string;
   reviewedAt: string | null;
@@ -1210,9 +1212,16 @@ export const marketApi = {
 export const polymarketApi = {
   // Suggestions
   getSuggestions: () => api.get<{ suggestions: PolymarketSuggestion[] }>('/polymarket/suggestions'),
-  createSuggestion: (data: { title: string; description: string; imageUrl?: string; eventDate: string }) =>
+  createSuggestion: (data: {
+    title: string;
+    description: string;
+    imageUrl?: string;
+    eventDate?: string;
+    suggestedYesOdds?: number;
+    suggestedNoOdds?: number;
+  }) =>
     api.post<{ suggestion: PolymarketSuggestion }>('/polymarket/suggestions', data),
-  approveSuggestion: (id: string, data: { yesOdds: number; noOdds: number }) =>
+  approveSuggestion: (id: string, data: { yesOdds: number; noOdds: number; eventDate?: string }) =>
     api.post<{ event: PolymarketEvent }>(`/polymarket/suggestions/${id}/approve`, data),
   rejectSuggestion: (id: string) =>
     api.post<{ success: boolean }>(`/polymarket/suggestions/${id}/reject`),
