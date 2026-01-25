@@ -56,6 +56,31 @@ interface GameShortcut {
 
 const shortcutStorageKey = 'auratracker:dashboard-shortcuts';
 
+const welcomeTemplates = [
+  'Bienvenue, {username}',
+  'Heureux de te revoir {username}, prêt pour AuraTracker ?',
+  'Salut {username} ! On lance une partie ?',
+  'Yo {username}, le crew t’attend.',
+  'Hey {username}, tu reviens charger l’aura ?',
+  '{username}, ça faisait longtemps !',
+  'Content de te revoir {username} !',
+  'Re {username} — place au fun.',
+  'Prêt à tout éclater, {username} ?',
+  'Bon retour {username}, ça va chauffer.',
+  '{username}, on remet ça ?',
+  'Bienvenue à bord, {username}.',
+  'Hello {username}, ça part en jeux ?',
+  '{username}, le tableau de bord est prêt.',
+  'Heureux de te revoir {username} !',
+  'Bon retour {username}, ready ?',
+];
+
+const pickWelcomeMessage = (username?: string) => {
+  const name = username || 'toi';
+  const template = welcomeTemplates[Math.floor(Math.random() * welcomeTemplates.length)];
+  return template.replace('{username}', name);
+};
+
 const gameShortcuts: GameShortcut[] = [
   { id: 'bomb-party', label: 'Bomb Party', path: '/games/bomb-party', description: 'Mots explosifs en équipe.' },
   { id: 'poker', label: 'Poker', path: '/games/poker', description: 'Table rapide, mise prudente.' },
@@ -97,6 +122,7 @@ export default function Dashboard() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [hasMoreHistory, setHasMoreHistory] = useState(true);
   const [now, setNow] = useState(new Date());
+  const [welcomeMessage, setWelcomeMessage] = useState(() => pickWelcomeMessage(user?.username));
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [shortcutsLoaded, setShortcutsLoaded] = useState(false);
   const [shortcutWidgets, setShortcutWidgets] = useState<string[]>(defaultShortcuts);
@@ -114,6 +140,11 @@ export default function Dashboard() {
     }, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (!user?.username) return;
+    setWelcomeMessage(pickWelcomeMessage(user.username));
+  }, [user?.username]);
 
   // Calculate countdown to next reset
   const resetCountdown = useMemo(() => {
@@ -388,16 +419,108 @@ export default function Dashboard() {
         <p className="text-sm text-muted-foreground tracking-wide uppercase">
           {onlineUsers.length} en ligne
         </p>
-        <h1 
+        <p className="text-sm text-muted-foreground tracking-wide uppercase">
+          {publicParties.length} parties actives
+        </p>
+        <h1
           className="text-5xl md:text-7xl font-light tracking-tight"
           style={user?.usernameColor ? { color: user.usernameColor } : undefined}
         >
-          {user?.username}
+          {welcomeMessage || `Bienvenue, ${user?.username ?? ''}`}
         </h1>
       </header>
 
+      {/* Shortcuts */}
+      <section className="space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs text-muted-foreground tracking-wide uppercase">Widgets</p>
+            <h2 className="text-2xl font-light tracking-tight">Raccourcis jeux</h2>
+          </div>
+          <Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
+            <Button variant="outline" onClick={() => setShortcutsOpen(true)}>
+              Gérer les widgets
+            </Button>
+            <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-lg font-light">Widgets de raccourcis</DialogTitle>
+                <DialogDescription>
+                  Active les jeux à afficher en haut du tableau de bord.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3">
+                {gameShortcuts.map((shortcut) => {
+                  const checked = shortcutWidgets.includes(shortcut.id);
+                  return (
+                    <label
+                      key={shortcut.id}
+                      className={cn(
+                        "flex items-start gap-3 rounded-xl border px-3 py-3 transition",
+                        checked ? "border-foreground/30 bg-muted/40" : "border-border/50"
+                      )}
+                    >
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={() => {
+                          setShortcutWidgets((prev) =>
+                            prev.includes(shortcut.id)
+                              ? prev.filter((id) => id !== shortcut.id)
+                              : [...prev, shortcut.id]
+                          );
+                        }}
+                        className="mt-1"
+                      />
+                      <div className="min-w-0">
+                        <p className="font-medium">{shortcut.label}</p>
+                        <p className="text-sm text-muted-foreground">{shortcut.description}</p>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button
+                  variant="ghost"
+                  onClick={() => setShortcutWidgets(defaultShortcuts)}
+                >
+                  Réinitialiser
+                </Button>
+                <Button onClick={() => setShortcutsOpen(false)}>Terminer</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {orderedShortcuts.length > 0 ? (
+            orderedShortcuts.map((shortcut) => (
+              <Link
+                key={shortcut.id}
+                to={shortcut.path}
+                className="group relative overflow-hidden rounded-2xl border border-border/50 bg-muted/20 p-4 transition hover:border-foreground/30 hover:bg-muted/40"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm text-muted-foreground uppercase tracking-wide">Jeu</p>
+                    <h3 className="text-lg font-medium">{shortcut.label}</h3>
+                  </div>
+                  <div className="h-10 w-10 rounded-full bg-foreground/5 flex items-center justify-center text-muted-foreground group-hover:text-foreground">
+                    <Sparkles className="h-4 w-4" />
+                  </div>
+                </div>
+                <p className="mt-3 text-sm text-muted-foreground">{shortcut.description}</p>
+              </Link>
+            ))
+          ) : (
+            <div className="col-span-full rounded-2xl border border-dashed border-border/60 bg-muted/10 p-6 text-center">
+              <p className="text-sm text-muted-foreground">Aucun widget actif. Ajoute des jeux pour un accès rapide.</p>
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* Primary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
         <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 space-y-2">
           <p className="text-3xl md:text-4xl font-light tabular-nums">
             {user?.aura.toLocaleString()}
@@ -415,12 +538,6 @@ export default function Dashboard() {
             #{userRank || '-'}
           </p>
           <p className="text-sm text-muted-foreground">rang</p>
-        </div>
-        <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 space-y-2">
-          <p className="text-3xl md:text-4xl font-light tabular-nums">
-            {publicParties.length}
-          </p>
-          <p className="text-sm text-muted-foreground">parties actives</p>
         </div>
         <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 space-y-2">
           <p className="text-3xl md:text-4xl font-light tabular-nums">
