@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { ArrowLeftCircle } from 'lucide-react';
+import { TYPOGRAPHY } from '@/lib/design-system';
 
 interface BlockedProps {
   message?: string;
@@ -23,17 +25,19 @@ export default function Blocked({ message }: BlockedProps) {
         <div className="flex justify-center">
           <ArrowLeftCircle className="h-14 w-14 text-muted-foreground" />
         </div>
-        <div className="text-3xl font-semibold text-foreground">
+        <div className={TYPOGRAPHY.H2}>
           Page bloquée
         </div>
-        <p className="text-muted-foreground">
+        <p className={TYPOGRAPHY.MUTED}>
           Cette page est temporairement inaccessible. Merci de revenir plus tard.
         </p>
 
         {message && message.trim().length > 0 && (
-          <div className="border border-border/40 bg-muted/20 rounded-lg p-4 text-sm text-foreground">
-            {message}
-          </div>
+          <Card className="border-border/40">
+            <CardContent className="p-4">
+              <p className={TYPOGRAPHY.SMALL}>{message}</p>
+            </CardContent>
+          </Card>
         )}
 
         <div className="flex justify-center">

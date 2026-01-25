@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { auraCoinApi, bombPartyApi, clansApi, leaderboardsApi, marketApi, usersApi } from '../services/api';
+import PageLayout from '@/components/layout/PageLayout';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
+import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 
 type StatItem = {
@@ -47,13 +50,15 @@ const formatNumber = (value: number, digits = 0) =>
 const formatMoney = (value: number, digits = 0) => `$${formatNumber(value, digits)}`;
 
 const StatCard = ({ label, value, hint }: StatItem) => (
-  <div className="border border-border/40 p-4 md:p-5 space-y-2">
-    <p className="text-3xl md:text-4xl font-light tabular-nums">{value}</p>
-    <p className="text-sm text-muted-foreground">{label}</p>
-    {hint && (
-      <p className="text-xs text-muted-foreground/70">{hint}</p>
-    )}
-  </div>
+  <Card className="border-border/40">
+    <CardContent className="p-4 md:p-5 space-y-2">
+      <p className={cn(TYPOGRAPHY.H2, "md:text-4xl tabular-nums")}>{value}</p>
+      <p className={TYPOGRAPHY.SMALL}>{label}</p>
+      {hint && (
+        <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground/70")}>{hint}</p>
+      )}
+    </CardContent>
+  </Card>
 );
 
 export default function Numbers() {
@@ -168,38 +173,38 @@ export default function Numbers() {
   ]), []);
 
   return (
-    <div className="max-w-5xl mx-auto py-12 px-4 space-y-12">
-        <div className="flex flex-wrap gap-2">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) => cn(
-                "px-4 py-2 text-sm border transition-colors",
-                isActive
-                  ? "border-foreground text-foreground"
-                  : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-              )}
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </div>
+    <PageLayout>
+      <div className="flex flex-wrap gap-2">
+        {navItems.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.end}
+            className={({ isActive }) => cn(
+              "px-4 py-2 text-sm border transition-colors rounded-md",
+              isActive
+                ? "border-foreground text-foreground"
+                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
+            )}
+          >
+            {item.label}
+          </NavLink>
+        ))}
+      </div>
 
       {loading ? (
         <div className="flex justify-center py-12">
           <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
         </div>
       ) : sections.length === 0 ? (
-        <p className="text-center text-muted-foreground py-12">
+        <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
           Impossible de charger les nombres pour le moment.
         </p>
       ) : (
-        <div className="space-y-12">
+        <div className={SPACING.PAGE_SPACING}>
           {sections.map((section) => (
-            <section key={section.title} className="space-y-4">
-              <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
+            <div key={section.title} className={SPACING.CARD_SPACING}>
+              <h2 className={TYPOGRAPHY.MUTED}>
                 {section.title}
               </h2>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -207,10 +212,10 @@ export default function Numbers() {
                   <StatCard key={item.label} {...item} />
                 ))}
               </div>
-            </section>
+            </div>
           ))}
         </div>
       )}
-    </div>
+    </PageLayout>
   );
 }

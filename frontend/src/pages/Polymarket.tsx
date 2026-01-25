@@ -26,6 +26,8 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { toast } from '@/hooks/use-toast';
+import PageLayout from '@/components/layout/PageLayout';
+import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 
 export default function Polymarket() {
   const { user } = useAuth();
@@ -301,8 +303,9 @@ export default function Polymarket() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto py-8 px-4 space-y-8">
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+    <>
+      <PageLayout>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="events">Événements</TabsTrigger>
           <TabsTrigger value="suggest">Suggérer</TabsTrigger>
@@ -310,9 +313,9 @@ export default function Polymarket() {
           {user?.isAdmin && <TabsTrigger value="admin">Admin</TabsTrigger>}
         </TabsList>
 
-        <TabsContent value="events" className="space-y-6 mt-6">
+        <TabsContent value="events" className={SPACING.SECTION_SPACING}>
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold">Événements ouverts</h2>
+            <h2 className={TYPOGRAPHY.H2}>Événements ouverts</h2>
             {user?.isAdmin && (
               <Button onClick={() => setCreateEventDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
@@ -448,8 +451,8 @@ export default function Polymarket() {
           )}
 
           {resolvedEvents.length > 0 && (
-            <div className="space-y-4 mt-8">
-              <h2 className="text-2xl font-semibold">Événements résolus</h2>
+            <div className={SPACING.CARD_SPACING}>
+              <h2 className={TYPOGRAPHY.H2}>Événements résolus</h2>
               <div className="grid gap-4 md:grid-cols-2">
                 {resolvedEvents.slice(0, 6).map((event) => (
                   <Card key={event.id} className="opacity-75">
@@ -478,9 +481,9 @@ export default function Polymarket() {
           )}
         </TabsContent>
 
-        <TabsContent value="suggest" className="space-y-6 mt-6">
+        <TabsContent value="suggest" className={SPACING.SECTION_SPACING}>
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold">Suggérer un événement</h2>
+            <h2 className={TYPOGRAPHY.H2}>Suggérer un événement</h2>
             <Button onClick={() => setSuggestionDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Nouvelle suggestion
@@ -538,38 +541,20 @@ export default function Polymarket() {
           </div>
         </TabsContent>
 
-        <TabsContent value="history" className="space-y-6 mt-6">
+        <TabsContent value="history" className={SPACING.SECTION_SPACING}>
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold">Historique des paris</h2>
+            <h2 className={TYPOGRAPHY.H2}>Historique des paris</h2>
           </div>
 
-          <div className="flex gap-4 border-b border-border/30">
-            <button
-              onClick={() => setBetHistoryTab('my')}
-              className={cn(
-                "pb-2 text-sm transition-colors",
-                betHistoryTab === 'my'
-                  ? "border-b-2 border-foreground text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Mes paris
-            </button>
-            <button
-              onClick={() => setBetHistoryTab('all')}
-              className={cn(
-                "pb-2 text-sm transition-colors",
-                betHistoryTab === 'all'
-                  ? "border-b-2 border-foreground text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Tous les paris
-            </button>
-          </div>
+          <Tabs value={betHistoryTab} onValueChange={(v) => setBetHistoryTab(v as 'my' | 'all')}>
+            <TabsList>
+              <TabsTrigger value="my">Mes paris</TabsTrigger>
+              <TabsTrigger value="all">Tous les paris</TabsTrigger>
+            </TabsList>
+            <TabsContent value={betHistoryTab} className="mt-4">
 
-          <div className="space-y-1 max-h-[600px] overflow-y-auto">
-            {(betHistoryTab === 'my' ? bets : allBets).length === 0 ? (
+              <div className="space-y-1 max-h-[600px] overflow-y-auto">
+                {(betHistoryTab === 'my' ? bets : allBets).length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center text-muted-foreground">
                   {betHistoryTab === 'my' 
@@ -658,17 +643,19 @@ export default function Polymarket() {
                   </div>
                 );
               })
-            )}
-          </div>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         {user?.isAdmin && (
-          <TabsContent value="admin" className="space-y-6 mt-6">
-            <h2 className="text-2xl font-semibold">Administration</h2>
+          <TabsContent value="admin" className={SPACING.SECTION_SPACING}>
+            <h2 className={TYPOGRAPHY.H2}>Administration</h2>
 
-            <div className="space-y-6">
+            <div className={SPACING.SECTION_SPACING}>
               <div>
-                <h3 className="text-lg font-semibold mb-4">Suggestions en attente</h3>
+                <h3 className={TYPOGRAPHY.H4}>Suggestions en attente</h3>
                 {pendingSuggestions.length === 0 ? (
                   <Card>
                     <CardContent className="py-8 text-center text-muted-foreground">
@@ -744,7 +731,8 @@ export default function Polymarket() {
             </div>
           </TabsContent>
         )}
-      </Tabs>
+        </Tabs>
+      </PageLayout>
 
       {/* Suggestion Dialog */}
       <Dialog open={suggestionDialogOpen} onOpenChange={setSuggestionDialogOpen}>
@@ -1081,6 +1069,6 @@ export default function Polymarket() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

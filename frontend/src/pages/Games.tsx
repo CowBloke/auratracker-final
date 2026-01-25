@@ -1,4 +1,8 @@
 import { Link } from 'react-router-dom';
+import PageLayout from '@/components/layout/PageLayout';
+import { Card, CardContent } from '@/components/ui/card';
+import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
+import { cn } from '@/lib/utils';
 
 const games = [
   {
@@ -132,61 +136,63 @@ export default function Games() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
-      {/* Games Grid */}
-      <section className="space-y-10">
-        <div className="space-y-2">
-          <h2 className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            Multijoueur
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-            {multiplayerGames.map((game) => (
-              <Link
-                key={game.id}
-                to={getGameLink(game)}
-                className="group relative aspect-square overflow-hidden rounded-2xl border border-border/40 bg-card text-card-foreground shadow-sm transition hover:-translate-y-1 hover:border-foreground/40 hover:shadow-lg"
-              >
-                <img
-                  src={game.image}
-                  alt={game.name}
-                  className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                  loading="lazy"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-                <div className="relative z-10 flex h-full flex-col justify-end p-5 text-white">
-                  <h3 className="text-xl font-semibold">{game.name}</h3>
-                </div>
-              </Link>
-            ))}
+    <PageLayout variant="compact">
+      <div className={SPACING.PAGE_SPACING}>
+        {/* Games Grid */}
+        <div className={SPACING.SECTION_SPACING}>
+          <div className={SPACING.CARD_SPACING}>
+            <h2 className={TYPOGRAPHY.MUTED}>
+              Multijoueur
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+              {multiplayerGames.map((game) => (
+                <Link
+                  key={game.id}
+                  to={getGameLink(game)}
+                  className="group relative aspect-square overflow-hidden rounded-lg border border-border/40 bg-card text-card-foreground shadow-sm transition hover:-translate-y-1 hover:border-foreground/40 hover:shadow-md"
+                >
+                  <img
+                    src={game.image}
+                    alt={game.name}
+                    className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+                  <div className="relative z-10 flex h-full flex-col justify-end p-5 text-white">
+                    <h3 className={TYPOGRAPHY.H4}>{game.name}</h3>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
 
-        <div className="space-y-2">
-          <h2 className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            Solo
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-            {soloGames.map((game) => (
-              <Link
-                key={game.id}
-                to={getGameLink(game)}
-                className="group relative aspect-square overflow-hidden rounded-2xl border border-border/40 bg-card text-card-foreground shadow-sm transition hover:-translate-y-1 hover:border-foreground/40 hover:shadow-lg"
-              >
-                <img
-                  src={game.image}
-                  alt={game.name}
-                  className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                  loading="lazy"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-                <div className="relative z-10 flex h-full flex-col justify-end p-5 text-white">
-                  <h3 className="text-xl font-semibold">{game.name}</h3>
-                </div>
-              </Link>
-            ))}
+          <div className={SPACING.CARD_SPACING}>
+            <h2 className={TYPOGRAPHY.MUTED}>
+              Solo
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+              {soloGames.map((game) => (
+                <Link
+                  key={game.id}
+                  to={getGameLink(game)}
+                  className="group relative aspect-square overflow-hidden rounded-lg border border-border/40 bg-card text-card-foreground shadow-sm transition hover:-translate-y-1 hover:border-foreground/40 hover:shadow-md"
+                >
+                  <img
+                    src={game.image}
+                    alt={game.name}
+                    className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+                  <div className="relative z-10 flex h-full flex-col justify-end p-5 text-white">
+                    <h3 className={TYPOGRAPHY.H4}>{game.name}</h3>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
-      </section>
-    </div>
+      </div>
+    </PageLayout>
   );
 }

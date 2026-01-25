@@ -10,7 +10,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import PageLayout from '@/components/layout/PageLayout';
+import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 
 interface User {
   id: string;
@@ -144,481 +147,496 @@ export default function Party() {
   );
   const selectedGameId = partySelectedGame?.gameId;
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
+    <>
+      <PageLayout variant="compact">
       {!currentParty && (
         <div className="flex items-center justify-end">
-          <button
+          <Button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+            variant="outline"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-4 w-4 mr-2" />
             Créer
-          </button>
+          </Button>
         </div>
       )}
 
       {/* Invites */}
       {partyInvites.length > 0 && (
-        <section className="space-y-4">
-          <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
-            Invitations
-          </h2>
-          <div className="space-y-0">
+        <Card className="border-border/40">
+          <CardHeader>
+            <h2 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tracking-wide uppercase")}>
+              Invitations
+            </h2>
+          </CardHeader>
+          <CardContent className="space-y-0">
             {partyInvites.map((invite) => (
               <div
                 key={invite.partyId}
-                className="flex items-center justify-between py-4 border-b border-border/30"
+                className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
               >
                 <div>
-                  <p className="font-medium">{invite.partyName || 'Party sans nom'}</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className={TYPOGRAPHY.SMALL}>{invite.partyName || 'Party sans nom'}</p>
+                  <p className={TYPOGRAPHY.XS}>
                     de {invite.inviterUsername}
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <button
+                  <Button
                     onClick={() => rejectPartyInvite(invite.partyId)}
-                    className="px-4 py-2 text-sm border border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+                    variant="outline"
+                    size="sm"
                   >
                     Refuser
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => joinParty(invite.partyId)}
-                    className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+                    variant="outline"
+                    size="sm"
                   >
                     Rejoindre
-                  </button>
+                  </Button>
                 </div>
               </div>
             ))}
-          </div>
-        </section>
+          </CardContent>
+        </Card>
       )}
 
 
       {/* Duels Section */}
       {!currentParty && (
-        <section className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-light">Duels</h2>
-              <p className="text-sm text-muted-foreground">
-                Parties à 2 joueurs
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                createParty(undefined, true, 2);
-              }}
-              className="flex items-center gap-2 px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              Créer un duel
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            <h3 className="text-sm text-muted-foreground tracking-wide uppercase">
-              Jeux de duel
-            </h3>
-            <div className="space-y-0">
-              {duelGames.map((game) => (
-                <div
-                  key={game.id}
-                  className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-3">
-                      <p className="font-medium">{game.name}</p>
-                      <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                        {game.type}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {game.description}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Public Duels */}
-          <div className="space-y-4 pt-6 border-t border-border/30">
+        <Card className="border-border/40">
+          <CardContent className={SPACING.SECTION_SPACING}>
             <div className="flex items-center justify-between">
-              <h3 className="text-sm text-muted-foreground tracking-wide uppercase">
-                Duels ouverts
+              <div>
+                <h2 className={TYPOGRAPHY.H2}>Duels</h2>
+                <p className={TYPOGRAPHY.SMALL}>
+                  Parties à 2 joueurs
+                </p>
+              </div>
+              <Button
+                onClick={() => {
+                  createParty(undefined, true, 2);
+                }}
+                variant="outline"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Créer un duel
+              </Button>
+            </div>
+
+            <div className={SPACING.CARD_SPACING}>
+              <h3 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tracking-wide uppercase")}>
+                Jeux de duel
               </h3>
-              <button
-                onClick={fetchPublicParties}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </button>
-            </div>
-            {publicParties.filter((p) => p.maxSize === 2).length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                Aucun duel disponible
-              </p>
-            ) : (
               <div className="space-y-0">
-                {publicParties
-                  .filter((p) => p.maxSize === 2)
-                  .map((party) => (
-                    <div
-                      key={party.id}
-                      className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
-                    >
-                      <div>
-                        <p className="font-medium">{party.name || 'Duel sans nom'}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {party.memberCount}/2 joueurs
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => joinParty(party.id)}
-                        disabled={party.memberCount >= 2}
-                        className={cn(
-                          "px-4 py-2 text-sm border transition-colors",
-                          party.memberCount >= 2
-                            ? "border-border/30 text-muted-foreground/50 cursor-not-allowed"
-                            : "border-foreground text-foreground hover:bg-foreground hover:text-background"
-                        )}
-                      >
-                        {party.memberCount >= 2 ? 'Plein' : 'Rejoindre'}
-                      </button>
-                    </div>
-                  ))}
-              </div>
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* Divider */}
-
-      {/* Current Party or Public Parties */}
-      {currentParty ? (
-        <section className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-light">
-                {currentParty.name || 'Ta party'}
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                {currentParty.isPublic ? 'Publique' : 'Privée'} · {partyMembers.length}/{currentParty.maxSize}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              {isLeader && (
-                <button
-                  onClick={() => setShowInviteModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 text-sm border border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
-                >
-                  <UserPlus className="h-4 w-4" />
-                  Inviter
-                </button>
-              )}
-              {isLeader ? (
-                <button
-                  onClick={deleteParty}
-                  className="flex items-center gap-2 px-4 py-2 text-sm border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Supprimer la party
-                </button>
-              ) : (
-                <button
-                  onClick={leaveParty}
-                  className="flex items-center gap-2 px-4 py-2 text-sm border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
-                >
-                  <LogOut className="h-4 w-4" />
-                  Quitter
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Members */}
-          <div className="space-y-0">
-            {partyMembers.map((member) => (
-              <div
-                key={member.userId}
-                className={cn(
-                  "flex items-center justify-between py-4 border-b border-border/30 last:border-0",
-                  member.userId === user?.id && "bg-muted/30 -mx-4 px-4"
-                )}
-              >
-                <div className="flex items-center gap-4">
-                  <span className="font-medium">
-                    <span style={member.usernameColor ? { color: member.usernameColor } : undefined}>
-                      {member.username}
-                    </span>
-                    {member.isLeader && (
-                      <span className="ml-2 text-xs text-muted-foreground">leader</span>
-                    )}
-                    {member.userId === user?.id && (
-                      <span className="ml-2 text-xs text-muted-foreground">(toi)</span>
-                    )}
-                  </span>
-                </div>
-                {isLeader && member.userId !== user?.id && (
-                  <button
-                    onClick={() => kickFromParty(member.userId)}
-                    className="text-muted-foreground hover:text-destructive transition-colors"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div className="space-y-4 pt-6 border-t border-border/30">
-            <h3 className="text-sm text-muted-foreground tracking-wide uppercase">
-              {currentParty.maxSize === 2 ? 'Jeux de duel' : 'Jeux multijoueur'}
-            </h3>
-            {partySelectedGame ? (
-              <div className="flex flex-col gap-2 border border-border/30 p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="font-medium">{partySelectedGame.gameName}</p>
-                    <p className="text-sm text-muted-foreground">
-                      selectionne par{' '}
-                      <span
-                        style={partySelectedGame.selectedByColor ? { color: partySelectedGame.selectedByColor } : undefined}
-                      >
-                        {partySelectedGame.selectedByName}
-                      </span>
-                    </p>
-                  </div>
-                  <Link
-                    to={getGameLink(partySelectedGame.gameId)}
-                    className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-                  >
-                    Ouvrir
-                  </Link>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Aucun jeu selectionne pour le moment
-              </p>
-            )}
-
-            <div className="space-y-0">
-              {(currentParty.maxSize === 2 ? duelGames : multiplayerGames).map((game) => {
-                const hasSuggested = partyGameSuggestions.some(
-                  (suggestion) => suggestion.gameId === game.id && suggestion.suggestedById === user?.id
-                );
-                const isSelected = selectedGameId === game.id;
-                const isDisabled = isLeader ? isSelected : hasSuggested || isSelected;
-                return (
+                {duelGames.map((game) => (
                   <div
                     key={game.id}
                     className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
                   >
                     <div className="space-y-1">
                       <div className="flex items-center gap-3">
-                        <p className="font-medium">{game.name}</p>
-                        <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                        <p className={TYPOGRAPHY.SMALL}>{game.name}</p>
+                        <span className={cn(TYPOGRAPHY.XS, "uppercase tracking-wide text-muted-foreground")}>
                           {game.type}
                         </span>
                       </div>
-                      <p className="text-sm text-muted-foreground">
+                      <p className={TYPOGRAPHY.SMALL}>
                         {game.description}
                       </p>
-                    </div>
-                    <button
-                      onClick={() =>
-                        isLeader
-                          ? selectPartyGame(game.id, game.name)
-                          : suggestPartyGame(game.id, game.name)
-                      }
-                      disabled={isDisabled}
-                      className={cn(
-                        "px-4 py-2 text-sm border transition-colors",
-                        isDisabled
-                          ? "border-border/30 text-muted-foreground/60 cursor-not-allowed"
-                          : "border-foreground text-foreground hover:bg-foreground hover:text-background"
-                      )}
-                    >
-                      {isLeader
-                        ? isSelected
-                          ? 'Selectionne'
-                          : 'Choisir'
-                        : isSelected
-                          ? 'Selectionne'
-                          : hasSuggested
-                            ? 'Suggere'
-                            : 'Suggerer'}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                Suggestions
-              </p>
-              {partyGameSuggestions.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Aucune suggestion</p>
-              ) : (
-                <div className="space-y-0">
-                  {partyGameSuggestions.map((suggestion) => (
-                    <div
-                      key={suggestion.id}
-                      className="flex items-center justify-between py-2 border-b border-border/30 last:border-0"
-                    >
-                      <div className="text-sm">
-                        <span className="font-medium">{suggestion.gameName}</span>
-                        <span className="text-muted-foreground"> · par </span>
-                        <span
-                          style={suggestion.suggestedByColor ? { color: suggestion.suggestedByColor } : undefined}
-                        >
-                          {suggestion.suggestedByName}
-                        </span>
-                      </div>
-                      {isLeader && suggestion.gameId !== selectedGameId && (
-                        <button
-                          onClick={() => selectPartyGame(suggestion.gameId, suggestion.gameName)}
-                          className="px-3 py-1 text-xs border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-                        >
-                          Choisir
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {isLeader && partyJoinRequests.length > 0 && (
-            <div className="space-y-4 pt-6 border-t border-border/30">
-              <h3 className="text-sm text-muted-foreground tracking-wide uppercase">
-                Demandes en attente
-              </h3>
-              <div className="space-y-0">
-                {partyJoinRequests.map((request) => (
-                  <div
-                    key={`${request.partyId}-${request.userId}`}
-                    className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
-                  >
-                    <div className="font-medium">
-                      <span style={request.usernameColor ? { color: request.usernameColor } : undefined}>
-                        {request.username}
-                      </span>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => respondToJoinRequest(request.userId, false)}
-                        className="px-3 py-1 text-xs border border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
-                      >
-                        Refuser
-                      </button>
-                      <button
-                        onClick={() => respondToJoinRequest(request.userId, true)}
-                        className="px-3 py-1 text-xs border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-                      >
-                        Accepter
-                      </button>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-          )}
 
-        </section>
-      ) : (
-        <section className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
-              Parties ouvertes
-            </h2>
-            <button
-              onClick={fetchPublicParties}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <RefreshCw className="h-4 w-4" />
-            </button>
-          </div>
-
-          {publicParties.length === 0 ? (
-            <p className="text-center text-muted-foreground py-12">
-              Aucune party disponible
-            </p>
-          ) : (
-            <div className="space-y-10">
-              {publicPartyList.length > 0 && (
+            {/* Public Duels */}
+            <div className={SPACING.CARD_SPACING}>
+              <div className="flex items-center justify-between">
+                <h3 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tracking-wide uppercase")}>
+                  Duels ouverts
+                </h3>
+                <Button
+                  onClick={fetchPublicParties}
+                  variant="ghost"
+                  size="icon"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
+              {publicParties.filter((p) => p.maxSize === 2).length === 0 ? (
+                <p className={cn(TYPOGRAPHY.MUTED, "text-center py-8")}>
+                  Aucun duel disponible
+                </p>
+              ) : (
                 <div className="space-y-0">
-                  {publicPartyList.map((party) => (
-                    <div
-                      key={party.id}
-                      className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
-                    >
-                      <div>
-                        <p className="font-medium">{party.name || 'Party sans nom'}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {party.memberCount}/{party.maxSize} membres · publique
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => joinParty(party.id)}
-                        disabled={party.memberCount >= party.maxSize}
-                        className={cn(
-                          "px-4 py-2 text-sm border transition-colors",
-                          party.memberCount >= party.maxSize
-                            ? "border-border/30 text-muted-foreground/50 cursor-not-allowed"
-                            : "border-foreground text-foreground hover:bg-foreground hover:text-background"
-                        )}
-                      >
-                        {party.memberCount >= party.maxSize ? 'Pleine' : 'Rejoindre'}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {privatePartyList.length > 0 && (
-                <div className="space-y-0">
-                  {privatePartyList.map((party) => {
-                    const isPending = pendingJoinRequests.includes(party.id);
-                    const isFull = party.memberCount >= party.maxSize;
-                    return (
+                  {publicParties
+                    .filter((p) => p.maxSize === 2)
+                    .map((party) => (
                       <div
                         key={party.id}
                         className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
                       >
                         <div>
-                          <p className="font-medium">{party.name || 'Party sans nom'}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {party.memberCount}/{party.maxSize} membres · privée
+                          <p className={TYPOGRAPHY.SMALL}>{party.name || 'Duel sans nom'}</p>
+                          <p className={TYPOGRAPHY.XS}>
+                            {party.memberCount}/2 joueurs
                           </p>
                         </div>
-                        <button
-                          onClick={() => requestJoinParty(party.id)}
-                          disabled={isFull || isPending}
-                          className={cn(
-                            "px-4 py-2 text-sm border transition-colors",
-                            isFull || isPending
-                              ? "border-border/30 text-muted-foreground/50 cursor-not-allowed"
-                              : "border-foreground text-foreground hover:bg-foreground hover:text-background"
-                          )}
+                        <Button
+                          onClick={() => joinParty(party.id)}
+                          disabled={party.memberCount >= 2}
+                          variant="outline"
+                          size="sm"
                         >
-                          {isFull ? 'Pleine' : isPending ? 'Demande envoyée' : 'Demander'}
-                        </button>
+                          {party.memberCount >= 2 ? 'Plein' : 'Rejoindre'}
+                        </Button>
                       </div>
-                    );
-                  })}
+                    ))}
                 </div>
               )}
             </div>
-          )}
-        </section>
+          </CardContent>
+        </Card>
       )}
+
+      {/* Divider */}
+
+      {/* Current Party or Public Parties */}
+      {currentParty ? (
+        <Card className="border-border/40">
+          <CardContent className={SPACING.SECTION_SPACING}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className={TYPOGRAPHY.H2}>
+                  {currentParty.name || 'Ta party'}
+                </h2>
+                <p className={TYPOGRAPHY.SMALL}>
+                  {currentParty.isPublic ? 'Publique' : 'Privée'} · {partyMembers.length}/{currentParty.maxSize}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {isLeader && (
+                  <Button
+                    onClick={() => setShowInviteModal(true)}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Inviter
+                  </Button>
+                )}
+                {isLeader ? (
+                  <Button
+                    onClick={deleteParty}
+                    variant="destructive"
+                    size="sm"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Supprimer la party
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={leaveParty}
+                    variant="destructive"
+                    size="sm"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Quitter
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Members */}
+            <Card className="border-border/40">
+              <CardContent className="space-y-0">
+                {partyMembers.map((member) => (
+                  <div
+                    key={member.userId}
+                    className={cn(
+                      "flex items-center justify-between py-4 border-b border-border/30 last:border-0",
+                      member.userId === user?.id && "bg-muted/30 -mx-4 px-4"
+                    )}
+                  >
+                    <div className="flex items-center gap-4">
+                      <span className={TYPOGRAPHY.SMALL}>
+                        <span style={member.usernameColor ? { color: member.usernameColor } : undefined}>
+                          {member.username}
+                        </span>
+                        {member.isLeader && (
+                          <span className={cn(TYPOGRAPHY.XS, "ml-2 text-muted-foreground")}>leader</span>
+                        )}
+                        {member.userId === user?.id && (
+                          <span className={cn(TYPOGRAPHY.XS, "ml-2 text-muted-foreground")}>(toi)</span>
+                        )}
+                      </span>
+                    </div>
+                    {isLeader && member.userId !== user?.id && (
+                      <Button
+                        onClick={() => kickFromParty(member.userId)}
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <div className={SPACING.CARD_SPACING}>
+              <h3 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tracking-wide uppercase")}>
+                {currentParty.maxSize === 2 ? 'Jeux de duel' : 'Jeux multijoueur'}
+              </h3>
+              {partySelectedGame ? (
+                <Card className="border-border/40">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className={TYPOGRAPHY.SMALL}>{partySelectedGame.gameName}</p>
+                        <p className={TYPOGRAPHY.XS}>
+                          selectionne par{' '}
+                          <span
+                            style={partySelectedGame.selectedByColor ? { color: partySelectedGame.selectedByColor } : undefined}
+                          >
+                            {partySelectedGame.selectedByName}
+                          </span>
+                        </p>
+                      </div>
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                      >
+                        <Link to={getGameLink(partySelectedGame.gameId)}>
+                          Ouvrir
+                        </Link>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <p className={TYPOGRAPHY.SMALL}>
+                  Aucun jeu selectionne pour le moment
+                </p>
+              )}
+
+              <div className="space-y-0">
+                {(currentParty.maxSize === 2 ? duelGames : multiplayerGames).map((game) => {
+                  const hasSuggested = partyGameSuggestions.some(
+                    (suggestion) => suggestion.gameId === game.id && suggestion.suggestedById === user?.id
+                  );
+                  const isSelected = selectedGameId === game.id;
+                  const isDisabled = isLeader ? isSelected : hasSuggested || isSelected;
+                  return (
+                    <div
+                      key={game.id}
+                      className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-3">
+                          <p className={TYPOGRAPHY.SMALL}>{game.name}</p>
+                          <span className={cn(TYPOGRAPHY.XS, "uppercase tracking-wide text-muted-foreground")}>
+                            {game.type}
+                          </span>
+                        </div>
+                        <p className={TYPOGRAPHY.SMALL}>
+                          {game.description}
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() =>
+                          isLeader
+                            ? selectPartyGame(game.id, game.name)
+                            : suggestPartyGame(game.id, game.name)
+                        }
+                        disabled={isDisabled}
+                        variant="outline"
+                        size="sm"
+                      >
+                        {isLeader
+                          ? isSelected
+                            ? 'Selectionne'
+                            : 'Choisir'
+                          : isSelected
+                            ? 'Selectionne'
+                            : hasSuggested
+                              ? 'Suggere'
+                              : 'Suggerer'}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="space-y-2">
+                <p className={cn(TYPOGRAPHY.XS, "uppercase tracking-[0.2em] text-muted-foreground")}>
+                  Suggestions
+                </p>
+                {partyGameSuggestions.length === 0 ? (
+                  <p className={TYPOGRAPHY.SMALL}>Aucune suggestion</p>
+                ) : (
+                  <div className="space-y-0">
+                    {partyGameSuggestions.map((suggestion) => (
+                      <div
+                        key={suggestion.id}
+                        className="flex items-center justify-between py-2 border-b border-border/30 last:border-0"
+                      >
+                        <div className={TYPOGRAPHY.SMALL}>
+                          <span className="font-medium">{suggestion.gameName}</span>
+                          <span className="text-muted-foreground"> · par </span>
+                          <span
+                            style={suggestion.suggestedByColor ? { color: suggestion.suggestedByColor } : undefined}
+                          >
+                            {suggestion.suggestedByName}
+                          </span>
+                        </div>
+                        {isLeader && suggestion.gameId !== selectedGameId && (
+                          <Button
+                            onClick={() => selectPartyGame(suggestion.gameId, suggestion.gameName)}
+                            variant="outline"
+                            size="sm"
+                            className="text-xs"
+                        >
+                          Choisir
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+            {isLeader && partyJoinRequests.length > 0 && (
+              <div className={SPACING.CARD_SPACING}>
+                <h3 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tracking-wide uppercase")}>
+                  Demandes en attente
+                </h3>
+                <div className="space-y-0">
+                  {partyJoinRequests.map((request) => (
+                    <div
+                      key={`${request.partyId}-${request.userId}`}
+                      className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
+                    >
+                      <div className={TYPOGRAPHY.SMALL}>
+                        <span style={request.usernameColor ? { color: request.usernameColor } : undefined}>
+                          {request.username}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => respondToJoinRequest(request.userId, false)}
+                          variant="outline"
+                          size="sm"
+                          className="text-xs"
+                        >
+                          Refuser
+                        </Button>
+                        <Button
+                          onClick={() => respondToJoinRequest(request.userId, true)}
+                          variant="outline"
+                          size="sm"
+                          className="text-xs"
+                        >
+                          Accepter
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-border/40">
+          <CardContent className={SPACING.SECTION_SPACING}>
+            <div className="flex items-center justify-between">
+              <h2 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tracking-wide uppercase")}>
+                Parties ouvertes
+              </h2>
+              <Button
+                onClick={fetchPublicParties}
+                variant="ghost"
+                size="icon"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {publicParties.length === 0 ? (
+              <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
+                Aucune party disponible
+              </p>
+            ) : (
+              <div className={SPACING.SECTION_SPACING}>
+                {publicPartyList.length > 0 && (
+                  <div className="space-y-0">
+                    {publicPartyList.map((party) => (
+                      <div
+                        key={party.id}
+                        className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
+                      >
+                        <div>
+                          <p className={TYPOGRAPHY.SMALL}>{party.name || 'Party sans nom'}</p>
+                          <p className={TYPOGRAPHY.XS}>
+                            {party.memberCount}/{party.maxSize} membres · publique
+                          </p>
+                        </div>
+                        <Button
+                          onClick={() => joinParty(party.id)}
+                          disabled={party.memberCount >= party.maxSize}
+                          variant="outline"
+                          size="sm"
+                        >
+                          {party.memberCount >= party.maxSize ? 'Pleine' : 'Rejoindre'}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {privatePartyList.length > 0 && (
+                  <div className="space-y-0">
+                    {privatePartyList.map((party) => {
+                      const isPending = pendingJoinRequests.includes(party.id);
+                      const isFull = party.memberCount >= party.maxSize;
+                      return (
+                        <div
+                          key={party.id}
+                          className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
+                        >
+                          <div>
+                            <p className={TYPOGRAPHY.SMALL}>{party.name || 'Party sans nom'}</p>
+                            <p className={TYPOGRAPHY.XS}>
+                              {party.memberCount}/{party.maxSize} membres · privée
+                            </p>
+                          </div>
+                          <Button
+                            onClick={() => requestJoinParty(party.id)}
+                            disabled={isFull || isPending}
+                            variant="outline"
+                            size="sm"
+                          >
+                            {isFull ? 'Pleine' : isPending ? 'Demande envoyée' : 'Demander'}
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+      </PageLayout>
 
       {/* Create Party Modal */}
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
@@ -725,6 +743,6 @@ export default function Party() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

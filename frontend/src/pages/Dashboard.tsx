@@ -10,6 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import PageLayout from '@/components/layout/PageLayout';
+import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 
 interface Transfer {
@@ -308,46 +311,51 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
-      </div>
+      <PageLayout>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+        </div>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4 space-y-6">
+    <PageLayout variant="compact">
       {/* Stats */}
-      <section className="rounded-3xl border border-border/50 bg-muted/20 p-8 md:p-10">
-        <div className="space-y-2 text-center">
-          <p className="text-sm text-muted-foreground tracking-wide uppercase">
-            {onlineUsers.length} en ligne
-          </p>
-          <p className="text-sm text-muted-foreground tracking-wide uppercase">
-            {publicParties.length} parties actives
-          </p>
-          <p
-            className="text-3xl md:text-5xl font-light tracking-tight"
-            style={user?.usernameColor ? { color: user.usernameColor } : undefined}
-          >
-            {welcomeMessage || `Bienvenue, ${user?.username ?? ''}`}
-          </p>
-        </div>
-      </section>
+      <Card className="border-border/40">
+        <CardContent className="p-8 md:p-10">
+          <div className={cn("space-y-2 text-center", SPACING.TIGHT_SPACING)}>
+            <p className={TYPOGRAPHY.MUTED}>
+              {onlineUsers.length} en ligne
+            </p>
+            <p className={TYPOGRAPHY.MUTED}>
+              {publicParties.length} parties actives
+            </p>
+            <p
+              className={cn(TYPOGRAPHY.H1, "md:text-5xl")}
+              style={user?.usernameColor ? { color: user.usernameColor } : undefined}
+            >
+              {welcomeMessage || `Bienvenue, ${user?.username ?? ''}`}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Shortcuts */}
-      <section className="rounded-3xl border border-border/50 bg-muted/20 p-6 md:p-8 space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-xs text-muted-foreground tracking-wide uppercase">Widgets</p>
-            <h2 className="text-2xl font-light tracking-tight">Raccourcis jeux</h2>
-          </div>
+      <Card className="border-border/40">
+        <CardHeader>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardDescription>Widgets</CardDescription>
+              <CardTitle className={TYPOGRAPHY.H3}>Raccourcis jeux</CardTitle>
+            </div>
           <Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
             <Button variant="outline" onClick={() => setShortcutsOpen(true)}>
               Gérer les widgets
             </Button>
             <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle className="text-lg font-light">Widgets de raccourcis</DialogTitle>
+                <DialogTitle className={TYPOGRAPHY.H5}>Widgets de raccourcis</DialogTitle>
                 <DialogDescription>
                   Active les jeux à afficher en haut du tableau de bord.
                 </DialogDescription>
@@ -392,18 +400,19 @@ export default function Dashboard() {
                 <Button onClick={() => setShortcutsOpen(false)}>Terminer</Button>
               </DialogFooter>
             </DialogContent>
-          </Dialog>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            </Dialog>
+          </div>
+        </CardHeader>
+        <CardContent className={SPACING.SECTION_SPACING}>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {orderedShortcuts.length > 0 ? (
             orderedShortcuts.map((shortcut) => (
-              <Link
+                <Link
                 key={shortcut.id}
                 to={shortcut.path}
                 className={cn(
-                  "group relative overflow-hidden rounded-2xl border border-border/50 p-4 transition hover:border-foreground/30",
-                  shortcut.image ? "text-white" : "bg-muted/20 hover:bg-muted/40"
+                  "group relative overflow-hidden rounded-lg border border-border/40 p-4 transition hover:border-foreground/30 shadow-sm",
+                  shortcut.image ? "text-white" : "bg-card hover:bg-accent/50"
                 )}
               >
                 {shortcut.image && (
@@ -418,68 +427,81 @@ export default function Dashboard() {
                   </>
                 )}
                 <div className="relative z-10 flex h-full flex-col justify-end gap-1">
-                  <h3 className="text-lg font-semibold">{shortcut.label}</h3>
+                  <h3 className={TYPOGRAPHY.H5}>{shortcut.label}</h3>
                 </div>
               </Link>
             ))
           ) : (
-            <div className="col-span-full rounded-2xl border border-dashed border-border/60 bg-muted/10 p-6 text-center">
-              <p className="text-sm text-muted-foreground">Aucun widget actif. Ajoute des jeux pour un accès rapide.</p>
-            </div>
+            <Card className="col-span-full border-dashed border-border/60">
+              <CardContent className="p-6 text-center">
+                <p className={TYPOGRAPHY.SMALL}>Aucun widget actif. Ajoute des jeux pour un accès rapide.</p>
+              </CardContent>
+            </Card>
           )}
-        </div>
-      </section>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Primary Stats */}
-      <section className="rounded-3xl border border-border/50 bg-muted/20 p-6 md:p-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-          <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 space-y-2">
-            <p className="text-3xl md:text-4xl font-light tabular-nums">
-              {user?.aura.toLocaleString()}
-            </p>
-            <p className="text-sm text-muted-foreground">aura</p>
+      <Card className="border-border/40">
+        <CardContent className="p-6 md:p-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+            <Card className="border-border/60">
+              <CardContent className="p-4 space-y-2">
+                <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>
+                  {user?.aura.toLocaleString()}
+                </p>
+                <p className={TYPOGRAPHY.SMALL}>aura</p>
+              </CardContent>
+            </Card>
+            <Card className="border-border/60">
+              <CardContent className="p-4 space-y-2">
+                <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>
+                  ${user?.money.toLocaleString()}
+                </p>
+                <p className={TYPOGRAPHY.SMALL}>argent</p>
+              </CardContent>
+            </Card>
+            <Card className="border-border/60">
+              <CardContent className="p-4 space-y-2">
+                <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>
+                  #{userRank || '-'}
+                </p>
+                <p className={TYPOGRAPHY.SMALL}>rang</p>
+              </CardContent>
+            </Card>
+            <Card className="border-border/60">
+              <CardContent className="p-4 space-y-2">
+                <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>
+                  {dailyAllowance?.remaining || 0}
+                </p>
+                <p className={TYPOGRAPHY.SMALL}>dons restants</p>
+                {resetCountdown && resetCountdown.total > 0 && (
+                  <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground/70 flex items-center gap-1")}>
+                    <Clock className="h-3 w-3" />
+                    <span className="tabular-nums">
+                      {String(resetCountdown.hours).padStart(2, '0')}:
+                      {String(resetCountdown.minutes).padStart(2, '0')}:
+                      {String(resetCountdown.seconds).padStart(2, '0')}
+                    </span>
+                  </p>
+                )}
+              </CardContent>
+            </Card>
           </div>
-          <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 space-y-2">
-            <p className="text-3xl md:text-4xl font-light tabular-nums">
-              ${user?.money.toLocaleString()}
-            </p>
-            <p className="text-sm text-muted-foreground">argent</p>
-          </div>
-          <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 space-y-2">
-            <p className="text-3xl md:text-4xl font-light tabular-nums">
-              #{userRank || '-'}
-            </p>
-            <p className="text-sm text-muted-foreground">rang</p>
-          </div>
-          <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 space-y-2">
-            <p className="text-3xl md:text-4xl font-light tabular-nums">
-              {dailyAllowance?.remaining || 0}
-            </p>
-            <p className="text-sm text-muted-foreground">dons restants</p>
-            {resetCountdown && resetCountdown.total > 0 && (
-              <p className="text-xs text-muted-foreground/70 flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                <span className="tabular-nums">
-                  {String(resetCountdown.hours).padStart(2, '0')}:
-                  {String(resetCountdown.minutes).padStart(2, '0')}:
-                  {String(resetCountdown.seconds).padStart(2, '0')}
-                </span>
-              </p>
-            )}
-          </div>
-        </div>
-      </section>
+        </CardContent>
+      </Card>
 
 
       {/* Gift Section */}
-      <section className="space-y-4">
-        <div className="rounded-2xl border border-border/60 bg-muted/20 p-6 space-y-4">
+      <Card className="border-border/40">
+        <CardHeader>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm text-muted-foreground tracking-wide uppercase">Envoyer de l'aura</p>
-              <p className="text-lg font-light">
+              <CardDescription>Envoyer de l'aura</CardDescription>
+              <CardTitle className={TYPOGRAPHY.H5}>
                 Offre de l'aura à un joueur, ajoute un message, et garde un œil sur ta limite.
-              </p>
+              </CardTitle>
             </div>
             <Dialog open={giftDialogOpen} onOpenChange={setGiftDialogOpen}>
               <Button
@@ -492,7 +514,7 @@ export default function Dashboard() {
               </Button>
               <DialogContent className="max-w-lg">
                 <DialogHeader>
-                  <DialogTitle className="text-xl font-light">Envoyer de l'aura</DialogTitle>
+                  <DialogTitle className={TYPOGRAPHY.H4}>Envoyer de l'aura</DialogTitle>
                   <DialogDescription>
                     Choisis un joueur, un montant, et ajoute un message si tu veux.
                   </DialogDescription>
@@ -601,28 +623,29 @@ export default function Dashboard() {
               </DialogContent>
             </Dialog>
           </div>
-
+        </CardHeader>
+        <CardContent className={SPACING.CARD_SPACING}>
           {giftMessage && (
             <p className={cn(
-              "text-sm",
+              TYPOGRAPHY.SMALL,
               giftMessage.type === 'success' ? 'text-foreground' : 'text-destructive'
             )}>
               {giftMessage.text}
             </p>
           )}
           {!dailyAllowance || dailyAllowance.remaining === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            <p className={TYPOGRAPHY.SMALL}>
               Limite quotidienne atteinte. Reviens après le reset pour offrir de nouveau.
             </p>
           ) : null}
-        </div>
-      </section>
+        </CardContent>
+      </Card>
 
 
       {/* Recent Activity */}
-      <section className="space-y-6">
+      <div className={SPACING.SECTION_SPACING}>
         <div className="flex items-center justify-between">
-          <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
+          <h2 className={TYPOGRAPHY.MUTED}>
             Activité récente
           </h2>
           <Sheet open={historyOpen} onOpenChange={(open) => {
@@ -632,9 +655,9 @@ export default function Dashboard() {
             }
           }}>
             <SheetTrigger asChild>
-              <button className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
-                Voir tout <ArrowRight className="h-3 w-3" />
-              </button>
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                Voir tout <ArrowRight className="h-3 w-3 ml-1" />
+              </Button>
             </SheetTrigger>
             <SheetContent className="w-full sm:max-w-md overflow-y-auto">
               <SheetHeader>
@@ -704,44 +727,48 @@ export default function Dashboard() {
         </div>
         
         {recentTransfers.length === 0 ? (
-          <p className="text-muted-foreground">Aucun transfert</p>
+          <p className={TYPOGRAPHY.MUTED}>Aucun transfert</p>
         ) : (
-          <div className="space-y-0">
-            {recentTransfers.map((transfer) => (
-              <div
-                key={transfer.id}
-                className="py-3 border-b border-border/30 last:border-0"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <span className="text-xs text-muted-foreground w-8">
-                      {formatTimeAgo(transfer.createdAt)}
-                    </span>
-                    <span>
-                      <span style={transfer.sender.usernameColor ? { color: transfer.sender.usernameColor } : undefined}>
-                        {transfer.sender.username}
+          <Card className="border-border/40">
+            <CardContent className="p-0">
+              <div className="divide-y divide-border/30">
+                {recentTransfers.map((transfer) => (
+                  <div
+                    key={transfer.id}
+                    className="py-3 px-6"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground w-8")}>
+                          {formatTimeAgo(transfer.createdAt)}
+                        </span>
+                        <span>
+                          <span style={transfer.sender.usernameColor ? { color: transfer.sender.usernameColor } : undefined}>
+                            {transfer.sender.username}
+                          </span>
+                          {' → '}
+                          <span style={transfer.receiver.usernameColor ? { color: transfer.receiver.usernameColor } : undefined}>
+                            {transfer.receiver.username}
+                          </span>
+                        </span>
+                      </div>
+                      <span className="tabular-nums">
+                        {transfer.auraAmount}
                       </span>
-                      {' → '}
-                      <span style={transfer.receiver.usernameColor ? { color: transfer.receiver.usernameColor } : undefined}>
-                        {transfer.receiver.username}
-                      </span>
-                    </span>
+                    </div>
+                    {transfer.message && (
+                      <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground mt-1 ml-12 italic")}>
+                        "{transfer.message}"
+                      </p>
+                    )}
                   </div>
-                  <span className="tabular-nums">
-                    {transfer.auraAmount}
-                  </span>
-                </div>
-                {transfer.message && (
-                  <p className="text-sm text-muted-foreground mt-1 ml-12 italic">
-                    "{transfer.message}"
-                  </p>
-                )}
+                ))}
               </div>
-            ))}
-          </div>
+            </CardContent>
+          </Card>
         )}
-      </section>
+      </div>
 
-    </div>
+    </PageLayout>
   );
 }

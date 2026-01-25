@@ -10,9 +10,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
+import PageLayout from '@/components/layout/PageLayout';
+import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 
 export default function Suggestions() {
   const { user } = useAuth();
@@ -314,10 +319,10 @@ export default function Suggestions() {
     if (items.length === 0) {
       return (
         <div className="text-center py-16">
-          <p className="text-muted-foreground text-lg">
+          <p className={cn(TYPOGRAPHY.H5, "text-muted-foreground")}>
             {showRatings ? 'Aucune suggestion réalisée pour le moment' : 'Aucune suggestion active'}
           </p>
-          <p className="text-muted-foreground/60 mt-1">
+          <p className={cn(TYPOGRAPHY.MUTED, "mt-1")}>
             {showRatings ? 'Revenez plus tard pour noter les mises à jour !' : 'Soyez le premier à proposer une idée !'}
           </p>
         </div>
@@ -325,60 +330,65 @@ export default function Suggestions() {
     }
 
     return (
-      <div className="space-y-4">
+      <div className={SPACING.CARD_SPACING}>
         {items.map((suggestion) => {
           const ratingValue = ratingInputs[suggestion.id] ?? suggestion.userRating ?? 5;
 
           return (
-            <article
+            <Card
               key={suggestion.id}
-              className="group relative bg-card/30 border border-border/40 rounded-lg overflow-hidden hover:border-border/60 transition-colors"
+              className="group border-border/40 hover:border-border/60 transition-colors"
             >
               <div className="flex">
                 {/* Vote Column */}
                 <div className="flex flex-col items-center py-4 px-3 bg-muted/20 border-r border-border/30">
-                  <button
+                  <Button
                     onClick={() => handleVote(suggestion.id, 1)}
+                    variant="ghost"
+                    size="icon"
                     className={cn(
-                      'p-1 rounded hover:bg-muted/50 transition-colors',
+                      'h-7 w-7',
                       suggestion.userVote === 1 && 'text-emerald-500'
                     )}
                   >
                     <ChevronUp className="h-5 w-5" />
-                  </button>
+                  </Button>
                   <span
                     className={cn(
-                      'text-lg font-medium tabular-nums py-1',
+                      TYPOGRAPHY.H5,
+                      'tabular-nums py-1',
                       suggestion.score > 0 && 'text-emerald-500',
                       suggestion.score < 0 && 'text-rose-500'
                     )}
                   >
                     {suggestion.score}
                   </span>
-                  <button
+                  <Button
                     onClick={() => handleVote(suggestion.id, -1)}
+                    variant="ghost"
+                    size="icon"
                     className={cn(
-                      'p-1 rounded hover:bg-muted/50 transition-colors',
+                      'h-7 w-7',
                       suggestion.userVote === -1 && 'text-rose-500'
                     )}
                   >
                     <ChevronDown className="h-5 w-5" />
-                  </button>
+                  </Button>
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 p-4 min-w-0">
+                <CardContent className="flex-1 p-4 min-w-0">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-medium leading-tight">{suggestion.title}</h3>
+                        <h3 className={TYPOGRAPHY.H5}>{suggestion.title}</h3>
                         {suggestion.boost && suggestion.boost > 0 && (
-                          <span className="px-2 py-0.5 text-xs font-medium bg-amber-500/20 text-amber-500 border border-amber-500/30 rounded">
+                          <span className={cn(TYPOGRAPHY.XS, "px-2 py-0.5 font-medium bg-amber-500/20 text-amber-500 border border-amber-500/30 rounded")}>
                             Nouveau
                           </span>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">
+                      <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground mt-1")}>
                         par{' '}
                         <span
                           style={
@@ -402,7 +412,7 @@ export default function Suggestions() {
 
                     <div className="flex items-center gap-2">
                       {user?.isAdmin && (
-                        <button
+                        <Button
                           type="button"
                           onClick={() =>
                             handleStatusUpdate(
@@ -411,50 +421,53 @@ export default function Suggestions() {
                             )
                           }
                           disabled={statusUpdating[suggestion.id]}
-                          className="px-3 py-1.5 text-xs border border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors disabled:opacity-50"
+                          variant="outline"
+                          size="sm"
+                          className="text-xs"
                         >
                           {statusUpdating[suggestion.id] ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : suggestion.status === 'DONE' ? (
-                            'Remettre en cours'
-                          ) : (
-                            'Marquer comme réalisée'
-                          )}
-                        </button>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                          ) : null}
+                          {suggestion.status === 'DONE' ? 'Remettre en cours' : 'Marquer comme réalisée'}
+                        </Button>
                       )}
 
                       {/* Delete button for author or admin */}
                       {(suggestion.user.id === user?.id || user?.isAdmin) && (
-                        <button
+                        <Button
                           onClick={() => handleDelete(suggestion.id)}
-                          className="opacity-0 group-hover:opacity-100 p-2 text-muted-foreground hover:text-destructive transition-all"
+                          variant="ghost"
+                          size="icon"
+                          className="opacity-0 group-hover:opacity-100 h-8 w-8 text-muted-foreground hover:text-destructive"
                           aria-label="Supprimer la suggestion"
                         >
                           <Trash2 className="h-4 w-4" />
-                        </button>
+                        </Button>
                       )}
                     </div>
                   </div>
 
-                  <p className="mt-3 text-muted-foreground whitespace-pre-wrap break-words">
+                  <p className={cn("mt-3 whitespace-pre-wrap break-words", TYPOGRAPHY.MUTED)}>
                     {suggestion.description}
                   </p>
 
                   {suggestion.imageUrl && (
-                    <div className="mt-4">
-                      <img
-                        src={resolveImageUrl(suggestion.imageUrl)}
-                        alt={suggestion.title}
-                        className="max-h-64 rounded-md object-cover border border-border/30"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none';
-                        }}
-                      />
-                    </div>
+                    <Card className="mt-4 border-border/40">
+                      <CardContent className="p-0">
+                        <img
+                          src={resolveImageUrl(suggestion.imageUrl)}
+                          alt={suggestion.title}
+                          className="max-h-64 rounded-md object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      </CardContent>
+                    </Card>
                   )}
 
                   {/* Vote stats */}
-                  <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground/60">
+                  <div className={cn("mt-4 flex items-center gap-4", TYPOGRAPHY.XS, "text-muted-foreground/60")}>
                     <span className="flex items-center gap-1">
                       <ChevronUp className="h-3 w-3" />
                       {suggestion.upvotes}
@@ -466,8 +479,8 @@ export default function Suggestions() {
                   </div>
 
                   {showRatings && (
-                    <div className="mt-6 border-t border-border/30 pt-4 space-y-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground/70">
+                    <div className={cn("mt-6 border-t border-border/30 pt-4", SPACING.CARD_SPACING)}>
+                      <div className={cn("flex flex-wrap items-center justify-between gap-2", TYPOGRAPHY.XS, "text-muted-foreground/70")}>
                         <span>
                           {suggestion.ratingCount > 0 && suggestion.averageRating !== null
                             ? `Note moyenne: ${suggestion.averageRating.toFixed(1)}/10 (${suggestion.ratingCount})`
@@ -486,66 +499,73 @@ export default function Suggestions() {
                             setRatingInputs((prev) => ({ ...prev, [suggestion.id]: value[0] }))
                           }
                         />
-                        <button
+                        <Button
                           type="button"
                           onClick={() => handleRatingSubmit(suggestion.id)}
                           disabled={ratingSubmitting[suggestion.id]}
-                          className="px-3 py-1.5 text-xs border border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors disabled:opacity-50"
+                          variant="outline"
+                          size="sm"
+                          className="text-xs"
                         >
                           {ratingSubmitting[suggestion.id] ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            'Noter'
-                          )}
-                        </button>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                          ) : null}
+                          Noter
+                        </Button>
                       </div>
                     </div>
                   )}
 
                   {/* Comments */}
-                  <div className="mt-6 border-t border-border/30 pt-4 space-y-4">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground/60">
+                  <div className={cn("mt-6 border-t border-border/30 pt-4", SPACING.CARD_SPACING)}>
+                    <div className={cn("flex items-center justify-between", TYPOGRAPHY.XS, "text-muted-foreground/60")}>
                       <span>Commentaires ({suggestion.comments.length})</span>
                     </div>
 
                     {suggestion.comments.length > 0 && (
                       <div className="space-y-3">
                         {suggestion.comments.map((comment) => (
-                          <div key={comment.id} className="flex gap-3">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground/70">
-                                <span
-                                  style={
-                                    comment.user.usernameColor
-                                      ? { color: comment.user.usernameColor }
-                                      : undefined
-                                  }
-                                >
-                                  {comment.user.username}
-                                </span>
-                                <span>·</span>
-                                <span>{formatDateTime(comment.createdAt)}</span>
-                              </div>
-                              <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words">
-                                {comment.content}
-                              </p>
-                            </div>
+                          <Card key={comment.id} className="border-border/40">
+                            <CardContent className="p-3">
+                              <div className="flex gap-3">
+                                <div className="min-w-0 flex-1">
+                                  <div className={cn("flex items-center gap-2", TYPOGRAPHY.XS, "text-muted-foreground/70")}>
+                                    <span
+                                      style={
+                                        comment.user.usernameColor
+                                          ? { color: comment.user.usernameColor }
+                                          : undefined
+                                      }
+                                    >
+                                      {comment.user.username}
+                                    </span>
+                                    <span>·</span>
+                                    <span>{formatDateTime(comment.createdAt)}</span>
+                                  </div>
+                                  <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground mt-1 whitespace-pre-wrap break-words")}>
+                                    {comment.content}
+                                  </p>
+                                </div>
 
-                            {(comment.user.id === user?.id || user?.isAdmin) && (
-                              <button
-                                onClick={() => handleCommentDelete(suggestion.id, comment.id)}
-                                className="h-7 w-7 flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
-                                disabled={commentDeleting[comment.id]}
-                                aria-label="Supprimer le commentaire"
-                              >
-                                {commentDeleting[comment.id] ? (
-                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                ) : (
-                                  <X className="h-4 w-4" />
+                                {(comment.user.id === user?.id || user?.isAdmin) && (
+                                  <Button
+                                    onClick={() => handleCommentDelete(suggestion.id, comment.id)}
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                    disabled={commentDeleting[comment.id]}
+                                    aria-label="Supprimer le commentaire"
+                                  >
+                                    {commentDeleting[comment.id] ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <X className="h-4 w-4" />
+                                    )}
+                                  </Button>
                                 )}
-                              </button>
-                            )}
-                          </div>
+                              </div>
+                            </CardContent>
+                          </Card>
                         ))}
                       </div>
                     )}
@@ -558,34 +578,35 @@ export default function Suggestions() {
                         maxLength={500}
                         className="min-h-[80px] bg-transparent border-border/50 resize-none"
                       />
-                      <div className="flex items-center justify-between text-xs text-muted-foreground/60">
+                      <div className={cn("flex items-center justify-between", TYPOGRAPHY.XS, "text-muted-foreground/60")}>
                         <span>{(commentInputs[suggestion.id] || '').length}/500</span>
-                        <button
+                        <Button
                           type="button"
                           onClick={() => handleCommentSubmit(suggestion.id)}
                           disabled={
                             commentSubmitting[suggestion.id] ||
                             !(commentInputs[suggestion.id] || '').trim()
                           }
-                          className="px-3 py-1.5 text-xs border border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          variant="outline"
+                          size="sm"
+                          className="text-xs"
                         >
                           {commentSubmitting[suggestion.id] ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            'Commenter'
-                          )}
-                        </button>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                          ) : null}
+                          Commenter
+                        </Button>
                       </div>
                     </div>
                   </div>
-                </div>
+                </CardContent>
               </div>
-            </article>
-          );
-        })}
-      </div>
-    );
-  };
+            </Card>
+            );
+          })}
+        </div>
+      );
+    };
 
   if (loading) {
     return (
@@ -596,136 +617,130 @@ export default function Suggestions() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
-      <div className="flex items-center justify-end">
-        <button
-          onClick={() => setDialogOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          Créer
-        </button>
-      </div>
+    <>
+      <PageLayout variant="compact">
+        <div className="flex items-center justify-end">
+          <Button
+            onClick={() => setDialogOpen(true)}
+            variant="outline"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Créer
+          </Button>
+        </div>
+
+        {/* Tab Selector */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'pending' | 'done')}>
+          <TabsList>
+            <TabsTrigger value="pending">
+              Suggestions ({pendingSuggestions.length})
+            </TabsTrigger>
+            <TabsTrigger value="done">
+              Réalisées ({doneSuggestions.length})
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Content */}
+          <TabsContent value="pending" className={SPACING.SECTION_SPACING}>
+            {renderSuggestions(pendingSuggestions, false)}
+          </TabsContent>
+          <TabsContent value="done" className={SPACING.SECTION_SPACING}>
+            {renderSuggestions(doneSuggestions, true)}
+          </TabsContent>
+        </Tabs>
+      </PageLayout>
+
       <Dialog
-          open={dialogOpen}
-          onOpenChange={(open) => {
-            setDialogOpen(open);
-            if (!open) {
-              setImageUrl('');
-            }
-          }}
-        >
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-light">Nouvelle suggestion</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <Input
-                  placeholder="Titre de la suggestion"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  maxLength={100}
-                  className="h-12 bg-transparent border-border/50"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Textarea
-                  placeholder="Description détaillée..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  maxLength={2000}
-                  className="min-h-[120px] bg-transparent border-border/50 resize-none"
-                  required
-                />
-                <p className="text-xs text-muted-foreground/60 text-right tabular-nums">
-                  {description.length}/2000
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Input
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="https://..."
-                  className="h-12 bg-transparent border-border/50"
-                />
-                {imageUrl && (
-                  <div className="relative">
-                    <img
-                      src={imageUrl}
-                      alt="Preview"
-                      className="max-h-40 rounded-md object-cover border border-border/30"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setImageUrl('');
-                      }}
-                      className="absolute top-2 right-2 h-7 w-7 flex items-center justify-center bg-background/80 border border-border rounded-full text-muted-foreground hover:text-foreground"
-                      aria-label="Retirer l'image"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                )}
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setDialogOpen(false)}
-                  className="px-4 py-2 text-sm border border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting || !title.trim() || !description.trim()}
-                  className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {submitting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    'Publier'
-                  )}
-                </button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-      {/* Tab Selector */}
-      <div className="flex flex-wrap gap-2">
-        <button
-          onClick={() => setActiveTab('pending')}
-          className={cn(
-            "px-4 py-2 text-sm border transition-colors",
-            activeTab === 'pending'
-              ? "border-foreground text-foreground"
-              : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-          )}
-        >
-          Suggestions ({pendingSuggestions.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('done')}
-          className={cn(
-            "px-4 py-2 text-sm border transition-colors",
-            activeTab === 'done'
-              ? "border-foreground text-foreground"
-              : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-          )}
-        >
-          Réalisées ({doneSuggestions.length})
-        </button>
-      </div>
-
-
-      {/* Content */}
-      <section>
-        {activeTab === 'pending' && renderSuggestions(pendingSuggestions, false)}
-        {activeTab === 'done' && renderSuggestions(doneSuggestions, true)}
-      </section>
-    </div>
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) {
+            setImageUrl('');
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className={TYPOGRAPHY.H4}>Nouvelle suggestion</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Input
+                placeholder="Titre de la suggestion"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                maxLength={100}
+                className="h-12 bg-transparent border-border/50"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Textarea
+                placeholder="Description détaillée..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                maxLength={2000}
+                className="min-h-[120px] bg-transparent border-border/50 resize-none"
+                required
+              />
+              <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground/60 text-right tabular-nums")}>
+                {description.length}/2000
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Input
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                placeholder="https://..."
+                className="h-12 bg-transparent border-border/50"
+              />
+              {imageUrl && (
+                <div className="relative">
+                  <Card className="border-border/40">
+                    <CardContent className="p-0">
+                      <img
+                        src={imageUrl}
+                        alt="Preview"
+                        className="max-h-40 rounded-md object-cover"
+                      />
+                    </CardContent>
+                  </Card>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setImageUrl('');
+                    }}
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-2 right-2 h-7 w-7 bg-background/80"
+                    aria-label="Retirer l'image"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                onClick={() => setDialogOpen(false)}
+                variant="outline"
+              >
+                Annuler
+              </Button>
+              <Button
+                type="submit"
+                disabled={submitting || !title.trim() || !description.trim()}
+              >
+                {submitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                Publier
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

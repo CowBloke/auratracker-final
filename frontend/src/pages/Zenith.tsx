@@ -6,6 +6,12 @@ import { zenithApi, ZenithTransaction, ZenithPriceHistory } from '../services/ap
 import { cn } from '@/lib/utils';
 import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import PageLayout from '@/components/layout/PageLayout';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 
 export default function Zenith() {
   const { refreshUser } = useAuth();
@@ -157,44 +163,53 @@ export default function Zenith() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto py-12 px-4 space-y-6">
+    <PageLayout>
       {/* Main Trading Card */}
-      <div className="border border-border/30 p-6 space-y-5">
-        {/* Balances and Current Price */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="border border-border/30 p-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Solde Money</p>
-            <p className="text-2xl font-light tabular-nums">${moneyBalance.toLocaleString()}</p>
+      <Card className="border-border/40">
+        <CardContent className={SPACING.SECTION_SPACING}>
+          {/* Balances and Current Price */}
+          <div className="grid grid-cols-3 gap-4">
+            <Card className="border-border/40">
+              <CardContent className="p-4">
+                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Solde Money</p>
+                <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>${moneyBalance.toLocaleString()}</p>
+              </CardContent>
+            </Card>
+            <Card className="border-border/40">
+              <CardContent className="p-4">
+                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Solde Zenith</p>
+                <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>{zenithBalance.toFixed(4)} ZNT</p>
+                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground tabular-nums")}>
+                  ≈ ${(zenithBalance * currentPrice).toFixed(2)}
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border-border/40">
+              <CardContent className="p-4">
+                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Prix Actuel</p>
+                <div className="flex items-center gap-2">
+                  <span className={cn(TYPOGRAPHY.H2, "tabular-nums")}>
+                    ${currentPrice.toFixed(2)}
+                  </span>
+                  <span className={cn(
+                    "flex items-center",
+                    TYPOGRAPHY.XS,
+                    priceChange >= 0 ? "text-emerald-500" : "text-red-500"
+                  )}>
+                    {priceChange >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                    {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
           </div>
-          <div className="border border-border/30 p-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Solde Zenith</p>
-            <p className="text-2xl font-light tabular-nums">{zenithBalance.toFixed(4)} ZNT</p>
-            <p className="text-xs text-muted-foreground tabular-nums">
-              ≈ ${(zenithBalance * currentPrice).toFixed(2)}
-            </p>
-          </div>
-          <div className="border border-border/30 p-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Prix Actuel</p>
-            <div className="flex items-center gap-2">
-              <span className="text-2xl font-light tabular-nums">
-                ${currentPrice.toFixed(2)}
-              </span>
-              <span className={cn(
-                "flex items-center text-xs",
-                priceChange >= 0 ? "text-emerald-500" : "text-red-500"
-              )}>
-                {priceChange >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
-              </span>
-            </div>
-          </div>
-        </div>
 
-        {/* Professional Chart */}
-        <div className="border border-border/30 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm text-muted-foreground uppercase tracking-wide">Cours 24h</span>
-          </div>
+          {/* Professional Chart */}
+          <Card className="border-border/40">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between mb-3">
+                <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground uppercase tracking-wide")}>Cours 24h</span>
+              </div>
 
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
@@ -232,224 +247,217 @@ export default function Zenith() {
               />
             </LineChart>
           </ResponsiveContainer>
-        </div>
+            </CardContent>
+          </Card>
 
-        {/* Trading Interface */}
-        <div className="grid md:grid-cols-2 gap-4">
-          {/* Buy */}
-          <div className="border border-border/30 p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <ArrowUpRight className="w-4 h-4 text-emerald-500" />
-              <h2 className="text-base font-medium">Acheter</h2>
-            </div>
-
-            <div>
-              <label className="text-xs text-muted-foreground">Montant ($)</label>
-              <div className="flex items-center gap-2 mt-1">
-                <input
-                  type="number"
-                  value={buyAmount}
-                  onChange={(e) => setBuyAmount(e.target.value)}
-                  placeholder="0"
-                  className="flex-1 px-3 py-2 bg-transparent border border-border/30 focus:border-foreground/30 outline-none tabular-nums text-sm"
-                />
-                <button
-                  type="button"
-                  onClick={() => setBuyAmount(moneyBalance.toString())}
-                  disabled={loading || moneyBalance <= 0}
-                  className={cn(
-                    "px-3 py-2 border text-[10px] uppercase tracking-widest transition-colors whitespace-nowrap",
-                    !loading && moneyBalance > 0
-                      ? "border-emerald-500/60 text-emerald-500 hover:bg-emerald-500 hover:text-background"
-                      : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
-                  )}
-                >
-                  Max
-                </button>
-                <button
-                  onClick={handleBuy}
-                  disabled={loading || !buyAmount || buyMoneyAmount <= 0 || buyMoneyAmount > moneyBalance}
-                  className={cn(
-                    "px-4 py-2 border text-xs transition-colors whitespace-nowrap",
-                    !loading && buyMoneyAmount > 0 && buyMoneyAmount <= moneyBalance
-                      ? "border-emerald-500 text-emerald-500 hover:bg-emerald-500 hover:text-background"
-                      : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
-                  )}
-                >
-                  Acheter
-                </button>
-              </div>
-            </div>
-
-            {buyMoneyAmount > 0 && (
-              <div className="text-xs text-muted-foreground space-y-1 pt-1">
-                <div className="flex justify-between">
-                  <span>Frais ({(feePercentage * 100).toFixed(1)}%)</span>
-                  <span className="tabular-nums">-${buyFee}</span>
+          {/* Trading Interface */}
+          <div className="grid md:grid-cols-2 gap-4">
+            {/* Buy */}
+            <Card className="border-border/40">
+              <CardContent className={SPACING.CARD_SPACING}>
+                <div className="flex items-center gap-2">
+                  <ArrowUpRight className="w-4 h-4 text-emerald-500" />
+                  <h2 className={TYPOGRAPHY.H6}>Acheter</h2>
                 </div>
-                <div className="flex justify-between">
-                  <span>Vous recevrez</span>
-                  <span className="tabular-nums text-foreground">{buyCoinsEstimate.toFixed(4)} ZNT</span>
+
+                <div>
+                  <label className={TYPOGRAPHY.XS}>Montant ($)</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input
+                      type="number"
+                      value={buyAmount}
+                      onChange={(e) => setBuyAmount(e.target.value)}
+                      placeholder="0"
+                      className="flex-1 tabular-nums"
+                    />
+                    <Button
+                      type="button"
+                      onClick={() => setBuyAmount(moneyBalance.toString())}
+                      disabled={loading || moneyBalance <= 0}
+                      variant="outline"
+                      size="sm"
+                      className="text-[10px] uppercase tracking-widest whitespace-nowrap border-emerald-500/60 text-emerald-500 hover:bg-emerald-500 hover:text-background"
+                    >
+                      Max
+                    </Button>
+                    <Button
+                      onClick={handleBuy}
+                      disabled={loading || !buyAmount || buyMoneyAmount <= 0 || buyMoneyAmount > moneyBalance}
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "text-xs whitespace-nowrap",
+                        !loading && buyMoneyAmount > 0 && buyMoneyAmount <= moneyBalance
+                          ? "border-emerald-500 text-emerald-500 hover:bg-emerald-500 hover:text-background"
+                          : ""
+                      )}
+                    >
+                      Acheter
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
+
+                {buyMoneyAmount > 0 && (
+                  <div className={cn(TYPOGRAPHY.XS, "text-muted-foreground space-y-1 pt-1")}>
+                    <div className="flex justify-between">
+                      <span>Frais ({(feePercentage * 100).toFixed(1)}%)</span>
+                      <span className="tabular-nums">-${buyFee}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Vous recevrez</span>
+                      <span className="tabular-nums text-foreground">{buyCoinsEstimate.toFixed(4)} ZNT</span>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Sell */}
+            <Card className="border-border/40">
+              <CardContent className={SPACING.CARD_SPACING}>
+                <div className="flex items-center gap-2">
+                  <ArrowDownRight className="w-4 h-4 text-red-500" />
+                  <h2 className={TYPOGRAPHY.H6}>Vendre</h2>
+                </div>
+
+                <div>
+                  <label className={TYPOGRAPHY.XS}>Quantité (ZNT)</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input
+                      type="number"
+                      value={sellAmount}
+                      onChange={(e) => setSellAmount(e.target.value)}
+                      placeholder="0"
+                      step="0.0001"
+                      className="flex-1 tabular-nums"
+                    />
+                    <Button
+                      type="button"
+                      onClick={() => setSellAmount(zenithBalance.toFixed(4))}
+                      disabled={loading || zenithBalance <= 0}
+                      variant="outline"
+                      size="sm"
+                      className="text-[10px] uppercase tracking-widest whitespace-nowrap border-red-500/60 text-red-500 hover:bg-red-500 hover:text-background"
+                    >
+                      Max
+                    </Button>
+                    <Button
+                      onClick={handleSell}
+                      disabled={loading || !sellAmount || sellCoinAmount <= 0 || sellCoinAmount > zenithBalance}
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "text-xs whitespace-nowrap",
+                        !loading && sellCoinAmount > 0 && sellCoinAmount <= zenithBalance
+                          ? "border-red-500 text-red-500 hover:bg-red-500 hover:text-background"
+                          : ""
+                      )}
+                    >
+                      Vendre
+                    </Button>
+                  </div>
+                </div>
+
+                {sellCoinAmount > 0 && (
+                  <div className={cn(TYPOGRAPHY.XS, "text-muted-foreground space-y-1 pt-1")}>
+                    <div className="flex justify-between">
+                      <span>Valeur brute</span>
+                      <span className="tabular-nums">${sellGrossAmount}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Frais ({(feePercentage * 100).toFixed(1)}%)</span>
+                      <span className="tabular-nums">-${sellFee}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Vous recevrez</span>
+                      <span className="tabular-nums text-foreground">${sellNetAmount}</span>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
-
-          {/* Sell */}
-          <div className="border border-border/30 p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <ArrowDownRight className="w-4 h-4 text-red-500" />
-              <h2 className="text-base font-medium">Vendre</h2>
-            </div>
-
-            <div>
-              <label className="text-xs text-muted-foreground">Quantité (ZNT)</label>
-              <div className="flex items-center gap-2 mt-1">
-                <input
-                  type="number"
-                  value={sellAmount}
-                  onChange={(e) => setSellAmount(e.target.value)}
-                  placeholder="0"
-                  step="0.0001"
-                  className="flex-1 px-3 py-2 bg-transparent border border-border/30 focus:border-foreground/30 outline-none tabular-nums text-sm"
-                />
-                <button
-                  type="button"
-                  onClick={() => setSellAmount(zenithBalance.toFixed(4))}
-                  disabled={loading || zenithBalance <= 0}
-                  className={cn(
-                    "px-3 py-2 border text-[10px] uppercase tracking-widest transition-colors whitespace-nowrap",
-                    !loading && zenithBalance > 0
-                      ? "border-red-500/60 text-red-500 hover:bg-red-500 hover:text-background"
-                      : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
-                  )}
-                >
-                  Max
-                </button>
-                <button
-                  onClick={handleSell}
-                  disabled={loading || !sellAmount || sellCoinAmount <= 0 || sellCoinAmount > zenithBalance}
-                  className={cn(
-                    "px-4 py-2 border text-xs transition-colors whitespace-nowrap",
-                    !loading && sellCoinAmount > 0 && sellCoinAmount <= zenithBalance
-                      ? "border-red-500 text-red-500 hover:bg-red-500 hover:text-background"
-                      : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
-                  )}
-                >
-                  Vendre
-                </button>
-              </div>
-            </div>
-
-            {sellCoinAmount > 0 && (
-              <div className="text-xs text-muted-foreground space-y-1 pt-1">
-                <div className="flex justify-between">
-                  <span>Valeur brute</span>
-                  <span className="tabular-nums">${sellGrossAmount}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Frais ({(feePercentage * 100).toFixed(1)}%)</span>
-                  <span className="tabular-nums">-${sellFee}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Vous recevrez</span>
-                  <span className="tabular-nums text-foreground">${sellNetAmount}</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Error */}
       {error && (
-        <div className="text-center text-red-500 text-sm">
-          {error}
-        </div>
+        <Card className="border-destructive/50">
+          <CardContent className="p-4">
+            <p className={cn(TYPOGRAPHY.SMALL, "text-center text-destructive")}>
+              {error}
+            </p>
+          </CardContent>
+        </Card>
       )}
 
       {/* Transactions */}
-      <div className="border border-border/30 p-5 space-y-3">
-        <div className="flex gap-4 border-b border-border/30">
-          <button
-            onClick={() => setActiveTab('my')}
-            className={cn(
-              "pb-2 text-sm transition-colors",
-              activeTab === 'my'
-                ? "border-b-2 border-foreground text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Mes Transactions
-          </button>
-          <button
-            onClick={() => setActiveTab('all')}
-            className={cn(
-              "pb-2 text-sm transition-colors",
-              activeTab === 'all'
-                ? "border-b-2 border-foreground text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Toutes les Transactions
-          </button>
-        </div>
-
-        <div className="space-y-1 max-h-[300px] overflow-y-auto">
-          {transactions.length === 0 ? (
-            <p className="text-center text-muted-foreground py-6 text-sm">
-              Aucune transaction
-            </p>
-          ) : (
-            transactions.map((tx) => (
-              <div
-                key={tx.id}
-                className="flex items-center justify-between py-2 border-b border-border/10"
-              >
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "w-7 h-7 flex items-center justify-center border",
-                    tx.type === 'BUY'
-                      ? "border-emerald-500/30 text-emerald-500"
-                      : "border-red-500/30 text-red-500"
-                  )}>
-                    {tx.type === 'BUY' ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      {activeTab === 'all' && (
-                        <span
-                          className="text-xs font-medium"
-                          style={{ color: tx.user.usernameColor || undefined }}
-                        >
-                          {tx.user.username}
-                        </span>
-                      )}
-                      <span className={cn(
-                        "text-[10px] uppercase",
-                        tx.type === 'BUY' ? "text-emerald-500" : "text-red-500"
-                      )}>
-                        {tx.type === 'BUY' ? 'Achat' : 'Vente'}
-                      </span>
+      <Card className="border-border/40">
+        <CardContent className={SPACING.CARD_SPACING}>
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'my' | 'all')}>
+            <TabsList>
+              <TabsTrigger value="my">Mes Transactions</TabsTrigger>
+              <TabsTrigger value="all">Toutes les Transactions</TabsTrigger>
+            </TabsList>
+            <TabsContent value={activeTab} className="mt-4">
+              <div className="space-y-1 max-h-[300px] overflow-y-auto">
+                {transactions.length === 0 ? (
+                  <p className={cn(TYPOGRAPHY.MUTED, "text-center py-6")}>
+                    Aucune transaction
+                  </p>
+                ) : (
+                  transactions.map((tx) => (
+                    <div
+                      key={tx.id}
+                      className="flex items-center justify-between py-2 border-b border-border/10"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "w-7 h-7 flex items-center justify-center border rounded-md",
+                          tx.type === 'BUY'
+                            ? "border-emerald-500/30 text-emerald-500"
+                            : "border-red-500/30 text-red-500"
+                        )}>
+                          {tx.type === 'BUY' ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            {activeTab === 'all' && (
+                              <span
+                                className={TYPOGRAPHY.XS}
+                                style={{ color: tx.user.usernameColor || undefined }}
+                              >
+                                {tx.user.username}
+                              </span>
+                            )}
+                            <span className={cn(
+                              "text-[10px] uppercase",
+                              tx.type === 'BUY' ? "text-emerald-500" : "text-red-500"
+                            )}>
+                              {tx.type === 'BUY' ? 'Achat' : 'Vente'}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">
+                            {new Date(tx.createdAt).toLocaleString('fr-FR')}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className={cn(TYPOGRAPHY.XS, "tabular-nums")}>
+                          {tx.type === 'BUY' ? '+' : '-'}{tx.coinAmount.toFixed(4)} ZNT
+                        </p>
+                        <p className="text-[10px] text-muted-foreground tabular-nums">
+                          @ ${tx.price.toFixed(2)} • Frais: ${tx.fee}
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-[10px] text-muted-foreground">
-                      {new Date(tx.createdAt).toLocaleString('fr-FR')}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs tabular-nums">
-                    {tx.type === 'BUY' ? '+' : '-'}{tx.coinAmount.toFixed(4)} ZNT
-                  </p>
-                  <p className="text-[10px] text-muted-foreground tabular-nums">
-                    @ ${tx.price.toFixed(2)} • Frais: ${tx.fee}
-                  </p>
-                </div>
+                  ))
+                )}
               </div>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+    </PageLayout>
   );
 }

@@ -14,7 +14,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { resolveImageUrl } from '@/lib/images';
+import PageLayout from '@/components/layout/PageLayout';
+import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 
 const rarityLabels: Record<string, string> = {
   COMMON: 'Commun',
@@ -213,9 +217,10 @@ export default function Gallery() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto py-12 px-4 space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-end">
+    <>
+      <PageLayout>
+        {/* Header */}
+        <div className="flex items-center justify-end">
         <div className="text-right text-sm text-muted-foreground tabular-nums">
           <div>{paintings.length}/20 tableaux exposés</div>
           {isOwnGallery && <div>${user?.money.toLocaleString()}</div>}
@@ -232,287 +237,252 @@ export default function Gallery() {
         </p>
       )}
 
-      {/* NPC Visit Section (only for own gallery) */}
-      {isOwnGallery && npcStatus && (
-        <div className="flex items-center justify-between p-4 border border-border/30 rounded-lg">
-          <div className="flex items-center gap-4">
-            <Users className="w-8 h-8 text-muted-foreground" />
-            <div>
-              <p className="font-medium">Visite des PNJ</p>
-              <p className="text-sm text-muted-foreground">
-                {npcStatus.canVisit
-                  ? `${npcStatus.paintingsInGallery} tableaux exposés → +$${npcStatus.potentialRevenue}/jour`
-                  : 'Déjà visité aujourd\'hui'}
-              </p>
-            </div>
-          </div>
-          <Button
-            onClick={handleNpcVisit}
-            disabled={!npcStatus.canVisit || visitingNpc || npcStatus.paintingsInGallery === 0}
-            variant={npcStatus.canVisit ? 'default' : 'outline'}
-          >
-            {visitingNpc ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : npcStatus.canVisit ? (
-              'Ouvrir aux visiteurs'
-            ) : (
-              'Revenir demain'
-            )}
-          </Button>
-        </div>
-      )}
-
-      {/* Tabs */}
-      {isOwnGallery && (
-        <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={() => setActiveTab('gallery')}
-            className={cn(
-              "px-4 py-2 text-sm border transition-colors flex items-center gap-2",
-              activeTab === 'gallery'
-                ? "border-foreground text-foreground"
-                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-            )}
-          >
-            <Package className="w-4 h-4" />
-            Galerie
-          </button>
-          <button
-            onClick={() => setActiveTab('warehouse')}
-            className={cn(
-              "px-4 py-2 text-sm border transition-colors flex items-center gap-2",
-              activeTab === 'warehouse'
-                ? "border-foreground text-foreground"
-                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-            )}
-          >
-            <Warehouse className="w-4 h-4" />
-            Entrepôt ({warehousePaintings.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('packages')}
-            className={cn(
-              "px-4 py-2 text-sm border transition-colors flex items-center gap-2",
-              activeTab === 'packages'
-                ? "border-foreground text-foreground"
-                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-            )}
-          >
-            <ShoppingBag className="w-4 h-4" />
-            Paquets d'art
-          </button>
-          <button
-            onClick={() => setSettingsOpen(true)}
-            className="px-4 py-2 text-sm border border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors flex items-center gap-2 ml-auto"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      {/* Gallery View */}
-      {activeTab === 'gallery' && (
-        <div className="space-y-6">
-          <div className="h-px bg-border" />
-
-          {/* Gallery Wall */}
-          <div
-            className="p-8 rounded-lg min-h-[400px]"
-            style={{ backgroundColor: gallery.backgroundColor }}
-          >
-            {paintings.length === 0 ? (
-              <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                <p>Galerie vide - Ajoutez des tableaux depuis l'entrepôt</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {paintings.map((painting) => (
-                  <div
-                    key={painting.id}
-                    className="group relative bg-black/20 rounded overflow-hidden aspect-square"
-                  >
-                    <img
-                      src={resolveImageUrl(painting.imageUrl)}
-                      alt={painting.title}
-                      className={cn(
-                        "w-full h-full object-cover transition-transform group-hover:scale-105",
-                        rarityFilters[painting.rarity]
-                      )}
-                    />
-                    {/* Overlay on hover */}
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
-                      <p className="text-white text-sm font-medium truncate">{painting.title}</p>
-                      <p className="text-white/70 text-xs truncate">{painting.artist}</p>
-                      <div className="flex items-center justify-between mt-1">
-                        <span className={cn("text-xs", rarityColors[painting.rarity])}>
-                          {rarityLabels[painting.rarity]}
-                        </span>
-                        <span className="text-white/50 text-xs">
-                          {painting.copyNumber}/{painting.maxCopies}
-                        </span>
-                      </div>
-                      {isOwnGallery && (
-                        <button
-                          onClick={() => handleMovePainting(painting.id, false)}
-                          disabled={moving === painting.id}
-                          className="mt-2 px-2 py-1 text-xs bg-white/20 hover:bg-white/30 rounded transition-colors flex items-center gap-1"
-                        >
-                          {moving === painting.id ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <>
-                              <ArrowLeft className="w-3 h-3" />
-                              Entrepôt
-                            </>
-                          )}
-                        </button>
-                      )}
-                    </div>
+        {/* NPC Visit Section (only for own gallery) */}
+        {isOwnGallery && npcStatus && (
+          <Card className="border-border/40">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <Users className="w-8 h-8 text-muted-foreground" />
+                  <div>
+                    <p className={TYPOGRAPHY.SMALL}>Visite des PNJ</p>
+                    <p className={TYPOGRAPHY.XS}>
+                      {npcStatus.canVisit
+                        ? `${npcStatus.paintingsInGallery} tableaux exposés → +$${npcStatus.potentialRevenue}/jour`
+                        : 'Déjà visité aujourd\'hui'}
+                    </p>
                   </div>
+                </div>
+                <Button
+                  onClick={handleNpcVisit}
+                  disabled={!npcStatus.canVisit || visitingNpc || npcStatus.paintingsInGallery === 0}
+                  variant={npcStatus.canVisit ? 'default' : 'outline'}
+                >
+                  {visitingNpc ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : null}
+                  {npcStatus.canVisit ? 'Ouvrir aux visiteurs' : 'Revenir demain'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Tabs */}
+        {isOwnGallery && (
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'gallery' | 'warehouse' | 'packages')}>
+            <div className="flex items-center justify-between">
+              <TabsList>
+                <TabsTrigger value="gallery">
+                  <Package className="w-4 h-4 mr-2" />
+                  Galerie
+                </TabsTrigger>
+                <TabsTrigger value="warehouse">
+                  <Warehouse className="w-4 h-4 mr-2" />
+                  Entrepôt ({warehousePaintings.length})
+                </TabsTrigger>
+                <TabsTrigger value="packages">
+                  <ShoppingBag className="w-4 h-4 mr-2" />
+                  Paquets d'art
+                </TabsTrigger>
+              </TabsList>
+              <Button
+                onClick={() => setSettingsOpen(true)}
+                variant="outline"
+                size="icon"
+              >
+                <Settings className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <TabsContent value="gallery" className={SPACING.SECTION_SPACING}>
+              {/* Gallery Wall */}
+              <Card
+                className="min-h-[400px]"
+                style={{ backgroundColor: gallery.backgroundColor }}
+              >
+                <CardContent className="p-8">
+                  {paintings.length === 0 ? (
+                    <div className="flex items-center justify-center h-[300px]">
+                      <p className={TYPOGRAPHY.MUTED}>Galerie vide - Ajoutez des tableaux depuis l'entrepôt</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                      {paintings.map((painting) => (
+                        <div
+                          key={painting.id}
+                          className="group relative bg-black/20 rounded overflow-hidden aspect-square"
+                        >
+                          <img
+                            src={resolveImageUrl(painting.imageUrl)}
+                            alt={painting.title}
+                            className={cn(
+                              "w-full h-full object-cover transition-transform group-hover:scale-105",
+                              rarityFilters[painting.rarity]
+                            )}
+                          />
+                          {/* Overlay on hover */}
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
+                            <p className={cn("text-white", TYPOGRAPHY.SMALL, "truncate")}>{painting.title}</p>
+                            <p className="text-white/70 text-xs truncate">{painting.artist}</p>
+                            <div className="flex items-center justify-between mt-1">
+                              <span className={cn("text-xs", rarityColors[painting.rarity])}>
+                                {rarityLabels[painting.rarity]}
+                              </span>
+                              <span className="text-white/50 text-xs">
+                                {painting.copyNumber}/{painting.maxCopies}
+                              </span>
+                            </div>
+                            {isOwnGallery && (
+                              <Button
+                                onClick={() => handleMovePainting(painting.id, false)}
+                                disabled={moving === painting.id}
+                                variant="ghost"
+                                size="sm"
+                                className="mt-2 text-xs bg-white/20 hover:bg-white/30 text-white"
+                              >
+                                {moving === painting.id ? (
+                                  <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                                ) : (
+                                  <ArrowLeft className="w-3 h-3 mr-1" />
+                                )}
+                                Entrepôt
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="warehouse" className={SPACING.SECTION_SPACING}>
+              {warehousePaintings.length === 0 ? (
+                <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
+                  Entrepôt vide - Achetez des paquets d'art pour obtenir des tableaux
+                </p>
+              ) : (
+                <div className="space-y-0">
+                  {warehousePaintings.map((painting) => (
+                    <Card
+                      key={painting.id}
+                      className="border-border/40 border-b last:border-b"
+                    >
+                      <CardContent className="py-6">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4 flex-1">
+                            <div className="relative w-16 h-16 rounded overflow-hidden shrink-0">
+                              <img
+                                src={resolveImageUrl(painting.imageUrl)}
+                                alt={painting.title}
+                                className={cn(
+                                  "w-full h-full object-cover",
+                                  rarityFilters[painting.rarity]
+                                )}
+                              />
+                            </div>
+
+                            <div className="space-y-1 flex-1 min-w-0">
+                              <div className="flex items-center gap-3">
+                                <h3 className={TYPOGRAPHY.SMALL}>{painting.title}</h3>
+                                <span className={cn(TYPOGRAPHY.XS, "uppercase tracking-wide", rarityColors[painting.rarity])}>
+                                  {rarityLabels[painting.rarity]}
+                                </span>
+                                <span className={TYPOGRAPHY.XS}>
+                                  {painting.copyNumber}/{painting.maxCopies}
+                                </span>
+                              </div>
+                              <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground truncate")}>{painting.artist}</p>
+                              {painting.isListed && (
+                                <p className={cn(TYPOGRAPHY.XS, "text-yellow-500")}>En vente sur le marché</p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 ml-4 shrink-0">
+                            <Button
+                              asChild
+                              variant="outline"
+                              size="sm"
+                            >
+                              <Link to="/market">
+                                Vendre
+                              </Link>
+                            </Button>
+                            <Button
+                              onClick={() => handleMovePainting(painting.id, true)}
+                              disabled={moving === painting.id || painting.isListed || paintings.length >= 20}
+                              variant="outline"
+                              size="sm"
+                            >
+                              {moving === painting.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                              ) : (
+                                <>
+                                  Exposer
+                                  <ArrowRight className="w-4 h-4 ml-1" />
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="packages" className={SPACING.SECTION_SPACING}>
+              <div className={cn("text-center", TYPOGRAPHY.SMALL, "text-muted-foreground mb-8")}>
+                <p>Achetez des paquets d'art pour obtenir des tableaux aléatoires.</p>
+                <p>Tous les paquets ont les mêmes chances de raretés.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {packages.map((pkg) => (
+                  <Card
+                    key={pkg.tier}
+                    className={cn(
+                      "text-center",
+                      SPACING.CARD_SPACING,
+                      pkg.purchased
+                        ? "border-border/30 opacity-50"
+                        : "border-border/40 hover:border-foreground/30 transition-colors"
+                    )}
+                  >
+                    <CardContent className="p-6">
+                      <div>
+                        <Package className="w-12 h-12 mx-auto text-muted-foreground" />
+                        <h3 className={cn(TYPOGRAPHY.H5, "mt-2")}>Paquet {pkg.tier}</h3>
+                        <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>${pkg.price}</p>
+                      </div>
+
+                      <Button
+                        onClick={() => handlePurchasePackage(pkg.tier)}
+                        disabled={pkg.purchased || !canAffordPackage(pkg.price) || purchasing !== null}
+                        variant="outline"
+                        className="w-full"
+                      >
+                        {purchasing === pkg.tier ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : null}
+                        {pkg.purchased ? 'Acheté' : canAffordPackage(pkg.price) ? 'Acheter' : 'Insuffisant'}
+                      </Button>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
-            )}
-          </div>
-        </div>
-      )}
 
-      {/* Warehouse View */}
-      {activeTab === 'warehouse' && isOwnGallery && (
-        <div className="space-y-6">
-          <div className="h-px bg-border" />
-
-          {warehousePaintings.length === 0 ? (
-            <p className="text-center text-muted-foreground py-12">
-              Entrepôt vide - Achetez des paquets d'art pour obtenir des tableaux
-            </p>
-          ) : (
-            <div className="space-y-0">
-              {warehousePaintings.map((painting) => (
-                <div
-                  key={painting.id}
-                  className="flex items-center justify-between py-6 border-b border-border/30 last:border-0"
-                >
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className="relative w-16 h-16 rounded overflow-hidden shrink-0">
-                      <img
-                        src={resolveImageUrl(painting.imageUrl)}
-                        alt={painting.title}
-                        className={cn(
-                          "w-full h-full object-cover",
-                          rarityFilters[painting.rarity]
-                        )}
-                      />
-                    </div>
-
-                    <div className="space-y-1 flex-1 min-w-0">
-                      <div className="flex items-center gap-3">
-                        <h3 className="font-medium truncate">{painting.title}</h3>
-                        <span className={cn("text-xs uppercase tracking-wide", rarityColors[painting.rarity])}>
-                          {rarityLabels[painting.rarity]}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {painting.copyNumber}/{painting.maxCopies}
-                        </span>
-                      </div>
-                      <p className="text-sm text-muted-foreground truncate">{painting.artist}</p>
-                      {painting.isListed && (
-                        <p className="text-xs text-yellow-500">En vente sur le marché</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 ml-4 shrink-0">
-                    <Link
-                      to="/market"
-                      className="px-3 py-2 text-sm border border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
-                    >
-                      Vendre
-                    </Link>
-                    <button
-                      onClick={() => handleMovePainting(painting.id, true)}
-                      disabled={moving === painting.id || painting.isListed || paintings.length >= 20}
-                      className={cn(
-                        "px-3 py-2 text-sm border transition-colors flex items-center gap-1",
-                        painting.isListed || paintings.length >= 20
-                          ? "border-border/30 text-muted-foreground/50 cursor-not-allowed"
-                          : "border-foreground text-foreground hover:bg-foreground hover:text-background"
-                      )}
-                    >
-                      {moving === painting.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <>
-                          Exposer
-                          <ArrowRight className="w-4 h-4" />
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Art Packages View */}
-      {activeTab === 'packages' && isOwnGallery && (
-        <div className="space-y-6">
-          <div className="h-px bg-border" />
-
-          <div className="text-center text-muted-foreground text-sm mb-8">
-            <p>Achetez des paquets d'art pour obtenir des tableaux aléatoires.</p>
-            <p>Tous les paquets ont les mêmes chances de raretés.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {packages.map((pkg) => (
-              <div
-                key={pkg.tier}
-                className={cn(
-                  "p-6 border rounded-lg text-center space-y-4",
-                  pkg.purchased
-                    ? "border-border/30 opacity-50"
-                    : "border-border hover:border-foreground/30 transition-colors"
-                )}
-              >
-                <div>
-                  <Package className="w-12 h-12 mx-auto text-muted-foreground" />
-                  <h3 className="text-lg font-medium mt-2">Paquet {pkg.tier}</h3>
-                  <p className="text-2xl font-light">${pkg.price}</p>
-                </div>
-
-                <button
-                  onClick={() => handlePurchasePackage(pkg.tier)}
-                  disabled={pkg.purchased || !canAffordPackage(pkg.price) || purchasing !== null}
-                  className={cn(
-                    "w-full px-4 py-2 text-sm border transition-colors",
-                    pkg.purchased
-                      ? "border-border/30 text-muted-foreground/50 cursor-not-allowed"
-                      : canAffordPackage(pkg.price)
-                        ? "border-foreground text-foreground hover:bg-foreground hover:text-background"
-                        : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
-                  )}
-                >
-                  {purchasing === pkg.tier ? (
-                    <Loader2 className="h-4 w-4 animate-spin mx-auto" />
-                  ) : pkg.purchased ? (
-                    'Acheté'
-                  ) : canAffordPackage(pkg.price) ? (
-                    'Acheter'
-                  ) : (
-                    'Insuffisant'
-                  )}
-                </button>
-              </div>
-            ))}
-          </div>
-
-          <p className="text-center text-xs text-muted-foreground">
-            Les paquets se renouvellent chaque jour à minuit UTC.
-          </p>
-        </div>
-      )}
+              <p className={cn(TYPOGRAPHY.XS, "text-center text-muted-foreground")}>
+                Les paquets se renouvellent chaque jour à minuit UTC.
+              </p>
+            </TabsContent>
+          </Tabs>
+        )}
+      </PageLayout>
 
       {/* Settings Dialog */}
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
@@ -587,13 +557,13 @@ export default function Gallery() {
               </div>
 
               <div className="text-center space-y-1">
-                <h3 className="text-xl font-medium">{revealDialog.painting.title}</h3>
-                <p className="text-muted-foreground">{revealDialog.painting.artist}</p>
+                <h3 className={TYPOGRAPHY.H4}>{revealDialog.painting.title}</h3>
+                <p className={TYPOGRAPHY.MUTED}>{revealDialog.painting.artist}</p>
                 <div className="flex items-center justify-center gap-2">
-                  <span className={cn("text-sm uppercase tracking-wide", rarityColors[revealDialog.painting.rarity])}>
+                  <span className={cn(TYPOGRAPHY.SMALL, "uppercase tracking-wide", rarityColors[revealDialog.painting.rarity])}>
                     {rarityLabels[revealDialog.painting.rarity]}
                   </span>
-                  <span className="text-muted-foreground text-sm">
+                  <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground")}>
                     ({revealDialog.painting.copyNumber}/{revealDialog.painting.maxCopies})
                   </span>
                 </div>
@@ -608,6 +578,58 @@ export default function Gallery() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+
+      {/* Settings Dialog */}
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="w-5 h-5" />
+              Paramètres de la galerie
+            </DialogTitle>
+            <DialogDescription>
+              Personnalisez l'apparence de votre galerie.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4">
+            <div className="space-y-2">
+              <label className={TYPOGRAPHY.SMALL}>Couleur du mur</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={backgroundColor}
+                  onChange={(e) => setBackgroundColor(e.target.value)}
+                  className="w-10 h-10 rounded cursor-pointer"
+                />
+                <Input
+                  value={backgroundColor}
+                  onChange={(e) => setBackgroundColor(e.target.value)}
+                  placeholder="#1a1a2e"
+                  className="flex-1 bg-transparent font-mono"
+                />
+              </div>
+            </div>
+
+            {/* Preview */}
+            <div
+              className="h-20 rounded-lg flex items-center justify-center text-muted-foreground text-sm"
+              style={{ backgroundColor }}
+            >
+              Aperçu du mur
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSettingsOpen(false)}>
+              Annuler
+            </Button>
+            <Button onClick={handleSaveSettings}>
+              Sauvegarder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

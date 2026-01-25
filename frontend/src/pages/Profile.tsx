@@ -5,8 +5,12 @@ import { usersApi, leaderboardsApi, auraCoinApi, bombPartyApi, BombPartyStats } 
 import { Edit2, Save, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import PageLayout from '@/components/layout/PageLayout';
+import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { resolveImageUrl } from '@/lib/images';
 import { BadgeWithTooltip } from '@/components/ui/badge-tooltip';
+import { cn } from '@/lib/utils';
 
 interface ProfileUser {
   id: string;
@@ -124,19 +128,21 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
-      </div>
+      <PageLayout>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+        </div>
+      </PageLayout>
     );
   }
 
   if (!profileUser) {
     return (
-      <div className="max-w-4xl mx-auto py-12 px-4">
-        <p className="text-center text-muted-foreground py-12">
+      <PageLayout variant="compact">
+        <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
           Utilisateur introuvable
         </p>
-      </div>
+      </PageLayout>
     );
   }
 
@@ -156,7 +162,7 @@ export default function Profile() {
     : null;
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
+    <PageLayout variant="compact">
       {/* Profile Picture */}
       <div className="flex items-start gap-6">
         {profileUser.profilePicture ? (
@@ -171,7 +177,7 @@ export default function Profile() {
         ) : (
           <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-muted/30 flex items-center justify-center border-2 border-border shrink-0">
             <span 
-              className="text-3xl md:text-4xl font-light"
+              className={cn(TYPOGRAPHY.H2, "md:text-4xl")}
               style={profileUser.usernameColor ? { color: profileUser.usernameColor } : undefined}
             >
               {profileUser.username.slice(0, 2).toUpperCase()}
@@ -181,7 +187,7 @@ export default function Profile() {
         
         <div className="flex-1 min-w-0">
           <p 
-            className="text-5xl md:text-7xl font-light tracking-tight truncate"
+            className={cn(TYPOGRAPHY.H1, "md:text-7xl truncate")}
             style={profileUser.usernameColor ? { color: profileUser.usernameColor } : undefined}
             >
               {profileUser.username}
@@ -198,184 +204,198 @@ export default function Profile() {
                 ))}
               </div>
             )}
-            <p className="text-sm text-muted-foreground mt-2">
+            <p className={cn(TYPOGRAPHY.SMALL, "mt-2")}>
               Membre depuis {new Date(profileUser.createdAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
             </p>
           </div>
         </div>
 
       {/* Bio Section */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
-            À propos
-          </h2>
-          {isOwnProfile && !editingBio && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setEditingBio(true)}
-              className="h-8 text-muted-foreground hover:text-foreground"
-            >
-              <Edit2 className="h-4 w-4 mr-2" />
-              Modifier
-            </Button>
-          )}
-        </div>
-        
-        {editingBio ? (
-          <div className="space-y-3">
-            <Textarea
-              value={bioText}
-              onChange={(e) => setBioText(e.target.value)}
-              placeholder="Écris quelque chose sur toi..."
-              className="bg-transparent resize-none min-h-[100px]"
-              maxLength={500}
-            />
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground tabular-nums">
-                {bioText.length}/500
-              </span>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleCancelBio}
-                  disabled={savingBio}
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Annuler
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleSaveBio}
-                  disabled={savingBio}
-                >
-                  {savingBio ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                  ) : (
-                    <Save className="h-4 w-4 mr-1" />
-                  )}
-                  Enregistrer
-                </Button>
+      <Card className="border-border/40">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardDescription>À propos</CardDescription>
+            {isOwnProfile && !editingBio && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setEditingBio(true)}
+                className="h-8 text-muted-foreground hover:text-foreground"
+              >
+                <Edit2 className="h-4 w-4 mr-2" />
+                Modifier
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className={SPACING.CARD_SPACING}>
+          {editingBio ? (
+            <div className="space-y-3">
+              <Textarea
+                value={bioText}
+                onChange={(e) => setBioText(e.target.value)}
+                placeholder="Écris quelque chose sur toi..."
+                className="bg-transparent resize-none min-h-[100px]"
+                maxLength={500}
+              />
+              <div className="flex items-center justify-between">
+                <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground tabular-nums")}>
+                  {bioText.length}/500
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCancelBio}
+                    disabled={savingBio}
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Annuler
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleSaveBio}
+                    disabled={savingBio}
+                  >
+                    {savingBio ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    ) : (
+                      <Save className="h-4 w-4 mr-1" />
+                    )}
+                    Enregistrer
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        ) : (
-          <p className={profileUser.bio ? 'text-foreground' : 'text-muted-foreground italic'}>
-            {profileUser.bio || (isOwnProfile ? 'Ajoute une description pour te présenter aux autres joueurs.' : 'Aucune description.')}
-          </p>
-        )}
-      </section>
+          ) : (
+            <p className={profileUser.bio ? TYPOGRAPHY.BODY : cn(TYPOGRAPHY.MUTED, "italic")}>
+              {profileUser.bio || (isOwnProfile ? 'Ajoute une description pour te présenter aux autres joueurs.' : 'Aucune description.')}
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-8 md:gap-12">
-        <div className="space-y-1">
-          <p className="text-4xl md:text-5xl font-light tabular-nums">
-            {profileUser.aura.toLocaleString()}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            aura <span className="text-muted-foreground/60">#{rankings?.aura?.rank || '—'}</span>
-          </p>
-        </div>
-        <div className="space-y-1">
-          <p className="text-4xl md:text-5xl font-light tabular-nums">
-            ${profileUser.money.toLocaleString()}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            money <span className="text-muted-foreground/60">#{rankings?.money?.rank || '—'}</span>
-          </p>
-        </div>
-        <div className="space-y-1">
-          <p className="text-4xl md:text-5xl font-light tabular-nums">
-            {profileUser.auraCoinBalance.toFixed(4)} AC
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Aura Coin
-          </p>
-          <p className="text-xs text-muted-foreground tabular-nums">
-            ≈ ${auraCoinValue !== null ? auraCoinValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
-          </p>
-        </div>
-        <div className="space-y-1">
-          <p className="text-4xl md:text-5xl font-light tabular-nums">
-            ${totalMoneyValue !== null ? totalMoneyValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            total money
-          </p>
-        </div>
-        <div className="space-y-1">
-          <p className="text-4xl md:text-5xl font-light tabular-nums">
-            {totalWins}
-          </p>
-          <p className="text-sm text-muted-foreground">victoires</p>
-        </div>
-        <div className="space-y-1">
-          <p className="text-4xl md:text-5xl font-light tabular-nums">
-            {totalGames}
-          </p>
-          <p className="text-sm text-muted-foreground">parties</p>
-        </div>
+        <Card className="border-border/40">
+          <CardContent className="p-4 space-y-1">
+            <p className={cn(TYPOGRAPHY.H2, "md:text-5xl tabular-nums")}>
+              {profileUser.aura.toLocaleString()}
+            </p>
+            <p className={TYPOGRAPHY.SMALL}>
+              aura <span className="text-muted-foreground/60">#{rankings?.aura?.rank || '—'}</span>
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border-border/40">
+          <CardContent className="p-4 space-y-1">
+            <p className={cn(TYPOGRAPHY.H2, "md:text-5xl tabular-nums")}>
+              ${profileUser.money.toLocaleString()}
+            </p>
+            <p className={TYPOGRAPHY.SMALL}>
+              money <span className="text-muted-foreground/60">#{rankings?.money?.rank || '—'}</span>
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border-border/40">
+          <CardContent className="p-4 space-y-1">
+            <p className={cn(TYPOGRAPHY.H2, "md:text-5xl tabular-nums")}>
+              {profileUser.auraCoinBalance.toFixed(4)} AC
+            </p>
+            <p className={TYPOGRAPHY.SMALL}>
+              Aura Coin
+            </p>
+            <p className={cn(TYPOGRAPHY.XS, "tabular-nums")}>
+              ≈ ${auraCoinValue !== null ? auraCoinValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border-border/40">
+          <CardContent className="p-4 space-y-1">
+            <p className={cn(TYPOGRAPHY.H2, "md:text-5xl tabular-nums")}>
+              ${totalMoneyValue !== null ? totalMoneyValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
+            </p>
+            <p className={TYPOGRAPHY.SMALL}>
+              total money
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border-border/40">
+          <CardContent className="p-4 space-y-1">
+            <p className={cn(TYPOGRAPHY.H2, "md:text-5xl tabular-nums")}>
+              {totalWins}
+            </p>
+            <p className={TYPOGRAPHY.SMALL}>victoires</p>
+          </CardContent>
+        </Card>
+        <Card className="border-border/40">
+          <CardContent className="p-4 space-y-1">
+            <p className={cn(TYPOGRAPHY.H2, "md:text-5xl tabular-nums")}>
+              {totalGames}
+            </p>
+            <p className={TYPOGRAPHY.SMALL}>parties</p>
+          </CardContent>
+        </Card>
       </div>
 
 
       {/* Game Stats */}
-      <section className="space-y-6">
-        <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
-          Statistiques par jeu
-        </h2>
-        
-        {!hasGameStats && (
-          <p className="text-muted-foreground">Aucune partie jouée</p>
-        )}
-        <div className="space-y-0">
-          <div className="flex items-center justify-between py-4 border-b border-border/30 last:border-0">
-            <span className="font-medium capitalize">aura coin</span>
-            <div className="flex items-center gap-8 text-sm text-muted-foreground tabular-nums">
-              <span>{auraCoinTransactionCount} transactions</span>
-              <span>${auraCoinTotalMoney.toLocaleString()}</span>
-            </div>
-          </div>
-          {profileUser.gameStats.map((stat) => (
-            <div
-              key={stat.gameType}
-              className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
-            >
-              <span className="font-medium capitalize">
-                {stat.gameType.replace('_', ' ')}
-              </span>
-              <div className="flex items-center gap-8 text-sm text-muted-foreground tabular-nums">
-                <span>{stat.highScore.toLocaleString()} record</span>
-                <span>{stat.wins} V</span>
-                <span>{stat.totalPlayed} jouées</span>
-                <span>
-                  {stat.totalPlayed > 0
-                    ? Math.round((stat.wins / stat.totalPlayed) * 100)
-                    : 0}%
-                </span>
-              </div>
-            </div>
-          ))}
-          {hasBombPartyStats && bombPartyStats && (
-            <div className="flex items-center justify-between py-4 border-b border-border/30 last:border-0">
-              <span className="font-medium capitalize">bomb party</span>
-              <div className="flex items-center gap-8 text-sm text-muted-foreground tabular-nums">
-                <span>{bombPartyStats.longestWord || '—'} record</span>
-                <span>{bombPartyStats.wordsTyped.toLocaleString()} mots</span>
-                <span>{bombPartyStats.wins} V</span>
-                <span>{bombPartyStats.totalPlayed} jouées</span>
-                <span>
-                  {bombPartyStats.totalPlayed > 0
-                    ? Math.round((bombPartyStats.wins / bombPartyStats.totalPlayed) * 100)
-                    : 0}%
-                </span>
-              </div>
-            </div>
+      <Card className="border-border/40">
+        <CardHeader>
+          <CardDescription>Statistiques par jeu</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!hasGameStats && (
+            <p className={TYPOGRAPHY.MUTED}>Aucune partie jouée</p>
           )}
-        </div>
-      </section>
-    </div>
+          <div className="divide-y divide-border/30">
+            <div className="flex items-center justify-between py-4">
+              <span className={cn(TYPOGRAPHY.BODY, "font-medium capitalize")}>aura coin</span>
+              <div className={cn("flex items-center gap-8 tabular-nums", TYPOGRAPHY.SMALL)}>
+                <span>{auraCoinTransactionCount} transactions</span>
+                <span>${auraCoinTotalMoney.toLocaleString()}</span>
+              </div>
+            </div>
+            {profileUser.gameStats.map((stat) => (
+              <div
+                key={stat.gameType}
+                className="flex items-center justify-between py-4"
+              >
+                <span className={cn(TYPOGRAPHY.BODY, "font-medium capitalize")}>
+                  {stat.gameType.replace('_', ' ')}
+                </span>
+                <div className={cn("flex items-center gap-8 tabular-nums", TYPOGRAPHY.SMALL)}>
+                  <span>{stat.highScore.toLocaleString()} record</span>
+                  <span>{stat.wins} V</span>
+                  <span>{stat.totalPlayed} jouées</span>
+                  <span>
+                    {stat.totalPlayed > 0
+                      ? Math.round((stat.wins / stat.totalPlayed) * 100)
+                      : 0}%
+                  </span>
+                </div>
+              </div>
+            ))}
+            {hasBombPartyStats && bombPartyStats && (
+              <div className="flex items-center justify-between py-4">
+                <span className={cn(TYPOGRAPHY.BODY, "font-medium capitalize")}>bomb party</span>
+                <div className={cn("flex items-center gap-8 tabular-nums", TYPOGRAPHY.SMALL)}>
+                  <span>{bombPartyStats.longestWord || '—'} record</span>
+                  <span>{bombPartyStats.wordsTyped.toLocaleString()} mots</span>
+                  <span>{bombPartyStats.wins} V</span>
+                  <span>{bombPartyStats.totalPlayed} jouées</span>
+                  <span>
+                    {bombPartyStats.totalPlayed > 0
+                      ? Math.round((bombPartyStats.wins / bombPartyStats.totalPlayed) * 100)
+                      : 0}%
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </PageLayout>
   );
 }

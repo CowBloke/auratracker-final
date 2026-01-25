@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
+import { cn } from '@/lib/utils';
 
 interface MaintenanceProps {
   message?: string;
@@ -53,94 +56,113 @@ export default function Maintenance({ message, endDate }: MaintenanceProps) {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-6">
       <div className="max-w-5xl text-center space-y-6">
-        <div className="text-3xl font-semibold text-foreground">
+        <div className={TYPOGRAPHY.H2}>
           Site en maintenance
         </div>
-        <p className="text-muted-foreground">
+        <p className={TYPOGRAPHY.MUTED}>
           Le site est temporairement indisponible. Merci de revenir plus tard.
         </p>
         
         {timeLeft && (
           <div className="space-y-4">
-            <div className="text-lg font-medium text-foreground">
+            <div className={TYPOGRAPHY.H5}>
               Retour prévu dans :
             </div>
             <div className="grid grid-cols-4 gap-4 max-w-2xl mx-auto">
-              <div className="bg-muted/30 border border-border/40 rounded-lg p-6">
-                <div className="text-4xl font-bold text-foreground mb-2">
-                  {String(timeLeft.days).padStart(2, '0')}
-                </div>
-                <div className="text-sm text-muted-foreground uppercase">
-                  {timeLeft.days === 1 ? 'Jour' : 'Jours'}
-                </div>
-              </div>
-              <div className="bg-muted/30 border border-border/40 rounded-lg p-6">
-                <div className="text-4xl font-bold text-foreground mb-2">
-                  {String(timeLeft.hours).padStart(2, '0')}
-                </div>
-                <div className="text-sm text-muted-foreground uppercase">
-                  {timeLeft.hours === 1 ? 'Heure' : 'Heures'}
-                </div>
-              </div>
-              <div className="bg-muted/30 border border-border/40 rounded-lg p-6">
-                <div className="text-4xl font-bold text-foreground mb-2">
-                  {String(timeLeft.minutes).padStart(2, '0')}
-                </div>
-                <div className="text-sm text-muted-foreground uppercase">
-                  {timeLeft.minutes === 1 ? 'Minute' : 'Minutes'}
-                </div>
-              </div>
-              <div className="bg-muted/30 border border-border/40 rounded-lg p-6">
-                <div className="text-4xl font-bold text-foreground mb-2">
-                  {String(timeLeft.seconds).padStart(2, '0')}
-                </div>
-                <div className="text-sm text-muted-foreground uppercase">
-                  {timeLeft.seconds === 1 ? 'Seconde' : 'Secondes'}
-                </div>
-              </div>
+              <Card className="border-border/40">
+                <CardContent className="p-6">
+                  <div className={cn(TYPOGRAPHY.H1, "mb-2 tabular-nums")}>
+                    {String(timeLeft.days).padStart(2, '0')}
+                  </div>
+                  <div className={cn(TYPOGRAPHY.SMALL, "uppercase")}>
+                    {timeLeft.days === 1 ? 'Jour' : 'Jours'}
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-border/40">
+                <CardContent className="p-6">
+                  <div className={cn(TYPOGRAPHY.H1, "mb-2 tabular-nums")}>
+                    {String(timeLeft.hours).padStart(2, '0')}
+                  </div>
+                  <div className={cn(TYPOGRAPHY.SMALL, "uppercase")}>
+                    {timeLeft.hours === 1 ? 'Heure' : 'Heures'}
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-border/40">
+                <CardContent className="p-6">
+                  <div className={cn(TYPOGRAPHY.H1, "mb-2 tabular-nums")}>
+                    {String(timeLeft.minutes).padStart(2, '0')}
+                  </div>
+                  <div className={cn(TYPOGRAPHY.SMALL, "uppercase")}>
+                    {timeLeft.minutes === 1 ? 'Minute' : 'Minutes'}
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-border/40">
+                <CardContent className="p-6">
+                  <div className={cn(TYPOGRAPHY.H1, "mb-2 tabular-nums")}>
+                    {String(timeLeft.seconds).padStart(2, '0')}
+                  </div>
+                  <div className={cn(TYPOGRAPHY.SMALL, "uppercase")}>
+                    {timeLeft.seconds === 1 ? 'Seconde' : 'Secondes'}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         )}
 
         <div className="space-y-4">
-          <div className="text-lg font-medium text-foreground">
+          <div className={TYPOGRAPHY.H5}>
             En attendant, choisis ton ambiance :
           </div>
           <div className="grid gap-4 md:grid-cols-3">
-            <Link
-              to="/maintenance/wallace-gromit"
-              className="rounded-xl border border-border/50 bg-muted/20 p-5 text-left transition hover:-translate-y-1 hover:border-border"
-            >
-              <div className="text-sm font-semibold text-foreground">Wallace & Gromit</div>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Installe-toi confortablement, prends du pop-corn et lance un episode culte.
-              </p>
+            <Link to="/maintenance/wallace-gromit">
+              <Card className="border-border/40 hover:border-foreground/30 transition-colors">
+                <CardHeader>
+                  <CardTitle className={TYPOGRAPHY.SMALL}>Wallace & Gromit</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>
+                    Installe-toi confortablement, prends du pop-corn et lance un épisode culte.
+                  </CardDescription>
+                </CardContent>
+              </Card>
             </Link>
-            <Link
-              to="/maintenance/news"
-              className="rounded-xl border border-border/50 bg-muted/20 p-5 text-left transition hover:-translate-y-1 hover:border-border"
-            >
-              <div className="text-sm font-semibold text-foreground">News lounge</div>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Feuillette une selection d'articles courts pour passer le temps.
-              </p>
+            <Link to="/maintenance/news">
+              <Card className="border-border/40 hover:border-foreground/30 transition-colors">
+                <CardHeader>
+                  <CardTitle className={TYPOGRAPHY.SMALL}>News lounge</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>
+                    Feuillette une sélection d'articles courts pour passer le temps.
+                  </CardDescription>
+                </CardContent>
+              </Card>
             </Link>
-            <Link
-              to="/maintenance/musique"
-              className="rounded-xl border border-border/50 bg-muted/20 p-5 text-left transition hover:-translate-y-1 hover:border-border"
-            >
-              <div className="text-sm font-semibold text-foreground">Playlist AuraTracker</div>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Detends-toi avec la playlist speciale AuraTracker et laisse la musique faire le reste.
-              </p>
+            <Link to="/maintenance/musique">
+              <Card className="border-border/40 hover:border-foreground/30 transition-colors">
+                <CardHeader>
+                  <CardTitle className={TYPOGRAPHY.SMALL}>Playlist AuraTracker</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>
+                    Détends-toi avec la playlist spéciale AuraTracker et laisse la musique faire le reste.
+                  </CardDescription>
+                </CardContent>
+              </Card>
             </Link>
           </div>
         </div>
 
         {message && message.trim().length > 0 && (
-          <div className="border border-border/40 bg-muted/20 rounded-lg p-4 text-sm text-foreground">
-            {message}
-          </div>
+          <Card className="border-border/40">
+            <CardContent className="p-4">
+              <p className={TYPOGRAPHY.SMALL}>{message}</p>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>

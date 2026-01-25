@@ -6,6 +6,12 @@ import { auraCoinApi, AuraCoinTransaction, AuraCoinPriceHistory, AuraCoinPositio
 import { cn } from '@/lib/utils';
 import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, X } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import PageLayout from '@/components/layout/PageLayout';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 
 export default function AuraCoin() {
   const { refreshUser } = useAuth();
@@ -255,94 +261,89 @@ export default function AuraCoin() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto py-12 px-4 space-y-6">
-      {/* Header */}
-
+    <PageLayout>
       {/* Main Trading Card */}
-      <div className="border border-border/30 p-6 space-y-5">
-        {/* Balances and Current Price */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="border border-border/30 p-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Solde Money</p>
-            <p className="text-2xl font-light tabular-nums">${moneyBalance.toLocaleString()}</p>
+      <Card className="border-border/40">
+        <CardContent className={SPACING.SECTION_SPACING}>
+          {/* Balances and Current Price */}
+          <div className="grid grid-cols-3 gap-4">
+            <Card className="border-border/40">
+              <CardContent className="p-4">
+                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Solde Money</p>
+                <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>${moneyBalance.toLocaleString()}</p>
+              </CardContent>
+            </Card>
+            <Card className="border-border/40">
+              <CardContent className="p-4">
+                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Solde AuraCoin</p>
+                <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>{auraCoinBalance.toFixed(4)} AC</p>
+                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground tabular-nums")}>
+                  ≈ ${(auraCoinBalance * currentPrice).toFixed(2)}
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border-border/40">
+              <CardContent className="p-4">
+                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Prix Actuel</p>
+                <div className="flex items-center gap-2">
+                  <span className={cn(TYPOGRAPHY.H2, "tabular-nums")}>
+                    ${currentPrice.toFixed(2)}
+                  </span>
+                  <span className={cn(
+                    "flex items-center",
+                    TYPOGRAPHY.XS,
+                    priceChange >= 0 ? "text-emerald-500" : "text-red-500"
+                  )}>
+                    {priceChange >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                    {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
           </div>
-          <div className="border border-border/30 p-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Solde AuraCoin</p>
-            <p className="text-2xl font-light tabular-nums">{auraCoinBalance.toFixed(4)} AC</p>
-            <p className="text-xs text-muted-foreground tabular-nums">
-              ≈ ${(auraCoinBalance * currentPrice).toFixed(2)}
-            </p>
-          </div>
-          <div className="border border-border/30 p-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Prix Actuel</p>
-            <div className="flex items-center gap-2">
-              <span className="text-2xl font-light tabular-nums">
-                ${currentPrice.toFixed(2)}
-              </span>
-              <span className={cn(
-                "flex items-center text-xs",
-                priceChange >= 0 ? "text-emerald-500" : "text-red-500"
-              )}>
-                {priceChange >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
-              </span>
-            </div>
-          </div>
-        </div>
 
-        {/* Professional Chart */}
-        <div className="border border-border/30 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm text-muted-foreground uppercase tracking-wide">
-              Cours {timePeriod === 'hour' ? '1h' : timePeriod === 'day' ? '24h' : timePeriod === 'week' ? '7j' : '30j'}
-            </span>
-            <div className="flex gap-1 border border-border/30">
-              <button
-                onClick={() => setTimePeriod('hour')}
-                className={cn(
-                  "px-3 py-1 text-xs transition-colors",
-                  timePeriod === 'hour'
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground hover:bg-border/30"
-                )}
-              >
-                Heure
-              </button>
-              <button
-                onClick={() => setTimePeriod('day')}
-                className={cn(
-                  "px-3 py-1 text-xs transition-colors",
-                  timePeriod === 'day'
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground hover:bg-border/30"
-                )}
-              >
-                Jour
-              </button>
-              <button
-                onClick={() => setTimePeriod('week')}
-                className={cn(
-                  "px-3 py-1 text-xs transition-colors",
-                  timePeriod === 'week'
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground hover:bg-border/30"
-                )}
-              >
-                Semaine
-              </button>
-              <button
-                onClick={() => setTimePeriod('month')}
-                className={cn(
-                  "px-3 py-1 text-xs transition-colors",
-                  timePeriod === 'month'
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground hover:bg-border/30"
-                )}
-              >
-                Mois
-              </button>
-            </div>
-          </div>
+          {/* Professional Chart */}
+          <Card className="border-border/40">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between mb-3">
+                <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground uppercase tracking-wide")}>
+                  Cours {timePeriod === 'hour' ? '1h' : timePeriod === 'day' ? '24h' : timePeriod === 'week' ? '7j' : '30j'}
+                </span>
+                <div className="flex gap-1 border border-border/30 rounded-md">
+                  <Button
+                    onClick={() => setTimePeriod('hour')}
+                    variant={timePeriod === 'hour' ? 'default' : 'ghost'}
+                    size="sm"
+                    className="text-xs"
+                  >
+                    Heure
+                  </Button>
+                  <Button
+                    onClick={() => setTimePeriod('day')}
+                    variant={timePeriod === 'day' ? 'default' : 'ghost'}
+                    size="sm"
+                    className="text-xs"
+                  >
+                    Jour
+                  </Button>
+                  <Button
+                    onClick={() => setTimePeriod('week')}
+                    variant={timePeriod === 'week' ? 'default' : 'ghost'}
+                    size="sm"
+                    className="text-xs"
+                  >
+                    Semaine
+                  </Button>
+                  <Button
+                    onClick={() => setTimePeriod('month')}
+                    variant={timePeriod === 'month' ? 'default' : 'ghost'}
+                    size="sm"
+                    className="text-xs"
+                  >
+                    Mois
+                  </Button>
+                </div>
+              </div>
 
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
@@ -380,451 +381,422 @@ export default function AuraCoin() {
               />
             </LineChart>
           </ResponsiveContainer>
-        </div>
+            </CardContent>
+          </Card>
 
-        {/* Trading Mode Selector */}
-        <div className="flex gap-2 border-b border-border/30">
-          <button
-            onClick={() => setTradingMode('spot')}
-            className={cn(
-              "px-4 py-2 text-sm transition-colors",
-              tradingMode === 'spot'
-                ? "border-b-2 border-foreground text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Spot
-          </button>
-          <button
-            onClick={() => setTradingMode('leverage')}
-            className={cn(
-              "px-4 py-2 text-sm transition-colors",
-              tradingMode === 'leverage'
-                ? "border-b-2 border-foreground text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Levier (x10 max)
-          </button>
-        </div>
+          {/* Trading Mode Selector */}
+          <Tabs value={tradingMode} onValueChange={(v) => setTradingMode(v as 'spot' | 'leverage')}>
+            <TabsList>
+              <TabsTrigger value="spot">Spot</TabsTrigger>
+              <TabsTrigger value="leverage">Levier (x10 max)</TabsTrigger>
+            </TabsList>
 
-        {/* Trading Interface */}
-        {tradingMode === 'spot' ? (
-        <div className="grid md:grid-cols-2 gap-4">
-          {/* Buy */}
-          <div className="border border-border/30 p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <ArrowUpRight className="w-4 h-4 text-emerald-500" />
-              <h2 className="text-base font-medium">Acheter</h2>
-            </div>
+            <TabsContent value="spot" className="mt-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                {/* Buy */}
+                <Card className="border-border/40">
+                  <CardContent className={SPACING.CARD_SPACING}>
+                    <div className="flex items-center gap-2">
+                      <ArrowUpRight className="w-4 h-4 text-emerald-500" />
+                      <h2 className={TYPOGRAPHY.H6}>Acheter</h2>
+                    </div>
 
-            <div>
-              <label className="text-xs text-muted-foreground">Montant ($)</label>
-              <div className="flex items-center gap-2 mt-1">
-                <input
-                  type="number"
-                  value={buyAmount}
-                  onChange={(e) => setBuyAmount(e.target.value)}
-                  placeholder="0"
-                  className="flex-1 px-3 py-2 bg-transparent border border-border/30 focus:border-foreground/30 outline-none tabular-nums text-sm"
-                />
-                <button
-                  type="button"
-                  onClick={() => setBuyAmount(moneyBalance.toString())}
-                  disabled={loading || moneyBalance <= 0}
-                  className={cn(
-                    "px-3 py-2 border text-[10px] uppercase tracking-widest transition-colors whitespace-nowrap",
-                    !loading && moneyBalance > 0
-                      ? "border-emerald-500/60 text-emerald-500 hover:bg-emerald-500 hover:text-background"
-                      : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
-                  )}
-                >
-                  Max
-                </button>
-                <button
-                  onClick={handleBuy}
-                  disabled={loading || !buyAmount || buyMoneyAmount <= 0 || buyMoneyAmount > moneyBalance}
-                  className={cn(
-                    "px-4 py-2 border text-xs transition-colors whitespace-nowrap",
-                    !loading && buyMoneyAmount > 0 && buyMoneyAmount <= moneyBalance
-                      ? "border-emerald-500 text-emerald-500 hover:bg-emerald-500 hover:text-background"
-                      : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
-                  )}
-                >
-                  Acheter
-                </button>
-              </div>
-            </div>
+                    <div>
+                      <label className={TYPOGRAPHY.XS}>Montant ($)</label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Input
+                          type="number"
+                          value={buyAmount}
+                          onChange={(e) => setBuyAmount(e.target.value)}
+                          placeholder="0"
+                          className="flex-1 tabular-nums"
+                        />
+                        <Button
+                          type="button"
+                          onClick={() => setBuyAmount(moneyBalance.toString())}
+                          disabled={loading || moneyBalance <= 0}
+                          variant="outline"
+                          size="sm"
+                          className="text-[10px] uppercase tracking-widest whitespace-nowrap border-emerald-500/60 text-emerald-500 hover:bg-emerald-500 hover:text-background"
+                        >
+                          Max
+                        </Button>
+                        <Button
+                          onClick={handleBuy}
+                          disabled={loading || !buyAmount || buyMoneyAmount <= 0 || buyMoneyAmount > moneyBalance}
+                          variant="outline"
+                          size="sm"
+                          className={cn(
+                            "text-xs whitespace-nowrap",
+                            !loading && buyMoneyAmount > 0 && buyMoneyAmount <= moneyBalance
+                              ? "border-emerald-500 text-emerald-500 hover:bg-emerald-500 hover:text-background"
+                              : ""
+                          )}
+                        >
+                          Acheter
+                        </Button>
+                      </div>
+                    </div>
 
-            {buyMoneyAmount > 0 && (
-              <div className="text-xs text-muted-foreground space-y-1 pt-1">
-                <div className="flex justify-between">
-                  <span>Frais ({(feePercentage * 100).toFixed(0)}%)</span>
-                  <span className="tabular-nums">-${buyFee}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Vous recevrez</span>
-                  <span className="tabular-nums text-foreground">{buyCoinsEstimate.toFixed(4)} AC</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Sell */}
-          <div className="border border-border/30 p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <ArrowDownRight className="w-4 h-4 text-red-500" />
-              <h2 className="text-base font-medium">Vendre</h2>
-            </div>
-
-            <div>
-              <label className="text-xs text-muted-foreground">Quantité (AC)</label>
-              <div className="flex items-center gap-2 mt-1">
-                <input
-                  type="number"
-                  value={sellAmount}
-                  onChange={(e) => setSellAmount(e.target.value)}
-                  placeholder="0"
-                  step="0.0001"
-                  className="flex-1 px-3 py-2 bg-transparent border border-border/30 focus:border-foreground/30 outline-none tabular-nums text-sm"
-                />
-                <button
-                  type="button"
-                  onClick={() => setSellAmount(auraCoinBalance.toFixed(4))}
-                  disabled={loading || auraCoinBalance <= 0}
-                  className={cn(
-                    "px-3 py-2 border text-[10px] uppercase tracking-widest transition-colors whitespace-nowrap",
-                    !loading && auraCoinBalance > 0
-                      ? "border-red-500/60 text-red-500 hover:bg-red-500 hover:text-background"
-                      : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
-                  )}
-                >
-                  Max
-                </button>
-                <button
-                  onClick={handleSell}
-                  disabled={loading || !sellAmount || sellCoinAmount <= 0 || sellCoinAmount > auraCoinBalance}
-                  className={cn(
-                    "px-4 py-2 border text-xs transition-colors whitespace-nowrap",
-                    !loading && sellCoinAmount > 0 && sellCoinAmount <= auraCoinBalance
-                      ? "border-red-500 text-red-500 hover:bg-red-500 hover:text-background"
-                      : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
-                  )}
-                >
-                  Vendre
-                </button>
-              </div>
-            </div>
-
-            {sellCoinAmount > 0 && (
-              <div className="text-xs text-muted-foreground space-y-1 pt-1">
-                <div className="flex justify-between">
-                  <span>Valeur brute</span>
-                  <span className="tabular-nums">${sellGrossAmount}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Frais ({(feePercentage * 100).toFixed(0)}%)</span>
-                  <span className="tabular-nums">-${sellFee}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Vous recevrez</span>
-                  <span className="tabular-nums text-foreground">${sellNetAmount}</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-        ) : (
-        <div className="space-y-4">
-          {/* Leverage Trading Interface */}
-          <div className="grid md:grid-cols-2 gap-4">
-            {/* Open Position */}
-            <div className="border border-border/30 p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-medium">Ouvrir une Position</h2>
-              </div>
-
-              {/* Position Type */}
-              <div>
-                <label className="text-xs text-muted-foreground">Type de Position</label>
-                <div className="flex gap-2 mt-1">
-                  <button
-                    type="button"
-                    onClick={() => setPositionType('LONG')}
-                    className={cn(
-                      "flex-1 px-3 py-2 border text-sm transition-colors",
-                      positionType === 'LONG'
-                        ? "border-emerald-500 text-emerald-500 bg-emerald-500/10"
-                        : "border-border/30 text-muted-foreground hover:text-foreground"
+                    {buyMoneyAmount > 0 && (
+                      <div className={cn(TYPOGRAPHY.XS, "text-muted-foreground space-y-1 pt-1")}>
+                        <div className="flex justify-between">
+                          <span>Frais ({(feePercentage * 100).toFixed(0)}%)</span>
+                          <span className="tabular-nums">-${buyFee}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Vous recevrez</span>
+                          <span className="tabular-nums text-foreground">{buyCoinsEstimate.toFixed(4)} AC</span>
+                        </div>
+                      </div>
                     )}
-                  >
-                    LONG
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPositionType('SHORT')}
-                    className={cn(
-                      "flex-1 px-3 py-2 border text-sm transition-colors",
-                      positionType === 'SHORT'
-                        ? "border-red-500 text-red-500 bg-red-500/10"
-                        : "border-border/30 text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    SHORT
-                  </button>
-                </div>
-              </div>
+                  </CardContent>
+                </Card>
 
-              {/* Leverage Selector */}
-              <div>
-                <label className="text-xs text-muted-foreground">Effet de Levier</label>
-                <div className="flex gap-1 mt-1 flex-wrap">
-                  {[1, 2, 3, 5, 10].map((lev) => (
-                    <button
-                      key={lev}
-                      type="button"
-                      onClick={() => setLeverage(lev)}
-                      className={cn(
-                        "px-3 py-1 text-xs border transition-colors",
-                        leverage === lev
-                          ? "border-foreground text-foreground bg-foreground/10"
-                          : "border-border/30 text-muted-foreground hover:text-foreground"
+                {/* Sell */}
+                <Card className="border-border/40">
+                  <CardContent className={SPACING.CARD_SPACING}>
+                    <div className="flex items-center gap-2">
+                      <ArrowDownRight className="w-4 h-4 text-red-500" />
+                      <h2 className={TYPOGRAPHY.H6}>Vendre</h2>
+                    </div>
+
+                    <div>
+                      <label className={TYPOGRAPHY.XS}>Quantité (AC)</label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Input
+                          type="number"
+                          value={sellAmount}
+                          onChange={(e) => setSellAmount(e.target.value)}
+                          placeholder="0"
+                          step="0.0001"
+                          className="flex-1 tabular-nums"
+                        />
+                        <Button
+                          type="button"
+                          onClick={() => setSellAmount(auraCoinBalance.toFixed(4))}
+                          disabled={loading || auraCoinBalance <= 0}
+                          variant="outline"
+                          size="sm"
+                          className="text-[10px] uppercase tracking-widest whitespace-nowrap border-red-500/60 text-red-500 hover:bg-red-500 hover:text-background"
+                        >
+                          Max
+                        </Button>
+                        <Button
+                          onClick={handleSell}
+                          disabled={loading || !sellAmount || sellCoinAmount <= 0 || sellCoinAmount > auraCoinBalance}
+                          variant="outline"
+                          size="sm"
+                          className={cn(
+                            "text-xs whitespace-nowrap",
+                            !loading && sellCoinAmount > 0 && sellCoinAmount <= auraCoinBalance
+                              ? "border-red-500 text-red-500 hover:bg-red-500 hover:text-background"
+                              : ""
+                          )}
+                        >
+                          Vendre
+                        </Button>
+                      </div>
+                    </div>
+
+                    {sellCoinAmount > 0 && (
+                      <div className={cn(TYPOGRAPHY.XS, "text-muted-foreground space-y-1 pt-1")}>
+                        <div className="flex justify-between">
+                          <span>Valeur brute</span>
+                          <span className="tabular-nums">${sellGrossAmount}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Frais ({(feePercentage * 100).toFixed(0)}%)</span>
+                          <span className="tabular-nums">-${sellFee}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Vous recevrez</span>
+                          <span className="tabular-nums text-foreground">${sellNetAmount}</span>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+            <TabsContent value="leverage" className="mt-4">
+              <div className={SPACING.CARD_SPACING}>
+                {/* Leverage Trading Interface */}
+                <div className="grid md:grid-cols-2 gap-4">
+                  {/* Open Position */}
+                  <Card className="border-border/40">
+                    <CardContent className={SPACING.CARD_SPACING}>
+                      <div className="flex items-center gap-2">
+                        <h2 className={TYPOGRAPHY.H6}>Ouvrir une Position</h2>
+                      </div>
+
+                      {/* Position Type */}
+                      <div>
+                        <label className={TYPOGRAPHY.XS}>Type de Position</label>
+                        <div className="flex gap-2 mt-1">
+                          <Button
+                            type="button"
+                            onClick={() => setPositionType('LONG')}
+                            variant={positionType === 'LONG' ? 'default' : 'outline'}
+                            className="flex-1"
+                          >
+                            LONG
+                          </Button>
+                          <Button
+                            type="button"
+                            onClick={() => setPositionType('SHORT')}
+                            variant={positionType === 'SHORT' ? 'default' : 'outline'}
+                            className="flex-1"
+                          >
+                            SHORT
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Leverage Selector */}
+                      <div>
+                        <label className={TYPOGRAPHY.XS}>Effet de Levier</label>
+                        <div className="flex gap-1 mt-1 flex-wrap">
+                          {[1, 2, 3, 5, 10].map((lev) => (
+                            <Button
+                              key={lev}
+                              type="button"
+                              onClick={() => setLeverage(lev)}
+                              variant={leverage === lev ? 'default' : 'outline'}
+                              size="sm"
+                              className="text-xs"
+                            >
+                              {lev}x
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Margin Amount */}
+                      <div>
+                        <label className={TYPOGRAPHY.XS}>Marge ($)</label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Input
+                            type="number"
+                            value={marginAmount}
+                            onChange={(e) => setMarginAmount(e.target.value)}
+                            placeholder="0"
+                            className="flex-1 tabular-nums"
+                          />
+                          <Button
+                            type="button"
+                            onClick={() => setMarginAmount(moneyBalance.toString())}
+                            disabled={loading || moneyBalance <= 0}
+                            variant="outline"
+                            size="sm"
+                            className="text-[10px] uppercase tracking-widest whitespace-nowrap"
+                          >
+                            Max
+                          </Button>
+                        </div>
+                      </div>
+
+                      {marginAmountNum > 0 && (
+                        <div className={cn(TYPOGRAPHY.XS, "text-muted-foreground space-y-1 pt-1")}>
+                          <div className="flex justify-between">
+                            <span>Valeur notionnelle</span>
+                            <span className="tabular-nums text-foreground">${notionalValue.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Quantité (AC)</span>
+                            <span className="tabular-nums text-foreground">{coinAmountLeveraged.toFixed(4)} AC</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Prix d'entrée</span>
+                            <span className="tabular-nums">${currentPrice.toFixed(2)}</span>
+                          </div>
+                        </div>
                       )}
-                    >
-                      {lev}x
-                    </button>
-                  ))}
+
+                      <Button
+                        onClick={handleOpenPosition}
+                        disabled={loading || !marginAmount || marginAmountNum <= 0 || marginAmountNum > moneyBalance}
+                        variant="outline"
+                        className={cn(
+                          "w-full",
+                          !loading && marginAmountNum > 0 && marginAmountNum <= moneyBalance
+                            ? positionType === 'LONG'
+                              ? "border-emerald-500 text-emerald-500 hover:bg-emerald-500 hover:text-background"
+                              : "border-red-500 text-red-500 hover:bg-red-500 hover:text-background"
+                            : ""
+                        )}
+                      >
+                        Ouvrir {positionType}
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* Open Positions */}
+                  <Card className="border-border/40">
+                    <CardContent className={SPACING.CARD_SPACING}>
+                      <h2 className={TYPOGRAPHY.H6}>Positions Ouvertes</h2>
+                      <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                        {openPositions.length === 0 ? (
+                          <p className={cn(TYPOGRAPHY.MUTED, "text-center py-4")}>
+                            Aucune position ouverte
+                          </p>
+                        ) : (
+                          openPositions.map((pos) => (
+                            <Card
+                              key={pos.id}
+                              className={cn(
+                                "p-3",
+                                pos.type === 'LONG' ? "border-emerald-500/30" : "border-red-500/30"
+                              )}
+                            >
+                              <CardContent className="p-0 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <span className={cn(
+                                      TYPOGRAPHY.XS,
+                                      "font-medium",
+                                      pos.type === 'LONG' ? "text-emerald-500" : "text-red-500"
+                                    )}>
+                                      {pos.type} {pos.leverage}x
+                                    </span>
+                                  </div>
+                                  <Button
+                                    onClick={() => handleClosePosition(pos.id)}
+                                    disabled={loading}
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                                <div className={cn(TYPOGRAPHY.XS, "space-y-1")}>
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Prix d'entrée</span>
+                                    <span className="tabular-nums">${pos.entryPrice.toFixed(2)}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Prix actuel</span>
+                                    <span className="tabular-nums">${pos.currentPrice?.toFixed(2) || currentPrice.toFixed(2)}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Marge</span>
+                                    <span className="tabular-nums">${pos.marginAmount}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">P&L</span>
+                                    <span className={cn(
+                                      "tabular-nums font-medium",
+                                      (pos.pnl || 0) >= 0 ? "text-emerald-500" : "text-red-500"
+                                    )}>
+                                      {pos.pnl && pos.pnl >= 0 ? '+' : ''}{pos.pnl?.toFixed(2) || '0.00'} $
+                                      ({pos.pnlPercentage?.toFixed(2) || '0.00'}%)
+                                    </span>
+                                  </div>
+                                  {pos.marginRatio !== undefined && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Ratio de marge</span>
+                                      <span className={cn(
+                                        "tabular-nums",
+                                        pos.marginRatio < 1 ? "text-red-500" : "text-foreground"
+                                      )}>
+                                        {(pos.marginRatio * 100).toFixed(1)}%
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
 
-              {/* Margin Amount */}
-              <div>
-                <label className="text-xs text-muted-foreground">Marge ($)</label>
-                <div className="flex items-center gap-2 mt-1">
-                  <input
-                    type="number"
-                    value={marginAmount}
-                    onChange={(e) => setMarginAmount(e.target.value)}
-                    placeholder="0"
-                    className="flex-1 px-3 py-2 bg-transparent border border-border/30 focus:border-foreground/30 outline-none tabular-nums text-sm"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setMarginAmount(moneyBalance.toString())}
-                    disabled={loading || moneyBalance <= 0}
-                    className={cn(
-                      "px-3 py-2 border text-[10px] uppercase tracking-widest transition-colors whitespace-nowrap",
-                      !loading && moneyBalance > 0
-                        ? "border-foreground/60 text-foreground hover:bg-foreground hover:text-background"
-                        : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
-                    )}
-                  >
-                    Max
-                  </button>
-                </div>
-              </div>
+      {/* Error */}
+      {error && (
+        <Card className="border-destructive/50">
+          <CardContent className="p-4">
+            <p className={cn(TYPOGRAPHY.SMALL, "text-center text-destructive")}>
+              {error}
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
-              {marginAmountNum > 0 && (
-                <div className="text-xs text-muted-foreground space-y-1 pt-1">
-                  <div className="flex justify-between">
-                    <span>Valeur notionnelle</span>
-                    <span className="tabular-nums text-foreground">${notionalValue.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Quantité (AC)</span>
-                    <span className="tabular-nums text-foreground">{coinAmountLeveraged.toFixed(4)} AC</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Prix d'entrée</span>
-                    <span className="tabular-nums">${currentPrice.toFixed(2)}</span>
-                  </div>
-                </div>
-              )}
-
-              <button
-                onClick={handleOpenPosition}
-                disabled={loading || !marginAmount || marginAmountNum <= 0 || marginAmountNum > moneyBalance}
-                className={cn(
-                  "w-full px-4 py-2 border text-sm transition-colors",
-                  !loading && marginAmountNum > 0 && marginAmountNum <= moneyBalance
-                    ? positionType === 'LONG'
-                      ? "border-emerald-500 text-emerald-500 hover:bg-emerald-500 hover:text-background"
-                      : "border-red-500 text-red-500 hover:bg-red-500 hover:text-background"
-                    : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
-                )}
-              >
-                Ouvrir {positionType}
-              </button>
-            </div>
-
-            {/* Open Positions */}
-            <div className="border border-border/30 p-4 space-y-3">
-              <h2 className="text-base font-medium">Positions Ouvertes</h2>
-              <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                {openPositions.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-4 text-sm">
-                    Aucune position ouverte
+      {/* Transactions */}
+      <Card className="border-border/40">
+        <CardContent className={SPACING.CARD_SPACING}>
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'my' | 'all')}>
+            <TabsList>
+              <TabsTrigger value="my">Mes Transactions</TabsTrigger>
+              <TabsTrigger value="all">Toutes les Transactions</TabsTrigger>
+            </TabsList>
+            <TabsContent value={activeTab} className="mt-4">
+              <div className="space-y-1 max-h-[300px] overflow-y-auto">
+                {transactions.length === 0 ? (
+                  <p className={cn(TYPOGRAPHY.MUTED, "text-center py-6")}>
+                    Aucune transaction
                   </p>
                 ) : (
-                  openPositions.map((pos) => (
+                  transactions.map((tx) => (
                     <div
-                      key={pos.id}
-                      className={cn(
-                        "p-3 border space-y-2",
-                        pos.type === 'LONG' ? "border-emerald-500/30" : "border-red-500/30"
-                      )}
+                      key={tx.id}
+                      className="flex items-center justify-between py-2 border-b border-border/10"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className={cn(
-                            "text-xs font-medium",
-                            pos.type === 'LONG' ? "text-emerald-500" : "text-red-500"
-                          )}>
-                            {pos.type} {pos.leverage}x
-                          </span>
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "w-7 h-7 flex items-center justify-center border rounded-md",
+                          tx.type === 'BUY'
+                            ? "border-emerald-500/30 text-emerald-500"
+                            : "border-red-500/30 text-red-500"
+                        )}>
+                          {tx.type === 'BUY' ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
                         </div>
-                        <button
-                          onClick={() => handleClosePosition(pos.id)}
-                          disabled={loading}
-                          className="p-1 hover:bg-border/30 transition-colors"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                      <div className="text-xs space-y-1">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Prix d'entrée</span>
-                          <span className="tabular-nums">${pos.entryPrice.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Prix actuel</span>
-                          <span className="tabular-nums">${pos.currentPrice?.toFixed(2) || currentPrice.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Marge</span>
-                          <span className="tabular-nums">${pos.marginAmount}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">P&L</span>
-                          <span className={cn(
-                            "tabular-nums font-medium",
-                            (pos.pnl || 0) >= 0 ? "text-emerald-500" : "text-red-500"
-                          )}>
-                            {pos.pnl && pos.pnl >= 0 ? '+' : ''}{pos.pnl?.toFixed(2) || '0.00'} $
-                            ({pos.pnlPercentage?.toFixed(2) || '0.00'}%)
-                          </span>
-                        </div>
-                        {pos.marginRatio !== undefined && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Ratio de marge</span>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            {activeTab === 'all' && (
+                              <span
+                                className={TYPOGRAPHY.XS}
+                                style={{ color: tx.user.usernameColor || undefined }}
+                              >
+                                {tx.user.username}
+                              </span>
+                            )}
                             <span className={cn(
-                              "tabular-nums",
-                              pos.marginRatio < 1 ? "text-red-500" : "text-foreground"
+                              "text-[10px] uppercase",
+                              tx.type === 'BUY' ? "text-emerald-500" : "text-red-500"
                             )}>
-                              {(pos.marginRatio * 100).toFixed(1)}%
+                              {tx.type === 'BUY' ? 'Achat' : 'Vente'}
                             </span>
                           </div>
-                        )}
+                          <p className="text-[10px] text-muted-foreground">
+                            {new Date(tx.createdAt).toLocaleString('fr-FR')}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className={cn(TYPOGRAPHY.XS, "tabular-nums")}>
+                          {tx.type === 'BUY' ? '+' : '-'}{tx.coinAmount.toFixed(4)} AC
+                        </p>
+                        <p className="text-[10px] text-muted-foreground tabular-nums">
+                          @ ${tx.price.toFixed(2)} • Frais: ${tx.fee}
+                        </p>
                       </div>
                     </div>
                   ))
                 )}
               </div>
-            </div>
-          </div>
-        </div>
-        )}
-      </div>
-
-      {/* Error */}
-      {error && (
-        <div className="text-center text-red-500 text-sm">
-          {error}
-        </div>
-      )}
-
-      {/* Transactions */}
-      <div className="border border-border/30 p-5 space-y-3">
-        <div className="flex gap-4 border-b border-border/30">
-          <button
-            onClick={() => setActiveTab('my')}
-            className={cn(
-              "pb-2 text-sm transition-colors",
-              activeTab === 'my'
-                ? "border-b-2 border-foreground text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Mes Transactions
-          </button>
-          <button
-            onClick={() => setActiveTab('all')}
-            className={cn(
-              "pb-2 text-sm transition-colors",
-              activeTab === 'all'
-                ? "border-b-2 border-foreground text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Toutes les Transactions
-          </button>
-        </div>
-
-        <div className="space-y-1 max-h-[300px] overflow-y-auto">
-          {transactions.length === 0 ? (
-            <p className="text-center text-muted-foreground py-6 text-sm">
-              Aucune transaction
-            </p>
-          ) : (
-            transactions.map((tx) => (
-              <div
-                key={tx.id}
-                className="flex items-center justify-between py-2 border-b border-border/10"
-              >
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "w-7 h-7 flex items-center justify-center border",
-                    tx.type === 'BUY'
-                      ? "border-emerald-500/30 text-emerald-500"
-                      : "border-red-500/30 text-red-500"
-                  )}>
-                    {tx.type === 'BUY' ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      {activeTab === 'all' && (
-                        <span
-                          className="text-xs font-medium"
-                          style={{ color: tx.user.usernameColor || undefined }}
-                        >
-                          {tx.user.username}
-                        </span>
-                      )}
-                      <span className={cn(
-                        "text-[10px] uppercase",
-                        tx.type === 'BUY' ? "text-emerald-500" : "text-red-500"
-                      )}>
-                        {tx.type === 'BUY' ? 'Achat' : 'Vente'}
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">
-                      {new Date(tx.createdAt).toLocaleString('fr-FR')}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs tabular-nums">
-                    {tx.type === 'BUY' ? '+' : '-'}{tx.coinAmount.toFixed(4)} AC
-                  </p>
-                  <p className="text-[10px] text-muted-foreground tabular-nums">
-                    @ ${tx.price.toFixed(2)} • Frais: ${tx.fee}
-                  </p>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+    </PageLayout>
   );
 }

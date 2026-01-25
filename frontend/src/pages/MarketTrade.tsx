@@ -6,6 +6,12 @@ import { cn } from '@/lib/utils';
 import { buildSyntheticHistory, getMarketCoin, marketCoins } from '@/data/marketCoins';
 import { loadSimState, recordSimTransaction, saveSimState, SimTransaction, SimState } from '@/lib/marketSim';
 import type { AuraCoinPriceHistory } from '@/services/api';
+import PageLayout from '@/components/layout/PageLayout';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 
 export default function MarketTrade() {
   const { coinId } = useParams();
@@ -203,34 +209,36 @@ export default function MarketTrade() {
   const displayedTransactions = activeTab === 'my' ? transactions : transactions;
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4 space-y-12">
+    <PageLayout variant="compact">
       <div className="flex items-center justify-end">
         <div className="text-right">
-            <div className="flex items-center gap-2 justify-end">
-              <span className="text-3xl font-light tabular-nums">
-                ${currentPrice.toFixed(2)}
-              </span>
-              <span
-                className={cn(
-                  'flex items-center text-sm',
-                  priceChange >= 0 ? 'text-emerald-500' : 'text-red-500'
-                )}
-              >
-                {priceChange >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
-              </span>
-            </div>
-            <p className="text-sm text-muted-foreground">Fee {(coin.feePercentage * 100).toFixed(1)}%</p>
+          <div className="flex items-center gap-2 justify-end">
+            <span className={cn(TYPOGRAPHY.H2, "tabular-nums")}>
+              ${currentPrice.toFixed(2)}
+            </span>
+            <span
+              className={cn(
+                'flex items-center',
+                TYPOGRAPHY.SMALL,
+                priceChange >= 0 ? 'text-emerald-500' : 'text-red-500'
+              )}
+            >
+              {priceChange >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+              {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
+            </span>
           </div>
+          <p className={TYPOGRAPHY.SMALL}>Fee {(coin.feePercentage * 100).toFixed(1)}%</p>
         </div>
+      </div>
 
-      <div className="border border-border/30 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-sm text-muted-foreground uppercase tracking-wide">Cours 24h</span>
-          <span className="text-sm text-muted-foreground tabular-nums">
-            Min: ${minPrice.toFixed(2)} / Max: ${maxPrice.toFixed(2)}
-          </span>
-        </div>
+      <Card className="border-border/40">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground uppercase tracking-wide")}>Cours 24h</span>
+            <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tabular-nums")}>
+              Min: ${minPrice.toFixed(2)} / Max: ${maxPrice.toFixed(2)}
+            </span>
+          </div>
 
         <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-32" preserveAspectRatio="none">
           {[0, 0.25, 0.5, 0.75, 1].map((ratio) => (
@@ -263,257 +271,268 @@ export default function MarketTrade() {
             />
           )}
         </svg>
-      </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="border border-border/30 p-4">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">Solde $ (simu)</p>
-          <p className="text-2xl font-light tabular-nums">${cash.toLocaleString()}</p>
-        </div>
-        <div className="border border-border/30 p-4">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide">Solde {coin.name}</p>
-          <p className="text-2xl font-light tabular-nums">{balance.toFixed(4)} {coin.symbol}</p>
-          <p className="text-xs text-muted-foreground tabular-nums">
-            ≈ ${(balance * currentPrice).toFixed(2)}
-          </p>
-        </div>
+        <Card className="border-border/40">
+          <CardContent className="p-4">
+            <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Solde $ (simu)</p>
+            <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>${cash.toLocaleString()}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-border/40">
+          <CardContent className="p-4">
+            <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Solde {coin.name}</p>
+            <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>{balance.toFixed(4)} {coin.symbol}</p>
+            <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground tabular-nums")}>
+              ≈ ${(balance * currentPrice).toFixed(2)}
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        <div className="border border-border/30 p-6 space-y-4">
-          <div className="flex items-center gap-2">
-            <ArrowUpRight className="w-5 h-5 text-emerald-500" />
-            <h2 className="text-lg font-medium">Acheter</h2>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between">
-              <label className="text-sm text-muted-foreground">Montant ($)</label>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setBuyAmount(minBuyAmount.toString())}
-                  disabled={!canUseMinBuy}
-                  className={cn(
-                    'px-2 py-1 border text-[10px] uppercase tracking-widest transition-colors',
-                    canUseMinBuy
-                      ? 'border-emerald-500/60 text-emerald-500 hover:bg-emerald-500 hover:text-background'
-                      : 'border-border/30 text-muted-foreground/50 cursor-not-allowed'
-                  )}
-                >
-                  Min
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBuyAmount(cash.toString())}
-                  disabled={cash <= 0}
-                  className={cn(
-                    'px-2 py-1 border text-[10px] uppercase tracking-widest transition-colors',
-                    cash > 0
-                      ? 'border-emerald-500/60 text-emerald-500 hover:bg-emerald-500 hover:text-background'
-                      : 'border-border/30 text-muted-foreground/50 cursor-not-allowed'
-                  )}
-                >
-                  Max
-                </button>
-              </div>
+        <Card className="border-border/40">
+          <CardContent className={SPACING.CARD_SPACING}>
+            <div className="flex items-center gap-2">
+              <ArrowUpRight className="w-5 h-5 text-emerald-500" />
+              <h2 className={TYPOGRAPHY.H5}>Acheter</h2>
             </div>
-            <input
-              type="number"
-              value={buyAmount}
-              onChange={(event) => setBuyAmount(event.target.value)}
-              placeholder="0"
-              className="w-full mt-1 px-3 py-2 bg-transparent border border-border/30 focus:border-foreground/30 outline-none tabular-nums"
-            />
-          </div>
 
-          {buyMoneyAmount > 0 && (
-            <div className="text-sm text-muted-foreground space-y-1">
-              <div className="flex justify-between">
-                <span>Frais ({(coin.feePercentage * 100).toFixed(1)}%)</span>
-                <span className="tabular-nums">-${buyFee}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Vous recevrez</span>
-                <span className="tabular-nums text-foreground">{buyCoinsEstimate.toFixed(4)} {coin.symbol}</span>
-              </div>
-            </div>
-          )}
-
-          <button
-            onClick={handleBuy}
-            disabled={!buyAmount || buyMoneyAmount <= 0 || buyMoneyAmount > cash}
-            className={cn(
-              'w-full py-3 border text-sm transition-colors',
-              buyMoneyAmount > 0 && buyMoneyAmount <= cash
-                ? 'border-emerald-500 text-emerald-500 hover:bg-emerald-500 hover:text-background'
-                : 'border-border/30 text-muted-foreground/50 cursor-not-allowed'
-            )}
-          >
-            Acheter
-          </button>
-        </div>
-
-        <div className="border border-border/30 p-6 space-y-4">
-          <div className="flex items-center gap-2">
-            <ArrowDownRight className="w-5 h-5 text-red-500" />
-            <h2 className="text-lg font-medium">Vendre</h2>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between">
-              <label className="text-sm text-muted-foreground">Quantite ({coin.symbol})</label>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSellAmount(minSellAmount.toFixed(4))}
-                  disabled={!canUseMinSell}
-                  className={cn(
-                    'px-2 py-1 border text-[10px] uppercase tracking-widest transition-colors',
-                    canUseMinSell
-                      ? 'border-red-500/60 text-red-500 hover:bg-red-500 hover:text-background'
-                      : 'border-border/30 text-muted-foreground/50 cursor-not-allowed'
-                  )}
-                >
-                  Min
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSellAmount(balance.toFixed(4))}
-                  disabled={balance <= 0}
-                  className={cn(
-                    'px-2 py-1 border text-[10px] uppercase tracking-widest transition-colors',
-                    balance > 0
-                      ? 'border-red-500/60 text-red-500 hover:bg-red-500 hover:text-background'
-                      : 'border-border/30 text-muted-foreground/50 cursor-not-allowed'
-                  )}
-                >
-                  Max
-                </button>
-              </div>
-            </div>
-            <input
-              type="number"
-              value={sellAmount}
-              onChange={(event) => setSellAmount(event.target.value)}
-              placeholder="0"
-              step="0.0001"
-              className="w-full mt-1 px-3 py-2 bg-transparent border border-border/30 focus:border-foreground/30 outline-none tabular-nums"
-            />
-          </div>
-
-          {sellCoinAmount > 0 && (
-            <div className="text-sm text-muted-foreground space-y-1">
-              <div className="flex justify-between">
-                <span>Valeur brute</span>
-                <span className="tabular-nums">${sellGrossAmount}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Frais ({(coin.feePercentage * 100).toFixed(1)}%)</span>
-                <span className="tabular-nums">-${sellFee}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Vous recevrez</span>
-                <span className="tabular-nums text-foreground">${sellNetAmount}</span>
-              </div>
-            </div>
-          )}
-
-          <button
-            onClick={handleSell}
-            disabled={!sellAmount || sellCoinAmount <= 0 || sellCoinAmount > balance}
-            className={cn(
-              'w-full py-3 border text-sm transition-colors',
-              sellCoinAmount > 0 && sellCoinAmount <= balance
-                ? 'border-red-500 text-red-500 hover:bg-red-500 hover:text-background'
-                : 'border-border/30 text-muted-foreground/50 cursor-not-allowed'
-            )}
-          >
-            Vendre
-          </button>
-        </div>
-      </div>
-
-      {error && <div className="text-center text-red-500 text-sm">{error}</div>}
-
-      <div className="space-y-4">
-        <div className="flex gap-4 border-b border-border/30">
-          <button
-            onClick={() => setActiveTab('my')}
-            className={cn(
-              'pb-3 text-sm transition-colors',
-              activeTab === 'my'
-                ? 'border-b-2 border-foreground text-foreground'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            Mes Transactions
-          </button>
-          <button
-            onClick={() => setActiveTab('all')}
-            className={cn(
-              'pb-3 text-sm transition-colors',
-              activeTab === 'all'
-                ? 'border-b-2 border-foreground text-foreground'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            Toutes les Transactions
-          </button>
-        </div>
-
-        <div className="space-y-2">
-          {displayedTransactions.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">Aucune transaction</p>
-          ) : (
-            displayedTransactions.map((tx) => (
-              <div key={tx.id} className="flex items-center justify-between py-3 border-b border-border/10">
-                <div className="flex items-center gap-3">
-                  <div
+            <div>
+              <div className="flex items-center justify-between">
+                <label className={TYPOGRAPHY.SMALL}>Montant ($)</label>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    onClick={() => setBuyAmount(minBuyAmount.toString())}
+                    disabled={!canUseMinBuy}
+                    variant="outline"
+                    size="sm"
                     className={cn(
-                      'w-8 h-8 flex items-center justify-center border',
-                      tx.type === 'BUY'
-                        ? 'border-emerald-500/30 text-emerald-500'
-                        : 'border-red-500/30 text-red-500'
+                      'text-[10px] uppercase tracking-widest',
+                      canUseMinBuy
+                        ? 'border-emerald-500/60 text-emerald-500 hover:bg-emerald-500 hover:text-background'
+                        : ''
                     )}
                   >
-                    {tx.type === 'BUY' ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="text-sm font-medium"
-                        style={{ color: tx.user.usernameColor || undefined }}
-                      >
-                        {tx.user.username}
-                      </span>
-                      <span
-                        className={cn(
-                          'text-xs uppercase',
-                          tx.type === 'BUY' ? 'text-emerald-500' : 'text-red-500'
-                        )}
-                      >
-                        {tx.type === 'BUY' ? 'Achat' : 'Vente'}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(tx.createdAt).toLocaleString('fr-FR')}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm tabular-nums">
-                    {tx.type === 'BUY' ? '+' : '-'}{tx.coinAmount.toFixed(4)} {coin.symbol}
-                  </p>
-                  <p className="text-xs text-muted-foreground tabular-nums">
-                    @ ${tx.price.toFixed(2)} • Frais: ${tx.fee}
-                  </p>
+                    Min
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => setBuyAmount(cash.toString())}
+                    disabled={cash <= 0}
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      'text-[10px] uppercase tracking-widest',
+                      cash > 0
+                        ? 'border-emerald-500/60 text-emerald-500 hover:bg-emerald-500 hover:text-background'
+                        : ''
+                    )}
+                  >
+                    Max
+                  </Button>
                 </div>
               </div>
-            ))
-          )}
-        </div>
+              <Input
+                type="number"
+                value={buyAmount}
+                onChange={(event) => setBuyAmount(event.target.value)}
+                placeholder="0"
+                className="mt-1 tabular-nums"
+              />
+            </div>
+
+            {buyMoneyAmount > 0 && (
+              <div className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground space-y-1")}>
+                <div className="flex justify-between">
+                  <span>Frais ({(coin.feePercentage * 100).toFixed(1)}%)</span>
+                  <span className="tabular-nums">-${buyFee}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Vous recevrez</span>
+                  <span className="tabular-nums text-foreground">{buyCoinsEstimate.toFixed(4)} {coin.symbol}</span>
+                </div>
+              </div>
+            )}
+
+            <Button
+              onClick={handleBuy}
+              disabled={!buyAmount || buyMoneyAmount <= 0 || buyMoneyAmount > cash}
+              variant="outline"
+              className={cn(
+                'w-full',
+                buyMoneyAmount > 0 && buyMoneyAmount <= cash
+                  ? 'border-emerald-500 text-emerald-500 hover:bg-emerald-500 hover:text-background'
+                  : ''
+              )}
+            >
+              Acheter
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/40">
+          <CardContent className={SPACING.CARD_SPACING}>
+            <div className="flex items-center gap-2">
+              <ArrowDownRight className="w-5 h-5 text-red-500" />
+              <h2 className={TYPOGRAPHY.H5}>Vendre</h2>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between">
+                <label className={TYPOGRAPHY.SMALL}>Quantité ({coin.symbol})</label>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    onClick={() => setSellAmount(minSellAmount.toFixed(4))}
+                    disabled={!canUseMinSell}
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      'text-[10px] uppercase tracking-widest',
+                      canUseMinSell
+                        ? 'border-red-500/60 text-red-500 hover:bg-red-500 hover:text-background'
+                        : ''
+                    )}
+                  >
+                    Min
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => setSellAmount(balance.toFixed(4))}
+                    disabled={balance <= 0}
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      'text-[10px] uppercase tracking-widest',
+                      balance > 0
+                        ? 'border-red-500/60 text-red-500 hover:bg-red-500 hover:text-background'
+                        : ''
+                    )}
+                  >
+                    Max
+                  </Button>
+                </div>
+              </div>
+              <Input
+                type="number"
+                value={sellAmount}
+                onChange={(event) => setSellAmount(event.target.value)}
+                placeholder="0"
+                step="0.0001"
+                className="mt-1 tabular-nums"
+              />
+            </div>
+
+            {sellCoinAmount > 0 && (
+              <div className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground space-y-1")}>
+                <div className="flex justify-between">
+                  <span>Valeur brute</span>
+                  <span className="tabular-nums">${sellGrossAmount}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Frais ({(coin.feePercentage * 100).toFixed(1)}%)</span>
+                  <span className="tabular-nums">-${sellFee}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Vous recevrez</span>
+                  <span className="tabular-nums text-foreground">${sellNetAmount}</span>
+                </div>
+              </div>
+            )}
+
+            <Button
+              onClick={handleSell}
+              disabled={!sellAmount || sellCoinAmount <= 0 || sellCoinAmount > balance}
+              variant="outline"
+              className={cn(
+                'w-full',
+                sellCoinAmount > 0 && sellCoinAmount <= balance
+                  ? 'border-red-500 text-red-500 hover:bg-red-500 hover:text-background'
+                  : ''
+              )}
+            >
+              Vendre
+            </Button>
+          </CardContent>
+        </Card>
       </div>
-    </div>
+
+      {error && (
+        <Card className="border-destructive/50">
+          <CardContent className="p-4">
+            <p className={cn(TYPOGRAPHY.SMALL, "text-center text-destructive")}>{error}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className="border-border/40">
+        <CardContent className={SPACING.CARD_SPACING}>
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'my' | 'all')}>
+            <TabsList>
+              <TabsTrigger value="my">Mes Transactions</TabsTrigger>
+              <TabsTrigger value="all">Toutes les Transactions</TabsTrigger>
+            </TabsList>
+            <TabsContent value={activeTab} className="mt-4">
+              <div className="space-y-2">
+                {displayedTransactions.length === 0 ? (
+                  <p className={cn(TYPOGRAPHY.MUTED, "text-center py-8")}>Aucune transaction</p>
+                ) : (
+                  displayedTransactions.map((tx) => (
+                    <div key={tx.id} className="flex items-center justify-between py-3 border-b border-border/10">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={cn(
+                            'w-8 h-8 flex items-center justify-center border rounded-md',
+                            tx.type === 'BUY'
+                              ? 'border-emerald-500/30 text-emerald-500'
+                              : 'border-red-500/30 text-red-500'
+                          )}
+                        >
+                          {tx.type === 'BUY' ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={TYPOGRAPHY.SMALL}
+                              style={{ color: tx.user.usernameColor || undefined }}
+                            >
+                              {tx.user.username}
+                            </span>
+                            <span
+                              className={cn(
+                                TYPOGRAPHY.XS,
+                                'uppercase',
+                                tx.type === 'BUY' ? 'text-emerald-500' : 'text-red-500'
+                              )}
+                            >
+                              {tx.type === 'BUY' ? 'Achat' : 'Vente'}
+                            </span>
+                          </div>
+                          <p className={TYPOGRAPHY.XS}>
+                            {new Date(tx.createdAt).toLocaleString('fr-FR')}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className={cn(TYPOGRAPHY.SMALL, "tabular-nums")}>
+                          {tx.type === 'BUY' ? '+' : '-'}{tx.coinAmount.toFixed(4)} {coin.symbol}
+                        </p>
+                        <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground tabular-nums")}>
+                          @ ${tx.price.toFixed(2)} • Frais: ${tx.fee}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+    </PageLayout>
   );
 }

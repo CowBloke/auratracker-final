@@ -13,6 +13,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Card, CardContent } from '@/components/ui/card';
+import PageLayout from '@/components/layout/PageLayout';
+import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { resolveImageUrl } from '@/lib/images';
 
 interface UserItem {
@@ -230,16 +233,18 @@ export default function Inventory() {
 
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
-      </div>
+      <PageLayout>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+        </div>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
+    <PageLayout variant="compact">
       <div className="flex items-center justify-end">
-        <div className="text-right text-sm text-muted-foreground tabular-nums">
+        <div className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tabular-nums")}>
           {items.length} objet{items.length !== 1 ? 's' : ''}
         </div>
       </div>
@@ -247,87 +252,93 @@ export default function Inventory() {
       {/* Message */}
       {message && (
         <p className={cn(
-          "text-sm",
+          TYPOGRAPHY.SMALL,
           message.type === 'success' ? 'text-foreground' : 'text-destructive'
         )}>
           {message.text}
         </p>
       )}
-      <div className="space-y-6">
+      <div className={SPACING.SECTION_SPACING}>
 
         {/* Items */}
         {items.length === 0 ? (
-          <p className="text-center text-muted-foreground py-12">
+          <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
             Inventaire vide
           </p>
         ) : (
-          <div className="space-y-0">
-            {items.map((userItem) => {
-              const effect = parseEffect(userItem.item.effect);
-              const effectIcon = getEffectIcon(effect);
-              const effectLabel = getEffectLabel(effect);
-              
-              return (
-                <div
-                  key={userItem.id}
-                  className="flex items-center justify-between py-6 border-b border-border/30 last:border-0"
-                >
-                  <div className="flex items-center gap-4 flex-1">
-                    {/* Item Image */}
-                    {userItem.item.imageUrl ? (
-                      <img 
-                        src={resolveImageUrl(userItem.item.imageUrl)} 
-                        alt={userItem.item.name}
-                        className="w-14 h-14 object-cover rounded shrink-0"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <div className="w-14 h-14 bg-muted/30 flex items-center justify-center rounded shrink-0">
-                        <Package className="w-6 h-6 text-muted-foreground" />
-                      </div>
-                    )}
-                    
-                    <div className="space-y-1 flex-1 min-w-0">
-                      <div className="flex items-center gap-4">
-                        <h2 className="text-lg font-medium truncate">{userItem.item.name}</h2>
-                        <span className="text-xs text-muted-foreground uppercase tracking-wide shrink-0">
-                          {typeLabels[userItem.item.type]}
-                        </span>
-                        <span className="text-xs text-muted-foreground shrink-0">
-                          Ç-{userItem.quantity}
-                        </span>
-                      </div>
-                      <p className="text-sm text-muted-foreground max-w-md truncate">
-                        {userItem.item.description}
-                      </p>
-                      {effectLabel && (
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground/80">
-                          {effectIcon}
-                          <span>{effectLabel}</span>
+          <Card className="border-border/40">
+            <CardContent className="p-0">
+              <div className="divide-y divide-border/30">
+                {items.map((userItem) => {
+                  const effect = parseEffect(userItem.item.effect);
+                  const effectIcon = getEffectIcon(effect);
+                  const effectLabel = getEffectLabel(effect);
+                  
+                  return (
+                    <div
+                      key={userItem.id}
+                      className="flex items-center justify-between py-6 px-6"
+                    >
+                      <div className="flex items-center gap-4 flex-1">
+                        {/* Item Image */}
+                        {userItem.item.imageUrl ? (
+                          <img 
+                            src={resolveImageUrl(userItem.item.imageUrl)} 
+                            alt={userItem.item.name}
+                            className="w-14 h-14 object-cover rounded shrink-0"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="w-14 h-14 bg-muted/30 flex items-center justify-center rounded shrink-0">
+                            <Package className="w-6 h-6 text-muted-foreground" />
+                          </div>
+                        )}
+                        
+                        <div className="space-y-1 flex-1 min-w-0">
+                          <div className="flex items-center gap-4">
+                            <h2 className={cn(TYPOGRAPHY.H5, "truncate")}>{userItem.item.name}</h2>
+                            <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide shrink-0")}>
+                              {typeLabels[userItem.item.type]}
+                            </span>
+                            <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground shrink-0")}>
+                              ×{userItem.quantity}
+                            </span>
+                          </div>
+                          <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground max-w-md truncate")}>
+                            {userItem.item.description}
+                          </p>
+                          {effectLabel && (
+                            <div className={cn("flex items-center gap-2", TYPOGRAPHY.XS, "text-muted-foreground/80")}>
+                              {effectIcon}
+                              <span>{effectLabel}</span>
+                            </div>
+                          )}
                         </div>
+                      </div>
+                      
+                      {(userItem.item.type === 'CONSUMABLE' || userItem.item.type === 'COSMETIC') && (
+                        <Button
+                          onClick={() => handleUseItem(userItem)}
+                          disabled={using === userItem.id}
+                          variant="outline"
+                          size="sm"
+                          className="ml-4 shrink-0"
+                        >
+                          {using === userItem.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            'Utiliser'
+                          )}
+                        </Button>
                       )}
                     </div>
-                  </div>
-                  
-                  {(userItem.item.type === 'CONSUMABLE' || userItem.item.type === 'COSMETIC') && (
-                    <button
-                      onClick={() => handleUseItem(userItem)}
-                      disabled={using === userItem.id}
-                      className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 ml-4 shrink-0"
-                    >
-                      {using === userItem.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        'Utiliser'
-                      )}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
 
@@ -335,12 +346,12 @@ export default function Inventory() {
       <Dialog open={colorDialogOpen} onOpenChange={setColorDialogOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className={cn(TYPOGRAPHY.H5, "flex items-center gap-2")}>
               <Palette className="w-5 h-5" />
               Choisir une couleur
             </DialogTitle>
             <DialogDescription>
-              SÇ¸lectionnez la couleur de votre pseudo dans le chat.
+              Sélectionnez la couleur de votre pseudo dans le chat.
             </DialogDescription>
           </DialogHeader>
 
@@ -348,7 +359,7 @@ export default function Inventory() {
             {/* Color preview */}
             <div className="flex items-center justify-center p-4 bg-muted/30 rounded">
               <span 
-                className="text-lg font-medium"
+                className={TYPOGRAPHY.H5}
                 style={{ color: selectedColor }}
               >
                 {user?.username}
@@ -358,14 +369,16 @@ export default function Inventory() {
             {/* Preset colors */}
             <div className="grid grid-cols-10 gap-2">
               {PRESET_COLORS.map((color) => (
-                <button
+                <Button
                   key={color}
+                  variant="ghost"
+                  size="icon"
                   onClick={() => {
                     setSelectedColor(color);
                     setCustomColor(color);
                   }}
                   className={cn(
-                    "w-6 h-6 rounded-full border-2 transition-transform hover:scale-110",
+                    "w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 p-0",
                     selectedColor === color ? 'border-foreground scale-110' : 'border-transparent'
                   )}
                   style={{ backgroundColor: color }}
@@ -419,12 +432,12 @@ export default function Inventory() {
       <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className={cn(TYPOGRAPHY.H5, "flex items-center gap-2")}>
               <Camera className="w-5 h-5" />
               Photo de profil
             </DialogTitle>
             <DialogDescription>
-              Importez votre photo de profil qui sera affichÇ¸e dans le chat.
+              Importez votre photo de profil qui sera affichée dans le chat.
             </DialogDescription>
           </DialogHeader>
 
@@ -475,6 +488,6 @@ export default function Inventory() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageLayout>
   );
 }

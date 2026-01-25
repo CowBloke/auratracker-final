@@ -2,6 +2,13 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { bugReportApi } from '../services/api';
 import { Loader2 } from 'lucide-react';
+import PageLayout from '@/components/layout/PageLayout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Separator } from '@/components/ui/separator';
+import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 
 interface RuleSection {
@@ -191,278 +198,247 @@ export default function Rules() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
+    <PageLayout variant="compact">
       {/* Header */}
-      <p className="text-sm text-muted-foreground max-w-2xl">
+      <p className={cn(TYPOGRAPHY.SMALL, "max-w-2xl")}>
         Tout est rassemblé ici : règlement, notes de version et signalement de bugs.
       </p>
 
-      {/* Divider */}
-      <div className="h-px bg-border" />
+      <Separator />
 
       {/* Bug report */}
-      <section className="space-y-6">
-        <header className="space-y-2">
-          <p className="text-sm text-muted-foreground tracking-wide uppercase">
-            Signalement
-          </p>
-          <h2 className="text-3xl md:text-4xl font-light tracking-tight">
-            Reporter un bug
-          </h2>
-        </header>
+      <Card className="border-border/40">
+        <CardHeader>
+          <CardDescription>Signalement</CardDescription>
+          <CardTitle className={TYPOGRAPHY.H2}>Reporter un bug</CardTitle>
+        </CardHeader>
+        <CardContent className={SPACING.SECTION_SPACING}>
 
-        {submitted ? (
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <h3 className="text-base font-medium">Rapport envoyé</h3>
-              <p className="text-sm text-muted-foreground">
-                Votre rapport de bug a été envoyé aux administrateurs.
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setSubmitted(false)}
-                className="px-4 py-2 text-sm border border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
-              >
-                Signaler un autre bug
-              </button>
-              <button
-                onClick={() => navigate('/')}
-                className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-              >
-                Retour au tableau de bord
-              </button>
-            </div>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <div className="px-4 py-3 border border-border/30 text-sm text-muted-foreground">
-                {error}
+          {submitted ? (
+            <div className={SPACING.SECTION_SPACING}>
+              <div className={SPACING.CARD_SPACING}>
+                <h3 className={TYPOGRAPHY.BODY}>Rapport envoyé</h3>
+                <p className={TYPOGRAPHY.SMALL}>
+                  Votre rapport de bug a été envoyé aux administrateurs.
+                </p>
               </div>
-            )}
-
-            <div className="space-y-2">
-              <label className="text-sm text-muted-foreground">
-                Titre du bug
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Ex: Le bouton ne fonctionne pas sur la page..."
-                className="w-full h-12 bg-transparent border border-border/50 px-4 text-sm focus:outline-none focus:border-foreground/30"
-                maxLength={100}
-                disabled={submitting}
-              />
-              <p className="text-xs text-muted-foreground text-right">
-                {title.length}/100
-              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setSubmitted(false)}
+                >
+                  Signaler un autre bug
+                </Button>
+                <Button
+                  onClick={() => navigate('/')}
+                >
+                  Retour au tableau de bord
+                </Button>
+              </div>
             </div>
+          ) : (
+            <form onSubmit={handleSubmit} className={SPACING.SECTION_SPACING}>
+              {error && (
+                <div className={cn("px-4 py-3 border border-border/30", TYPOGRAPHY.SMALL)}>
+                  {error}
+                </div>
+              )}
 
-            <div className="space-y-2">
-              <label className="text-sm text-muted-foreground">
-                Description détaillée
-              </label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Décrivez le bug en détail : que faisiez-vous, qu'est-ce qui s'est passé, qu'est-ce qui aurait dû se passer..."
-                className="w-full min-h-[200px] bg-transparent border border-border/50 px-4 py-3 text-sm resize-none focus:outline-none focus:border-foreground/30"
-                maxLength={2000}
-                disabled={submitting}
-              />
-              <p className="text-xs text-muted-foreground text-right">
-                {description.length}/2000
-              </p>
-            </div>
+              <div className={SPACING.CARD_SPACING}>
+                <label className={TYPOGRAPHY.SMALL}>
+                  Titre du bug
+                </label>
+                <Input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Ex: Le bouton ne fonctionne pas sur la page..."
+                  maxLength={100}
+                  disabled={submitting}
+                />
+                <p className={cn(TYPOGRAPHY.XS, "text-right")}>
+                  {title.length}/100
+                </p>
+              </div>
 
-            <div className="h-px bg-border" />
+              <div className={SPACING.CARD_SPACING}>
+                <label className={TYPOGRAPHY.SMALL}>
+                  Description détaillée
+                </label>
+                <Textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Décrivez le bug en détail : que faisiez-vous, qu'est-ce qui s'est passé, qu'est-ce qui aurait dû se passer..."
+                  className="min-h-[200px]"
+                  maxLength={2000}
+                  disabled={submitting}
+                />
+                <p className={cn(TYPOGRAPHY.XS, "text-right")}>
+                  {description.length}/2000
+                </p>
+              </div>
 
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => navigate(-1)}
-                className="px-4 py-2 text-sm border border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={submitting}
-              >
-                Annuler
-              </button>
-              
-              <button
-                type="submit"
-                disabled={submitting || !title.trim() || !description.trim()}
-                className={cn(
-                  "px-4 py-2 text-sm border transition-colors min-w-[140px]",
-                  !submitting && title.trim() && description.trim()
-                    ? "border-foreground text-foreground hover:bg-foreground hover:text-background"
-                    : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
-                )}
-              >
-                {submitting ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Envoi...
-                  </span>
-                ) : (
-                  "Envoyer"
-                )}
-              </button>
-            </div>
-          </form>
-        )}
-      </section>
+              <Separator />
 
-      {/* Divider */}
-      <div className="h-px bg-border" />
+              <div className="flex items-center justify-between">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate(-1)}
+                  disabled={submitting}
+                >
+                  Annuler
+                </Button>
+                
+                <Button
+                  type="submit"
+                  disabled={submitting || !title.trim() || !description.trim()}
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Envoi...
+                    </>
+                  ) : (
+                    "Envoyer"
+                  )}
+                </Button>
+              </div>
+            </form>
+          )}
+        </CardContent>
+      </Card>
+
+      <Separator />
 
       {/* Changelog */}
-      <section className="space-y-6">
-        <header className="space-y-2">
-          <p className="text-sm text-muted-foreground tracking-wide uppercase">
-            Notes de version
-          </p>
-          <h2 className="text-3xl md:text-4xl font-light tracking-tight">
-            Changelog 1.0.0
-          </h2>
-        </header>
-        <div className="space-y-0">
-          {highlights.map((card, index) => (
-            <div
-              key={index}
-              className="py-4 border-b border-border/30 last:border-0 space-y-1"
-            >
-              <h3 className="text-base font-medium">{card.title}</h3>
-              <p className="text-sm text-muted-foreground">{card.description}</p>
-            </div>
-          ))}
-        </div>
-        <div className="space-y-8">
-          {featureGroups.map((group) => (
-            <div key={group.title} className="space-y-4">
-              <h3 className="text-base font-medium">{group.title}</h3>
-              <ul className="space-y-0">
-                {group.items.map((item, itemIndex) => (
-                  <li
-                    key={itemIndex}
-                    className="py-2 border-b border-border/30 last:border-0 text-sm text-muted-foreground"
-                  >
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-        <div className="space-y-0">
-          {v1Notes.map((note) => (
-            <div
-              key={note.title}
-              className="py-4 border-b border-border/30 last:border-0 space-y-1"
-            >
-              <h3 className="text-base font-medium">{note.title}</h3>
-              <p className="text-sm text-muted-foreground">{note.description}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Divider */}
-      <div className="h-px bg-border" />
-
-      {/* Rules Sections */}
-      <section className="space-y-6">
-        <header className="space-y-2">
-          <p className="text-sm text-muted-foreground tracking-wide uppercase">
-            Règlement
-          </p>
-          <h2 className="text-3xl md:text-4xl font-light tracking-tight">
-            Règles de la communauté
-          </h2>
-        </header>
-      </section>
-
-      {sections.map((section, index) => (
-        <section key={index} className="space-y-6">
-          <h3 className="text-sm text-muted-foreground tracking-wide uppercase">
-            {section.title}
-          </h3>
-          
-          <div className="space-y-0">
-            {section.rules.map((rule, ruleIndex) => (
+      <Card className="border-border/40">
+        <CardHeader>
+          <CardDescription>Notes de version</CardDescription>
+          <CardTitle className={TYPOGRAPHY.H2}>Changelog 1.0.0</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="divide-y divide-border/30">
+            {highlights.map((card, index) => (
               <div
-                key={ruleIndex}
-                className="flex items-start gap-6 py-4 border-b border-border/30 last:border-0"
+                key={index}
+                className="py-4 space-y-1"
               >
-                <span className="text-muted-foreground text-sm w-6 tabular-nums shrink-0">
-                  {ruleIndex + 1}
-                </span>
-                <p className="text-sm text-muted-foreground">{rule}</p>
+                <h3 className={TYPOGRAPHY.BODY}>{card.title}</h3>
+                <p className={TYPOGRAPHY.SMALL}>{card.description}</p>
               </div>
             ))}
           </div>
-          
-          {index < sections.length - 1 && (
-            <div className="h-px bg-border" />
-          )}
-        </section>
-      ))}
+          <div className={SPACING.SECTION_SPACING}>
+            {featureGroups.map((group) => (
+              <div key={group.title} className={SPACING.CARD_SPACING}>
+                <h3 className={TYPOGRAPHY.BODY}>{group.title}</h3>
+                <ul className="divide-y divide-border/30">
+                  {group.items.map((item, itemIndex) => (
+                    <li
+                      key={itemIndex}
+                      className={cn("py-2", TYPOGRAPHY.SMALL)}
+                    >
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          <div className="divide-y divide-border/30">
+            {v1Notes.map((note) => (
+              <div
+                key={note.title}
+                className="py-4 space-y-1"
+              >
+                <h3 className={TYPOGRAPHY.BODY}>{note.title}</h3>
+                <p className={TYPOGRAPHY.SMALL}>{note.description}</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Divider */}
-      <div className="h-px bg-border" />
+      <Separator />
 
-      {/* Sanctions */}
-      <section className="space-y-6">
-        <header className="space-y-2">
-          <p className="text-sm text-muted-foreground tracking-wide uppercase">
-            Modération
-          </p>
-          <h2 className="text-3xl md:text-4xl font-light tracking-tight">
-            Sanctions
-          </h2>
-        </header>
-        
-        <p className="text-sm text-muted-foreground">
-          Le non-respect du règlement entraîne des sanctions proportionnelles à la gravité de l'infraction.
-        </p>
-        
-        <div className="space-y-0">
-          {sanctions.map((item, index) => (
-            <div
-              key={index}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-4 border-b border-border/30 last:border-0"
-            >
-              <span className="text-sm text-muted-foreground">{item.offense}</span>
-              <span className="text-sm text-muted-foreground sm:text-right">
-                {item.sanction}
-              </span>
+      {/* Rules Sections */}
+      <Card className="border-border/40">
+        <CardHeader>
+          <CardDescription>Règlement</CardDescription>
+          <CardTitle className={TYPOGRAPHY.H2}>Règles de la communauté</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {sections.map((section, index) => (
+            <div key={index} className={index > 0 ? "mt-6" : ""}>
+              <h3 className={TYPOGRAPHY.MUTED}>
+                {section.title}
+              </h3>
+              
+              <div className="divide-y divide-border/30 mt-4">
+                {section.rules.map((rule, ruleIndex) => (
+                  <div
+                    key={ruleIndex}
+                    className="flex items-start gap-6 py-4"
+                  >
+                    <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground w-6 tabular-nums shrink-0")}>
+                      {ruleIndex + 1}
+                    </span>
+                    <p className={TYPOGRAPHY.SMALL}>{rule}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
-        </div>
-      </section>
+        </CardContent>
+      </Card>
 
-      {/* Divider */}
-      <div className="h-px bg-border" />
+      <Separator />
+
+      {/* Sanctions */}
+      <Card className="border-border/40">
+        <CardHeader>
+          <CardDescription>Modération</CardDescription>
+          <CardTitle className={TYPOGRAPHY.H2}>Sanctions</CardTitle>
+        </CardHeader>
+        <CardContent className={SPACING.CARD_SPACING}>
+          <p className={TYPOGRAPHY.SMALL}>
+            Le non-respect du règlement entraîne des sanctions proportionnelles à la gravité de l'infraction.
+          </p>
+          
+          <div className="divide-y divide-border/30">
+            {sanctions.map((item, index) => (
+              <div
+                key={index}
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-4"
+              >
+                <span className={TYPOGRAPHY.SMALL}>{item.offense}</span>
+                <span className={cn(TYPOGRAPHY.SMALL, "sm:text-right")}>
+                  {item.sanction}
+                </span>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Separator />
 
       {/* Footer note */}
-      <section className="space-y-6">
-        <header className="space-y-2">
-          <p className="text-sm text-muted-foreground tracking-wide uppercase">
-            Informations
-          </p>
-          <h2 className="text-3xl md:text-4xl font-light tracking-tight">
-            Contact & mise à jour
-          </h2>
-        </header>
-        <div className="space-y-2">
-          <p className="text-sm text-muted-foreground">
+      <Card className="border-border/40">
+        <CardHeader>
+          <CardDescription>Informations</CardDescription>
+          <CardTitle className={TYPOGRAPHY.H2}>Contact & mise à jour</CardTitle>
+        </CardHeader>
+        <CardContent className={SPACING.CARD_SPACING}>
+          <p className={TYPOGRAPHY.SMALL}>
             Dernière mise à jour : Janvier 2026
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className={TYPOGRAPHY.SMALL}>
             Pour toute question concernant ce règlement, contactez l'équipe d'administration.
           </p>
-        </div>
-      </section>
-    </div>
+        </CardContent>
+      </Card>
+    </PageLayout>
   );
 }

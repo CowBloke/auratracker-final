@@ -3,9 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Progress } from '../components/ui/progress';
+import PageLayout from '@/components/layout/PageLayout';
+import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { questsApi, DailyQuest, UserDailyQuest } from '../services/api';
 import { toast } from 'sonner';
 import { CheckCircle2, Circle, Coins, Sparkles } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function Quests() {
   const [dailyQuests, setDailyQuests] = useState<DailyQuest[]>([]);
@@ -114,7 +117,7 @@ export default function Quests() {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6">
+      <PageLayout>
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-muted rounded w-1/4"></div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -123,7 +126,7 @@ export default function Quests() {
             ))}
           </div>
         </div>
-      </div>
+      </PageLayout>
     );
   }
 
@@ -132,18 +135,18 @@ export default function Quests() {
   const canSelectNewQuests = !hasSelectedQuests && dailyQuests.length > 0;
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <PageLayout>
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-muted-foreground mt-2">
+          <p className={cn(TYPOGRAPHY.MUTED, "mt-2")}>
             Sélectionnez 3 quêtes parmi 10 disponibles chaque jour et gagnez des récompenses !
           </p>
         </div>
       </div>
 
       {hasSelectedQuests && (
-        <div className="space-y-4">
-          <h2 className="text-2xl font-semibold">Mes Quêtes</h2>
+        <div className={SPACING.CARD_SPACING}>
+          <h2 className={TYPOGRAPHY.H3}>Mes Quêtes</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {myQuests.map((userQuest) => {
               const progress = userQuest.progress?.currentValue || 0;
@@ -157,8 +160,8 @@ export default function Quests() {
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-2xl">{getQuestIcon(userQuest.quest.questType)}</span>
-                        <CardTitle className="text-lg">{userQuest.quest.title}</CardTitle>
+                        <span className={TYPOGRAPHY.H3}>{getQuestIcon(userQuest.quest.questType)}</span>
+                        <CardTitle className={TYPOGRAPHY.H5}>{userQuest.quest.title}</CardTitle>
                       </div>
                       {isCompleted && !isClaimed && (
                         <Badge variant="default" className="bg-green-500">
@@ -228,8 +231,8 @@ export default function Quests() {
       )}
 
       {canSelectNewQuests && (
-        <div className="space-y-4">
-          <h2 className="text-2xl font-semibold">Sélectionnez 3 Quêtes</h2>
+        <div className={SPACING.CARD_SPACING}>
+          <h2 className={TYPOGRAPHY.H3}>Sélectionnez 3 Quêtes</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {dailyQuests.map((quest) => {
               const isSelected = selectedQuestIds.includes(quest.id);
@@ -247,8 +250,8 @@ export default function Quests() {
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-2xl">{getQuestIcon(quest.questType)}</span>
-                        <CardTitle className="text-lg">{quest.title}</CardTitle>
+                        <span className={TYPOGRAPHY.H3}>{getQuestIcon(quest.questType)}</span>
+                        <CardTitle className={TYPOGRAPHY.H5}>{quest.title}</CardTitle>
                       </div>
                       {isSelected ? (
                         <CheckCircle2 className="w-5 h-5 text-primary" />
@@ -278,30 +281,34 @@ export default function Quests() {
           </div>
 
           {selectedQuestIds.length > 0 && (
-            <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-              <span className="text-sm text-muted-foreground">
-                {selectedQuestIds.length} / 3 quêtes sélectionnées
-              </span>
-              <Button
-                onClick={handleConfirmSelection}
-                disabled={selectedQuestIds.length !== 3 || selecting}
-              >
-                {selecting ? 'Sélection en cours...' : 'Confirmer la sélection'}
-              </Button>
-            </div>
+            <Card className="border-border/40">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <span className={TYPOGRAPHY.SMALL}>
+                    {selectedQuestIds.length} / 3 quêtes sélectionnées
+                  </span>
+                  <Button
+                    onClick={handleConfirmSelection}
+                    disabled={selectedQuestIds.length !== 3 || selecting}
+                  >
+                    {selecting ? 'Sélection en cours...' : 'Confirmer la sélection'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           )}
         </div>
       )}
 
       {!hasSelectedQuests && !canSelectNewQuests && (
-        <Card>
+        <Card className="border-border/40">
           <CardContent className="p-6 text-center">
-            <p className="text-muted-foreground">
+            <p className={TYPOGRAPHY.MUTED}>
               Aucune quête disponible pour le moment. Revenez demain pour de nouvelles quêtes !
             </p>
           </CardContent>
         </Card>
       )}
-    </div>
+    </PageLayout>
   );
 }

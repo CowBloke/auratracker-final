@@ -3,6 +3,10 @@ import { Link } from 'react-router-dom';
 import { auraCoinApi, AuraCoinPriceHistory, AuraCoinTransaction } from '@/services/api';
 import { marketCoins, buildSyntheticHistory, clamp, MarketCoin } from '@/data/marketCoins';
 import { loadSimState, SimTransaction } from '@/lib/marketSim';
+import PageLayout from '@/components/layout/PageLayout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
+import { cn } from '@/lib/utils';
 
 const MINI_POINTS = 40;
 const AURA_BASE_PRICE = 100;
@@ -142,14 +146,14 @@ export default function MarketHall() {
   }, [auraTransactions, simTransactions]);
 
   return (
-    <div className="max-w-6xl mx-auto py-12 px-4 space-y-16">
+    <PageLayout>
       <div className="flex items-center justify-end">
-        <div className="text-right text-sm text-muted-foreground tabular-nums">
+        <div className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tabular-nums")}>
           {auraHistory.length ? `${auraHistory.length} points` : 'Chargement...'}
         </div>
       </div>
 
-      <section className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
         {coinViews.map((coin) => {
           const priceChange = coin.history.length > 1
             ? ((coin.currentPrice - coin.history[0].price) / coin.history[0].price) * 100
@@ -158,93 +162,99 @@ export default function MarketHall() {
             <Link
               key={coin.id}
               to={coin.route}
-              className="border border-border/30 p-6 space-y-4 hover:border-foreground/30 transition-colors"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-3">
-                    <h2 className="text-xl font-medium">{coin.name}</h2>
-                    {coin.primary && (
-                      <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                        Principal
-                      </span>
-                    )}
+              <Card className="border-border/40 hover:border-foreground/30 transition-colors">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-3">
+                        <CardTitle className={TYPOGRAPHY.H4}>{coin.name}</CardTitle>
+                        {coin.primary && (
+                          <span className={cn(TYPOGRAPHY.XS, "uppercase tracking-wide text-muted-foreground")}>
+                            Principal
+                          </span>
+                        )}
+                      </div>
+                      <CardDescription className="mt-1">{coin.description}</CardDescription>
+                    </div>
+                    <div className={TYPOGRAPHY.SMALL}>{coin.symbol}</div>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">{coin.description}</p>
-                </div>
-                <div className="text-sm text-muted-foreground">{coin.symbol}</div>
-              </div>
-
-              <div className="flex items-end justify-between">
-                <div>
-                  <div className="text-3xl font-light tabular-nums">
-                    ${coin.currentPrice.toFixed(2)}
+                </CardHeader>
+                <CardContent className={SPACING.CARD_SPACING}>
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <div className={cn(TYPOGRAPHY.H2, "tabular-nums")}>
+                        ${coin.currentPrice.toFixed(2)}
+                      </div>
+                      <div className={cn("flex items-center gap-4 mt-1", TYPOGRAPHY.XS, "text-muted-foreground")}>
+                        <span>Fee {(coin.feePercentage * 100).toFixed(1)}%</span>
+                        <span className="tabular-nums">
+                          {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-32">
+                      <MiniSparkline history={coin.history} />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
-                    <span>Fee {(coin.feePercentage * 100).toFixed(1)}%</span>
-                    <span className="tabular-nums">
-                      {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
-                    </span>
-                  </div>
-                </div>
-                <div className="w-32">
-                  <MiniSparkline history={coin.history} />
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             </Link>
           );
         })}
-      </section>
+      </div>
 
-      <section className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
-            Historique global des transactions
-          </h2>
-          <span className="text-xs text-muted-foreground tabular-nums">{loading ? 'Chargement...' : `${combinedTransactions.length} lignes`}</span>
-        </div>
-        {combinedTransactions.length === 0 ? (
-          <p className="text-center text-muted-foreground py-12">Aucune transaction recente</p>
-        ) : (
-          <div className="space-y-0">
-            {combinedTransactions.map((tx) => {
-              const coinMeta = marketCoins.find((coin) => coin.id === tx.coinId);
-              const positive = tx.type === 'BUY';
-              return (
-                <div key={tx.id} className="flex items-center justify-between py-4 border-b border-border/30 last:border-0">
-                  <div className="flex items-center gap-4">
-                    <span className="text-xs text-muted-foreground uppercase">
-                      {positive ? 'Achat' : 'Vente'}
-                    </span>
-                    <span
-                      className="text-sm font-medium"
-                      style={{ color: tx.user.usernameColor || undefined }}
-                    >
-                      {tx.user.username}
-                    </span>
-                    {coinMeta && (
-                      <span className="text-xs text-muted-foreground uppercase">
-                        {coinMeta.symbol}
-                      </span>
-                    )}
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(tx.createdAt).toLocaleString('fr-FR')}
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm tabular-nums">
-                      {positive ? '+' : '-'}{tx.coinAmount.toFixed(4)} {coinMeta?.symbol ?? 'AC'}
-                    </p>
-                    <p className="text-xs text-muted-foreground tabular-nums">
-                      @ ${tx.price.toFixed(2)} • Frais: ${tx.fee}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
+      <Card className="border-border/40">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardDescription>Historique global des transactions</CardDescription>
+            <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground tabular-nums")}>{loading ? 'Chargement...' : `${combinedTransactions.length} lignes`}</span>
           </div>
-        )}
-      </section>
-    </div>
+        </CardHeader>
+        <CardContent>
+          {combinedTransactions.length === 0 ? (
+            <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>Aucune transaction récente</p>
+          ) : (
+            <div className="divide-y divide-border/30">
+              {combinedTransactions.map((tx) => {
+                const coinMeta = marketCoins.find((coin) => coin.id === tx.coinId);
+                const positive = tx.type === 'BUY';
+                return (
+                  <div key={tx.id} className="flex items-center justify-between py-4">
+                    <div className="flex items-center gap-4">
+                      <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase")}>
+                        {positive ? 'Achat' : 'Vente'}
+                      </span>
+                      <span
+                        className={cn(TYPOGRAPHY.SMALL, "font-medium")}
+                        style={{ color: tx.user.usernameColor || undefined }}
+                      >
+                        {tx.user.username}
+                      </span>
+                      {coinMeta && (
+                        <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase")}>
+                          {coinMeta.symbol}
+                        </span>
+                      )}
+                      <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>
+                        {new Date(tx.createdAt).toLocaleString('fr-FR')}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <p className={cn(TYPOGRAPHY.SMALL, "tabular-nums")}>
+                        {positive ? '+' : '-'}{tx.coinAmount.toFixed(4)} {coinMeta?.symbol ?? 'AC'}
+                      </p>
+                      <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground tabular-nums")}>
+                        @ ${tx.price.toFixed(2)} • Frais: ${tx.fee}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </PageLayout>
   );
 }

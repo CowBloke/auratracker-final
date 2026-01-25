@@ -7,6 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import PageLayout from '@/components/layout/PageLayout';
+import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Swords, Rocket, Download } from 'lucide-react';
 import {
   AlertDialog,
@@ -1231,207 +1236,95 @@ export default function Admin() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4 space-y-8">
+    <PageLayout variant="compact">
       {/* Message */}
       {message && (
-        <div className={cn(
-          "px-4 py-3 border",
+        <Card className={cn(
+          "border",
           message.type === 'success' ? 'border-green-500/30 bg-green-500/10 text-green-400' : 'border-destructive/30 bg-destructive/10 text-destructive'
         )}>
-          {message.text}
-        </div>
+          <CardContent className="px-4 py-3">
+            {message.text}
+          </CardContent>
+        </Card>
       )}
 
       {/* Tabs */}
-      <div className="space-y-6">
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setActiveTab('pending')}
-            className={cn(
-              "px-4 py-2 text-sm border transition-colors flex items-center gap-2",
-              activeTab === 'pending'
-                ? "border-foreground text-foreground"
-                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-            )}
-          >
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+        <TabsList className="flex flex-wrap h-auto p-1">
+          <TabsTrigger value="pending" className="flex items-center gap-2">
             Demandes
             {pendingUsers.length > 0 && (
-              <span className="text-xs text-muted-foreground">
+              <span className={TYPOGRAPHY.XS}>
                 {pendingUsers.length}
               </span>
             )}
-          </button>
-          <button
-            onClick={() => setActiveTab('users')}
-            className={cn(
-              "px-4 py-2 text-sm border transition-colors",
-              activeTab === 'users'
-                ? "border-foreground text-foreground"
-                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-            )}
-          >
-            Utilisateurs
-          </button>
-          <button
-            onClick={() => setActiveTab('items')}
-            className={cn(
-              "px-4 py-2 text-sm border transition-colors",
-              activeTab === 'items'
-                ? "border-foreground text-foreground"
-                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-            )}
-          >
-            Objets
-          </button>
-          <button
-            onClick={() => setActiveTab('badges')}
-            className={cn(
-              "px-4 py-2 text-sm border transition-colors",
-              activeTab === 'badges'
-                ? "border-foreground text-foreground"
-                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-            )}
-          >
-            Badges
-          </button>
-          <button
-            onClick={() => setActiveTab('chat')}
-            className={cn(
-              "px-4 py-2 text-sm border transition-colors",
-              activeTab === 'chat'
-                ? "border-foreground text-foreground"
-                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-            )}
-          >
-            Chat
-          </button>
-          <button
-            onClick={() => setActiveTab('bugs')}
-            className={cn(
-              "px-4 py-2 text-sm border transition-colors flex items-center gap-2",
-              activeTab === 'bugs'
-                ? "border-foreground text-foreground"
-                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-            )}
-          >
+          </TabsTrigger>
+          <TabsTrigger value="users">Utilisateurs</TabsTrigger>
+          <TabsTrigger value="items">Objets</TabsTrigger>
+          <TabsTrigger value="badges">Badges</TabsTrigger>
+          <TabsTrigger value="chat">Chat</TabsTrigger>
+          <TabsTrigger value="bugs" className="flex items-center gap-2">
             Bugs
             {bugReports.filter(b => b.status === 'PENDING').length > 0 && (
-              <span className="text-xs text-muted-foreground">
+              <span className={TYPOGRAPHY.XS}>
                 {bugReports.filter(b => b.status === 'PENDING').length}
               </span>
             )}
-          </button>
-          <button
-            onClick={() => setActiveTab('bans')}
-            className={cn(
-              "px-4 py-2 text-sm border transition-colors flex items-center gap-2",
-              activeTab === 'bans'
-                ? "border-foreground text-foreground"
-                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-            )}
-          >
+          </TabsTrigger>
+          <TabsTrigger value="bans" className="flex items-center gap-2">
             Bannissements
             {bans.filter(b => b.isActive).length > 0 && (
-              <span className="text-xs text-muted-foreground">
+              <span className={TYPOGRAPHY.XS}>
                 {bans.filter(b => b.isActive).length}
               </span>
             )}
-          </button>
-          <button
-            onClick={() => setActiveTab('logs')}
-            className={cn(
-              "px-4 py-2 text-sm border transition-colors flex items-center gap-2",
-              activeTab === 'logs'
-                ? "border-foreground text-foreground"
-                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-            )}
-          >
+          </TabsTrigger>
+          <TabsTrigger value="logs" className="flex items-center gap-2">
             Logs
             {logStats && (
-              <span className="text-xs text-muted-foreground">
+              <span className={TYPOGRAPHY.XS}>
                 {logStats.total.toLocaleString()}
               </span>
             )}
-          </button>
-          <button
-            onClick={() => setActiveTab('announcement')}
-            className={cn(
-              "px-4 py-2 text-sm border transition-colors",
-              activeTab === 'announcement'
-                ? "border-foreground text-foreground"
-                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-            )}
-          >
-            Annonce
-          </button>
-          <button
-            onClick={() => setActiveTab('attention')}
-            className={cn(
-              "px-4 py-2 text-sm border transition-colors",
-              activeTab === 'attention'
-                ? "border-foreground text-foreground"
-                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-            )}
-          >
-            Attention
-          </button>
-          <button
-            onClick={() => setActiveTab('blocks')}
-            className={cn(
-              "px-4 py-2 text-sm border transition-colors",
-              activeTab === 'blocks'
-                ? "border-foreground text-foreground"
-                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-            )}
-          >
-            Blocage
-          </button>
-          <button
-            onClick={() => setActiveTab('settings')}
-            className={cn(
-              "px-4 py-2 text-sm border transition-colors",
-              activeTab === 'settings'
-                ? "border-foreground text-foreground"
-                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-            )}
-          >
-            Paramètres
-          </button>
-        </div>
+          </TabsTrigger>
+          <TabsTrigger value="announcement">Annonce</TabsTrigger>
+          <TabsTrigger value="attention">Attention</TabsTrigger>
+          <TabsTrigger value="blocks">Blocage</TabsTrigger>
+          <TabsTrigger value="settings">Paramètres</TabsTrigger>
+        </TabsList>
 
-        {/* Pending Users Tab */}
-        {activeTab === 'pending' && (
-          <div className="space-y-6">
-          <div className="h-px bg-border" />
-          
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
-              Demandes d'inscription en attente
-            </h2>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <UserPlus className="h-4 w-4" />
-              <span>{pendingUsers.length} en attente</span>
-            </div>
-          </div>
+        <TabsContent value="pending" className={SPACING.SECTION_SPACING}>
+          <Card className="border-border/40">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardDescription>Demandes d'inscription en attente</CardDescription>
+                <div className={cn("flex items-center gap-2", TYPOGRAPHY.SMALL)}>
+                  <UserPlus className="h-4 w-4" />
+                  <span>{pendingUsers.length} en attente</span>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
 
-          {loadingPending ? (
-            <div className="flex justify-center py-12">
-              <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
-            </div>
-          ) : pendingUsers.length === 0 ? (
-            <div className="text-center py-12 space-y-2">
-              <UserPlus className="h-8 w-8 mx-auto text-muted-foreground/50" />
-              <p className="text-muted-foreground">
-                Aucune demande en attente
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-0">
-              {pendingUsers.map((u) => (
-                <div
-                  key={u.id}
-                  className="py-4 border-b border-border/30 last:border-0"
-                >
+              {loadingPending ? (
+                <div className="flex justify-center py-12">
+                  <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+                </div>
+              ) : pendingUsers.length === 0 ? (
+                <div className="text-center py-12 space-y-2">
+                  <UserPlus className="h-8 w-8 mx-auto text-muted-foreground/50" />
+                  <p className={TYPOGRAPHY.MUTED}>
+                    Aucune demande en attente
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border/30">
+                  {pendingUsers.map((u) => (
+                    <div
+                      key={u.id}
+                      className="py-4"
+                    >
                   <div className="flex items-center justify-between">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -1516,55 +1409,55 @@ export default function Admin() {
                       </AlertDialog>
                     </div>
                   </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
-          </div>
-        )}
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-        {/* Users Tab */}
-        {activeTab === 'users' && (
-          <div className="space-y-6">
-          <div className="h-px bg-border" />
-          
-          {/* Search Bar */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Rechercher par pseudo ou prénom..."
-              value={userSearchQuery}
-              onChange={(e) => setUserSearchQuery(e.target.value)}
-              className="pl-9 bg-transparent border-border/50 h-9"
-            />
-          </div>
-          
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
-            </div>
-          ) : (() => {
-            const filteredUsers = userSearchQuery.trim()
-              ? users.filter(u => 
-                  u.username.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
-                  (u.firstName || '').toLowerCase().includes(userSearchQuery.toLowerCase())
-                )
-              : users;
-            
-            return filteredUsers.length === 0 ? (
-              <p className="text-center text-muted-foreground py-12">
-                {userSearchQuery.trim() ? 'Aucun utilisateur trouvé' : 'Aucun utilisateur'}
-              </p>
-            ) : (
-              <div className="space-y-0">
-                {filteredUsers.map((u) => (
-                <div
-                  key={u.id}
-                  className={cn(
-                    "py-4 border-b border-border/30 last:border-0",
-                    u.isAdmin && "bg-muted/20 -mx-4 px-4"
-                  )}
-                >
+        <TabsContent value="users" className={SPACING.SECTION_SPACING}>
+          <Card className="border-border/40">
+            <CardHeader>
+              {/* Search Bar */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Rechercher par pseudo ou prénom..."
+                  value={userSearchQuery}
+                  onChange={(e) => setUserSearchQuery(e.target.value)}
+                  className="pl-9 bg-transparent border-border/50 h-9"
+                />
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex justify-center py-12">
+                  <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+                </div>
+              ) : (() => {
+                const filteredUsers = userSearchQuery.trim()
+                  ? users.filter(u => 
+                      u.username.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+                      (u.firstName || '').toLowerCase().includes(userSearchQuery.toLowerCase())
+                    )
+                  : users;
+                
+                return filteredUsers.length === 0 ? (
+                  <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
+                    {userSearchQuery.trim() ? 'Aucun utilisateur trouvé' : 'Aucun utilisateur'}
+                  </p>
+                ) : (
+                  <div className="divide-y divide-border/30">
+                    {filteredUsers.map((u) => (
+                    <div
+                      key={u.id}
+                      className={cn(
+                        "py-4",
+                        u.isAdmin && "bg-muted/20"
+                      )}
+                    >
                   {editingUser === u.id ? (
                     // Edit mode
                     <div className="space-y-4">
@@ -1803,50 +1696,48 @@ export default function Admin() {
                     </div>
                   )}
                 </div>
-                ))}
+                    ))}
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="items" className={SPACING.SECTION_SPACING}>
+          <Card className="border-border/40">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardDescription>Gestion des objets de la boutique</CardDescription>
+                <Button
+                  onClick={openCreateItemDialog}
+                  className="h-9"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nouvel objet
+                </Button>
               </div>
-            );
-          })()}
-          </div>
-        )}
-
-        {/* Items Tab */}
-        {activeTab === 'items' && (
-          <div className="space-y-6">
-          <div className="h-px bg-border" />
-          
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
-              Gestion des objets de la boutique
-            </h2>
-            <Button
-              onClick={openCreateItemDialog}
-              className="h-9"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Nouvel objet
-            </Button>
-          </div>
-
-          {loadingItems ? (
-            <div className="flex justify-center py-12">
-              <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
-            </div>
-          ) : items.length === 0 ? (
-            <p className="text-center text-muted-foreground py-12">
-              Aucun objet créé
-            </p>
-          ) : (
-            <div className="space-y-0">
-              {items.map((item) => {
-                const { type: effectType } = parseEffect(item.effect);
-                const effectLabel = EFFECT_TYPES.find(e => e.value === effectType)?.label || effectType;
-                
-                return (
-                  <div
-                    key={item.id}
-                    className="py-4 border-b border-border/30 last:border-0"
-                  >
+            </CardHeader>
+            <CardContent>
+              {loadingItems ? (
+                <div className="flex justify-center py-12">
+                  <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+                </div>
+              ) : items.length === 0 ? (
+                <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
+                  Aucun objet créé
+                </p>
+              ) : (
+                <div className="divide-y divide-border/30">
+                  {items.map((item) => {
+                    const { type: effectType } = parseEffect(item.effect);
+                    const effectLabel = EFFECT_TYPES.find(e => e.value === effectType)?.label || effectType;
+                    
+                    return (
+                      <div
+                        key={item.id}
+                        className="py-4"
+                      >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4 min-w-0 flex-1">
                         {item.imageUrl ? (
@@ -1930,31 +1821,28 @@ export default function Admin() {
                         </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-          </div>
-        )}
-
-        {/* Badges Tab */}
-        {activeTab === 'badges' && (
-          <div className="space-y-6">
-          <div className="h-px bg-border" />
-
+        <TabsContent value="badges" className={SPACING.SECTION_SPACING}>
           <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-            <div className="space-y-4 border border-border/40 p-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
-                  Creer un badge
-                </h2>
-                <span className="text-xs text-muted-foreground">
-                  {badges.length} existants
-                </span>
-              </div>
-              <div className="space-y-3">
+            <Card className="border-border/40">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardDescription>Créer un badge</CardDescription>
+                  <span className="text-xs text-muted-foreground">
+                    {badges.length} existants
+                  </span>
+                </div>
+              </CardHeader>
+              <CardContent className={SPACING.CARD_SPACING}>
+                <div className="space-y-3">
                 <Input
                   value={badgeForm.name}
                   onChange={(e) => setBadgeForm((prev) => ({ ...prev, name: e.target.value }))}
@@ -2011,111 +1899,108 @@ export default function Admin() {
                   </div>
                 )}
               </div>
-            </div>
+            </CardContent>
+          </Card>
 
-            <div className="space-y-4 border border-border/40 p-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
-                  Attribuer un badge
-                </h2>
-                <span className="text-xs text-muted-foreground">
-                  {users.length} utilisateurs
-                </span>
-              </div>
-              <div className="space-y-3">
-                <Select value={badgeUserId} onValueChange={(value) => {
-                  setBadgeUserId(value);
-                  setBadgeAssignId('');
-                }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choisir un utilisateur" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {users.map((u) => (
-                      <SelectItem key={u.id} value={u.id}>
-                        {u.username}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="flex items-center gap-3">
-                  <Select value={badgeAssignId} onValueChange={setBadgeAssignId} disabled={!badgeUserId || badges.length === 0}>
+            <Card className="border-border/40">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardDescription>Attribuer un badge</CardDescription>
+                  <span className="text-xs text-muted-foreground">
+                    {users.length} utilisateurs
+                  </span>
+                </div>
+              </CardHeader>
+              <CardContent className={SPACING.CARD_SPACING}>
+                <div className="space-y-3">
+                  <Select value={badgeUserId} onValueChange={(value) => {
+                    setBadgeUserId(value);
+                    setBadgeAssignId('');
+                  }}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Choisir un badge" />
+                      <SelectValue placeholder="Choisir un utilisateur" />
                     </SelectTrigger>
                     <SelectContent>
-                      {badges.map((badge) => (
-                        <SelectItem key={badge.id} value={badge.id}>
-                          {badge.name}
+                      {users.map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.username}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button
-                    onClick={assignBadgeToUser}
-                    disabled={!badgeUserId || !badgeAssignId || assigningBadge}
-                  >
-                    {assigningBadge ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                    <span className="ml-2">Attribuer</span>
-                  </Button>
+                  <div className="flex items-center gap-3">
+                    <Select value={badgeAssignId} onValueChange={setBadgeAssignId} disabled={!badgeUserId || badges.length === 0}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choisir un badge" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {badges.map((badge) => (
+                          <SelectItem key={badge.id} value={badge.id}>
+                            {badge.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      onClick={assignBadgeToUser}
+                      disabled={!badgeUserId || !badgeAssignId || assigningBadge}
+                    >
+                      {assigningBadge ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                      <span className="ml-2">Attribuer</span>
+                    </Button>
+                  </div>
                 </div>
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-xs text-muted-foreground uppercase tracking-wide">
-                  Badges de l'utilisateur
-                </h3>
-                {!badgeUserId ? (
-                  <p className="text-sm text-muted-foreground">Selectionne un utilisateur.</p>
-                ) : loadingUserBadges ? (
-                  <div className="flex justify-center py-6">
-                    <div className="w-1 h-6 bg-foreground/20 animate-pulse" />
-                  </div>
-                ) : userBadges.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Aucun badge attribue.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {userBadges.map((userBadge) => (
-                      <div key={userBadge.id} className="flex items-center justify-between border border-border/30 px-3 py-2">
-                        <span
-                          className="text-xs uppercase tracking-wide px-2.5 py-1 rounded-full border"
-                          style={{ color: userBadge.badge.color, borderColor: userBadge.badge.color }}
-                        >
-                          {userBadge.badge.name}
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeBadgeFromUser(userBadge.badge.id)}
-                          disabled={removingBadgeId === userBadge.badge.id}
-                        >
-                          {removingBadgeId === userBadge.badge.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <X className="h-4 w-4" />
-                          )}
-                          <span className="ml-2">Retirer</span>
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+                <div className="space-y-2 mt-4">
+                  <h3 className="text-xs text-muted-foreground uppercase tracking-wide">
+                    Badges de l'utilisateur
+                  </h3>
+                  {!badgeUserId ? (
+                    <p className="text-sm text-muted-foreground">Sélectionne un utilisateur.</p>
+                  ) : loadingUserBadges ? (
+                    <div className="flex justify-center py-6">
+                      <div className="w-1 h-6 bg-foreground/20 animate-pulse" />
+                    </div>
+                  ) : userBadges.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Aucun badge attribué.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {userBadges.map((userBadge) => (
+                        <div key={userBadge.id} className="flex items-center justify-between border border-border/30 px-3 py-2">
+                          <span
+                            className="text-xs uppercase tracking-wide px-2.5 py-1 rounded-full border"
+                            style={{ color: userBadge.badge.color, borderColor: userBadge.badge.color }}
+                          >
+                            {userBadge.badge.name}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeBadgeFromUser(userBadge.badge.id)}
+                            disabled={removingBadgeId === userBadge.badge.id}
+                          >
+                            {removingBadgeId === userBadge.badge.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <X className="h-4 w-4" />
+                            )}
+                            <span className="ml-2">Retirer</span>
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </div>
-          </div>
-        )}
+        </TabsContent>
 
-        {/* Chat Tab */}
-        {activeTab === 'chat' && (
-          <div className="space-y-6">
-          <div className="h-px bg-border" />
-          
-          <section className="space-y-6">
-            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
-              Gestion du chat
-            </h2>
-            
-            <div className="p-6 border border-border/30 space-y-4">
+        <TabsContent value="chat" className={SPACING.SECTION_SPACING}>
+          <Card className="border-border/40">
+            <CardHeader>
+              <CardDescription>Gestion du chat</CardDescription>
+            </CardHeader>
+            <CardContent className={SPACING.CARD_SPACING}>
               <div className="flex items-start gap-4">
                 <MessageSquareX className="h-8 w-8 text-muted-foreground shrink-0 mt-1" />
                 <div className="space-y-2">
@@ -2167,44 +2052,40 @@ export default function Admin() {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-            </div>
-          </section>
-          </div>
-        )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-        {/* Bugs Tab */}
-        {activeTab === 'bugs' && (
-          <div className="space-y-6">
-          <div className="h-px bg-border" />
-          
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
-              Rapports de bugs des utilisateurs
-            </h2>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Bug className="h-4 w-4" />
-              <span>{bugReports.filter(b => b.status === 'PENDING').length} en attente</span>
-            </div>
-          </div>
-
-          {loadingBugs ? (
-            <div className="flex justify-center py-12">
-              <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
-            </div>
-          ) : bugReports.length === 0 ? (
-            <p className="text-center text-muted-foreground py-12">
-              Aucun rapport de bug
-            </p>
-          ) : (
-            <div className="space-y-0">
-              {bugReports.map((bug) => (
-                <div
-                  key={bug.id}
-                  className={cn(
-                    "py-4 border-b border-border/30 last:border-0",
-                    bug.status === 'DONE' && "opacity-60"
-                  )}
-                >
+        <TabsContent value="bugs" className={SPACING.SECTION_SPACING}>
+          <Card className="border-border/40">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardDescription>Rapports de bugs des utilisateurs</CardDescription>
+                <div className={cn("flex items-center gap-2", TYPOGRAPHY.SMALL)}>
+                  <Bug className="h-4 w-4" />
+                  <span>{bugReports.filter(b => b.status === 'PENDING').length} en attente</span>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingBugs ? (
+                <div className="flex justify-center py-12">
+                  <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+                </div>
+              ) : bugReports.length === 0 ? (
+                <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
+                  Aucun rapport de bug
+                </p>
+              ) : (
+                <div className="divide-y divide-border/30">
+                  {bugReports.map((bug) => (
+                    <div
+                      key={bug.id}
+                      className={cn(
+                        "py-4",
+                        bug.status === 'DONE' && "opacity-60"
+                      )}
+                    >
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0 flex-1">
@@ -2305,47 +2186,45 @@ export default function Admin() {
                     <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted/20 p-3 rounded">
                       {bug.description}
                     </p>
+                    </div>
                   </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
-          </div>
-        )}
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-        {/* Bans Tab */}
-        {activeTab === 'bans' && (
-          <div className="space-y-6">
-          <div className="h-px bg-border" />
-
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
-              Gestion des bannissements
-            </h2>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <BanIcon className="h-4 w-4" />
-              <span>{bans.filter(b => b.isActive).length} actifs</span>
-            </div>
-          </div>
-
-          {loadingBans ? (
-            <div className="flex justify-center py-12">
-              <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
-            </div>
-          ) : bans.length === 0 ? (
-            <p className="text-center text-muted-foreground py-12">
-              Aucun bannissement
-            </p>
-          ) : (
-            <div className="space-y-0">
-              {bans.map((ban) => (
-                <div
-                  key={ban.id}
-                  className={cn(
-                    "py-4 border-b border-border/30 last:border-0",
-                    !ban.isActive && "opacity-60"
-                  )}
-                >
+        <TabsContent value="bans" className={SPACING.SECTION_SPACING}>
+          <Card className="border-border/40">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardDescription>Gestion des bannissements</CardDescription>
+                <div className={cn("flex items-center gap-2", TYPOGRAPHY.SMALL)}>
+                  <BanIcon className="h-4 w-4" />
+                  <span>{bans.filter(b => b.isActive).length} actifs</span>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingBans ? (
+                <div className="flex justify-center py-12">
+                  <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+                </div>
+              ) : bans.length === 0 ? (
+                <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
+                  Aucun bannissement
+                </p>
+              ) : (
+                <div className="divide-y divide-border/30">
+                  {bans.map((ban) => (
+                    <div
+                      key={ban.id}
+                      className={cn(
+                        "py-4",
+                        !ban.isActive && "opacity-60"
+                      )}
+                    >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1 space-y-2">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -2428,17 +2307,16 @@ export default function Admin() {
                         </AlertDialogContent>
                       </AlertDialog>
                     )}
+                    </div>
                   </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
-          </div>
-        )}
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-        {/* Logs Tab */}
-        {activeTab === 'logs' && (
-          <div className="space-y-4">
+        <TabsContent value="logs" className={SPACING.CARD_SPACING}>
           {/* Category Pills - Single Line */}
           {logStats && (
             <div className="flex flex-wrap gap-2">
@@ -2739,19 +2617,14 @@ export default function Admin() {
               </div>
             </div>
           )}
-          </div>
-        )}
+        </TabsContent>
 
-        {/* Announcement Tab */}
-        {activeTab === 'announcement' && (
-          <div className="space-y-6">
-          <div className="h-px bg-border" />
-
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
-              Annonce top bar
-            </h2>
-          </div>
+        <TabsContent value="announcement" className={SPACING.SECTION_SPACING}>
+          <Card className="border-border/40">
+            <CardHeader>
+              <CardDescription>Annonce top bar</CardDescription>
+            </CardHeader>
+            <CardContent className={SPACING.CARD_SPACING}>
 
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
@@ -2794,19 +2667,16 @@ export default function Admin() {
               </Button>
             </div>
           </div>
-          </div>
-        )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-        {/* Attention Tab */}
-        {activeTab === 'attention' && (
-          <div className="space-y-6">
-          <div className="h-px bg-border" />
-
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
-              Maintenance
-            </h2>
-          </div>
+        <TabsContent value="attention" className={SPACING.SECTION_SPACING}>
+          <Card className="border-border/40">
+            <CardHeader>
+              <CardDescription>Maintenance</CardDescription>
+            </CardHeader>
+            <CardContent className={SPACING.CARD_SPACING}>
 
           {loadingSettings ? (
             <div className="flex justify-center py-12">
@@ -2870,19 +2740,16 @@ export default function Admin() {
               </div>
             </div>
           )}
-          </div>
-        )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-        {/* Blocks Tab */}
-        {activeTab === 'blocks' && (
-          <div className="space-y-6">
-          <div className="h-px bg-border" />
-
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
-              Blocage de pages
-            </h2>
-          </div>
+        <TabsContent value="blocks" className={SPACING.SECTION_SPACING}>
+          <Card className="border-border/40">
+            <CardHeader>
+              <CardDescription>Blocage de pages</CardDescription>
+            </CardHeader>
+            <CardContent className={SPACING.SECTION_SPACING}>
 
           {loadingSettings ? (
             <div className="flex justify-center py-12">
@@ -2966,19 +2833,16 @@ export default function Admin() {
               </div>
             </div>
           )}
-          </div>
-        )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-        {/* Settings Tab */}
-        {activeTab === 'settings' && (
-          <div className="space-y-6">
-          <div className="h-px bg-border" />
-
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
-              Paramètres de jeu
-            </h2>
-          </div>
+        <TabsContent value="settings" className={SPACING.SECTION_SPACING}>
+          <Card className="border-border/40">
+            <CardHeader>
+              <CardDescription>Paramètres de jeu</CardDescription>
+            </CardHeader>
+            <CardContent className={SPACING.SECTION_SPACING}>
 
           {loadingSettings ? (
             <div className="flex justify-center py-12">
@@ -3246,12 +3110,10 @@ export default function Admin() {
                 )}
               </div>
             </div>
-          )}
-          </div>
-        )}
-
-
-      </div>
+            )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
       {/* Ban Dialog */}
       <Dialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
@@ -3756,7 +3618,7 @@ export default function Admin() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-    </div>
+      </Tabs>
+    </PageLayout>
   );
 }

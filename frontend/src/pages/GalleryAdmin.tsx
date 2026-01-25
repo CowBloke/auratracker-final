@@ -14,8 +14,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
+import PageLayout from '@/components/layout/PageLayout';
+import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 
 interface PaintingWithCopies {
   id: string;
@@ -171,221 +175,225 @@ export default function GalleryAdmin() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto py-12 px-4 space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-end">
-        <Button onClick={() => setCreateDialogOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Nouveau tableau
+    <>
+      <PageLayout>
+        {/* Header */}
+        <div className="flex items-center justify-end">
+          <Button onClick={() => setCreateDialogOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Nouveau tableau
           </Button>
         </div>
 
-      {/* Message */}
-      {message && (
-        <div className={cn(
-          "px-4 py-3 border",
-          message.type === 'success' ? 'border-green-500/30 bg-green-500/10 text-green-400' : 'border-destructive/30 bg-destructive/10 text-destructive'
-        )}>
-          {message.text}
-        </div>
-      )}
+        {/* Message */}
+        {message && (
+          <Card className={message.type === 'success' ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-destructive/50 bg-destructive/10'}>
+            <CardContent className="p-4">
+              <p className={cn(
+                TYPOGRAPHY.SMALL,
+                message.type === 'success' ? 'text-emerald-400' : 'text-destructive'
+              )}>
+                {message.text}
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
-      {/* Tabs */}
-      <div className="flex gap-2">
-        <button
-          onClick={() => setActiveTab('paintings')}
-          className={cn(
-            "px-4 py-2 text-sm border transition-colors flex items-center gap-2",
-            activeTab === 'paintings'
-              ? "border-foreground text-foreground"
-              : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-          )}
-        >
-          <ImageIcon className="w-4 h-4" />
-          Tableaux ({paintings.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('analytics')}
-          className={cn(
-            "px-4 py-2 text-sm border transition-colors flex items-center gap-2",
-            activeTab === 'analytics'
-              ? "border-foreground text-foreground"
-              : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-          )}
-        >
-          <BarChart3 className="w-4 h-4" />
-          Statistiques
-        </button>
-      </div>
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'paintings' | 'analytics')}>
+          <TabsList>
+            <TabsTrigger value="paintings">
+              <ImageIcon className="w-4 h-4 mr-2" />
+              Tableaux ({paintings.length})
+            </TabsTrigger>
+            <TabsTrigger value="analytics">
+              <BarChart3 className="w-4 h-4 mr-2" />
+              Statistiques
+            </TabsTrigger>
+          </TabsList>
 
-      {/* Paintings Tab */}
-      {activeTab === 'paintings' && (
-        <div className="space-y-6">
-          <div className="h-px bg-border" />
-
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
-            </div>
-          ) : paintings.length === 0 ? (
-            <p className="text-center text-muted-foreground py-12">
-              Aucun tableau créé
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {paintings.map((painting) => (
-                <div
-                  key={painting.id}
-                  className={cn(
-                    "border rounded-lg p-4",
-                    painting.isVaulted ? "border-yellow-500/30 bg-yellow-500/5" : "border-border/30"
-                  )}
-                >
-                  <div className="flex gap-4">
-                    {/* Thumbnail */}
-                    <div className="w-24 h-24 rounded overflow-hidden shrink-0">
-                      <img
-                        src={resolveImageUrl(painting.imageUrl)}
-                        alt={painting.title}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0 space-y-2">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="font-medium">{painting.title}</h3>
-                          <p className="text-sm text-muted-foreground">{painting.artist}</p>
-                          {painting.description && (
-                            <p className="text-sm text-muted-foreground/70 mt-1">
-                              {painting.description}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {painting.isVaulted && (
-                            <span className="text-xs text-yellow-500 px-2 py-1 border border-yellow-500/30 rounded">
-                              Au coffre
-                            </span>
-                          )}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleToggleVault(painting.id, painting.isVaulted)}
-                            disabled={vaulting === painting.id}
-                          >
-                            {vaulting === painting.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : painting.isVaulted ? (
-                              <>
-                                <Eye className="w-4 h-4 mr-1" />
-                                Activer
-                              </>
-                            ) : (
-                              <>
-                                <EyeOff className="w-4 h-4 mr-1" />
-                                Coffrer
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* Copies */}
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {painting.copies.map((copy) => (
-                          <div
-                            key={copy.id}
-                            className={cn(
-                              "px-2 py-1 text-xs border rounded flex items-center gap-1",
-                              copy.owner ? "border-foreground/30" : "border-border/30"
-                            )}
-                          >
-                            <span className={rarityColors[copy.rarity]}>
-                              {rarityLabels[copy.rarity]} #{copy.copyNumber}
-                            </span>
-                            {copy.owner ? (
-                              <span className="text-muted-foreground">
-                                → {copy.owner.username}
-                                {copy.inGallery && ' (exposé)'}
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground/50">disponible</span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Analytics Tab */}
-      {activeTab === 'analytics' && analytics && (
-        <div className="space-y-6">
-          <div className="h-px bg-border" />
-
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="border border-border/30 rounded-lg p-4 text-center">
-              <p className="text-3xl font-light">{analytics.totalPaintings}</p>
-              <p className="text-sm text-muted-foreground">Tableaux</p>
-            </div>
-            <div className="border border-border/30 rounded-lg p-4 text-center">
-              <p className="text-3xl font-light">{analytics.totalCopies}</p>
-              <p className="text-sm text-muted-foreground">Copies totales</p>
-            </div>
-            <div className="border border-border/30 rounded-lg p-4 text-center">
-              <p className="text-3xl font-light">{analytics.ownedCopies}</p>
-              <p className="text-sm text-muted-foreground">Copies possédées</p>
-            </div>
-            <div className="border border-border/30 rounded-lg p-4 text-center">
-              <p className="text-3xl font-light">{analytics.availableCopies}</p>
-              <p className="text-sm text-muted-foreground">Copies disponibles</p>
-            </div>
-          </div>
-
-          {/* Rarity Distribution */}
-          <div className="border border-border/30 rounded-lg p-4">
-            <h3 className="font-medium mb-4">Distribution par rareté</h3>
-            <div className="space-y-2">
-              {analytics.copiesByRarity.map((item) => (
-                <div key={item.rarity} className="flex items-center justify-between">
-                  <span className={rarityColors[item.rarity]}>
-                    {rarityLabels[item.rarity]}
-                  </span>
-                  <span className="text-muted-foreground">{item.count} possédées</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Top Collectors */}
-          <div className="border border-border/30 rounded-lg p-4">
-            <h3 className="font-medium mb-4">Top collectionneurs</h3>
-            {analytics.topCollectors.length === 0 ? (
-              <p className="text-muted-foreground text-sm">Aucun collectionneur</p>
+          <TabsContent value="paintings" className={SPACING.SECTION_SPACING}>
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+              </div>
+            ) : paintings.length === 0 ? (
+              <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
+                Aucun tableau créé
+              </p>
             ) : (
-              <div className="space-y-2">
-                {analytics.topCollectors.map((collector, index) => (
-                  <div key={collector.userId} className="flex items-center justify-between">
-                    <span>
-                      <span className="text-muted-foreground mr-2">#{index + 1}</span>
-                      {collector.username || 'Utilisateur inconnu'}
-                    </span>
-                    <span className="text-muted-foreground">{collector.count} tableaux</span>
-                  </div>
+              <div className={SPACING.CARD_SPACING}>
+                {paintings.map((painting) => (
+                  <Card
+                    key={painting.id}
+                    className={cn(
+                      "border-border/40",
+                      painting.isVaulted && "border-yellow-500/30 bg-yellow-500/5"
+                    )}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex gap-4">
+                        {/* Thumbnail */}
+                        <div className="w-24 h-24 rounded overflow-hidden shrink-0">
+                          <img
+                            src={resolveImageUrl(painting.imageUrl)}
+                            alt={painting.title}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0 space-y-2">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h3 className={TYPOGRAPHY.SMALL}>{painting.title}</h3>
+                              <p className={TYPOGRAPHY.XS}>{painting.artist}</p>
+                              {painting.description && (
+                                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground/70 mt-1")}>
+                                  {painting.description}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {painting.isVaulted && (
+                                <span className={cn(TYPOGRAPHY.XS, "text-yellow-500 px-2 py-1 border border-yellow-500/30 rounded")}>
+                                  Au coffre
+                                </span>
+                              )}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleToggleVault(painting.id, painting.isVaulted)}
+                                disabled={vaulting === painting.id}
+                              >
+                                {vaulting === painting.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                                ) : painting.isVaulted ? (
+                                  <>
+                                    <Eye className="w-4 h-4 mr-1" />
+                                    Activer
+                                  </>
+                                ) : (
+                                  <>
+                                    <EyeOff className="w-4 h-4 mr-1" />
+                                    Coffrer
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Copies */}
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {painting.copies.map((copy) => (
+                              <Card
+                                key={copy.id}
+                                className={cn(
+                                  "px-2 py-1",
+                                  copy.owner ? "border-foreground/30" : "border-border/30"
+                                )}
+                              >
+                                <CardContent className="p-0">
+                                  <div className={cn("flex items-center gap-1", TYPOGRAPHY.XS)}>
+                                    <span className={rarityColors[copy.rarity]}>
+                                      {rarityLabels[copy.rarity]} #{copy.copyNumber}
+                                    </span>
+                                    {copy.owner ? (
+                                      <span className="text-muted-foreground">
+                                        → {copy.owner.username}
+                                        {copy.inGallery && ' (exposé)'}
+                                      </span>
+                                    ) : (
+                                      <span className="text-muted-foreground/50">disponible</span>
+                                    )}
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             )}
-          </div>
-        </div>
-      )}
+          </TabsContent>
+
+          <TabsContent value="analytics" className={SPACING.SECTION_SPACING}>
+            {analytics && (
+              <>
+                {/* Stats Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Card className="border-border/40">
+                    <CardContent className="p-4 text-center">
+                      <p className={cn(TYPOGRAPHY.H1, "tabular-nums")}>{analytics.totalPaintings}</p>
+                      <p className={TYPOGRAPHY.SMALL}>Tableaux</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-border/40">
+                    <CardContent className="p-4 text-center">
+                      <p className={cn(TYPOGRAPHY.H1, "tabular-nums")}>{analytics.totalCopies}</p>
+                      <p className={TYPOGRAPHY.SMALL}>Copies totales</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-border/40">
+                    <CardContent className="p-4 text-center">
+                      <p className={cn(TYPOGRAPHY.H1, "tabular-nums")}>{analytics.ownedCopies}</p>
+                      <p className={TYPOGRAPHY.SMALL}>Copies possédées</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-border/40">
+                    <CardContent className="p-4 text-center">
+                      <p className={cn(TYPOGRAPHY.H1, "tabular-nums")}>{analytics.availableCopies}</p>
+                      <p className={TYPOGRAPHY.SMALL}>Copies disponibles</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Rarity Distribution */}
+                <Card className="border-border/40">
+                  <CardContent className={SPACING.CARD_SPACING}>
+                    <h3 className={TYPOGRAPHY.H6}>Distribution par rareté</h3>
+                    <div className="space-y-2">
+                      {analytics.copiesByRarity.map((item) => (
+                        <div key={item.rarity} className="flex items-center justify-between">
+                          <span className={rarityColors[item.rarity]}>
+                            {rarityLabels[item.rarity]}
+                          </span>
+                          <span className={TYPOGRAPHY.MUTED}>{item.count} possédées</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Top Collectors */}
+                <Card className="border-border/40">
+                  <CardContent className={SPACING.CARD_SPACING}>
+                    <h3 className={TYPOGRAPHY.H6}>Top collectionneurs</h3>
+                    {analytics.topCollectors.length === 0 ? (
+                      <p className={TYPOGRAPHY.MUTED}>Aucun collectionneur</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {analytics.topCollectors.map((collector, index) => (
+                          <div key={collector.userId} className="flex items-center justify-between">
+                            <span className={TYPOGRAPHY.SMALL}>
+                              <span className="text-muted-foreground mr-2">#{index + 1}</span>
+                              {collector.username || 'Utilisateur inconnu'}
+                            </span>
+                            <span className={TYPOGRAPHY.MUTED}>{collector.count} tableaux</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </>
+            )}
+          </TabsContent>
+        </Tabs>
+      </PageLayout>
 
       {/* Create Painting Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
@@ -400,7 +408,7 @@ export default function GalleryAdmin() {
 
           <div className="py-4 space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Titre *</label>
+              <label className={TYPOGRAPHY.SMALL}>Titre *</label>
               <Input
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
@@ -410,7 +418,7 @@ export default function GalleryAdmin() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Artiste *</label>
+              <label className={TYPOGRAPHY.SMALL}>Artiste *</label>
               <Input
                 value={formData.artist}
                 onChange={(e) => setFormData({ ...formData, artist: e.target.value })}
@@ -420,7 +428,7 @@ export default function GalleryAdmin() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Description</label>
+              <label className={TYPOGRAPHY.SMALL}>Description</label>
               <Textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -431,7 +439,7 @@ export default function GalleryAdmin() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Image * (URL uniquement)</label>
+              <label className={TYPOGRAPHY.SMALL}>Image * (URL uniquement)</label>
               <Input
                 value={formData.imageUrl}
                 onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
@@ -441,16 +449,18 @@ export default function GalleryAdmin() {
 
               {/* Preview */}
               {formData.imageUrl && (
-                <div className="mt-2 w-32 h-32 rounded overflow-hidden border border-border">
-                  <img
-                    src={formData.imageUrl}
-                    alt="Preview"
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                </div>
+                <Card className="mt-2 w-32 border-border/40">
+                  <CardContent className="p-0">
+                    <img
+                      src={formData.imageUrl}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  </CardContent>
+                </Card>
               )}
             </div>
           </div>
@@ -476,6 +486,6 @@ export default function GalleryAdmin() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

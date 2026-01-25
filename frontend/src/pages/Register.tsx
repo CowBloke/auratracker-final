@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { authApi } from '../services/api';
 import { Loader2, CheckCircle2, Send } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Form,
@@ -13,6 +14,8 @@ import {
   FormItem,
   FormMessage,
 } from '@/components/ui/form';
+import { TYPOGRAPHY } from '@/lib/design-system';
+import { cn } from '@/lib/utils';
 
 const registerSchema = z.object({
   firstName: z.string()
@@ -74,20 +77,19 @@ export default function Register() {
         <div className="w-full max-w-sm space-y-8 text-center">
           <div className="space-y-4">
             <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto" />
-            <h1 className="text-2xl font-light tracking-tight">
+            <h1 className={TYPOGRAPHY.H2}>
               Demande envoyée !
             </h1>
-            <p className="text-muted-foreground">
+            <p className={TYPOGRAPHY.MUTED}>
               Un administrateur doit approuver votre compte avant que vous puissiez vous connecter.
             </p>
           </div>
           
-          <Link 
-            to="/login" 
-            className="inline-block w-full h-12 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors flex items-center justify-center"
-          >
-            Retour à la connexion
-          </Link>
+          <Button asChild variant="outline" className="w-full h-12">
+            <Link to="/login">
+              Retour à la connexion
+            </Link>
+          </Button>
         </div>
       </div>
     );
@@ -98,19 +100,19 @@ export default function Register() {
       <div className="w-full max-w-sm space-y-12">
         {/* Logo */}
         <div className="text-center space-y-2">
-          <h1 className="text-4xl font-light tracking-tight">
+          <h1 className={TYPOGRAPHY.H1}>
             aura
           </h1>
-          <p className="text-sm text-muted-foreground">Demande d'inscription</p>
+          <p className={TYPOGRAPHY.MUTED}>Demande d'inscription</p>
         </div>
 
         {/* Error */}
         {error && (
-          <p className="text-sm text-destructive text-center">{error}</p>
+          <p className={cn(TYPOGRAPHY.SMALL, "text-destructive text-center")}>{error}</p>
         )}
 
         {/* Info */}
-        <p className="text-xs text-muted-foreground text-center border border-border/30 p-3 rounded">
+        <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground text-center border border-border/30 p-3 rounded")}>
           Votre demande sera examinée par un administrateur avant d'être approuvée.
         </p>
 
@@ -207,25 +209,26 @@ export default function Register() {
               )}
             />
 
-            <button
+            <Button
               type="submit"
               disabled={loading}
-              className="w-full h-12 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full h-12"
+              variant="outline"
             >
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
-                  <Send className="h-4 w-4" />
+                  <Send className="h-4 w-4 mr-2" />
                   Envoyer la demande
                 </>
               )}
-            </button>
+            </Button>
           </form>
         </Form>
 
         {/* Link */}
-        <p className="text-center text-sm text-muted-foreground">
+        <p className={cn(TYPOGRAPHY.SMALL, "text-center text-muted-foreground")}>
           Déjà un compte ?{' '}
           <Link to="/login" className="text-foreground hover:underline">
             Connexion

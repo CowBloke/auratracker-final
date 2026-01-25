@@ -13,7 +13,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { resolveImageUrl } from '@/lib/images';
+import PageLayout from '@/components/layout/PageLayout';
+import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 
 const rarityLabels: Record<string, string> = {
   COMMON: 'Commun',
@@ -212,220 +217,98 @@ export default function PlayerMarket() {
   const canAfford = (price: number) => (user?.money || 0) >= price;
 
   return (
-    <div className="max-w-5xl mx-auto py-12 px-4 space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-end">
-        <div className="text-right text-sm text-muted-foreground tabular-nums">
-          <div>{user?.aura.toLocaleString()} aura</div>
-          <div>${user?.money.toLocaleString()}</div>
+    <>
+      <PageLayout>
+        {/* Header */}
+        <div className="flex items-center justify-end">
+          <div className={cn("text-right", TYPOGRAPHY.SMALL, "text-muted-foreground tabular-nums")}>
+            <div>{user?.aura.toLocaleString()} aura</div>
+            <div>${user?.money.toLocaleString()}</div>
+          </div>
         </div>
-      </div>
 
-      {/* Message */}
-      {message && (
-        <p className={cn(
-          "text-sm",
-          message.type === 'success' ? 'text-foreground' : 'text-destructive'
-        )}>
-          {message.text}
-        </p>
-      )}
+        {/* Message */}
+        {message && (
+          <Card className={message.type === 'success' ? 'border-emerald-500/50' : 'border-destructive/50'}>
+            <CardContent className="p-4">
+              <p className={cn(
+                TYPOGRAPHY.SMALL,
+                message.type === 'success' ? 'text-foreground' : 'text-destructive'
+              )}>
+                {message.text}
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
-      {/* Tabs */}
-      <div className="flex gap-2 flex-wrap">
-        <button
-          onClick={() => setActiveTab('browse')}
-          className={cn(
-            "px-4 py-2 text-sm border transition-colors flex items-center gap-2",
-            activeTab === 'browse'
-              ? "border-foreground text-foreground"
-              : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-          )}
-        >
-          <ShoppingCart className="w-4 h-4" />
-          Parcourir
-        </button>
-        <button
-          onClick={() => setActiveTab('my-listings')}
-          className={cn(
-            "px-4 py-2 text-sm border transition-colors flex items-center gap-2",
-            activeTab === 'my-listings'
-              ? "border-foreground text-foreground"
-              : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-          )}
-        >
-          <Tag className="w-4 h-4" />
-          Mes annonces ({myListings.length})
-        </button>
-        <button
-          onClick={openSellDialog}
-          className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors flex items-center gap-2 ml-auto"
-        >
-          Vendre
-        </button>
-      </div>
-
-      {/* Browse Tab */}
-      {activeTab === 'browse' && (
-        <div className="space-y-6">
-          {/* Filters */}
-          <div className="flex flex-wrap gap-4 items-center">
-            <div className="flex gap-2">
-              {(['all', 'PAINTING', 'ITEM'] as const).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={cn(
-                    "px-3 py-1 text-sm border transition-colors",
-                    filter === f
-                      ? "border-foreground text-foreground"
-                      : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-                  )}
-                >
-                  {f === 'all' ? 'Tout' : f === 'PAINTING' ? 'Tableaux' : 'Objets'}
-                </button>
-              ))}
-            </div>
-
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as typeof sort)}
-              className="px-3 py-1 text-sm border border-border/30 bg-transparent text-foreground"
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'browse' | 'sell' | 'my-listings' | 'history')}>
+          <div className="flex items-center justify-between">
+            <TabsList>
+              <TabsTrigger value="browse">
+                <ShoppingCart className="w-4 h-4 mr-2" />
+                Parcourir
+              </TabsTrigger>
+              <TabsTrigger value="my-listings">
+                <Tag className="w-4 h-4 mr-2" />
+                Mes annonces ({myListings.length})
+              </TabsTrigger>
+            </TabsList>
+            <Button
+              onClick={openSellDialog}
+              variant="outline"
             >
-              <option value="newest">Plus récent</option>
-              <option value="price_asc">Prix croissant</option>
-              <option value="price_desc">Prix décroissant</option>
-            </select>
+              Vendre
+            </Button>
           </div>
 
-          <div className="h-px bg-border" />
+          <TabsContent value="browse" className={SPACING.SECTION_SPACING}>
+            {/* Filters */}
+            <div className="flex flex-wrap gap-4 items-center">
+              <div className="flex gap-2">
+                {(['all', 'PAINTING', 'ITEM'] as const).map((f) => (
+                  <Button
+                    key={f}
+                    onClick={() => setFilter(f)}
+                    variant={filter === f ? 'default' : 'outline'}
+                    size="sm"
+                  >
+                    {f === 'all' ? 'Tout' : f === 'PAINTING' ? 'Tableaux' : 'Objets'}
+                  </Button>
+                ))}
+              </div>
 
-          {/* Listings */}
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+              <Select value={sort} onValueChange={(v) => setSort(v as typeof sort)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Plus récent</SelectItem>
+                  <SelectItem value="price_asc">Prix croissant</SelectItem>
+                  <SelectItem value="price_desc">Prix décroissant</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          ) : listings.length === 0 ? (
-            <p className="text-center text-muted-foreground py-12">
-              Aucune annonce disponible
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {listings.map((listing) => (
-                <div
-                  key={listing.id}
-                  className="border border-border/30 rounded-lg overflow-hidden hover:border-foreground/30 transition-colors"
-                >
-                  {/* Image */}
-                  <div className="aspect-square bg-muted/20 relative">
-                    {listing.type === 'PAINTING' && listing.painting ? (
-                      <img
-                        src={resolveImageUrl(listing.painting.imageUrl)}
-                        alt={listing.painting.title}
-                        className={cn(
-                          "w-full h-full object-cover",
-                          rarityFilters[listing.painting.rarity]
-                        )}
-                      />
-                    ) : listing.type === 'ITEM' && listing.item?.imageUrl ? (
-                      <img
-                        src={resolveImageUrl(listing.item.imageUrl)}
-                        alt={listing.item.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        {listing.type === 'PAINTING' ? (
-                          <ImageIcon className="w-12 h-12 text-muted-foreground" />
-                        ) : (
-                          <Package className="w-12 h-12 text-muted-foreground" />
-                        )}
-                      </div>
-                    )}
 
-                    {/* Rarity badge for paintings */}
-                    {listing.painting && (
-                      <div className={cn(
-                        "absolute top-2 right-2 px-2 py-0.5 text-xs rounded-full bg-black/50",
-                        rarityColors[listing.painting.rarity]
-                      )}>
-                        {rarityLabels[listing.painting.rarity]}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Details */}
-                  <div className="p-4 space-y-3">
-                    <div>
-                      <h3 className="font-medium truncate">
-                        {listing.painting?.title || listing.item?.name}
-                      </h3>
-                      <p className="text-sm text-muted-foreground truncate">
-                        {listing.painting?.artist || listing.item?.description}
-                      </p>
-                      {listing.painting && (
-                        <p className="text-xs text-muted-foreground">
-                          Copie {listing.painting.copyNumber}/{listing.painting.maxCopies}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-lg font-medium">${listing.price.toLocaleString()}</p>
-                        <p className="text-xs text-muted-foreground">
-                          par {listing.seller.username}
-                        </p>
-                      </div>
-
-                      {listing.seller.id !== user?.id && (
-                        <button
-                          onClick={() => handleBuy(listing.id)}
-                          disabled={!canAfford(listing.price) || buying === listing.id}
-                          className={cn(
-                            "px-4 py-2 text-sm border transition-colors",
-                            canAfford(listing.price)
-                              ? "border-foreground text-foreground hover:bg-foreground hover:text-background"
-                              : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
-                          )}
-                        >
-                          {buying === listing.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : canAfford(listing.price) ? (
-                            'Acheter'
-                          ) : (
-                            'Insuffisant'
-                          )}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* My Listings Tab */}
-      {activeTab === 'my-listings' && (
-        <div className="space-y-6">
-          <div className="h-px bg-border" />
-
-          {myListings.length === 0 ? (
-            <p className="text-center text-muted-foreground py-12">
-              Vous n'avez aucune annonce active
-            </p>
-          ) : (
-            <div className="space-y-0">
-              {myListings.map((listing) => (
-                <div
-                  key={listing.id}
-                  className="flex items-center justify-between py-6 border-b border-border/30 last:border-0"
-                >
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className="w-14 h-14 rounded overflow-hidden shrink-0 bg-muted/20">
-                      {listing.painting ? (
+            {/* Listings */}
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+              </div>
+            ) : listings.length === 0 ? (
+              <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
+                Aucune annonce disponible
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {listings.map((listing) => (
+                  <Card
+                    key={listing.id}
+                    className="border-border/40 overflow-hidden hover:border-foreground/30 transition-colors"
+                  >
+                    {/* Image */}
+                    <div className="aspect-square bg-muted/20 relative">
+                      {listing.type === 'PAINTING' && listing.painting ? (
                         <img
                           src={resolveImageUrl(listing.painting.imageUrl)}
                           alt={listing.painting.title}
@@ -434,7 +317,7 @@ export default function PlayerMarket() {
                             rarityFilters[listing.painting.rarity]
                           )}
                         />
-                      ) : listing.item?.imageUrl ? (
+                      ) : listing.type === 'ITEM' && listing.item?.imageUrl ? (
                         <img
                           src={resolveImageUrl(listing.item.imageUrl)}
                           alt={listing.item.name}
@@ -442,48 +325,149 @@ export default function PlayerMarket() {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <Package className="w-6 h-6 text-muted-foreground" />
+                          {listing.type === 'PAINTING' ? (
+                            <ImageIcon className="w-12 h-12 text-muted-foreground" />
+                          ) : (
+                            <Package className="w-12 h-12 text-muted-foreground" />
+                          )}
+                        </div>
+                      )}
+
+                      {/* Rarity badge for paintings */}
+                      {listing.painting && (
+                        <div className={cn(
+                          "absolute top-2 right-2 px-2 py-0.5 rounded-full bg-black/50",
+                          TYPOGRAPHY.XS,
+                          rarityColors[listing.painting.rarity]
+                        )}>
+                          {rarityLabels[listing.painting.rarity]}
                         </div>
                       )}
                     </div>
 
-                    <div className="space-y-1 flex-1 min-w-0">
-                      <div className="flex items-center gap-3">
-                        <h3 className="font-medium truncate">
+                    {/* Details */}
+                    <CardContent className={SPACING.CARD_SPACING}>
+                      <div>
+                        <h3 className={TYPOGRAPHY.SMALL}>
                           {listing.painting?.title || listing.item?.name}
                         </h3>
+                        <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground truncate")}>
+                          {listing.painting?.artist || listing.item?.description}
+                        </p>
                         {listing.painting && (
-                          <span className={cn("text-xs", rarityColors[listing.painting.rarity])}>
-                            {rarityLabels[listing.painting.rarity]}
-                          </span>
+                          <p className={TYPOGRAPHY.XS}>
+                            Copie {listing.painting.copyNumber}/{listing.painting.maxCopies}
+                          </p>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        ${listing.price.toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
 
-                  <button
-                    onClick={() => handleCancel(listing.id)}
-                    disabled={cancelling === listing.id}
-                    className="px-3 py-2 text-sm border border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors flex items-center gap-1 ml-4"
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className={cn(TYPOGRAPHY.H5, "tabular-nums")}>${listing.price.toLocaleString()}</p>
+                          <p className={TYPOGRAPHY.XS}>
+                            par {listing.seller.username}
+                          </p>
+                        </div>
+
+                        {listing.seller.id !== user?.id && (
+                          <Button
+                            onClick={() => handleBuy(listing.id)}
+                            disabled={!canAfford(listing.price) || buying === listing.id}
+                            variant="outline"
+                            size="sm"
+                          >
+                            {buying === listing.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                            ) : null}
+                            {canAfford(listing.price) ? 'Acheter' : 'Insuffisant'}
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="my-listings" className={SPACING.SECTION_SPACING}>
+            {myListings.length === 0 ? (
+              <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
+                Vous n'avez aucune annonce active
+              </p>
+            ) : (
+              <div className="space-y-0">
+                {myListings.map((listing) => (
+                  <Card
+                    key={listing.id}
+                    className="border-border/40 border-b last:border-b"
                   >
-                    {cancelling === listing.id ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <>
-                        <X className="w-4 h-4" />
-                        Annuler
-                      </>
-                    )}
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+                    <CardContent className="py-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4 flex-1">
+                          <div className="w-14 h-14 rounded overflow-hidden shrink-0 bg-muted/20">
+                            {listing.painting ? (
+                              <img
+                                src={resolveImageUrl(listing.painting.imageUrl)}
+                                alt={listing.painting.title}
+                                className={cn(
+                                  "w-full h-full object-cover",
+                                  rarityFilters[listing.painting.rarity]
+                                )}
+                              />
+                            ) : listing.item?.imageUrl ? (
+                              <img
+                                src={resolveImageUrl(listing.item.imageUrl)}
+                                alt={listing.item.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Package className="w-6 h-6 text-muted-foreground" />
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="space-y-1 flex-1 min-w-0">
+                            <div className="flex items-center gap-3">
+                              <h3 className={TYPOGRAPHY.SMALL}>
+                                {listing.painting?.title || listing.item?.name}
+                              </h3>
+                              {listing.painting && (
+                                <span className={cn(TYPOGRAPHY.XS, rarityColors[listing.painting.rarity])}>
+                                  {rarityLabels[listing.painting.rarity]}
+                                </span>
+                              )}
+                            </div>
+                            <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tabular-nums")}>
+                              ${listing.price.toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+
+                        <Button
+                          onClick={() => handleCancel(listing.id)}
+                          disabled={cancelling === listing.id}
+                          variant="destructive"
+                          size="sm"
+                          className="ml-4"
+                        >
+                          {cancelling === listing.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                          ) : (
+                            <X className="w-4 h-4 mr-1" />
+                          )}
+                          Annuler
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </PageLayout>
 
       {/* Sell Dialog */}
       <Dialog open={sellDialogOpen} onOpenChange={setSellDialogOpen}>
@@ -499,112 +483,112 @@ export default function PlayerMarket() {
           <div className="py-4 space-y-4">
             {/* Type selection */}
             <div className="flex gap-2">
-              <button
+              <Button
                 onClick={() => {
                   setSellType('painting');
                   setSelectedItem(null);
                 }}
-                className={cn(
-                  "px-4 py-2 text-sm border transition-colors",
-                  sellType === 'painting'
-                    ? "border-foreground text-foreground"
-                    : "border-border/30 text-muted-foreground hover:text-foreground"
-                )}
+                variant={sellType === 'painting' ? 'default' : 'outline'}
+                size="sm"
               >
                 Tableaux ({warehousePaintings.length})
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => {
                   setSellType('item');
                   setSelectedPainting(null);
                 }}
-                className={cn(
-                  "px-4 py-2 text-sm border transition-colors",
-                  sellType === 'item'
-                    ? "border-foreground text-foreground"
-                    : "border-border/30 text-muted-foreground hover:text-foreground"
-                )}
+                variant={sellType === 'item' ? 'default' : 'outline'}
+                size="sm"
               >
                 Objets ({userItems.length})
-              </button>
+              </Button>
             </div>
 
             {/* Item selection */}
             <div className="max-h-[200px] overflow-y-auto space-y-2">
               {sellType === 'painting' ? (
                 warehousePaintings.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-4">
+                  <p className={cn(TYPOGRAPHY.MUTED, "text-center py-4")}>
                     Aucun tableau disponible
                   </p>
                 ) : (
                   warehousePaintings.map((painting) => (
-                    <button
+                    <Card
                       key={painting.id}
                       onClick={() => setSelectedPainting(painting)}
                       className={cn(
-                        "w-full flex items-center gap-3 p-2 border rounded transition-colors text-left",
+                        "cursor-pointer transition-colors",
                         selectedPainting?.id === painting.id
                           ? "border-foreground bg-foreground/5"
-                          : "border-border/30 hover:border-foreground/30"
+                          : "border-border/40 hover:border-foreground/30"
                       )}
                     >
-                      <div className="w-10 h-10 rounded overflow-hidden shrink-0">
-                        <img
-                          src={resolveImageUrl(painting.imageUrl)}
-                          alt={painting.title}
-                          className={cn(
-                            "w-full h-full object-cover",
-                            rarityFilters[painting.rarity]
-                          )}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{painting.title}</p>
-                        <div className="flex items-center gap-2">
-                          <span className={cn("text-xs", rarityColors[painting.rarity])}>
-                            {rarityLabels[painting.rarity]}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {painting.copyNumber}/{painting.maxCopies}
-                          </span>
+                      <CardContent className="p-2">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded overflow-hidden shrink-0">
+                            <img
+                              src={resolveImageUrl(painting.imageUrl)}
+                              alt={painting.title}
+                              className={cn(
+                                "w-full h-full object-cover",
+                                rarityFilters[painting.rarity]
+                              )}
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={TYPOGRAPHY.SMALL}>{painting.title}</p>
+                            <div className="flex items-center gap-2">
+                              <span className={cn(TYPOGRAPHY.XS, rarityColors[painting.rarity])}>
+                                {rarityLabels[painting.rarity]}
+                              </span>
+                              <span className={TYPOGRAPHY.XS}>
+                                {painting.copyNumber}/{painting.maxCopies}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </button>
+                      </CardContent>
+                    </Card>
                   ))
                 )
               ) : (
                 userItems.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-4">
+                  <p className={cn(TYPOGRAPHY.MUTED, "text-center py-4")}>
                     Aucun objet disponible
                   </p>
                 ) : (
                   userItems.map((item) => (
-                    <button
+                    <Card
                       key={item.id}
                       onClick={() => setSelectedItem(item)}
                       className={cn(
-                        "w-full flex items-center gap-3 p-2 border rounded transition-colors text-left",
+                        "cursor-pointer transition-colors",
                         selectedItem?.id === item.id
                           ? "border-foreground bg-foreground/5"
-                          : "border-border/30 hover:border-foreground/30"
+                          : "border-border/40 hover:border-foreground/30"
                       )}
                     >
-                      <div className="w-10 h-10 rounded overflow-hidden shrink-0 bg-muted/20 flex items-center justify-center">
-                        {item.item.imageUrl ? (
-                          <img
-                            src={resolveImageUrl(item.item.imageUrl)}
-                            alt={item.item.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <Package className="w-5 h-5 text-muted-foreground" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{item.item.name}</p>
-                        <p className="text-xs text-muted-foreground">x{item.quantity}</p>
-                      </div>
-                    </button>
+                      <CardContent className="p-2">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded overflow-hidden shrink-0 bg-muted/20 flex items-center justify-center">
+                            {item.item.imageUrl ? (
+                              <img
+                                src={resolveImageUrl(item.item.imageUrl)}
+                                alt={item.item.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <Package className="w-5 h-5 text-muted-foreground" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={TYPOGRAPHY.SMALL}>{item.item.name}</p>
+                            <p className={TYPOGRAPHY.XS}>x{item.quantity}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
                   ))
                 )
               )}
@@ -613,7 +597,7 @@ export default function PlayerMarket() {
             {/* Price input */}
             {(selectedPainting || selectedItem) && (
               <div className="space-y-2">
-                <label className="text-sm font-medium">Prix de vente ($)</label>
+                <label className={TYPOGRAPHY.SMALL}>Prix de vente ($)</label>
                 <Input
                   type="number"
                   min="1"
@@ -623,7 +607,7 @@ export default function PlayerMarket() {
                   className="bg-transparent"
                 />
                 {listPrice && parseInt(listPrice) > 0 && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className={TYPOGRAPHY.XS}>
                     Vous recevrez ${Math.floor(parseInt(listPrice) * 0.95).toLocaleString()} après frais (5%)
                   </p>
                 )}
@@ -652,6 +636,6 @@ export default function PlayerMarket() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }
