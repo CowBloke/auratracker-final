@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import { leaderboardsApi, economyApi, usersApi } from '../services/api';
-import { ArrowRight, Loader2, Send, Clock, Sparkles } from 'lucide-react';
+import { ArrowRight, Loader2, Send, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
