@@ -46,37 +46,6 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
 
 const ANNOUNCEMENT_MAX_LENGTH = 120;
 
-// Liste des pages disponibles pour la maintenance
-const AVAILABLE_PAGES = [
-  { path: '/', label: 'Accueil' },
-  { path: '/games', label: 'Jeux' },
-  { path: '/games/bomb-party', label: 'Bomb Party' },
-  { path: '/games/poker', label: 'Poker' },
-  { path: '/games/petit-bac', label: 'Petit Bac' },
-  { path: '/games/bataille-navale', label: 'Bataille Navale' },
-  { path: '/games/doodle-jump', label: 'Doodle Jump' },
-  { path: '/games/2048', label: '2048' },
-  { path: '/games/flappy-bird', label: 'Flappy Bird' },
-  { path: '/games/clash', label: 'Clash' },
-  { path: '/games/casino', label: 'Casino' },
-  { path: '/games/market', label: 'Salle de marché' },
-  { path: '/games/aura-coin', label: 'Aura Coin' },
-  { path: '/games/polymarket', label: 'Polymarket' },
-  { path: '/polymarket', label: 'Polymarket (alternatif)' },
-  { path: '/leaderboards', label: 'Classements' },
-  { path: '/party', label: 'Groupe' },
-  { path: '/clans', label: 'Clans' },
-  { path: '/inventory', label: 'Inventaire' },
-  { path: '/profile', label: 'Profil' },
-  { path: '/gallery', label: 'Galerie' },
-  { path: '/market', label: 'Marché joueur' },
-  { path: '/rules', label: 'Règles' },
-  { path: '/pass', label: 'Pass' },
-  { path: '/quests', label: 'Quêtes' },
-  { path: '/suggestions', label: 'Suggestions' },
-  { path: '/settings', label: 'Paramètres' },
-];
-
 // Log type configuration with icons, colors and labels
 const LOG_TYPE_CONFIG: Record<string, { label: string; color: string; bgColor: string; borderColor: string; icon: React.ComponentType<{ className?: string }> }> = {
   AUTH: { label: 'Connexion', color: 'text-blue-400', bgColor: 'bg-blue-500', borderColor: 'border-blue-500', icon: LogIn },
@@ -322,7 +291,7 @@ export default function Admin() {
     bombparty_3letter_start_round: '10',
   });
   const [maintenanceMessage, setMaintenanceMessage] = useState('');
-  const [maintenancePages, setMaintenancePages] = useState<string[]>([]);
+  const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
   const [maintenanceEndDate, setMaintenanceEndDate] = useState<string>('');
   const [savingMaintenance, setSavingMaintenance] = useState(false);
   const [announcementMessage, setAnnouncementMessage] = useState('');
@@ -552,19 +521,18 @@ export default function Admin() {
       });
       setMaintenanceMessage(res.data.settings.maintenance_message || '');
       
-      // Charger la liste des pages en maintenance
-      let pages: string[] = [];
+      // Déterminer si la maintenance est activée : priorité au flag dédié, fallback legacy pages
+      const enabledFromFlag = res.data.settings.maintenance_enabled === 'true';
+      let enabledFromPages = false;
       if (res.data.settings.maintenance_pages) {
         try {
-          pages = JSON.parse(res.data.settings.maintenance_pages);
-          if (!Array.isArray(pages)) {
-            pages = [];
-          }
+          const pages = JSON.parse(res.data.settings.maintenance_pages);
+          enabledFromPages = Array.isArray(pages) && pages.length > 0;
         } catch {
-          pages = [];
+          enabledFromPages = false;
         }
       }
-      setMaintenancePages(pages);
+      setMaintenanceEnabled(enabledFromFlag || enabledFromPages);
       
       // Charger la date de fin de maintenance
       if (res.data.settings.maintenance_end_date && res.data.settings.maintenance_end_date.trim() !== '') {
@@ -637,9 +605,10 @@ export default function Admin() {
     try {
       setSavingMaintenance(true);
       const settings: Record<string, string> = {
-        maintenance_enabled: maintenancePages.length > 0 ? 'true' : 'false',
+        maintenance_enabled: maintenanceEnabled ? 'true' : 'false',
         maintenance_message: maintenanceMessage.trim(),
-        maintenance_pages: JSON.stringify(maintenancePages),
+        // Champ legacy pour compat backend (toujours vide car maintenance globale)
+        maintenance_pages: '[]',
       };
       
       // Ajouter la date de fin si elle est définie
@@ -663,16 +632,6 @@ export default function Admin() {
     } finally {
       setSavingMaintenance(false);
     }
-  };
-
-  const toggleMaintenancePage = (path: string) => {
-    setMaintenancePages(prev => {
-      if (prev.includes(path)) {
-        return prev.filter(p => p !== path);
-      } else {
-        return [...prev, path];
-      }
-    });
   };
 
   const saveAnnouncement = async () => {
@@ -2802,54 +2761,19 @@ export default function Admin() {
                 </p>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium">Pages en maintenance</label>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setMaintenancePages(AVAILABLE_PAGES.map(p => p.path))}
-                    >
-                      Tout sélectionner
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setMaintenancePages([])}
-                    >
-                      Tout désélectionner
-                    </Button>
+                  <div>
+                    <label className="text-sm font-medium">Activer la maintenance globale</label>
+                    <p className="text-xs text-muted-foreground">
+                      Quand activée, toutes les pages affichent la maintenance sauf /admin, /login et /register.
+                    </p>
                   </div>
+                  <Switch
+                    checked={maintenanceEnabled}
+                    onCheckedChange={setMaintenanceEnabled}
+                  />
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Sélectionnez les pages qui afficheront la page de maintenance. Les pages admin, login et banned sont toujours accessibles.
-                </p>
-                <div className="border border-border/30 rounded-lg p-4 max-h-[400px] overflow-y-auto">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {AVAILABLE_PAGES.map((page) => (
-                      <div
-                        key={page.path}
-                        className="flex items-center space-x-2 p-2 rounded hover:bg-accent/50 cursor-pointer"
-                        onClick={() => toggleMaintenancePage(page.path)}
-                      >
-                        <Switch
-                          checked={maintenancePages.includes(page.path)}
-                          onCheckedChange={() => toggleMaintenancePage(page.path)}
-                        />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{page.label}</p>
-                          <p className="text-xs text-muted-foreground">{page.path}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                {maintenancePages.length > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    {maintenancePages.length} page(s) sélectionnée(s)
-                  </p>
-                )}
               </div>
 
               <div className="flex justify-end">

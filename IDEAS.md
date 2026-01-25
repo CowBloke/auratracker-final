@@ -38,3 +38,4 @@
 - notifications : par mail et bureau
 - redirection sur créer un compte : bienvenue
 - tous les raccorucis des jeux dans l'accordion de la sidebar
+- guerres de clans

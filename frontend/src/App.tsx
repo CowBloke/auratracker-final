@@ -106,44 +106,21 @@ function App() {
 
   // Vérifier si la page actuelle est en maintenance
   const isCurrentPageInMaintenance = () => {
-    if (maintenanceLoading || maintenanceStatus.pages.length === 0) {
+    if (maintenanceLoading || !maintenanceStatus.enabled) {
       return false;
     }
 
-    // Toujours permettre l'accès aux pages admin, login et banned
+    // Toujours permettre l'accès aux pages admin, login et register
     if (
       location.pathname.startsWith('/admin') ||
       location.pathname === '/login' ||
-      location.pathname === '/banned'
+      location.pathname === '/register'
     ) {
       return false;
     }
 
-    // Vérifier si le chemin actuel correspond à une page en maintenance
-    const currentPath = location.pathname;
-    
-    // Si "/" est dans la liste, toutes les pages sont en maintenance (sauf exceptions ci-dessus)
-    if (maintenanceStatus.pages.includes('/')) {
-      return true;
-    }
-    
-    // Vérifier les correspondances exactes
-    if (maintenanceStatus.pages.includes(currentPath)) {
-      return true;
-    }
-
-    // Vérifier les correspondances par préfixe (pour les routes dynamiques comme /profile/:userId)
-    for (const pagePath of maintenanceStatus.pages) {
-      if (pagePath !== '/' && currentPath.startsWith(pagePath)) {
-        // S'assurer que c'est une correspondance complète (pas juste un préfixe partiel)
-        // Par exemple, "/games" devrait correspondre à "/games" et "/games/..." mais pas à "/games123"
-        if (currentPath === pagePath || currentPath.startsWith(pagePath + '/')) {
-          return true;
-        }
-      }
-    }
-
-    return false;
+    // Maintenance globale : toutes les autres pages sont bloquées
+    return true;
   };
 
   if (!maintenanceLoading && isCurrentPageInMaintenance()) {
