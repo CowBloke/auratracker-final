@@ -39,19 +39,12 @@ interface UserListItem {
   aura: number;
 }
 
-interface Ranking {
-  rank: number;
-  userId: string;
-  username: string;
-  usernameColor?: string | null;
-  value: number;
-}
-
 interface GameShortcut {
   id: string;
   label: string;
   path: string;
   description: string;
+  image?: string;
 }
 
 const shortcutStorageKey = 'auratracker:dashboard-shortcuts';
@@ -82,28 +75,27 @@ const pickWelcomeMessage = (username?: string) => {
 };
 
 const gameShortcuts: GameShortcut[] = [
-  { id: 'bomb-party', label: 'Bomb Party', path: '/games/bomb-party', description: 'Mots explosifs en équipe.' },
-  { id: 'poker', label: 'Poker', path: '/games/poker', description: 'Table rapide, mise prudente.' },
-  { id: 'petit-bac', label: 'Petit Bac', path: '/games/petit-bac', description: 'Catégories, lettres, vitesse.' },
-  { id: 'clash', label: 'Clash', path: '/games/clash', description: 'Duel stratégique instantané.' },
-  { id: 'casino', label: 'Casino', path: '/games/casino', description: 'Mini-jeux et mises rapides.' },
-  { id: 'market', label: 'Marché', path: '/games/market', description: 'Salle de marché en direct.' },
-  { id: 'aura-coin', label: 'Aura Coin', path: '/games/aura-coin', description: 'Suivi des coins aura.' },
-  { id: 'polymarket', label: 'Polymarket', path: '/games/polymarket', description: 'Paris en temps réel.' },
-  { id: 'doodle-jump', label: 'Doodle Jump', path: '/games/doodle-jump', description: 'Grimpe sans fin.' },
-  { id: '2048', label: '2048', path: '/games/2048', description: "Fusionne jusqu'à 2048." },
-  { id: 'flappy-bird', label: 'Flappy Bird', path: '/games/flappy-bird', description: 'Timing parfait.' },
-  { id: 'russian-roulette', label: 'Roulette Russe', path: '/games/russian-roulette', description: 'Tour fatal, chance.' },
-  { id: 'bataille-navale', label: 'Bataille Navale', path: '/games/bataille-navale', description: 'Touches, coulés, gagne.' },
-  { id: 'solitaire', label: 'Solitaire', path: '/games/solitaire', description: 'Classique et relax.' },
+  { id: 'bomb-party', label: 'Bomb Party', path: '/games/bomb-party', description: 'Mots explosifs en ??quipe.', image: '/images/games/bombparty.png' },
+  { id: 'poker', label: 'Poker', path: '/games/poker', description: 'Table rapide, mise prudente.', image: '/images/games/poker.png' },
+  { id: 'petit-bac', label: 'Petit Bac', path: '/games/petit-bac', description: 'Cat??gories, lettres, vitesse.', image: '/images/games/petitbac.png' },
+  { id: 'clash', label: 'Clash', path: '/games/clash', description: 'Duel strat??gique instantan??.', image: '/images/games/clash.png' },
+  { id: 'casino', label: 'Casino', path: '/games/casino', description: 'Mini-jeux et mises rapides.', image: '/images/games/casino.png' },
+  { id: 'market', label: 'March??', path: '/games/market', description: 'Salle de march?? en direct.', image: '/images/games/market.png' },
+  { id: 'aura-coin', label: 'Aura Coin', path: '/games/aura-coin', description: 'Suivi des coins aura.', image: '/images/games/auracoin.png' },
+  { id: 'polymarket', label: 'Polymarket', path: '/games/polymarket', description: 'Paris en temps r??el.' },
+  { id: 'doodle-jump', label: 'Doodle Jump', path: '/games/doodle-jump', description: 'Grimpe sans fin.', image: '/images/games/doodlejump.png' },
+  { id: '2048', label: '2048', path: '/games/2048', description: "Fusionne jusqu'?? 2048.", image: '/images/games/2048.png' },
+  { id: 'flappy-bird', label: 'Flappy Bird', path: '/games/flappy-bird', description: 'Timing parfait.', image: '/images/games/flappybird.png' },
+  { id: 'russian-roulette', label: 'Roulette Russe', path: '/games/russian-roulette', description: 'Tour fatal, chance.', image: '/images/games/russianroulette.png' },
+  { id: 'bataille-navale', label: 'Bataille Navale', path: '/games/bataille-navale', description: 'Touches, coul??s, gagne.', image: '/images/games/bataillenavale.png' },
+  { id: 'solitaire', label: 'Solitaire', path: '/games/solitaire', description: 'Classique et relax.', image: '/images/games/solitaire.png' },
 ];
 
-const defaultShortcuts = ['bomb-party', 'poker', 'petit-bac', 'clash'];
+const defaultShortcuts = ['doodle-jump', 'flappy-bird', 'bomb-party', '2048'];
 
 export default function Dashboard() {
   const { user, refreshUser } = useAuth();
   const { onlineUsers, publicParties, fetchPublicParties } = useSocket();
-  const [auraRankings, setAuraRankings] = useState<Ranking[]>([]);
   const [recentTransfers, setRecentTransfers] = useState<Transfer[]>([]);
   const [userRank, setUserRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -216,7 +208,6 @@ export default function Dashboard() {
           economyApi.getDailyAllowance(),
         ]);
         
-        setAuraRankings(rankingsRes.data.rankings);
         setUserRank(rankingsRes.data.userRank);
         setRecentTransfers(transfersRes.data.transfers);
         setAllUsers(usersRes.data.users);
@@ -324,25 +315,27 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4 space-y-16">
+    <div className="max-w-4xl mx-auto py-12 px-4 space-y-6">
       {/* Header */}
-      <header className="space-y-2 text-center">
-        <p className="text-sm text-muted-foreground tracking-wide uppercase">
-          {onlineUsers.length} en ligne
-        </p>
-        <p className="text-sm text-muted-foreground tracking-wide uppercase">
-          {publicParties.length} parties actives
-        </p>
-        <h1
-          className="text-5xl md:text-7xl font-light tracking-tight"
-          style={user?.usernameColor ? { color: user.usernameColor } : undefined}
-        >
-          {welcomeMessage || `Bienvenue, ${user?.username ?? ''}`}
-        </h1>
-      </header>
+      <section className="rounded-3xl border border-border/50 bg-muted/20 p-8 md:p-10">
+        <header className="space-y-2 text-center">
+          <p className="text-sm text-muted-foreground tracking-wide uppercase">
+            {onlineUsers.length} en ligne
+          </p>
+          <p className="text-sm text-muted-foreground tracking-wide uppercase">
+            {publicParties.length} parties actives
+          </p>
+          <h1
+            className="text-3xl md:text-5xl font-light tracking-tight"
+            style={user?.usernameColor ? { color: user.usernameColor } : undefined}
+          >
+            {welcomeMessage || `Bienvenue, ${user?.username ?? ''}`}
+          </h1>
+        </header>
+      </section>
 
       {/* Shortcuts */}
-      <section className="space-y-4">
+      <section className="rounded-3xl border border-border/50 bg-muted/20 p-6 md:p-8 space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs text-muted-foreground tracking-wide uppercase">Widgets</p>
@@ -408,18 +401,31 @@ export default function Dashboard() {
               <Link
                 key={shortcut.id}
                 to={shortcut.path}
-                className="group relative overflow-hidden rounded-2xl border border-border/50 bg-muted/20 p-4 transition hover:border-foreground/30 hover:bg-muted/40"
+                className={cn(
+                  "group relative overflow-hidden rounded-2xl border border-border/50 p-4 transition hover:border-foreground/30",
+                  shortcut.image ? "text-white" : "bg-muted/20 hover:bg-muted/40"
+                )}
               >
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm text-muted-foreground uppercase tracking-wide">Jeu</p>
-                    <h3 className="text-lg font-medium">{shortcut.label}</h3>
-                  </div>
-                  <div className="h-10 w-10 rounded-full bg-foreground/5 flex items-center justify-center text-muted-foreground group-hover:text-foreground">
-                    <Sparkles className="h-4 w-4" />
-                  </div>
+                {shortcut.image && (
+                  <>
+                    <img
+                      src={shortcut.image}
+                      alt={shortcut.label}
+                      className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
+                  </>
+                )}
+                <div className="relative z-10 flex h-full flex-col justify-end gap-1">
+                  <span className={cn("text-xs uppercase tracking-[0.2em]", shortcut.image ? "text-white/70" : "text-muted-foreground")}>
+                    Jeu
+                  </span>
+                  <h3 className="text-lg font-semibold">{shortcut.label}</h3>
+                  <p className={cn("text-sm", shortcut.image ? "text-white/80" : "text-muted-foreground")}>
+                    {shortcut.description}
+                  </p>
                 </div>
-                <p className="mt-3 text-sm text-muted-foreground">{shortcut.description}</p>
               </Link>
             ))
           ) : (
@@ -431,42 +437,44 @@ export default function Dashboard() {
       </section>
 
       {/* Primary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-        <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 space-y-2">
-          <p className="text-3xl md:text-4xl font-light tabular-nums">
-            {user?.aura.toLocaleString()}
-          </p>
-          <p className="text-sm text-muted-foreground">aura</p>
-        </div>
-        <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 space-y-2">
-          <p className="text-3xl md:text-4xl font-light tabular-nums">
-            ${user?.money.toLocaleString()}
-          </p>
-          <p className="text-sm text-muted-foreground">argent</p>
-        </div>
-        <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 space-y-2">
-          <p className="text-3xl md:text-4xl font-light tabular-nums">
-            #{userRank || '-'}
-          </p>
-          <p className="text-sm text-muted-foreground">rang</p>
-        </div>
-        <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 space-y-2">
-          <p className="text-3xl md:text-4xl font-light tabular-nums">
-            {dailyAllowance?.remaining || 0}
-          </p>
-          <p className="text-sm text-muted-foreground">dons restants</p>
-          {resetCountdown && resetCountdown.total > 0 && (
-            <p className="text-xs text-muted-foreground/70 flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              <span className="tabular-nums">
-                {String(resetCountdown.hours).padStart(2, '0')}:
-                {String(resetCountdown.minutes).padStart(2, '0')}:
-                {String(resetCountdown.seconds).padStart(2, '0')}
-              </span>
+      <section className="rounded-3xl border border-border/50 bg-muted/20 p-6 md:p-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+          <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 space-y-2">
+            <p className="text-3xl md:text-4xl font-light tabular-nums">
+              {user?.aura.toLocaleString()}
             </p>
-          )}
+            <p className="text-sm text-muted-foreground">aura</p>
+          </div>
+          <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 space-y-2">
+            <p className="text-3xl md:text-4xl font-light tabular-nums">
+              ${user?.money.toLocaleString()}
+            </p>
+            <p className="text-sm text-muted-foreground">argent</p>
+          </div>
+          <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 space-y-2">
+            <p className="text-3xl md:text-4xl font-light tabular-nums">
+              #{userRank || '-'}
+            </p>
+            <p className="text-sm text-muted-foreground">rang</p>
+          </div>
+          <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 space-y-2">
+            <p className="text-3xl md:text-4xl font-light tabular-nums">
+              {dailyAllowance?.remaining || 0}
+            </p>
+            <p className="text-sm text-muted-foreground">dons restants</p>
+            {resetCountdown && resetCountdown.total > 0 && (
+              <p className="text-xs text-muted-foreground/70 flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                <span className="tabular-nums">
+                  {String(resetCountdown.hours).padStart(2, '0')}:
+                  {String(resetCountdown.minutes).padStart(2, '0')}:
+                  {String(resetCountdown.seconds).padStart(2, '0')}
+                </span>
+              </p>
+            )}
+          </div>
         </div>
-      </div>
+      </section>
 
       {/* Divider */}
       <div className="h-px bg-border" />
@@ -615,51 +623,6 @@ export default function Dashboard() {
               Limite quotidienne atteinte. Reviens après le reset pour offrir de nouveau.
             </p>
           ) : null}
-        </div>
-      </section>
-
-      {/* Divider */}
-      <div className="h-px bg-border" />
-
-      {/* Leaderboard */}
-      <section className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
-            Classement
-          </h2>
-          <Link 
-            to="/leaderboards" 
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-          >
-            Voir tout <ArrowRight className="h-3 w-3" />
-          </Link>
-        </div>
-        
-        <div className="space-y-0">
-          {auraRankings.map((ranking) => (
-            <div
-              key={ranking.userId}
-              className={cn(
-                "flex items-center justify-between py-4 border-b border-border/30 last:border-0",
-                ranking.userId === user?.id && "bg-muted/30 -mx-4 px-4"
-              )}
-            >
-              <div className="flex items-center gap-6">
-                <span className="text-muted-foreground text-sm w-6 tabular-nums">
-                  {ranking.rank}
-                </span>
-                <span 
-                  className="font-medium"
-                  style={ranking.usernameColor ? { color: ranking.usernameColor } : undefined}
-                >
-                  {ranking.username}
-                </span>
-              </div>
-              <span className="tabular-nums text-muted-foreground">
-                {ranking.value.toLocaleString()}
-              </span>
-            </div>
-          ))}
         </div>
       </section>
 
