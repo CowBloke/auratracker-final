@@ -36,3 +36,5 @@
 - notifications : par mail et bureau
 - redirection sur créer un compte : bienvenue
 - guerres de clans
+- topbar parties en ligne
+- scooby serie
