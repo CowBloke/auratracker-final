@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 import { TrendingDown, TrendingUp, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -7,7 +7,7 @@ import { buildSyntheticHistory, getMarketCoin, marketCoins } from '@/data/market
 import { loadSimState, recordSimTransaction, saveSimState, SimTransaction, SimState } from '@/lib/marketSim';
 import type { AuraCoinPriceHistory } from '@/services/api';
 import PageLayout from '@/components/layout/PageLayout';
-import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';

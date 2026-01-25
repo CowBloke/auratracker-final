@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { gamesApi } from '../services/api';
-import { Play, RotateCcw, X } from 'lucide-react';
+import { Play, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 

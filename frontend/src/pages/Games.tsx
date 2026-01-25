@@ -1,8 +1,6 @@
 import { Link } from 'react-router-dom';
 import PageLayout from '@/components/layout/PageLayout';
-import { Card, CardContent } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
 
 const games = [
   {

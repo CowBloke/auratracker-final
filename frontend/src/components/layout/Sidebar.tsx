@@ -20,8 +20,6 @@ import {
   Search,
   Ticket,
   BarChart3,
-  Image,
-  ShoppingCart,
   Target,
   Layers,
 } from 'lucide-react';
