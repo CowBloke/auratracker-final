@@ -817,6 +817,7 @@ export default function Polymarket() {
                   min="1.01"
                 />
               </div>
+            </div>
             <div>
               <label className="text-sm font-medium">Image (optionnel - URL uniquement)</label>
               <Input
