@@ -3,6 +3,7 @@ import path from 'path';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
+import jwt from 'jsonwebtoken';
 import { config } from './config/index.js';
 import { PrismaClient } from '@prisma/client';
 
@@ -105,14 +106,83 @@ app.get('/api/health', (req, res) => {
 });
 
 // Socket.io connection handling
+io.use(async (socket, next) => {
+  try {
+    const authHeader = socket.handshake.headers.authorization;
+    const authToken = socket.handshake.auth?.token;
+    const token = authToken ?? (authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : undefined);
+
+    if (!token) {
+      return next(new Error('unauthorized'));
+    }
+
+    const decoded = jwt.verify(token, config.jwtSecret) as {
+      userId: string;
+      email: string;
+    };
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        isAdmin: true,
+      },
+    });
+
+    if (!user) {
+      return next(new Error('unauthorized'));
+    }
+
+    const activeBan = await prisma.ban.findFirst({
+      where: {
+        userId: user.id,
+        isActive: true,
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gt: new Date() } },
+        ],
+      },
+      select: {
+        reason: true,
+        type: true,
+        expiresAt: true,
+      },
+    });
+
+    if (activeBan) {
+      const message = activeBan.type === 'PERMANENT'
+        ? `Your account has been permanently banned. Reason: ${activeBan.reason}`
+        : `Your account is temporarily banned until ${activeBan.expiresAt?.toISOString()}. Reason: ${activeBan.reason}`;
+      socket.emit('ban:enforced', {
+        message,
+        banned: true,
+        ban: {
+          reason: activeBan.reason,
+          type: activeBan.type,
+          expiresAt: activeBan.expiresAt ? activeBan.expiresAt.toISOString() : null,
+        },
+      });
+      return next(new Error('banned'));
+    }
+
+    socket.data.userId = user.id;
+    socket.data.username = user.username;
+    socket.data.isAdmin = user.isAdmin;
+    return next();
+  } catch (error) {
+    return next(new Error('unauthorized'));
+  }
+});
+
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
 
   socket.use(async (packet, next) => {
-    const data = packet[1] as { userId?: string } | undefined;
-    const userId = data?.userId;
+    const userId = socket.data.userId as string | undefined;
     if (!userId) {
-      return next();
+      return next(new Error('unauthorized'));
     }
 
     const activeBan = await prisma.ban.findFirst({

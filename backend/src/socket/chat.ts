@@ -45,8 +45,10 @@ const getTopLeaderboardIds = async () => {
 
 export const setupChatHandlers = (socket: Socket, io: Server) => {
   // Join chat
-  socket.on('chat:join', async (data: { userId: string; username: string; currentPage?: string }) => {
-    const { userId, username, currentPage } = data;
+  socket.on('chat:join', async (data: { currentPage?: string }) => {
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const currentPage = data?.currentPage;
 
     // Check if user is banned
     const activeBan = await prisma.ban.findFirst({
@@ -86,11 +88,13 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     const dbUser = await prisma.user.findUnique({
       where: { id: userId },
       select: {
+        username: true,
         usernameColor: true,
         profilePicture: true,
         isChatMuted: true,
       },
     });
+    if (!dbUser) return;
 
     if (dbUser?.isChatMuted) {
       socket.emit('chat:muted', { message: 'Vous avez été mute du chat par un admin.' });
@@ -99,7 +103,7 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     // Store user info
     onlineUsers.set(userId, {
       userId,
-      username,
+      username: dbUser.username,
       socketId: socket.id,
       usernameColor: dbUser?.usernameColor,
       profilePicture: dbUser?.profilePicture,
@@ -188,7 +192,7 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     // Notify others with cosmetics
     socket.to('global-chat').emit('user:online', { 
       userId, 
-      username,
+      username: dbUser.username,
       usernameColor: dbUser?.usernameColor,
       profilePicture: dbUser?.profilePicture,
       currentPage: currentPage ?? null,
@@ -206,8 +210,10 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
   });
   
   // Send message
-  socket.on('chat:message', async (data: { message: string; userId: string; replyToId?: string | null }) => {
-    const { message, userId, replyToId } = data;
+  socket.on('chat:message', async (data: { message: string; replyToId?: string | null }) => {
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { message, replyToId } = data;
 
     const user = onlineUsers.get(userId);
     if (!user) return;
@@ -349,7 +355,9 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
   
   // Typing indicator
   socket.on('chat:typing', (data: { userId: string; isTyping: boolean }) => {
-    const { userId, isTyping } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { isTyping } = data;
     const user = onlineUsers.get(userId);
     if (!user) return;
     
@@ -360,8 +368,10 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     });
   });
 
-  socket.on('chat:page', (data: { userId: string; currentPage: string }) => {
-    const { userId, currentPage } = data;
+  socket.on('chat:page', (data: { currentPage: string }) => {
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { currentPage } = data;
     const user = onlineUsers.get(userId);
     if (!user) return;
 
@@ -369,8 +379,10 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     io.to('global-chat').emit('user:page', { userId, currentPage });
   });
 
-  socket.on('chat:reaction', async (data: { messageId: string; userId: string; emoji: string }) => {
-    const { messageId, userId, emoji } = data;
+  socket.on('chat:reaction', async (data: { messageId: string; emoji: string }) => {
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { messageId, emoji } = data;
     const user = onlineUsers.get(userId);
     if (!user) return;
 
@@ -421,8 +433,10 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     });
   });
 
-  socket.on('chat:pin', async (data: { messageId: string; adminId: string; pinned: boolean }) => {
-    const { messageId, adminId, pinned } = data;
+  socket.on('chat:pin', async (data: { messageId: string; pinned: boolean }) => {
+    const adminId = socket.data.userId as string | undefined;
+    if (!adminId) return;
+    const { messageId, pinned } = data;
 
     const admin = await prisma.user.findUnique({
       where: { id: adminId },
@@ -454,8 +468,10 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
   });
 
   // Delete message (admin only)
-  socket.on('chat:delete-message', async (data: { messageId: string; adminId: string }) => {
-    const { messageId, adminId } = data;
+  socket.on('chat:delete-message', async (data: { messageId: string }) => {
+    const adminId = socket.data.userId as string | undefined;
+    if (!adminId) return;
+    const { messageId } = data;
 
     // Verify admin status
     const admin = await prisma.user.findUnique({

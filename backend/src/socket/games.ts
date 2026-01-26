@@ -12,7 +12,9 @@ const userGameSockets = new Map<string, string>(); // userId -> socketId
 export const setupGameHandlers = (socket: Socket, io: Server) => {
   // Register socket for game events
   socket.on('game:register', (data: { userId: string }) => {
-    userGameSockets.set(data.userId, socket.id);
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    userGameSockets.set(userId, socket.id);
   });
   
   // Invite to game
@@ -22,14 +24,17 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
     targetUserId: string;
     gameType: string;
   }) => {
-    const { userId, username, targetUserId, gameType } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const inviterUsername = socket.data.username as string | undefined;
+    const { targetUserId, gameType } = data;
     
     // Store invite
     const invites = gameInvites.get(targetUserId) || [];
     invites.push({
       gameType,
       inviterId: userId,
-      inviterUsername: username,
+      inviterUsername: inviterUsername ?? 'Unknown',
     });
     gameInvites.set(targetUserId, invites);
     
@@ -39,7 +44,7 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
       io.to(targetSocketId).emit('game:invite', {
         gameType,
         inviterId: userId,
-        inviterUsername: username,
+        inviterUsername: inviterUsername ?? 'Unknown',
       });
     }
     
@@ -52,7 +57,9 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
     inviterId: string;
     gameType: string;
   }) => {
-    const { userId, inviterId, gameType } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { inviterId, gameType } = data;
     
     // Clear invite
     const invites = gameInvites.get(userId) || [];
@@ -95,7 +102,9 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
     inviterId: string;
     gameType: string;
   }) => {
-    const { userId, inviterId, gameType } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { inviterId, gameType } = data;
     
     // Clear invite
     const invites = gameInvites.get(userId) || [];

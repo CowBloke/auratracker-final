@@ -9,6 +9,9 @@ export const initSocket = (): Socket => {
     socket = io(SOCKET_URL, {
       autoConnect: false,
       transports: ['websocket', 'polling'],
+      auth: {
+        token: localStorage.getItem('token'),
+      },
     });
   }
   return socket;
@@ -18,6 +21,9 @@ export const getSocket = (): Socket | null => socket;
 
 export const connectSocket = (): void => {
   if (socket && !socket.connected) {
+    socket.auth = {
+      token: localStorage.getItem('token'),
+    };
     socket.connect();
   }
 };

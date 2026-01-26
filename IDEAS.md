@@ -41,3 +41,6 @@
 - monopoly
 - FIX les autres coins
 - ajouter logs coins, jeux, etc.
+- nom de famille
+- si vous recevez c'est que compte acceté
+- supprimer nombres leaderboard prompt bombparty

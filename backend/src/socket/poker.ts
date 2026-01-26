@@ -989,11 +989,15 @@ const resolvePlayAgainPrompt = (partyId: string, io: Server) => {
 export const setupPokerHandlers = (socket: Socket, io: Server) => {
   // Track socket for private state pushes
   socket.on('poker:register', (data: { userId: string }) => {
-    playerSockets.set(data.userId, socket.id);
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    playerSockets.set(userId, socket.id);
   });
 
   socket.on('poker:start', async (data: { userId: string; partyId: string; startStack?: number; bigBlind?: number }) => {
-    const { userId, partyId } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { partyId } = data;
     let startStack = Math.max(MIN_STACK, Math.min(MAX_STACK, data.startStack ?? DEFAULT_STACK));
     let bigBlind = Math.max(10, Math.min(startStack / 2, data.bigBlind ?? 20));
     bigBlind = Math.round(bigBlind);
@@ -1059,11 +1063,13 @@ export const setupPokerHandlers = (socket: Socket, io: Server) => {
   });
 
   socket.on('poker:join-response', (data: { partyId: string; userId: string; accepted: boolean }) => {
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
     const prompt = pendingJoinPrompts.get(data.partyId);
-    if (!prompt || !prompt.memberIds.includes(data.userId)) return;
-    prompt.responses.set(data.userId, data.accepted);
+    if (!prompt || !prompt.memberIds.includes(userId)) return;
+    prompt.responses.set(userId, data.accepted);
 
-    const responses = Array.from(prompt.responses.entries()).map(([userId, accepted]) => ({ userId, accepted }));
+    const responses = Array.from(prompt.responses.entries()).map(([uid, accepted]) => ({ userId: uid, accepted }));
     io.to(`party:${data.partyId}`).emit('poker:join-response-update', { partyId: data.partyId, responses });
 
     if (prompt.responses.size === prompt.memberIds.length) {
@@ -1073,19 +1079,23 @@ export const setupPokerHandlers = (socket: Socket, io: Server) => {
   });
 
   socket.on('poker:action', async (data: { partyId: string; userId: string; action: PokerAction; amount?: number }) => {
-    playerSockets.set(data.userId, socket.id);
-    await handleAction(data.partyId, data.userId, data.action, data.amount, io);
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    playerSockets.set(userId, socket.id);
+    await handleAction(data.partyId, userId, data.action, data.amount, io);
   });
 
   socket.on('poker:leave', async (data: { partyId: string; userId: string }) => {
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
     const game = activeGames.get(data.partyId);
     if (!game) return;
-    const player = game.players.find((p) => p.userId === data.userId);
+    const player = game.players.find((p) => p.userId === userId);
     if (!player) return;
     player.hasFolded = true;
     player.isEliminated = true;
     player.chips = 0;
-    if (game.players[game.currentPlayerIndex]?.userId === data.userId) {
+    if (game.players[game.currentPlayerIndex]?.userId === userId) {
       const next = getNextActionPlayer(game, game.currentPlayerIndex);
       if (next !== -1) game.currentPlayerIndex = next;
     }
@@ -1097,11 +1107,13 @@ export const setupPokerHandlers = (socket: Socket, io: Server) => {
   });
 
   socket.on('poker:play-again-response', (data: { partyId: string; userId: string; playAgain: boolean }) => {
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
     const prompt = pendingPlayAgainPrompts.get(data.partyId);
     if (!prompt) return;
-    if (!prompt.players.find((p) => p.userId === data.userId)) return;
-    prompt.responses.set(data.userId, data.playAgain);
-    const responses = Array.from(prompt.responses.entries()).map(([userId, playAgain]) => ({ userId, playAgain }));
+    if (!prompt.players.find((p) => p.userId === userId)) return;
+    prompt.responses.set(userId, data.playAgain);
+    const responses = Array.from(prompt.responses.entries()).map(([uid, playAgain]) => ({ userId: uid, playAgain }));
     const playAgainCount = responses.filter((r) => r.playAgain).length;
     const leaveCount = responses.filter((r) => !r.playAgain).length;
 

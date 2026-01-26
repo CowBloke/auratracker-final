@@ -237,7 +237,9 @@ export const setupBombPartyHandlers = (socket: Socket, io: Server) => {
     lives: number;
     difficulty: 'easy' | 'medium' | 'hard';
   }) => {
-    const { userId, partyId, lives, difficulty } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { partyId, lives, difficulty } = data;
 
     try {
       // Validate lives (2-5)
@@ -334,7 +336,9 @@ export const setupBombPartyHandlers = (socket: Socket, io: Server) => {
     userId: string;
     accepted: boolean;
   }) => {
-    const { partyId, userId, accepted } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { partyId, accepted } = data;
     const pendingPrompt = pendingJoinPrompts.get(partyId);
 
     if (!pendingPrompt) {
@@ -377,7 +381,9 @@ export const setupBombPartyHandlers = (socket: Socket, io: Server) => {
     userId: string;
     input: string;
   }) => {
-    const { partyId, userId, input } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { partyId, input } = data;
     const game = activeGames.get(partyId);
 
     if (!game || !game.isActive) return;
@@ -400,7 +406,9 @@ export const setupBombPartyHandlers = (socket: Socket, io: Server) => {
     userId: string;
     word: string;
   }) => {
-    const { partyId, userId, word } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { partyId, word } = data;
     const game = activeGames.get(partyId);
 
     if (!game || !game.isActive) return;
@@ -465,7 +473,9 @@ export const setupBombPartyHandlers = (socket: Socket, io: Server) => {
 
   // Player leaves game
   socket.on('bombparty:leave', async (data: { partyId: string; userId: string }) => {
-    const { partyId, userId } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { partyId } = data;
     const game = activeGames.get(partyId);
 
     if (!game) return;
@@ -499,7 +509,9 @@ export const setupBombPartyHandlers = (socket: Socket, io: Server) => {
     userId: string;
     playAgain: boolean;
   }) => {
-    const { partyId, userId, playAgain } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { partyId, playAgain } = data;
     const prompt = pendingPlayAgainPrompts.get(partyId);
 
     if (!prompt) {

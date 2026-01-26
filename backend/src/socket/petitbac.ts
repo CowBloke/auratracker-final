@@ -126,7 +126,9 @@ export const setupPetitBacHandlers = (socket: Socket, io: Server) => {
     roundDuration: number;
     categories?: string[];
   }) => {
-    const { userId, partyId, rounds, roundDuration, categories } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { partyId, rounds, roundDuration, categories } = data;
 
     try {
       const membership = await prisma.partyMember.findUnique({
@@ -212,7 +214,9 @@ export const setupPetitBacHandlers = (socket: Socket, io: Server) => {
   });
 
   socket.on('petitbac:join-response', (data: { partyId: string; userId: string; accepted: boolean }) => {
-    const { partyId, userId, accepted } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { partyId, accepted } = data;
     const prompt = pendingJoinPrompts.get(partyId);
     if (!prompt) return;
 
@@ -236,7 +240,9 @@ export const setupPetitBacHandlers = (socket: Socket, io: Server) => {
   });
 
   socket.on('petitbac:submit', (data: { partyId: string; userId: string; answers: Record<string, string> }) => {
-    const { partyId, userId, answers } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { partyId, answers } = data;
     const game = activeGames.get(partyId);
     if (!game || !game.isActive || game.phase !== 'playing') return;
 
@@ -263,7 +269,9 @@ export const setupPetitBacHandlers = (socket: Socket, io: Server) => {
   });
 
   socket.on('petitbac:leave', async (data: { partyId: string; userId: string }) => {
-    const { partyId, userId } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { partyId } = data;
     const game = activeGames.get(partyId);
     if (!game) return;
 
@@ -285,7 +293,9 @@ export const setupPetitBacHandlers = (socket: Socket, io: Server) => {
     userId: string;
     playAgain: boolean;
   }) => {
-    const { partyId, userId, playAgain } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { partyId, playAgain } = data;
     const prompt = pendingPlayAgainPrompts.get(partyId);
     if (!prompt) return;
 

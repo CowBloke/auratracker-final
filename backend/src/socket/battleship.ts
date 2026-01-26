@@ -241,11 +241,15 @@ async function endGame(game: BattleshipGame, io: Server, winnerId: string) {
 
 export const setupBattleshipHandlers = (socket: Socket, io: Server) => {
   socket.on('battleship:register', (data: { userId: string }) => {
-    playerSockets.set(data.userId, socket.id);
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    playerSockets.set(userId, socket.id);
   });
 
   socket.on('battleship:start', async (data: { userId: string; partyId: string }) => {
-    const { userId, partyId } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { partyId } = data;
 
     try {
       const membership = await prisma.partyMember.findUnique({
@@ -305,7 +309,9 @@ export const setupBattleshipHandlers = (socket: Socket, io: Server) => {
   });
 
   socket.on('battleship:place-ship', (data: { userId: string; partyId: string; x: number; y: number; length: number; horizontal: boolean }) => {
-    const { userId, partyId, x, y, length, horizontal } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { partyId, x, y, length, horizontal } = data;
     const game = activeGames.get(partyId);
 
     if (!game || !game.isActive) {
@@ -366,7 +372,9 @@ export const setupBattleshipHandlers = (socket: Socket, io: Server) => {
   });
 
   socket.on('battleship:shoot', (data: { userId: string; partyId: string; x: number; y: number }) => {
-    const { userId, partyId, x, y } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { partyId, x, y } = data;
     const game = activeGames.get(partyId);
 
     if (!game || !game.isActive) {
@@ -440,12 +448,14 @@ export const setupBattleshipHandlers = (socket: Socket, io: Server) => {
   });
 
   socket.on('battleship:leave', (data: { userId: string; partyId: string }) => {
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
     const { partyId } = data;
     const game = activeGames.get(partyId);
 
     if (game) {
       activeGames.delete(partyId);
-      io.to(`party:${partyId}`).emit('battleship:left', { userId: data.userId });
+      io.to(`party:${partyId}`).emit('battleship:left', { userId });
     }
   });
 };

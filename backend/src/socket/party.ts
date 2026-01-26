@@ -135,12 +135,14 @@ const clearJoinRequestsForUser = (userId: string) => {
 export const setupPartyHandlers = (socket: Socket, io: Server) => {
   // Track socket to user mapping and restore party state if user is in a party
   socket.on('party:register', async (data: { userId: string }) => {
-    userSockets.set(data.userId, socket.id);
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    userSockets.set(userId, socket.id);
 
     // Check if user is already in a party and restore state
     try {
       const membership = await prisma.partyMember.findUnique({
-        where: { userId: data.userId },
+        where: { userId },
         include: {
           party: {
             include: {
@@ -179,13 +181,13 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
         emitPartyGameState(socket, membership.partyId);
 
         // Send any active game state or pending play again prompt to the reconnecting player
-        sendActiveGameState(socket, membership.partyId, data.userId);
-        sendPendingPlayAgainPrompt(socket, membership.partyId, data.userId);
-        sendActivePokerState(socket, membership.partyId, data.userId);
-        sendPendingPokerPlayAgainPrompt(socket, membership.partyId, data.userId);
-        sendActivePetitBacGameState(socket, membership.partyId, data.userId);
-        sendPendingPetitBacPlayAgainPrompt(socket, membership.partyId, data.userId);
-        sendActiveBattleshipState(socket, membership.partyId, data.userId);
+        sendActiveGameState(socket, membership.partyId, userId);
+        sendPendingPlayAgainPrompt(socket, membership.partyId, userId);
+        sendActivePokerState(socket, membership.partyId, userId);
+        sendPendingPokerPlayAgainPrompt(socket, membership.partyId, userId);
+        sendActivePetitBacGameState(socket, membership.partyId, userId);
+        sendPendingPetitBacPlayAgainPrompt(socket, membership.partyId, userId);
+        sendActiveBattleshipState(socket, membership.partyId, userId);
 
         // Update party activity
         await prisma.party.update({
@@ -207,7 +209,9 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
   
   // Create party
   socket.on('party:create', async (data: { userId: string; name?: string; isPublic: boolean; maxSize?: number }) => {
-    const { userId, name, isPublic, maxSize } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { name, isPublic, maxSize } = data;
     
     try {
       // Check if user is already in a party
@@ -284,7 +288,9 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
   
   // Join party
   socket.on('party:join', async (data: { userId: string; partyId: string }) => {
-    const { userId, partyId } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { partyId } = data;
     
     try {
       // Check if user is already in a party
@@ -409,7 +415,9 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
 
   // Request to join a private party
   socket.on('party:request-join', async (data: { userId: string; partyId: string }) => {
-    const { userId, partyId } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { partyId } = data;
 
     try {
       const existingMembership = await prisma.partyMember.findUnique({
@@ -488,7 +496,9 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
 
   // Respond to join request (leader only)
   socket.on('party:join-request-response', async (data: { userId: string; targetUserId: string; accepted: boolean }) => {
-    const { userId, targetUserId, accepted } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { targetUserId, accepted } = data;
 
     try {
       const membership = await prisma.partyMember.findUnique({
@@ -614,7 +624,9 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
 
   // Suggest a multiplayer game for the party
   socket.on('party:game-suggest', async (data: { userId: string; gameId: string; gameName: string }) => {
-    const { userId, gameId, gameName } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { gameId, gameName } = data;
 
     try {
       const membership = await prisma.partyMember.findUnique({
@@ -661,7 +673,9 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
 
   // Select a multiplayer game (leader only)
   socket.on('party:game-select', async (data: { userId: string; gameId: string; gameName: string }) => {
-    const { userId, gameId, gameName } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { gameId, gameName } = data;
 
     try {
       const membership = await prisma.partyMember.findUnique({
@@ -702,7 +716,8 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
   
   // Leave party
   socket.on('party:leave', async (data: { userId: string }) => {
-    const { userId } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
     
     try {
       const membership = await prisma.partyMember.findUnique({
@@ -812,7 +827,8 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
 
   // Delete party (leader only)
   socket.on('party:delete', async (data: { userId: string }) => {
-    const { userId } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
 
     try {
       const membership = await prisma.partyMember.findUnique({
@@ -890,7 +906,9 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
   
   // Invite to party
   socket.on('party:invite', async (data: { userId: string; targetUserId: string }) => {
-    const { userId, targetUserId } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { targetUserId } = data;
 
     try {
       // Check for active cooldown
@@ -952,7 +970,9 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
   
   // Kick from party
   socket.on('party:kick', async (data: { userId: string; targetUserId: string }) => {
-    const { userId, targetUserId } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { targetUserId } = data;
 
     try {
       const membership = await prisma.partyMember.findUnique({
@@ -1010,7 +1030,9 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
 
   // Reject party invite
   socket.on('party:reject-invite', async (data: { userId: string; partyId: string }) => {
-    const { userId, partyId } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { partyId } = data;
 
     try {
       // Find and remove the invite
@@ -1039,7 +1061,8 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
   
   // Force sync party state - clears ghost state
   socket.on('party:sync', async (data: { userId: string }) => {
-    const { userId } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
 
     try {
       const membership = await prisma.partyMember.findUnique({
@@ -1133,7 +1156,8 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
 
   // Sync current party membership on reconnect/refresh
   socket.on('party:sync', async (data: { userId: string }) => {
-    const { userId } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
     
     try {
       const membership = await prisma.partyMember.findUnique({

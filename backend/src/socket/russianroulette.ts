@@ -134,7 +134,9 @@ export const sendPendingRussianRoulettePlayAgainPrompt = (
 export const setupRussianRouletteHandlers = (socket: Socket, io: Server) => {
   // Start game (initiates join prompt for all party members)
   socket.on('russianroulette:start', async (data: { userId: string; partyId: string }) => {
-    const { userId, partyId } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { partyId } = data;
 
     try {
       // Check if user is party leader
@@ -214,7 +216,9 @@ export const setupRussianRouletteHandlers = (socket: Socket, io: Server) => {
   socket.on(
     'russianroulette:respond-join',
     async (data: { partyId: string; userId: string; accepted: boolean }) => {
-      const { partyId, userId, accepted } = data;
+      const userId = socket.data.userId as string | undefined;
+      if (!userId) return;
+      const { partyId, accepted } = data;
 
       try {
         const prompt = pendingJoinPrompts.get(partyId);
@@ -246,7 +250,9 @@ export const setupRussianRouletteHandlers = (socket: Socket, io: Server) => {
 
   // Pull trigger (player's turn)
   socket.on('russianroulette:pull-trigger', async (data: { partyId: string; userId: string }) => {
-    const { partyId, userId } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { partyId } = data;
 
     try {
       const game = activeGames.get(partyId);
@@ -337,7 +343,9 @@ export const setupRussianRouletteHandlers = (socket: Socket, io: Server) => {
 
   // Leave game
   socket.on('russianroulette:leave', async (data: { partyId: string; userId: string }) => {
-    const { partyId, userId } = data;
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { partyId } = data;
 
     try {
       const game = activeGames.get(partyId);
@@ -400,7 +408,9 @@ export const setupRussianRouletteHandlers = (socket: Socket, io: Server) => {
   socket.on(
     'russianroulette:respond-play-again',
     async (data: { partyId: string; userId: string; playAgain: boolean }) => {
-      const { partyId, userId, playAgain } = data;
+      const userId = socket.data.userId as string | undefined;
+      if (!userId) return;
+      const { partyId, playAgain } = data;
 
       try {
         const prompt = pendingPlayAgainPrompts.get(partyId);
