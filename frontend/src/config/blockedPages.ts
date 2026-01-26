@@ -22,6 +22,7 @@ export const BLOCKABLE_PAGES: BlockablePage[] = [
   { key: 'game-bataille-navale', path: '/games/bataille-navale', label: 'Bataille Navale', category: 'Jeux' },
   { key: 'game-solitaire', path: '/games/solitaire', label: 'Solitaire', category: 'Jeux' },
   { key: 'game-racer', path: '/games/racer', label: 'Racer', category: 'Jeux' },
+  { key: 'game-tetris', path: '/games/tetris', label: 'Tetris', category: 'Jeux' },
   { key: 'game-polymarket', path: '/games/polymarket', label: 'Polymarket (Jeux)', category: 'Jeux' },
   { key: 'polymarket', path: '/polymarket', label: 'Polymarket (direct)', category: 'Jeux' },
   { key: 'leaderboards', path: '/leaderboards', label: 'Classements', category: 'Communauté' },

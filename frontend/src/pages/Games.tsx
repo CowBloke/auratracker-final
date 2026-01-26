@@ -106,6 +106,13 @@ const games = [
     type: 'Score',
     image: '/images/games/racer.png',
   },
+  {
+    id: 'tetris',
+    name: 'Tetris',
+    description: 'Le classique jeu de puzzle. Empile les pièces et complète des lignes pour gagner des points.',
+    type: 'Score',
+    image: '/images/games/tetris.png',
+  },
 ];
 
 export default function Games() {
@@ -139,6 +146,9 @@ export default function Games() {
   }
   if (game.id === 'racer') {
     return '/games/racer';
+  }
+  if (game.id === 'tetris') {
+    return '/games/tetris';
   }
     return `/games/${game.id}`;
   };

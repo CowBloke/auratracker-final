@@ -19,7 +19,7 @@ interface Ranking {
   totalPlayed?: number;
 }
 
-type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'game_2048' | 'flappy_bird' | 'solitaire' | 'casino' | 'casino_losses' | 'games_played' | 'bombparty';
+type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'game_2048' | 'flappy_bird' | 'solitaire' | 'racer' | 'tetris' | 'casino' | 'casino_losses' | 'games_played' | 'bombparty';
 
 const categories: { id: Category; name: string; valueLabel: string }[] = [
   { id: 'aura', name: 'Aura', valueLabel: 'aura' },
@@ -30,6 +30,8 @@ const categories: { id: Category; name: string; valueLabel: string }[] = [
   { id: 'game_2048', name: '2048', valueLabel: 'score' },
   { id: 'flappy_bird', name: 'Flappy Bird', valueLabel: 'score' },
   { id: 'solitaire', name: 'Solitaire', valueLabel: 'score' },
+  { id: 'racer', name: 'Racer', valueLabel: 'temps' },
+  { id: 'tetris', name: 'Tetris', valueLabel: 'score' },
   { id: 'casino', name: 'Gains Casino (partie unique)', valueLabel: '$' },
   { id: 'casino_losses', name: 'Pertes Casino (totales)', valueLabel: '$' },
   { id: 'bombparty', name: 'Bomb Party', valueLabel: 'victoires' },
@@ -37,7 +39,7 @@ const categories: { id: Category; name: string; valueLabel: string }[] = [
 ];
 
 const economyCategories: Category[] = ['aura', 'money', 'total_money', 'auracoin'];
-const gameCategories: Category[] = ['doodle_jump', 'game_2048', 'flappy_bird', 'solitaire', 'casino', 'casino_losses', 'bombparty', 'games_played'];
+const gameCategories: Category[] = ['doodle_jump', 'game_2048', 'flappy_bird', 'solitaire', 'racer', 'tetris', 'casino', 'casino_losses', 'bombparty', 'games_played'];
 
 export default function Leaderboards() {
   const { user } = useAuth();
@@ -96,6 +98,17 @@ export default function Leaderboards() {
     }
   };
 
+  const formatTime = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds - minutes * 60);
+    const tenths = Math.floor(10 * (seconds - Math.floor(seconds)));
+    if (minutes > 0) {
+      return `${minutes}.${secs < 10 ? '0' : ''}${secs}.${tenths}`;
+    } else {
+      return `${secs}.${tenths}`;
+    }
+  };
+
   const formatValue = (ranking: Ranking) => {
     const numericValue = typeof ranking.value === 'number' ? ranking.value : Number(ranking.value);
     switch (category) {
@@ -108,6 +121,8 @@ export default function Leaderboards() {
         return `$${numericValue.toLocaleString()}`;
       case 'casino_losses':
         return `-$${numericValue.toLocaleString()}`;
+      case 'racer':
+        return formatTime(numericValue);
       default:
         return numericValue.toLocaleString();
     }

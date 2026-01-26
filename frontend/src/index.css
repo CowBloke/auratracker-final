@@ -154,36 +154,39 @@
 }
 
 @layer utilities {
-  /* 2048 tile animations - use scale as separate property to not interfere with translate */
-  @keyframes tile-appear {
+  /* 2048 tile animations - exact copy from original game */
+  @keyframes appear {
     0% {
-      scale: 0;
       opacity: 0;
+      transform: scale(0);
     }
     100% {
-      scale: 1;
       opacity: 1;
+      transform: scale(1);
     }
   }
 
-  @keyframes tile-merge {
+  @keyframes pop {
     0% {
-      scale: 1;
+      transform: scale(0);
     }
     50% {
-      scale: 1.03;
+      transform: scale(1.2);
     }
     100% {
-      scale: 1;
+      transform: scale(1);
     }
   }
 
-  .animate-tile-appear {
-    animation: tile-appear 200ms ease-out;
+  .tile-new .tile-inner {
+    animation: appear 200ms ease 100ms;
+    animation-fill-mode: backwards;
   }
 
-  .animate-tile-merge {
-    animation: tile-merge 200ms ease-out;
+  .tile-merged .tile-inner {
+    z-index: 20;
+    animation: pop 200ms ease 100ms;
+    animation-fill-mode: backwards;
   }
 
   .text-gradient {

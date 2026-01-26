@@ -77,6 +77,18 @@ const GAME_REWARDS = {
       { maxTime: 45, moneyReward: 500, auraBonus: 50 },      // < 1min: excellent lap
     ],
   },
+  tetris: {
+    minScoreForReward: 1000, // Minimum score to get rewards
+    // Progressive rewards based on score
+    scoreTiers: [
+      { minScore: 0, moneyMultiplier: 0.01, auraBonus: 0 },       // 0-4999: 0.01x score
+      { minScore: 5000, moneyMultiplier: 0.015, auraBonus: 5 },    // 5000-9999: 0.015x score + 5 aura
+      { minScore: 10000, moneyMultiplier: 0.02, auraBonus: 10 },  // 10000-19999: 0.02x score + 10 aura
+      { minScore: 20000, moneyMultiplier: 0.03, auraBonus: 20 },  // 20000-49999: 0.03x score + 20 aura
+      { minScore: 50000, moneyMultiplier: 0.04, auraBonus: 35 }, // 50000-99999: 0.04x score + 35 aura
+      { minScore: 100000, moneyMultiplier: 0.05, auraBonus: 50 }, // 100000+: 0.05x score + 50 aura
+    ],
+  },
 };
 
 // Calculate progressive rewards for Doodle Jump based on score
@@ -245,6 +257,37 @@ function calculateRacerRewards(score: number, isNewHighScore: boolean, won: bool
   return { money: moneyReward, aura: auraReward };
 }
 
+// Calculate rewards for Tetris based on score
+function calculateTetrisRewards(score: number, isNewHighScore: boolean): { money: number; aura: number } {
+  const config = GAME_REWARDS.tetris;
+  
+  if (score < config.minScoreForReward) {
+    return { money: 0, aura: 0 };
+  }
+
+  // Find the appropriate tier for this score
+  let selectedTier = config.scoreTiers[0];
+  for (let i = config.scoreTiers.length - 1; i >= 0; i--) {
+    if (score >= config.scoreTiers[i].minScore) {
+      selectedTier = config.scoreTiers[i];
+      break;
+    }
+  }
+
+  // Calculate money reward based on tier multiplier
+  const moneyReward = Math.floor(score * selectedTier.moneyMultiplier);
+  
+  // Calculate aura reward: base tier bonus + bonus for new high score
+  let auraReward = selectedTier.auraBonus;
+  if (isNewHighScore) {
+    // Additional bonus for beating your own record (scales with score)
+    const highScoreBonus = Math.min(Math.floor(score / 10000) * 10, 100);
+    auraReward += highScoreBonus;
+  }
+
+  return { money: moneyReward, aura: auraReward };
+}
+
 // Get game stats for a user
 router.get('/:gameType/stats/:userId', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
@@ -340,6 +383,10 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       auraReward = rewards.aura;
     } else if (gameType === 'racer') {
       const rewards = calculateRacerRewards(score, isNewHighScore, won || false);
+      moneyReward = rewards.money;
+      auraReward = rewards.aura;
+    } else if (gameType === 'tetris') {
+      const rewards = calculateTetrisRewards(score, isNewHighScore);
       moneyReward = rewards.money;
       auraReward = rewards.aura;
     } else if (gameType === 'casino' && bet) {
@@ -463,6 +510,8 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       if (won) {
         await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
       }
+    } else if (gameType === 'tetris') {
+      await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
     } else if (gameType === 'casino') {
       await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
       if (won) {
