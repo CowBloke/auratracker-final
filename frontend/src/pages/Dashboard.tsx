@@ -92,6 +92,7 @@ const gameShortcuts: GameShortcut[] = [
   { id: 'russian-roulette', label: 'Roulette Russe', path: '/games/russian-roulette', description: 'Tour fatal, chance.', image: '/images/games/russianroulette.png' },
   { id: 'bataille-navale', label: 'Bataille Navale', path: '/games/bataille-navale', description: 'Touches, coul??s, gagne.', image: '/images/games/bataillenavale.png' },
   { id: 'solitaire', label: 'Solitaire', path: '/games/solitaire', description: 'Classique et relax.', image: '/images/games/solitaire.png' },
+  { id: 'racer', label: 'Racer', path: '/games/racer', description: 'Course pseudo-3D style Outrun.', image: '/images/games/racer.png' },
 ];
 
 const defaultShortcuts = ['doodle-jump', 'flappy-bird', 'bomb-party', '2048'];

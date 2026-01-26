@@ -41,6 +41,7 @@ const gamesCatalog = [
   'Russian Roulette',
   'Bataille Navale',
   'Solitaire',
+  'Racer',
   'Polymarket',
 ];
 
