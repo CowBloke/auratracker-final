@@ -99,6 +99,13 @@ const games = [
     type: 'Score',
     image: '/images/games/solitaire.png',
   },
+  {
+    id: 'racer',
+    name: 'Racer',
+    description: 'Course pseudo-3D style Outrun. Évite les voitures et finis le tour le plus vite possible.',
+    type: 'Score',
+    image: '/images/games/racer.png',
+  },
 ];
 
 export default function Games() {
@@ -129,6 +136,9 @@ export default function Games() {
   }
   if (game.id === 'solitaire') {
     return '/games/solitaire';
+  }
+  if (game.id === 'racer') {
+    return '/games/racer';
   }
     return `/games/${game.id}`;
   };

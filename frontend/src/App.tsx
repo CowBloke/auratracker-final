@@ -38,6 +38,7 @@ import Settings from './pages/Settings';
 import Banned from './pages/Banned';
 import Quests from './pages/Quests';
 import Solitaire from './pages/Solitaire';
+import Racer from './pages/Racer';
 import WallaceGromit from './pages/WallaceGromit';
 import News from './pages/News';
 import MusicLounge from './pages/MusicLounge';
@@ -214,6 +215,7 @@ function App() {
         <Route path="games/russian-roulette" element={<RussianRoulette />} />
         <Route path="games/bataille-navale" element={<BatailleNavale />} />
         <Route path="games/solitaire" element={<Solitaire />} />
+        <Route path="games/racer" element={<Racer />} />
         <Route path="games/polymarket" element={<Polymarket />} />
         <Route path="polymarket" element={<Polymarket />} />
         <Route path="leaderboards" element={<Leaderboards />} />

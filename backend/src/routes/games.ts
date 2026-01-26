@@ -65,6 +65,18 @@ const GAME_REWARDS = {
     auraForHugeWin: 50, // For wins >= 50x bet
     hugeWinMultiplier: 50,
   },
+  racer: {
+    minScoreForReward: 0, // Always give rewards for completed laps
+    // Score is lap time in seconds (lower is better)
+    // Rewards are based on how fast the lap was completed
+    scoreTiers: [
+      { maxTime: 180, moneyReward: 20, auraBonus: 2 },      // > 3min: slow lap
+      { maxTime: 120, moneyReward: 50, auraBonus: 5 },      // 2-3min: decent lap
+      { maxTime: 90, moneyReward: 100, auraBonus: 10 },     // 1.5-2min: good lap
+      { maxTime: 60, moneyReward: 200, auraBonus: 25 },     // 1-1.5min: great lap
+      { maxTime: 45, moneyReward: 500, auraBonus: 50 },      // < 1min: excellent lap
+    ],
+  },
 };
 
 // Calculate progressive rewards for Doodle Jump based on score
@@ -197,6 +209,42 @@ function calculateSolitaireRewards(score: number, isNewHighScore: boolean, won: 
   return { money: moneyReward, aura: auraReward };
 }
 
+// Calculate rewards for Racer based on lap time (lower is better)
+// Score is lap time in seconds
+function calculateRacerRewards(score: number, isNewHighScore: boolean, won: boolean): { money: number; aura: number } {
+  // No rewards if didn't complete a lap
+  if (!won) {
+    return { money: 0, aura: 0 };
+  }
+
+  const config = GAME_REWARDS.racer;
+
+  // Find the appropriate tier for this lap time (lower time = better tier)
+  // Tiers are ordered from fastest to slowest
+  let selectedTier = config.scoreTiers[config.scoreTiers.length - 1]; // Default to slowest tier
+  for (let i = 0; i < config.scoreTiers.length; i++) {
+    if (score <= config.scoreTiers[i].maxTime) {
+      selectedTier = config.scoreTiers[i];
+      break;
+    }
+  }
+
+  // Fixed money reward based on tier
+  let moneyReward = selectedTier.moneyReward;
+  
+  // Calculate aura reward
+  let auraReward = selectedTier.auraBonus;
+  if (isNewHighScore) {
+    // Additional bonus for beating your own record (faster time)
+    // The faster the time, the bigger the bonus
+    const timeBonus = Math.max(0, 60 - score); // Bonus decreases as time increases
+    const highScoreBonus = Math.min(Math.floor(timeBonus / 5) * 5, 30);
+    auraReward += highScoreBonus;
+  }
+
+  return { money: moneyReward, aura: auraReward };
+}
+
 // Get game stats for a user
 router.get('/:gameType/stats/:userId', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
@@ -266,7 +314,10 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       },
     });
     
-    const isNewHighScore = !currentStats || score > currentStats.highScore;
+    // For racer, lower score (time) is better, so check differently
+    const isNewHighScore = gameType === 'racer' 
+      ? (!currentStats || score < currentStats.highScore || currentStats.highScore === 0)
+      : (!currentStats || score > currentStats.highScore);
     // Calculate rewards
     let auraReward = 0;
     let moneyReward = 0;
@@ -285,6 +336,10 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       auraReward = rewards.aura;
     } else if (gameType === 'solitaire') {
       const rewards = calculateSolitaireRewards(score, isNewHighScore, won || false);
+      moneyReward = rewards.money;
+      auraReward = rewards.aura;
+    } else if (gameType === 'racer') {
+      const rewards = calculateRacerRewards(score, isNewHighScore, won || false);
       moneyReward = rewards.money;
       auraReward = rewards.aura;
     } else if (gameType === 'casino' && bet) {
@@ -324,6 +379,8 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
           highScore: isNewHighScore ? score : undefined,
           totalPlayed: { increment: 1 },
         },
+        // For racer, we need to ensure highScore is always the best (lowest) time
+        // This is handled by isNewHighScore check above
       }),
       prisma.user.update({
         where: { id: req.user.id },
@@ -397,6 +454,11 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
     } else if (gameType === 'solitaire') {
       await checkQuestProgress(req.user.id, 'SOLITAIRE_PLAYS', 1);
       await checkQuestProgress(req.user.id, 'SOLITAIRE_WINS', won ? 1 : 0);
+      await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
+      if (won) {
+        await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
+      }
+    } else if (gameType === 'racer') {
       await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
       if (won) {
         await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);

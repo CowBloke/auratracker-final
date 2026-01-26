@@ -44,3 +44,11 @@
 - nom de famille
 - si vous recevez c'est que compte acceté
 - supprimer nombres leaderboard prompt bombparty
+- regsiter : ajouter mot demande d'adhésion
+- chat responsive
+- intégrer jeux github
+https://github.com/gabrielecirulli/2048
+https://github.com/jakesgordon/javascript-tetris
+https://github.com/DavidNHill/JSMinesweeper
+https://github.com/pi0/space-invaders
+- subway surfer
