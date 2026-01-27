@@ -86,9 +86,10 @@ const SPRITES = {
   PLAYER_LEFT: { x: 995, y: 480, w: 80, h: 41 },
   PLAYER_STRAIGHT: { x: 1085, y: 480, w: 80, h: 41 },
   PLAYER_RIGHT: { x: 995, y: 531, w: 80, h: 41 },
+  get SCALE(): number {
+    return 0.3 * (1 / this.PLAYER_STRAIGHT.w);
+  },
 };
-
-SPRITES.SCALE = 0.3 * (1 / SPRITES.PLAYER_STRAIGHT.w);
 
 const BILLBOARDS = [
   SPRITES.BILLBOARD01,
@@ -147,7 +148,7 @@ const Util = {
   randomInt: (min: number, max: number): number => {
     return Math.round(Util.interpolate(min, max, Math.random()));
   },
-  randomChoice: <T>(options: T[]): T => {
+  randomChoice: <T,>(options: T[]): T => {
     return options[Util.randomInt(0, options.length - 1)];
   },
   percentRemaining: (n: number, total: number): number => {
@@ -297,8 +298,8 @@ const Render = {
   sprite: (
     ctx: CanvasRenderingContext2D,
     width: number,
-    height: number,
-    resolution: number,
+    _height: number,
+    _resolution: number,
     roadWidth: number,
     sprites: HTMLImageElement,
     sprite: any,
@@ -1128,7 +1129,6 @@ export default function Racer() {
 
       for (let i = 0; i < segment.cars.length; i++) {
         const car = segment.cars[i];
-        const sprite = car.sprite;
         const spriteScale = Util.interpolate(segment.p1.screen.scale!, segment.p2.screen.scale!, car.percent!);
         const spriteX =
           Util.interpolate(segment.p1.screen.x!, segment.p2.screen.x!, car.percent!) +
