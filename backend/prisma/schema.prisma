@@ -69,6 +69,10 @@ model User {
   // Daily Quests relations
   dailyQuests         UserDailyQuest[]
 
+  // Gift System
+  sentGifts           Gift[]                 @relation("SentGifts")
+  receivedGifts       Gift[]                 @relation("ReceivedGifts")
+
   @@index([aura])
   @@index([money])
 }
@@ -729,4 +733,54 @@ model UserQuestProgress {
   userQuest UserDailyQuest @relation(fields: [userQuestId], references: [id], onDelete: Cascade)
 
   @@index([userQuestId])
+}
+
+// ============================================
+// GIFT / PRESENT SYSTEM
+// ============================================
+
+// Admin-defined gift templates (items that can be included in gifts)
+model GiftTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  imageUrl    String?
+  price       Int      // Cost in money to include this in a gift
+  createdAt   DateTime @default(now())
+
+  giftItems GiftItem[]
+}
+
+// A gift sent from one user to another
+model Gift {
+  id          String    @id @default(uuid())
+  senderId    String
+  receiverId  String
+  message     String?   // Custom message from the gifter
+  moneyAmount Int       @default(0) // Money included (max 1000)
+  isOpened    Boolean   @default(false)
+  openedAt    DateTime?
+  createdAt   DateTime  @default(now())
+
+  sender   User       @relation("SentGifts", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User       @relation("ReceivedGifts", fields: [receiverId], references: [id], onDelete: Cascade)
+  items    GiftItem[]
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([isOpened])
+  @@index([createdAt])
+}
+
+// Items included in a gift (references GiftTemplate)
+model GiftItem {
+  id             String @id @default(uuid())
+  giftId         String
+  giftTemplateId String
+
+  gift         Gift         @relation(fields: [giftId], references: [id], onDelete: Cascade)
+  giftTemplate GiftTemplate @relation(fields: [giftTemplateId], references: [id], onDelete: Cascade)
+
+  @@index([giftId])
+  @@index([giftTemplateId])
 }

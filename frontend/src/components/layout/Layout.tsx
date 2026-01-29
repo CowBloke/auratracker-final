@@ -2,6 +2,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { ChatSidebarProvider, ChatSidebarWrapper, useChatSidebar } from '../chat/ChatSidebarWrapper';
 import ChatBubble from '../chat/ChatBubble';
+import GiftBubble from '../gifts/GiftBubble';
 import BombPartyJoinPrompt from '../game/BombPartyJoinPrompt';
 import PokerJoinPrompt from '../game/PokerJoinPrompt';
 import PetitBacJoinPrompt from '../game/PetitBacJoinPrompt';
@@ -34,6 +35,7 @@ function ChatBubbleContainer() {
       className="fixed bottom-6 z-50 flex items-end gap-3 transition-all"
       style={{ right: open ? 'calc(20rem + 1.5rem)' : '1.5rem' }}
     >
+      <GiftBubble />
       <ChatBubble />
     </div>
   );

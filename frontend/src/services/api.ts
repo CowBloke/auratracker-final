@@ -912,6 +912,13 @@ export const adminApi = {
   // Reset extreme aura values
   resetExtremeAura: (threshold?: number) =>
     runRareAction({ action: 'reset_extreme_aura', threshold }) as Promise<{ data: { success: boolean; message: string; usersReset: number; users: { id: string; username: string; oldAura: string }[] } }>,
+  // Gift templates
+  getGiftTemplates: () => api.get<{ templates: import('./api').GiftTemplate[] }>('/admin/gift-templates'),
+  createGiftTemplate: (data: { name: string; description?: string; imageUrl?: string; price: number }) =>
+    api.post<{ template: import('./api').GiftTemplate }>('/admin/gift-templates', data),
+  updateGiftTemplate: (id: string, data: { name?: string; description?: string; imageUrl?: string; price?: number }) =>
+    api.put<{ template: import('./api').GiftTemplate }>(`/admin/gift-templates/${id}`, data),
+  deleteGiftTemplate: (id: string) => api.delete<{ success: boolean }>(`/admin/gift-templates/${id}`),
 };
 
 export const maintenanceApi = {
@@ -1122,6 +1129,46 @@ export const questsApi = {
       rewards: { money: number; aura: number };
       claimedQuests: number;
     }>('/quests/claim', { questIds }),
+};
+
+// Gift types
+export interface GiftTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  imageUrl: string | null;
+  price: number;
+  createdAt: string;
+}
+
+export interface GiftItem {
+  id: string;
+  giftId: string;
+  giftTemplateId: string;
+  giftTemplate: GiftTemplate;
+}
+
+export interface Gift {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  message: string | null;
+  moneyAmount: number;
+  isOpened: boolean;
+  openedAt: string | null;
+  createdAt: string;
+  sender: { id: string; username: string; profilePicture: string | null };
+  items: GiftItem[];
+}
+
+export const giftsApi = {
+  getTemplates: () => api.get<{ templates: GiftTemplate[] }>('/gifts/templates'),
+  getInbox: () => api.get<{ gifts: Gift[] }>('/gifts/inbox'),
+  getInboxCount: () => api.get<{ count: number }>('/gifts/inbox/count'),
+  getReceived: () => api.get<{ gifts: Gift[] }>('/gifts/received'),
+  send: (data: { receiverId: string; moneyAmount?: number; templateIds?: string[]; message?: string }) =>
+    api.post<{ gift: Gift }>('/gifts/send', data),
+  open: (id: string) => api.post<{ gift: Gift }>(`/gifts/${id}/open`),
 };
 
 export default api;

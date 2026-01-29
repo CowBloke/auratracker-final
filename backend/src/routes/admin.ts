@@ -1525,4 +1525,82 @@ router.put('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, r
   }
 });
 
+// ========== GIFT TEMPLATE MANAGEMENT ==========
+
+// Get all gift templates
+router.get('/gift-templates', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const templates = await prisma.giftTemplate.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ templates });
+  } catch (error) {
+    console.error('Admin get gift templates error:', error);
+    res.status(500).json({ error: 'Failed to get gift templates' });
+  }
+});
+
+// Create a gift template
+router.post('/gift-templates', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { name, description, imageUrl, price } = req.body;
+
+    if (!name || typeof price !== 'number' || price < 0) {
+      return res.status(400).json({ error: 'Name and valid price are required' });
+    }
+
+    const template = await prisma.giftTemplate.create({
+      data: { name, description: description || null, imageUrl: imageUrl || null, price },
+    });
+
+    logAdmin('gift_template_create', req.user?.id, req.user?.username, { templateId: template.id, name, price });
+
+    res.json({ template });
+  } catch (error) {
+    console.error('Admin create gift template error:', error);
+    res.status(500).json({ error: 'Failed to create gift template' });
+  }
+});
+
+// Update a gift template
+router.put('/gift-templates/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name, description, imageUrl, price } = req.body;
+
+    const template = await prisma.giftTemplate.update({
+      where: { id },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(description !== undefined && { description: description || null }),
+        ...(imageUrl !== undefined && { imageUrl: imageUrl || null }),
+        ...(price !== undefined && { price }),
+      },
+    });
+
+    logAdmin('gift_template_update', req.user?.id, req.user?.username, { templateId: id, name, price });
+
+    res.json({ template });
+  } catch (error) {
+    console.error('Admin update gift template error:', error);
+    res.status(500).json({ error: 'Failed to update gift template' });
+  }
+});
+
+// Delete a gift template
+router.delete('/gift-templates/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    await prisma.giftTemplate.delete({ where: { id } });
+
+    logAdmin('gift_template_delete', req.user?.id, req.user?.username, { templateId: id });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Admin delete gift template error:', error);
+    res.status(500).json({ error: 'Failed to delete gift template' });
+  }
+});
+
 export default router;
