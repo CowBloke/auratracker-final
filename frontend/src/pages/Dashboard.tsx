@@ -2,14 +2,13 @@ import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
-import { leaderboardsApi, economyApi, usersApi } from '../services/api';
-import { ArrowRight, Loader2, Send, Clock } from 'lucide-react';
+import { leaderboardsApi, economyApi } from '../services/api';
+import { ArrowRight, Loader2, Clock, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import GiftDialog from '@/components/gifts/GiftDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import PageLayout from '@/components/layout/PageLayout';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
@@ -34,12 +33,6 @@ interface DailyAllowance {
   remaining: number;
   lastReset: string;
   nextReset: string;
-}
-
-interface UserListItem {
-  id: string;
-  username: string;
-  aura: number;
 }
 
 interface GameShortcut {
@@ -99,19 +92,13 @@ const gameShortcuts: GameShortcut[] = [
 const defaultShortcuts = ['doodle-jump', 'flappy-bird', 'bomb-party', '2048'];
 
 export default function Dashboard() {
-  const { user, refreshUser } = useAuth();
+  const { user } = useAuth();
   const { fetchPublicParties } = useSocket();
   const [recentTransfers, setRecentTransfers] = useState<Transfer[]>([]);
   const [userRank, setUserRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   
-  const [allUsers, setAllUsers] = useState<UserListItem[]>([]);
   const [dailyAllowance, setDailyAllowance] = useState<DailyAllowance | null>(null);
-  const [selectedUserId, setSelectedUserId] = useState('');
-  const [giftAmount, setGiftAmount] = useState(10);
-  const [giftText, setGiftText] = useState('');
-  const [giftLoading, setGiftLoading] = useState(false);
-  const [giftMessage, setGiftMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [giftDialogOpen, setGiftDialogOpen] = useState(false);
   
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -206,16 +193,14 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [rankingsRes, transfersRes, usersRes, allowanceRes] = await Promise.all([
+        const [rankingsRes, transfersRes, allowanceRes] = await Promise.all([
           leaderboardsApi.get('aura', { limit: 5 }),
           economyApi.getTransfers({ limit: 5, all: true }),
-          usersApi.getAll(),
           economyApi.getDailyAllowance(),
         ]);
-        
+
         setUserRank(rankingsRes.data.userRank);
         setRecentTransfers(transfersRes.data.transfers);
-        setAllUsers(usersRes.data.users);
         setDailyAllowance(allowanceRes.data);
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
@@ -255,47 +240,6 @@ export default function Dashboard() {
       // Ignore localStorage write failures.
     }
   }, [shortcutsLoaded, shortcutWidgets]);
-
-  const handleGiftAura = async () => {
-    if (!selectedUserId || giftAmount <= 0) return;
-    
-    setGiftLoading(true);
-    setGiftMessage(null);
-    
-    try {
-      await economyApi.giftAura({ 
-        receiverId: selectedUserId, 
-        amount: giftAmount,
-        message: giftText.trim() || undefined,
-      });
-      
-      const selectedUser = allUsers.find(u => u.id === selectedUserId);
-      setGiftMessage({ 
-        type: 'success', 
-        text: `${giftAmount} aura → ${selectedUser?.username}` 
-      });
-      
-      await Promise.all([
-        fetchDailyAllowance(),
-        economyApi.getTransfers({ limit: 5, all: true }).then(res => setRecentTransfers(res.data.transfers)),
-        refreshUser(),
-      ]);
-      
-      setSelectedUserId('');
-      setGiftAmount(10);
-      setGiftText('');
-      setGiftDialogOpen(false);
-      
-      setTimeout(() => setGiftMessage(null), 3000);
-    } catch (error: any) {
-      setGiftMessage({ 
-        type: 'error', 
-        text: error.response?.data?.error || 'Échec' 
-      });
-    } finally {
-      setGiftLoading(false);
-    }
-  };
 
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
@@ -494,148 +438,27 @@ export default function Dashboard() {
         <CardHeader>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardDescription>Envoyer de l'aura</CardDescription>
+              <CardDescription>Envoyer un cadeau</CardDescription>
               <CardTitle className={TYPOGRAPHY.H5}>
-                Offre de l'aura à un joueur, ajoute un message, et garde un œil sur ta limite.
+                Offre de l'aura, de l'argent ou des articles à un joueur.
               </CardTitle>
             </div>
-            <Dialog open={giftDialogOpen} onOpenChange={setGiftDialogOpen}>
-              <Button
-                onClick={() => setGiftDialogOpen(true)}
-                disabled={!dailyAllowance || dailyAllowance.remaining === 0}
-                className="h-12 px-6 text-base"
-              >
-                <Send className="h-4 w-4 mr-2" />
-                Envoyer de l'aura
-              </Button>
-              <DialogContent className="max-w-lg">
-                <DialogHeader>
-                  <DialogTitle className={TYPOGRAPHY.H4}>Envoyer de l'aura</DialogTitle>
-                  <DialogDescription>
-                    Choisis un joueur, un montant, et ajoute un message si tu veux.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide">1. Destinataire</p>
-                    <Select
-                      value={selectedUserId}
-                      onValueChange={setSelectedUserId}
-                      disabled={!dailyAllowance || dailyAllowance.remaining === 0}
-                    >
-                      <SelectTrigger className="h-12 bg-transparent border-border/50 text-base">
-                        <SelectValue placeholder="Choisis un joueur" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {allUsers
-                          .filter(u => u.id !== user?.id)
-                          .map(u => (
-                            <SelectItem key={u.id} value={u.id}>
-                              {u.username}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-[160px_1fr]">
-                    <div className="space-y-2">
-                      <p className="text-xs text-muted-foreground uppercase tracking-wide">2. Montant</p>
-                      <Input
-                        type="number"
-                        value={giftAmount}
-                        onChange={(e) => setGiftAmount(Math.min(Math.max(1, parseInt(e.target.value) || 0), dailyAllowance?.remaining || 50))}
-                        min={1}
-                        max={dailyAllowance?.remaining || 50}
-                        disabled={!dailyAllowance || dailyAllowance.remaining === 0}
-                        className="h-12 bg-transparent border-border/50 text-base text-center"
-                        placeholder="10"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-xs text-muted-foreground uppercase tracking-wide">3. Message</p>
-                      <div className="relative">
-                        <Input
-                          type="text"
-                          value={giftText}
-                          onChange={(e) => setGiftText(e.target.value)}
-                          disabled={!dailyAllowance || dailyAllowance.remaining === 0}
-                          className="h-12 bg-transparent border-border/50 text-base pr-16"
-                          placeholder="Ajoute un message"
-                          maxLength={50}
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground/60 tabular-nums">
-                          {giftText.length}/50
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-border/50 bg-background/40 p-3 text-sm text-muted-foreground">
-                    Limite quotidienne restante : <span className="font-medium text-foreground">{dailyAllowance?.remaining || 0}</span>
-                    {resetCountdown && resetCountdown.total > 0 && (
-                      <span className="ml-2 inline-flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        <span className="tabular-nums">
-                          {String(resetCountdown.hours).padStart(2, '0')}:
-                          {String(resetCountdown.minutes).padStart(2, '0')}:
-                          {String(resetCountdown.seconds).padStart(2, '0')}
-                        </span>
-                      </span>
-                    )}
-                  </div>
-
-                  {giftMessage && (
-                    <p className={cn(
-                      "text-sm",
-                      giftMessage.type === 'success' ? 'text-foreground' : 'text-destructive'
-                    )}>
-                      {giftMessage.text}
-                    </p>
-                  )}
-                </div>
-                <DialogFooter className="gap-2 sm:gap-0">
-                  <Button
-                    variant="outline"
-                    onClick={() => setGiftDialogOpen(false)}
-                    disabled={giftLoading}
-                  >
-                    Annuler
-                  </Button>
-                  <Button
-                    onClick={handleGiftAura}
-                    disabled={!selectedUserId || giftAmount <= 0 || giftLoading || !dailyAllowance || dailyAllowance.remaining === 0}
-                  >
-                    {giftLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Send className="h-4 w-4 mr-2" />
-                        Envoyer maintenant
-                      </>
-                    )}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <Button
+              onClick={() => setGiftDialogOpen(true)}
+              className="h-12 px-6 text-base"
+            >
+              <Gift className="h-4 w-4 mr-2" />
+              Envoyer un cadeau
+            </Button>
           </div>
         </CardHeader>
-        <CardContent className={SPACING.CARD_SPACING}>
-          {giftMessage && (
-            <p className={cn(
-              TYPOGRAPHY.SMALL,
-              giftMessage.type === 'success' ? 'text-foreground' : 'text-destructive'
-            )}>
-              {giftMessage.text}
-            </p>
-          )}
-          {!dailyAllowance || dailyAllowance.remaining === 0 ? (
-            <p className={TYPOGRAPHY.SMALL}>
-              Limite quotidienne atteinte. Reviens après le reset pour offrir de nouveau.
-            </p>
-          ) : null}
-        </CardContent>
       </Card>
+      <GiftDialog
+        open={giftDialogOpen}
+        onOpenChange={setGiftDialogOpen}
+        onGiftOpened={() => {}}
+        initialTab="send"
+      />
 
 
       {/* Recent Activity */}

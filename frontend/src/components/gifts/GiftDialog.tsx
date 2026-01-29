@@ -15,11 +15,12 @@ interface GiftDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onGiftOpened: () => void;
+  initialTab?: string;
 }
 
-export default function GiftDialog({ open, onOpenChange, onGiftOpened }: GiftDialogProps) {
+export default function GiftDialog({ open, onOpenChange, onGiftOpened, initialTab }: GiftDialogProps) {
   const { user } = useAuth();
-  const [tab, setTab] = useState('inbox');
+  const [tab, setTab] = useState(initialTab || 'inbox');
 
   // Inbox state
   const [inboxGifts, setInboxGifts] = useState<Gift[]>([]);
@@ -34,6 +35,7 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened }: GiftDia
   const [templates, setTemplates] = useState<GiftTemplate[]>([]);
   const [selectedUser, setSelectedUser] = useState('');
   const [moneyAmount, setMoneyAmount] = useState(0);
+  const [auraAmount, setAuraAmount] = useState(0);
   const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -41,6 +43,11 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened }: GiftDia
 
   // Opening animation state
   const [openingGift, setOpeningGift] = useState<Gift | null>(null);
+
+  // Update tab when initialTab changes
+  useEffect(() => {
+    if (initialTab && open) setTab(initialTab);
+  }, [initialTab, open]);
 
   const fetchInbox = useCallback(async () => {
     setLoadingInbox(true);
@@ -80,23 +87,27 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened }: GiftDia
     else if (tab === 'send') fetchSendData();
   }, [open, tab, fetchInbox, fetchReceived, fetchSendData]);
 
-  const totalCost = moneyAmount + templates
+  const templateCost = templates
     .filter(t => selectedTemplates.includes(t.id))
     .reduce((sum, t) => sum + t.price, 0);
+  const totalMoneyCost = moneyAmount + templateCost;
+  const hasContent = totalMoneyCost > 0 || auraAmount > 0;
 
   const handleSend = async () => {
-    if (!selectedUser || totalCost <= 0) return;
+    if (!selectedUser || !hasContent) return;
     setSending(true);
     try {
       await giftsApi.send({
         receiverId: selectedUser,
         moneyAmount: moneyAmount > 0 ? moneyAmount : undefined,
+        auraAmount: auraAmount > 0 ? auraAmount : undefined,
         templateIds: selectedTemplates.length > 0 ? selectedTemplates : undefined,
         message: message.trim() || undefined,
       });
       setSendSuccess(true);
       setSelectedUser('');
       setMoneyAmount(0);
+      setAuraAmount(0);
       setSelectedTemplates([]);
       setMessage('');
       setTimeout(() => setSendSuccess(false), 2000);
@@ -105,7 +116,8 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened }: GiftDia
   };
 
   const handleOpenGift = async (gift: Gift) => {
-    setOpeningGift(gift);
+    onOpenChange(false);
+    setTimeout(() => setOpeningGift(gift), 200);
   };
 
   const handleAnimationComplete = async () => {
@@ -232,6 +244,18 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened }: GiftDia
                     />
                   </div>
 
+                  {/* Aura amount */}
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">Aura</label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={auraAmount}
+                      onChange={(e) => setAuraAmount(Math.max(0, Number(e.target.value)))}
+                      placeholder="0"
+                    />
+                  </div>
+
                   {/* Gift templates */}
                   {templates.length > 0 && (
                     <div>
@@ -282,13 +306,23 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened }: GiftDia
 
                   {/* Total & Send */}
                   <div className="flex items-center justify-between pt-2 border-t">
-                    <div>
-                      <span className="text-sm text-muted-foreground">Total: </span>
-                      <span className="text-sm font-bold">${totalCost}</span>
+                    <div className="space-y-0.5">
+                      {totalMoneyCost > 0 && (
+                        <p className="text-sm">
+                          <span className="text-muted-foreground">Co\u00fbt: </span>
+                          <span className="font-bold">${totalMoneyCost}</span>
+                        </p>
+                      )}
+                      {auraAmount > 0 && (
+                        <p className="text-sm">
+                          <span className="text-muted-foreground">Aura: </span>
+                          <span className="font-bold">{auraAmount}</span>
+                        </p>
+                      )}
                     </div>
                     <Button
                       onClick={handleSend}
-                      disabled={!selectedUser || totalCost <= 0 || sending}
+                      disabled={!selectedUser || !hasContent || sending}
                       size="sm"
                     >
                       {sending ? (
@@ -332,6 +366,9 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened }: GiftDia
                           </p>
                           {gift.moneyAmount > 0 && (
                             <p className="text-xs text-yellow-500 font-medium">+${gift.moneyAmount}</p>
+                          )}
+                          {gift.auraAmount > 0 && (
+                            <p className="text-xs text-purple-400 font-medium">+{gift.auraAmount} aura</p>
                           )}
                           {gift.items.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1">

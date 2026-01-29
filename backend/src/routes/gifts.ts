@@ -80,7 +80,7 @@ router.post('/send', authMiddleware, async (req: AuthRequest, res: Response) => 
   try {
     if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
 
-    const { receiverId, moneyAmount = 0, templateIds = [], message } = req.body;
+    const { receiverId, moneyAmount = 0, auraAmount = 0, templateIds = [], message } = req.body;
 
     if (!receiverId) {
       return res.status(400).json({ error: 'Receiver is required' });
@@ -94,6 +94,10 @@ router.post('/send', authMiddleware, async (req: AuthRequest, res: Response) => 
       return res.status(400).json({ error: `Money must be between 0 and ${MAX_MONEY_PER_GIFT}` });
     }
 
+    if (auraAmount < 0) {
+      return res.status(400).json({ error: 'Aura amount cannot be negative' });
+    }
+
     if (message && message.length > 200) {
       return res.status(400).json({ error: 'Message must be 200 characters or less' });
     }
@@ -104,7 +108,7 @@ router.post('/send', authMiddleware, async (req: AuthRequest, res: Response) => 
       return res.status(404).json({ error: 'Receiver not found' });
     }
 
-    // Calculate total cost: money in gift + cost of template items
+    // Calculate total money cost: money in gift + cost of template items
     let templateCost = 0;
     if (templateIds.length > 0) {
       const templates = await prisma.giftTemplate.findMany({
@@ -116,24 +120,37 @@ router.post('/send', authMiddleware, async (req: AuthRequest, res: Response) => 
       templateCost = templates.reduce((sum: number, t: { price: number }) => sum + t.price, 0);
     }
 
-    const totalCost = moneyAmount + templateCost;
+    const totalMoneyCost = moneyAmount + templateCost;
 
-    if (totalCost <= 0) {
-      return res.status(400).json({ error: 'Gift must contain money or at least one item' });
+    if (totalMoneyCost <= 0 && auraAmount <= 0) {
+      return res.status(400).json({ error: 'Gift must contain money, aura, or at least one item' });
     }
 
-    // Check sender has enough money
+    // Check sender has enough money and aura
     const sender = await prisma.user.findUnique({ where: { id: req.user.id } });
-    if (!sender || sender.money < totalCost) {
+    if (!sender) {
+      return res.status(404).json({ error: 'Sender not found' });
+    }
+    if (sender.money < totalMoneyCost) {
       return res.status(400).json({ error: 'Insufficient money' });
+    }
+    if (Number(sender.aura) < auraAmount) {
+      return res.status(400).json({ error: 'Insufficient aura' });
     }
 
     // Create gift in a transaction
     const gift = await prisma.$transaction(async (tx) => {
-      // Deduct total cost from sender
+      // Deduct money cost from sender
+      const updateData: Record<string, unknown> = {};
+      if (totalMoneyCost > 0) {
+        updateData.money = { decrement: totalMoneyCost };
+      }
+      if (auraAmount > 0) {
+        updateData.aura = { decrement: auraAmount };
+      }
       await tx.user.update({
         where: { id: req.user!.id },
-        data: { money: { decrement: totalCost } },
+        data: updateData,
       });
 
       // Create the gift
@@ -143,6 +160,7 @@ router.post('/send', authMiddleware, async (req: AuthRequest, res: Response) => 
           receiverId,
           message: message || null,
           moneyAmount,
+          auraAmount,
           items: templateIds.length > 0 ? {
             create: templateIds.map((templateId: string) => ({
               giftTemplateId: templateId,
@@ -185,8 +203,9 @@ router.post('/send', authMiddleware, async (req: AuthRequest, res: Response) => 
     logEconomy('transfer', req.user.id, sender.username, receiverId, receiver.username, {
       type: 'gift',
       moneyAmount,
+      auraAmount,
       templateCost,
-      totalCost,
+      totalMoneyCost,
       templateIds,
     });
 
@@ -224,23 +243,30 @@ router.post('/:id/open', authMiddleware, async (req: AuthRequest, res: Response)
       return res.status(400).json({ error: 'Gift already opened' });
     }
 
-    // Open the gift and credit money in a transaction
+    // Open the gift and credit money + aura in a transaction
     await prisma.$transaction(async (tx) => {
       await tx.gift.update({
         where: { id },
         data: { isOpened: true, openedAt: new Date() },
       });
 
+      const creditData: Record<string, unknown> = {};
       if (gift.moneyAmount > 0) {
+        creditData.money = { increment: gift.moneyAmount };
+      }
+      if (gift.auraAmount > 0) {
+        creditData.aura = { increment: gift.auraAmount };
+      }
+      if (Object.keys(creditData).length > 0) {
         await tx.user.update({
           where: { id: req.user!.id },
-          data: { money: { increment: gift.moneyAmount } },
+          data: creditData,
         });
       }
     });
 
     // Emit balance update to receiver
-    if (gift.moneyAmount > 0) {
+    if (gift.moneyAmount > 0 || gift.auraAmount > 0) {
       const updatedReceiver = await prisma.user.findUnique({
         where: { id: req.user.id },
         select: { aura: true, money: true },

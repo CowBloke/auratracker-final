@@ -913,11 +913,11 @@ export const adminApi = {
   resetExtremeAura: (threshold?: number) =>
     runRareAction({ action: 'reset_extreme_aura', threshold }) as Promise<{ data: { success: boolean; message: string; usersReset: number; users: { id: string; username: string; oldAura: string }[] } }>,
   // Gift templates
-  getGiftTemplates: () => api.get<{ templates: import('./api').GiftTemplate[] }>('/admin/gift-templates'),
+  getGiftTemplates: () => api.get<{ templates: GiftTemplate[] }>('/admin/gift-templates'),
   createGiftTemplate: (data: { name: string; description?: string; imageUrl?: string; price: number }) =>
-    api.post<{ template: import('./api').GiftTemplate }>('/admin/gift-templates', data),
+    api.post<{ template: GiftTemplate }>('/admin/gift-templates', data),
   updateGiftTemplate: (id: string, data: { name?: string; description?: string; imageUrl?: string; price?: number }) =>
-    api.put<{ template: import('./api').GiftTemplate }>(`/admin/gift-templates/${id}`, data),
+    api.put<{ template: GiftTemplate }>(`/admin/gift-templates/${id}`, data),
   deleteGiftTemplate: (id: string) => api.delete<{ success: boolean }>(`/admin/gift-templates/${id}`),
 };
 
@@ -1154,6 +1154,7 @@ export interface Gift {
   receiverId: string;
   message: string | null;
   moneyAmount: number;
+  auraAmount: number;
   isOpened: boolean;
   openedAt: string | null;
   createdAt: string;
@@ -1166,7 +1167,7 @@ export const giftsApi = {
   getInbox: () => api.get<{ gifts: Gift[] }>('/gifts/inbox'),
   getInboxCount: () => api.get<{ count: number }>('/gifts/inbox/count'),
   getReceived: () => api.get<{ gifts: Gift[] }>('/gifts/received'),
-  send: (data: { receiverId: string; moneyAmount?: number; templateIds?: string[]; message?: string }) =>
+  send: (data: { receiverId: string; moneyAmount?: number; auraAmount?: number; templateIds?: string[]; message?: string }) =>
     api.post<{ gift: Gift }>('/gifts/send', data),
   open: (id: string) => api.post<{ gift: Gift }>(`/gifts/${id}/open`),
 };

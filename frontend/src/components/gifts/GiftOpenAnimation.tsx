@@ -9,7 +9,7 @@ interface GiftOpenAnimationProps {
   onClose: () => void;
 }
 
-const CLICKS_NEEDED = 6;
+const CLICKS_NEEDED = 3;
 
 export default function GiftOpenAnimation({ gift, onComplete, onClose }: GiftOpenAnimationProps) {
   const [clicks, setClicks] = useState(0);
@@ -133,10 +133,20 @@ export default function GiftOpenAnimation({ gift, onComplete, onClose }: GiftOpe
 
           {/* Contents */}
           <div className="w-full space-y-3">
-            {gift.moneyAmount > 0 && (
-              <div className="bg-white/10 rounded-xl p-4 text-center">
-                <p className="text-yellow-400 text-2xl font-bold">${gift.moneyAmount}</p>
-                <p className="text-white/50 text-xs">argent</p>
+            {(gift.moneyAmount > 0 || gift.auraAmount > 0) && (
+              <div className="bg-white/10 rounded-xl p-4 text-center space-y-2">
+                {gift.moneyAmount > 0 && (
+                  <>
+                    <p className="text-yellow-400 text-2xl font-bold">${gift.moneyAmount}</p>
+                    <p className="text-white/50 text-xs">argent</p>
+                  </>
+                )}
+                {gift.auraAmount > 0 && (
+                  <>
+                    <p className="text-purple-400 text-2xl font-bold">{gift.auraAmount}</p>
+                    <p className="text-white/50 text-xs">aura</p>
+                  </>
+                )}
               </div>
             )}
 

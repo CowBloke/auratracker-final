@@ -758,6 +758,7 @@ model Gift {
   receiverId  String
   message     String?   // Custom message from the gifter
   moneyAmount Int       @default(0) // Money included (max 1000)
+  auraAmount  Int       @default(0) // Aura included in the gift
   isOpened    Boolean   @default(false)
   openedAt    DateTime?
   createdAt   DateTime  @default(now())
