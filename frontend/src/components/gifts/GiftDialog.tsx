@@ -22,6 +22,7 @@ interface GiftDialogProps {
 export default function GiftDialog({ open, onOpenChange, onGiftOpened, initialTab }: GiftDialogProps) {
   const { user } = useAuth();
   const [tab, setTab] = useState(initialTab || 'inbox');
+  const maxAuraPerGift = 50;
 
   // Inbox state
   const [inboxGifts, setInboxGifts] = useState<Gift[]>([]);
@@ -247,14 +248,16 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened, initialTa
 
                   {/* Aura amount */}
                   <div>
-                    <label className="text-sm font-medium mb-1 block">Aura</label>
+                    <label className="text-sm font-medium mb-1 block">Aura (max 50, 5x/jour)</label>
                     <Input
                       type="number"
                       min={0}
+                      max={maxAuraPerGift}
                       value={auraAmount}
-                      onChange={(e) => setAuraAmount(Math.max(0, Number(e.target.value)))}
+                      onChange={(e) => setAuraAmount(Math.min(maxAuraPerGift, Math.max(0, Number(e.target.value))))}
                       placeholder="0"
                     />
+                    <p className="text-xs text-muted-foreground mt-1">Ne co\u00fbte pas d'aura</p>
                   </div>
 
                   {/* Gift templates */}

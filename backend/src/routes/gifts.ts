@@ -6,6 +6,48 @@ import { logEconomy } from '../utils/logger.js';
 const router = Router();
 
 const MAX_MONEY_PER_GIFT = 1000;
+const MAX_AURA_PER_GIFT = 50;
+const MAX_AURA_GIFTS_PER_DAY = 5;
+const DEFAULT_DAILY_AURA_LIMIT = 50;
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+
+const checkAndResetDailyAllowance = async (userId: string) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { dailyAuraGiven: true, dailyAuraLimit: true, lastDailyReset: true },
+  });
+
+  if (!user) return null;
+
+  const now = new Date();
+  const lastReset = new Date(user.lastDailyReset);
+  const timeSinceReset = now.getTime() - lastReset.getTime();
+
+  if (timeSinceReset >= DAY_IN_MS) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        dailyAuraGiven: 0,
+        dailyAuraLimit: DEFAULT_DAILY_AURA_LIMIT,
+        lastDailyReset: now,
+      },
+    });
+    return {
+      dailyAuraGiven: 0,
+      dailyAuraLimit: DEFAULT_DAILY_AURA_LIMIT,
+      lastDailyReset: now,
+      remaining: DEFAULT_DAILY_AURA_LIMIT,
+    };
+  }
+
+  const userLimit = user.dailyAuraLimit ?? DEFAULT_DAILY_AURA_LIMIT;
+  return {
+    dailyAuraGiven: user.dailyAuraGiven,
+    dailyAuraLimit: userLimit,
+    lastDailyReset: user.lastDailyReset,
+    remaining: Math.max(0, userLimit - user.dailyAuraGiven),
+  };
+};
 
 // Get all available gift templates
 router.get('/templates', authMiddleware, async (req: AuthRequest, res: Response) => {
@@ -94,8 +136,8 @@ router.post('/send', authMiddleware, async (req: AuthRequest, res: Response) => 
       return res.status(400).json({ error: `Money must be between 0 and ${MAX_MONEY_PER_GIFT}` });
     }
 
-    if (auraAmount < 0) {
-      return res.status(400).json({ error: 'Aura amount cannot be negative' });
+    if (auraAmount < 0 || auraAmount > MAX_AURA_PER_GIFT) {
+      return res.status(400).json({ error: `Aura must be between 0 and ${MAX_AURA_PER_GIFT}` });
     }
 
     if (message && message.length > 200) {
@@ -126,7 +168,7 @@ router.post('/send', authMiddleware, async (req: AuthRequest, res: Response) => 
       return res.status(400).json({ error: 'Gift must contain money, aura, or at least one item' });
     }
 
-    // Check sender has enough money and aura
+    // Check sender has enough money
     const sender = await prisma.user.findUnique({ where: { id: req.user.id } });
     if (!sender) {
       return res.status(404).json({ error: 'Sender not found' });
@@ -134,8 +176,28 @@ router.post('/send', authMiddleware, async (req: AuthRequest, res: Response) => 
     if (sender.money < totalMoneyCost) {
       return res.status(400).json({ error: 'Insufficient money' });
     }
-    if (Number(sender.aura) < auraAmount) {
-      return res.status(400).json({ error: 'Insufficient aura' });
+
+    let allowanceInfo: { dailyAuraGiven: number; dailyAuraLimit: number; lastDailyReset: Date; remaining: number } | null = null;
+    if (auraAmount > 0) {
+      allowanceInfo = await checkAndResetDailyAllowance(req.user.id);
+      if (!allowanceInfo) {
+        return res.status(404).json({ error: 'Sender not found' });
+      }
+      if (auraAmount > allowanceInfo.remaining) {
+        return res.status(400).json({
+          error: `Insufficient daily allowance. You have ${allowanceInfo.remaining} aura left to give today.`,
+        });
+      }
+      const auraGiftCount = await prisma.gift.count({
+        where: {
+          senderId: req.user.id,
+          auraAmount: { gt: 0 },
+          createdAt: { gte: allowanceInfo.lastDailyReset },
+        },
+      });
+      if (auraGiftCount >= MAX_AURA_GIFTS_PER_DAY) {
+        return res.status(400).json({ error: `Daily aura gifts limit reached (${MAX_AURA_GIFTS_PER_DAY}/day).` });
+      }
     }
 
     // Create gift in a transaction
@@ -146,7 +208,7 @@ router.post('/send', authMiddleware, async (req: AuthRequest, res: Response) => 
         updateData.money = { decrement: totalMoneyCost };
       }
       if (auraAmount > 0) {
-        updateData.aura = { decrement: auraAmount };
+        updateData.dailyAuraGiven = { increment: auraAmount };
       }
       await tx.user.update({
         where: { id: req.user!.id },
@@ -207,6 +269,7 @@ router.post('/send', authMiddleware, async (req: AuthRequest, res: Response) => 
       templateCost,
       totalMoneyCost,
       templateIds,
+      dailyAuraUsed: auraAmount > 0,
     });
 
     res.json({ gift });

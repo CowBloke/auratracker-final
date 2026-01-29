@@ -158,12 +158,12 @@ export default function GiftOpenAnimation({ gift, onComplete, onClose }: GiftOpe
                   {gift.items.map(item => (
                     <div
                       key={item.id}
-                      className="flex items-center gap-2 bg-white/10 text-white text-sm px-3 py-1.5 rounded-lg border border-white/10"
+                      className="flex items-center gap-3 bg-white/10 text-white text-sm px-3 py-2 rounded-lg border border-white/10"
                     >
                       {item.giftTemplate.imageUrl ? (
-                        <img src={resolveImageUrl(item.giftTemplate.imageUrl)} alt={item.giftTemplate.name} className="h-6 w-6 rounded object-cover" />
+                        <img src={resolveImageUrl(item.giftTemplate.imageUrl)} alt={item.giftTemplate.name} className="h-12 w-12 rounded object-cover" />
                       ) : (
-                        <GiftIcon className="h-4 w-4 text-white/60" />
+                        <GiftIcon className="h-10 w-10 text-white/60" />
                       )}
                       {item.giftTemplate.name}
                     </div>
