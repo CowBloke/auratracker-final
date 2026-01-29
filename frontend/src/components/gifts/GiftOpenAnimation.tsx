@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { Gift } from '@/services/api';
 import { Gift as GiftIcon, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { resolveImageUrl } from '@/lib/images';
 
 interface GiftOpenAnimationProps {
   gift: Gift;
@@ -155,12 +156,17 @@ export default function GiftOpenAnimation({ gift, onComplete, onClose }: GiftOpe
                 <p className="text-white/50 text-xs mb-2 text-center">Articles</p>
                 <div className="flex flex-wrap justify-center gap-2">
                   {gift.items.map(item => (
-                    <span
+                    <div
                       key={item.id}
-                      className="bg-white/10 text-white text-sm px-3 py-1.5 rounded-lg border border-white/10"
+                      className="flex items-center gap-2 bg-white/10 text-white text-sm px-3 py-1.5 rounded-lg border border-white/10"
                     >
+                      {item.giftTemplate.imageUrl ? (
+                        <img src={resolveImageUrl(item.giftTemplate.imageUrl)} alt={item.giftTemplate.name} className="h-6 w-6 rounded object-cover" />
+                      ) : (
+                        <GiftIcon className="h-4 w-4 text-white/60" />
+                      )}
                       {item.giftTemplate.name}
-                    </span>
+                    </div>
                   ))}
                 </div>
               </div>

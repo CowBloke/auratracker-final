@@ -1553,7 +1553,7 @@ router.post('/gift-templates', authMiddleware, requireAdmin, async (req: AuthReq
       data: { name, description: description || null, imageUrl: imageUrl || null, price },
     });
 
-    logAdmin('gift_template_create', req.user?.id, req.user?.username, { templateId: template.id, name, price });
+    logAdmin('gift_template_create', req.user?.id, req.user?.username, template.id, name, { price });
 
     res.json({ template });
   } catch (error) {
@@ -1578,7 +1578,7 @@ router.put('/gift-templates/:id', authMiddleware, requireAdmin, async (req: Auth
       },
     });
 
-    logAdmin('gift_template_update', req.user?.id, req.user?.username, { templateId: id, name, price });
+    logAdmin('gift_template_update', req.user?.id, req.user?.username, id, name, { price });
 
     res.json({ template });
   } catch (error) {
@@ -1594,7 +1594,7 @@ router.delete('/gift-templates/:id', authMiddleware, requireAdmin, async (req: A
 
     await prisma.giftTemplate.delete({ where: { id } });
 
-    logAdmin('gift_template_delete', req.user?.id, req.user?.username, { templateId: id });
+    logAdmin('gift_template_delete', req.user?.id, req.user?.username, id, null);
 
     res.json({ success: true });
   } catch (error) {

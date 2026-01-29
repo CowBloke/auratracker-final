@@ -10,6 +10,7 @@ import { giftsApi, usersApi, Gift, GiftTemplate } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, Gift as GiftIcon, Send, Inbox, History, Check } from 'lucide-react';
 import GiftOpenAnimation from './GiftOpenAnimation';
+import { resolveImageUrl } from '@/lib/images';
 
 interface GiftDialogProps {
   open: boolean;
@@ -278,6 +279,13 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened, initialTa
                             }`}>
                               {selectedTemplates.includes(t.id) && <Check className="h-3 w-3" />}
                             </div>
+                            {t.imageUrl ? (
+                              <img src={resolveImageUrl(t.imageUrl)} alt={t.name} className="h-8 w-8 rounded object-cover flex-shrink-0" />
+                            ) : (
+                              <div className="h-8 w-8 rounded bg-muted flex items-center justify-center flex-shrink-0">
+                                <GiftIcon className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                            )}
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium">{t.name}</p>
                               {t.description && (
@@ -373,7 +381,10 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened, initialTa
                           {gift.items.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1">
                               {gift.items.map(item => (
-                                <span key={item.id} className="text-xs bg-accent px-1.5 py-0.5 rounded">
+                                <span key={item.id} className="inline-flex items-center gap-1 text-xs bg-accent px-1.5 py-0.5 rounded">
+                                  {item.giftTemplate.imageUrl ? (
+                                    <img src={resolveImageUrl(item.giftTemplate.imageUrl)} alt={item.giftTemplate.name} className="h-4 w-4 rounded object-cover" />
+                                  ) : null}
                                   {item.giftTemplate.name}
                                 </span>
                               ))}

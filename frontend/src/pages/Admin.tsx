@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import PageLayout from '@/components/layout/PageLayout';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Swords, Rocket, Download } from 'lucide-react';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Swords, Rocket, Download, Gift as GiftIcon } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -3764,9 +3764,18 @@ export default function Admin() {
                 <div className="space-y-2">
                   {giftTemplates.map(t => (
                     <div key={t.id} className="flex items-center justify-between p-3 rounded-lg border">
-                      <div>
-                        <p className="font-medium text-sm">{t.name}</p>
-                        {t.description && <p className="text-xs text-muted-foreground">{t.description}</p>}
+                      <div className="flex items-center gap-3">
+                        {t.imageUrl ? (
+                          <img src={resolveImageUrl(t.imageUrl)} alt={t.name} className="h-10 w-10 rounded-lg object-cover flex-shrink-0" />
+                        ) : (
+                          <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                            <GiftIcon className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-medium text-sm">{t.name}</p>
+                          {t.description && <p className="text-xs text-muted-foreground">{t.description}</p>}
+                        </div>
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="text-sm font-medium text-yellow-500">${t.price}</span>
