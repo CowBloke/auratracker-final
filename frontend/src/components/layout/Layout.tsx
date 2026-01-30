@@ -43,16 +43,18 @@ function ChatBubbleContainer() {
 
 export default function Layout() {
   const { user } = useAuth();
-  const { 
-    connected, 
-    setCurrentPage, 
-    onlineUsers, 
-    currentParty, 
-    partyMembers, 
-    leaveParty, 
-    deleteParty, 
-    bombPartyGame, 
-    petitBacGame, 
+  const {
+    connected,
+    setCurrentPage,
+    onlineUsers,
+    onlineCount,
+    requestOnlineUsers,
+    currentParty,
+    partyMembers,
+    leaveParty,
+    deleteParty,
+    bombPartyGame,
+    petitBacGame,
     sendMessage
   } = useSocket();
   const location = useLocation();
@@ -418,13 +420,16 @@ export default function Layout() {
                       </span>
                     </div>
                     <div className="relative">
-                      <Collapsible open={showUsers} onOpenChange={setShowUsers}>
+                      <Collapsible open={showUsers} onOpenChange={(open) => {
+                        setShowUsers(open);
+                        if (open) requestOnlineUsers();
+                      }}>
                         <CollapsibleTrigger asChild>
                           <button
                             type="button"
                             className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
                           >
-                            <span className="text-green-500">{onlineUsers.length} connectés</span>
+                            <span className="text-green-500">{onlineCount} connectés</span>
                             {showUsers ? (
                               <ChevronUp className="h-3 w-3" />
                             ) : (

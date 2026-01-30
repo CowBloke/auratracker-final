@@ -43,6 +43,12 @@ const getTopLeaderboardIds = async () => {
   };
 };
 
+export const startOnlineCountBroadcast = (io: Server) => {
+  setInterval(() => {
+    io.to('global-chat').emit('users:online-count', { count: onlineUsers.size });
+  }, 5000);
+};
+
 export const setupChatHandlers = (socket: Socket, io: Server) => {
   // Join chat
   socket.on('chat:join', async (data: { currentPage?: string }) => {
@@ -376,7 +382,18 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     if (!user) return;
 
     user.currentPage = currentPage;
-    io.to('global-chat').emit('user:page', { userId, currentPage });
+  });
+
+  // On-demand: client requests the full online users list (with pages)
+  socket.on('chat:request-online-users', () => {
+    const onlineList = Array.from(onlineUsers.values()).map((u) => ({
+      userId: u.userId,
+      username: u.username,
+      usernameColor: u.usernameColor,
+      profilePicture: u.profilePicture,
+      currentPage: u.currentPage ?? null,
+    }));
+    socket.emit('users:online-list', { users: onlineList });
   });
 
   socket.on('chat:reaction', async (data: { messageId: string; emoji: string }) => {

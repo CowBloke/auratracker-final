@@ -38,7 +38,7 @@ import solitaireRoutes from './routes/solitaire.js';
 import giftsRoutes from './routes/gifts.js';
 
 // Socket handlers
-import { setupChatHandlers } from './socket/chat.js';
+import { setupChatHandlers, startOnlineCountBroadcast } from './socket/chat.js';
 import { setupPartyHandlers } from './socket/party.js';
 import { setupGameHandlers } from './socket/games.js';
 import { setupBombPartyHandlers, startBombPartyCleanup } from './socket/bombparty.js';
@@ -248,6 +248,9 @@ const start = async () => {
     startSolarisEngine();
     startZenithEngine();
     startRiftEngine();
+
+    // Start online user count broadcast (every 5s)
+    startOnlineCountBroadcast(io);
 
     // Start bomb party game cleanup
     startBombPartyCleanup(io);

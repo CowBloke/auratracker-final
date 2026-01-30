@@ -386,6 +386,7 @@ interface SocketContextType {
   // Chat
   messages: ChatMessage[];
   onlineUsers: OnlineUser[];
+  onlineCount: number;
   typingUsers: TypingUser[];
   sendMessage: (message: string, replyToId?: string | null) => void;
   reactToMessage: (messageId: string, emoji: string) => void;
@@ -393,6 +394,7 @@ interface SocketContextType {
   setCurrentPage: (page: string) => void;
   deleteMessage: (messageId: string) => void;
   pinMessage: (messageId: string, pinned: boolean) => void;
+  requestOnlineUsers: () => void;
   // Party
   currentParty: Party | null;
   partyMembers: PartyMember[];
@@ -475,6 +477,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   // Chat state
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
+  const [onlineCount, setOnlineCount] = useState(0);
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   
   // Party state
@@ -586,6 +589,11 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
       s.on('users:online-list', (data: { users: OnlineUser[] }) => {
         setOnlineUsers(data.users);
+        setOnlineCount(data.users.length);
+      });
+
+      s.on('users:online-count', (data: { count: number }) => {
+        setOnlineCount(data.count);
       });
 
       s.on('user:online', (user: OnlineUser) => {
@@ -597,12 +605,6 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
       s.on('user:offline', (user: { userId: string }) => {
         setOnlineUsers((prev) => prev.filter((u) => u.userId !== user.userId));
-      });
-
-      s.on('user:page', (data: { userId: string; currentPage: string }) => {
-        setOnlineUsers((prev) =>
-          prev.map((u) => (u.userId === data.userId ? { ...u, currentPage: data.currentPage } : u))
-        );
       });
 
       s.on('chat:typing', (data: TypingUser & { isTyping: boolean }) => {
@@ -1190,6 +1192,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const requestOnlineUsers = () => {
+    if (socket) {
+      socket.emit('chat:request-online-users');
+    }
+  };
+
   const deleteMessage = (messageId: string) => {
     if (user && socket) {
       socket.emit('chat:delete-message', { messageId, adminId: user.id });
@@ -1439,11 +1447,13 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         connected,
         messages,
         onlineUsers,
+        onlineCount,
         typingUsers,
         sendMessage,
         reactToMessage,
         setTyping,
         setCurrentPage,
+        requestOnlineUsers,
         deleteMessage,
         pinMessage,
         currentParty,

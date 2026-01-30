@@ -32,7 +32,7 @@ const REACTION_OPTIONS = [
 export default function Chat({ isOpen, onToggle }: ChatProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { messages, onlineUsers, typingUsers, sendMessage, setTyping, deleteMessage, reactToMessage, pinMessage } = useSocket();
+  const { messages, onlineUsers, onlineCount, requestOnlineUsers, typingUsers, sendMessage, setTyping, deleteMessage, reactToMessage, pinMessage } = useSocket();
   const [input, setInput] = useState('');
   const [showUsers, setShowUsers] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -119,7 +119,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
             <div className="flex items-center gap-3">
               <span className="text-muted-foreground">chat</span>
               <span className="text-xs text-muted-foreground tabular-nums">
-                {onlineUsers.length} en ligne
+                {onlineCount} en ligne
               </span>
               {!isOpen && unreadCount > 0 && (
                 <span className="px-1.5 py-0.5 text-[10px] bg-foreground text-background">
@@ -335,11 +335,14 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
 
           {/* Online Users */}
           <div className="w-40 border-l border-border/40">
-            <Collapsible open={showUsers} onOpenChange={setShowUsers}>
+            <Collapsible open={showUsers} onOpenChange={(open) => {
+              setShowUsers(open);
+              if (open) requestOnlineUsers();
+            }}>
               <CollapsibleTrigger asChild>
                 <button className="w-full px-4 py-3 flex items-center justify-between text-xs text-muted-foreground hover:text-foreground transition-colors">
                   <span>en ligne</span>
-                  <span className="tabular-nums">{onlineUsers.length}</span>
+                  <span className="tabular-nums">{onlineCount}</span>
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent>
