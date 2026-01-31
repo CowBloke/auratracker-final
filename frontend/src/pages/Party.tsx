@@ -3,13 +3,13 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import { usersApi } from '../services/api';
-import { Plus, LogOut, UserPlus, X, RefreshCw, Trash2 } from 'lucide-react';
+import { Plus, LogOut, UserPlus, X, RefreshCw, Trash2, User } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import PageLayout from '@/components/layout/PageLayout';
@@ -107,6 +107,7 @@ export default function Party() {
   const [partyName, setPartyName] = useState('');
   const [isPublic, setIsPublic] = useState(true);
   const [maxSize, setMaxSize] = useState<number>(8);
+  const [partyType, setPartyType] = useState<'party' | 'duel' | ''>('');
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
   useEffect(() => {
@@ -125,11 +126,13 @@ export default function Party() {
   };
 
   const handleCreateParty = () => {
-    createParty(partyName || undefined, isPublic, maxSize);
+    const size = partyType === 'duel' ? 2 : maxSize;
+    createParty(partyName || undefined, isPublic, size);
     setShowCreateModal(false);
     setPartyName('');
     setIsPublic(true);
     setMaxSize(8);
+    setPartyType('');
   };
 
   const handleInvite = (userId: string) => {
@@ -138,8 +141,6 @@ export default function Party() {
   };
 
   const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
-  const publicPartyList = publicParties.filter((party) => party.isPublic);
-  const privatePartyList = publicParties.filter((party) => !party.isPublic);
   const availableUsersToInvite = allUsers.filter(
     (u) =>
       u.id !== user?.id &&
@@ -149,17 +150,6 @@ export default function Party() {
   return (
     <>
       <PageLayout variant="compact">
-      {!currentParty && (
-        <div className="flex items-center justify-end">
-          <Button
-            onClick={() => setShowCreateModal(true)}
-            variant="outline"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Créer
-          </Button>
-        </div>
-      )}
 
       {/* Invites */}
       {partyInvites.length > 0 && (
@@ -203,106 +193,6 @@ export default function Party() {
         </Card>
       )}
 
-
-      {/* Duels Section */}
-      {!currentParty && (
-        <Card className="border-border/40">
-          <CardContent className={SPACING.SECTION_SPACING}>
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className={TYPOGRAPHY.H2}>Duels</h2>
-                <p className={TYPOGRAPHY.SMALL}>
-                  Parties à 2 joueurs
-                </p>
-              </div>
-              <Button
-                onClick={() => {
-                  createParty(undefined, true, 2);
-                }}
-                variant="outline"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Créer un duel
-              </Button>
-            </div>
-
-            <div className={SPACING.CARD_SPACING}>
-              <h3 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tracking-wide uppercase")}>
-                Jeux de duel
-              </h3>
-              <div className="space-y-0">
-                {duelGames.map((game) => (
-                  <div
-                    key={game.id}
-                    className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-3">
-                        <p className={TYPOGRAPHY.SMALL}>{game.name}</p>
-                        <span className={cn(TYPOGRAPHY.XS, "uppercase tracking-wide text-muted-foreground")}>
-                          {game.type}
-                        </span>
-                      </div>
-                      <p className={TYPOGRAPHY.SMALL}>
-                        {game.description}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Public Duels */}
-            <div className={SPACING.CARD_SPACING}>
-              <div className="flex items-center justify-between">
-                <h3 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tracking-wide uppercase")}>
-                  Duels ouverts
-                </h3>
-                <Button
-                  onClick={fetchPublicParties}
-                  variant="ghost"
-                  size="icon"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
-              </div>
-              {publicParties.filter((p) => p.maxSize === 2).length === 0 ? (
-                <p className={cn(TYPOGRAPHY.MUTED, "text-center py-8")}>
-                  Aucun duel disponible
-                </p>
-              ) : (
-                <div className="space-y-0">
-                  {publicParties
-                    .filter((p) => p.maxSize === 2)
-                    .map((party) => (
-                      <div
-                        key={party.id}
-                        className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
-                      >
-                        <div>
-                          <p className={TYPOGRAPHY.SMALL}>{party.name || 'Duel sans nom'}</p>
-                          <p className={TYPOGRAPHY.XS}>
-                            {party.memberCount}/2 joueurs
-                          </p>
-                        </div>
-                        <Button
-                          onClick={() => joinParty(party.id)}
-                          disabled={party.memberCount >= 2}
-                          variant="outline"
-                          size="sm"
-                        >
-                          {party.memberCount >= 2 ? 'Plein' : 'Rejoindre'}
-                        </Button>
-                      </div>
-                    ))}
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Divider */}
 
       {/* Current Party or Public Parties */}
       {currentParty ? (
@@ -557,17 +447,27 @@ export default function Party() {
       ) : (
         <Card className="border-border/40">
           <CardContent className={SPACING.SECTION_SPACING}>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
               <h2 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tracking-wide uppercase")}>
                 Parties ouvertes
               </h2>
-              <Button
-                onClick={fetchPublicParties}
-                variant="ghost"
-                size="icon"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => setShowCreateModal(true)}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Créer
+                </Button>
+                <Button
+                  onClick={fetchPublicParties}
+                  variant="ghost"
+                  size="icon"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             {publicParties.length === 0 ? (
@@ -576,48 +476,37 @@ export default function Party() {
               </p>
             ) : (
               <div className={SPACING.SECTION_SPACING}>
-                {publicPartyList.length > 0 && (
-                  <div className="space-y-0">
-                    {publicPartyList.map((party) => (
+                <div className="space-y-0">
+                  {publicParties.map((party) => {
+                    const isPending = pendingJoinRequests.includes(party.id);
+                    const isFull = party.memberCount >= party.maxSize;
+                    const isDuel = party.maxSize === 2;
+                    return (
                       <div
                         key={party.id}
                         className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
                       >
-                        <div>
-                          <p className={TYPOGRAPHY.SMALL}>{party.name || 'Party sans nom'}</p>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-3">
+                            <p className={TYPOGRAPHY.SMALL}>{party.name || (isDuel ? 'Duel sans nom' : 'Party sans nom')}</p>
+                            <span className={cn(TYPOGRAPHY.XS, "uppercase tracking-wide text-muted-foreground")}>
+                              {isDuel ? 'Duel' : 'Party'}
+                            </span>
+                          </div>
                           <p className={TYPOGRAPHY.XS}>
-                            {party.memberCount}/{party.maxSize} membres · publique
+                            {party.memberCount}/{party.maxSize} membres · {party.isPublic ? 'publique' : 'privée'}
                           </p>
                         </div>
-                        <Button
-                          onClick={() => joinParty(party.id)}
-                          disabled={party.memberCount >= party.maxSize}
-                          variant="outline"
-                          size="sm"
-                        >
-                          {party.memberCount >= party.maxSize ? 'Pleine' : 'Rejoindre'}
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {privatePartyList.length > 0 && (
-                  <div className="space-y-0">
-                    {privatePartyList.map((party) => {
-                      const isPending = pendingJoinRequests.includes(party.id);
-                      const isFull = party.memberCount >= party.maxSize;
-                      return (
-                        <div
-                          key={party.id}
-                          className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
-                        >
-                          <div>
-                            <p className={TYPOGRAPHY.SMALL}>{party.name || 'Party sans nom'}</p>
-                            <p className={TYPOGRAPHY.XS}>
-                              {party.memberCount}/{party.maxSize} membres · privée
-                            </p>
-                          </div>
+                        {party.isPublic ? (
+                          <Button
+                            onClick={() => joinParty(party.id)}
+                            disabled={isFull}
+                            variant="outline"
+                            size="sm"
+                          >
+                            {isFull ? 'Pleine' : 'Rejoindre'}
+                          </Button>
+                        ) : (
                           <Button
                             onClick={() => requestJoinParty(party.id)}
                             disabled={isFull || isPending}
@@ -626,11 +515,11 @@ export default function Party() {
                           >
                             {isFull ? 'Pleine' : isPending ? 'Demande envoyée' : 'Demander'}
                           </Button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </CardContent>
@@ -645,50 +534,82 @@ export default function Party() {
             <DialogTitle className="font-normal">Créer une party</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <Input
-              type="text"
-              value={partyName}
-              onChange={(e) => setPartyName(e.target.value)}
-              placeholder="Nom (optionnel)"
-              className="h-12 bg-transparent border-border/50"
-            />
             <div className="space-y-2">
-              <Label htmlFor="maxSize" className="text-sm text-muted-foreground">
-                Taille maximale
+              <Label htmlFor="partyType" className="text-sm text-muted-foreground">
+                Type
               </Label>
-              <Select value={maxSize.toString()} onValueChange={(value) => setMaxSize(parseInt(value))}>
-                <SelectTrigger id="maxSize" className="h-12 bg-transparent border-border/50">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="2">2 joueurs</SelectItem>
-                  <SelectItem value="3">3 joueurs</SelectItem>
-                  <SelectItem value="4">4 joueurs</SelectItem>
-                  <SelectItem value="5">5 joueurs</SelectItem>
-                  <SelectItem value="6">6 joueurs</SelectItem>
-                  <SelectItem value="7">7 joueurs</SelectItem>
-                  <SelectItem value="8">8 joueurs</SelectItem>
-                  <SelectItem value="9">9 joueurs</SelectItem>
-                  <SelectItem value="10">10 joueurs</SelectItem>
-                  <SelectItem value="11">11 joueurs</SelectItem>
-                  <SelectItem value="12">12 joueurs</SelectItem>
-                  <SelectItem value="13">13 joueurs</SelectItem>
-                  <SelectItem value="14">14 joueurs</SelectItem>
-                  <SelectItem value="15">15 joueurs</SelectItem>
-                  <SelectItem value="16">16 joueurs</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={partyType === 'party' ? 'default' : 'outline'}
+                  className="flex-1"
+                  onClick={() => {
+                    setPartyType('party');
+                    setMaxSize(8);
+                  }}
+                >
+                  Party
+                </Button>
+                <Button
+                  type="button"
+                  variant={partyType === 'duel' ? 'default' : 'outline'}
+                  className="flex-1"
+                  onClick={() => {
+                    setPartyType('duel');
+                    setMaxSize(2);
+                  }}
+                >
+                  Duel
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <Checkbox
-                id="isPublic"
-                checked={isPublic}
-                onCheckedChange={(checked) => setIsPublic(checked === true)}
-              />
-              <Label htmlFor="isPublic" className="cursor-pointer text-sm text-muted-foreground">
-                Publique
-              </Label>
-            </div>
+            {partyType && (
+              <>
+                <Input
+                  type="text"
+                  value={partyName}
+                  onChange={(e) => setPartyName(e.target.value)}
+                  placeholder="Nom (optionnel)"
+                  className="h-12 bg-transparent border-border/50"
+                />
+                {partyType === 'party' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="maxSize" className="text-sm text-muted-foreground">
+                      Taille maximale
+                    </Label>
+                    <div className="flex flex-wrap items-center justify-center gap-1 text-muted-foreground">
+                      {Array.from({ length: maxSize }).map((_, index) => (
+                        <User key={`${maxSize}-${index}`} className="h-3.5 w-3.5" />
+                      ))}
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>2</span>
+                        <span className="text-foreground font-semibold">{maxSize} joueurs</span>
+                        <span>16</span>
+                      </div>
+                      <Slider
+                        value={[maxSize]}
+                        min={2}
+                        max={16}
+                        step={1}
+                        onValueChange={(value) => setMaxSize(value[0])}
+                      />
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    id="isPublic"
+                    checked={isPublic}
+                    onCheckedChange={(checked) => setIsPublic(checked === true)}
+                  />
+                  <Label htmlFor="isPublic" className="cursor-pointer text-sm text-muted-foreground">
+                    Publique
+                  </Label>
+                </div>
+              </>
+            )}
           </div>
           <DialogFooter className="gap-2">
             <Button
@@ -702,6 +623,7 @@ export default function Party() {
               onClick={handleCreateParty}
               variant="outline"
               className="border-foreground"
+              disabled={!partyType}
             >
               Créer
             </Button>
