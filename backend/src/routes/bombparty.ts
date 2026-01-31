@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../server.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { getBombPartyWppSettings } from '../utils/bombpartySettings.js';
 
 const router = Router();
 
@@ -67,9 +68,17 @@ router.get('/leaderboard', authMiddleware, async (req, res) => {
 // Get prompt stats (for debugging/admin)
 router.get('/prompts/stats', authMiddleware, async (req, res) => {
   try {
-    const easy = await prisma.bombPartyPrompt.count({ where: { difficulty: 'easy' } });
-    const medium = await prisma.bombPartyPrompt.count({ where: { difficulty: 'medium' } });
-    const hard = await prisma.bombPartyPrompt.count({ where: { difficulty: 'hard' } });
+    const wpp = await getBombPartyWppSettings(prisma);
+
+    const easy = await prisma.bombPartyPrompt.count({
+      where: { wordCount: { gte: wpp.easy } },
+    });
+    const medium = await prisma.bombPartyPrompt.count({
+      where: { wordCount: { gte: wpp.medium, lt: wpp.easy } },
+    });
+    const hard = await prisma.bombPartyPrompt.count({
+      where: { wordCount: { gte: wpp.hard, lt: wpp.medium } },
+    });
 
     res.json({
       total: easy + medium + hard,

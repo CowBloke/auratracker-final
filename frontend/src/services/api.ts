@@ -906,6 +906,12 @@ export const adminApi = {
     api.put<{ settings: Record<string, string> }>('/admin/settings', { settings }),
   updateSetting: (key: string, value: string | number) =>
     api.put<{ setting: { key: string; value: string } }>(`/admin/settings/${key}`, { value }),
+  getBombPartyLanguages: () =>
+    api.get<{ languages: { fileName: string; label: string }[] }>('/admin/bombparty/languages'),
+  recalculateBombPartyPrompts: () =>
+    api.post<{ result: { languageFile: string; wordCount: number; totalPrompts: number; twoLetterPrompts: number; threeLetterPrompts: number } }>(
+      '/admin/bombparty/recalculate-prompts'
+    ),
   // Server deployment
   deploy: () =>
     runRareAction({ action: 'deploy' }) as Promise<{ data: { success: boolean; message: string; stdout?: string; stderr?: string } }>,

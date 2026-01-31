@@ -5,6 +5,8 @@ import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { validate, adminRareActionSchema } from '../middleware/validation.js';
 import { logAdmin, logSuggestion, logBan } from '../utils/logger.js';
 import { isAllowedImageUrl } from '../utils/uploads.js';
+import { listBombPartyLanguageFiles } from '../utils/bombpartyDictionary.js';
+import { recalculateBombPartyPrompts } from '../utils/bombpartyPrompts.js';
 
 const router = Router();
 const ANNOUNCEMENT_KEY = 'topbar_announcement';
@@ -1408,6 +1410,13 @@ router.put('/settings/:key', authMiddleware, requireAdmin, async (req: AuthReque
       }
     }
 
+    if (key === 'bombparty_language') {
+      const languages = listBombPartyLanguageFiles().map((lang) => lang.fileName);
+      if (!languages.includes(normalizedValue)) {
+        return res.status(400).json({ error: 'Invalid bombparty language selection' });
+      }
+    }
+
     const setting = await prisma.gameSettings.upsert({
       where: { key },
       create: { key, value: normalizedValue },
@@ -1476,6 +1485,14 @@ router.put('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, r
         }
       }
 
+      if (key === 'bombparty_language') {
+        const languages = listBombPartyLanguageFiles().map((lang) => lang.fileName);
+        if (!languages.includes(normalizedValue)) {
+          errors.push(`${key}: Invalid bombparty language selection`);
+          continue;
+        }
+      }
+
       updates.push({ key, value: normalizedValue });
     }
 
@@ -1522,6 +1539,34 @@ router.put('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, r
   } catch (error) {
     console.error('Admin bulk update settings error:', error);
     res.status(500).json({ error: 'Failed to update settings' });
+  }
+});
+
+// List available Bomb Party languages (admin only)
+router.get('/bombparty/languages', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    const languages = listBombPartyLanguageFiles();
+    res.json({ languages });
+  } catch (error) {
+    console.error('Admin get Bomb Party languages error:', error);
+    res.status(500).json({ error: 'Failed to get Bomb Party languages' });
+  }
+});
+
+// Recalculate Bomb Party prompts (admin only)
+router.post('/bombparty/recalculate-prompts', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await recalculateBombPartyPrompts(prisma);
+
+    logAdmin('bombparty_prompts_recalculate', req.user!.id, undefined, undefined, undefined, {
+      language: result.languageFile,
+      totalPrompts: result.totalPrompts,
+    });
+
+    res.json({ result });
+  } catch (error) {
+    console.error('Admin recalculate Bomb Party prompts error:', error);
+    res.status(500).json({ error: 'Failed to recalculate Bomb Party prompts' });
   }
 });
 

@@ -1,12 +1,8 @@
 import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
-import * as fs from 'fs';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
 import { checkQuestProgress } from '../routes/quests.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { readBombPartyDictionaryWords, resolveBombPartyLanguageFile } from '../utils/bombpartyDictionary.js';
+import { getBombPartyLanguageSetting, getBombPartyThreeLetterStartRound, getBombPartyWppSettings } from '../utils/bombpartySettings.js';
 
 interface BombPartyPlayer {
   userId: string;
@@ -80,26 +76,44 @@ const pendingPlayAgainPrompts = new Map<string, PendingPlayAgainPrompt>();
 
 // Dictionary loaded once
 let dictionary: Set<string> | null = null;
+let dictionaryLanguageFile: string | null = null;
+let dictionaryLoadPromise: Promise<Set<string>> | null = null;
+
+// Cache for WPP settings
+let cachedWppSettings: { easy: number; medium: number; hard: number } | null = null;
+
+async function getBombPartyLanguageFile(): Promise<string> {
+  if (dictionaryLanguageFile) return dictionaryLanguageFile;
+  const setting = await getBombPartyLanguageSetting(prisma);
+  const resolved = resolveBombPartyLanguageFile(setting);
+  dictionaryLanguageFile = resolved;
+  return resolved;
+}
 
 // Load dictionary
-function loadDictionary(): Set<string> {
-  if (dictionary) return dictionary;
+async function loadDictionary(): Promise<Set<string>> {
+  const languageFile = await getBombPartyLanguageFile();
+  if (dictionary && dictionaryLanguageFile === languageFile) return dictionary;
 
-  try {
-    const dictionaryPath = path.join(__dirname, '../../data/dictionary.txt');
-    const content = fs.readFileSync(dictionaryPath, 'utf-8');
-    dictionary = new Set(
-      content
-        .split('\n')
-        .map(w => w.trim().toUpperCase())
-        .filter(w => w.length >= 2)
-    );
-    console.log(`Loaded dictionary with ${dictionary.size} words`);
-    return dictionary;
-  } catch (error) {
-    console.error('Failed to load dictionary:', error);
-    return new Set();
-  }
+  if (dictionaryLoadPromise) return dictionaryLoadPromise;
+
+  dictionaryLoadPromise = (async () => {
+    try {
+      const words = readBombPartyDictionaryWords(languageFile);
+      dictionary = new Set(words);
+      dictionaryLanguageFile = languageFile;
+      console.log(`Loaded dictionary (${languageFile}) with ${dictionary.size} words`);
+      return dictionary;
+    } catch (error) {
+      console.error('Failed to load dictionary:', error);
+      dictionary = new Set();
+      return dictionary;
+    } finally {
+      dictionaryLoadPromise = null;
+    }
+  })();
+
+  return dictionaryLoadPromise;
 }
 
 // Cache for 3-letter start round setting
@@ -108,26 +122,29 @@ let threeLetterStartRound: number | null = null;
 // Get setting for when 3-letter prompts should start
 async function getThreeLetterStartRound(): Promise<number> {
   if (threeLetterStartRound !== null) return threeLetterStartRound;
-
-  try {
-    const setting = await prisma.gameSettings.findUnique({
-      where: { key: 'bombparty_3letter_start_round' },
-    });
-    threeLetterStartRound = setting ? parseInt(setting.value) : 10;
-  } catch {
-    threeLetterStartRound = 10; // Default to round 10
-  }
+  threeLetterStartRound = await getBombPartyThreeLetterStartRound(prisma);
   return threeLetterStartRound;
+}
+
+async function getWppSettings(): Promise<{ easy: number; medium: number; hard: number }> {
+  if (cachedWppSettings) return cachedWppSettings;
+  cachedWppSettings = await getBombPartyWppSettings(prisma);
+  return cachedWppSettings;
 }
 
 // Clear cached setting (call this when settings are updated)
 export function clearBombPartySettingsCache() {
   threeLetterStartRound = null;
+  cachedWppSettings = null;
+  dictionary = null;
+  dictionaryLanguageFile = null;
+  dictionaryLoadPromise = null;
 }
 
 // Get random prompt from database based on difficulty and round
 async function getRandomPrompt(difficulty: 'easy' | 'medium' | 'hard', round: number = 0): Promise<string> {
   const startRound = await getThreeLetterStartRound();
+  const wpp = await getWppSettings();
 
   // Determine which prompt lengths to include based on round
   // Before startRound: only 2-letter prompts
@@ -144,10 +161,17 @@ async function getRandomPrompt(difficulty: 'easy' | 'medium' | 'hard', round: nu
     lengths = Math.random() < threeLetterChance ? [3] : [2];
   }
 
+  const wordCountFilter =
+    difficulty === 'easy'
+      ? { gte: wpp.easy }
+      : difficulty === 'medium'
+        ? { gte: wpp.medium, lt: wpp.easy }
+        : { gte: wpp.hard, lt: wpp.medium };
+
   const prompts = await prisma.bombPartyPrompt.findMany({
     where: {
-      difficulty,
       length: { in: lengths },
+      wordCount: wordCountFilter,
     },
     select: { prompt: true },
   });
@@ -155,7 +179,7 @@ async function getRandomPrompt(difficulty: 'easy' | 'medium' | 'hard', round: nu
   if (prompts.length === 0) {
     // Fallback: try any length with this difficulty
     const fallbackPrompts = await prisma.bombPartyPrompt.findMany({
-      where: { difficulty },
+      where: { wordCount: wordCountFilter },
       select: { prompt: true },
     });
 
@@ -420,7 +444,7 @@ export const setupBombPartyHandlers = (socket: Socket, io: Server) => {
     }
 
     const upperWord = word.toUpperCase().trim();
-    const dict = loadDictionary();
+    const dict = await loadDictionary();
 
     // Validate word
     if (!upperWord.includes(game.currentPrompt)) {
@@ -604,7 +628,7 @@ async function resolveJoinPrompt(partyId: string, io: Server) {
   });
 
   // Load dictionary
-  loadDictionary();
+  await loadDictionary();
 
   // Get initial prompt
   const prompt = await getRandomPrompt(pendingPrompt.difficulty);
@@ -704,7 +728,6 @@ async function advanceTurn(game: BombPartyGame, io: Server, skipPromptChange: bo
   game.turnStartTime = Date.now();
 
   if (!skipPromptChange) {
-    game.round++;
     game.currentPrompt = await getRandomPrompt(game.difficulty, game.round);
     // Don't increment roundsWithoutLifeLoss here - only when word is accepted
   }
@@ -913,7 +936,7 @@ async function resolvePlayAgainPrompt(partyId: string, io: Server) {
   }
 
   // Load dictionary
-  loadDictionary();
+  await loadDictionary();
 
   // Get initial prompt
   const gamePrompt = await getRandomPrompt(prompt.difficulty);

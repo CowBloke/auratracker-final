@@ -295,7 +295,11 @@ export default function Admin() {
     bombparty_wpp_medium: '200',
     bombparty_wpp_hard: '100',
     bombparty_3letter_start_round: '10',
+    bombparty_language: 'dictionary.txt',
   });
+  const [bombPartyLanguages, setBombPartyLanguages] = useState<{ fileName: string; label: string }[]>([]);
+  const [loadingBombPartyLanguages, setLoadingBombPartyLanguages] = useState(false);
+  const [recalculatingBombPartyPrompts, setRecalculatingBombPartyPrompts] = useState(false);
   const [maintenanceMessage, setMaintenanceMessage] = useState('');
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
   const [maintenanceEndDate, setMaintenanceEndDate] = useState<string>('');
@@ -414,6 +418,7 @@ export default function Admin() {
     fetchLogs();
     fetchLogStats();
     fetchSettings();
+    fetchBombPartyLanguages();
     fetchGiftTemplates();
   }, []);
 
@@ -586,6 +591,7 @@ export default function Admin() {
         bombparty_wpp_medium: res.data.settings.bombparty_wpp_medium || '200',
         bombparty_wpp_hard: res.data.settings.bombparty_wpp_hard || '100',
         bombparty_3letter_start_round: res.data.settings.bombparty_3letter_start_round || '10',
+        bombparty_language: res.data.settings.bombparty_language || 'dictionary.txt',
       });
       setMaintenanceMessage(res.data.settings.maintenance_message || '');
       setBlockedMessage(res.data.settings.blocked_message || '');
@@ -644,6 +650,26 @@ export default function Admin() {
     }
   };
 
+  const fetchBombPartyLanguages = async () => {
+    try {
+      setLoadingBombPartyLanguages(true);
+      const res = await adminApi.getBombPartyLanguages();
+      setBombPartyLanguages(res.data.languages);
+
+      if (res.data.languages.length > 0) {
+        const valid = res.data.languages.some((lang) => lang.fileName === settingsForm.bombparty_language);
+        if (!valid) {
+          setSettingsForm((prev) => ({ ...prev, bombparty_language: res.data.languages[0].fileName }));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch Bomb Party languages:', error);
+      showMessage('error', 'Erreur lors du chargement des langues Bomb Party');
+    } finally {
+      setLoadingBombPartyLanguages(false);
+    }
+  };
+
   const saveSettings = async () => {
     try {
       setSavingSettings(true);
@@ -669,11 +695,22 @@ export default function Admin() {
         return;
       }
 
+      if (!settingsForm.bombparty_language) {
+        showMessage('error', 'Veuillez sÃ©lectionner une langue pour Bomb Party');
+        return;
+      }
+
+      if (bombPartyLanguages.length > 0 && !bombPartyLanguages.some((lang) => lang.fileName === settingsForm.bombparty_language)) {
+        showMessage('error', 'Langue Bomb Party invalide');
+        return;
+      }
+
       await adminApi.updateSettings({
         bombparty_wpp_easy: easy,
         bombparty_wpp_medium: medium,
         bombparty_wpp_hard: hard,
         bombparty_3letter_start_round: startRound,
+        bombparty_language: settingsForm.bombparty_language,
       });
 
       showMessage('success', 'Paramètres sauvegardés');
@@ -683,6 +720,19 @@ export default function Admin() {
       showMessage('error', 'Erreur lors de la sauvegarde');
     } finally {
       setSavingSettings(false);
+    }
+  };
+
+  const recalculateBombPartyPrompts = async () => {
+    try {
+      setRecalculatingBombPartyPrompts(true);
+      const res = await adminApi.recalculateBombPartyPrompts();
+      showMessage('success', `Prompts rÃ©gÃ©nÃ©rÃ©s (${res.data.result.totalPrompts})`);
+    } catch (error: any) {
+      console.error('Failed to recalculate Bomb Party prompts:', error);
+      showMessage('error', error.response?.data?.error || 'Erreur lors du recalcul des prompts');
+    } finally {
+      setRecalculatingBombPartyPrompts(false);
     }
   };
 
@@ -2962,6 +3012,57 @@ export default function Admin() {
                 </div>
               </div>
 
+              {/* Bomb Party Language */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Langue du dictionnaire Bomb Party</h3>
+                <p className="text-sm text-muted-foreground">
+                  Selectionnez le fichier texte utilise pour generer les prompts (backend/data/*.txt).
+                </p>
+
+                <div className="flex flex-col md:flex-row gap-4 items-start md:items-end">
+                  <div className="space-y-2 w-full md:max-w-sm">
+                    <label className="text-sm font-medium">Langue</label>
+                    <Select
+                      value={settingsForm.bombparty_language}
+                      onValueChange={(value) => setSettingsForm(prev => ({ ...prev, bombparty_language: value }))}
+                    >
+                      <SelectTrigger className="bg-transparent">
+                        <SelectValue placeholder={loadingBombPartyLanguages ? 'Chargement...' : 'Choisir une langue'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {bombPartyLanguages.length === 0 ? (
+                          <SelectItem value={settingsForm.bombparty_language} disabled>
+                            {settingsForm.bombparty_language.replace(/\.txt$/i, '') || 'Aucune langue trouvÃ©e'}
+                          </SelectItem>
+                        ) : (
+                          bombPartyLanguages.map((lang) => (
+                            <SelectItem key={lang.fileName} value={lang.fileName}>
+                              {lang.label}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Fichier sÃ©lectionnÃ©: {settingsForm.bombparty_language || 'Aucun'}
+                    </p>
+                  </div>
+
+                  <Button
+                    onClick={recalculateBombPartyPrompts}
+                    disabled={recalculatingBombPartyPrompts || loadingBombPartyLanguages || !settingsForm.bombparty_language}
+                    variant="outline"
+                  >
+                    {recalculatingBombPartyPrompts ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Download className="h-4 w-4 mr-2" />
+                    )}
+                    Recalculer les prompts
+                  </Button>
+                </div>
+              </div>
+
               {/* 3-Letter Start Round */}
               <div className="space-y-4">
                 <h3 className="text-lg font-medium">Apparition des prompts à 3 lettres</h3>
@@ -3003,7 +3104,7 @@ export default function Admin() {
               <div className="p-4 border border-border/30 rounded-lg bg-muted/20">
                 <p className="text-sm text-muted-foreground">
                   <strong>Note:</strong> Les modifications des seuils WPP prendront effet immédiatement pour les nouvelles parties.
-                  Pour régénérer les prompts avec les nouveaux seuils, exécutez <code className="bg-muted px-1 rounded">npm run db:seed-bombparty</code> dans le backend.
+                  Utilisez le bouton de recalcul pour regenerer les prompts si le dictionnaire change.
                 </p>
               </div>
 
