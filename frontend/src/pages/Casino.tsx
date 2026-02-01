@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
 import { cn } from '@/lib/utils';
 import { Coins, RotateCcw } from 'lucide-react';
 
-type GameTab = 'roulette' | 'slots';
+type GameTab = 'roulette' | 'slots' | 'blackjack';
 
 // -----------------------------
 // Roulette setup
@@ -124,6 +124,63 @@ const SLOT_SPIN_DURATION = 2000;
 const BET_STEPS = [10, 25, 50, 100, 250, 500, 1000];
 
 // -----------------------------
+// Blackjack setup
+// -----------------------------
+type BlackjackStatus = 'idle' | 'player' | 'dealer' | 'finished';
+type BlackjackOutcome = 'win' | 'lose' | 'push' | 'blackjack';
+
+interface BlackjackCard {
+  rank: string;
+  suit: string;
+}
+
+const BLACKJACK_BET_STEPS = [25, 50, 100, 250, 500, 1000];
+const BLACKJACK_SUITS = ['S', 'H', 'D', 'C'];
+const BLACKJACK_RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+const BLACKJACK_MIN_DECK = 15;
+
+const createBlackjackDeck = (): BlackjackCard[] => {
+  const deck: BlackjackCard[] = [];
+  BLACKJACK_SUITS.forEach((suit) => {
+    BLACKJACK_RANKS.forEach((rank) => {
+      deck.push({ rank, suit });
+    });
+  });
+  return deck;
+};
+
+const shuffleDeck = (deck: BlackjackCard[]) => {
+  const shuffled = [...deck];
+  for (let idx = shuffled.length - 1; idx > 0; idx -= 1) {
+    const swapIndex = Math.floor(Math.random() * (idx + 1));
+    [shuffled[idx], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[idx]];
+  }
+  return shuffled;
+};
+
+const getBlackjackValue = (card: BlackjackCard) => {
+  if (card.rank === 'A') return 11;
+  if (card.rank === 'K' || card.rank === 'Q' || card.rank === 'J') return 10;
+  return Number(card.rank);
+};
+
+const getHandTotal = (hand: BlackjackCard[]) => {
+  let total = 0;
+  let aces = 0;
+
+  hand.forEach((card) => {
+    total += getBlackjackValue(card);
+    if (card.rank === 'A') aces += 1;
+  });
+
+  while (total > 21 && aces > 0) {
+    total -= 10;
+    aces -= 1;
+  }
+
+  return total;
+};
+// -----------------------------
 // Main Casino page
 // -----------------------------
 export default function Casino() {
@@ -131,11 +188,19 @@ export default function Casino() {
   const [activeGame, setActiveGame] = useState<GameTab | null>(null);
   const [rouletteTotalBet, setRouletteTotalBet] = useState(0);
   const [slotBet, setSlotBet] = useState(50);
+  const [blackjackBet, setBlackjackBet] = useState(100);
+
+  const activeBet =
+    activeGame === 'roulette'
+      ? rouletteTotalBet
+      : activeGame === 'slots'
+        ? slotBet
+        : blackjackBet;
 
   return (
     <div className="max-w-4xl mx-auto py-12 px-6 space-y-8">
       <p className="text-muted-foreground">
-        Choisis ta table: machine à sous classique ou roulette animée.
+        Choisis ta table: machine a sous classique, roulette animee ou blackjack.
       </p>
       {activeGame && (
             <div className="flex flex-col items-end gap-2 text-right">
@@ -151,7 +216,7 @@ export default function Casino() {
                 </div>
                 <div>
                   Mises en cours: $
-                  {(activeGame === 'roulette' ? rouletteTotalBet : slotBet).toLocaleString()}
+                  {activeBet.toLocaleString()}
                 </div>
               </div>
             </div>
@@ -161,12 +226,14 @@ export default function Casino() {
         <div className="space-y-4">
           {activeGame === 'roulette' ? (
             <RouletteGame onTotalBetChange={setRouletteTotalBet} />
-          ) : (
+          ) : activeGame === 'slots' ? (
             <SlotMachineGame onBetChange={setSlotBet} />
+          ) : (
+            <BlackjackGame onBetChange={setBlackjackBet} />
           )}
         </div>
       ) : (
-        <div className="grid gap-2 md:grid-cols-2">
+        <div className="grid gap-2 md:grid-cols-3">
           <button
             onClick={() => setActiveGame('roulette')}
             className="group border border-foreground px-6 py-8 text-left transition-colors hover:bg-foreground hover:text-background"
@@ -185,6 +252,16 @@ export default function Casino() {
             <p className="mt-2 text-2xl font-light">Machine à sous</p>
             <p className="mt-2 text-sm text-muted-foreground">
               Classique, rapide et minimaliste.
+            </p>
+          </button>
+          <button
+            onClick={() => setActiveGame('blackjack')}
+            className="group border border-foreground px-6 py-8 text-left transition-colors hover:bg-foreground hover:text-background"
+          >
+            <p className="text-sm text-muted-foreground tracking-wide uppercase">Jeu</p>
+            <p className="mt-2 text-2xl font-light">Blackjack</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Cartes grandes, actions simples: tirer ou rester.
             </p>
           </button>
         </div>
@@ -712,6 +789,333 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// -----------------------------
+// Blackjack Component
+// -----------------------------
+function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void }) {
+  const { user, refreshUser } = useAuth();
+  const [bet, setBet] = useState(100);
+  const [status, setStatus] = useState<BlackjackStatus>('idle');
+  const [playerHand, setPlayerHand] = useState<BlackjackCard[]>([]);
+  const [dealerHand, setDealerHand] = useState<BlackjackCard[]>([]);
+  const [outcome, setOutcome] = useState<BlackjackOutcome | null>(null);
+  const [netGain, setNetGain] = useState(0);
+  const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const deckRef = useRef<BlackjackCard[]>(shuffleDeck(createBlackjackDeck()));
+
+  const playerTotal = useMemo(() => getHandTotal(playerHand), [playerHand]);
+  const dealerTotal = useMemo(() => getHandTotal(dealerHand), [dealerHand]);
+  const revealDealer = status !== 'player';
+
+  useEffect(() => {
+    onBetChange?.(bet);
+  }, [bet, onBetChange]);
+
+  const drawCard = useCallback(() => {
+    if (deckRef.current.length < BLACKJACK_MIN_DECK) {
+      deckRef.current = shuffleDeck(createBlackjackDeck());
+    }
+    return deckRef.current.pop()!;
+  }, []);
+
+  const finishRound = useCallback(
+    async (result: BlackjackOutcome, payoutAmount: number) => {
+      const net = payoutAmount - bet;
+      setOutcome(result);
+      setNetGain(net);
+      setStatus('finished');
+
+      if (!user) return;
+
+      try {
+        const response = await gamesApi.complete('casino', {
+          score: payoutAmount,
+          won: net > 0,
+          bet,
+          netGain: net,
+        });
+
+        setRewards({
+          aura: response.data.auraReward || 0,
+          money: response.data.moneyReward || 0,
+        });
+
+        await refreshUser();
+      } catch (err) {
+        console.error('Failed to submit blackjack:', err);
+      }
+    },
+    [bet, refreshUser, user]
+  );
+
+  const evaluateOutcome = useCallback(
+    (player: BlackjackCard[], dealer: BlackjackCard[]) => {
+      const playerScore = getHandTotal(player);
+      const dealerScore = getHandTotal(dealer);
+      const playerBlackjack = playerScore === 21 && player.length === 2;
+      const dealerBlackjack = dealerScore === 21 && dealer.length === 2;
+
+      let result: BlackjackOutcome = 'push';
+      if (playerScore > 21) {
+        result = 'lose';
+      } else if (dealerScore > 21) {
+        result = 'win';
+      } else if (playerBlackjack && dealerBlackjack) {
+        result = 'push';
+      } else if (playerBlackjack) {
+        result = 'blackjack';
+      } else if (dealerBlackjack) {
+        result = 'lose';
+      } else if (playerScore > dealerScore) {
+        result = 'win';
+      } else if (playerScore < dealerScore) {
+        result = 'lose';
+      }
+
+      const payoutAmount =
+        result === 'win' || result === 'blackjack'
+          ? bet * 2
+          : result === 'push'
+            ? bet
+            : 0;
+
+      finishRound(result, payoutAmount);
+    },
+    [bet, finishRound]
+  );
+
+  const playDealer = useCallback(
+    (playerCards?: BlackjackCard[]) => {
+      setStatus('dealer');
+      let dealerCards = [...dealerHand];
+      let total = getHandTotal(dealerCards);
+
+      while (total < 17) {
+        dealerCards = [...dealerCards, drawCard()];
+        total = getHandTotal(dealerCards);
+      }
+
+      setDealerHand(dealerCards);
+      evaluateOutcome(playerCards ?? playerHand, dealerCards);
+    },
+    [dealerHand, drawCard, evaluateOutcome, playerHand]
+  );
+
+  const deal = useCallback(() => {
+    if (!user) return;
+    if (status === 'player' || status === 'dealer') return;
+    if (user.money < bet) {
+      setError('Fonds insuffisants pour cette mise');
+      return;
+    }
+
+    setError(null);
+    setOutcome(null);
+    setRewards(null);
+    setNetGain(0);
+
+    const playerCards = [drawCard(), drawCard()];
+    const dealerCards = [drawCard(), drawCard()];
+
+    setPlayerHand(playerCards);
+    setDealerHand(dealerCards);
+
+    const playerScore = getHandTotal(playerCards);
+    const dealerScore = getHandTotal(dealerCards);
+    const playerBlackjack = playerScore === 21 && playerCards.length === 2;
+    const dealerBlackjack = dealerScore === 21 && dealerCards.length === 2;
+
+    if (playerBlackjack || dealerBlackjack) {
+      setStatus('dealer');
+      evaluateOutcome(playerCards, dealerCards);
+    } else {
+      setStatus('player');
+    }
+  }, [bet, drawCard, evaluateOutcome, status, user]);
+
+  const hit = useCallback(() => {
+    if (status !== 'player') return;
+    const nextHand = [...playerHand, drawCard()];
+    setPlayerHand(nextHand);
+    const total = getHandTotal(nextHand);
+    if (total > 21) {
+      finishRound('lose', 0);
+      return;
+    }
+    if (total === 21) {
+      playDealer(nextHand);
+    }
+  }, [drawCard, finishRound, playDealer, playerHand, status]);
+
+  const stand = useCallback(() => {
+    if (status !== 'player') return;
+    playDealer();
+  }, [playDealer, status]);
+
+  const canDeal = user && (status === 'idle' || status === 'finished') && user.money >= bet;
+  const canPlay = status === 'player';
+
+  const resultLabel =
+    outcome === 'blackjack'
+      ? 'Blackjack'
+      : outcome === 'win'
+        ? 'Gagne'
+        : outcome === 'lose'
+          ? 'Perdu'
+          : outcome === 'push'
+            ? 'Egalite'
+            : null;
+
+  const renderCard = (card: BlackjackCard | null, hidden = false, key?: string) => (
+    <div
+      key={key}
+      className={cn(
+        "flex h-28 w-20 items-center justify-center border border-border/40 text-2xl font-semibold",
+        "sm:h-32 sm:w-24 sm:text-3xl",
+        hidden && "bg-muted/30 text-muted-foreground"
+      )}
+    >
+      {hidden || !card ? '??' : `${card.rank}${card.suit}`}
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            Mise
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {BLACKJACK_BET_STEPS.map((step) => (
+              <button
+                key={step}
+                onClick={() => setBet(step)}
+                disabled={status === 'player' || status === 'dealer' || !!(user && user.money < step)}
+                className={cn(
+                  "px-4 py-2 text-base border transition-colors",
+                  bet === step
+                    ? "border-foreground text-foreground"
+                    : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30",
+                  (status === 'player' || status === 'dealer') && "opacity-40 cursor-not-allowed",
+                  (user && user.money < step) && "opacity-30 cursor-not-allowed"
+                )}
+              >
+                ${step}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="text-right">
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            Total
+          </p>
+          <p className="text-2xl font-semibold">${bet.toLocaleString()}</p>
+        </div>
+      </div>
+
+      {error && (
+        <div className="border border-border/30 px-4 py-3 text-sm text-muted-foreground">
+          {error}
+        </div>
+      )}
+
+      <div className="border border-border/30 p-6">
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="space-y-3">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              Dealer
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {dealerHand.length === 0
+                ? renderCard(null, true)
+                : dealerHand.map((card, index) =>
+                    index === 1 && !revealDealer
+                      ? renderCard(null, true, `dealer-${index}`)
+                      : renderCard(card, false, `dealer-${index}`)
+                  )}
+            </div>
+            <div className="text-2xl font-semibold">
+              Total: {revealDealer ? dealerTotal : '??'}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              Toi
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {playerHand.length === 0
+                ? renderCard(null)
+                : playerHand.map((card, index) => renderCard(card, false, `player-${index}`))}
+            </div>
+            <div className="text-2xl font-semibold">
+              Total: {playerTotal || 0}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-wrap gap-3">
+          <button
+            onClick={deal}
+            disabled={!canDeal}
+            className={cn(
+              "h-14 px-6 text-lg border transition-colors",
+              canDeal
+                ? "border-foreground text-foreground hover:bg-foreground hover:text-background"
+                : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
+            )}
+          >
+            {status === 'finished' ? 'Nouvelle main' : 'Distribuer'}
+          </button>
+          <button
+            onClick={hit}
+            disabled={!canPlay}
+            className={cn(
+              "h-14 px-6 text-lg border transition-colors",
+              canPlay
+                ? "border-foreground text-foreground hover:bg-foreground hover:text-background"
+                : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
+            )}
+          >
+            Tirer
+          </button>
+          <button
+            onClick={stand}
+            disabled={!canPlay}
+            className={cn(
+              "h-14 px-6 text-lg border transition-colors",
+              canPlay
+                ? "border-foreground text-foreground hover:bg-foreground hover:text-background"
+                : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
+            )}
+          >
+            Rester
+          </button>
+        </div>
+
+        {outcome && (
+          <div className="mt-6 border border-border/30 px-4 py-3 text-lg flex flex-wrap items-center justify-between gap-3">
+            <div className="font-semibold">{resultLabel}</div>
+            <div className={netGain >= 0 ? 'text-foreground' : 'text-muted-foreground'}>
+              {netGain >= 0 ? '+' : '-'}${Math.abs(netGain).toLocaleString()}
+            </div>
+          </div>
+        )}
+
+        {rewards && (
+          <div className="mt-3 text-xs text-muted-foreground flex items-center gap-3">
+            {rewards.aura > 0 && <span>+{rewards.aura} aura</span>}
+            {rewards.money !== 0 && <span>{rewards.money > 0 ? '+' : ''}${rewards.money}</span>}
+          </div>
+        )}
       </div>
     </div>
   );
