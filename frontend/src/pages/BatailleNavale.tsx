@@ -56,6 +56,10 @@ export default function BatailleNavale() {
   const [playAgainPrompt, setPlayAgainPrompt] = useState<BattleshipPlayAgainPrompt | null>(null);
   const [hasQuitPlayAgain, setHasQuitPlayAgain] = useState(false);
 
+  const handleCloseGameOver = () => {
+    setGameOver(null);
+  };
+
   const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
   const isMyTurn = gameState?.currentPlayerId === user?.id;
   const opponent = gameState?.players.find((p) => p.userId !== user?.id);
@@ -278,10 +282,6 @@ export default function BatailleNavale() {
     if (!socket || !user || !currentParty) return;
     socket.emit('battleship:leave', { userId: user.id, partyId: currentParty.id });
     setGameState(null);
-  };
-
-  const handleCloseGameOver = () => {
-    setGameOver(null);
   };
 
   const renderCell = (

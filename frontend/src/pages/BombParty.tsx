@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
-import { ArrowLeft, Play, Heart, Crown, Trophy, Users, LogOut } from 'lucide-react';
+import { ArrowLeft, Play, Heart, Crown, Trophy, Users } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import PlayAgainPrompt from '@/components/game/PlayAgainPrompt';
@@ -137,11 +137,6 @@ export default function BombParty() {
   const myPlayAgainResponse = bombPartyPlayAgainPrompt?.responses.find(r => r.userId === user?.id);
   const hasQuit = hasQuitPlayAgain || (!!myPlayAgainResponse && !myPlayAgainResponse.playAgain);
   const showPlayAgainPrompt = !!bombPartyPlayAgainPrompt && !hasQuit;
-  const playAgainModals = (
-    <>
-      {playAgainModals}
-    </>
-  );
 
   // Not in a party - show message
   if (!currentParty) {
@@ -304,9 +299,7 @@ export default function BombParty() {
           </DialogContent>
         </Dialog>
 
-        
-        
-      {playAgainModals}
+
     </div>
     );
   }
