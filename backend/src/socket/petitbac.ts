@@ -530,6 +530,8 @@ async function endGame(game: PetitBacGame, io: Server) {
 
   activeGames.delete(game.partyId);
 
+  io.to(`party:${game.partyId}`).emit('petitbac:game-over', gameOverData);
+
   // Check quest progress for all players
   for (const player of game.players) {
     await checkQuestProgress(player.userId, 'PETIT_BAC_PLAYS', 1);
@@ -564,7 +566,10 @@ async function endGame(game: PetitBacGame, io: Server) {
   io.to(`party:${game.partyId}`).emit('petitbac:play-again-prompt', {
     partyId: game.partyId,
     timeLimit: PLAY_AGAIN_PROMPT_MS,
-    gameOverData,
+    startTime: Date.now(),
+    rounds: playAgainPrompt.rounds,
+    roundDuration: playAgainPrompt.roundDuration,
+    categories: playAgainPrompt.categories,
     players: playAgainPrompt.players,
     responses: [],
   });
@@ -646,10 +651,6 @@ export function sendPendingPetitBacPlayAgainPrompt(socket: Socket, partyId: stri
   const isPlayer = prompt.players.some((p) => p.userId === userId);
   if (!isPlayer) return;
 
-  const elapsed = Date.now() - prompt.startTime;
-  const timeRemaining = Math.max(0, PLAY_AGAIN_PROMPT_MS - elapsed);
-  if (timeRemaining <= 0) return;
-
   const responses = Array.from(prompt.responses.entries()).map(([id, playAgain]) => ({
     userId: id,
     playAgain,
@@ -659,8 +660,11 @@ export function sendPendingPetitBacPlayAgainPrompt(socket: Socket, partyId: stri
 
   socket.emit('petitbac:play-again-prompt', {
     partyId: prompt.partyId,
-    timeLimit: timeRemaining,
-    gameOverData: prompt.gameOverData,
+    timeLimit: PLAY_AGAIN_PROMPT_MS,
+    startTime: Date.now(),
+    rounds: prompt.rounds,
+    roundDuration: prompt.roundDuration,
+    categories: prompt.categories,
     players: prompt.players,
     responses,
     playAgainCount,

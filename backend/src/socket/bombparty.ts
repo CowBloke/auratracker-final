@@ -82,6 +82,8 @@ let dictionaryLoadPromise: Promise<Set<string>> | null = null;
 // Cache for WPP settings
 let cachedWppSettings: { easy: number; medium: number; hard: number } | null = null;
 
+const PLAY_AGAIN_TIMEOUT = 20000;
+
 async function getBombPartyLanguageFile(): Promise<string> {
   if (dictionaryLanguageFile) return dictionaryLanguageFile;
   const setting = await getBombPartyLanguageSetting(prisma);
@@ -854,6 +856,8 @@ async function endGame(game: BombPartyGame, io: Server) {
   // Remove game from active games
   activeGames.delete(game.partyId);
 
+  io.to(`party:${game.partyId}`).emit('bombparty:game-over', gameOverData);
+
   // Create play again prompt
   const playAgainPrompt: PendingPlayAgainPrompt = {
     partyId: game.partyId,
@@ -872,16 +876,17 @@ async function endGame(game: BombPartyGame, io: Server) {
 
   pendingPlayAgainPrompts.set(game.partyId, playAgainPrompt);
 
-  // Set 20-second timer
   playAgainPrompt.timer = setTimeout(() => {
     resolvePlayAgainPrompt(game.partyId, io);
-  }, 20000);
+  }, PLAY_AGAIN_TIMEOUT);
 
   // Emit play again prompt to all party members
   io.to(`party:${game.partyId}`).emit('bombparty:play-again-prompt', {
     partyId: game.partyId,
-    timeLimit: 20000,
-    gameOverData,
+    timeLimit: PLAY_AGAIN_TIMEOUT,
+    startTime: Date.now(),
+    lives: playAgainPrompt.lives,
+    difficulty: playAgainPrompt.difficulty,
     players: playAgainPrompt.players,
     responses: [],
   });
@@ -999,12 +1004,6 @@ export function sendPendingPlayAgainPrompt(socket: Socket, partyId: string, user
   const isPlayer = prompt.players.some(p => p.userId === userId);
   if (!isPlayer) return;
 
-  // Calculate time remaining
-  const elapsed = Date.now() - prompt.startTime;
-  const timeRemaining = Math.max(0, 20000 - elapsed);
-
-  if (timeRemaining <= 0) return; // Prompt already expired
-
   // Build current responses with counts
   const responses = Array.from(prompt.responses.entries()).map(([id, playAgain]) => ({
     userId: id,
@@ -1015,8 +1014,10 @@ export function sendPendingPlayAgainPrompt(socket: Socket, partyId: string, user
 
   socket.emit('bombparty:play-again-prompt', {
     partyId: prompt.partyId,
-    timeLimit: timeRemaining, // Send remaining time, not original
-    gameOverData: prompt.gameOverData,
+    timeLimit: PLAY_AGAIN_TIMEOUT,
+    startTime: Date.now(),
+    lives: prompt.lives,
+    difficulty: prompt.difficulty,
     players: prompt.players,
     responses,
     playAgainCount,

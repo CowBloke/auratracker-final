@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
-import { ArrowLeft, Users, Play, Send, LogOut, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Users, Play, Send, LogOut, Trophy } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import PlayAgainPrompt from '@/components/game/PlayAgainPrompt';
 import { cn } from '@/lib/utils';
 
 const DEFAULT_CATEGORIES = ['Prenom', 'Ville', 'Pays', 'Animal', 'Objet', 'Metier'];
@@ -17,11 +18,13 @@ export default function PetitBac() {
     partyMembers,
     petitBacGame,
     petitBacRoundResult,
+    petitBacGameOver,
     petitBacPlayAgainPrompt,
     startPetitBac,
     submitPetitBac,
     leavePetitBac,
     respondToPetitBacPlayAgainPrompt,
+    clearPetitBacGameOver,
   } = useSocket();
 
   const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
@@ -32,8 +35,7 @@ export default function PetitBac() {
   const [categoriesInput, setCategoriesInput] = useState(DEFAULT_CATEGORIES.join(', '));
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [timeLeft, setTimeLeft] = useState(0);
-  const [playAgainTimeLeft, setPlayAgainTimeLeft] = useState(100);
-  const [hasRespondedPlayAgain, setHasRespondedPlayAgain] = useState(false);
+  const [hasQuitPlayAgain, setHasQuitPlayAgain] = useState(false);
 
   const categories = useMemo(() => {
     return categoriesInput
@@ -64,21 +66,10 @@ export default function PetitBac() {
   }, [petitBacGame?.roundStartTime, petitBacGame?.categories, petitBacGame?.phase]);
 
   useEffect(() => {
-    if (!petitBacPlayAgainPrompt) return;
-    setHasRespondedPlayAgain(false);
-  }, [petitBacPlayAgainPrompt]);
-
-  useEffect(() => {
-    if (!petitBacPlayAgainPrompt) return;
-
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - petitBacPlayAgainPrompt.startTime;
-      const remaining = Math.max(0, 100 - (elapsed / petitBacPlayAgainPrompt.timeLimit) * 100);
-      setPlayAgainTimeLeft(remaining);
-    }, 50);
-
-    return () => clearInterval(interval);
-  }, [petitBacPlayAgainPrompt?.startTime, petitBacPlayAgainPrompt?.timeLimit]);
+    if (petitBacPlayAgainPrompt) {
+      setHasQuitPlayAgain(false);
+    }
+  }, [petitBacPlayAgainPrompt?.partyId, petitBacPlayAgainPrompt?.startTime]);
 
   const handleStart = () => {
     const safeRounds = Math.min(Math.max(rounds, 1), 10);
@@ -91,13 +82,60 @@ export default function PetitBac() {
     submitPetitBac(answers);
   };
 
-  const handlePlayAgain = (playAgain: boolean) => {
-    respondToPetitBacPlayAgainPrompt(playAgain);
-    setHasRespondedPlayAgain(true);
-  };
-
   const myPlayAgainResponse = petitBacPlayAgainPrompt?.responses.find((r) => r.userId === user?.id);
-  const hasAlreadyResponded = hasRespondedPlayAgain || !!myPlayAgainResponse;
+  const hasQuit = hasQuitPlayAgain || (!!myPlayAgainResponse && !myPlayAgainResponse.playAgain);
+  const showPlayAgainPrompt = !!petitBacPlayAgainPrompt && !hasQuit;
+  const playAgainModals = (
+    <>
+      {petitBacPlayAgainPrompt && (
+        <PlayAgainPrompt
+          open={showPlayAgainPrompt}
+          detail={`Manches ${petitBacPlayAgainPrompt.rounds} - temps ${Math.round(petitBacPlayAgainPrompt.roundDuration / 1000)}s - ${petitBacPlayAgainPrompt.categories.length} categories`}
+          players={petitBacPlayAgainPrompt.players}
+          responses={petitBacPlayAgainPrompt.responses}
+          timeLimit={petitBacPlayAgainPrompt.timeLimit}
+          startTime={petitBacPlayAgainPrompt.startTime}
+          onQuit={() => {
+            respondToPetitBacPlayAgainPrompt(false);
+            setHasQuitPlayAgain(true);
+          }}
+          onPlayAgain={() => respondToPetitBacPlayAgainPrompt(true)}
+        />
+      )}
+
+      <Dialog open={!!petitBacGameOver} onOpenChange={clearPetitBacGameOver}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-normal flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-yellow-500" />
+              Fin de partie
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="text-sm text-muted-foreground">
+              Gagnant{(petitBacGameOver?.winnerUsernames.length || 0) > 1 ? 's' : ''} :
+              <span className="text-foreground ml-2">
+                {petitBacGameOver?.winnerUsernames.join(', ') || '-'}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {petitBacGameOver?.players.map((player) => (
+                <div key={player.userId} className="flex items-center justify-between text-sm">
+                  <span>{player.username}</span>
+                  <span className="text-muted-foreground">{player.score}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={clearPetitBacGameOver} className="w-full">
+              Fermer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 
   if (!currentParty) {
     return (
@@ -192,59 +230,8 @@ export default function PetitBac() {
           </div>
         </div>
 
-        <Dialog open={!!petitBacPlayAgainPrompt} onOpenChange={() => {}}>
-          <DialogContent className="sm:max-w-md" hideCloseButton>
-            <DialogHeader>
-              <DialogTitle className="font-normal flex items-center gap-2">
-                Fin de partie
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="text-sm text-muted-foreground">
-                Gagnant{(petitBacPlayAgainPrompt?.gameOverData.winnerUsernames.length || 0) > 1 ? 's' : ''} :
-                <span className="text-foreground ml-2">
-                  {petitBacPlayAgainPrompt?.gameOverData.winnerUsernames.join(', ') || '—'}
-                </span>
-              </div>
-              <div className="space-y-2">
-                {petitBacPlayAgainPrompt?.gameOverData.players.map((player) => {
-                  const response = petitBacPlayAgainPrompt.responses.find((r) => r.userId === player.userId);
-                  return (
-                    <div key={player.userId} className="flex items-center justify-between text-sm">
-                      <span>{player.username}</span>
-                      <span className="text-muted-foreground">
-                        {player.score}
-                        {response ? (response.playAgain ? ' · rejoue' : ' · quitte') : ''}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-foreground" style={{ width: `${playAgainTimeLeft}%` }} />
-              </div>
-            </div>
-            <DialogFooter className="gap-2">
-              {!hasAlreadyResponded ? (
-                <>
-                  <Button variant="outline" onClick={() => handlePlayAgain(false)} className="flex-1 gap-2">
-                    <LogOut className="h-4 w-4" />
-                    Quitter
-                  </Button>
-                  <Button onClick={() => handlePlayAgain(true)} className="flex-1 gap-2">
-                    <RotateCcw className="h-4 w-4" />
-                    Rejouer
-                  </Button>
-                </>
-              ) : (
-                <div className="w-full text-center text-sm text-muted-foreground">
-                  En attente des autres...
-                </div>
-              )}
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+      {playAgainModals}
+    </div>
     );
   }
 
@@ -359,6 +346,7 @@ export default function PetitBac() {
         )}
       </div>
 
+      {playAgainModals}
     </div>
   );
 }

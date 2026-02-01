@@ -5,6 +5,7 @@ import { useSocket } from '../contexts/SocketContext';
 import { ArrowLeft, Play, LogOut, Trophy } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import PlayAgainPrompt from '@/components/game/PlayAgainPrompt';
 import { cn } from '@/lib/utils';
 
 const BOARD_SIZE = 10;
@@ -25,6 +26,16 @@ interface BattleshipState {
   players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
 }
 
+interface BattleshipPlayAgainPrompt {
+  partyId: string;
+  timeLimit: number;
+  startTime: number;
+  players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+  responses: Array<{ userId: string; playAgain: boolean }>;
+  playAgainCount?: number;
+  leaveCount?: number;
+}
+
 export default function BatailleNavale() {
   const { user, refreshUser } = useAuth();
   const {
@@ -42,10 +53,90 @@ export default function BatailleNavale() {
     winnerUsername: string;
     rewards: { winner: { aura: number; money: number }; loser: { aura: number; money: number } };
   } | null>(null);
+  const [playAgainPrompt, setPlayAgainPrompt] = useState<BattleshipPlayAgainPrompt | null>(null);
+  const [hasQuitPlayAgain, setHasQuitPlayAgain] = useState(false);
 
   const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
   const isMyTurn = gameState?.currentPlayerId === user?.id;
   const opponent = gameState?.players.find((p) => p.userId !== user?.id);
+  const myPlayAgainResponse = playAgainPrompt?.responses.find((r) => r.userId === user?.id);
+  const hasQuit = hasQuitPlayAgain || (!!myPlayAgainResponse && !myPlayAgainResponse.playAgain);
+  const showPlayAgainPrompt = !!playAgainPrompt && !hasQuit;
+  const postGameModals = (
+    <>
+      {playAgainPrompt && (
+        <PlayAgainPrompt
+          open={showPlayAgainPrompt}
+          detail="Duel 2 joueurs"
+          players={playAgainPrompt.players}
+          responses={playAgainPrompt.responses}
+          timeLimit={playAgainPrompt.timeLimit}
+          startTime={playAgainPrompt.startTime}
+          onQuit={() => {
+            if (!socket || !user || !currentParty) return;
+            socket.emit('battleship:play-again-response', {
+              userId: user.id,
+              partyId: currentParty.id,
+              playAgain: false,
+            });
+            setHasQuitPlayAgain(true);
+          }}
+          onPlayAgain={() => {
+            if (!socket || !user || !currentParty) return;
+            socket.emit('battleship:play-again-response', {
+              userId: user.id,
+              partyId: currentParty.id,
+              playAgain: true,
+            });
+          }}
+        />
+      )}
+
+      <Dialog open={!!gameOver} onOpenChange={handleCloseGameOver}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-normal flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-yellow-500" />
+              Partie terminee
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground">Gagnant</p>
+              <p className="text-2xl font-light">{gameOver?.winnerUsername}</p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between py-3 px-3 border rounded border-yellow-500/50 bg-yellow-500/5">
+                <span className="font-medium">{gameOver?.winnerUsername}</span>
+                <div className="text-sm">
+                  <span className="text-purple-400">+{gameOver?.rewards.winner.aura} aura </span>
+                  <span className="text-green-400">+{gameOver?.rewards.winner.money}$</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between py-3 px-3 border rounded border-border/30">
+                <span className="font-medium">
+                  {gameState?.players.find((p) => p.userId !== gameOver?.winnerId)?.username}
+                </span>
+                <div className="text-sm">
+                  <span className="text-green-400">+{gameOver?.rewards.loser.money}$</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleCloseGameOver}
+              className="w-full border-foreground"
+            >
+              Fermer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 
   // Get remaining ships to place
   const getRemainingShips = () => {
@@ -69,6 +160,10 @@ export default function BatailleNavale() {
     const handleState = (state: BattleshipState) => {
       setGameState(state);
       setError(null);
+      if (state.phase === 'placement' && !state.winnerId) {
+        setPlayAgainPrompt(null);
+        setHasQuitPlayAgain(false);
+      }
     };
 
     const handleError = (data: { message: string }) => {
@@ -88,10 +183,55 @@ export default function BatailleNavale() {
       // State will be updated via battleship:state
     };
 
+    const handlePlayAgainPrompt = (data: {
+      partyId: string;
+      timeLimit: number;
+      startTime?: number;
+      players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+      responses?: Array<{ userId: string; playAgain: boolean }>;
+      playAgainCount?: number;
+      leaveCount?: number;
+    }) => {
+      const responses = data.responses || [];
+      setPlayAgainPrompt({
+        ...data,
+        startTime: data.startTime ?? Date.now(),
+        responses,
+        playAgainCount: data.playAgainCount ?? responses.filter((r) => r.playAgain).length,
+        leaveCount: data.leaveCount ?? responses.filter((r) => !r.playAgain).length,
+      });
+      setHasQuitPlayAgain(false);
+    };
+
+    const handlePlayAgainResponseUpdate = (data: {
+      partyId: string;
+      responses: Array<{ userId: string; playAgain: boolean }>;
+      playAgainCount: number;
+      leaveCount: number;
+    }) => {
+      setPlayAgainPrompt((prev) =>
+        prev
+          ? {
+              ...prev,
+              responses: data.responses,
+              playAgainCount: data.playAgainCount,
+              leaveCount: data.leaveCount,
+            }
+          : null
+      );
+    };
+
+    const handlePlayAgainCancelled = () => {
+      setPlayAgainPrompt(null);
+    };
+
     socket.on('battleship:state', handleState);
     socket.on('battleship:error', handleError);
     socket.on('battleship:game-over', handleGameOver);
     socket.on('battleship:shot-result', handleShotResult);
+    socket.on('battleship:play-again-prompt', handlePlayAgainPrompt);
+    socket.on('battleship:play-again-response-update', handlePlayAgainResponseUpdate);
+    socket.on('battleship:play-again-cancelled', handlePlayAgainCancelled);
 
     socket.emit('battleship:register', { userId: user.id });
 
@@ -100,6 +240,9 @@ export default function BatailleNavale() {
       socket.off('battleship:error', handleError);
       socket.off('battleship:game-over', handleGameOver);
       socket.off('battleship:shot-result', handleShotResult);
+      socket.off('battleship:play-again-prompt', handlePlayAgainPrompt);
+      socket.off('battleship:play-again-response-update', handlePlayAgainResponseUpdate);
+      socket.off('battleship:play-again-cancelled', handlePlayAgainCancelled);
     };
   }, [socket, user, refreshUser]);
 
@@ -275,7 +418,8 @@ export default function BatailleNavale() {
             En attente que le leader lance la partie...
           </div>
         )}
-      </div>
+      {postGameModals}
+    </div>
     );
   }
 
@@ -468,50 +612,7 @@ export default function BatailleNavale() {
         </div>
       )}
 
-      {/* Game Over Modal */}
-      <Dialog open={!!gameOver} onOpenChange={handleCloseGameOver}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="font-normal flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-yellow-500" />
-              Partie terminée
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-6 py-4">
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">Gagnant</p>
-              <p className="text-2xl font-light">{gameOver?.winnerUsername}</p>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between py-3 px-3 border rounded border-yellow-500/50 bg-yellow-500/5">
-                <span className="font-medium">{gameOver?.winnerUsername}</span>
-                <div className="text-sm">
-                  <span className="text-purple-400">+{gameOver?.rewards.winner.aura} aura </span>
-                  <span className="text-green-400">+{gameOver?.rewards.winner.money}$</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between py-3 px-3 border rounded border-border/30">
-                <span className="font-medium">
-                  {gameState.players.find((p) => p.userId !== gameOver?.winnerId)?.username}
-                </span>
-                <div className="text-sm">
-                  <span className="text-green-400">+{gameOver?.rewards.loser.money}$</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={handleCloseGameOver}
-              className="w-full border-foreground"
-            >
-              Fermer
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {postGameModals}
     </div>
   );
 }

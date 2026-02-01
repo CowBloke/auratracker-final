@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
-import { ArrowLeft, Play, Skull, Crown, Trophy, RotateCcw, LogOut, Check, X, Target } from 'lucide-react';
+import { ArrowLeft, Play, Skull, Crown, Trophy, LogOut, Check, X, Target } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import PlayAgainPrompt from '@/components/game/PlayAgainPrompt';
 import { cn } from '@/lib/utils';
 
 interface RussianRoulettePlayer {
@@ -49,9 +50,8 @@ export default function RussianRoulette() {
   const [gameState, setGameState] = useState<RussianRouletteState | null>(null);
   const [error] = useState<string | null>(null);
   const [hasRespondedJoin, setHasRespondedJoin] = useState(false);
-  const [hasRespondedPlayAgain, setHasRespondedPlayAgain] = useState(false);
   const [joinTimeLeft, setJoinTimeLeft] = useState(100);
-  const [playAgainTimeLeft, setPlayAgainTimeLeft] = useState(100);
+  const [hasQuitPlayAgain, setHasQuitPlayAgain] = useState(false);
 
   const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
   const currentPlayer = gameState?.players[gameState.currentPlayerIndex];
@@ -76,9 +76,9 @@ export default function RussianRoulette() {
   useEffect(() => {
     if (russianRoulettePlayAgainPrompt) {
       refreshUser();
-      setHasRespondedPlayAgain(false);
+      setHasQuitPlayAgain(false);
     }
-  }, [russianRoulettePlayAgainPrompt, refreshUser]);
+  }, [russianRoulettePlayAgainPrompt?.partyId, russianRoulettePlayAgainPrompt?.startTime, refreshUser]);
 
   // Join prompt timer
   useEffect(() => {
@@ -92,19 +92,6 @@ export default function RussianRoulette() {
 
     return () => clearInterval(interval);
   }, [russianRouletteJoinPrompt?.startTime, russianRouletteJoinPrompt?.timeout]);
-
-  // Play again timer
-  useEffect(() => {
-    if (!russianRoulettePlayAgainPrompt) return;
-
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - russianRoulettePlayAgainPrompt.startTime;
-      const remaining = Math.max(0, 100 - (elapsed / russianRoulettePlayAgainPrompt.timeout) * 100);
-      setPlayAgainTimeLeft(remaining);
-    }, 50);
-
-    return () => clearInterval(interval);
-  }, [russianRoulettePlayAgainPrompt?.startTime, russianRoulettePlayAgainPrompt?.timeout]);
 
   const handleStartGame = () => {
     if (!currentParty) return;
@@ -134,17 +121,9 @@ export default function RussianRoulette() {
     setHasRespondedJoin(true);
   };
 
-  const handlePlayAgain = () => {
-    if (!russianRoulettePlayAgainPrompt) return;
-    respondToRussianRoulettePlayAgain(true);
-    setHasRespondedPlayAgain(true);
-  };
-
-  const handleLeaveAfterGame = () => {
-    if (!russianRoulettePlayAgainPrompt) return;
-    respondToRussianRoulettePlayAgain(false);
-    setHasRespondedPlayAgain(true);
-  };
+  const myPlayAgainResponse = russianRoulettePlayAgainPrompt?.responses.find((r) => r.userId === user?.id);
+  const hasQuit = hasQuitPlayAgain || (!!myPlayAgainResponse && !myPlayAgainResponse.playAgain);
+  const showPlayAgainPrompt = !!russianRoulettePlayAgainPrompt && !hasQuit;
 
   if (!currentParty) {
     return (
@@ -292,40 +271,20 @@ export default function RussianRoulette() {
         )}
 
         {/* Play Again Prompt */}
-        {russianRoulettePlayAgainPrompt && !hasRespondedPlayAgain && (
-          <Dialog open={true}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Rejouer?</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Voulez-vous rejouer une partie de Roulette Russe?
-                </p>
-                <div className="flex items-center gap-2 text-sm">
-                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary transition-all duration-100"
-                      style={{ width: `${playAgainTimeLeft}%` }}
-                    />
-                  </div>
-                  <span className="text-muted-foreground whitespace-nowrap">
-                    {Math.ceil((playAgainTimeLeft / 100) * (russianRoulettePlayAgainPrompt.timeout / 1000))}s
-                  </span>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={handleLeaveAfterGame}>
-                  <X className="h-4 w-4 mr-2" />
-                  Quitter
-                </Button>
-                <Button onClick={handlePlayAgain}>
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Rejouer
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+        {russianRoulettePlayAgainPrompt && (
+          <PlayAgainPrompt
+            open={showPlayAgainPrompt}
+            detail="Parametres identiques a la partie precedente"
+            players={russianRoulettePlayAgainPrompt.players}
+            responses={russianRoulettePlayAgainPrompt.responses}
+            timeLimit={russianRoulettePlayAgainPrompt.timeLimit}
+            startTime={russianRoulettePlayAgainPrompt.startTime}
+            onQuit={() => {
+              respondToRussianRoulettePlayAgain(false);
+              setHasQuitPlayAgain(true);
+            }}
+            onPlayAgain={() => respondToRussianRoulettePlayAgain(true)}
+          />
         )}
 
         {/* Lobby / Waiting */}

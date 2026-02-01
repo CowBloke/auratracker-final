@@ -62,7 +62,7 @@ interface PendingPlayAgainPrompt {
 const pendingPlayAgainPrompts = new Map<string, PendingPlayAgainPrompt>();
 
 const JOIN_PROMPT_TIMEOUT = 30000; // 30 seconds
-const PLAY_AGAIN_PROMPT_TIMEOUT = 30000; // 30 seconds
+const PLAY_AGAIN_PROMPT_TIMEOUT = 20000;
 
 // Calculate rewards based on performance
 function calculateRewards(
@@ -121,13 +121,24 @@ export const sendPendingRussianRoulettePlayAgainPrompt = (
   const prompt = pendingPlayAgainPrompts.get(partyId);
   if (!prompt) return;
 
-  const hasResponded = prompt.responses.has(userId);
-  if (hasResponded) return;
+  const isPlayer = prompt.players.some((p) => p.userId === userId);
+  if (!isPlayer) return;
+
+  const responses = Array.from(prompt.responses.entries()).map(([uid, playAgain]) => ({
+    userId: uid,
+    playAgain,
+  }));
+  const playAgainCount = responses.filter((r) => r.playAgain).length;
+  const leaveCount = responses.filter((r) => !r.playAgain).length;
 
   socket.emit('russianroulette:play-again-prompt', {
-    partyId,
-    gameOverData: prompt.gameOverData,
-    timeout: PLAY_AGAIN_PROMPT_TIMEOUT - (Date.now() - prompt.startTime),
+    partyId: prompt.partyId,
+    timeLimit: PLAY_AGAIN_PROMPT_TIMEOUT,
+    startTime: Date.now(),
+    players: prompt.players,
+    responses,
+    playAgainCount,
+    leaveCount,
   });
 };
 
@@ -417,8 +428,25 @@ export const setupRussianRouletteHandlers = (socket: Socket, io: Server) => {
         if (!prompt) {
           return;
         }
+        if (!prompt.players.find((p) => p.userId === userId)) {
+          return;
+        }
 
         prompt.responses.set(userId, playAgain);
+
+        const responses = Array.from(prompt.responses.entries()).map(([uid, pa]) => ({
+          userId: uid,
+          playAgain: pa,
+        }));
+        const playAgainCount = responses.filter((r) => r.playAgain).length;
+        const leaveCount = responses.filter((r) => !r.playAgain).length;
+
+        io.to(`party:${partyId}`).emit('russianroulette:play-again-response-update', {
+          partyId,
+          responses,
+          playAgainCount,
+          leaveCount,
+        });
 
         // Check if all responded
         if (prompt.responses.size === prompt.players.length) {
@@ -432,6 +460,50 @@ export const setupRussianRouletteHandlers = (socket: Socket, io: Server) => {
       }
     }
   );
+};
+
+const startRussianRouletteGame = (
+  partyId: string,
+  users: Array<{ id: string; username: string; usernameColor?: string | null }>,
+  io: Server
+) => {
+  const shuffledPlayers = [...users];
+  for (let i = shuffledPlayers.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffledPlayers[i], shuffledPlayers[j]] = [shuffledPlayers[j], shuffledPlayers[i]];
+  }
+
+  const game: RussianRouletteGame = {
+    partyId,
+    players: shuffledPlayers.map((p) => ({
+      userId: p.id,
+      username: p.username,
+      usernameColor: p.usernameColor,
+      isAlive: true,
+      roundsSurvived: 0,
+      isEliminated: false,
+    })),
+    currentPlayerIndex: 0,
+    round: 1,
+    isActive: true,
+    chamberPosition: 0,
+    bulletPosition: Math.floor(Math.random() * 6),
+  };
+
+  activeGames.set(partyId, game);
+
+  io.to(`party:${partyId}`).emit('russianroulette:game-started', {
+    players: game.players.map((p) => ({
+      userId: p.userId,
+      username: p.username,
+      usernameColor: p.usernameColor,
+      isAlive: p.isAlive,
+      roundsSurvived: p.roundsSurvived,
+      isEliminated: p.isEliminated,
+    })),
+    currentPlayerIndex: game.currentPlayerIndex,
+    round: game.round,
+  });
 };
 
 async function resolveJoinPrompt(partyId: string, io: Server) {
@@ -459,40 +531,7 @@ async function resolveJoinPrompt(partyId: string, io: Server) {
     select: { id: true, username: true, usernameColor: true },
   });
 
-  // Create game
-  const shuffledPlayers = players.sort(() => Math.random() - 0.5);
-  const game: RussianRouletteGame = {
-    partyId,
-    players: shuffledPlayers.map((p) => ({
-      userId: p.id,
-      username: p.username,
-      usernameColor: p.usernameColor,
-      isAlive: true,
-      roundsSurvived: 0,
-      isEliminated: false,
-    })),
-    currentPlayerIndex: 0,
-    round: 1,
-    isActive: true,
-    chamberPosition: 0,
-    bulletPosition: Math.floor(Math.random() * 6), // Random bullet position
-  };
-
-  activeGames.set(partyId, game);
-
-  // Broadcast game start
-  io.to(`party:${partyId}`).emit('russianroulette:game-started', {
-    players: game.players.map((p) => ({
-      userId: p.userId,
-      username: p.username,
-      usernameColor: p.usernameColor,
-      isAlive: p.isAlive,
-      roundsSurvived: p.roundsSurvived,
-      isEliminated: p.isEliminated,
-    })),
-    currentPlayerIndex: game.currentPlayerIndex,
-    round: game.round,
-  });
+  startRussianRouletteGame(partyId, players, io);
 }
 
 async function endGame(game: RussianRouletteGame, io: Server, winnerId: string) {
@@ -631,8 +670,10 @@ async function endGame(game: RussianRouletteGame, io: Server, winnerId: string) 
   // Send play again prompt to all players
   io.to(`party:${game.partyId}`).emit('russianroulette:play-again-prompt', {
     partyId: game.partyId,
-    gameOverData,
-    timeout: PLAY_AGAIN_PROMPT_TIMEOUT,
+    timeLimit: PLAY_AGAIN_PROMPT_TIMEOUT,
+    startTime: Date.now(),
+    players: prompt.players,
+    responses: [],
   });
 
   // Set timeout
@@ -647,32 +688,50 @@ async function resolvePlayAgainPrompt(partyId: string, io: Server) {
   const prompt = pendingPlayAgainPrompts.get(partyId);
   if (!prompt) return;
 
+  if (prompt.timer) {
+    clearTimeout(prompt.timer);
+  }
   pendingPlayAgainPrompts.delete(partyId);
 
   const playAgainPlayerIds = Array.from(prompt.responses.entries())
     .filter(([_, playAgain]) => playAgain)
     .map(([userId]) => userId);
 
-  // Notify all players
-  io.to(`party:${partyId}`).emit('russianroulette:play-again-resolved', {
-    playAgainPlayerIds,
+  if (playAgainPlayerIds.length < 2) {
+    io.to(`party:${partyId}`).emit('russianroulette:play-again-cancelled', {
+      reason: 'Not enough players want to play again (need at least 2)',
+    });
+    return;
+  }
+
+  const partyMembers = await prisma.partyMember.findMany({
+    where: {
+      partyId,
+      userId: { in: playAgainPlayerIds },
+    },
+    include: {
+      user: {
+        select: { id: true, username: true, usernameColor: true },
+      },
+    },
   });
 
-  // If at least 2 want to play again, start new game automatically
-  if (playAgainPlayerIds.length >= 2) {
-    // Wait a bit then start new game
-    setTimeout(() => {
-      // Find a leader from play again players
-      const leaderId = playAgainPlayerIds[0];
-      const leaderSocket = Array.from(io.sockets.sockets.values()).find(
-        (s: any) => s.data?.userId === leaderId
-      ) as Socket | undefined;
-
-      if (leaderSocket) {
-        leaderSocket.emit('russianroulette:auto-start', { partyId });
-      }
-    }, 2000);
+  if (partyMembers.length < 2) {
+    io.to(`party:${partyId}`).emit('russianroulette:play-again-cancelled', {
+      reason: 'Not enough players in party to play again',
+    });
+    return;
   }
+
+  startRussianRouletteGame(
+    partyId,
+    partyMembers.map((m) => ({
+      id: m.user.id,
+      username: m.user.username,
+      usernameColor: m.user.usernameColor,
+    })),
+    io,
+  );
 }
 
 // Cleanup inactive games periodically

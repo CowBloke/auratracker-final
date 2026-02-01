@@ -161,7 +161,9 @@ interface BombPartyPlayAgainPrompt {
   partyId: string;
   timeLimit: number;
   startTime: number;
-  gameOverData: BombPartyGameOver;
+  lives: number;
+  difficulty: 'easy' | 'medium' | 'hard';
+  gameOverData?: BombPartyGameOver;
   players: Array<{
     userId: string;
     username: string;
@@ -287,6 +289,17 @@ interface PetitBacRoundResult {
   }>;
 }
 
+interface PetitBacGameOver {
+  winnerIds: string[];
+  winnerUsernames: string[];
+  players: Array<{
+    userId: string;
+    username: string;
+    score: number;
+    isWinner: boolean;
+  }>;
+}
+
 interface PetitBacJoinPrompt {
   partyId: string;
   leaderId: string;
@@ -310,7 +323,10 @@ interface PetitBacPlayAgainPrompt {
   partyId: string;
   timeLimit: number;
   startTime: number;
-  gameOverData: {
+  rounds: number;
+  roundDuration: number;
+  categories: string[];
+  gameOverData?: {
     winnerIds: string[];
     winnerUsernames: string[];
     players: Array<{
@@ -375,9 +391,19 @@ interface RussianRouletteJoinPrompt {
 
 interface RussianRoulettePlayAgainPrompt {
   partyId: string;
-  timeout: number;
+  timeLimit: number;
   startTime: number;
-  gameOverData: RussianRouletteGameOver;
+  players: Array<{
+    userId: string;
+    username: string;
+    usernameColor?: string | null;
+  }>;
+  responses: Array<{
+    userId: string;
+    playAgain: boolean;
+  }>;
+  playAgainCount: number;
+  leaveCount: number;
 }
 
 interface SocketContextType {
@@ -446,6 +472,7 @@ interface SocketContextType {
   // Petit Bac
   petitBacGame: PetitBacGameState | null;
   petitBacRoundResult: PetitBacRoundResult | null;
+  petitBacGameOver: PetitBacGameOver | null;
   petitBacJoinPrompt: PetitBacJoinPrompt | null;
   petitBacPlayAgainPrompt: PetitBacPlayAgainPrompt | null;
   startPetitBac: (rounds: number, roundDuration: number, categories: string[]) => void;
@@ -453,6 +480,7 @@ interface SocketContextType {
   submitPetitBac: (answers: Record<string, string>) => void;
   leavePetitBac: () => void;
   respondToPetitBacPlayAgainPrompt: (playAgain: boolean) => void;
+  clearPetitBacGameOver: () => void;
   // Russian Roulette
   russianRouletteGame: RussianRouletteGameState | null;
   russianRouletteGameOver: RussianRouletteGameOver | null;
@@ -510,6 +538,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   // Petit Bac state
   const [petitBacGame, setPetitBacGame] = useState<PetitBacGameState | null>(null);
   const [petitBacRoundResult, setPetitBacRoundResult] = useState<PetitBacRoundResult | null>(null);
+  const [petitBacGameOver, setPetitBacGameOver] = useState<PetitBacGameOver | null>(null);
   const [petitBacJoinPrompt, setPetitBacJoinPrompt] = useState<PetitBacJoinPrompt | null>(null);
   const [petitBacPlayAgainPrompt, setPetitBacPlayAgainPrompt] = useState<PetitBacPlayAgainPrompt | null>(null);
 
@@ -899,7 +928,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       s.on('bombparty:play-again-prompt', (data: {
         partyId: string;
         timeLimit: number;
-        gameOverData: BombPartyGameOver;
+        startTime?: number;
+        lives: number;
+        difficulty: 'easy' | 'medium' | 'hard';
         players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
         responses?: Array<{ userId: string; playAgain: boolean }>;
         playAgainCount?: number;
@@ -908,7 +939,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         const responses = data.responses || [];
         setBombPartyPlayAgainPrompt({
           ...data,
-          startTime: Date.now(),
+          startTime: data.startTime ?? Date.now(),
           responses,
           playAgainCount: data.playAgainCount ?? responses.filter(r => r.playAgain).length,
           leaveCount: data.leaveCount ?? responses.filter(r => !r.playAgain).length,
@@ -998,6 +1029,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       s.on('petitbac:started', (game: PetitBacGameState) => {
         setPetitBacGame(game);
         setPetitBacRoundResult(null);
+        setPetitBacGameOver(null);
         setPetitBacJoinPrompt(null);
         setPetitBacPlayAgainPrompt(null);
       });
@@ -1035,6 +1067,11 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setPetitBacRoundResult(data.result);
       });
 
+      s.on('petitbac:game-over', (data: PetitBacGameOver) => {
+        setPetitBacGameOver(data);
+        setPetitBacGame(null);
+      });
+
       s.on('petitbac:error', (data: { message: string }) => {
         console.error('Petit Bac error:', data.message);
       });
@@ -1070,7 +1107,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       s.on('petitbac:play-again-prompt', (data: {
         partyId: string;
         timeLimit: number;
-        gameOverData: PetitBacPlayAgainPrompt['gameOverData'];
+        startTime?: number;
+        rounds: number;
+        roundDuration: number;
+        categories: string[];
         players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
         responses?: Array<{ userId: string; playAgain: boolean }>;
         playAgainCount?: number;
@@ -1079,7 +1119,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         const responses = data.responses || [];
         setPetitBacPlayAgainPrompt({
           ...data,
-          startTime: Date.now(),
+          startTime: data.startTime ?? Date.now(),
           responses,
           playAgainCount: data.playAgainCount ?? responses.filter((r) => r.playAgain).length,
           leaveCount: data.leaveCount ?? responses.filter((r) => !r.playAgain).length,
@@ -1144,13 +1184,43 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
       s.on('russianroulette:play-again-prompt', (data: {
         partyId: string;
-        timeout: number;
-        gameOverData: RussianRouletteGameOver;
+        timeLimit: number;
+        startTime?: number;
+        players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+        responses?: Array<{ userId: string; playAgain: boolean }>;
+        playAgainCount?: number;
+        leaveCount?: number;
       }) => {
+        const responses = data.responses || [];
         setRussianRoulettePlayAgainPrompt({
           ...data,
-          startTime: Date.now(),
+          startTime: data.startTime ?? Date.now(),
+          responses,
+          playAgainCount: data.playAgainCount ?? responses.filter((r) => r.playAgain).length,
+          leaveCount: data.leaveCount ?? responses.filter((r) => !r.playAgain).length,
         });
+      });
+
+      s.on('russianroulette:play-again-response-update', (data: {
+        partyId: string;
+        responses: Array<{ userId: string; playAgain: boolean }>;
+        playAgainCount: number;
+        leaveCount: number;
+      }) => {
+        setRussianRoulettePlayAgainPrompt((prev) =>
+          prev
+            ? {
+                ...prev,
+                responses: data.responses,
+                playAgainCount: data.playAgainCount,
+                leaveCount: data.leaveCount,
+              }
+            : null
+        );
+      });
+
+      s.on('russianroulette:play-again-cancelled', () => {
+        setRussianRoulettePlayAgainPrompt(null);
       });
 
       s.on('russianroulette:play-again-resolved', () => {
@@ -1403,6 +1473,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const clearPetitBacGameOver = () => {
+    setPetitBacGameOver(null);
+  };
+
   // Russian Roulette actions
   const startRussianRoulette = () => {
     if (user && currentParty) {
@@ -1502,6 +1576,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         clearPokerGameOver,
         petitBacGame,
         petitBacRoundResult,
+        petitBacGameOver,
         petitBacJoinPrompt,
         petitBacPlayAgainPrompt,
         startPetitBac,
@@ -1509,6 +1584,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         submitPetitBac,
         leavePetitBac,
         respondToPetitBacPlayAgainPrompt,
+        clearPetitBacGameOver,
         russianRouletteGame,
         russianRouletteGameOver,
         russianRouletteJoinPrompt,

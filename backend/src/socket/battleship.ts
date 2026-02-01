@@ -25,6 +25,16 @@ interface BattleshipGame {
 const activeGames = new Map<string, BattleshipGame>();
 const playerSockets = new Map<string, string>(); // userId -> socketId
 
+interface PendingPlayAgainPrompt {
+  partyId: string;
+  responses: Map<string, boolean>;
+  players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+  timer: NodeJS.Timeout | null;
+}
+
+const pendingPlayAgainPrompts = new Map<string, PendingPlayAgainPrompt>();
+const PLAY_AGAIN_TIMEOUT = 20000;
+
 const BOARD_SIZE = 10;
 const SHIPS = [5, 4, 3, 3, 2]; // Ship lengths
 
@@ -233,10 +243,32 @@ async function endGame(game: BattleshipGame, io: Server, winnerId: string) {
     },
   });
 
-  // Clean up after 10 seconds
-  setTimeout(() => {
-    activeGames.delete(game.partyId);
-  }, 10000);
+  const playAgainPrompt: PendingPlayAgainPrompt = {
+    partyId: game.partyId,
+    responses: new Map(),
+    players: game.players.map((p) => ({
+      userId: p.userId,
+      username: p.username,
+      usernameColor: p.usernameColor,
+    })),
+    timer: null,
+  };
+
+  pendingPlayAgainPrompts.set(game.partyId, playAgainPrompt);
+
+  playAgainPrompt.timer = setTimeout(() => {
+    resolvePlayAgainPrompt(game.partyId, io);
+  }, PLAY_AGAIN_TIMEOUT);
+
+  io.to(`party:${game.partyId}`).emit('battleship:play-again-prompt', {
+    partyId: game.partyId,
+    timeLimit: PLAY_AGAIN_TIMEOUT,
+    startTime: Date.now(),
+    players: playAgainPrompt.players,
+    responses: [],
+  });
+
+  activeGames.delete(game.partyId);
 }
 
 export const setupBattleshipHandlers = (socket: Socket, io: Server) => {
@@ -458,7 +490,123 @@ export const setupBattleshipHandlers = (socket: Socket, io: Server) => {
       io.to(`party:${partyId}`).emit('battleship:left', { userId });
     }
   });
+
+  socket.on('battleship:play-again-response', (data: { partyId: string; userId: string; playAgain: boolean }) => {
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const prompt = pendingPlayAgainPrompts.get(data.partyId);
+    if (!prompt) return;
+    if (!prompt.players.find((p) => p.userId === userId)) return;
+
+    prompt.responses.set(userId, data.playAgain);
+
+    const responses = Array.from(prompt.responses.entries()).map(([uid, playAgain]) => ({
+      userId: uid,
+      playAgain,
+    }));
+    const playAgainCount = responses.filter((r) => r.playAgain).length;
+    const leaveCount = responses.filter((r) => !r.playAgain).length;
+
+    io.to(`party:${data.partyId}`).emit('battleship:play-again-response-update', {
+      partyId: data.partyId,
+      responses,
+      playAgainCount,
+      leaveCount,
+    });
+
+    if (prompt.responses.size === prompt.players.length) {
+      resolvePlayAgainPrompt(data.partyId, io);
+    }
+  });
 };
+
+async function resolvePlayAgainPrompt(partyId: string, io: Server) {
+  const prompt = pendingPlayAgainPrompts.get(partyId);
+  if (!prompt) return;
+
+  if (prompt.timer) {
+    clearTimeout(prompt.timer);
+  }
+
+  pendingPlayAgainPrompts.delete(partyId);
+
+  const playAgainUserIds = Array.from(prompt.responses.entries())
+    .filter(([_, playAgain]) => playAgain)
+    .map(([userId]) => userId);
+
+  if (playAgainUserIds.length < 2) {
+    io.to(`party:${partyId}`).emit('battleship:play-again-cancelled', {
+      reason: 'Not enough players want to play again (need 2)',
+    });
+    return;
+  }
+
+  const partyMembers = await prisma.partyMember.findMany({
+    where: {
+      partyId,
+      userId: { in: playAgainUserIds },
+    },
+    include: {
+      user: {
+        select: { id: true, username: true, usernameColor: true },
+      },
+    },
+    orderBy: { joinedAt: 'asc' },
+  });
+
+  if (partyMembers.length !== 2) {
+    io.to(`party:${partyId}`).emit('battleship:play-again-cancelled', {
+      reason: 'Not enough players in party to play again',
+    });
+    return;
+  }
+
+  const game: BattleshipGame = {
+    partyId,
+    players: partyMembers.map((m) => ({
+      userId: m.user.id,
+      username: m.user.username,
+      usernameColor: m.user.usernameColor,
+      board: createEmptyBoard(),
+      opponentBoard: createEmptyBoard(),
+      ships: [],
+      ready: false,
+      shipsPlaced: false,
+    })),
+    currentPlayerIndex: 0,
+    phase: 'placement',
+    winnerId: null,
+    isActive: true,
+  };
+
+  activeGames.set(partyId, game);
+  emitState(game, io);
+}
+
+export function sendPendingBattleshipPlayAgainPrompt(socket: Socket, partyId: string, userId: string) {
+  const prompt = pendingPlayAgainPrompts.get(partyId);
+  if (!prompt) return;
+
+  const isPlayer = prompt.players.some((p) => p.userId === userId);
+  if (!isPlayer) return;
+
+  const responses = Array.from(prompt.responses.entries()).map(([uid, playAgain]) => ({
+    userId: uid,
+    playAgain,
+  }));
+  const playAgainCount = responses.filter((r) => r.playAgain).length;
+  const leaveCount = responses.filter((r) => !r.playAgain).length;
+
+  socket.emit('battleship:play-again-prompt', {
+    partyId: prompt.partyId,
+    timeLimit: PLAY_AGAIN_TIMEOUT,
+    startTime: Date.now(),
+    players: prompt.players,
+    responses,
+    playAgainCount,
+    leaveCount,
+  });
+}
 
 export function sendActiveBattleshipState(socket: Socket, partyId: string, userId: string) {
   const game = activeGames.get(partyId);
