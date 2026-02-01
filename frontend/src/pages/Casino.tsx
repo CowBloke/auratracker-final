@@ -128,22 +128,57 @@ const BET_STEPS = [10, 25, 50, 100, 250, 500, 1000];
 // -----------------------------
 type BlackjackStatus = 'idle' | 'player' | 'dealer' | 'finished';
 type BlackjackOutcome = 'win' | 'lose' | 'push' | 'blackjack';
+type BlackjackSuit = 'spades' | 'hearts' | 'diamonds' | 'clubs';
+type BlackjackRank = 'A' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K';
 
 interface BlackjackCard {
-  rank: string;
-  suit: string;
+  id: string;
+  rank: BlackjackRank;
+  suit: BlackjackSuit;
+  value: number;
+  isRed: boolean;
 }
 
 const BLACKJACK_BET_STEPS = [25, 50, 100, 250, 500, 1000];
-const BLACKJACK_SUITS = ['S', 'H', 'D', 'C'];
-const BLACKJACK_RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+const BLACKJACK_MIN_BET = 5;
+const BLACKJACK_SUITS: BlackjackSuit[] = ['spades', 'hearts', 'diamonds', 'clubs'];
+const BLACKJACK_RANKS: BlackjackRank[] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 const BLACKJACK_MIN_DECK = 15;
+
+const BLACKJACK_SUIT_META: Record<BlackjackSuit, { symbol: string; isRed: boolean }> = {
+  spades: { symbol: '♠', isRed: false },
+  hearts: { symbol: '♥', isRed: true },
+  diamonds: { symbol: '♦', isRed: true },
+  clubs: { symbol: '♣', isRed: false },
+};
+
+const BLACKJACK_RANK_VALUES: Record<BlackjackRank, number> = {
+  A: 11,
+  '2': 2,
+  '3': 3,
+  '4': 4,
+  '5': 5,
+  '6': 6,
+  '7': 7,
+  '8': 8,
+  '9': 9,
+  '10': 10,
+  J: 10,
+  Q: 10,
+  K: 10,
+};
 
 const createBlackjackDeck = (): BlackjackCard[] => {
   const deck: BlackjackCard[] = [];
   BLACKJACK_SUITS.forEach((suit) => {
     BLACKJACK_RANKS.forEach((rank) => {
-      deck.push({ rank, suit });
+      deck.push({
+        id: `${rank}-${suit}-${deck.length}`,
+        rank,
+        suit,
+        value: BLACKJACK_RANK_VALUES[rank],
+        isRed: BLACKJACK_SUIT_META[suit].isRed,
+      });
     });
   });
   return deck;
@@ -158,18 +193,12 @@ const shuffleDeck = (deck: BlackjackCard[]) => {
   return shuffled;
 };
 
-const getBlackjackValue = (card: BlackjackCard) => {
-  if (card.rank === 'A') return 11;
-  if (card.rank === 'K' || card.rank === 'Q' || card.rank === 'J') return 10;
-  return Number(card.rank);
-};
-
 const getHandTotal = (hand: BlackjackCard[]) => {
   let total = 0;
   let aces = 0;
 
   hand.forEach((card) => {
-    total += getBlackjackValue(card);
+    total += card.value;
     if (card.rank === 'A') aces += 1;
   });
 
@@ -800,6 +829,7 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
 function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void }) {
   const { user, refreshUser } = useAuth();
   const [bet, setBet] = useState(100);
+  const [betDraft, setBetDraft] = useState('100');
   const [status, setStatus] = useState<BlackjackStatus>('idle');
   const [playerHand, setPlayerHand] = useState<BlackjackCard[]>([]);
   const [dealerHand, setDealerHand] = useState<BlackjackCard[]>([]);
@@ -816,6 +846,10 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
   useEffect(() => {
     onBetChange?.(bet);
   }, [bet, onBetChange]);
+
+  useEffect(() => {
+    setBetDraft(bet.toString());
+  }, [bet]);
 
   const drawCard = useCallback(() => {
     if (deckRef.current.length < BLACKJACK_MIN_DECK) {
@@ -958,6 +992,32 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
     playDealer();
   }, [playDealer, status]);
 
+  const selectBet = useCallback((value: number) => {
+    if (status === 'player' || status === 'dealer') return;
+    setError(null);
+    setBet(value);
+    setBetDraft(value.toString());
+  }, [status]);
+
+  const applyCustomBet = useCallback(() => {
+    if (status === 'player' || status === 'dealer') return;
+    const parsed = Math.floor(Number(betDraft));
+    if (!Number.isFinite(parsed)) {
+      setBetDraft(bet.toString());
+      return;
+    }
+
+    const normalized = Math.max(BLACKJACK_MIN_BET, parsed);
+    if (user && normalized > user.money) {
+      setError('Fonds insuffisants pour cette mise');
+      return;
+    }
+
+    setError(null);
+    setBet(normalized);
+    setBetDraft(normalized.toString());
+  }, [bet, betDraft, status, user]);
+
   const canDeal = user && (status === 'idle' || status === 'finished') && user.money >= bet;
   const canPlay = status === 'player';
 
@@ -972,18 +1032,30 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
             ? 'Egalite'
             : null;
 
-  const renderCard = (card: BlackjackCard | null, hidden = false, key?: string) => (
+  const renderCard = (card: BlackjackCard | null, hidden = false, key?: string) => {
+    const suitMeta = card ? BLACKJACK_SUIT_META[card.suit] : null;
+    return (
     <div
       key={key}
       className={cn(
-        "flex h-28 w-20 items-center justify-center border border-border/40 text-2xl font-semibold",
-        "sm:h-32 sm:w-24 sm:text-3xl",
-        hidden && "bg-muted/30 text-muted-foreground"
+        "relative flex h-32 w-24 items-center justify-center border border-border/40 text-2xl font-semibold",
+        "sm:h-36 sm:w-28 sm:text-3xl",
+        hidden && "bg-muted/30 text-muted-foreground",
+        card && !hidden && (card.isRed ? "text-rose-500" : "text-foreground")
       )}
     >
-      {hidden || !card ? '??' : `${card.rank}${card.suit}`}
+      {hidden || !card ? (
+        <span className="text-muted-foreground">??</span>
+      ) : (
+        <>
+          <span className="absolute left-2 top-1 text-sm">{card.rank}</span>
+          <span className="text-4xl">{suitMeta?.symbol}</span>
+          <span className="absolute bottom-1 right-2 text-sm">{card.rank}</span>
+        </>
+      )}
     </div>
-  );
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -996,7 +1068,7 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
             {BLACKJACK_BET_STEPS.map((step) => (
               <button
                 key={step}
-                onClick={() => setBet(step)}
+                onClick={() => selectBet(step)}
                 disabled={status === 'player' || status === 'dealer' || !!(user && user.money < step)}
                 className={cn(
                   "px-4 py-2 text-base border transition-colors",
@@ -1010,6 +1082,35 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
                 ${step}
               </button>
             ))}
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={BLACKJACK_MIN_BET}
+                step={5}
+                value={betDraft}
+                onChange={(event) => setBetDraft(event.target.value)}
+                onBlur={applyCustomBet}
+                disabled={status === 'player' || status === 'dealer'}
+                className={cn(
+                  "h-10 w-28 border border-border/30 bg-transparent px-3 text-base",
+                  status === 'player' || status === 'dealer'
+                    ? "opacity-40 cursor-not-allowed"
+                    : "focus:border-foreground focus:outline-none"
+                )}
+              />
+              <button
+                onClick={applyCustomBet}
+                disabled={status === 'player' || status === 'dealer'}
+                className={cn(
+                  "h-10 px-3 text-sm border transition-colors",
+                  status === 'player' || status === 'dealer'
+                    ? "border-border/30 text-muted-foreground/50 cursor-not-allowed"
+                    : "border-foreground text-foreground hover:bg-foreground hover:text-background"
+                )}
+              >
+                Valider
+              </button>
+            </div>
           </div>
         </div>
 
