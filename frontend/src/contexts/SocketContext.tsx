@@ -1236,7 +1236,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         s.removeAllListeners();
       };
     }
-  }, [user, updateBalance, logout, navigate]);
+  }, [user?.id, user?.username, logout, navigate]);
 
   const sendMessage = (message: string, replyToId?: string | null) => {
     if (user) {
