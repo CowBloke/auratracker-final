@@ -139,6 +139,15 @@ interface BlackjackCard {
   isRed: boolean;
 }
 
+interface BlackjackHand {
+  id: string;
+  cards: BlackjackCard[];
+  bet: number;
+  doubled: boolean;
+  state: 'playing' | 'stood' | 'bust' | 'blackjack';
+  outcome: BlackjackOutcome | null;
+}
+
 const BLACKJACK_BET_STEPS = [25, 50, 100, 250, 500, 1000];
 const BLACKJACK_MIN_BET = 5;
 const BLACKJACK_SUITS: BlackjackSuit[] = ['spades', 'hearts', 'diamonds', 'clubs'];
@@ -831,21 +840,25 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
   const [bet, setBet] = useState(100);
   const [betDraft, setBetDraft] = useState('100');
   const [status, setStatus] = useState<BlackjackStatus>('idle');
-  const [playerHand, setPlayerHand] = useState<BlackjackCard[]>([]);
   const [dealerHand, setDealerHand] = useState<BlackjackCard[]>([]);
-  const [outcome, setOutcome] = useState<BlackjackOutcome | null>(null);
+  const [hands, setHands] = useState<BlackjackHand[]>([]);
+  const [activeHandIndex, setActiveHandIndex] = useState(0);
   const [netGain, setNetGain] = useState(0);
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const deckRef = useRef<BlackjackCard[]>(shuffleDeck(createBlackjackDeck()));
 
-  const playerTotal = useMemo(() => getHandTotal(playerHand), [playerHand]);
   const dealerTotal = useMemo(() => getHandTotal(dealerHand), [dealerHand]);
   const revealDealer = status !== 'player';
+  const totalBet = useMemo(() => {
+    if (hands.length === 0) return bet;
+    return hands.reduce((sum, hand) => sum + hand.bet, 0);
+  }, [hands, bet]);
+  const activeHand = hands[activeHandIndex];
 
   useEffect(() => {
-    onBetChange?.(bet);
-  }, [bet, onBetChange]);
+    onBetChange?.(totalBet);
+  }, [onBetChange, totalBet]);
 
   useEffect(() => {
     setBetDraft(bet.toString());
@@ -859,9 +872,9 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
   }, []);
 
   const finishRound = useCallback(
-    async (result: BlackjackOutcome, payoutAmount: number) => {
-      const net = payoutAmount - bet;
-      setOutcome(result);
+    async (finalHands: BlackjackHand[], payoutAmount: number, totalRoundBet: number) => {
+      const net = payoutAmount - totalRoundBet;
+      setHands(finalHands);
       setNetGain(net);
       setStatus('finished');
 
@@ -871,7 +884,7 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
         const response = await gamesApi.complete('casino', {
           score: payoutAmount,
           won: net > 0,
-          bet,
+          bet: totalRoundBet,
           netGain: net,
         });
 
@@ -885,47 +898,65 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
         console.error('Failed to submit blackjack:', err);
       }
     },
-    [bet, refreshUser, user]
+    [refreshUser, user]
   );
 
-  const evaluateOutcome = useCallback(
-    (player: BlackjackCard[], dealer: BlackjackCard[]) => {
-      const playerScore = getHandTotal(player);
-      const dealerScore = getHandTotal(dealer);
-      const playerBlackjack = playerScore === 21 && player.length === 2;
-      const dealerBlackjack = dealerScore === 21 && dealer.length === 2;
+  const getHandPayout = useCallback((hand: BlackjackHand) => {
+    if (!hand.outcome) return 0;
+    if (hand.outcome === 'blackjack') {
+      return hand.bet + Math.round(hand.bet * 1.5);
+    }
+    if (hand.outcome === 'win') return hand.bet * 2;
+    if (hand.outcome === 'push') return hand.bet;
+    return 0;
+  }, []);
 
-      let result: BlackjackOutcome = 'push';
-      if (playerScore > 21) {
-        result = 'lose';
-      } else if (dealerScore > 21) {
-        result = 'win';
-      } else if (playerBlackjack && dealerBlackjack) {
-        result = 'push';
-      } else if (playerBlackjack) {
-        result = 'blackjack';
-      } else if (dealerBlackjack) {
-        result = 'lose';
-      } else if (playerScore > dealerScore) {
-        result = 'win';
-      } else if (playerScore < dealerScore) {
-        result = 'lose';
-      }
+  const resolveRound = useCallback(
+    (roundHands: BlackjackHand[], dealerCards: BlackjackCard[]) => {
+      const dealerScore = getHandTotal(dealerCards);
+      const dealerBlackjack = dealerScore === 21 && dealerCards.length === 2;
+      const roundWasSplit = roundHands.length > 1;
 
-      const payoutAmount =
-        result === 'win' || result === 'blackjack'
-          ? bet * 2
-          : result === 'push'
-            ? bet
-            : 0;
+      const updatedHands = roundHands.map((hand) => {
+        const playerScore = getHandTotal(hand.cards);
+        let result: BlackjackOutcome = 'push';
 
-      finishRound(result, payoutAmount);
+        if (hand.state === 'bust' || playerScore > 21) {
+          result = 'lose';
+        } else if (dealerBlackjack) {
+          result = !roundWasSplit && hand.state === 'blackjack' ? 'push' : 'lose';
+        } else if (!roundWasSplit && hand.state === 'blackjack') {
+          result = 'blackjack';
+        } else if (dealerScore > 21) {
+          result = 'win';
+        } else if (playerScore > dealerScore) {
+          result = 'win';
+        } else if (playerScore < dealerScore) {
+          result = 'lose';
+        }
+
+        return {
+          ...hand,
+          outcome: result,
+          state: hand.state === 'playing' ? 'stood' : hand.state,
+        };
+      });
+
+      const payoutAmount = updatedHands.reduce((sum, hand) => sum + getHandPayout(hand), 0);
+      const totalRoundBet = updatedHands.reduce((sum, hand) => sum + hand.bet, 0);
+      finishRound(updatedHands, payoutAmount, totalRoundBet);
     },
-    [bet, finishRound]
+    [finishRound, getHandPayout]
   );
 
   const playDealer = useCallback(
-    (playerCards?: BlackjackCard[]) => {
+    (roundHands: BlackjackHand[]) => {
+      if (roundHands.every((hand) => hand.state === 'bust')) {
+        const totalRoundBet = roundHands.reduce((sum, hand) => sum + hand.bet, 0);
+        finishRound(roundHands, 0, totalRoundBet);
+        return;
+      }
+
       setStatus('dealer');
       let dealerCards = [...dealerHand];
       let total = getHandTotal(dealerCards);
@@ -936,9 +967,9 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
       }
 
       setDealerHand(dealerCards);
-      evaluateOutcome(playerCards ?? playerHand, dealerCards);
+      resolveRound(roundHands, dealerCards);
     },
-    [dealerHand, drawCard, evaluateOutcome, playerHand]
+    [dealerHand, drawCard, finishRound, resolveRound]
   );
 
   const deal = useCallback(() => {
@@ -950,14 +981,14 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
     }
 
     setError(null);
-    setOutcome(null);
     setRewards(null);
     setNetGain(0);
+    setHands([]);
+    setActiveHandIndex(0);
 
     const playerCards = [drawCard(), drawCard()];
     const dealerCards = [drawCard(), drawCard()];
 
-    setPlayerHand(playerCards);
     setDealerHand(dealerCards);
 
     const playerScore = getHandTotal(playerCards);
@@ -965,32 +996,159 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
     const playerBlackjack = playerScore === 21 && playerCards.length === 2;
     const dealerBlackjack = dealerScore === 21 && dealerCards.length === 2;
 
+    const initialHand: BlackjackHand = {
+      id: 'hand-1',
+      cards: playerCards,
+      bet,
+      doubled: false,
+      state: playerBlackjack ? 'blackjack' : 'playing',
+      outcome: null,
+    };
+
+    setHands([initialHand]);
+
     if (playerBlackjack || dealerBlackjack) {
       setStatus('dealer');
-      evaluateOutcome(playerCards, dealerCards);
+      resolveRound([initialHand], dealerCards);
     } else {
       setStatus('player');
     }
-  }, [bet, drawCard, evaluateOutcome, status, user]);
+  }, [bet, drawCard, resolveRound, status, user]);
 
   const hit = useCallback(() => {
-    if (status !== 'player') return;
-    const nextHand = [...playerHand, drawCard()];
-    setPlayerHand(nextHand);
-    const total = getHandTotal(nextHand);
+    if (status !== 'player' || !activeHand) return;
+    const nextCards = [...activeHand.cards, drawCard()];
+    const total = getHandTotal(nextCards);
+
+    let nextState = activeHand.state;
+    let nextOutcome = activeHand.outcome;
     if (total > 21) {
-      finishRound('lose', 0);
-      return;
+      nextState = 'bust';
+      nextOutcome = 'lose';
+    } else if (total === 21) {
+      nextState = 'stood';
     }
-    if (total === 21) {
-      playDealer(nextHand);
+
+    const updatedHands = hands.map((hand, index) =>
+      index === activeHandIndex
+        ? { ...hand, cards: nextCards, state: nextState, outcome: nextOutcome }
+        : hand
+    );
+
+    setHands(updatedHands);
+
+    if (nextState === 'bust' || nextState === 'stood') {
+      const nextIndex = updatedHands.findIndex(
+        (hand, index) => index > activeHandIndex && hand.state === 'playing'
+      );
+      if (nextIndex >= 0) {
+        setActiveHandIndex(nextIndex);
+      } else {
+        playDealer(updatedHands);
+      }
     }
-  }, [drawCard, finishRound, playDealer, playerHand, status]);
+  }, [activeHand, activeHandIndex, drawCard, hands, playDealer, status]);
 
   const stand = useCallback(() => {
-    if (status !== 'player') return;
-    playDealer();
-  }, [playDealer, status]);
+    if (status !== 'player' || !activeHand) return;
+    const updatedHands = hands.map((hand, index) =>
+      index === activeHandIndex
+        ? { ...hand, state: 'stood' }
+        : hand
+    );
+    setHands(updatedHands);
+
+    const nextIndex = updatedHands.findIndex(
+      (hand, index) => index > activeHandIndex && hand.state === 'playing'
+    );
+    if (nextIndex >= 0) {
+      setActiveHandIndex(nextIndex);
+    } else {
+      playDealer(updatedHands);
+    }
+  }, [activeHand, activeHandIndex, hands, playDealer, status]);
+
+  const doubleDown = useCallback(() => {
+    if (status !== 'player' || !activeHand) return;
+    const additionalBet = activeHand.bet;
+    if (user && user.money < totalBet + additionalBet) {
+      setError('Fonds insuffisants pour doubler');
+      return;
+    }
+
+    setError(null);
+    const nextCards = [...activeHand.cards, drawCard()];
+    const total = getHandTotal(nextCards);
+    const nextState = total > 21 ? 'bust' : 'stood';
+    const nextOutcome = total > 21 ? 'lose' : activeHand.outcome;
+
+    const updatedHands = hands.map((hand, index) =>
+      index === activeHandIndex
+        ? {
+            ...hand,
+            cards: nextCards,
+            bet: hand.bet * 2,
+            doubled: true,
+            state: nextState,
+            outcome: nextOutcome,
+          }
+        : hand
+    );
+
+    setHands(updatedHands);
+
+    const nextIndex = updatedHands.findIndex(
+      (hand, index) => index > activeHandIndex && hand.state === 'playing'
+    );
+    if (nextIndex >= 0) {
+      setActiveHandIndex(nextIndex);
+    } else {
+      playDealer(updatedHands);
+    }
+  }, [activeHand, activeHandIndex, drawCard, hands, playDealer, status, totalBet, user]);
+
+  const splitHand = useCallback(() => {
+    if (status !== 'player' || !activeHand) return;
+    if (hands.length !== 1) return;
+    if (activeHand.cards.length !== 2) return;
+    if (activeHand.cards[0].rank !== activeHand.cards[1].rank) return;
+    if (user && user.money < totalBet + activeHand.bet) {
+      setError('Fonds insuffisants pour splitter');
+      return;
+    }
+
+    setError(null);
+
+    const handOneCards = [activeHand.cards[0], drawCard()];
+    const handTwoCards = [activeHand.cards[1], drawCard()];
+
+    const handOne: BlackjackHand = {
+      id: 'hand-1',
+      cards: handOneCards,
+      bet: activeHand.bet,
+      doubled: false,
+      state: getHandTotal(handOneCards) === 21 ? 'stood' : 'playing',
+      outcome: null,
+    };
+    const handTwo: BlackjackHand = {
+      id: 'hand-2',
+      cards: handTwoCards,
+      bet: activeHand.bet,
+      doubled: false,
+      state: getHandTotal(handTwoCards) === 21 ? 'stood' : 'playing',
+      outcome: null,
+    };
+
+    const updatedHands = [handOne, handTwo];
+    setHands(updatedHands);
+
+    const nextIndex = updatedHands.findIndex((hand) => hand.state === 'playing');
+    if (nextIndex >= 0) {
+      setActiveHandIndex(nextIndex);
+    } else {
+      playDealer(updatedHands);
+    }
+  }, [activeHand, drawCard, hands.length, playDealer, status, totalBet, user]);
 
   const selectBet = useCallback((value: number) => {
     if (status === 'player' || status === 'dealer') return;
@@ -1019,16 +1177,31 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
   }, [bet, betDraft, status, user]);
 
   const canDeal = user && (status === 'idle' || status === 'finished') && user.money >= bet;
-  const canPlay = status === 'player';
+  const canPlay = status === 'player' && hands.length > 0;
+  const canSplit =
+    canPlay &&
+    hands.length === 1 &&
+    !!activeHand &&
+    activeHand.cards.length === 2 &&
+    activeHand.cards[0].rank === activeHand.cards[1].rank &&
+    !!user &&
+    user.money >= totalBet + activeHand.bet;
+  const canDouble =
+    canPlay &&
+    !!activeHand &&
+    activeHand.cards.length === 2 &&
+    !activeHand.doubled &&
+    !!user &&
+    user.money >= totalBet + activeHand.bet;
 
-  const resultLabel =
-    outcome === 'blackjack'
+  const getOutcomeLabel = (value: BlackjackOutcome | null) =>
+    value === 'blackjack'
       ? 'Blackjack'
-      : outcome === 'win'
+      : value === 'win'
         ? 'Gagne'
-        : outcome === 'lose'
+        : value === 'lose'
           ? 'Perdu'
-          : outcome === 'push'
+          : value === 'push'
             ? 'Egalite'
             : null;
 
@@ -1118,7 +1291,7 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
             Total
           </p>
-          <p className="text-2xl font-semibold">${bet.toLocaleString()}</p>
+          <p className="text-2xl font-semibold">${totalBet.toLocaleString()}</p>
         </div>
       </div>
 
@@ -1152,14 +1325,48 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
               Toi
             </p>
-            <div className="flex flex-wrap gap-3">
-              {playerHand.length === 0
-                ? renderCard(null)
-                : playerHand.map((card, index) => renderCard(card, false, `player-${index}`))}
-            </div>
-            <div className="text-2xl font-semibold">
-              Total: {playerTotal || 0}
-            </div>
+            {hands.length === 0 ? (
+              <div className="flex flex-wrap gap-3">
+                {renderCard(null)}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {hands.map((hand, index) => {
+                  const handTotal = getHandTotal(hand.cards);
+                  const isActive = status === 'player' && index === activeHandIndex;
+                  return (
+                    <div
+                      key={hand.id}
+                      className={cn(
+                        "border border-border/30 p-3",
+                        isActive && "border-foreground"
+                      )}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                        <span>Main {index + 1}</span>
+                        <span>
+                          ${hand.bet.toLocaleString()}
+                          {hand.doubled ? ' (Double)' : ''}
+                        </span>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-3">
+                        {hand.cards.map((card, cardIndex) =>
+                          renderCard(card, false, `player-${hand.id}-${cardIndex}`)
+                        )}
+                      </div>
+                      <div className="mt-2 text-lg font-semibold">
+                        Total: {handTotal}
+                      </div>
+                      {hand.outcome && (
+                        <div className="mt-2 text-sm text-muted-foreground">
+                          {getOutcomeLabel(hand.outcome)}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
@@ -1200,14 +1407,55 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
           >
             Rester
           </button>
+          <button
+            onClick={doubleDown}
+            disabled={!canDouble}
+            className={cn(
+              "h-14 px-6 text-lg border transition-colors",
+              canDouble
+                ? "border-foreground text-foreground hover:bg-foreground hover:text-background"
+                : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
+            )}
+          >
+            Doubler
+          </button>
+          <button
+            onClick={splitHand}
+            disabled={!canSplit}
+            className={cn(
+              "h-14 px-6 text-lg border transition-colors",
+              canSplit
+                ? "border-foreground text-foreground hover:bg-foreground hover:text-background"
+                : "border-border/30 text-muted-foreground/50 cursor-not-allowed"
+            )}
+          >
+            Splitter
+          </button>
         </div>
 
-        {outcome && (
+        {status === 'finished' && hands.length > 0 && (
           <div className="mt-6 border border-border/30 px-4 py-3 text-lg flex flex-wrap items-center justify-between gap-3">
-            <div className="font-semibold">{resultLabel}</div>
+            <div className="font-semibold">
+              {hands.length === 1 ? getOutcomeLabel(hands[0].outcome) : 'Mains terminées'}
+            </div>
             <div className={netGain >= 0 ? 'text-foreground' : 'text-muted-foreground'}>
               {netGain >= 0 ? '+' : '-'}${Math.abs(netGain).toLocaleString()}
             </div>
+          </div>
+        )}
+
+        {status === 'finished' && hands.length > 1 && (
+          <div className="mt-3 border border-border/30 px-4 py-3 text-sm text-muted-foreground space-y-1">
+            {hands.map((hand, index) => {
+              const payout = getHandPayout(hand);
+              const net = payout - hand.bet;
+              return (
+                <div key={`result-${hand.id}`}>
+                  Main {index + 1}: {getOutcomeLabel(hand.outcome)} ({net >= 0 ? '+' : '-'}$
+                  {Math.abs(net).toLocaleString()})
+                </div>
+              );
+            })}
           </div>
         )}
 
