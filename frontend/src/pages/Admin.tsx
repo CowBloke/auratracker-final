@@ -1552,7 +1552,7 @@ export default function Admin() {
   };
 
   return (
-    <PageLayout variant="compact">
+    <PageLayout variant="full">
       {/* Message */}
       {message && (
         <Card className={cn(
@@ -2995,8 +2995,8 @@ export default function Admin() {
               <CardDescription>Popups de mise a jour visibles a la connexion</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                <div className="space-y-4 p-4 rounded-lg border bg-muted/20">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+                <div className="space-y-4 p-4 rounded-lg border bg-muted/20 h-full">
                   <div className="flex items-center justify-between">
                     <h3 className={TYPOGRAPHY.H3}>
                       {editingUpdatePopupId ? 'Modifier une update' : 'Nouvelle update'}
@@ -3038,7 +3038,7 @@ export default function Admin() {
                     <Textarea
                       value={updatePopupForm.message}
                       onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, message: e.target.value }))}
-                      rows={7}
+                      rows={10}
                       placeholder={'Ex: • Nouveau mode de jeu\n• Ajustement des récompenses\n• Corrections de bugs'}
                     />
                   </div>
@@ -3146,12 +3146,12 @@ export default function Admin() {
                   </div>
                 </div>
 
-                <div className="space-y-4 p-4 rounded-lg border bg-background/30">
+                <div className="space-y-4 p-4 rounded-lg border bg-background/30 h-full flex flex-col">
                   <div className="flex items-center gap-2">
                     <Eye className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm font-medium">Aperçu joueur</span>
                   </div>
-                  <div className="rounded-lg border bg-muted/20 p-4 space-y-4">
+                  <div className="rounded-lg border bg-muted/20 p-4 space-y-4 flex-1">
                     <div>
                       <h4 className="text-lg font-semibold">{updatePopupForm.title || 'Titre de la mise a jour'}</h4>
                       <p className="text-xs text-muted-foreground">
