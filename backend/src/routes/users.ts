@@ -46,6 +46,79 @@ router.get('/announcement', authMiddleware, async (req: AuthRequest, res: Respon
   }
 });
 
+// Get pending update popups for the current user
+router.get('/update-popups/pending', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const now = new Date();
+    const popups = await prisma.updatePopup.findMany({
+      where: {
+        isPublished: true,
+        releaseDate: { lte: now },
+        views: {
+          none: {
+            userId: req.user!.id,
+          },
+        },
+      },
+      orderBy: [
+        { releaseDate: 'asc' },
+        { createdAt: 'asc' },
+      ],
+      select: {
+        id: true,
+        title: true,
+        summary: true,
+        message: true,
+        imageUrl: true,
+        releaseDate: true,
+        createdAt: true,
+      },
+    });
+
+    res.json({ popups });
+  } catch (error) {
+    console.error('Get pending update popups error:', error);
+    res.status(500).json({ error: 'Failed to get pending update popups' });
+  }
+});
+
+// Mark an update popup as viewed for current user
+router.post('/update-popups/:id/viewed', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const popup = await prisma.updatePopup.findUnique({
+      where: { id },
+      select: { id: true, isPublished: true },
+    });
+
+    if (!popup || !popup.isPublished) {
+      return res.status(404).json({ error: 'Update popup not found' });
+    }
+
+    await prisma.userUpdatePopupView.upsert({
+      where: {
+        userId_popupId: {
+          userId: req.user!.id,
+          popupId: id,
+        },
+      },
+      create: {
+        userId: req.user!.id,
+        popupId: id,
+      },
+      update: {
+        viewedAt: new Date(),
+      },
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Mark update popup viewed error:', error);
+    res.status(500).json({ error: 'Failed to mark popup as viewed' });
+  }
+});
+
 // Get user by ID
 router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {

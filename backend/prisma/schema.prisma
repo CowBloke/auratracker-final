@@ -64,6 +64,8 @@ model User {
   clanJoinRequests      ClanJoinRequest[]
   polymarketSuggestions PolymarketSuggestion[]
   polymarketBets        PolymarketBet[]
+  createdUpdatePopups   UpdatePopup[]           @relation("UpdatePopupCreator")
+  updatePopupViews      UserUpdatePopupView[]
 
 
   // Daily Quests relations
@@ -783,4 +785,37 @@ model GiftItem {
 
   @@index([giftId])
   @@index([giftTemplateId])
+}
+
+// Update Popup System
+model UpdatePopup {
+  id          String   @id @default(uuid())
+  title       String
+  summary     String? // Optional short subtitle/summary
+  message     String
+  imageUrl    String?
+  releaseDate DateTime @default(now())
+  isPublished Boolean  @default(true)
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User                  @relation("UpdatePopupCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  views     UserUpdatePopupView[]
+
+  @@index([isPublished, releaseDate])
+  @@index([createdAt])
+}
+
+model UserUpdatePopupView {
+  id        String   @id @default(uuid())
+  userId    String
+  popupId   String
+  viewedAt  DateTime @default(now())
+
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  popup UpdatePopup @relation(fields: [popupId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, popupId])
+  @@index([userId, viewedAt])
 }

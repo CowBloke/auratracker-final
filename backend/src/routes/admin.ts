@@ -1,5 +1,8 @@
 import { Router, Response } from 'express';
 import bcrypt from 'bcryptjs';
+import fs from 'fs';
+import path from 'path';
+import { randomUUID } from 'crypto';
 import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { validate, adminRareActionSchema } from '../middleware/validation.js';
@@ -11,6 +14,29 @@ import { recalculateBombPartyPrompts } from '../utils/bombpartyPrompts.js';
 const router = Router();
 const ANNOUNCEMENT_KEY = 'topbar_announcement';
 const ANNOUNCEMENT_MAX_LENGTH = 120;
+const UPDATE_POPUP_UPLOAD_DIR = path.resolve('uploads', 'update-popups');
+const MAX_UPDATE_POPUP_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+
+const ensureUpdatePopupUploadDir = () => {
+  if (!fs.existsSync(UPDATE_POPUP_UPLOAD_DIR)) {
+    fs.mkdirSync(UPDATE_POPUP_UPLOAD_DIR, { recursive: true });
+  }
+};
+
+const inferImageExtension = (mimeType: string) => {
+  switch (mimeType.toLowerCase()) {
+    case 'image/png':
+      return 'png';
+    case 'image/jpeg':
+      return 'jpg';
+    case 'image/webp':
+      return 'webp';
+    case 'image/gif':
+      return 'gif';
+    default:
+      return null;
+  }
+};
 
 // Middleware to check if user is admin
 const requireAdmin = (req: AuthRequest, res: Response, next: Function) => {
@@ -1567,6 +1593,322 @@ router.post('/bombparty/recalculate-prompts', authMiddleware, requireAdmin, asyn
   } catch (error) {
     console.error('Admin recalculate Bomb Party prompts error:', error);
     res.status(500).json({ error: 'Failed to recalculate Bomb Party prompts' });
+  }
+});
+
+// ========== UPDATE POPUP MANAGEMENT ==========
+
+// Get all update popups (admin view)
+router.get('/update-popups', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    const popups = await prisma.updatePopup.findMany({
+      include: {
+        createdBy: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+        _count: {
+          select: {
+            views: true,
+          },
+        },
+      },
+      orderBy: [
+        { releaseDate: 'desc' },
+        { createdAt: 'desc' },
+      ],
+    });
+
+    res.json({ popups });
+  } catch (error) {
+    console.error('Admin get update popups error:', error);
+    res.status(500).json({ error: 'Failed to get update popups' });
+  }
+});
+
+// Create update popup
+router.post('/update-popups', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const title = typeof req.body.title === 'string' ? req.body.title.trim() : '';
+    const message = typeof req.body.message === 'string' ? req.body.message.trim() : '';
+    const summary = typeof req.body.summary === 'string' ? req.body.summary.trim() : '';
+    const imageUrl = typeof req.body.imageUrl === 'string' ? req.body.imageUrl.trim() : '';
+    const releaseDateInput = typeof req.body.releaseDate === 'string' ? req.body.releaseDate : '';
+    const isPublished = req.body.isPublished !== false;
+
+    if (!title || !message) {
+      return res.status(400).json({ error: 'Title and message are required' });
+    }
+
+    if (imageUrl && !isAllowedImageUrl(imageUrl)) {
+      return res.status(400).json({ error: 'Image must be uploaded or a valid URL' });
+    }
+
+    const releaseDate = releaseDateInput ? new Date(releaseDateInput) : new Date();
+    if (isNaN(releaseDate.getTime())) {
+      return res.status(400).json({ error: 'Invalid release date' });
+    }
+
+    const popup = await prisma.updatePopup.create({
+      data: {
+        title,
+        message,
+        summary: summary || null,
+        imageUrl: imageUrl || null,
+        releaseDate,
+        isPublished,
+        createdById: req.user!.id,
+      },
+      include: {
+        createdBy: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+        _count: {
+          select: {
+            views: true,
+          },
+        },
+      },
+    });
+
+    logAdmin('update_popup_create', req.user!.id, req.user!.username, popup.id, popup.title, {
+      releaseDate: popup.releaseDate.toISOString(),
+      isPublished: popup.isPublished,
+    });
+
+    res.status(201).json({ popup });
+  } catch (error) {
+    console.error('Admin create update popup error:', error);
+    res.status(500).json({ error: 'Failed to create update popup' });
+  }
+});
+
+// Update update popup
+router.put('/update-popups/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const data: {
+      title?: string;
+      message?: string;
+      summary?: string | null;
+      imageUrl?: string | null;
+      releaseDate?: Date;
+      isPublished?: boolean;
+    } = {};
+
+    if (req.body.title !== undefined) {
+      if (typeof req.body.title !== 'string' || !req.body.title.trim()) {
+        return res.status(400).json({ error: 'Title must be a non-empty string' });
+      }
+      data.title = req.body.title.trim();
+    }
+
+    if (req.body.message !== undefined) {
+      if (typeof req.body.message !== 'string' || !req.body.message.trim()) {
+        return res.status(400).json({ error: 'Message must be a non-empty string' });
+      }
+      data.message = req.body.message.trim();
+    }
+
+    if (req.body.summary !== undefined) {
+      if (req.body.summary === null) {
+        data.summary = null;
+      } else if (typeof req.body.summary === 'string') {
+        const trimmedSummary = req.body.summary.trim();
+        data.summary = trimmedSummary.length > 0 ? trimmedSummary : null;
+      } else {
+        return res.status(400).json({ error: 'Invalid summary value' });
+      }
+    }
+
+    if (req.body.imageUrl !== undefined) {
+      if (req.body.imageUrl === null) {
+        data.imageUrl = null;
+      } else if (typeof req.body.imageUrl === 'string') {
+        const trimmedUrl = req.body.imageUrl.trim();
+        if (trimmedUrl && !isAllowedImageUrl(trimmedUrl)) {
+          return res.status(400).json({ error: 'Image must be uploaded or a valid URL' });
+        }
+        data.imageUrl = trimmedUrl || null;
+      } else {
+        return res.status(400).json({ error: 'Invalid image URL' });
+      }
+    }
+
+    if (req.body.releaseDate !== undefined) {
+      if (typeof req.body.releaseDate !== 'string') {
+        return res.status(400).json({ error: 'Invalid release date' });
+      }
+      const releaseDate = new Date(req.body.releaseDate);
+      if (isNaN(releaseDate.getTime())) {
+        return res.status(400).json({ error: 'Invalid release date' });
+      }
+      data.releaseDate = releaseDate;
+    }
+
+    if (req.body.isPublished !== undefined) {
+      if (typeof req.body.isPublished !== 'boolean') {
+        return res.status(400).json({ error: 'isPublished must be a boolean' });
+      }
+      data.isPublished = req.body.isPublished;
+    }
+
+    const popup = await prisma.updatePopup.update({
+      where: { id },
+      data,
+      include: {
+        createdBy: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+        _count: {
+          select: {
+            views: true,
+          },
+        },
+      },
+    });
+
+    logAdmin('update_popup_update', req.user!.id, req.user!.username, popup.id, popup.title, {
+      changedFields: Object.keys(data),
+    });
+
+    res.json({ popup });
+  } catch (error) {
+    console.error('Admin update update popup error:', error);
+    res.status(500).json({ error: 'Failed to update update popup' });
+  }
+});
+
+// Delete update popup
+router.delete('/update-popups/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const popup = await prisma.updatePopup.findUnique({
+      where: { id },
+      select: { id: true, title: true, imageUrl: true },
+    });
+
+    if (!popup) {
+      return res.status(404).json({ error: 'Update popup not found' });
+    }
+
+    await prisma.updatePopup.delete({ where: { id } });
+
+    logAdmin('update_popup_delete', req.user!.id, req.user!.username, popup.id, popup.title);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Admin delete update popup error:', error);
+    res.status(500).json({ error: 'Failed to delete update popup' });
+  }
+});
+
+// Upload image for update popups (admin only)
+router.post('/update-popups/upload-image', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const base64Data = typeof req.body.base64Data === 'string' ? req.body.base64Data : '';
+    const mimeType = typeof req.body.mimeType === 'string' ? req.body.mimeType : '';
+
+    if (!base64Data || !mimeType) {
+      return res.status(400).json({ error: 'base64Data and mimeType are required' });
+    }
+
+    const extension = inferImageExtension(mimeType);
+    if (!extension) {
+      return res.status(400).json({ error: 'Unsupported image type. Allowed: png, jpg, webp, gif' });
+    }
+
+    const buffer = Buffer.from(base64Data, 'base64');
+    if (buffer.byteLength === 0) {
+      return res.status(400).json({ error: 'Invalid image payload' });
+    }
+
+    if (buffer.byteLength > MAX_UPDATE_POPUP_IMAGE_SIZE_BYTES) {
+      return res.status(400).json({ error: 'Image too large (max 5MB)' });
+    }
+
+    ensureUpdatePopupUploadDir();
+    const fileName = `${Date.now()}-${randomUUID()}.${extension}`;
+    const absolutePath = path.join(UPDATE_POPUP_UPLOAD_DIR, fileName);
+    fs.writeFileSync(absolutePath, buffer);
+
+    const imageUrl = `/uploads/update-popups/${fileName}`;
+    res.status(201).json({ imageUrl });
+  } catch (error) {
+    console.error('Admin upload update popup image error:', error);
+    res.status(500).json({ error: 'Failed to upload image' });
+  }
+});
+
+// Suggest automatic summary from recent logs
+router.get('/update-popups/suggest-summary', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    const latestPopup = await prisma.updatePopup.findFirst({
+      orderBy: { releaseDate: 'desc' },
+      select: { releaseDate: true },
+    });
+    const sinceDate = latestPopup?.releaseDate || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const [logCountsByType, recentAdminLogs] = await Promise.all([
+      prisma.log.groupBy({
+        by: ['type'],
+        where: {
+          createdAt: { gte: sinceDate },
+        },
+        _count: {
+          _all: true,
+        },
+      }),
+      prisma.log.findMany({
+        where: {
+          type: 'ADMIN',
+          createdAt: { gte: sinceDate },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 6,
+        select: {
+          action: true,
+          targetName: true,
+          createdAt: true,
+        },
+      }),
+    ]);
+
+    const typeSummary = logCountsByType
+      .sort((a, b) => b._count._all - a._count._all)
+      .slice(0, 4)
+      .map((entry) => `${entry.type}: ${entry._count._all}`);
+
+    const recentChanges = recentAdminLogs.map((log) => {
+      const action = log.action.replace(/_/g, ' ');
+      const target = log.targetName ? ` (${log.targetName})` : '';
+      return `${action}${target}`;
+    });
+
+    const parts: string[] = [];
+    if (typeSummary.length > 0) {
+      parts.push(`Activite recente depuis le ${sinceDate.toISOString().slice(0, 10)}: ${typeSummary.join(', ')}.`);
+    }
+    if (recentChanges.length > 0) {
+      parts.push(`Dernieres actions admin: ${recentChanges.join(' | ')}.`);
+    }
+
+    const suggestion = parts.join(' ').trim();
+    res.json({
+      suggestion: suggestion || 'Nouvelle mise a jour disponible.',
+      sinceDate: sinceDate.toISOString(),
+    });
+  } catch (error) {
+    console.error('Admin suggest update popup summary error:', error);
+    res.status(500).json({ error: 'Failed to generate suggestion' });
   }
 });
 

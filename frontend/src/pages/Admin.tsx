@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { adminApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, Badge, UserBadge } from '../services/api';
+import { adminApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, Badge, UserBadge, AdminUpdatePopup } from '../services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import PageLayout from '@/components/layout/PageLayout';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Swords, Rocket, Download, Gift as GiftIcon } from 'lucide-react';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Swords, Rocket, Download, Gift as GiftIcon, Sparkles, Upload, Eye } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -117,6 +117,9 @@ const ACTION_LABELS: Record<string, string> = {
   badge_create: 'Badge créé',
   badge_assign: 'Badge attribué',
   badge_remove: 'Badge retiré',
+  update_popup_create: 'Popup update créée',
+  update_popup_update: 'Popup update modifiée',
+  update_popup_delete: 'Popup update supprimée',
   // Ban
   ban_create: 'Bannissement créé',
   ban_remove: 'Bannissement levé',
@@ -187,6 +190,24 @@ const defaultItemForm: ItemFormData = {
   bonusMoney: 0,
 };
 
+interface UpdatePopupFormData {
+  title: string;
+  summary: string;
+  message: string;
+  imageUrl: string;
+  releaseDate: string;
+  isPublished: boolean;
+}
+
+const defaultUpdatePopupForm: UpdatePopupFormData = {
+  title: '',
+  summary: '',
+  message: '',
+  imageUrl: '',
+  releaseDate: new Date().toISOString().slice(0, 16),
+  isPublished: true,
+};
+
 export default function Admin() {
   const { user } = useAuth();
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -207,7 +228,7 @@ export default function Admin() {
   const [mutingUser, setMutingUser] = useState<string | null>(null);
   const [clearingChat, setClearingChat] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'pending' | 'users' | 'items' | 'badges' | 'chat' | 'bugs' | 'bans' | 'logs' | 'announcement' | 'attention' | 'blocks' | 'settings' | 'gifts'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'users' | 'items' | 'badges' | 'chat' | 'bugs' | 'bans' | 'logs' | 'announcement' | 'updates' | 'attention' | 'blocks' | 'settings' | 'gifts'>('pending');
   const [inventoryDialogOpen, setInventoryDialogOpen] = useState(false);
   const [inventoryUser, setInventoryUser] = useState<AdminUser | null>(null);
   const [inventoryItems, setInventoryItems] = useState<AdminInventoryItem[]>([]);
@@ -309,6 +330,15 @@ export default function Admin() {
   const [savingBlocks, setSavingBlocks] = useState(false);
   const [announcementMessage, setAnnouncementMessage] = useState('');
   const [savingAnnouncement, setSavingAnnouncement] = useState(false);
+  const [updatePopups, setUpdatePopups] = useState<AdminUpdatePopup[]>([]);
+  const [loadingUpdatePopups, setLoadingUpdatePopups] = useState(false);
+  const [savingUpdatePopup, setSavingUpdatePopup] = useState(false);
+  const [deletingUpdatePopup, setDeletingUpdatePopup] = useState<string | null>(null);
+  const [updatingUpdatePopupId, setUpdatingUpdatePopupId] = useState<string | null>(null);
+  const [suggestingUpdateSummary, setSuggestingUpdateSummary] = useState(false);
+  const [uploadingUpdateImage, setUploadingUpdateImage] = useState(false);
+  const [editingUpdatePopupId, setEditingUpdatePopupId] = useState<string | null>(null);
+  const [updatePopupForm, setUpdatePopupForm] = useState<UpdatePopupFormData>(defaultUpdatePopupForm);
 
   // Deploy state
   const [deploying, setDeploying] = useState(false);
@@ -376,6 +406,166 @@ export default function Admin() {
     setDeletingGiftTemplate(null);
   };
 
+  const fetchUpdatePopups = async () => {
+    try {
+      setLoadingUpdatePopups(true);
+      const res = await adminApi.getUpdatePopups();
+      setUpdatePopups(res.data.popups);
+    } catch {
+      showMessage('error', 'Erreur lors du chargement des updates');
+    } finally {
+      setLoadingUpdatePopups(false);
+    }
+  };
+
+  const resetUpdatePopupForm = () => {
+    setEditingUpdatePopupId(null);
+    setUpdatePopupForm({
+      ...defaultUpdatePopupForm,
+      releaseDate: new Date().toISOString().slice(0, 16),
+    });
+  };
+
+  const handleSuggestUpdateSummary = async () => {
+    try {
+      setSuggestingUpdateSummary(true);
+      const res = await adminApi.suggestUpdatePopupSummary();
+      setUpdatePopupForm((prev) => ({
+        ...prev,
+        message: res.data.suggestion || prev.message,
+      }));
+      showMessage('success', 'Suggestion chargée');
+    } catch {
+      showMessage('error', 'Erreur lors de la suggestion');
+    } finally {
+      setSuggestingUpdateSummary(false);
+    }
+  };
+
+  const handleUploadUpdatePopupImage = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      showMessage('error', 'Veuillez sélectionner une image valide');
+      return;
+    }
+
+    try {
+      setUploadingUpdateImage(true);
+      const base64Data = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const raw = typeof reader.result === 'string' ? reader.result : '';
+          const payload = raw.includes(',') ? raw.split(',')[1] : '';
+          if (!payload) {
+            reject(new Error('Invalid file'));
+            return;
+          }
+          resolve(payload);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const res = await adminApi.uploadUpdatePopupImage({
+        base64Data,
+        mimeType: file.type,
+      });
+      setUpdatePopupForm((prev) => ({ ...prev, imageUrl: res.data.imageUrl }));
+      showMessage('success', 'Image téléchargée');
+    } catch {
+      showMessage('error', 'Erreur lors du téléchargement de l\'image');
+    } finally {
+      setUploadingUpdateImage(false);
+    }
+  };
+
+  const handleSaveUpdatePopup = async () => {
+    const title = updatePopupForm.title.trim();
+    const message = updatePopupForm.message.trim();
+    const summary = updatePopupForm.summary.trim();
+    const imageUrl = updatePopupForm.imageUrl.trim();
+
+    if (!title || !message) {
+      showMessage('error', 'Titre et message requis');
+      return;
+    }
+
+    const parsedReleaseDate = new Date(updatePopupForm.releaseDate);
+    if (Number.isNaN(parsedReleaseDate.getTime())) {
+      showMessage('error', 'Date de publication invalide');
+      return;
+    }
+    const releaseDateIso = parsedReleaseDate.toISOString();
+
+    try {
+      setSavingUpdatePopup(true);
+      const payload = {
+        title,
+        message,
+        summary: summary || undefined,
+        imageUrl: imageUrl || undefined,
+        releaseDate: releaseDateIso,
+        isPublished: updatePopupForm.isPublished,
+      };
+
+      if (editingUpdatePopupId) {
+        await adminApi.updateUpdatePopup(editingUpdatePopupId, payload);
+        showMessage('success', 'Update modifiée');
+      } else {
+        await adminApi.createUpdatePopup(payload);
+        showMessage('success', 'Update créée');
+      }
+
+      resetUpdatePopupForm();
+      fetchUpdatePopups();
+    } catch {
+      showMessage('error', 'Erreur lors de la sauvegarde');
+    } finally {
+      setSavingUpdatePopup(false);
+    }
+  };
+
+  const handleDeleteUpdatePopup = async (id: string) => {
+    try {
+      setDeletingUpdatePopup(id);
+      await adminApi.deleteUpdatePopup(id);
+      if (editingUpdatePopupId === id) {
+        resetUpdatePopupForm();
+      }
+      showMessage('success', 'Update supprimée');
+      fetchUpdatePopups();
+    } catch {
+      showMessage('error', 'Erreur lors de la suppression');
+    } finally {
+      setDeletingUpdatePopup(null);
+    }
+  };
+
+  const handleToggleUpdatePopupPublished = async (popup: AdminUpdatePopup, isPublished: boolean) => {
+    try {
+      setUpdatingUpdatePopupId(popup.id);
+      await adminApi.updateUpdatePopup(popup.id, { isPublished });
+      showMessage('success', isPublished ? 'Update publiée' : 'Update masquée');
+      fetchUpdatePopups();
+    } catch {
+      showMessage('error', 'Erreur lors de la mise à jour');
+    } finally {
+      setUpdatingUpdatePopupId(null);
+    }
+  };
+
+  const handleEditUpdatePopup = (popup: AdminUpdatePopup) => {
+    setEditingUpdatePopupId(popup.id);
+    setUpdatePopupForm({
+      title: popup.title,
+      summary: popup.summary || '',
+      message: popup.message,
+      imageUrl: popup.imageUrl || '',
+      releaseDate: popup.releaseDate.slice(0, 16),
+      isPublished: popup.isPublished,
+    });
+    setActiveTab('updates');
+  };
+
   const toggleLogExpand = (logId: string) => {
     setExpandedLogIds(prev => {
       const next = new Set(prev);
@@ -420,6 +610,7 @@ export default function Admin() {
     fetchSettings();
     fetchBombPartyLanguages();
     fetchGiftTemplates();
+    fetchUpdatePopups();
   }, []);
 
   useEffect(() => {
@@ -1397,6 +1588,7 @@ export default function Admin() {
             )}
           </TabsTrigger>
           <TabsTrigger value="announcement">Annonce</TabsTrigger>
+          <TabsTrigger value="updates">Updates</TabsTrigger>
           <TabsTrigger value="attention">Attention</TabsTrigger>
           <TabsTrigger value="blocks">Blocage</TabsTrigger>
           <TabsTrigger value="settings">Paramètres</TabsTrigger>
@@ -2776,6 +2968,218 @@ export default function Admin() {
               </Button>
             </div>
           </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="updates" className={SPACING.SECTION_SPACING}>
+          <Card className="border-border/40">
+            <CardHeader>
+              <CardDescription>Popups de mise a jour visibles a la connexion</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <div className="space-y-4 p-4 rounded-lg border bg-muted/20">
+                  <div className="flex items-center justify-between">
+                    <h3 className={TYPOGRAPHY.H3}>
+                      {editingUpdatePopupId ? 'Modifier une update' : 'Nouvelle update'}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={handleSuggestUpdateSummary} disabled={suggestingUpdateSummary}>
+                        {suggestingUpdateSummary ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Sparkles className="h-4 w-4 mr-1" />}
+                        Auto-résumé
+                      </Button>
+                      {editingUpdatePopupId && (
+                        <Button variant="ghost" size="sm" onClick={resetUpdatePopupForm}>
+                          <X className="h-4 w-4 mr-1" />
+                          Annuler
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Titre *</label>
+                    <Input
+                      value={updatePopupForm.title}
+                      onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, title: e.target.value }))}
+                      placeholder="Ex: Mise a jour 1.8.0"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Sous-titre</label>
+                    <Input
+                      value={updatePopupForm.summary}
+                      onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, summary: e.target.value }))}
+                      placeholder="Ex: Nouvelles features, équilibrage et fixes"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Message *</label>
+                    <Textarea
+                      value={updatePopupForm.message}
+                      onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, message: e.target.value }))}
+                      rows={7}
+                      placeholder={'Ex: • Nouveau mode de jeu\n• Ajustement des récompenses\n• Corrections de bugs'}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Date de publication</label>
+                      <Input
+                        type="datetime-local"
+                        value={updatePopupForm.releaseDate}
+                        onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, releaseDate: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Visibilité</label>
+                      <div className="h-10 px-3 rounded-md border flex items-center justify-between bg-background/50">
+                        <span className="text-sm text-muted-foreground">{updatePopupForm.isPublished ? 'Publiée' : 'Brouillon'}</span>
+                        <Switch
+                          checked={updatePopupForm.isPublished}
+                          onCheckedChange={(checked) => setUpdatePopupForm((prev) => ({ ...prev, isPublished: checked }))}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Image</label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={updatePopupForm.imageUrl}
+                        onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, imageUrl: e.target.value }))}
+                        placeholder="/uploads/update-popups/... ou https://..."
+                      />
+                      <label className="inline-flex">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              handleUploadUpdatePopupImage(file);
+                            }
+                            e.currentTarget.value = '';
+                          }}
+                        />
+                        <Button type="button" size="sm" variant="outline" disabled={uploadingUpdateImage}>
+                          {uploadingUpdateImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                        </Button>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button onClick={handleSaveUpdatePopup} disabled={savingUpdatePopup}>
+                      {savingUpdatePopup ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                      {editingUpdatePopupId ? 'Mettre à jour' : 'Créer'}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-4 p-4 rounded-lg border bg-background/30">
+                  <div className="flex items-center gap-2">
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Aperçu joueur</span>
+                  </div>
+                  <div className="rounded-lg border bg-muted/20 p-4 space-y-4">
+                    <div>
+                      <h4 className="text-lg font-semibold">{updatePopupForm.title || 'Titre de la mise a jour'}</h4>
+                      <p className="text-xs text-muted-foreground">
+                        {updatePopupForm.releaseDate ? new Date(updatePopupForm.releaseDate).toLocaleString('fr-FR') : 'Date non définie'}
+                      </p>
+                    </div>
+                    {updatePopupForm.summary && (
+                      <p className="text-sm font-medium">{updatePopupForm.summary}</p>
+                    )}
+                    {updatePopupForm.imageUrl && (
+                      <img
+                        src={resolveImageUrl(updatePopupForm.imageUrl)}
+                        alt="preview"
+                        className="w-full max-h-56 rounded-md border object-cover"
+                        onError={(event) => {
+                          (event.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    )}
+                    <div className="rounded-md border bg-background/60 p-3">
+                      <p className="text-sm whitespace-pre-wrap">{updatePopupForm.message || 'Le contenu de la popup s affichera ici.'}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className={TYPOGRAPHY.H3}>Historique des updates</h3>
+                  <span className="text-xs text-muted-foreground">{updatePopups.length} entrées</span>
+                </div>
+
+                {loadingUpdatePopups ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : updatePopups.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Aucune popup créée.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {updatePopups.map((popup) => (
+                      <div key={popup.id} className="rounded-lg border p-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium">{popup.title}</span>
+                            <span className={cn('text-xs px-2 py-0.5 rounded-full', popup.isPublished ? 'bg-green-500/20 text-green-400' : 'bg-muted text-muted-foreground')}>
+                              {popup.isPublished ? 'Publiée' : 'Brouillon'}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(popup.releaseDate).toLocaleString('fr-FR')}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Vu {popup._count.views} fois • Créée par {popup.createdBy.username}
+                          </p>
+                          {popup.summary && <p className="text-sm text-muted-foreground truncate">{popup.summary}</p>}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={popup.isPublished}
+                            disabled={updatingUpdatePopupId === popup.id}
+                            onCheckedChange={(checked) => handleToggleUpdatePopupPublished(popup, checked)}
+                          />
+                          <Button size="sm" variant="outline" onClick={() => handleEditUpdatePopup(popup)}>
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="sm" variant="outline" className="text-destructive border-destructive/30">
+                                {deletingUpdatePopup === popup.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Supprimer cette update ?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Cette action est irréversible. La popup ne sera plus affichée aux joueurs.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteUpdatePopup(popup.id)}>Supprimer</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

@@ -64,9 +64,21 @@ export const authApi = {
 export const usersApi = {
   getAll: () => api.get('/users'),
   getAnnouncement: () => api.get<{ message: string }>('/users/announcement'),
+  getPendingUpdatePopups: () => api.get<{ popups: UserUpdatePopup[] }>('/users/update-popups/pending'),
+  markUpdatePopupViewed: (id: string) => api.post<{ success: boolean }>(`/users/update-popups/${id}/viewed`),
   getById: (id: string) => api.get(`/users/${id}`),
   update: (id: string, data: { username?: string; bio?: string }) => api.put(`/users/${id}`, data),
 };
+
+export interface UserUpdatePopup {
+  id: string;
+  title: string;
+  summary: string | null;
+  message: string;
+  imageUrl: string | null;
+  releaseDate: string;
+  createdAt: string;
+}
 
 // Economy API
 export const economyApi = {
@@ -663,6 +675,25 @@ export interface UserBadge {
   badge: Badge;
 }
 
+export interface AdminUpdatePopup {
+  id: string;
+  title: string;
+  summary: string | null;
+  message: string;
+  imageUrl: string | null;
+  releaseDate: string;
+  isPublished: boolean;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: {
+    id: string;
+    username: string;
+  };
+  _count: {
+    views: number;
+  };
+}
+
 
 // Pending User Interface
 export interface PendingUser {
@@ -925,6 +956,28 @@ export const adminApi = {
   updateGiftTemplate: (id: string, data: { name?: string; description?: string; imageUrl?: string; price?: number }) =>
     api.put<{ template: GiftTemplate }>(`/admin/gift-templates/${id}`, data),
   deleteGiftTemplate: (id: string) => api.delete<{ success: boolean }>(`/admin/gift-templates/${id}`),
+  // Update popups
+  getUpdatePopups: () => api.get<{ popups: AdminUpdatePopup[] }>('/admin/update-popups'),
+  createUpdatePopup: (data: {
+    title: string;
+    summary?: string;
+    message: string;
+    imageUrl?: string;
+    releaseDate?: string;
+    isPublished?: boolean;
+  }) => api.post<{ popup: AdminUpdatePopup }>('/admin/update-popups', data),
+  updateUpdatePopup: (id: string, data: Partial<{
+    title: string;
+    summary: string | null;
+    message: string;
+    imageUrl: string | null;
+    releaseDate: string;
+    isPublished: boolean;
+  }>) => api.put<{ popup: AdminUpdatePopup }>(`/admin/update-popups/${id}`, data),
+  deleteUpdatePopup: (id: string) => api.delete<{ success: boolean }>(`/admin/update-popups/${id}`),
+  uploadUpdatePopupImage: (data: { base64Data: string; mimeType: string }) =>
+    api.post<{ imageUrl: string }>('/admin/update-popups/upload-image', data),
+  suggestUpdatePopupSummary: () => api.get<{ suggestion: string; sinceDate: string }>('/admin/update-popups/suggest-summary'),
 };
 
 export const maintenanceApi = {

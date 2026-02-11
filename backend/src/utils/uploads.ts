@@ -8,6 +8,11 @@ export const isRemoteImageUrl = (value?: string | null) => {
   }
 };
 
+export const isLocalUploadPath = (value?: string | null) => {
+  if (typeof value !== 'string') return false;
+  return value.startsWith('/uploads/') || value.startsWith('/api/uploads/');
+};
+
 export const isAllowedImageUrl = (value?: string | null) => {
-  return isRemoteImageUrl(value);
+  return isRemoteImageUrl(value) || isLocalUploadPath(value);
 };
