@@ -339,6 +339,8 @@ export default function Admin() {
   const [uploadingUpdateImage, setUploadingUpdateImage] = useState(false);
   const [editingUpdatePopupId, setEditingUpdatePopupId] = useState<string | null>(null);
   const [updatePopupForm, setUpdatePopupForm] = useState<UpdatePopupFormData>(defaultUpdatePopupForm);
+  const updatePopupFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isUpdatePopupDropzoneActive, setIsUpdatePopupDropzoneActive] = useState(false);
 
   // Deploy state
   const [deploying, setDeploying] = useState(false);
@@ -476,6 +478,21 @@ export default function Admin() {
     } finally {
       setUploadingUpdateImage(false);
     }
+  };
+
+  const handleUpdatePopupFileSelect = (file: File | null) => {
+    if (!file || uploadingUpdateImage) return;
+    handleUploadUpdatePopupImage(file);
+  };
+
+  const handleUpdatePopupPaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
+    if (uploadingUpdateImage) return;
+
+    const imageItem = Array.from(event.clipboardData.items).find((item) => item.type.startsWith('image/'));
+    if (!imageItem) return;
+
+    event.preventDefault();
+    handleUpdatePopupFileSelect(imageItem.getAsFile());
   };
 
   const handleSaveUpdatePopup = async () => {
@@ -3049,29 +3066,75 @@ export default function Admin() {
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Image</label>
-                    <div className="flex items-center gap-2">
+                    <div className="space-y-2">
+                      <input
+                        ref={updatePopupFileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          handleUpdatePopupFileSelect(e.target.files?.[0] || null);
+                          e.currentTarget.value = '';
+                        }}
+                      />
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={uploadingUpdateImage}
+                          onClick={() => updatePopupFileInputRef.current?.click()}
+                        >
+                          {uploadingUpdateImage ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Upload className="h-4 w-4 mr-1" />}
+                          Upload image
+                        </Button>
+                        <span className="text-xs text-muted-foreground">Drag & drop ou Ctrl+V</span>
+                      </div>
                       <Input
                         value={updatePopupForm.imageUrl}
                         onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, imageUrl: e.target.value }))}
                         placeholder="/uploads/update-popups/... ou https://..."
                       />
-                      <label className="inline-flex">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              handleUploadUpdatePopupImage(file);
-                            }
-                            e.currentTarget.value = '';
-                          }}
-                        />
-                        <Button type="button" size="sm" variant="outline" disabled={uploadingUpdateImage}>
-                          {uploadingUpdateImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                        </Button>
-                      </label>
+                      <div
+                        tabIndex={0}
+                        onPaste={handleUpdatePopupPaste}
+                        onDragEnter={(event) => {
+                          event.preventDefault();
+                          if (!uploadingUpdateImage) {
+                            setIsUpdatePopupDropzoneActive(true);
+                          }
+                        }}
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                          if (!uploadingUpdateImage) {
+                            setIsUpdatePopupDropzoneActive(true);
+                          }
+                        }}
+                        onDragLeave={(event) => {
+                          event.preventDefault();
+                          if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                            return;
+                          }
+                          setIsUpdatePopupDropzoneActive(false);
+                        }}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          setIsUpdatePopupDropzoneActive(false);
+                          handleUpdatePopupFileSelect(event.dataTransfer.files?.[0] || null);
+                        }}
+                        onClick={() => {
+                          if (!uploadingUpdateImage) {
+                            updatePopupFileInputRef.current?.click();
+                          }
+                        }}
+                        className={cn(
+                          'rounded-md border border-dashed px-4 py-5 text-center text-sm outline-none transition-colors',
+                          isUpdatePopupDropzoneActive ? 'border-primary bg-primary/10' : 'border-border bg-background/60',
+                          uploadingUpdateImage ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:border-primary/60'
+                        )}
+                      >
+                        {uploadingUpdateImage ? 'Upload en cours...' : 'Glissez une image ici, cliquez pour choisir, ou collez avec Ctrl+V'}
+                      </div>
                     </div>
                   </div>
 

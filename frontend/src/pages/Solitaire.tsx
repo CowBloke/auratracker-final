@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useMemo, useState } from 'react';
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { RotateCcw, Trophy } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { gamesApi } from '@/services/api';
@@ -163,12 +163,12 @@ function SolitaireCard({
       )}
     >
       <div className="flex h-full flex-col justify-between">
-        <div className={cn('text-sm font-bold leading-none', getCardColorClass(card.suit))}>
+        <div className={cn('text-[clamp(10px,calc(var(--card-w)*0.15),14px)] font-bold leading-none', getCardColorClass(card.suit))}>
           <div>{RANK_LABEL[card.rank - 1]}</div>
           <div>{SUIT_SYMBOL[card.suit]}</div>
         </div>
-        <div className={cn('text-center text-3xl', getCardColorClass(card.suit))}>{SUIT_SYMBOL[card.suit]}</div>
-        <div className={cn('rotate-180 self-end text-sm font-bold leading-none', getCardColorClass(card.suit))}>
+        <div className={cn('text-center text-[clamp(20px,calc(var(--card-w)*0.34),34px)]', getCardColorClass(card.suit))}>{SUIT_SYMBOL[card.suit]}</div>
+        <div className={cn('rotate-180 self-end text-[clamp(10px,calc(var(--card-w)*0.15),14px)] font-bold leading-none', getCardColorClass(card.suit))}>
           <div>{RANK_LABEL[card.rank - 1]}</div>
           <div>{SUIT_SYMBOL[card.suit]}</div>
         </div>
@@ -179,6 +179,7 @@ function SolitaireCard({
 
 export default function Solitaire() {
   const { user, refreshUser } = useAuth();
+  const boardRef = useRef<HTMLDivElement | null>(null);
 
   const [game, setGame] = useState<GameState>(() => createInitialGame());
   const [moves, setMoves] = useState(0);
@@ -190,6 +191,10 @@ export default function Solitaire() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
+  const [cardWidth, setCardWidth] = useState(96);
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window === 'undefined' ? 1920 : window.innerWidth
+  );
 
   const score = useMemo(() => computeScore(moves, seconds), [moves, seconds]);
   const completedCards = useMemo(
@@ -268,6 +273,53 @@ export default function Solitaire() {
       submitResult(true, score);
     }
   }, [completedCards, isWon, score]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const updateViewportWidth = () => setViewportWidth(window.innerWidth);
+    updateViewportWidth();
+
+    window.addEventListener('resize', updateViewportWidth);
+    window.visualViewport?.addEventListener('resize', updateViewportWidth);
+
+    return () => {
+      window.removeEventListener('resize', updateViewportWidth);
+      window.visualViewport?.removeEventListener('resize', updateViewportWidth);
+    };
+  }, []);
+
+  useEffect(() => {
+    const node = boardRef.current;
+    if (!node) {
+      return;
+    }
+
+    const minCardWidth = 46;
+    const maxCardWidth = 96;
+    const gapRatio = 0.12;
+
+    const updateCardWidth = (boardWidth: number) => {
+      const computed = boardWidth / (7 + 6 * gapRatio);
+      const nextCardWidth = Math.max(minCardWidth, Math.min(maxCardWidth, computed));
+      setCardWidth((prev) => (Math.abs(prev - nextCardWidth) < 0.5 ? prev : nextCardWidth));
+    };
+
+    updateCardWidth(node.clientWidth);
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) {
+        return;
+      }
+      updateCardWidth(entry.contentRect.width);
+    });
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
   const getDraggedCards = (source: DragSource): Card[] => {
     if (source.type === 'waste') {
@@ -463,8 +515,14 @@ export default function Solitaire() {
     return `${minutes}:${secs}`;
   };
 
+  const boardGap = Math.max(6, Math.round(cardWidth * 0.12));
+  const stackOffsetFaceUp = Math.max(12, Math.round(cardWidth * 0.27));
+  const stackOffsetFaceDown = Math.max(8, Math.round(cardWidth * 0.1));
+  const pilePadding = Math.max(2, Math.round(cardWidth * 0.04));
+  const hideLeaderboardForSpace = viewportWidth < 1450;
+
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-3 py-4 md:px-6 md:py-6" style={{ '--card-w': 'clamp(56px, 8vw, 96px)' } as CSSProperties}>
+    <div className="mx-auto w-full max-w-[1400px] px-3 py-4 md:px-6 md:py-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-950/85 p-3 text-emerald-50 shadow-xl">
         <div className="flex flex-wrap gap-4 text-sm">
           <span>Score: <strong>{score}</strong></span>
@@ -482,9 +540,22 @@ export default function Solitaire() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_280px]">
+      <div className={cn('grid grid-cols-1 gap-4', !hideLeaderboardForSpace && 'xl:grid-cols-[1fr_280px]')}>
         <section className="rounded-2xl border border-emerald-400/20 bg-[radial-gradient(circle_at_20%_0%,rgba(110,231,183,0.25),rgba(6,78,59,0.95)_52%)] p-3 md:p-4">
-          <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div
+            ref={boardRef}
+            style={
+              {
+                '--card-w': `${cardWidth}px`,
+                '--pile-gap': `${boardGap}px`,
+                '--stack-faceup': `${stackOffsetFaceUp}px`,
+                '--stack-facedown': `${stackOffsetFaceDown}px`,
+                '--pile-pad': `${pilePadding}px`,
+                '--pile-col-w': `${cardWidth + pilePadding * 2}px`,
+              } as CSSProperties
+            }
+          >
+          <div className="mb-4 grid grid-cols-4 gap-[var(--pile-gap)]">
             <div className="rounded-xl border border-cyan-300/40 bg-cyan-950/55 p-2">
               <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-cyan-200">Draw Pile</div>
               <div
@@ -531,7 +602,10 @@ export default function Solitaire() {
 
             <div className="col-span-2 rounded-xl border border-amber-300/40 bg-amber-950/45 p-2">
               <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-amber-100">Ace Foundations</div>
-              <div className="grid grid-cols-4 gap-2">
+              <div
+                className="grid justify-center gap-[var(--pile-gap)]"
+                style={{ gridTemplateColumns: 'repeat(4, var(--pile-col-w))' }}
+              >
                 {SUITS.map((suit) => {
                   const pile = game.foundations[suit];
                   const top = pile[pile.length - 1];
@@ -551,7 +625,7 @@ export default function Solitaire() {
                         applyMove({ type: 'foundation', suit });
                       }}
                       className={cn(
-                        'rounded-xl p-1 transition',
+                        'flex justify-center rounded-xl p-[var(--pile-pad)] transition',
                         canDrop ? 'ring-2 ring-amber-300/90' : 'ring-1 ring-amber-100/20'
                       )}
                     >
@@ -575,7 +649,10 @@ export default function Solitaire() {
             </div>
           </div>
 
-          <div className="grid grid-cols-7 gap-2 md:gap-3">
+          <div
+            className="grid justify-center gap-[var(--pile-gap)]"
+            style={{ gridTemplateColumns: 'repeat(7, var(--pile-col-w))' }}
+          >
             {game.tableau.map((pile, pileIndex) => {
               const canDrop = canDropToTableau(pileIndex);
 
@@ -593,7 +670,7 @@ export default function Solitaire() {
                     applyMove({ type: 'tableau', pileIndex });
                   }}
                   className={cn(
-                    'relative min-h-[calc(var(--card-w)*3.9)] rounded-xl border border-emerald-100/15 p-1 transition',
+                    'relative min-h-[calc(var(--card-w)*3.9)] rounded-xl border border-emerald-100/15 p-[var(--pile-pad)] transition',
                     canDrop && 'ring-2 ring-emerald-200/80'
                   )}
                 >
@@ -603,15 +680,19 @@ export default function Solitaire() {
                     </div>
                   ) : (
                     pile.map((card, cardIndex) => {
-                      const offset = card.faceUp ? 26 : 10;
+                      const offset = card.faceUp ? stackOffsetFaceUp : stackOffsetFaceDown;
                       const top = pile.slice(cardIndex);
                       const draggable = card.faceUp && top.every((item) => item.faceUp) && !isWon;
 
                       return (
                         <div
                           key={card.id}
-                          className="absolute left-1"
-                          style={{ top: `${pile.slice(0, cardIndex).reduce((sum, c) => sum + (c.faceUp ? 26 : 10), 0)}px` }}
+                          className="absolute left-[var(--pile-pad)]"
+                          style={{
+                            top: `${pile
+                              .slice(0, cardIndex)
+                              .reduce((sum, c) => sum + (c.faceUp ? stackOffsetFaceUp : stackOffsetFaceDown), 0)}px`,
+                          }}
                         >
                           <SolitaireCard
                             card={card}
@@ -635,6 +716,7 @@ export default function Solitaire() {
               );
             })}
           </div>
+          </div>
 
           {isWon && (
             <div className="mt-4 rounded-xl border border-emerald-200/40 bg-emerald-500/20 p-4 text-center text-emerald-50">
@@ -652,6 +734,7 @@ export default function Solitaire() {
           )}
         </section>
 
+        {!hideLeaderboardForSpace && (
         <aside className="rounded-2xl border border-border/40 bg-card shadow-sm">
           <div className="flex items-center gap-2 border-b border-border/40 p-3">
             <Trophy className="h-4 w-4 text-yellow-500" />
@@ -677,6 +760,7 @@ export default function Solitaire() {
             )}
           </div>
         </aside>
+        )}
       </div>
     </div>
   );
