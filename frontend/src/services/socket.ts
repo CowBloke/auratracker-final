@@ -203,23 +203,4 @@ export const battleshipEvents = {
   },
 };
 
-// Russian Roulette events
-export const russianRouletteEvents = {
-  start: (userId: string, partyId: string) => {
-    socket?.emit('russianroulette:start', { userId, partyId });
-  },
-  respondToJoin: (partyId: string, userId: string, accepted: boolean) => {
-    socket?.emit('russianroulette:respond-join', { partyId, userId, accepted });
-  },
-  pullTrigger: (partyId: string, userId: string) => {
-    socket?.emit('russianroulette:pull-trigger', { partyId, userId });
-  },
-  leave: (partyId: string, userId: string) => {
-    socket?.emit('russianroulette:leave', { partyId, userId });
-  },
-  respondToPlayAgain: (partyId: string, userId: string, playAgain: boolean) => {
-    socket?.emit('russianroulette:respond-play-again', { partyId, userId, playAgain });
-  },
-};
-
 export default socket;

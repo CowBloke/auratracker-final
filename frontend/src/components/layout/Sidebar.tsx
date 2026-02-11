@@ -73,7 +73,6 @@ const gameItems = [
   { to: '/games/bomb-party', label: 'Bomb Party', icon: Gamepad2 },
   { to: '/games/poker', label: 'Poker', icon: Dices },
   { to: '/games/petit-bac', label: 'Petit Bac', icon: BookOpen },
-  { to: '/games/russian-roulette', label: 'Roulette Russe', icon: Swords },
   { to: '/games/bataille-navale', label: 'Bataille Navale', icon: Swords },
   { to: '/games/clash', label: 'Clash', icon: Swords },
   { to: '/games/doodle-jump', label: 'Doodle Jump', icon: ArrowUp },

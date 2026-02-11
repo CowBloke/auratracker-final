@@ -18,7 +18,6 @@ export const BLOCKABLE_PAGES: BlockablePage[] = [
   { key: 'game-bomb-party', path: '/games/bomb-party', label: 'Bomb Party', category: 'Jeux' },
   { key: 'game-poker', path: '/games/poker', label: 'Poker', category: 'Jeux' },
   { key: 'game-petit-bac', path: '/games/petit-bac', label: 'Petit Bac', category: 'Jeux' },
-  { key: 'game-russian-roulette', path: '/games/russian-roulette', label: 'Roulette Russe', category: 'Jeux' },
   { key: 'game-bataille-navale', path: '/games/bataille-navale', label: 'Bataille Navale', category: 'Jeux' },
   { key: 'game-solitaire', path: '/games/solitaire', label: 'Solitaire', category: 'Jeux' },
   { key: 'game-racer', path: '/games/racer', label: 'Racer', category: 'Jeux' },

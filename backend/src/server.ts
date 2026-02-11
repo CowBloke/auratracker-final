@@ -45,7 +45,6 @@ import { setupBombPartyHandlers, startBombPartyCleanup } from './socket/bombpart
 import { setupPokerHandlers } from './socket/poker.js';
 import { setupPetitBacHandlers } from './socket/petitbac.js';
 import { setupBattleshipHandlers } from './socket/battleship.js';
-import { setupRussianRouletteHandlers, startRussianRouletteCleanup } from './socket/russianroulette.js';
 
 // Logger
 import { initLogger } from './utils/logger.js';
@@ -230,7 +229,6 @@ io.on('connection', (socket) => {
   setupPokerHandlers(socket, io);
   setupPetitBacHandlers(socket, io);
   setupBattleshipHandlers(socket, io);
-  setupRussianRouletteHandlers(socket, io);
   
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.id}`);
@@ -254,8 +252,6 @@ const start = async () => {
 
     // Start bomb party game cleanup
     startBombPartyCleanup(io);
-    // Start russian roulette game cleanup
-    startRussianRouletteCleanup(io);
 
     httpServer.listen(config.port, () => {
       console.log(`Server running on port ${config.port}`);

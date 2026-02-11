@@ -150,7 +150,6 @@ export default function Layout() {
       '/games/bomb-party': 'Bomb Party',
       '/games/poker': 'Poker',
       '/games/petit-bac': 'Petit Bac',
-      '/games/russian-roulette': 'Russian Roulette',
       '/games/bataille-navale': 'Bataille Navale',
       '/games/solitaire': 'Solitaire',
       '/games/polymarket': 'Polymarket',

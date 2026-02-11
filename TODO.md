@@ -4,7 +4,7 @@
 - tech aura ddjump et bomb party
 - anciespsuedo et on peut se co avaec ancien psueod
 - FIX token
-- logs poker, roulette russe, bataille navale
+- logs poker, bataille navale
 - clear casino cheaters
 - fix marché
 - deux chemins polymarket -> à intégrer au site comme les autres pages

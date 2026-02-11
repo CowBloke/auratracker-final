@@ -39,14 +39,7 @@ const multiplayerGames = [
     name: 'Poker',
     description: 'Joue une table entre amis, blindes et stack personnalisables.',
     type: 'Party',
-  },
-  {
-    id: 'russian-roulette',
-    name: 'Roulette Russe',
-    description: '1/6 chance de perdre à chaque tour. Le dernier survivant gagne.',
-    type: 'Party',
-  },
-];
+  },];
 
 const duelGames = [
   {
@@ -66,9 +59,6 @@ const getGameLink = (gameId: string) => {
   }
   if (gameId === 'poker') {
     return '/games/poker';
-  }
-  if (gameId === 'russian-roulette') {
-    return '/games/russian-roulette';
   }
   if (gameId === 'bataille-navale') {
     return '/games/bataille-navale';
@@ -668,3 +658,4 @@ export default function Party() {
     </>
   );
 }
+

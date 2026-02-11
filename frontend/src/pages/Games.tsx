@@ -26,16 +26,7 @@ const games = [
     type: 'Party',
     requiresParty: true,
     image: '/images/games/petitbac.png',
-  },
-  {
-    id: 'russian-roulette',
-    name: 'Roulette Russe',
-    description: '1/6 chance de perdre à chaque tour. Le dernier survivant gagne.',
-    type: 'Party',
-    requiresParty: true,
-    image: '/images/games/russianroulette.png',
-  },
-  {
+  },  {
     id: 'bataille-navale',
     name: 'Bataille Navale',
     description: 'Place tes bateaux et coule ceux de ton adversaire.',
@@ -129,9 +120,6 @@ export default function Games() {
   if (game.id === 'petit-bac') {
     return '/games/petit-bac';
   }
-  if (game.id === 'russian-roulette') {
-    return '/games/russian-roulette';
-  }
   if (game.id === 'bataille-navale') {
     return '/games/bataille-navale';
   }
@@ -214,3 +202,4 @@ export default function Games() {
     </PageLayout>
   );
 }
+

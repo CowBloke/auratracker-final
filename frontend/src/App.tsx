@@ -27,7 +27,6 @@ import BombParty from './pages/BombParty';
 import Poker from './pages/Poker';
 import PetitBac from './pages/PetitBac';
 import BatailleNavale from './pages/BatailleNavale';
-import RussianRoulette from './pages/RussianRoulette';
 import Polymarket from './pages/Polymarket';
 import Admin from './pages/Admin';
 import Rules from './pages/Rules';
@@ -213,7 +212,6 @@ function App() {
         <Route path="games/bomb-party" element={<BombParty />} />
         <Route path="games/poker" element={<Poker />} />
         <Route path="games/petit-bac" element={<PetitBac />} />
-        <Route path="games/russian-roulette" element={<RussianRoulette />} />
         <Route path="games/bataille-navale" element={<BatailleNavale />} />
         <Route path="games/solitaire" element={<Solitaire />} />
         <Route path="games/racer" element={<Racer />} />

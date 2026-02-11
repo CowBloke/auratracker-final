@@ -82,7 +82,6 @@ const gameShortcuts: GameShortcut[] = [
   { id: 'doodle-jump', label: 'Doodle Jump', path: '/games/doodle-jump', description: 'Grimpe sans fin.', image: '/images/games/doodlejump.png' },
   { id: '2048', label: '2048', path: '/games/2048', description: "Fusionne jusqu'?? 2048.", image: '/images/games/2048.png' },
   { id: 'flappy-bird', label: 'Flappy Bird', path: '/games/flappy-bird', description: 'Timing parfait.', image: '/images/games/flappybird.png' },
-  { id: 'russian-roulette', label: 'Roulette Russe', path: '/games/russian-roulette', description: 'Tour fatal, chance.', image: '/images/games/russianroulette.png' },
   { id: 'bataille-navale', label: 'Bataille Navale', path: '/games/bataille-navale', description: 'Touches, coul??s, gagne.', image: '/images/games/bataillenavale.png' },
   { id: 'solitaire', label: 'Solitaire', path: '/games/solitaire', description: 'Classique et relax.', image: '/images/games/solitaire.png' },
   { id: 'racer', label: 'Racer', path: '/games/racer', description: 'Course pseudo-3D style Outrun.', image: '/images/games/racer.png' },

@@ -38,7 +38,6 @@ const gamesCatalog = [
   'Bomb Party',
   'Poker',
   'Petit Bac',
-  'Russian Roulette',
   'Bataille Navale',
   'Solitaire',
   'Racer',

@@ -517,11 +517,6 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       if (won) {
         await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
       }
-    } else if (gameType === 'russian_roulette') {
-      await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
-      if (won) {
-        await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
-      }
     }
 
     res.json({
