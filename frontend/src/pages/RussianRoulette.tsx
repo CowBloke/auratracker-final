@@ -56,7 +56,8 @@ export default function RussianRoulette() {
   const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
   const currentPlayer = gameState?.players[gameState.currentPlayerIndex];
   const myPlayer = gameState?.players.find((p) => p.userId === user?.id);
-  const isMyTurn = gameState?.isYourTurn || false;
+  const isMyTurn = !!gameState && !!currentPlayer && currentPlayer.userId === user?.id;
+  const isGameActive = !!gameState && gameState.isActive !== false;
 
   // Update game state from socket
   useEffect(() => {
@@ -157,7 +158,7 @@ export default function RussianRoulette() {
               <p className="text-muted-foreground">1/6 chance de perdre à chaque tour</p>
             </div>
           </div>
-          {gameState?.isActive && (
+          {isGameActive && (
             <Button variant="destructive" onClick={handleLeaveGame}>
               <LogOut className="h-4 w-4 mr-2" />
               Quitter
@@ -318,7 +319,7 @@ export default function RussianRoulette() {
         )}
 
         {/* Active Game */}
-        {gameState && gameState.isActive && (
+        {isGameActive && (
           <div className="space-y-6">
             {/* Round Info */}
             <div className="bg-card border rounded-lg p-4">

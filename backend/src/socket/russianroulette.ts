@@ -503,6 +503,7 @@ const startRussianRouletteGame = (
     })),
     currentPlayerIndex: game.currentPlayerIndex,
     round: game.round,
+    isActive: game.isActive,
   });
 };
 
