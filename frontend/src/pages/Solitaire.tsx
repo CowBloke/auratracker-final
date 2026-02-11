@@ -1,813 +1,682 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { gamesApi } from '../services/api';
-import { Play, RotateCcw, Undo2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { type CSSProperties, useEffect, useMemo, useState } from 'react';
+import { RotateCcw, Trophy } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { gamesApi } from '@/services/api';
 import { cn } from '@/lib/utils';
 
-// ============================================
-// TYPES
-// ============================================
 type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades';
-type Color = 'red' | 'black';
 
 interface Card {
-  suit: Suit;
-  rank: number; // 1-13 (Ace to King)
-  faceUp: boolean;
   id: string;
-}
-
-interface GameState {
-  stock: Card[];
-  waste: Card[];
-  foundations: Card[][]; // 4 piles (one per suit)
-  tableau: Card[][]; // 7 piles
-  moves: number;
-  startTime: number;
-}
-
-interface DragState {
-  cards: Card[];
-  sourceType: 'waste' | 'tableau' | 'foundation';
-  sourceIndex: number;
+  suit: Suit;
+  rank: number;
+  faceUp: boolean;
 }
 
 interface LeaderboardEntry {
   id: string;
   highScore: number;
-  wins: number;
-  totalPlayed: number;
   user: {
     id: string;
     username: string;
   };
 }
 
-// ============================================
-// CONSTANTS
-// ============================================
-const SUITS: Suit[] = ['hearts', 'diamonds', 'clubs', 'spades'];
-const SUIT_SYMBOLS: Record<Suit, string> = {
-  hearts: '♥',
-  diamonds: '♦',
-  clubs: '♣',
-  spades: '♠',
-};
-const RANK_SYMBOLS: Record<number, string> = {
-  1: 'A', 2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7',
-  8: '8', 9: '9', 10: '10', 11: 'J', 12: 'Q', 13: 'K',
-};
+interface GameState {
+  stock: Card[];
+  waste: Card[];
+  foundations: Record<Suit, Card[]>;
+  tableau: Card[][];
+}
 
-// ============================================
-// HELPERS
-// ============================================
-const getColor = (suit: Suit): Color => {
-  return suit === 'hearts' || suit === 'diamonds' ? 'red' : 'black';
+type DragSource =
+  | { type: 'waste' }
+  | { type: 'foundation'; suit: Suit }
+  | { type: 'tableau'; pileIndex: number; cardIndex: number };
+
+const SUITS: Suit[] = ['hearts', 'diamonds', 'clubs', 'spades'];
+const SUIT_SYMBOL: Record<Suit, string> = {
+  hearts: '\u2665',
+  diamonds: '\u2666',
+  clubs: '\u2663',
+  spades: '\u2660',
+};
+const RANK_LABEL = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+
+const isRed = (suit: Suit) => suit === 'hearts' || suit === 'diamonds';
+
+const getCardColorClass = (suit: Suit) => (isRed(suit) ? 'text-rose-600' : 'text-slate-900');
+
+const shuffle = <T,>(items: T[]): T[] => {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
 };
 
 const createDeck = (): Card[] => {
   const deck: Card[] = [];
-  for (const suit of SUITS) {
-    for (let rank = 1; rank <= 13; rank++) {
+  SUITS.forEach((suit) => {
+    for (let rank = 1; rank <= 13; rank += 1) {
       deck.push({
+        id: `${suit}-${rank}-${Math.random().toString(36).slice(2, 8)}`,
         suit,
         rank,
         faceUp: false,
-        id: `${suit}-${rank}`,
+      });
+    }
+  });
+  return shuffle(deck);
+};
+
+const createInitialGame = (): GameState => {
+  const deck = createDeck();
+  const tableau: Card[][] = Array.from({ length: 7 }, () => []);
+
+  for (let pile = 0; pile < 7; pile += 1) {
+    for (let i = 0; i <= pile; i += 1) {
+      const card = deck.pop();
+      if (!card) {
+        break;
+      }
+      tableau[pile].push({
+        ...card,
+        faceUp: i === pile,
       });
     }
   }
-  return deck;
+
+  return {
+    stock: deck,
+    waste: [],
+    foundations: {
+      hearts: [],
+      diamonds: [],
+      clubs: [],
+      spades: [],
+    },
+    tableau,
+  };
 };
 
-const shuffleDeck = (deck: Card[]): Card[] => {
-  const shuffled = [...deck];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
-};
-
-const canPlaceOnTableau = (card: Card, targetPile: Card[]): boolean => {
-  if (targetPile.length === 0) {
-    return card.rank === 13; // Only Kings can be placed on empty tableau
-  }
-  const topCard = targetPile[targetPile.length - 1];
-  if (!topCard.faceUp) return false;
-  return (
-    getColor(card.suit) !== getColor(topCard.suit) &&
-    card.rank === topCard.rank - 1
-  );
-};
-
-const canPlaceOnFoundation = (card: Card, foundationIndex: number, foundations: Card[][]): boolean => {
-  const foundation = foundations[foundationIndex];
-
+const canPlaceOnFoundation = (card: Card, foundation: Card[]) => {
   if (foundation.length === 0) {
-    return card.rank === 1; // Any Ace can start a foundation
+    return card.rank === 1;
+  }
+  const top = foundation[foundation.length - 1];
+  return top.suit === card.suit && card.rank === top.rank + 1;
+};
+
+const canPlaceOnTableau = (card: Card, pile: Card[]) => {
+  if (pile.length === 0) {
+    return card.rank === 13;
+  }
+  const top = pile[pile.length - 1];
+  if (!top.faceUp) {
+    return false;
+  }
+  return isRed(top.suit) !== isRed(card.suit) && card.rank === top.rank - 1;
+};
+
+const computeScore = (moves: number, seconds: number) => Math.max(0, 10000 - seconds - moves * 2);
+
+function SolitaireCard({
+  card,
+  draggable,
+  onDragStart,
+  onDragEnd,
+  onDoubleClick,
+}: {
+  card: Card;
+  draggable: boolean;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
+  onDoubleClick?: () => void;
+}) {
+  if (!card.faceUp) {
+    return (
+      <div className="h-[calc(var(--card-w)*1.4)] w-[var(--card-w)] rounded-xl border border-blue-900/60 bg-gradient-to-br from-blue-500 via-indigo-700 to-blue-900 shadow-lg">
+        <div className="h-full w-full rounded-xl border-2 border-blue-200/20 p-1">
+          <div className="h-full w-full rounded-lg bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.22),transparent_42%),repeating-linear-gradient(45deg,rgba(255,255,255,0.16),rgba(255,255,255,0.16)_6px,transparent_6px,transparent_12px)]" />
+        </div>
+      </div>
+    );
   }
 
-  const topCard = foundation[foundation.length - 1];
-  return card.suit === topCard.suit && card.rank === topCard.rank + 1;
-};
+  return (
+    <div
+      draggable={draggable}
+      onDragStart={(event) => {
+        if (!draggable || !onDragStart) {
+          return;
+        }
+        event.dataTransfer.effectAllowed = 'move';
+        onDragStart();
+      }}
+      onDoubleClick={onDoubleClick}
+      onDragEnd={onDragEnd}
+      className={cn(
+        'h-[calc(var(--card-w)*1.4)] w-[var(--card-w)] rounded-xl border border-slate-300 bg-gradient-to-b from-white to-slate-100 p-2 shadow-md transition',
+        draggable && 'cursor-grab active:cursor-grabbing hover:-translate-y-0.5 hover:shadow-xl'
+      )}
+    >
+      <div className="flex h-full flex-col justify-between">
+        <div className={cn('text-sm font-bold leading-none', getCardColorClass(card.suit))}>
+          <div>{RANK_LABEL[card.rank - 1]}</div>
+          <div>{SUIT_SYMBOL[card.suit]}</div>
+        </div>
+        <div className={cn('text-center text-3xl', getCardColorClass(card.suit))}>{SUIT_SYMBOL[card.suit]}</div>
+        <div className={cn('rotate-180 self-end text-sm font-bold leading-none', getCardColorClass(card.suit))}>
+          <div>{RANK_LABEL[card.rank - 1]}</div>
+          <div>{SUIT_SYMBOL[card.suit]}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-const calculateScore = (moves: number, timeSeconds: number, won: boolean): number => {
-  if (!won) return 0;
-  // Score formula: 10000 - time - moves*2
-  // Higher score = faster time + fewer moves
-  const score = Math.max(0, 10000 - timeSeconds - moves * 2);
-  return Math.floor(score);
-};
-
-// ============================================
-// COMPONENT
-// ============================================
 export default function Solitaire() {
   const { user, refreshUser } = useAuth();
-  const [gameState, setGameState] = useState<GameState | null>(null);
-  const [dragState, setDragState] = useState<DragState | null>(null);
-  const [gameOver, setGameOver] = useState(false);
-  const [won, setWon] = useState(false);
-  const [started, setStarted] = useState(false);
+
+  const [game, setGame] = useState<GameState>(() => createInitialGame());
+  const [moves, setMoves] = useState(0);
+  const [seconds, setSeconds] = useState(0);
+  const [dragSource, setDragSource] = useState<DragSource | null>(null);
+  const [hasSubmittedResult, setHasSubmittedResult] = useState(false);
+  const [isWon, setIsWon] = useState(false);
+  const [highScore, setHighScore] = useState(0);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
-  const [highScore, setHighScore] = useState(0);
-  const [stats, setStats] = useState<{ wins: number; totalPlayed: number; winRate: number }>({ wins: 0, totalPlayed: 0, winRate: 0 });
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [elapsedTime, setElapsedTime] = useState(0);
-  const [history, setHistory] = useState<GameState[]>([]);
 
-  // Timer
-  useEffect(() => {
-    if (!started || gameOver || !gameState) return;
-    
-    const interval = setInterval(() => {
-      setElapsedTime(Math.floor((Date.now() - gameState.startTime) / 1000));
-    }, 1000);
-    
-    return () => clearInterval(interval);
-  }, [started, gameOver, gameState]);
-
-  // Fetch stats on mount
-  useEffect(() => {
-    fetchStats();
-    fetchLeaderboard();
-  }, []);
+  const score = useMemo(() => computeScore(moves, seconds), [moves, seconds]);
+  const completedCards = useMemo(
+    () => SUITS.reduce((sum, suit) => sum + game.foundations[suit].length, 0),
+    [game.foundations]
+  );
 
   const fetchStats = async () => {
+    if (!user) {
+      return;
+    }
     try {
-      const response = await gamesApi.getStats('solitaire', user!.id);
-      const s = response.data.stats;
-      setHighScore(s.highScore || 0);
-      setStats({
-        wins: s.wins || 0,
-        totalPlayed: s.totalPlayed || 0,
-        winRate: s.totalPlayed > 0 ? Math.round((s.wins / s.totalPlayed) * 100) : 0,
-      });
+      const response = await gamesApi.getStats('solitaire', user.id);
+      setHighScore(response.data.stats.highScore || 0);
     } catch (error) {
-      console.error('Failed to fetch stats:', error);
+      console.error('Failed to fetch solitaire stats:', error);
     }
   };
 
   const fetchLeaderboard = async () => {
     try {
-      const response = await gamesApi.getLeaderboard('solitaire', 20);
+      const response = await gamesApi.getLeaderboard('solitaire', 12);
       setLeaderboard(response.data.rankings || []);
     } catch (error) {
-      console.error('Failed to fetch leaderboard:', error);
+      console.error('Failed to fetch solitaire leaderboard:', error);
     }
   };
 
-  const handleDeleteScore = async (userId: string, username: string) => {
-    if (!confirm(`Supprimer le score de ${username} ?`)) return;
+  useEffect(() => {
+    fetchStats();
+    fetchLeaderboard();
+  }, [user]);
 
-    try {
-      await gamesApi.deleteStats('solitaire', userId);
-      fetchLeaderboard();
-      if (userId === user?.id) {
-        setHighScore(0);
-      }
-    } catch (error) {
-      console.error('Failed to delete score:', error);
+  useEffect(() => {
+    if (isWon) {
+      return;
     }
-  };
+    const interval = window.setInterval(() => {
+      setSeconds((prev) => prev + 1);
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [isWon]);
 
-  // ============================================
-  // GAME INITIALIZATION
-  // ============================================
-  const initGame = useCallback(() => {
-    const deck = shuffleDeck(createDeck());
-    
-    // Deal tableau
-    const tableau: Card[][] = [[], [], [], [], [], [], []];
-    let deckIndex = 0;
-    
-    for (let col = 0; col < 7; col++) {
-      for (let row = col; row < 7; row++) {
-        const card = { ...deck[deckIndex++] };
-        if (row === col) {
-          card.faceUp = true; // Top card is face up
-        }
-        tableau[row].push(card);
-      }
+  const submitResult = async (won: boolean, finalScore: number) => {
+    if (hasSubmittedResult || !user) {
+      return;
     }
-    
-    // Remaining cards go to stock
-    const stock = deck.slice(deckIndex).map(c => ({ ...c, faceUp: false }));
-    
-    const newState: GameState = {
-      stock,
-      waste: [],
-      foundations: [[], [], [], []],
-      tableau,
-      moves: 0,
-      startTime: Date.now(),
-    };
-    
-    setGameState(newState);
-    setHistory([]);
-    setGameOver(false);
-    setWon(false);
-    setStarted(true);
-    setRewards(null);
-    setIsNewHighScore(false);
-    setElapsedTime(0);
-  }, []);
 
-  // ============================================
-  // SAVE STATE FOR UNDO
-  // ============================================
-  const saveState = useCallback(() => {
-    if (gameState) {
-      setHistory(prev => [...prev.slice(-20), JSON.parse(JSON.stringify(gameState))]);
-    }
-  }, [gameState]);
-
-  const undo = useCallback(() => {
-    if (history.length === 0) return;
-    const prevState = history[history.length - 1];
-    setHistory(prev => prev.slice(0, -1));
-    setGameState(prevState);
-  }, [history]);
-
-  // ============================================
-  // CHECK WIN CONDITION
-  // ============================================
-  const checkWin = useCallback((state: GameState): boolean => {
-    return state.foundations.every(f => f.length === 13);
-  }, []);
-
-  // ============================================
-  // GAME OVER HANDLING
-  // ============================================
-  const handleGameEnd = useCallback(async (didWin: boolean) => {
-    if (!gameState) return;
-    
-    const timeSeconds = Math.floor((Date.now() - gameState.startTime) / 1000);
-    const score = calculateScore(gameState.moves, timeSeconds, didWin);
-    
-    setGameOver(true);
-    setWon(didWin);
+    setHasSubmittedResult(true);
 
     try {
       const response = await gamesApi.complete('solitaire', {
-        score,
-        won: didWin,
-        duration: timeSeconds,
+        score: finalScore,
+        won,
       });
 
       setRewards({
-        aura: response.data.auraReward,
         money: response.data.moneyReward,
+        aura: response.data.auraReward,
       });
       setIsNewHighScore(response.data.isNewHighScore);
-
       if (response.data.isNewHighScore) {
-        setHighScore(score);
+        setHighScore(finalScore);
       }
-
       await refreshUser();
       fetchLeaderboard();
-      fetchStats();
     } catch (error) {
-      console.error('Failed to submit score:', error);
+      console.error('Failed to submit solitaire result:', error);
+      setHasSubmittedResult(false);
     }
-  }, [gameState, refreshUser]);
-
-  // ============================================
-  // GAME ACTIONS
-  // ============================================
-  const drawFromStock = useCallback(() => {
-    if (!gameState) return;
-    
-    saveState();
-    
-    setGameState(prev => {
-      if (!prev) return prev;
-      
-      if (prev.stock.length === 0) {
-        // Reset stock from waste
-        const newStock = [...prev.waste].reverse().map(c => ({ ...c, faceUp: false }));
-        return {
-          ...prev,
-          stock: newStock,
-          waste: [],
-          moves: prev.moves + 1,
-        };
-      }
-      
-      // Draw one card
-      const card = { ...prev.stock[prev.stock.length - 1], faceUp: true };
-      return {
-        ...prev,
-        stock: prev.stock.slice(0, -1),
-        waste: [...prev.waste, card],
-        moves: prev.moves + 1,
-      };
-    });
-  }, [gameState, saveState]);
-
-  const moveCards = useCallback((
-    cards: Card[],
-    sourceType: 'waste' | 'tableau' | 'foundation',
-    sourceIndex: number,
-    targetType: 'tableau' | 'foundation',
-    targetIndex: number
-  ) => {
-    if (!gameState) return;
-    
-    saveState();
-    
-    setGameState(prev => {
-      if (!prev) return prev;
-      
-      const newState = JSON.parse(JSON.stringify(prev)) as GameState;
-      
-      // Remove cards from source
-      if (sourceType === 'waste') {
-        newState.waste = newState.waste.slice(0, -1);
-      } else if (sourceType === 'tableau') {
-        const cardIndex = newState.tableau[sourceIndex].findIndex(c => c.id === cards[0].id);
-        newState.tableau[sourceIndex] = newState.tableau[sourceIndex].slice(0, cardIndex);
-        // Flip the new top card if exists
-        const pile = newState.tableau[sourceIndex];
-        if (pile.length > 0 && !pile[pile.length - 1].faceUp) {
-          pile[pile.length - 1].faceUp = true;
-        }
-      } else if (sourceType === 'foundation') {
-        newState.foundations[sourceIndex] = newState.foundations[sourceIndex].slice(0, -1);
-      }
-      
-      // Add cards to target
-      if (targetType === 'tableau') {
-        newState.tableau[targetIndex].push(...cards);
-      } else if (targetType === 'foundation') {
-        newState.foundations[targetIndex].push(...cards);
-      }
-      
-      newState.moves++;
-      
-      // Check win
-      if (checkWin(newState)) {
-        setTimeout(() => handleGameEnd(true), 100);
-      }
-      
-      return newState;
-    });
-  }, [gameState, saveState, checkWin, handleGameEnd]);
-
-  const autoMoveToFoundation = useCallback((card: Card, sourceType: 'waste' | 'tableau', sourceIndex: number) => {
-    if (!gameState) return false;
-    
-    for (let i = 0; i < 4; i++) {
-      if (canPlaceOnFoundation(card, i, gameState.foundations)) {
-        moveCards([card], sourceType, sourceIndex, 'foundation', i);
-        return true;
-      }
-    }
-    return false;
-  }, [gameState, moveCards]);
-
-  // ============================================
-  // DRAG AND DROP HANDLERS
-  // ============================================
-  const handleDragStart = useCallback((
-    cards: Card[],
-    sourceType: 'waste' | 'tableau' | 'foundation',
-    sourceIndex: number
-  ) => {
-    setDragState({ cards, sourceType, sourceIndex });
-  }, []);
-
-  const handleDrop = useCallback((targetType: 'tableau' | 'foundation', targetIndex: number) => {
-    if (!dragState || !gameState) return;
-    
-    const { cards, sourceType, sourceIndex } = dragState;
-    const card = cards[0];
-    
-    if (targetType === 'foundation') {
-      if (cards.length === 1 && canPlaceOnFoundation(card, targetIndex, gameState.foundations)) {
-        moveCards(cards, sourceType, sourceIndex, 'foundation', targetIndex);
-      }
-    } else if (targetType === 'tableau') {
-      if (canPlaceOnTableau(card, gameState.tableau[targetIndex])) {
-        moveCards(cards, sourceType, sourceIndex, 'tableau', targetIndex);
-      }
-    }
-    
-    setDragState(null);
-  }, [dragState, gameState, moveCards]);
-
-  const handleDoubleClick = useCallback((
-    card: Card,
-    sourceType: 'waste' | 'tableau',
-    sourceIndex: number
-  ) => {
-    autoMoveToFoundation(card, sourceType, sourceIndex);
-  }, [autoMoveToFoundation]);
-
-  // ============================================
-  // RENDER HELPERS
-  // ============================================
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const CardComponent = useMemo(() => {
-    return ({ card, isDragging, onClick, onDoubleClick, onDragStart, stackOffset = 0 }: {
-      card: Card;
-      isDragging?: boolean;
-      onClick?: () => void;
-      onDoubleClick?: () => void;
-      onDragStart?: () => void;
-      stackOffset?: number;
-    }) => {
-      const isRed = getColor(card.suit) === 'red';
-      
-      if (!card.faceUp) {
-        return (
-          <div
-            className={cn(
-            "w-16 h-24 rounded-lg border-2 border-border/50 bg-blue-900 cursor-pointer select-none",
-            "flex items-center justify-center"
-          )}
-            style={{ marginTop: stackOffset > 0 ? -80 : 0 }}
-            onClick={onClick}
-          >
-            <div className="w-10 h-16 border border-blue-700 rounded opacity-50" />
-          </div>
-        );
+  useEffect(() => {
+    if (completedCards === 52 && !isWon) {
+      setIsWon(true);
+      submitResult(true, score);
+    }
+  }, [completedCards, isWon, score]);
+
+  const getDraggedCards = (source: DragSource): Card[] => {
+    if (source.type === 'waste') {
+      const top = game.waste[game.waste.length - 1];
+      return top ? [top] : [];
+    }
+
+    if (source.type === 'foundation') {
+      const foundation = game.foundations[source.suit];
+      const top = foundation[foundation.length - 1];
+      return top ? [top] : [];
+    }
+
+    const pile = game.tableau[source.pileIndex];
+    return pile.slice(source.cardIndex);
+  };
+
+  const canDropToFoundation = (targetSuit: Suit, sourceOverride?: DragSource) => {
+    const source = sourceOverride ?? dragSource;
+    if (!source) {
+      return false;
+    }
+
+    const cards = getDraggedCards(source);
+    if (cards.length !== 1) {
+      return false;
+    }
+
+    const [card] = cards;
+    if (card.suit !== targetSuit) {
+      return false;
+    }
+
+    if (source.type === 'foundation' && source.suit === targetSuit) {
+      return false;
+    }
+
+    return canPlaceOnFoundation(card, game.foundations[targetSuit]);
+  };
+
+  const canDropToTableau = (targetPileIndex: number, sourceOverride?: DragSource) => {
+    const source = sourceOverride ?? dragSource;
+    if (!source) {
+      return false;
+    }
+
+    const cards = getDraggedCards(source);
+    if (cards.length === 0) {
+      return false;
+    }
+
+    if (source.type === 'tableau' && source.pileIndex === targetPileIndex) {
+      return false;
+    }
+
+    return canPlaceOnTableau(cards[0], game.tableau[targetPileIndex]);
+  };
+
+  const applyMove = (
+    target: { type: 'foundation'; suit: Suit } | { type: 'tableau'; pileIndex: number },
+    sourceOverride?: DragSource
+  ) => {
+    const source = sourceOverride ?? dragSource;
+    if (!source) {
+      return;
+    }
+
+    const cards = getDraggedCards(source);
+    if (cards.length === 0) {
+      return;
+    }
+
+    if (target.type === 'foundation') {
+      if (!canDropToFoundation(target.suit, source)) {
+        return;
       }
-      
-      return (
-        <div
-          className={cn(
-            "w-16 h-24 rounded-lg border-2 bg-white cursor-pointer select-none transition-shadow",
-            isDragging && "shadow-xl scale-105",
-            isRed ? "text-red-600" : "text-zinc-900",
-            "border-border/50 hover:border-foreground/30"
-          )}
-          style={{ marginTop: stackOffset > 0 ? -80 : 0 }}
-          onClick={onClick}
-          onDoubleClick={onDoubleClick}
-          draggable
-          onDragStart={(e) => {
-            e.dataTransfer.effectAllowed = 'move';
-            onDragStart?.();
-          }}
+    }
+
+    if (target.type === 'tableau') {
+      if (!canDropToTableau(target.pileIndex, source)) {
+        return;
+      }
+    }
+
+    setGame((prev) => {
+      const next: GameState = {
+        stock: [...prev.stock],
+        waste: [...prev.waste],
+        foundations: {
+          hearts: [...prev.foundations.hearts],
+          diamonds: [...prev.foundations.diamonds],
+          clubs: [...prev.foundations.clubs],
+          spades: [...prev.foundations.spades],
+        },
+        tableau: prev.tableau.map((pile) => [...pile]),
+      };
+
+      let movedCards: Card[] = [];
+
+      if (source.type === 'waste') {
+        const top = next.waste.pop();
+        movedCards = top ? [top] : [];
+      }
+
+      if (source.type === 'foundation') {
+        const top = next.foundations[source.suit].pop();
+        movedCards = top ? [top] : [];
+      }
+
+      if (source.type === 'tableau') {
+        const pile = next.tableau[source.pileIndex];
+        movedCards = pile.splice(source.cardIndex);
+        const newTop = pile[pile.length - 1];
+        if (newTop && !newTop.faceUp) {
+          pile[pile.length - 1] = { ...newTop, faceUp: true };
+        }
+      }
+
+      if (target.type === 'foundation') {
+        next.foundations[target.suit].push(movedCards[0]);
+      } else {
+        next.tableau[target.pileIndex].push(...movedCards);
+      }
+
+      return next;
+    });
+
+    setMoves((prev) => prev + 1);
+    setDragSource(null);
+  };
+
+  const drawFromStock = () => {
+    if (game.stock.length === 0 && game.waste.length === 0) {
+      return;
+    }
+
+    setGame((prev) => {
+      const next: GameState = {
+        stock: [...prev.stock],
+        waste: [...prev.waste],
+        foundations: prev.foundations,
+        tableau: prev.tableau,
+      };
+
+      if (next.stock.length > 0) {
+        const top = next.stock.pop();
+        if (top) {
+          next.waste = [...next.waste, { ...top, faceUp: true }];
+        }
+      } else {
+        next.stock = [...next.waste].reverse().map((card) => ({ ...card, faceUp: false }));
+        next.waste = [];
+      }
+
+      return next;
+    });
+
+    setMoves((prev) => prev + 1);
+  };
+
+  const tryAutoMoveToFoundation = (source: DragSource) => {
+    const cards = getDraggedCards(source);
+    if (cards.length !== 1) {
+      return;
+    }
+
+    const [card] = cards;
+    if (canPlaceOnFoundation(card, game.foundations[card.suit])) {
+      applyMove({ type: 'foundation', suit: card.suit }, source);
+    }
+  };
+
+  const startNewGame = async () => {
+    if (!isWon && moves > 0 && !hasSubmittedResult) {
+      await submitResult(false, score);
+    }
+
+    setGame(createInitialGame());
+    setMoves(0);
+    setSeconds(0);
+    setDragSource(null);
+    setHasSubmittedResult(false);
+    setIsWon(false);
+    setRewards(null);
+    setIsNewHighScore(false);
+  };
+
+  const formatTime = (value: number) => {
+    const minutes = Math.floor(value / 60)
+      .toString()
+      .padStart(2, '0');
+    const secs = (value % 60).toString().padStart(2, '0');
+    return `${minutes}:${secs}`;
+  };
+
+  return (
+    <div className="mx-auto w-full max-w-[1400px] px-3 py-4 md:px-6 md:py-6" style={{ '--card-w': 'clamp(56px, 8vw, 96px)' } as CSSProperties}>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-950/85 p-3 text-emerald-50 shadow-xl">
+        <div className="flex flex-wrap gap-4 text-sm">
+          <span>Score: <strong>{score}</strong></span>
+          <span>Moves: <strong>{moves}</strong></span>
+          <span>Time: <strong>{formatTime(seconds)}</strong></span>
+          <span>Best: <strong>{highScore}</strong></span>
+        </div>
+        <button
+          type="button"
+          onClick={startNewGame}
+          className="inline-flex items-center gap-2 rounded-lg border border-emerald-300/40 bg-emerald-800/60 px-3 py-2 text-sm font-medium transition hover:bg-emerald-700"
         >
-          <div className="p-1.5 h-full flex flex-col justify-between">
-            <div className="text-xs font-bold leading-none">
-              {RANK_SYMBOLS[card.rank]}
-              <span className="ml-0.5">{SUIT_SYMBOLS[card.suit]}</span>
+          <RotateCcw className="h-4 w-4" />
+          New Game
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_280px]">
+        <section className="rounded-2xl border border-emerald-400/20 bg-[radial-gradient(circle_at_20%_0%,rgba(110,231,183,0.25),rgba(6,78,59,0.95)_52%)] p-3 md:p-4">
+          <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className="rounded-xl border border-cyan-300/40 bg-cyan-950/55 p-2">
+              <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-cyan-200">Draw Pile</div>
+              <div
+                onClick={drawFromStock}
+                className="inline-block rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-300"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    drawFromStock();
+                  }
+                }}
+              >
+                {game.stock.length > 0 ? (
+                  <SolitaireCard card={{ ...game.stock[game.stock.length - 1], faceUp: false }} draggable={false} />
+                ) : (
+                  <div className="flex h-[calc(var(--card-w)*1.4)] w-[var(--card-w)] items-center justify-center rounded-xl border-2 border-dashed border-cyan-300/60 bg-cyan-900/20 text-xs text-cyan-100">
+                    Reset
+                  </div>
+                )}
+              </div>
+              <div className="mt-1 text-xs text-cyan-100/85">{game.stock.length} cards</div>
             </div>
-            <div className="text-2xl text-center">
-              {SUIT_SYMBOLS[card.suit]}
+
+            <div className="rounded-xl border border-cyan-300/40 bg-cyan-950/55 p-2">
+              <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-cyan-200">Waste</div>
+              <div>
+                {game.waste.length > 0 ? (
+                  <SolitaireCard
+                    card={game.waste[game.waste.length - 1]}
+                    draggable={!isWon}
+                    onDragStart={() => setDragSource({ type: 'waste' })}
+                    onDragEnd={() => setDragSource(null)}
+                    onDoubleClick={() => tryAutoMoveToFoundation({ type: 'waste' })}
+                  />
+                ) : (
+                  <div className="flex h-[calc(var(--card-w)*1.4)] w-[var(--card-w)] items-center justify-center rounded-xl border-2 border-dashed border-cyan-300/50 bg-cyan-900/20 text-xs text-cyan-100">
+                    Empty
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="text-xs font-bold leading-none text-right rotate-180">
-              {RANK_SYMBOLS[card.rank]}
-              <span className="ml-0.5">{SUIT_SYMBOLS[card.suit]}</span>
+
+            <div className="col-span-2 rounded-xl border border-amber-300/40 bg-amber-950/45 p-2">
+              <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-amber-100">Ace Foundations</div>
+              <div className="grid grid-cols-4 gap-2">
+                {SUITS.map((suit) => {
+                  const pile = game.foundations[suit];
+                  const top = pile[pile.length - 1];
+                  const canDrop = canDropToFoundation(suit);
+
+                  return (
+                    <div
+                      key={suit}
+                      onDragOver={(event) => {
+                        if (canDrop) {
+                          event.preventDefault();
+                          event.dataTransfer.dropEffect = 'move';
+                        }
+                      }}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        applyMove({ type: 'foundation', suit });
+                      }}
+                      className={cn(
+                        'rounded-xl p-1 transition',
+                        canDrop ? 'ring-2 ring-amber-300/90' : 'ring-1 ring-amber-100/20'
+                      )}
+                    >
+                      {top ? (
+                        <SolitaireCard
+                          card={top}
+                          draggable={!isWon}
+                          onDragStart={() => setDragSource({ type: 'foundation', suit })}
+                          onDragEnd={() => setDragSource(null)}
+                        />
+                      ) : (
+                        <div className="flex h-[calc(var(--card-w)*1.4)] w-[var(--card-w)] flex-col items-center justify-center rounded-xl border-2 border-dashed border-amber-300/60 bg-amber-900/25">
+                          <span className={cn('text-2xl', getCardColorClass(suit))}>{SUIT_SYMBOL[suit]}</span>
+                          <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-100">Ace</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
-        </div>
-      );
-    };
-  }, []);
 
-  const EmptySlot = ({
-    onClick,
-    onDrop,
-    suit,
-    highlight = false,
-  }: {
-    onClick?: () => void;
-    onDrop?: () => void;
-    suit?: Suit;
-    highlight?: boolean;
-  }) => (
-    <div
-      className={cn(
-        "w-16 h-24 rounded-lg border-2 border-dashed cursor-pointer",
-        highlight
-          ? "border-amber-500/70 bg-amber-500/10 text-amber-500/70"
-          : "border-border/30 text-muted-foreground/30",
-        "flex items-center justify-center"
-      )}
-      onClick={onClick}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={onDrop}
-    >
-      {suit && <span className="text-2xl opacity-30">{SUIT_SYMBOLS[suit]}</span>}
-      {!suit && highlight && <span className="text-lg font-semibold">A</span>}
-    </div>
-  );
+          <div className="grid grid-cols-7 gap-2 md:gap-3">
+            {game.tableau.map((pile, pileIndex) => {
+              const canDrop = canDropToTableau(pileIndex);
 
-  // ============================================
-  // RENDER
-  // ============================================
-  return (
-    <div className="max-w-4xl mx-auto py-12 px-6 space-y-8">
-      {/* Game Area */}
-      <div className="flex flex-col lg:flex-row gap-8">
-        {/* Game Board */}
-        <div className="flex-1 flex flex-col items-center space-y-4">
-          {!started ? (
-            <div className="flex flex-col items-center justify-center py-20 space-y-4">
-              <p className="text-lg font-medium text-center">
-                Empile toutes les cartes sur les fondations<br />
-                de l'As au Roi, par couleur.
-              </p>
-              <Button onClick={initGame} variant="outline" className="border-foreground">
-                <Play className="h-4 w-4 mr-2" />
-                Nouvelle partie
-              </Button>
-            </div>
-          ) : gameState && (
-            <div className="space-y-4">
-              {/* Top Row: Stock, Waste, Gap, Foundations */}
-              <div className="flex gap-2 items-start">
-                {/* Stock */}
-                <div className="relative">
-                  {gameState.stock.length > 0 ? (
-                    <CardComponent
-                      card={gameState.stock[gameState.stock.length - 1]}
-                      onClick={drawFromStock}
-                    />
+              return (
+                <div
+                  key={`pile-${pileIndex}`}
+                  onDragOver={(event) => {
+                    if (canDrop) {
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect = 'move';
+                    }
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    applyMove({ type: 'tableau', pileIndex });
+                  }}
+                  className={cn(
+                    'relative min-h-[calc(var(--card-w)*3.9)] rounded-xl border border-emerald-100/15 p-1 transition',
+                    canDrop && 'ring-2 ring-emerald-200/80'
+                  )}
+                >
+                  {pile.length === 0 ? (
+                    <div className="flex h-[calc(var(--card-w)*1.4)] w-[var(--card-w)] items-center justify-center rounded-xl border-2 border-dashed border-emerald-200/35 bg-emerald-900/25 text-xs font-semibold text-emerald-100">
+                      K
+                    </div>
                   ) : (
-                    <EmptySlot onClick={drawFromStock} />
-                  )}
-                  {gameState.stock.length > 0 && (
-                    <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-xs text-muted-foreground">
-                      {gameState.stock.length}
-                    </span>
-                  )}
-                </div>
+                    pile.map((card, cardIndex) => {
+                      const offset = card.faceUp ? 26 : 10;
+                      const top = pile.slice(cardIndex);
+                      const draggable = card.faceUp && top.every((item) => item.faceUp) && !isWon;
 
-                {/* Waste */}
-                <div className="relative">
-                  {gameState.waste.length > 0 ? (
-                    <CardComponent
-                      card={gameState.waste[gameState.waste.length - 1]}
-                      onDragStart={() => handleDragStart(
-                        [gameState.waste[gameState.waste.length - 1]],
-                        'waste',
-                        0
-                      )}
-                      onDoubleClick={() => handleDoubleClick(
-                        gameState.waste[gameState.waste.length - 1],
-                        'waste',
-                        0
-                      )}
-                    />
-                  ) : (
-                    <EmptySlot />
-                  )}
-                </div>
-
-                {/* Gap */}
-                <div className="w-16" />
-
-                {/* Foundations */}
-                {gameState.foundations.map((foundation, i) => (
-                  <div
-                    key={i}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={() => handleDrop('foundation', i)}
-                  >
-                    {foundation.length > 0 ? (
-                      <CardComponent
-                        card={foundation[foundation.length - 1]}
-                        onDragStart={() => handleDragStart([foundation[foundation.length - 1]], 'foundation', i)}
-                      />
-                    ) : (
-                      <EmptySlot highlight onDrop={() => handleDrop('foundation', i)} />
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* Tableau */}
-              <div className="flex gap-2 items-start pt-4">
-                {gameState.tableau.map((pile, pileIndex) => (
-                  <div
-                    key={pileIndex}
-                    className="relative min-h-[6rem]"
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={() => handleDrop('tableau', pileIndex)}
-                  >
-                    {pile.length === 0 ? (
-                      <EmptySlot onDrop={() => handleDrop('tableau', pileIndex)} />
-                    ) : (
-                      pile.map((card, cardIndex) => (
+                      return (
                         <div
                           key={card.id}
-                          style={{ marginTop: cardIndex > 0 ? (card.faceUp ? -60 : -80) : 0 }}
+                          className="absolute left-1"
+                          style={{ top: `${pile.slice(0, cardIndex).reduce((sum, c) => sum + (c.faceUp ? 26 : 10), 0)}px` }}
                         >
-                          <CardComponent
+                          <SolitaireCard
                             card={card}
-                            onDragStart={() => {
-                              if (card.faceUp) {
-                                handleDragStart(pile.slice(cardIndex), 'tableau', pileIndex);
-                              }
-                            }}
+                            draggable={draggable}
+                            onDragStart={() => setDragSource({ type: 'tableau', pileIndex, cardIndex })}
+                            onDragEnd={() => setDragSource(null)}
                             onDoubleClick={() => {
-                              if (card.faceUp && cardIndex === pile.length - 1) {
-                                handleDoubleClick(card, 'tableau', pileIndex);
+                              if (draggable) {
+                                tryAutoMoveToFoundation({ type: 'tableau', pileIndex, cardIndex });
                               }
                             }}
                           />
+                          {cardIndex === pile.length - 1 && (
+                            <div style={{ height: `${offset}px` }} />
+                          )}
                         </div>
-                      ))
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* Controls */}
-              <div className="flex items-center justify-between pt-4">
-                <div className="flex gap-4 text-sm text-muted-foreground">
-                  <span>Temps: {formatTime(elapsedTime)}</span>
-                  <span>Coups: {gameState.moves}</span>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={undo}
-                    disabled={history.length === 0}
-                  >
-                    <Undo2 className="h-4 w-4 mr-1" />
-                    Annuler
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={initGame}>
-                    <RotateCcw className="h-4 w-4 mr-1" />
-                    Nouvelle partie
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleGameEnd(false)}
-                  >
-                    Abandonner
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Game Over Modal */}
-          {gameOver && (
-            <div className="fixed inset-0 bg-background/80 flex items-center justify-center z-50">
-              <div className="bg-card border border-border rounded-lg p-8 max-w-md text-center space-y-4">
-                <p className="text-2xl font-bold">
-                  {won ? 'Félicitations !' : 'Partie terminée'}
-                </p>
-                {won && (
-                  <p className="text-lg text-green-500">Vous avez gagné !</p>
-                )}
-                <div className="space-y-1 text-muted-foreground">
-                  <p>Temps: {formatTime(elapsedTime)}</p>
-                  <p>Coups: {gameState?.moves || 0}</p>
-                  {won && (
-                    <p className="text-foreground font-medium">
-                      Score: {calculateScore(gameState?.moves || 0, elapsedTime, won)}
-                    </p>
+                      );
+                    })
                   )}
                 </div>
-                {isNewHighScore && (
-                  <p className="text-yellow-500 font-medium">Nouveau record personnel !</p>
-                )}
-                {rewards && (rewards.aura > 0 || rewards.money > 0) && (
-                  <div className="space-y-1">
-                    {rewards.aura > 0 && (
-                      <p className="text-purple-400">+{rewards.aura} aura</p>
-                    )}
-                    {rewards.money > 0 && (
-                      <p className="text-green-400">+{rewards.money}$</p>
-                    )}
-                  </div>
-                )}
-                <Button onClick={initGame} variant="outline" className="border-foreground">
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Rejouer
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
+              );
+            })}
+          </div>
 
-        {/* Stats and Leaderboard */}
-        <div className="lg:w-80 space-y-6">
-          {/* Stats */}
-          <section className="space-y-2">
-            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
-              Statistiques
-            </h2>
-            <div className="space-y-2 border border-border/30 rounded-lg p-4">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Meilleur score</span>
-                <span className="font-medium">{highScore}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Victoires</span>
-                <span className="font-medium">{stats.wins}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Parties jouées</span>
-                <span className="font-medium">{stats.totalPlayed}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Taux de victoire</span>
-                <span className="font-medium">{stats.winRate}%</span>
-              </div>
-            </div>
-          </section>
-
-          {/* Leaderboard */}
-          <section className="space-y-2">
-            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
-              Classement
-            </h2>
-            <div className="border border-border/30 rounded-lg overflow-hidden">
-              {leaderboard.length === 0 ? (
-                <div className="p-4 text-center text-muted-foreground text-sm">
-                  Aucun score pour le moment
-                </div>
-              ) : (
-                <div className="divide-y divide-border/30">
-                  {leaderboard.map((entry, index) => (
-                    <div
-                      key={entry.id}
-                      className={cn(
-                        "flex items-center justify-between p-3",
-                        entry.user.id === user?.id && "bg-muted/30"
-                      )}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs text-muted-foreground w-6 tabular-nums">
-                          {index + 1}
-                        </span>
-                        <span className="font-medium text-sm">
-                          {entry.user.username}
-                          {entry.user.id === user?.id && (
-                            <span className="ml-2 text-xs text-muted-foreground">(toi)</span>
-                          )}
-                        </span>
-                      </div>
-                      <span className="text-sm tabular-nums">{entry.highScore}</span>
-                      {user?.isAdmin && (
-                        <button
-                          onClick={() => handleDeleteScore(entry.user.id, entry.user.username)}
-                          className="ml-2 text-xs text-destructive hover:underline"
-                        >
-                          Supprimer
-                        </button>
-                      )}
-                    </div>
-                  ))}
+          {isWon && (
+            <div className="mt-4 rounded-xl border border-emerald-200/40 bg-emerald-500/20 p-4 text-center text-emerald-50">
+              <div className="text-lg font-semibold">You won this hand.</div>
+              <div className="mt-1 text-sm">Final score: {score}</div>
+              {isNewHighScore && <div className="mt-1 text-sm font-semibold">New high score</div>}
+              {rewards && (rewards.money > 0 || rewards.aura > 0) && (
+                <div className="mt-1 text-sm text-emerald-100/90">
+                  {rewards.money > 0 && `+$${rewards.money}`}
+                  {rewards.money > 0 && rewards.aura > 0 && ' | '}
+                  {rewards.aura > 0 && `+${rewards.aura} aura`}
                 </div>
               )}
             </div>
-          </section>
+          )}
+        </section>
 
-          {/* Rules */}
-          <section className="space-y-2">
-            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
-              Règles
-            </h2>
-            <div className="border border-border/30 rounded-lg p-4 text-sm text-muted-foreground space-y-2">
-              <p>• Empile les cartes de l'As au Roi sur les fondations</p>
-              <p>• Les colonnes alternent rouge/noir en ordre décroissant</p>
-              <p>• Seuls les Rois peuvent remplir une colonne vide</p>
-              <p>• Tout As peut commencer une fondation libre</p>
-              <p>• Double-clic pour envoyer automatiquement aux fondations</p>
-            </div>
-          </section>
-        </div>
+        <aside className="rounded-2xl border border-border/40 bg-card shadow-sm">
+          <div className="flex items-center gap-2 border-b border-border/40 p-3">
+            <Trophy className="h-4 w-4 text-yellow-500" />
+            <h3 className="text-sm font-semibold">Solitaire Leaderboard</h3>
+          </div>
+          <div className="max-h-[70vh] overflow-y-auto">
+            {leaderboard.length === 0 ? (
+              <div className="p-3 text-sm text-muted-foreground">No scores yet.</div>
+            ) : (
+              leaderboard.map((entry, index) => (
+                <div
+                  key={entry.id}
+                  className={cn(
+                    'flex items-center gap-2 border-b border-border/20 px-3 py-2 text-sm',
+                    entry.user.id === user?.id && 'bg-primary/10'
+                  )}
+                >
+                  <span className="w-5 text-center font-mono text-muted-foreground">{index + 1}</span>
+                  <span className="flex-1 truncate">{entry.user.username}</span>
+                  <span className="font-mono tabular-nums text-muted-foreground">{entry.highScore}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </aside>
       </div>
     </div>
   );
