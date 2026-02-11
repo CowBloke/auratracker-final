@@ -21,8 +21,9 @@ const getUploadsBaseUrl = () => {
 export const resolveImageUrl = (value?: string | null) => {
   if (!value) return '';
   if (value.startsWith('/uploads/') || value.startsWith('/api/uploads/')) {
-    const normalizedPath = value.startsWith('/api/uploads/')
-      ? value.slice(4)
+    // Prefer /api/uploads in production behind reverse proxies that only expose /api/*.
+    const normalizedPath = value.startsWith('/uploads/')
+      ? `/api${value}`
       : value;
     return `${getUploadsBaseUrl()}${normalizedPath}`;
   }

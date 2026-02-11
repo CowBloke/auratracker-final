@@ -1840,7 +1840,7 @@ router.post('/update-popups/upload-image', authMiddleware, requireAdmin, async (
     const absolutePath = path.join(UPDATE_POPUP_UPLOAD_DIR, fileName);
     fs.writeFileSync(absolutePath, buffer);
 
-    const imageUrl = `/uploads/update-popups/${fileName}`;
+    const imageUrl = `/api/uploads/update-popups/${fileName}`;
     res.status(201).json({ imageUrl });
   } catch (error) {
     console.error('Admin upload update popup image error:', error);
