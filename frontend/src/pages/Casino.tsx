@@ -1020,7 +1020,7 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
     const nextCards = [...activeHand.cards, drawCard()];
     const total = getHandTotal(nextCards);
 
-    let nextState = activeHand.state;
+    let nextState: BlackjackHand['state'] = activeHand.state;
     let nextOutcome = activeHand.outcome;
     if (total > 21) {
       nextState = 'bust';
@@ -1029,7 +1029,7 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
       nextState = 'stood';
     }
 
-    const updatedHands = hands.map((hand, index) =>
+    const updatedHands: BlackjackHand[] = hands.map((hand, index): BlackjackHand =>
       index === activeHandIndex
         ? { ...hand, cards: nextCards, state: nextState, outcome: nextOutcome }
         : hand
@@ -1051,7 +1051,7 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
 
   const stand = useCallback(() => {
     if (status !== 'player' || !activeHand) return;
-    const updatedHands = hands.map((hand, index) =>
+    const updatedHands: BlackjackHand[] = hands.map((hand, index): BlackjackHand =>
       index === activeHandIndex
         ? { ...hand, state: 'stood' }
         : hand
@@ -1079,10 +1079,10 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
     setError(null);
     const nextCards = [...activeHand.cards, drawCard()];
     const total = getHandTotal(nextCards);
-    const nextState = total > 21 ? 'bust' : 'stood';
+    const nextState: BlackjackHand['state'] = total > 21 ? 'bust' : 'stood';
     const nextOutcome = total > 21 ? 'lose' : activeHand.outcome;
 
-    const updatedHands = hands.map((hand, index) =>
+    const updatedHands: BlackjackHand[] = hands.map((hand, index): BlackjackHand =>
       index === activeHandIndex
         ? {
             ...hand,
