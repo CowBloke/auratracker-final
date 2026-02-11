@@ -1,11 +1,21 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 const getUploadsBaseUrl = () => {
-  let base = API_URL;
-  if (base.endsWith('/')) {
-    base = base.slice(0, -1);
+  try {
+    const parsed = new URL(API_URL, window.location.origin);
+    const origin = parsed.origin;
+    const normalizedPath = parsed.pathname.replace(/\/+$/, '');
+
+    // If API URL ends with /api, uploads live one level above that path.
+    if (normalizedPath.endsWith('/api')) {
+      const withoutApi = normalizedPath.slice(0, -4);
+      return `${origin}${withoutApi}`;
+    }
+
+    return `${origin}${normalizedPath}`;
+  } catch {
+    return API_URL.replace(/\/+$/, '');
   }
-  return base;
 };
 
 export const resolveImageUrl = (value?: string | null) => {
