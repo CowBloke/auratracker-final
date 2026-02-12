@@ -1,0 +1,68 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Tetr.js</title>
+<link rel="stylesheet" href="style.css">
+<div id="content">
+  <div id="d">
+    <h3>Hold</h3>
+    <div id="a">
+      <canvas id="hold"></canvas>
+    </div>
+    <ul id="replay" style="display:none">
+      <li><a onclick="replay(-1)">prev</a></li>
+      <li><a onclick="replay()">Play/Pause</a></li>
+      <li><a onclick="replay(1)">next</a></li>
+    </ul>
+    <table id="stats">
+      <tr><td id="line">0</td><th>Line</th></tr>
+      <tr><td id="piece">0</td><th>Piece</th></tr>
+      <tr><th id="time" colspan="2">00:00.00</th></tr>
+    </table>
+  </div>
+
+  <div id="b">
+    <canvas id="bgStack"></canvas>
+    <canvas id="stack"></canvas>
+    <canvas id="active"></canvas>
+
+    <p id="msg"></p>
+
+    <nav class="menu on">
+      <h1>Tetr.js</h1>
+      <ul>
+        <li><a onclick="init(0)">Play</a></li>
+      </ul>
+    </nav>
+
+    <nav id="go" class="menu">
+      <ul>
+        <li><a onclick="init(gametype)">Retry</a></li>
+        <li><a onclick="menu(0)">Main Menu</a></li>
+      </ul>
+    </nav>
+
+    <nav id="pause" class="menu">
+      <ul>
+        <li><a onclick="unpause()">Return</a></li>
+        <li><a onclick="init(gametype)">Retry</a></li>
+        <li><a onclick="menu(0)">Main Menu</a></li>
+      </ul>
+    </nav>
+  </div>
+
+  <div id="c">
+    <h3>Next</h3>
+    <canvas id="preview"></canvas>
+  </div>
+</div>
+
+<div id="settings" style="display:none"></div>
+<table id="controls" style="display:none"><tbody></tbody></table>
+
+<canvas id="sprite"></canvas>
+<script src="tetris.js"></script>
+<script src="piece.js"></script>
+<script src="stack.js"></script>
+<script src="hold.js"></script>
+<script src="preview.js"></script>
+<script src="menu.js"></script>

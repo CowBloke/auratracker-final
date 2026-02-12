@@ -634,7 +634,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       s.on('party:restored', (data: { party: Party; members: PartyMember[] }) => {
         setCurrentParty(data.party);
         setPartyMembers(data.members);
-        setBombPartyPlayAgainPrompt(null);
+        setBombPartyPlayAgainPrompt((prev) =>
+          prev && prev.partyId === data.party.id ? prev : null
+        );
         setPartyInvites((prev) => prev.filter((invite) => invite.partyId !== data.party.id));
         setPendingJoinRequests([]);
         setPartyGameSuggestions([]);
