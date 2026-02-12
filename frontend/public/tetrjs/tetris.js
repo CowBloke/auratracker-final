@@ -398,15 +398,14 @@ function init(gt) {
   lastPos = 'reset';
   stack.new(10, 22);
   hold.piece = void 0;
+  statsFinesse = 0;
+  lines = 0;
+  piecesSet = 0;
   updateAutoGravity();
   startTime = Date.now();
 
   preview.init();
   //preview.draw();
-
-  statsFinesse = 0;
-  lines = 0;
-  piecesSet = 0;
 
   statsPiece.innerHTML = piecesSet;
   statsLines.innerHTML = lines;
