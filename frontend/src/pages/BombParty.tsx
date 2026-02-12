@@ -5,7 +5,6 @@ import { useSocket } from '../contexts/SocketContext';
 import { ArrowLeft, Play, Heart, Crown, Trophy, Users } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import PlayAgainPrompt from '@/components/game/PlayAgainPrompt';
 import { cn } from '@/lib/utils';
 
 // Render word with highlighted prompt letters
@@ -37,13 +36,11 @@ export default function BombParty() {
     bombPartyGame,
     bombPartyGameOver,
     bombPartyRejection,
-    bombPartyPlayAgainPrompt,
     startBombParty,
     typeBombParty,
     submitBombParty,
     leaveBombParty,
     clearBombPartyGameOver,
-    respondToPlayAgainPrompt,
   } = useSocket();
 
   const [lives, setLives] = useState(3);
@@ -51,7 +48,6 @@ export default function BombParty() {
   const [localInput, setLocalInput] = useState('');
   const [timeLeft, setTimeLeft] = useState(100);
   const [showSettings, setShowSettings] = useState(false);
-  const [hasQuitPlayAgain, setHasQuitPlayAgain] = useState(false);
 
   const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
   const isMyTurn = bombPartyGame?.currentPlayerId === user?.id;
@@ -84,14 +80,6 @@ export default function BombParty() {
       refreshUser();
     }
   }, [bombPartyGameOver, refreshUser]);
-
-  // Handle play again prompt - refresh user and reset response state
-  useEffect(() => {
-    if (bombPartyPlayAgainPrompt) {
-      refreshUser();
-      setHasQuitPlayAgain(false);
-    }
-  }, [bombPartyPlayAgainPrompt?.partyId, bombPartyPlayAgainPrompt?.startTime, refreshUser]);
 
   // Handle keyboard input (direct typing, no text box)
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -133,10 +121,6 @@ export default function BombParty() {
   const handleCloseGameOver = () => {
     clearBombPartyGameOver();
   };
-
-  const myPlayAgainResponse = bombPartyPlayAgainPrompt?.responses.find(r => r.userId === user?.id);
-  const hasQuit = hasQuitPlayAgain || (!!myPlayAgainResponse && !myPlayAgainResponse.playAgain);
-  const showPlayAgainPrompt = !!bombPartyPlayAgainPrompt && !hasQuit;
 
   // Not in a party - show message
   if (!currentParty) {
@@ -434,22 +418,6 @@ export default function BombParty() {
             ))}
           </div>
         </section>
-      )}
-
-      {bombPartyPlayAgainPrompt && (
-        <PlayAgainPrompt
-          open={showPlayAgainPrompt}
-          detail={`Vies ${bombPartyPlayAgainPrompt.lives} - difficulte ${bombPartyPlayAgainPrompt.difficulty === 'easy' ? 'facile' : bombPartyPlayAgainPrompt.difficulty === 'medium' ? 'moyen' : 'difficile'}`}
-          players={bombPartyPlayAgainPrompt.players}
-          responses={bombPartyPlayAgainPrompt.responses}
-          timeLimit={bombPartyPlayAgainPrompt.timeLimit}
-          startTime={bombPartyPlayAgainPrompt.startTime}
-          onQuit={() => {
-            respondToPlayAgainPrompt(false);
-            setHasQuitPlayAgain(true);
-          }}
-          onPlayAgain={() => respondToPlayAgainPrompt(true)}
-        />
       )}
 
       <Dialog open={!!bombPartyGameOver} onOpenChange={handleCloseGameOver}>

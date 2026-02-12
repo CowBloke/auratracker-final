@@ -138,9 +138,6 @@ export const bombPartyEvents = {
   leave: (partyId: string, userId: string) => {
     socket?.emit('bombparty:leave', { partyId, userId });
   },
-  respondToPlayAgain: (partyId: string, userId: string, playAgain: boolean) => {
-    socket?.emit('bombparty:play-again-response', { partyId, userId, playAgain });
-  },
 };
 
 // Poker events
