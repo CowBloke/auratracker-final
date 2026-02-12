@@ -79,14 +79,14 @@ const GAME_REWARDS = {
   },
   tetris: {
     minScoreForReward: 1000, // Minimum score to get rewards
-    // Progressive rewards based on score
+    // Progressive rewards based on score (intentionally conservative to avoid inflation)
     scoreTiers: [
-      { minScore: 0, moneyMultiplier: 0.01, auraBonus: 0 },       // 0-4999: 0.01x score
-      { minScore: 5000, moneyMultiplier: 0.015, auraBonus: 5 },    // 5000-9999: 0.015x score + 5 aura
-      { minScore: 10000, moneyMultiplier: 0.02, auraBonus: 10 },  // 10000-19999: 0.02x score + 10 aura
-      { minScore: 20000, moneyMultiplier: 0.03, auraBonus: 20 },  // 20000-49999: 0.03x score + 20 aura
-      { minScore: 50000, moneyMultiplier: 0.04, auraBonus: 35 }, // 50000-99999: 0.04x score + 35 aura
-      { minScore: 100000, moneyMultiplier: 0.05, auraBonus: 50 }, // 100000+: 0.05x score + 50 aura
+      { minScore: 0, moneyMultiplier: 0.0004, auraBonus: 1 },
+      { minScore: 100000, moneyMultiplier: 0.0007, auraBonus: 4 },
+      { minScore: 200000, moneyMultiplier: 0.001, auraBonus: 8 },
+      { minScore: 300000, moneyMultiplier: 0.0013, auraBonus: 12 },
+      { minScore: 500000, moneyMultiplier: 0.0016, auraBonus: 15 },
+      { minScore: 800000, moneyMultiplier: 0.002, auraBonus: 20 },
     ],
   },
 };
@@ -280,8 +280,8 @@ function calculateTetrisRewards(score: number, isNewHighScore: boolean): { money
   // Calculate aura reward: base tier bonus + bonus for new high score
   let auraReward = selectedTier.auraBonus;
   if (isNewHighScore) {
-    // Additional bonus for beating your own record (scales with score)
-    const highScoreBonus = Math.min(Math.floor(score / 10000) * 10, 100);
+    // Small high-score bonus to prevent runaway aura inflation.
+    const highScoreBonus = Math.min(Math.floor(score / 500000), 5);
     auraReward += highScoreBonus;
   }
 
