@@ -5,6 +5,7 @@ import ChatBubble from '../chat/ChatBubble';
 import GiftBubble from '../gifts/GiftBubble';
 import UpdatePopupModal from './UpdatePopupModal';
 import BombPartyJoinPrompt from '../game/BombPartyJoinPrompt';
+import BombPartyPlayAgainPrompt from '../game/BombPartyPlayAgainPrompt';
 import PokerJoinPrompt from '../game/PokerJoinPrompt';
 import PetitBacJoinPrompt from '../game/PetitBacJoinPrompt';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
@@ -510,6 +511,7 @@ export default function Layout() {
         <ChatSidebarWrapper />
         <ChatBubbleContainer />
         <BombPartyJoinPrompt />
+        <BombPartyPlayAgainPrompt />
         <PokerJoinPrompt />
         <PetitBacJoinPrompt />
         <UpdatePopupModal />

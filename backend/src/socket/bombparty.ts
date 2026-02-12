@@ -47,6 +47,33 @@ interface PendingJoinPrompt {
 }
 const pendingJoinPrompts = new Map<string, PendingJoinPrompt>();
 
+interface PendingPlayAgainPrompt {
+  partyId: string;
+  lives: number;
+  difficulty: 'easy' | 'medium' | 'hard';
+  responses: Map<string, boolean>; // userId -> playAgain
+  playerIds: string[];
+  players: Array<{
+    userId: string;
+    username: string;
+    usernameColor?: string | null;
+  }>;
+  gameOverData: {
+    winnerId: string | null;
+    winnerUsername: string | null;
+    players: Array<{
+      userId: string;
+      username: string;
+      wordsTypedCount: number;
+      isWinner: boolean;
+      rewards: { aura: number; money: number };
+    }>;
+  };
+  timer: NodeJS.Timeout | null;
+  startTime: number;
+}
+const pendingPlayAgainPrompts = new Map<string, PendingPlayAgainPrompt>();
+
 // Dictionary loaded once
 let dictionary: Set<string> | null = null;
 let dictionaryLanguageFile: string | null = null;
@@ -54,6 +81,7 @@ let dictionaryLoadPromise: Promise<Set<string>> | null = null;
 
 // Cache for WPP settings
 let cachedWppSettings: { easy: number; medium: number; hard: number } | null = null;
+const PLAY_AGAIN_PROMPT_MS = 10000;
 
 async function getBombPartyLanguageFile(): Promise<string> {
   if (dictionaryLanguageFile) return dictionaryLanguageFile;
@@ -266,6 +294,11 @@ export const setupBombPartyHandlers = (socket: Socket, io: Server) => {
 
       if (pendingJoinPrompts.has(partyId)) {
         socket.emit('bombparty:error', { message: 'A game is already being started' });
+        return;
+      }
+
+      if (pendingPlayAgainPrompts.has(partyId)) {
+        socket.emit('bombparty:error', { message: 'A replay vote is already in progress' });
         return;
       }
 
@@ -500,6 +533,44 @@ export const setupBombPartyHandlers = (socket: Socket, io: Server) => {
     }
   });
 
+  socket.on('bombparty:play-again-response', (data: {
+    partyId: string;
+    userId: string;
+    playAgain: boolean;
+  }) => {
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { partyId, playAgain } = data;
+    const prompt = pendingPlayAgainPrompts.get(partyId);
+    if (!prompt) return;
+
+    if (!prompt.playerIds.includes(userId)) return;
+
+    prompt.responses.set(userId, playAgain);
+
+    const responses = Array.from(prompt.responses.entries()).map(([id, value]) => ({
+      userId: id,
+      playAgain: value,
+    }));
+    const playAgainCount = responses.filter((r) => r.playAgain).length;
+    const leaveCount = responses.filter((r) => !r.playAgain).length;
+
+    io.to(`party:${partyId}`).emit('bombparty:play-again-response-update', {
+      partyId,
+      responses,
+      playAgainCount,
+      leaveCount,
+    });
+
+    if (prompt.responses.size === prompt.playerIds.length) {
+      if (prompt.timer) {
+        clearTimeout(prompt.timer);
+        prompt.timer = null;
+      }
+      resolvePlayAgainPrompt(partyId, io);
+    }
+  });
+
   // Handle disconnect during game
   socket.on('disconnect', () => {
     // Find any games this socket was in and handle appropriately
@@ -657,6 +728,92 @@ async function advanceTurn(game: BombPartyGame, io: Server, skipPromptChange: bo
   io.to(`party:${game.partyId}`).emit('bombparty:turn-changed', serializeGameState(game));
 }
 
+async function resolvePlayAgainPrompt(partyId: string, io: Server) {
+  const prompt = pendingPlayAgainPrompts.get(partyId);
+  if (!prompt) return;
+
+  if (prompt.timer) {
+    clearTimeout(prompt.timer);
+    prompt.timer = null;
+  }
+
+  pendingPlayAgainPrompts.delete(partyId);
+
+  const replayUserIds = Array.from(prompt.responses.entries())
+    .filter(([, playAgain]) => playAgain)
+    .map(([userId]) => userId);
+
+  if (replayUserIds.length < 2) {
+    io.to(`party:${partyId}`).emit('bombparty:play-again-cancelled', {
+      reason: 'Not enough players chose replay (need at least 2)',
+    });
+    return;
+  }
+
+  if (activeGames.has(partyId) || pendingJoinPrompts.has(partyId)) {
+    io.to(`party:${partyId}`).emit('bombparty:play-again-cancelled', {
+      reason: 'Cannot start replay right now',
+    });
+    return;
+  }
+
+  const partyMembers = await prisma.partyMember.findMany({
+    where: {
+      partyId,
+      userId: { in: replayUserIds },
+    },
+    include: {
+      user: {
+        select: { id: true, username: true, usernameColor: true },
+      },
+    },
+  });
+
+  if (partyMembers.length < 2) {
+    io.to(`party:${partyId}`).emit('bombparty:play-again-cancelled', {
+      reason: 'Not enough replay players are still in the party',
+    });
+    return;
+  }
+
+  await loadDictionary();
+  const promptText = await getRandomPrompt(prompt.difficulty);
+
+  const game: BombPartyGame = {
+    partyId,
+    players: partyMembers.map((m) => ({
+      userId: m.user.id,
+      username: m.user.username,
+      usernameColor: m.user.usernameColor,
+      lives: prompt.lives,
+      wordsUsed: [],
+      isEliminated: false,
+      wordsTypedCount: 0,
+    })),
+    currentPlayerIndex: 0,
+    currentPrompt: promptText,
+    currentInput: '',
+    difficulty: prompt.difficulty,
+    turnStartTime: Date.now(),
+    turnDuration: getTurnDuration(0),
+    usedWords: new Set(),
+    round: 0,
+    isActive: true,
+    turnTimer: null,
+    maxLives: prompt.lives,
+    roundsWithoutLifeLoss: 0,
+  };
+
+  for (let i = game.players.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [game.players[i], game.players[j]] = [game.players[j], game.players[i]];
+  }
+
+  activeGames.set(partyId, game);
+  startTurnTimer(game, io);
+  io.to(`party:${partyId}`).emit('bombparty:started', serializeGameState(game));
+}
+
 async function endGame(game: BombPartyGame, io: Server) {
   clearTurnTimer(game);
   game.isActive = false;
@@ -776,6 +933,45 @@ async function endGame(game: BombPartyGame, io: Server) {
 
   io.to(`party:${game.partyId}`).emit('bombparty:game-over', gameOverData);
 
+  const replayPrompt: PendingPlayAgainPrompt = {
+    partyId: game.partyId,
+    lives: game.maxLives,
+    difficulty: game.difficulty,
+    responses: new Map(),
+    playerIds: game.players.map((p) => p.userId),
+    players: game.players.map((p) => ({
+      userId: p.userId,
+      username: p.username,
+      usernameColor: p.usernameColor,
+    })),
+    gameOverData,
+    timer: null,
+    startTime: Date.now(),
+  };
+
+  const existingPrompt = pendingPlayAgainPrompts.get(game.partyId);
+  if (existingPrompt?.timer) {
+    clearTimeout(existingPrompt.timer);
+  }
+  pendingPlayAgainPrompts.set(game.partyId, replayPrompt);
+
+  replayPrompt.timer = setTimeout(() => {
+    resolvePlayAgainPrompt(game.partyId, io);
+  }, PLAY_AGAIN_PROMPT_MS);
+
+  io.to(`party:${game.partyId}`).emit('bombparty:play-again-prompt', {
+    partyId: replayPrompt.partyId,
+    lives: replayPrompt.lives,
+    difficulty: replayPrompt.difficulty,
+    timeLimit: PLAY_AGAIN_PROMPT_MS,
+    startTime: replayPrompt.startTime,
+    players: replayPrompt.players,
+    gameOverData: replayPrompt.gameOverData,
+    responses: [],
+    playAgainCount: 0,
+    leaveCount: 0,
+  });
+
 }
 
 // Export for cleanup if needed
@@ -784,6 +980,11 @@ export function cleanupBombPartyGames() {
     clearTurnTimer(game);
   }
   activeGames.clear();
+
+  for (const [, prompt] of pendingPlayAgainPrompts) {
+    if (prompt.timer) clearTimeout(prompt.timer);
+  }
+  pendingPlayAgainPrompts.clear();
 }
 
 // Send active game state to a reconnecting player
@@ -797,6 +998,30 @@ export function sendActiveGameState(socket: Socket, partyId: string, userId: str
 
   // Send the current game state
   socket.emit('bombparty:started', serializeGameState(game));
+}
+
+export function sendPendingBombPartyPlayAgainPrompt(socket: Socket, partyId: string, userId: string) {
+  const prompt = pendingPlayAgainPrompts.get(partyId);
+  if (!prompt) return;
+  if (!prompt.playerIds.includes(userId)) return;
+
+  const responses = Array.from(prompt.responses.entries()).map(([id, value]) => ({
+    userId: id,
+    playAgain: value,
+  }));
+
+  socket.emit('bombparty:play-again-prompt', {
+    partyId: prompt.partyId,
+    lives: prompt.lives,
+    difficulty: prompt.difficulty,
+    timeLimit: PLAY_AGAIN_PROMPT_MS,
+    startTime: prompt.startTime,
+    players: prompt.players,
+    gameOverData: prompt.gameOverData,
+    responses,
+    playAgainCount: responses.filter((r) => r.playAgain).length,
+    leaveCount: responses.filter((r) => !r.playAgain).length,
+  });
 }
 
 // Periodic cleanup for stale games (games running for more than 30 minutes)

@@ -1,6 +1,6 @@
 import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
-import { sendActiveGameState } from './bombparty.js';
+import { sendActiveGameState, sendPendingBombPartyPlayAgainPrompt } from './bombparty.js';
 import { sendActivePokerState, sendPendingPokerPlayAgainPrompt } from './poker.js';
 import { sendPendingPetitBacPlayAgainPrompt, sendActivePetitBacGameState } from './petitbac.js';
 import { sendActiveBattleshipState, sendPendingBattleshipPlayAgainPrompt } from './battleship.js';
@@ -182,6 +182,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
 
         // Send any active game state to the reconnecting player
         sendActiveGameState(socket, membership.partyId, userId);
+        sendPendingBombPartyPlayAgainPrompt(socket, membership.partyId, userId);
         sendActivePokerState(socket, membership.partyId, userId);
         sendPendingPokerPlayAgainPrompt(socket, membership.partyId, userId);
         sendActivePetitBacGameState(socket, membership.partyId, userId);
