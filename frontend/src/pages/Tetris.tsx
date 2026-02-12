@@ -150,7 +150,7 @@ export default function Tetris() {
 
           <iframe
             key={sessionKey}
-            src={`/tetrjs/index.html?autostart=1&k=${sessionKey}`}
+            src={`/tetrjs/index.html?k=${sessionKey}`}
             title="Tetris"
             className="border border-border/30 rounded-lg bg-black"
             style={{ width: GAME_WIDTH, height: GAME_HEIGHT }}

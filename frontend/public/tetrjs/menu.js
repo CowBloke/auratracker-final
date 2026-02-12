@@ -10,8 +10,3 @@ function menu(menuIndex) {
 }
 
 resize();
-
-var params = new URLSearchParams(window.location.search);
-if (params.get('autostart') === '1') {
-  init(0);
-}
