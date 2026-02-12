@@ -377,7 +377,7 @@ function init(gt) {
 
   window.__auraEndSent = false;
 
-  lineLimit = 40;
+  lineLimit = 0;
 
   //Reset
   column = 0;
@@ -398,7 +398,7 @@ function init(gt) {
   lastPos = 'reset';
   stack.new(10, 22);
   hold.piece = void 0;
-  if (settings.Gravity === 0) gravity = gravityUnit * 4;
+  updateAutoGravity();
   startTime = Date.now();
 
   preview.init();
@@ -409,7 +409,7 @@ function init(gt) {
   piecesSet = 0;
 
   statsPiece.innerHTML = piecesSet;
-  statsLines.innerHTML = lineLimit - lines;
+  statsLines.innerHTML = lines;
   statistics();
   clear(stackCtx);
   clear(activeCtx);
@@ -522,17 +522,23 @@ function statistics() {
     (minutes < 10 ? '0' : '') + minutes + (seconds < 10 ? ':0' : ':') + seconds;
 }
 
+function updateAutoGravity() {
+  if (settings.Gravity !== 0) return;
+  // Endless speed curve: every 10 cleared lines increases gravity.
+  var level = Math.floor(lines / 10);
+  gravity = gravityUnit * Math.pow(2, level + 2);
+  if (gravity > 20) gravity = 20;
+}
+
 function auraElapsedTimeMs() {
   return Math.max(0, Date.now() - startTime - pauseTime);
 }
 
 function auraComputeScore(isWin) {
-  // Score formula for leaderboard compatibility:
-  // high line clears and faster times produce higher scores.
+  // Endless mode scoring for leaderboard compatibility:
+  // reward line clears + survival duration.
   var elapsed = auraElapsedTimeMs();
-  var timeBonus = Math.max(0, 300000 - elapsed);
-  var winBonus = isWin ? 50000 : 0;
-  return Math.max(0, lines * 10000 + timeBonus + winBonus);
+  return Math.max(0, lines * 10000 + piecesSet * 50 + ~~(elapsed / 10));
 }
 
 function auraEmitGameEnd() {
@@ -859,22 +865,6 @@ function update() {
   }
 
   piece.update();
-
-  // Win
-  // TODO
-  if (gametype !== 3) {
-    if (lines >= lineLimit) {
-      gameState = 1;
-      msg.innerHTML = 'GREAT!';
-      menu(3);
-    }
-  } else {
-    if (digLines.length === 0) {
-      gameState = 1;
-      msg.innerHTML = 'GREAT!';
-      menu(3);
-    }
-  }
 
   statistics();
 

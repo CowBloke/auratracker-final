@@ -81,8 +81,14 @@ Stack.prototype.addPiece = function(tetro) {
 
   statsPiece.innerHTML = piecesSet;
 
-  if (gametype !== 3) statsLines.innerHTML = lineLimit - lines;
-  else statsLines.innerHTML = digLines.length;
+  if (gametype !== 3) {
+    statsLines.innerHTML = lines;
+    if (typeof updateAutoGravity === 'function') {
+      updateAutoGravity();
+    }
+  } else {
+    statsLines.innerHTML = digLines.length;
+  }
 
   this.draw();
 };
