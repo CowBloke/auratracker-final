@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
-import { Play, RotateCcw, Trophy, X } from 'lucide-react';
+import { RotateCcw, Trophy, X } from 'lucide-react';
 
 interface LeaderboardEntry {
   id: string;
@@ -136,7 +136,7 @@ export default function Tetris() {
         </div>
       </div>
 
-      <div className="flex justify-center gap-6 items-start flex-wrap">
+      <div className="flex justify-center gap-6 items-start flex-nowrap overflow-x-auto pb-2">
         <div className="space-y-3">
           <div className="flex gap-2 justify-end">
             <button
@@ -146,16 +146,7 @@ export default function Tetris() {
               <RotateCcw className="w-4 h-4" />
               Recharger
             </button>
-            <a
-              href={`/tetrjs/index.html?autostart=1&k=${sessionKey}`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 border border-border/50 rounded-md hover:bg-muted transition-colors text-sm"
-            >
-              <Play className="w-4 h-4" />
-              Ouvrir
-            </a>
-          </div>
+            </div>
 
           <iframe
             key={sessionKey}
@@ -172,7 +163,7 @@ export default function Tetris() {
               {rewards && (rewards.money > 0 || rewards.aura > 0) && (
                 <div className="text-muted-foreground">
                   {rewards.money > 0 && `+$${rewards.money}`}
-                  {rewards.money > 0 && rewards.aura > 0 && ' � '}
+                  {rewards.money > 0 && rewards.aura > 0 && ' · '}
                   {rewards.aura > 0 && `+${rewards.aura} aura`}
                 </div>
               )}
@@ -231,3 +222,4 @@ export default function Tetris() {
     </div>
   );
 }
+
