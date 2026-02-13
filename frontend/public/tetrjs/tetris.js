@@ -172,6 +172,10 @@ var finesse = [
  */
 var gravityUnit = 0.00390625;
 var gravity;
+var AUTO_GRAVITY_LEVEL_CAP = 20;
+var AUTO_GRAVITY_BASE_MULTIPLIER = 4;
+var AUTO_GRAVITY_LEVEL_MULTIPLIER = 1.25;
+var AUTO_GRAVITY_MAX = 1.25;
 var gravityArr = (function() {
   var array = [];
   array.push(0);
@@ -523,10 +527,14 @@ function statistics() {
 
 function updateAutoGravity() {
   if (settings.Gravity !== 0) return;
-  // Endless speed curve: every 10 cleared lines increases gravity.
+  // Increase speed every 10 lines with a smoother curve, then cap progression.
   var level = Math.floor(lines / 10);
-  gravity = gravityUnit * Math.pow(2, level + 2);
-  if (gravity > 20) gravity = 20;
+  var cappedLevel = Math.min(level, AUTO_GRAVITY_LEVEL_CAP);
+  gravity =
+    gravityUnit *
+    AUTO_GRAVITY_BASE_MULTIPLIER *
+    Math.pow(AUTO_GRAVITY_LEVEL_MULTIPLIER, cappedLevel);
+  if (gravity > AUTO_GRAVITY_MAX) gravity = AUTO_GRAVITY_MAX;
 }
 
 function auraElapsedTimeMs() {
