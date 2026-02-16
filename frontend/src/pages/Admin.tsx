@@ -160,10 +160,123 @@ const METADATA_LABELS: Record<string, string> = {
   badgeName: 'Badge',
 };
 
+const GAME_TYPE_LABELS: Record<string, string> = {
+  doodle_jump: 'Doodle Jump',
+  doodle_jump_mort_subite: 'Doodle Jump (Mort Subite)',
+  game_2048: '2048',
+  flappy_bird: 'Flappy Bird',
+  solitaire: 'Solitaire',
+  racer: 'Racer',
+  tetris: 'Tetris',
+  casino: 'Casino',
+  bombparty: 'Bomb Party',
+  petit_bac: 'Petit Bac',
+  poker: 'Poker',
+  battleship: 'Bataille Navale',
+};
+
+const MULTIPLAYER_GAME_TYPES = new Set(['bombparty', 'petit_bac', 'poker', 'battleship']);
+
+const toNumber = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+};
+
+const formatGameTypeLabel = (gameType: unknown): string => {
+  const normalized = typeof gameType === 'string' ? gameType : '';
+  return GAME_TYPE_LABELS[normalized] || (normalized ? normalized.replace(/_/g, ' ') : 'Jeu');
+};
+
+const getGameDisplayInfo = (log: ActivityLog): { gameType: string; gameLabel: string; isMultiplayer: boolean } => {
+  const metadata = log.metadata || {};
+  const metadataGameType = typeof metadata.gameType === 'string' ? metadata.gameType : '';
+  const gameType = metadataGameType || (log.action === 'casino_bet' ? 'casino' : '');
+  const isMultiplayer =
+    metadata.isMultiplayer === true ||
+    MULTIPLAYER_GAME_TYPES.has(gameType);
+  return {
+    gameType,
+    gameLabel: formatGameTypeLabel(gameType),
+    isMultiplayer,
+  };
+};
+
+const formatLogSummary = (log: ActivityLog): string => {
+  const actor = log.username || 'inconnu';
+  const metadata = log.metadata || {};
+  const { gameLabel, gameType } = getGameDisplayInfo(log);
+
+  if (log.type === 'GAME') {
+    if (log.action === 'game_complete') {
+      if (gameType === 'battleship') {
+        const won = metadata.won === true;
+        return `${gameLabel} : ${won ? 'victoire' : 'défaite'} par ${actor}`;
+      }
+      const score = toNumber(metadata.score);
+      if (score !== null) {
+        return `${gameLabel} : score ${score} par ${actor}`;
+      }
+      return `${gameLabel} : partie par ${actor}`;
+    }
+
+    if (log.action === 'highscore') {
+      const best = toNumber(metadata.newHighScore);
+      if (best !== null) {
+        return `${gameLabel} : nouveau record ${best} par ${actor}`;
+      }
+      return `${gameLabel} : nouveau record par ${actor}`;
+    }
+
+    if (log.action === 'casino_bet') {
+      const bet = toNumber(metadata.bet);
+      const winAmount = toNumber(metadata.winAmount);
+      const netGain = toNumber(metadata.netGain);
+      const won = metadata.won === true;
+      const parts = [`Casino : ${won ? 'gagné' : 'perdu'}`];
+      if (bet !== null) parts.push(`mise ${bet}`);
+      if (winAmount !== null) parts.push(`gain brut ${winAmount}`);
+      if (netGain !== null) parts.push(`net ${netGain}`);
+      return `${parts.join(', ')} par ${actor}`;
+    }
+
+    if (log.action === 'game_reward') {
+      const auraReward = toNumber(metadata.auraReward);
+      const moneyReward = toNumber(metadata.moneyReward);
+      const rewardParts: string[] = [];
+      if (auraReward !== null) rewardParts.push(`${auraReward} aura`);
+      if (moneyReward !== null) rewardParts.push(`${moneyReward} money`);
+      if (rewardParts.length > 0) {
+        return `${gameLabel} : récompense ${rewardParts.join(' + ')} par ${actor}`;
+      }
+      return `${gameLabel} : récompense par ${actor}`;
+    }
+  }
+
+  const actionLabel = ACTION_LABELS[log.action] || log.action.replace(/_/g, ' ');
+  if (log.targetName) {
+    return `${actionLabel} par ${actor} → ${log.targetName}`;
+  }
+  return log.username ? `${actionLabel} par ${actor}` : actionLabel;
+};
+
 // Game type filters
 const GAME_TYPES = [
   { value: 'doodle_jump', label: 'Doodle Jump' },
+  { value: 'doodle_jump_mort_subite', label: 'Doodle Jump (Mort Subite)' },
+  { value: 'game_2048', label: '2048' },
+  { value: 'flappy_bird', label: 'Flappy Bird' },
+  { value: 'solitaire', label: 'Solitaire' },
+  { value: 'racer', label: 'Racer' },
+  { value: 'tetris', label: 'Tetris' },
   { value: 'casino', label: 'Casino' },
+  { value: 'bombparty', label: 'Bomb Party' },
+  { value: 'petit_bac', label: 'Petit Bac' },
+  { value: 'poker', label: 'Poker' },
+  { value: 'battleship', label: 'Bataille Navale' },
 ];
 
 interface ItemFormData {
@@ -2795,19 +2908,41 @@ export default function Admin() {
                 const config = LOG_TYPE_CONFIG[log.type];
                 const Icon = config?.icon || ScrollText;
                 const isExpanded = expandedLogIds.has(log.id);
-                const actionLabel = ACTION_LABELS[log.action] || log.action.replace(/_/g, ' ');
+                const summaryLabel = formatLogSummary(log);
+                const gameDisplayInfo = getGameDisplayInfo(log);
+                const gameRowAccentClass =
+                  log.type === 'GAME'
+                    ? gameDisplayInfo.isMultiplayer
+                      ? 'bg-cyan-500/[0.05] hover:bg-cyan-500/[0.10]'
+                      : 'bg-amber-500/[0.05] hover:bg-amber-500/[0.10]'
+                    : 'hover:bg-muted/20';
+                const gameDetailsAccentClass =
+                  log.type === 'GAME'
+                    ? gameDisplayInfo.isMultiplayer
+                      ? 'bg-cyan-500/[0.04]'
+                      : 'bg-amber-500/[0.04]'
+                    : 'bg-muted/10';
+                const typePillClass =
+                  log.type === 'GAME'
+                    ? gameDisplayInfo.isMultiplayer
+                      ? 'bg-cyan-600'
+                      : 'bg-amber-600'
+                    : (config?.bgColor || 'bg-muted');
 
                 return (
                   <div key={log.id}>
                     {/* Collapsed single-line view */}
                     <button
                       onClick={() => toggleLogExpand(log.id)}
-                      className="w-full px-3 py-2 flex items-center gap-2 hover:bg-muted/20 transition-colors text-left"
+                      className={cn(
+                        "w-full px-3 py-2 flex items-center gap-2 transition-colors text-left",
+                        gameRowAccentClass
+                      )}
                     >
                       {/* Type pastille */}
                       <span className={cn(
                         "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium shrink-0",
-                        config?.bgColor || 'bg-muted',
+                        typePillClass,
                         "text-white"
                       )}>
                         <Icon className="h-2.5 w-2.5" />
@@ -2816,16 +2951,7 @@ export default function Admin() {
 
                       {/* Action + User summary */}
                       <span className="text-sm truncate flex-1">
-                        <span className="font-medium">{actionLabel}</span>
-                        {log.username && (
-                          <span className="text-muted-foreground"> par </span>
-                        )}
-                        {log.username && (
-                          <span className="text-foreground">{log.username}</span>
-                        )}
-                        {log.targetName && (
-                          <span className="text-muted-foreground"> → {log.targetName}</span>
-                        )}
+                        <span className="font-medium">{summaryLabel}</span>
                       </span>
 
                       {/* Time */}
@@ -2845,7 +2971,7 @@ export default function Admin() {
 
                     {/* Expanded details */}
                     {isExpanded && (
-                      <div className="px-3 pb-3 pt-1 bg-muted/10 border-t border-border/20">
+                      <div className={cn("px-3 pb-3 pt-1 border-t border-border/20", gameDetailsAccentClass)}>
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                           <div className="text-muted-foreground">Date</div>
                           <div>
@@ -4400,3 +4526,4 @@ export default function Admin() {
     </PageLayout>
   );
 }
+

@@ -1,6 +1,7 @@
 import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
 import { checkQuestProgress } from '../routes/quests.js';
+import { logGame } from '../utils/logger.js';
 import { readBombPartyDictionaryWords, resolveBombPartyLanguageFile } from '../utils/bombpartyDictionary.js';
 import { getBombPartyLanguageSetting, getBombPartyThreeLetterStartRound, getBombPartyWppSettings } from '../utils/bombpartySettings.js';
 
@@ -927,6 +928,22 @@ async function endGame(game: BombPartyGame, io: Server) {
       rewards: rewards[p.userId],
     })),
   };
+
+  for (const player of game.players) {
+    const reward = rewards[player.userId] || { aura: 0, money: 0 };
+    logGame('game_complete', player.userId, player.username, {
+      gameType: 'bombparty',
+      score: player.wordsTypedCount,
+      won: player.userId === winner?.userId,
+      auraReward: reward.aura,
+      moneyReward: reward.money,
+      isMultiplayer: true,
+      partyId: game.partyId,
+      totalPlayers: game.players.length,
+      winnerId: winner?.userId ?? null,
+      winnerUsername: winner?.username ?? null,
+    });
+  }
 
   // Remove game from active games
   activeGames.delete(game.partyId);

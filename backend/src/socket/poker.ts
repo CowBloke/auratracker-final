@@ -1,6 +1,7 @@
 import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
 import { checkQuestProgress } from '../routes/quests.js';
+import { logGame } from '../utils/logger.js';
 
 type Stage = 'preflop' | 'flop' | 'turn' | 'river' | 'showdown';
 type PokerAction = 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'all-in';
@@ -793,6 +794,24 @@ const endMatch = async (game: PokerGame, io: Server) => {
       .map((p) => ({ userId: p.userId, username: p.username, chips: p.chips }))
       .sort((a, b) => b.chips - a.chips),
   };
+
+  gameOver.standings.forEach((standing, index) => {
+    logGame('game_complete', standing.userId, standing.username, {
+      gameType: 'poker',
+      score: standing.chips,
+      won: standing.userId === winner?.userId,
+      auraReward: 0,
+      moneyReward: 0,
+      isMultiplayer: true,
+      partyId: game.partyId,
+      totalPlayers: game.players.length,
+      position: index + 1,
+      winnerId: winner?.userId ?? null,
+      winnerUsername: winner?.username ?? null,
+      handNumber: game.handNumber,
+      maxHands: game.maxHands,
+    });
+  });
 
   activeGames.delete(game.partyId);
 

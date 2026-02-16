@@ -1,6 +1,7 @@
 import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
 import { checkQuestProgress } from '../routes/quests.js';
+import { logGame } from '../utils/logger.js';
 
 interface BattleshipPlayer {
   userId: string;
@@ -241,6 +242,32 @@ async function endGame(game: BattleshipGame, io: Server, winnerId: string) {
       winner: winnerReward,
       loser: loserReward,
     },
+  });
+
+  logGame('game_complete', winner.userId, winner.username, {
+    gameType: 'battleship',
+    score: 1,
+    won: true,
+    auraReward: winnerReward.aura,
+    moneyReward: winnerReward.money,
+    isMultiplayer: true,
+    partyId: game.partyId,
+    totalPlayers: game.players.length,
+    winnerId: winner.userId,
+    winnerUsername: winner.username,
+  });
+
+  logGame('game_complete', loser.userId, loser.username, {
+    gameType: 'battleship',
+    score: 0,
+    won: false,
+    auraReward: loserReward.aura,
+    moneyReward: loserReward.money,
+    isMultiplayer: true,
+    partyId: game.partyId,
+    totalPlayers: game.players.length,
+    winnerId: winner.userId,
+    winnerUsername: winner.username,
   });
 
   const playAgainPrompt: PendingPlayAgainPrompt = {

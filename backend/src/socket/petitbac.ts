@@ -1,6 +1,7 @@
 import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
 import { checkQuestProgress } from '../routes/quests.js';
+import { logGame } from '../utils/logger.js';
 
 interface PetitBacPlayer {
   userId: string;
@@ -527,6 +528,22 @@ async function endGame(game: PetitBacGame, io: Server) {
       isWinner: winners.some((w) => w.userId === p.userId),
     })),
   };
+
+  for (const player of game.players) {
+    logGame('game_complete', player.userId, player.username, {
+      gameType: 'petit_bac',
+      score: player.score,
+      won: winners.some((w) => w.userId === player.userId),
+      auraReward: 0,
+      moneyReward: 0,
+      isMultiplayer: true,
+      partyId: game.partyId,
+      totalPlayers: game.players.length,
+      winnerIds: winners.map((w) => w.userId),
+      winnerUsernames: winners.map((w) => w.username),
+      rounds: game.maxRounds,
+    });
+  }
 
   activeGames.delete(game.partyId);
 
