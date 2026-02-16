@@ -6,6 +6,7 @@ import { logGame, logAdmin } from '../utils/logger.js';
 import { checkQuestProgress } from './quests.js';
 
 const router = Router();
+const isDoodleJumpType = (gameType: string) => gameType === 'doodle_jump' || gameType === 'doodle_jump_mort_subite';
 
 // Game reward configuration
 const GAME_REWARDS = {
@@ -365,7 +366,7 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
     let auraReward = 0;
     let moneyReward = 0;
     
-    if (gameType === 'doodle_jump') {
+    if (isDoodleJumpType(gameType)) {
       const rewards = calculateDoodleJumpRewards(score, isNewHighScore);
       moneyReward = rewards.money;
       auraReward = rewards.aura;
@@ -480,7 +481,7 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
     }
 
     // Check quest progress
-    if (gameType === 'doodle_jump') {
+    if (isDoodleJumpType(gameType)) {
       await checkQuestProgress(req.user.id, 'DOODLE_JUMP_SCORE', score);
       await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
       if (won) {

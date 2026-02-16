@@ -9,6 +9,7 @@ type LeaderboardCategory =
   | 'money'
   | 'total_money'
   | 'doodle_jump'
+  | 'doodle_jump_mort_subite'
   | 'game_2048'
   | 'flappy_bird'
   | 'solitaire'
@@ -114,6 +115,29 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
       case 'doodle_jump':
         rankings = await prisma.gameStats.findMany({
           where: { gameType: 'doodle_jump', user: { isAdmin: false } },
+          select: {
+            userId: true,
+            highScore: true,
+            user: {
+              select: { username: true, usernameColor: true },
+            },
+          },
+          orderBy: { highScore: 'desc' },
+          take: parseInt(limit as string),
+          skip: parseInt(offset as string),
+        });
+        rankings = rankings.map((s, i) => ({
+          rank: parseInt(offset as string) + i + 1,
+          userId: s.userId,
+          username: s.user.username,
+          usernameColor: s.user.usernameColor,
+          value: s.highScore,
+        }));
+        break;
+
+      case 'doodle_jump_mort_subite':
+        rankings = await prisma.gameStats.findMany({
+          where: { gameType: 'doodle_jump_mort_subite', user: { isAdmin: false } },
           select: {
             userId: true,
             highScore: true,
@@ -402,6 +426,26 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
           const higherScores = await prisma.gameStats.count({
             where: {
               gameType: 'doodle_jump',
+              highScore: { gt: userStats.highScore },
+              user: { isAdmin: false },
+            },
+          });
+          userRank = higherScores + 1;
+        }
+      } else if (category === 'doodle_jump_mort_subite') {
+        // Calculate user's rank even if not in top rankings
+        const userStats = await prisma.gameStats.findUnique({
+          where: {
+            userId_gameType: {
+              userId: req.user.id,
+              gameType: 'doodle_jump_mort_subite',
+            },
+          },
+        });
+        if (userStats) {
+          const higherScores = await prisma.gameStats.count({
+            where: {
+              gameType: 'doodle_jump_mort_subite',
               highScore: { gt: userStats.highScore },
               user: { isAdmin: false },
             },

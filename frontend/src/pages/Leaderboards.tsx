@@ -19,7 +19,7 @@ interface Ranking {
   totalPlayed?: number;
 }
 
-type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'game_2048' | 'flappy_bird' | 'solitaire' | 'racer' | 'tetris' | 'casino' | 'casino_losses' | 'games_played' | 'bombparty';
+type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'doodle_jump_mort_subite' | 'game_2048' | 'flappy_bird' | 'solitaire' | 'racer' | 'tetris' | 'casino' | 'casino_losses' | 'games_played' | 'bombparty';
 
 const categories: { id: Category; name: string; valueLabel: string }[] = [
   { id: 'aura', name: 'Aura', valueLabel: 'aura' },
@@ -27,6 +27,7 @@ const categories: { id: Category; name: string; valueLabel: string }[] = [
   { id: 'total_money', name: 'Argent total', valueLabel: '$' },
   { id: 'auracoin', name: 'Aura Coin', valueLabel: 'AC' },
   { id: 'doodle_jump', name: 'Doodle Jump', valueLabel: 'score' },
+  { id: 'doodle_jump_mort_subite', name: 'Doodle Jump - Mort subite', valueLabel: 'score' },
   { id: 'game_2048', name: '2048', valueLabel: 'score' },
   { id: 'flappy_bird', name: 'Flappy Bird', valueLabel: 'score' },
   { id: 'solitaire', name: 'Solitaire', valueLabel: 'score' },
@@ -39,7 +40,7 @@ const categories: { id: Category; name: string; valueLabel: string }[] = [
 ];
 
 const economyCategories: Category[] = ['aura', 'money', 'total_money', 'auracoin'];
-const gameCategories: Category[] = ['doodle_jump', 'game_2048', 'flappy_bird', 'solitaire', 'racer', 'tetris', 'casino', 'casino_losses', 'bombparty', 'games_played'];
+const gameCategories: Category[] = ['doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird', 'solitaire', 'racer', 'tetris', 'casino', 'casino_losses', 'bombparty', 'games_played'];
 
 export default function Leaderboards() {
   const { user } = useAuth();

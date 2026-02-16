@@ -55,12 +55,15 @@ export const SKINS: Skin[] = [
 ];
 
 const SKIN_STORAGE_KEY = 'doodle-jump-skin';
+const MORT_SUBITE_PLATFORM_COLOR = '#dc2626';
 
 // ============================================
 // TYPES
 // ============================================
 type PlatformMovement = 'normal' | 'moving' | 'conveyor-left' | 'conveyor-right';
 type PlatformEffect = 'bounce' | 'disappear' | 'instant-disappear' | null;
+type DoodleGameType = 'doodle_jump' | 'doodle_jump_mort_subite';
+type DoodleGameMode = 'classic' | 'mort_subite';
 
 interface Platform {
   x: number;
@@ -136,6 +139,8 @@ export default function DoodleJump() {
   const moveRightRef = useRef(false);
   const facingLeftRef = useRef(false);
   const playerImageRef = useRef<HTMLImageElement | null>(null);
+  const activeGameTypeRef = useRef<DoodleGameType>('doodle_jump');
+  const activeModeRef = useRef<DoodleGameMode>('classic');
 
   const { user, refreshUser } = useAuth();
   const [score, setScore] = useState(0);
@@ -151,12 +156,10 @@ export default function DoodleJump() {
     return (saved as SkinId) || 'default';
   });
   const [showSkinSelector, setShowSkinSelector] = useState(false);
-
-  // Fetch stats and leaderboard on mount
-  useEffect(() => {
-    fetchStats();
-    fetchLeaderboard();
-  }, []);
+  const [isMortSubite, setIsMortSubite] = useState(false);
+  const selectedGameType: DoodleGameType = isMortSubite ? 'doodle_jump_mort_subite' : 'doodle_jump';
+  const selectedMode: DoodleGameMode = isMortSubite ? 'mort_subite' : 'classic';
+  const displayMode: DoodleGameMode = started ? activeModeRef.current : selectedMode;
 
   useEffect(() => {
     const img = new Image();
@@ -175,30 +178,37 @@ export default function DoodleJump() {
     localStorage.setItem(SKIN_STORAGE_KEY, selectedSkin);
   }, [selectedSkin]);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
+    if (!user?.id) return;
     try {
-      const response = await gamesApi.getStats('doodle_jump', user!.id);
+      const response = await gamesApi.getStats(selectedGameType, user.id);
       setHighScore(response.data.stats.highScore || 0);
     } catch (error) {
       console.error('Failed to fetch stats:', error);
     }
-  };
+  }, [selectedGameType, user?.id]);
 
-  const fetchLeaderboard = async () => {
+  const fetchLeaderboard = useCallback(async () => {
     try {
-      const response = await gamesApi.getLeaderboard('doodle_jump', 20);
+      const response = await gamesApi.getLeaderboard(selectedGameType, 20);
       setLeaderboard(response.data.rankings || []);
     } catch (error) {
       console.error('Failed to fetch leaderboard:', error);
     }
-  };
+  }, [selectedGameType]);
+
+  // Fetch stats and leaderboard when mode changes
+  useEffect(() => {
+    fetchStats();
+    fetchLeaderboard();
+  }, [fetchStats, fetchLeaderboard]);
 
   // Admin: Delete a user's high score
   const handleDeleteScore = async (userId: string, username: string) => {
     if (!confirm(`Supprimer le score de ${username} ?`)) return;
 
     try {
-      await gamesApi.deleteStats('doodle_jump', userId);
+      await gamesApi.deleteStats(selectedGameType, userId);
       // Refresh leaderboard
       fetchLeaderboard();
       // If it was our own score, reset our high score display
@@ -209,6 +219,19 @@ export default function DoodleJump() {
       console.error('Failed to delete score:', error);
     }
   };
+
+  const applyMortSubiteRules = useCallback((movement: PlatformMovement, effect: PlatformEffect): { movement: PlatformMovement; effect: PlatformEffect } => {
+    if (activeModeRef.current !== 'mort_subite') {
+      return { movement, effect };
+    }
+
+    // In mort subite, everything disappears instantly except moving and bounce platforms.
+    if (movement === 'moving' || effect === 'bounce') {
+      return { movement, effect };
+    }
+
+    return { movement, effect: 'instant-disappear' };
+  }, []);
 
   // ============================================
   // PLATFORM GENERATION (from old implementation)
@@ -230,8 +253,8 @@ export default function DoodleJump() {
     else if (currentScore > 350 && random < 0.4 * scoreFactor) effect = 'disappear';
     else if (currentScore > 500 && random < 0.6 * scoreFactor) effect = 'bounce';
 
-    return { movement, effect };
-  }, []);
+    return applyMortSubiteRules(movement, effect);
+  }, [applyMortSubiteRules]);
 
   const createPlatform = useCallback((x: number, y: number, movement: PlatformMovement = 'normal', effect: PlatformEffect = null): Platform => {
     return {
@@ -268,6 +291,9 @@ export default function DoodleJump() {
   // GAME INITIALIZATION
   // ============================================
   const initGame = useCallback(() => {
+    activeModeRef.current = selectedMode;
+    activeGameTypeRef.current = selectedGameType;
+
     // Reset state
     platformsRef.current = [];
     scoreRef.current = 0;
@@ -278,15 +304,17 @@ export default function DoodleJump() {
 
     // Create initial platforms
     // Start platform under player
-    platformsRef.current.push(createPlatform(160, 100, 'normal', null));
+    const startType = applyMortSubiteRules('normal', null);
+    platformsRef.current.push(createPlatform(160, 100, startType.movement, startType.effect));
 
     for (let i = 1; i < PLATFORM_COUNT; i++) {
       const { movement, effect } = i < 3 ? { movement: 'normal' as PlatformMovement, effect: null } : getRandomPlatformType();
+      const adjustedType = applyMortSubiteRules(movement, effect);
       const platform = createPlatform(
         Math.random() * (CANVAS_WIDTH - PLATFORM_WIDTH),
         100 + i * 100,
-        movement,
-        effect
+        adjustedType.movement,
+        adjustedType.effect
       );
       platformsRef.current.push(platform);
     }
@@ -296,7 +324,7 @@ export default function DoodleJump() {
     setStarted(true);
     setRewards(null);
     setIsNewHighScore(false);
-  }, [createPlatform, getRandomPlatformType]);
+  }, [applyMortSubiteRules, createPlatform, getRandomPlatformType, selectedGameType, selectedMode]);
 
   // ============================================
   // GAME OVER HANDLING
@@ -307,7 +335,7 @@ export default function DoodleJump() {
     setGameOver(true);
 
     try {
-      const response = await gamesApi.complete('doodle_jump', {
+      const response = await gamesApi.complete(activeGameTypeRef.current, {
         score: finalScore,
         won: true,
       });
@@ -328,7 +356,7 @@ export default function DoodleJump() {
     } catch (error) {
       console.error('Failed to submit score:', error);
     }
-  }, [refreshUser]);
+  }, [fetchLeaderboard, refreshUser]);
 
   // ============================================
   // GAME LOOP (physics from old implementation)
@@ -423,6 +451,14 @@ export default function DoodleJump() {
             if ((platform.effect === 'disappear' || platform.effect === 'instant-disappear') && !platform.touched) {
               platform.touched = true;
               platform.fadingOut = true;
+
+              // In mort subite, most platforms vanish immediately on contact.
+              // Award points on consume so score progression does not stall at 0.
+              if (activeModeRef.current === 'mort_subite' && platform.effect === 'instant-disappear') {
+                scoreRef.current += 10;
+                setScore(scoreRef.current);
+              }
+
               const fadeTime = platform.effect === 'disappear' ? DISAPPEARING_PLATFORM_FADE_TIME : BROKEN_PLATFORM_FADE_TIME;
               const startTime = timestamp;
 
@@ -528,18 +564,22 @@ export default function DoodleJump() {
       ctx.globalAlpha = platform.opacity;
 
       // Platform color based on type
-      if (platform.effect === 'bounce') {
-        ctx.fillStyle = colors.platformBounce;
-      } else if (platform.effect === 'disappear') {
-        ctx.fillStyle = colors.platformDisappear;
-      } else if (platform.effect === 'instant-disappear') {
-        ctx.fillStyle = colors.platformInstantDisappear;
-      } else if (platform.movement === 'moving') {
-        ctx.fillStyle = colors.platformMoving;
-      } else if (platform.movement === 'conveyor-left' || platform.movement === 'conveyor-right') {
-        ctx.fillStyle = colors.platformConveyor;
+      if (activeModeRef.current === 'mort_subite') {
+        ctx.fillStyle = MORT_SUBITE_PLATFORM_COLOR;
       } else {
-        ctx.fillStyle = colors.platformNormal;
+        if (platform.effect === 'bounce') {
+          ctx.fillStyle = colors.platformBounce;
+        } else if (platform.effect === 'disappear') {
+          ctx.fillStyle = colors.platformDisappear;
+        } else if (platform.effect === 'instant-disappear') {
+          ctx.fillStyle = colors.platformInstantDisappear;
+        } else if (platform.movement === 'moving') {
+          ctx.fillStyle = colors.platformMoving;
+        } else if (platform.movement === 'conveyor-left' || platform.movement === 'conveyor-right') {
+          ctx.fillStyle = colors.platformConveyor;
+        } else {
+          ctx.fillStyle = colors.platformNormal;
+        }
       }
 
       // Draw platform (bounce is round, others are rectangular)
@@ -762,13 +802,26 @@ export default function DoodleJump() {
           {/* Start Screen */}
           {!started && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
-              <button
-                onClick={initGame}
-                className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-              >
-                <Play className="w-4 h-4" />
-                Jouer
-              </button>
+              <div className="flex flex-col items-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => setIsMortSubite((prev) => !prev)}
+                  className={`w-56 px-3 py-2 rounded-md border transition-colors text-sm ${
+                    isMortSubite
+                      ? 'border-red-500 bg-red-500/10 text-red-500'
+                      : 'border-border/50 text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Mort subite: {isMortSubite ? 'ON' : 'OFF'}
+                </button>
+                <button
+                  onClick={initGame}
+                  className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+                >
+                  <Play className="w-4 h-4" />
+                  Jouer
+                </button>
+              </div>
             </div>
           )}
 
@@ -813,7 +866,9 @@ export default function DoodleJump() {
           <div className="p-4 border-b border-border/30 bg-muted/30">
             <div className="flex items-center gap-2">
               <Trophy className="w-5 h-5 text-yellow-500" />
-              <h3 className="font-semibold">Classement</h3>
+              <h3 className="font-semibold">
+                Classement {displayMode === 'mort_subite' ? 'Mort subite' : 'Classique'}
+              </h3>
             </div>
           </div>
           <div className="overflow-y-auto" style={{ height: CANVAS_HEIGHT - 60 }}>
@@ -874,28 +929,37 @@ export default function DoodleJump() {
       </div>
 
       {/* Platform Legend */}
-      <div className="flex justify-center gap-6 text-xs text-muted-foreground">
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: colors.platformNormal }}></div>
-          <span>Normal</span>
+      {displayMode === 'mort_subite' ? (
+        <div className="flex justify-center gap-6 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: MORT_SUBITE_PLATFORM_COLOR }}></div>
+            <span>Mort subite: plateformes rouges, disparition instantanée</span>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: colors.platformMoving }}></div>
-          <span>Mobile</span>
+      ) : (
+        <div className="flex justify-center gap-6 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: colors.platformNormal }}></div>
+            <span>Normal</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: colors.platformMoving }}></div>
+            <span>Mobile</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: colors.platformConveyor }}></div>
+            <span>Tapis</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-2 rounded-full" style={{ backgroundColor: colors.platformBounce }}></div>
+            <span>Trampoline</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: colors.platformDisappear }}></div>
+            <span>Fragile</span>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: colors.platformConveyor }}></div>
-          <span>Tapis</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-2 rounded-full" style={{ backgroundColor: colors.platformBounce }}></div>
-          <span>Trampoline</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: colors.platformDisappear }}></div>
-          <span>Fragile</span>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
