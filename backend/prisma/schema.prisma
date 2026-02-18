@@ -75,6 +75,7 @@ model User {
   sentGifts           Gift[]                 @relation("SentGifts")
   receivedGifts       Gift[]                 @relation("ReceivedGifts")
   wordleAttempts      WordleAttempt[]
+  dailyRacerRuns      DailyRacerRun[]
 
   @@index([aura])
   @@index([money])
@@ -199,6 +200,20 @@ model WordleAttempt {
   @@unique([puzzleId, userId])
   @@index([puzzleId, solved, guessCount])
   @@index([userId, updatedAt])
+}
+
+model DailyRacerRun {
+  id        String   @id @default(uuid())
+  userId    String
+  trackDate DateTime
+  lapTimeMs Int
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([trackDate, lapTimeMs])
+  @@index([trackDate, userId])
+  @@index([userId, createdAt])
 }
 
 // Party System

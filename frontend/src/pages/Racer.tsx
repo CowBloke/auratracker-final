@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { gamesApi } from '../services/api';
-import { Play, RotateCcw, Trophy, X } from 'lucide-react';
+import { gamesApi, DailyRacerLeaderboardEntry } from '../services/api';
+import { Play, RotateCcw, Trophy } from 'lucide-react';
 
 // ============================================
 // GAME CONSTANTS
@@ -122,6 +122,28 @@ const ROAD = {
   LENGTH: { NONE: 0, SHORT: 25, MEDIUM: 50, LONG: 100 },
   HILL: { NONE: 0, LOW: 20, MEDIUM: 40, HIGH: 60 },
   CURVE: { NONE: 0, EASY: 2, MEDIUM: 4, HARD: 6 },
+};
+
+const TRACK_TIMEZONE = 'UTC';
+
+const getTodayTrackKey = (): string => {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: TRACK_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+};
+
+const createSeededRng = (seed: number) => {
+  let state = seed >>> 0;
+  if (state === 0) state = 1;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 };
 
 // ============================================
@@ -345,7 +367,7 @@ const Render = {
     steer: number,
     updown: number
   ) => {
-    const bounce = 1.5 * Math.random() * speedPercent * resolution * Util.randomChoice([-1, 1]);
+    const bounce = Math.sin(Date.now() / 60) * speedPercent * resolution;
     let sprite;
     if (steer < 0) {
       sprite = updown > 0 ? SPRITES.PLAYER_UPHILL_LEFT : SPRITES.PLAYER_LEFT;
@@ -405,15 +427,6 @@ interface Car {
   percent?: number;
 }
 
-interface LeaderboardEntry {
-  id: string;
-  highScore: number;
-  user: {
-    id: string;
-    username: string;
-  };
-}
-
 // ============================================
 // COMPONENT
 // ============================================
@@ -424,15 +437,17 @@ export default function Racer() {
 
   const { user, refreshUser } = useAuth();
   const [score, setScore] = useState(0); // Lap time in seconds (lower is better)
-  const [highScore, setHighScore] = useState(0);
+  const [dailyBestLapTimeMs, setDailyBestLapTimeMs] = useState<number | null>(null);
   const [gameOver, setGameOver] = useState(false);
   const [started, setStarted] = useState(false);
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
-  const [isNewHighScore, setIsNewHighScore] = useState(false);
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [isNewDailyBest, setIsNewDailyBest] = useState(false);
+  const [leaderboard, setLeaderboard] = useState<DailyRacerLeaderboardEntry[]>([]);
   const [imagesLoaded, setImagesLoaded] = useState(false);
   const [speed, setSpeed] = useState(0);
   const [currentLapTime, setCurrentLapTime] = useState(0);
+  const [trackDateLabel, setTrackDateLabel] = useState(getTodayTrackKey());
+  const [dailyRunCount, setDailyRunCount] = useState(0);
 
   // Game state refs
   const segmentsRef = useRef<Segment[]>([]);
@@ -458,6 +473,7 @@ export default function Racer() {
   const currentLapTimeRef = useRef<number>(0);
   const lastLapTimeRef = useRef<number | null>(null);
   const fastestLapTimeRef = useRef<number>(180);
+  const dailySeedRef = useRef<number>(1);
   const keyLeftRef = useRef<boolean>(false);
   const keyRightRef = useRef<boolean>(false);
   const keyFasterRef = useRef<boolean>(false);
@@ -477,10 +493,6 @@ export default function Racer() {
     playerZRef.current = CAMERA_HEIGHT * cameraDepthRef.current;
     resolutionRef.current = HEIGHT / 480;
 
-    const saved = localStorage.getItem('racer_fastest_lap');
-    if (saved) {
-      fastestLapTimeRef.current = parseFloat(saved);
-    }
   }, []);
 
   // Load images
@@ -506,50 +518,38 @@ export default function Racer() {
     sprites.onerror = () => console.error('Failed to load sprites');
   }, []);
 
-  // Fetch stats and leaderboard
+  // Fetch daily track state and leaderboard
   useEffect(() => {
     if (user) {
-      fetchStats();
-      fetchLeaderboard();
+      fetchDailyRacerState();
     }
   }, [user]);
 
-  const fetchStats = async () => {
+  const fetchDailyRacerState = useCallback(async () => {
     try {
-      const response = await gamesApi.getStats('racer', user!.id);
-      const highScoreValue = response.data.stats.highScore || 0;
-      setHighScore(highScoreValue);
-      // High score is lap time in seconds (lower is better)
-      // If stored as inverted (higher is better), convert it
-      fastestLapTimeRef.current = highScoreValue > 0 && highScoreValue < 1000 ? highScoreValue : 180;
-    } catch (error) {
-      console.error('Failed to fetch stats:', error);
-    }
-  };
-
-  const fetchLeaderboard = async () => {
-    try {
-      const response = await gamesApi.getLeaderboard('racer', 20);
-      setLeaderboard(response.data.rankings || []);
-    } catch (error) {
-      console.error('Failed to fetch leaderboard:', error);
-    }
-  };
-
-  const handleDeleteScore = async (userId: string, username: string) => {
-    if (!confirm(`Supprimer le score de ${username} ?`)) return;
-
-    try {
-      await gamesApi.deleteStats('racer', userId);
-      fetchLeaderboard();
-      if (userId === user?.id) {
-        setHighScore(0);
-        fastestLapTimeRef.current = 180;
+      const response = await gamesApi.getDailyRacerState(20);
+      setLeaderboard(response.data.leaderboard);
+      setDailyBestLapTimeMs(response.data.userBestLapTimeMs);
+      setDailyRunCount(response.data.userRunCount);
+      dailySeedRef.current = response.data.seed || 1;
+      const trackDate = new Date(response.data.trackDate);
+      if (!Number.isNaN(trackDate.getTime())) {
+        setTrackDateLabel(
+          new Intl.DateTimeFormat('en-CA', {
+            timeZone: TRACK_TIMEZONE,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+          }).format(trackDate)
+        );
+      }
+      if (response.data.userBestLapTimeMs && response.data.userBestLapTimeMs > 0) {
+        fastestLapTimeRef.current = response.data.userBestLapTimeMs / 1000;
       }
     } catch (error) {
-      console.error('Failed to delete score:', error);
+      console.error('Failed to fetch daily racer state:', error);
     }
-  };
+  }, []);
 
   // Road building functions
   const lastY = useCallback((): number => {
@@ -665,7 +665,15 @@ export default function Racer() {
     return segmentsRef.current[Math.floor(z / SEGMENT_LENGTH) % segmentsRef.current.length];
   }, []);
 
-  const resetSprites = useCallback(() => {
+  const randomChoiceWithRng = useCallback(<T,>(rng: () => number, options: T[]): T => {
+    return options[Math.floor(rng() * options.length)];
+  }, []);
+
+  const randomIntWithRng = useCallback((rng: () => number, min: number, max: number): number => {
+    return Math.floor(rng() * (max - min + 1)) + min;
+  }, []);
+
+  const resetSprites = useCallback((rng: () => number) => {
     addSprite(20, SPRITES.BILLBOARD07, -1);
     addSprite(40, SPRITES.BILLBOARD06, -1);
     addSprite(60, SPRITES.BILLBOARD08, -1);
@@ -682,47 +690,48 @@ export default function Racer() {
     addSprite(segmentsRef.current.length - 25, SPRITES.BILLBOARD06, 1.2);
 
     for (let n = 10; n < 200; n += 4 + Math.floor(n / 100)) {
-      addSprite(n, SPRITES.PALM_TREE, 0.5 + Math.random() * 0.5);
-      addSprite(n, SPRITES.PALM_TREE, 1 + Math.random() * 2);
+      addSprite(n, SPRITES.PALM_TREE, 0.5 + rng() * 0.5);
+      addSprite(n, SPRITES.PALM_TREE, 1 + rng() * 2);
     }
 
     for (let n = 250; n < 1000; n += 5) {
       addSprite(n, SPRITES.COLUMN, 1.1);
-      addSprite(n + Util.randomInt(0, 5), SPRITES.TREE1, -1 - Math.random() * 2);
-      addSprite(n + Util.randomInt(0, 5), SPRITES.TREE2, -1 - Math.random() * 2);
+      addSprite(n + randomIntWithRng(rng, 0, 5), SPRITES.TREE1, -1 - rng() * 2);
+      addSprite(n + randomIntWithRng(rng, 0, 5), SPRITES.TREE2, -1 - rng() * 2);
     }
 
     for (let n = 200; n < segmentsRef.current.length; n += 3) {
-      addSprite(n, Util.randomChoice(PLANTS), Util.randomChoice([1, -1]) * (2 + Math.random() * 5));
+      addSprite(n, randomChoiceWithRng(rng, PLANTS), randomChoiceWithRng(rng, [1, -1]) * (2 + rng() * 5));
     }
 
     for (let n = 1000; n < segmentsRef.current.length - 50; n += 100) {
-      const side = Util.randomChoice([1, -1]);
-      addSprite(n + Util.randomInt(0, 50), Util.randomChoice(BILLBOARDS), -side);
+      const side = randomChoiceWithRng(rng, [1, -1]);
+      addSprite(n + randomIntWithRng(rng, 0, 50), randomChoiceWithRng(rng, BILLBOARDS), -side);
       for (let i = 0; i < 20; i++) {
-        const sprite = Util.randomChoice(PLANTS);
-        const offset = side * (1.5 + Math.random());
-        addSprite(n + Util.randomInt(0, 50), sprite, offset);
+        const sprite = randomChoiceWithRng(rng, PLANTS);
+        const offset = side * (1.5 + rng());
+        addSprite(n + randomIntWithRng(rng, 0, 50), sprite, offset);
       }
     }
-  }, [addSprite]);
+  }, [addSprite, randomChoiceWithRng, randomIntWithRng]);
 
-  const resetCars = useCallback(() => {
+  const resetCars = useCallback((rng: () => number) => {
     carsRef.current = [];
     for (let n = 0; n < TOTAL_CARS; n++) {
-      const offset = Math.random() * Util.randomChoice([-0.8, 0.8]);
-      const z = Math.floor(Math.random() * segmentsRef.current.length) * SEGMENT_LENGTH;
-      const sprite = Util.randomChoice(CARS);
-      const carSpeed = maxSpeedRef.current / 4 + (Math.random() * maxSpeedRef.current) / (sprite === SPRITES.SEMI ? 4 : 2);
+      const offset = rng() * randomChoiceWithRng(rng, [-0.8, 0.8]);
+      const z = Math.floor(rng() * segmentsRef.current.length) * SEGMENT_LENGTH;
+      const sprite = randomChoiceWithRng(rng, CARS);
+      const carSpeed = maxSpeedRef.current / 4 + (rng() * maxSpeedRef.current) / (sprite === SPRITES.SEMI ? 4 : 2);
       const car: Car = { offset, z, sprite, speed: carSpeed };
       const segment = findSegment(car.z);
       segment.cars.push(car);
       carsRef.current.push(car);
     }
-  }, [findSegment]);
+  }, [findSegment, randomChoiceWithRng]);
 
   const resetRoad = useCallback(() => {
     segmentsRef.current = [];
+    const rng = createSeededRng(dailySeedRef.current);
 
     addStraight(ROAD.LENGTH.SHORT);
     addLowRollingHills();
@@ -743,8 +752,8 @@ export default function Racer() {
     addSCurves();
     addDownhillToEnd();
 
-    resetSprites();
-    resetCars();
+    resetSprites(rng);
+    resetCars(rng);
 
     const startSegment = findSegment(playerZRef.current);
     segmentsRef.current[startSegment.index + 2].color = COLORS.START;
@@ -788,7 +797,7 @@ export default function Racer() {
     setGameOver(false);
     setStarted(true);
     setRewards(null);
-    setIsNewHighScore(false);
+    setIsNewDailyBest(false);
     gameRunningRef.current = true;
     lastTimeRef.current = 0;
   }, [imagesLoaded, resetRoad]);
@@ -961,7 +970,6 @@ export default function Racer() {
 
             if (lapTime <= fastestLapTimeRef.current || fastestLapTimeRef.current === 0 || fastestLapTimeRef.current >= 1000) {
               fastestLapTimeRef.current = lapTime;
-              localStorage.setItem('racer_fastest_lap', lapTime.toString());
             }
 
             // End game after completing one lap
@@ -988,36 +996,40 @@ export default function Racer() {
     async (lapTime: number) => {
       gameRunningRef.current = false;
       setGameOver(true);
+      setScore(lapTime);
 
-      // Score is lap time in seconds (lower is better, but we store it as-is for rewards)
-      const finalScore = lapTime;
+      const lapTimeMs = Math.max(1, Math.round(lapTime * 1000));
+      const roundedLapSeconds = Math.max(1, Math.round(lapTime));
 
       try {
-        const response = await gamesApi.complete('racer', {
-          score: finalScore,
-          won: true, // Always won if completed a lap
-          duration: lapTime,
-        });
+        const [rewardResponse, dailyResponse] = await Promise.all([
+          gamesApi.complete('racer', {
+            score: roundedLapSeconds,
+            won: true,
+            duration: roundedLapSeconds,
+          }),
+          gamesApi.submitDailyRacerRun(lapTimeMs),
+        ]);
 
         setRewards({
-          aura: response.data.auraReward,
-          money: response.data.moneyReward,
+          aura: rewardResponse.data.auraReward,
+          money: rewardResponse.data.moneyReward,
         });
-        setIsNewHighScore(response.data.isNewHighScore);
+        setIsNewDailyBest(dailyResponse.data.isNewDailyBest);
+        setDailyBestLapTimeMs(dailyResponse.data.bestLapTimeMs);
+        setDailyRunCount((prev) => prev + 1);
 
-        if (response.data.isNewHighScore) {
-          setHighScore(finalScore);
-          fastestLapTimeRef.current = finalScore;
+        if (dailyResponse.data.bestLapTimeMs > 0) {
+          fastestLapTimeRef.current = dailyResponse.data.bestLapTimeMs / 1000;
         }
 
         await refreshUser();
-        fetchLeaderboard();
-        fetchStats();
+        fetchDailyRacerState();
       } catch (error) {
         console.error('Failed to submit score:', error);
       }
     },
-    [refreshUser]
+    [refreshUser, fetchDailyRacerState]
   );
 
   // Render
@@ -1277,14 +1289,19 @@ export default function Racer() {
   }, [started, gameOver]);
 
   const formatTime = (dt: number): string => {
-    const minutes = Math.floor(dt / 60);
-    const seconds = Math.floor(dt - minutes * 60);
-    const tenths = Math.floor(10 * (dt - Math.floor(dt)));
+    const totalMs = Math.max(0, Math.round(dt * 1000));
+    const minutes = Math.floor(totalMs / 60000);
+    const seconds = Math.floor((totalMs % 60000) / 1000);
+    const milliseconds = totalMs % 1000;
+
     if (minutes > 0) {
-      return minutes + '.' + (seconds < 10 ? '0' : '') + seconds + '.' + tenths;
-    } else {
-      return seconds + '.' + tenths;
+      return `${minutes}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
     }
+    return `${seconds}.${milliseconds.toString().padStart(3, '0')}`;
+  };
+
+  const formatMsTime = (lapTimeMs: number): string => {
+    return formatTime(lapTimeMs / 1000);
   };
 
   return (
@@ -1293,17 +1310,16 @@ export default function Racer() {
         <div className="text-right text-sm text-muted-foreground tabular-nums">
           <div className="text-2xl font-light text-foreground">{speed} mph</div>
           <div>Temps: {formatTime(currentLapTime)}</div>
-          <div>Record: {highScore > 0 ? formatTime(highScore) : '--'}</div>
+          <div>Piste du jour (UTC): {trackDateLabel}</div>
+          <div>Meilleur du jour: {dailyBestLapTimeMs ? formatMsTime(dailyBestLapTimeMs) : '--'}</div>
+          <div>Tentatives du jour: {dailyRunCount}</div>
         </div>
       </div>
 
-      {/* Game Area with Leaderboard */}
       <div className="flex justify-center gap-6">
-        {/* Canvas */}
         <div className="relative">
           <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="border border-border/30 rounded-lg" />
 
-          {/* Start Screen */}
           {!started && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
               {!imagesLoaded ? (
@@ -1322,21 +1338,20 @@ export default function Racer() {
             </div>
           )}
 
-          {/* Game Over Screen */}
           {gameOver && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
               <div className="text-center space-y-6">
                 <div>
-                  <h2 className="text-2xl font-light mb-2">Tour terminé</h2>
+                  <h2 className="text-2xl font-light mb-2">Tour termine</h2>
                   <p className="text-3xl tabular-nums">{formatTime(score)}</p>
                 </div>
 
-                {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
+                {isNewDailyBest && <p className="text-sm text-foreground">Nouveau record du jour !</p>}
 
                 {rewards && (rewards.money > 0 || rewards.aura > 0) && (
                   <p className="text-sm text-muted-foreground">
                     {rewards.money > 0 && `+$${rewards.money}`}
-                    {rewards.money > 0 && rewards.aura > 0 && ' · '}
+                    {rewards.money > 0 && rewards.aura > 0 && ' - '}
                     {rewards.aura > 0 && `+${rewards.aura} aura`}
                   </p>
                 )}
@@ -1353,25 +1368,22 @@ export default function Racer() {
           )}
         </div>
 
-        {/* Leaderboard Panel */}
         <div className="w-64 border border-border/30 rounded-lg bg-card overflow-hidden" style={{ height: HEIGHT }}>
           <div className="p-4 border-b border-border/30 bg-muted/30">
             <div className="flex items-center gap-2">
               <Trophy className="w-5 h-5 text-yellow-500" />
-              <h3 className="font-semibold">Classement</h3>
+              <h3 className="font-semibold">Classement quotidien</h3>
             </div>
           </div>
           <div className="overflow-y-auto" style={{ height: HEIGHT - 60 }}>
             {leaderboard.length === 0 ? (
-              <div className="p-4 text-center text-muted-foreground text-sm">Aucun score enregistré</div>
+              <div className="p-4 text-center text-muted-foreground text-sm">Aucun temps enregistre aujourd'hui</div>
             ) : (
               <div className="divide-y divide-border/20">
                 {leaderboard.map((entry, index) => (
                   <div
-                    key={entry.id}
-                    className={`flex items-center gap-3 px-4 py-2.5 group ${
-                      entry.user.id === user?.id ? 'bg-primary/10' : ''
-                    }`}
+                    key={`${entry.userId}-${entry.bestLapTimeMs}`}
+                    className={`flex items-center gap-3 px-4 py-2.5 ${entry.userId === user?.id ? 'bg-primary/10' : ''}`}
                   >
                     <span
                       className={`w-6 text-center font-mono text-sm ${
@@ -1386,19 +1398,10 @@ export default function Racer() {
                     >
                       {index + 1}
                     </span>
-                    <span className="flex-1 truncate text-sm">{entry.user.username}</span>
+                    <span className="flex-1 truncate text-sm">{entry.username}</span>
                     <span className="font-mono text-sm tabular-nums text-muted-foreground">
-                      {formatTime(entry.highScore)}
+                      {formatMsTime(entry.bestLapTimeMs)}
                     </span>
-                    {user?.isAdmin && (
-                      <button
-                        onClick={() => handleDeleteScore(entry.user.id, entry.user.username)}
-                        className="opacity-0 group-hover:opacity-100 p-1 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-all"
-                        title="Supprimer ce score"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    )}
                   </div>
                 ))}
               </div>
@@ -1407,22 +1410,21 @@ export default function Racer() {
         </div>
       </div>
 
-      {/* Controls & Info */}
       <div className="flex justify-center gap-8 text-xs text-muted-foreground">
         <div className="flex items-center gap-2">
-          <kbd className="px-2 py-1 border border-border/50 rounded">←</kbd>
+          <kbd className="px-2 py-1 border border-border/50 rounded">Left</kbd>
           <span>Gauche</span>
         </div>
         <div className="flex items-center gap-2">
-          <kbd className="px-2 py-1 border border-border/50 rounded">→</kbd>
+          <kbd className="px-2 py-1 border border-border/50 rounded">Right</kbd>
           <span>Droite</span>
         </div>
         <div className="flex items-center gap-2">
-          <kbd className="px-2 py-1 border border-border/50 rounded">↑</kbd>
-          <span>Accélérer</span>
+          <kbd className="px-2 py-1 border border-border/50 rounded">Up</kbd>
+          <span>Accel</span>
         </div>
         <div className="flex items-center gap-2">
-          <kbd className="px-2 py-1 border border-border/50 rounded">↓</kbd>
+          <kbd className="px-2 py-1 border border-border/50 rounded">Down</kbd>
           <span>Freiner</span>
         </div>
         <div className="flex items-center gap-2">
@@ -1430,11 +1432,7 @@ export default function Racer() {
           <kbd className="px-2 py-1 border border-border/50 rounded">WASD</kbd>
         </div>
       </div>
-
-      {/* Instructions */}
-      <div className="text-center text-sm text-muted-foreground max-w-2xl mx-auto">
-        <p>Évite les voitures et finis le tour le plus vite possible pour gagner des récompenses !</p>
-      </div>
     </div>
   );
 }
+
