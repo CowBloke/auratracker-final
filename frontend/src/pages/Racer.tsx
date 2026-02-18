@@ -1305,7 +1305,7 @@ export default function Racer() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto py-12 px-6 space-y-8">
+    <div className="max-w-[1500px] mx-auto py-12 px-6 space-y-8">
       <div className="flex items-center justify-end gap-4">
         <div className="text-right text-sm text-muted-foreground tabular-nums">
           <div className="text-2xl font-light text-foreground">{speed} mph</div>
@@ -1316,7 +1316,7 @@ export default function Racer() {
         </div>
       </div>
 
-      <div className="flex justify-center gap-6">
+      <div className="flex justify-center items-start gap-6">
         <div className="relative">
           <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="border border-border/30 rounded-lg" />
 
@@ -1368,11 +1368,11 @@ export default function Racer() {
           )}
         </div>
 
-        <div className="w-64 border border-border/30 rounded-lg bg-card overflow-hidden" style={{ height: HEIGHT }}>
+        <div className="w-80 border border-border/30 rounded-lg bg-card overflow-hidden shadow-sm" style={{ height: HEIGHT }}>
           <div className="p-4 border-b border-border/30 bg-muted/30">
             <div className="flex items-center gap-2">
               <Trophy className="w-5 h-5 text-yellow-500" />
-              <h3 className="font-semibold">Classement quotidien</h3>
+              <h3 className="text-base font-semibold">Classement quotidien</h3>
             </div>
           </div>
           <div className="overflow-y-auto" style={{ height: HEIGHT - 60 }}>
@@ -1383,10 +1383,10 @@ export default function Racer() {
                 {leaderboard.map((entry, index) => (
                   <div
                     key={`${entry.userId}-${entry.bestLapTimeMs}`}
-                    className={`flex items-center gap-3 px-4 py-2.5 ${entry.userId === user?.id ? 'bg-primary/10' : ''}`}
+                    className={`flex items-center gap-3 px-4 py-3 ${entry.userId === user?.id ? 'bg-primary/10' : ''}`}
                   >
                     <span
-                      className={`w-6 text-center font-mono text-sm ${
+                      className={`w-7 text-center font-mono text-base ${
                         index === 0
                           ? 'text-yellow-500 font-bold'
                           : index === 1
@@ -1398,8 +1398,8 @@ export default function Racer() {
                     >
                       {index + 1}
                     </span>
-                    <span className="flex-1 truncate text-sm">{entry.username}</span>
-                    <span className="font-mono text-sm tabular-nums text-muted-foreground">
+                    <span className="flex-1 truncate text-base">{entry.username}</span>
+                    <span className="font-mono text-base tabular-nums text-muted-foreground">
                       {formatMsTime(entry.bestLapTimeMs)}
                     </span>
                   </div>
