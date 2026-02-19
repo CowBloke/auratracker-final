@@ -97,12 +97,23 @@ export default function BombParty() {
       const newInput = localInput.slice(0, -1);
       setLocalInput(newInput);
       typeBombParty(newInput);
-    } else if (e.key.length === 1 && (/^[a-zA-Z]$/.test(e.key) || e.key === ' ' || e.key === '.')) {
-      e.preventDefault();
-      const nextChar = /^[a-zA-Z]$/.test(e.key) ? e.key.toUpperCase() : e.key;
-      const newInput = localInput + nextChar;
-      setLocalInput(newInput);
-      typeBombParty(newInput);
+    } else {
+      let nextChar: string | null = null;
+
+      if (/^[a-zA-Z]$/.test(e.key)) {
+        nextChar = e.key.toUpperCase();
+      } else if (e.key === ' ' || e.key === 'Spacebar' || e.code === 'Space') {
+        nextChar = ' ';
+      } else if (e.key === '.' || e.code === 'Period' || e.code === 'NumpadDecimal') {
+        nextChar = '.';
+      }
+
+      if (nextChar !== null) {
+        e.preventDefault();
+        const newInput = localInput + nextChar;
+        setLocalInput(newInput);
+        typeBombParty(newInput);
+      }
     }
   }, [bombPartyGame, isMyTurn, myPlayer, localInput, submitBombParty, typeBombParty]);
 
