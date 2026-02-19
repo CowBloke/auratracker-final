@@ -32,6 +32,14 @@ interface BombPartyGame {
   roundsWithoutLifeLoss: number; // Track consecutive rounds without losing a life
 }
 
+function extractSubmittedWordCandidates(input: string): string[] {
+  return input
+    .toUpperCase()
+    .trim()
+    .split(/[\s.]+/)
+    .filter((candidate) => candidate.length >= 2);
+}
+
 // Store active games by partyId
 const activeGames = new Map<string, BombPartyGame>();
 
@@ -450,23 +458,30 @@ export const setupBombPartyHandlers = (socket: Socket, io: Server) => {
       return;
     }
 
-    const upperWord = word.toUpperCase().trim();
+    const candidates = extractSubmittedWordCandidates(word);
     const dict = await loadDictionary();
 
-    // Validate word
-    if (!upperWord.includes(game.currentPrompt)) {
+    if (candidates.length === 0) {
+      socket.emit('bombparty:word-rejected', { reason: 'Type a word' });
+      return;
+    }
+
+    const promptCandidates = candidates.filter((candidate) => candidate.includes(game.currentPrompt));
+    if (promptCandidates.length === 0) {
       socket.emit('bombparty:word-rejected', {
         reason: `Word must contain "${game.currentPrompt}"`,
       });
       return;
     }
 
-    if (!dict.has(upperWord)) {
+    const validCandidates = promptCandidates.filter((candidate) => dict.has(candidate));
+    if (validCandidates.length === 0) {
       socket.emit('bombparty:word-rejected', { reason: 'Not a valid word' });
       return;
     }
 
-    if (game.usedWords.has(upperWord)) {
+    const acceptedWord = validCandidates.find((candidate) => !game.usedWords.has(candidate));
+    if (!acceptedWord) {
       socket.emit('bombparty:word-rejected', { reason: 'Word already used' });
       return;
     }
@@ -475,9 +490,9 @@ export const setupBombPartyHandlers = (socket: Socket, io: Server) => {
     clearTurnTimer(game);
 
     const currentPlayer = game.players[game.currentPlayerIndex];
-    currentPlayer.wordsUsed.push(upperWord);
+    currentPlayer.wordsUsed.push(acceptedWord);
     currentPlayer.wordsTypedCount++;
-    game.usedWords.add(upperWord);
+    game.usedWords.add(acceptedWord);
 
     // Move to next player and increment round first so we use the new round for prompt selection
     game.currentPlayerIndex = getNextPlayerIndex(game);
@@ -496,7 +511,7 @@ export const setupBombPartyHandlers = (socket: Socket, io: Server) => {
 
     // Emit accepted
     io.to(`party:${partyId}`).emit('bombparty:word-accepted', {
-      word: upperWord,
+      word: acceptedWord,
       playerId: userId,
       ...serializeGameState(game),
     });

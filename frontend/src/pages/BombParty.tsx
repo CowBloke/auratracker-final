@@ -97,9 +97,10 @@ export default function BombParty() {
       const newInput = localInput.slice(0, -1);
       setLocalInput(newInput);
       typeBombParty(newInput);
-    } else if (e.key.length === 1 && /^[a-zA-Z]$/.test(e.key)) {
+    } else if (e.key.length === 1 && (/^[a-zA-Z]$/.test(e.key) || e.key === ' ' || e.key === '.')) {
       e.preventDefault();
-      const newInput = localInput + e.key.toUpperCase();
+      const nextChar = /^[a-zA-Z]$/.test(e.key) ? e.key.toUpperCase() : e.key;
+      const newInput = localInput + nextChar;
       setLocalInput(newInput);
       typeBombParty(newInput);
     }
