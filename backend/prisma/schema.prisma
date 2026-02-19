@@ -714,7 +714,7 @@ model PolymarketBet {
   eventId    String
   prediction String // "YES" or "NO"
   amount     Int // Mise en money
-  payout     Int? // Gains calculés après résolution (null si perdu)
+  payout     BigInt? // Gains calculés après résolution (null si perdu)
   createdAt  DateTime @default(now())
 
   user  User            @relation(fields: [userId], references: [id], onDelete: Cascade)

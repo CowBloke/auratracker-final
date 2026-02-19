@@ -698,6 +698,14 @@ router.post('/events/:id/resolve', authMiddleware, requireAdmin, async (req: Aut
     // Calculate payouts for winning bets
     const winningBets = event.bets.filter((bet) => bet.prediction === resolution);
     const odds = resolution === 'YES' ? event.yesOdds : event.noOdds;
+    const maxInt32 = 2147483647;
+    const maxPayout = winningBets.reduce((max, bet) => Math.max(max, Math.floor(bet.amount * odds)), 0);
+
+    if (maxPayout > maxInt32) {
+      return res.status(400).json({
+        error: `Resolution would create payout ${maxPayout}, which exceeds current user money limit (${maxInt32})`,
+      });
+    }
 
     // Update event status
     await prisma.polymarketEvent.update({
@@ -712,7 +720,8 @@ router.post('/events/:id/resolve', authMiddleware, requireAdmin, async (req: Aut
 
     // Calculate and update payouts for winning bets
     for (const bet of winningBets) {
-      const payout = Math.floor(bet.amount * odds);
+      const payoutAmount = Math.floor(bet.amount * odds);
+      const payout = BigInt(payoutAmount);
       await prisma.polymarketBet.update({
         where: { id: bet.id },
         data: { payout },
@@ -723,7 +732,7 @@ router.post('/events/:id/resolve', authMiddleware, requireAdmin, async (req: Aut
         where: { id: bet.userId },
         data: {
           money: {
-            increment: payout,
+            increment: payoutAmount,
           },
         },
       });
