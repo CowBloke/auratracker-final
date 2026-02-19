@@ -150,6 +150,10 @@ export const gamesApi = {
     api.post(`/games/${gameType}/complete`, data),
   getLeaderboard: (gameType: string, limit?: number) =>
     api.get(`/games/${gameType}/leaderboard`, { params: { limit } }),
+  getDailyRacerState: (limit?: number) =>
+    api.get<DailyRacerStateResponse>('/games/daily/racer', { params: { limit } }),
+  submitDailyRacerRun: (lapTimeMs: number) =>
+    api.post<DailyRacerSubmitResponse>('/games/daily/racer/complete', { lapTimeMs }),
   getDailyWordleState: () =>
     api.get<DailyWordleStateResponse>('/games/daily/wordle'),
   submitDailyWordleGuess: (guess: string) =>
@@ -201,6 +205,35 @@ export interface DailyWordleGuessResponse {
   solved: boolean;
   isCompleted: boolean;
   attemptsRemaining: number;
+}
+
+export interface DailyRacerLeaderboardEntry {
+  rank: number;
+  userId: string;
+  username: string;
+  usernameColor: string | null;
+  bestLapTimeMs: number;
+  achievedAt: string;
+}
+
+export interface DailyRacerStateResponse {
+  trackDate: string;
+  seed: number;
+  leaderboard: DailyRacerLeaderboardEntry[];
+  userBestLapTimeMs: number | null;
+  userRunCount: number;
+}
+
+export interface DailyRacerSubmitResponse {
+  success: boolean;
+  run: {
+    id: string;
+    lapTimeMs: number;
+    trackDate: string;
+    createdAt: string;
+  };
+  isNewDailyBest: boolean;
+  bestLapTimeMs: number;
 }
 
 // AuraCoin API

@@ -57,6 +57,12 @@ function getUtcDayStart(date = new Date()): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 }
 
+function getRacerDaySeed(trackDate: Date): number {
+  const dayIndex = Math.floor(trackDate.getTime() / 86400000);
+  const seed = ((dayIndex * 2654435761) ^ 0x9e3779b9) >>> 0;
+  return seed === 0 ? 1 : seed;
+}
+
 function getWordIndexForDate(puzzleDate: Date): number {
   const dayIndex = Math.floor(puzzleDate.getTime() / 86400000);
   return dayIndex % WORDLE_WORDS.length;
@@ -591,6 +597,107 @@ router.post('/daily/wordle/guess', authMiddleware, async (req: AuthRequest, res:
   }
 });
 
+router.get('/daily/racer', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const limit = Math.max(1, Math.min(parseInt(String(req.query.limit ?? '20'), 10) || 20, 100));
+    const trackDate = getUtcDayStart();
+
+    const allRuns = await prisma.dailyRacerRun.findMany({
+      where: { trackDate },
+      orderBy: [{ lapTimeMs: 'asc' }, { createdAt: 'asc' }],
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            usernameColor: true,
+          },
+        },
+      },
+    });
+
+    const bestByUser = new Map<string, (typeof allRuns)[number]>();
+    for (const run of allRuns) {
+      if (!bestByUser.has(run.userId)) {
+        bestByUser.set(run.userId, run);
+      }
+    }
+
+    const leaderboard = Array.from(bestByUser.values())
+      .slice(0, limit)
+      .map((run, index) => ({
+        rank: index + 1,
+        userId: run.user.id,
+        username: run.user.username,
+        usernameColor: run.user.usernameColor,
+        bestLapTimeMs: run.lapTimeMs,
+        achievedAt: run.createdAt.toISOString(),
+      }));
+
+    const userRuns = allRuns.filter((run) => run.userId === req.user!.id);
+    const userBest = userRuns.length > 0 ? userRuns[0] : null;
+
+    return res.json({
+      trackDate: trackDate.toISOString(),
+      seed: getRacerDaySeed(trackDate),
+      leaderboard,
+      userBestLapTimeMs: userBest?.lapTimeMs ?? null,
+      userRunCount: userRuns.length,
+    });
+  } catch (error) {
+    console.error('Get daily racer state error:', error);
+    return res.status(500).json({ error: 'Failed to get daily racer state' });
+  }
+});
+
+router.post('/daily/racer/complete', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const lapTimeMs = Number(req.body?.lapTimeMs);
+    if (!Number.isInteger(lapTimeMs) || lapTimeMs < 1_000 || lapTimeMs > 3_600_000) {
+      return res.status(400).json({ error: 'lapTimeMs must be an integer between 1000 and 3600000' });
+    }
+
+    const trackDate = getUtcDayStart();
+    const previousBest = await prisma.dailyRacerRun.findFirst({
+      where: { userId: req.user.id, trackDate },
+      orderBy: [{ lapTimeMs: 'asc' }, { createdAt: 'asc' }],
+    });
+
+    const run = await prisma.dailyRacerRun.create({
+      data: {
+        userId: req.user.id,
+        trackDate,
+        lapTimeMs,
+      },
+    });
+
+    const isNewDailyBest = !previousBest || lapTimeMs < previousBest.lapTimeMs;
+
+    return res.json({
+      success: true,
+      run: {
+        id: run.id,
+        lapTimeMs: run.lapTimeMs,
+        trackDate: run.trackDate.toISOString(),
+        createdAt: run.createdAt.toISOString(),
+      },
+      isNewDailyBest,
+      bestLapTimeMs: isNewDailyBest ? lapTimeMs : previousBest.lapTimeMs,
+    });
+  } catch (error) {
+    console.error('Submit daily racer run error:', error);
+    return res.status(500).json({ error: 'Failed to submit daily racer run' });
+  }
+});
+
 // Get game stats for a user
 router.get('/:gameType/stats/:userId', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
@@ -842,7 +949,7 @@ router.get('/:gameType/leaderboard', authMiddleware, async (req: AuthRequest, re
 
     const rankings = await prisma.gameStats.findMany({
       where: { gameType, user: { isAdmin: false } },
-      orderBy: { highScore: 'desc' },
+      orderBy: { highScore: gameType === 'racer' ? 'asc' : 'desc' },
       take: parseInt(limit as string),
       include: {
         user: {
