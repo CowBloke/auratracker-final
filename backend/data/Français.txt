@@ -47453,6 +47453,7 @@ ceauxois
 ceauxoise
 ceauxoises
 ceci
+cecile
 cecidie
 cecidies
 cecite
@@ -260078,6 +260079,7 @@ rebattue
 rebattues
 rebattus
 rebec
+rebecca
 rebecs
 rebella
 rebellai
@@ -334573,6 +334575,7 @@ xerophiles
 xerophtalmie
 xerophtalmies
 xerus
+xiao
 xiaolongbao
 xiaolongbaos
 ximenie
@@ -335709,3 +335712,11 @@ zython
 zythons
 zythum
 zythums
+maillard
+claudia
+adeline
+zyed
+gregory
+sina
+sixtine
+delphine
