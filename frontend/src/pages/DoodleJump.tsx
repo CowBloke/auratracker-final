@@ -411,8 +411,6 @@ export default function DoodleJump() {
     activeModeRef.current = selectedMode;
     activeGameTypeRef.current = selectedGameType;
     multiplayerPlatformIndexRef.current = 0;
-    multiplayerDisplayPlayersRef.current.clear();
-    setMultiplayerRoster([]);
 
     // Reset state
     platformsRef.current = [];
