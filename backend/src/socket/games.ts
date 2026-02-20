@@ -52,11 +52,47 @@ interface DoodleSession {
   replayFrames: DoodleSpectateFrame[];
 }
 
+interface DoodleMultiplayerState {
+  userId: string;
+  username: string;
+  usernameColor?: string | null;
+  score: number;
+  x: number;
+  y: number;
+  velocity: number;
+  facingLeft: boolean;
+  selectedSkin: SkinId;
+  isDead: boolean;
+  updatedAt: number;
+}
+
+interface DoodleMultiplayerRoom {
+  id: string;
+  mode: DoodleMode;
+  dayKey: string;
+  seed: number;
+  players: Map<string, DoodleMultiplayerState>;
+  socketsByUser: Map<string, string>;
+}
+
 const doodleSessions = new Map<string, DoodleSession>(); // hostUserId -> session
 const doodleSpectatorToHost = new Map<string, string>(); // spectatorSocketId -> hostUserId
 const DOODLE_REPLAY_LIMIT = 240;
+const doodleMultiplayerRooms = new Map<string, DoodleMultiplayerRoom>(); // roomId -> room
+const doodleMultiplayerRoomBySocket = new Map<string, string>(); // socketId -> roomId
 
 const getDoodleRoom = (hostUserId: string) => `doodle:spectate:${hostUserId}`;
+const getDailyKeyUtc = () => new Date().toISOString().slice(0, 10);
+const getDoodleMultiplayerRoomId = (mode: DoodleMode, dayKey: string) => `doodle:multiplayer:${mode}:${dayKey}`;
+
+const hashToSeed = (input: string) => {
+  let h = 2166136261;
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+};
 
 const cloneFrame = (frame: DoodleSpectateFrame): DoodleSpectateFrame => ({
   ...frame,
@@ -113,6 +149,52 @@ const stopDoodleSession = (io: Server, hostUserId: string) => {
   }
   doodleSessions.delete(hostUserId);
   emitDoodleSessionList(io);
+};
+
+const emitDoodleMultiplayerRoster = (io: Server, room: DoodleMultiplayerRoom) => {
+  const players = Array.from(room.players.values())
+    .sort((a, b) => b.score - a.score)
+    .map((player) => ({
+      userId: player.userId,
+      username: player.username,
+      usernameColor: player.usernameColor ?? null,
+      score: player.score,
+      isDead: player.isDead,
+    }));
+  io.to(room.id).emit('doodle:multiplayer-players', {
+    roomId: room.id,
+    mode: room.mode,
+    dayKey: room.dayKey,
+    players,
+  });
+};
+
+const cleanupDoodleMultiplayerSocket = (io: Server, socketId: string) => {
+  const roomId = doodleMultiplayerRoomBySocket.get(socketId);
+  if (!roomId) return;
+  doodleMultiplayerRoomBySocket.delete(socketId);
+
+  const room = doodleMultiplayerRooms.get(roomId);
+  if (!room) return;
+
+  let removedUserId: string | null = null;
+  for (const [userId, storedSocketId] of room.socketsByUser.entries()) {
+    if (storedSocketId === socketId) {
+      room.socketsByUser.delete(userId);
+      room.players.delete(userId);
+      removedUserId = userId;
+      break;
+    }
+  }
+
+  if (removedUserId) {
+    io.to(room.id).emit('doodle:multiplayer-player-left', { userId: removedUserId });
+    emitDoodleMultiplayerRoster(io, room);
+  }
+
+  if (room.socketsByUser.size === 0) {
+    doodleMultiplayerRooms.delete(roomId);
+  }
 };
 
 export const setupGameHandlers = (socket: Socket, io: Server) => {
@@ -361,10 +443,135 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
   socket.on('doodle:spectate-leave', () => {
     removeDoodleSpectator(io, socket.id);
   });
+
+  socket.on('doodle:multiplayer-join', (data: { mode?: DoodleMode }) => {
+    const userId = socket.data.userId as string | undefined;
+    const username = socket.data.username as string | undefined;
+    if (!userId || !username) return;
+
+    const onlineUser = onlineUsers.get(userId);
+    if (!onlineUser?.currentPage?.startsWith('/games/doodle-jump')) {
+      return;
+    }
+
+    cleanupDoodleMultiplayerSocket(io, socket.id);
+
+    const mode: DoodleMode = data.mode === 'mort_subite' ? 'mort_subite' : 'classic';
+    const dayKey = getDailyKeyUtc();
+    const roomId = getDoodleMultiplayerRoomId(mode, dayKey);
+    const seed = hashToSeed(`${dayKey}:${mode}`);
+
+    const room = doodleMultiplayerRooms.get(roomId) ?? {
+      id: roomId,
+      mode,
+      dayKey,
+      seed,
+      players: new Map<string, DoodleMultiplayerState>(),
+      socketsByUser: new Map<string, string>(),
+    };
+
+    room.mode = mode;
+    room.dayKey = dayKey;
+    room.seed = seed;
+    room.socketsByUser.set(userId, socket.id);
+    room.players.set(userId, {
+      userId,
+      username,
+      usernameColor: onlineUser.usernameColor ?? null,
+      score: 0,
+      x: 175,
+      y: 100,
+      velocity: 0,
+      facingLeft: false,
+      selectedSkin: 'default',
+      isDead: false,
+      updatedAt: Date.now(),
+    });
+
+    doodleMultiplayerRooms.set(roomId, room);
+    doodleMultiplayerRoomBySocket.set(socket.id, roomId);
+    socket.join(roomId);
+
+    socket.emit('doodle:multiplayer-joined', {
+      roomId,
+      mode,
+      dayKey,
+      seed,
+      players: Array.from(room.players.values()),
+    });
+    socket.to(roomId).emit('doodle:multiplayer-player-joined', {
+      userId,
+      username,
+      usernameColor: onlineUser.usernameColor ?? null,
+      score: 0,
+      x: 175,
+      y: 100,
+      velocity: 0,
+      facingLeft: false,
+      selectedSkin: 'default',
+      isDead: false,
+      updatedAt: Date.now(),
+    });
+    emitDoodleMultiplayerRoster(io, room);
+  });
+
+  socket.on('doodle:multiplayer-leave', () => {
+    cleanupDoodleMultiplayerSocket(io, socket.id);
+  });
+
+  socket.on('doodle:multiplayer-state', (data: {
+    mode?: DoodleMode;
+    state: {
+      score: number;
+      x: number;
+      y: number;
+      velocity: number;
+      facingLeft: boolean;
+      selectedSkin: SkinId;
+      isDead: boolean;
+    };
+  }) => {
+    const userId = socket.data.userId as string | undefined;
+    const username = socket.data.username as string | undefined;
+    if (!userId || !username || !data?.state) return;
+
+    const roomId = doodleMultiplayerRoomBySocket.get(socket.id);
+    if (!roomId) return;
+    const room = doodleMultiplayerRooms.get(roomId);
+    if (!room) return;
+
+    const onlineUser = onlineUsers.get(userId);
+    if (!onlineUser?.currentPage?.startsWith('/games/doodle-jump')) {
+      cleanupDoodleMultiplayerSocket(io, socket.id);
+      return;
+    }
+
+    const nextState: DoodleMultiplayerState = {
+      userId,
+      username,
+      usernameColor: onlineUser.usernameColor ?? null,
+      score: Number.isFinite(data.state.score) ? data.state.score : 0,
+      x: Number.isFinite(data.state.x) ? data.state.x : 0,
+      y: Number.isFinite(data.state.y) ? data.state.y : 0,
+      velocity: Number.isFinite(data.state.velocity) ? data.state.velocity : 0,
+      facingLeft: !!data.state.facingLeft,
+      selectedSkin: data.state.selectedSkin ?? 'default',
+      isDead: !!data.state.isDead,
+      updatedAt: Date.now(),
+    };
+    room.players.set(userId, nextState);
+
+    socket.to(room.id).emit('doodle:multiplayer-state', {
+      roomId: room.id,
+      player: nextState,
+    });
+    emitDoodleMultiplayerRoster(io, room);
+  });
   
   // Handle disconnect
   socket.on('disconnect', () => {
     removeDoodleSpectator(io, socket.id);
+    cleanupDoodleMultiplayerSocket(io, socket.id);
 
     for (const [userId, socketId] of userGameSockets.entries()) {
       if (socketId === socket.id) {

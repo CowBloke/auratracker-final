@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSocket } from '../contexts/SocketContext';
 import { gamesApi } from '../services/api';
-import { Play, RotateCcw, Trophy, X, Palette, Eye, EyeOff } from 'lucide-react';
+import { Play, RotateCcw, Trophy, X, Palette, Eye, EyeOff, Users } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 // ============================================
@@ -103,6 +103,42 @@ interface DoodleSpectateFrame {
   platforms: Platform[];
 }
 
+interface DoodleMultiplayerNetState {
+  userId: string;
+  username: string;
+  usernameColor?: string | null;
+  score: number;
+  x: number;
+  y: number;
+  velocity: number;
+  facingLeft: boolean;
+  selectedSkin: SkinId;
+  isDead: boolean;
+  updatedAt: number;
+}
+
+interface DoodleMultiplayerDisplayState extends DoodleMultiplayerNetState {
+  displayX: number;
+  displayY: number;
+  displayVelocity: number;
+  deadFallStarted: boolean;
+}
+
+interface DoodleMultiplayerRosterItem {
+  userId: string;
+  username: string;
+  usernameColor?: string | null;
+  score: number;
+  isDead: boolean;
+}
+
+const seededRandom = (seed: number, index: number, channel: number) => {
+  let value = seed ^ Math.imul(index + 1, 374761393) ^ Math.imul(channel + 1, 668265263);
+  value = Math.imul(value ^ (value >>> 13), 1274126177);
+  value ^= value >>> 16;
+  return (value >>> 0) / 4294967296;
+};
+
 // ============================================
 // COLOR SCHEME (theme-aware)
 // ============================================
@@ -166,6 +202,12 @@ export default function DoodleJump() {
   const spectateTargetFrameRef = useRef<DoodleSpectateFrame | null>(null);
   const spectateReplayQueueRef = useRef<DoodleSpectateFrame[]>([]);
   const spectateSkinRef = useRef<SkinId>('default');
+  const multiplayerSeedRef = useRef<number | null>(null);
+  const multiplayerPlatformIndexRef = useRef(0);
+  const multiplayerRoomIdRef = useRef<string | null>(null);
+  const multiplayerDisplayPlayersRef = useRef<Map<string, DoodleMultiplayerDisplayState>>(new Map());
+  const pendingMultiplayerStartRef = useRef(false);
+  const deathFallAnimationRef = useRef<number | null>(null);
 
   const { user, refreshUser } = useAuth();
   const { socket } = useSocket();
@@ -183,8 +225,10 @@ export default function DoodleJump() {
   });
   const [showSkinSelector, setShowSkinSelector] = useState(false);
   const [isMortSubite, setIsMortSubite] = useState(false);
+  const [isMultiplayer, setIsMultiplayer] = useState(false);
   const [spectatorCount, setSpectatorCount] = useState(0);
   const [spectatingHost, setSpectatingHost] = useState<{ hostUserId: string; hostUsername: string } | null>(null);
+  const [multiplayerRoster, setMultiplayerRoster] = useState<DoodleMultiplayerRosterItem[]>([]);
   const spectateHostUserIdFromRoute = ((location.state as { spectateHostUserId?: string } | null)?.spectateHostUserId) ?? null;
   const selectedGameType: DoodleGameType = isMortSubite ? 'doodle_jump_mort_subite' : 'doodle_jump';
   const selectedMode: DoodleGameMode = isMortSubite ? 'mort_subite' : 'classic';
@@ -262,13 +306,38 @@ export default function DoodleJump() {
     return { movement, effect: 'instant-disappear' };
   }, []);
 
+  const getPlatformSequenceIndex = useCallback(() => {
+    const nextIndex = multiplayerPlatformIndexRef.current;
+    multiplayerPlatformIndexRef.current += 1;
+    return nextIndex;
+  }, []);
+
+  const getSeededValue = useCallback((index: number, channel: number) => {
+    if (multiplayerSeedRef.current === null) {
+      return Math.random();
+    }
+    return seededRandom(multiplayerSeedRef.current, index, channel);
+  }, []);
+
+  const clearMultiplayerRoom = useCallback(() => {
+    if (socket && multiplayerRoomIdRef.current) {
+      socket.emit('doodle:multiplayer-leave');
+    }
+    multiplayerRoomIdRef.current = null;
+    multiplayerSeedRef.current = null;
+    multiplayerPlatformIndexRef.current = 0;
+    pendingMultiplayerStartRef.current = false;
+    multiplayerDisplayPlayersRef.current.clear();
+    setMultiplayerRoster([]);
+  }, [socket]);
+
   // ============================================
   // PLATFORM GENERATION (from old implementation)
   // ============================================
-  const getRandomPlatformType = useCallback((): { movement: PlatformMovement; effect: PlatformEffect } => {
-    const currentScore = scoreRef.current;
+  const getRandomPlatformType = useCallback((platformIndex: number): { movement: PlatformMovement; effect: PlatformEffect } => {
+    const currentScore = multiplayerSeedRef.current === null ? scoreRef.current : platformIndex * 10;
     const scoreFactor = Math.min(currentScore / 3000, 1);
-    const random = Math.random();
+    const random = getSeededValue(platformIndex, 1);
 
     // Determine movement type
     let movement: PlatformMovement = 'normal';
@@ -283,7 +352,7 @@ export default function DoodleJump() {
     else if (currentScore > 500 && random < 0.6 * scoreFactor) effect = 'bounce';
 
     return applyMortSubiteRules(movement, effect);
-  }, [applyMortSubiteRules]);
+  }, [applyMortSubiteRules, getSeededValue]);
 
   const createPlatform = useCallback((x: number, y: number, movement: PlatformMovement = 'normal', effect: PlatformEffect = null): Platform => {
     return {
@@ -304,17 +373,18 @@ export default function DoodleJump() {
     const highestPlatform = Math.max(...platformsRef.current.map(p => p.y), 0);
 
     for (let i = 0; i < count; i++) {
-      const { movement, effect } = getRandomPlatformType();
+      const platformIndex = getPlatformSequenceIndex();
+      const { movement, effect } = getRandomPlatformType(platformIndex);
       const newPlatformY = highestPlatform + 100 + (i * 50);
       const platform = createPlatform(
-        Math.random() * (CANVAS_WIDTH - PLATFORM_WIDTH),
+        getSeededValue(platformIndex, 2) * (CANVAS_WIDTH - PLATFORM_WIDTH),
         newPlatformY,
         movement,
         effect
       );
       platformsRef.current.push(platform);
     }
-  }, [getRandomPlatformType, createPlatform]);
+  }, [createPlatform, getPlatformSequenceIndex, getRandomPlatformType, getSeededValue]);
 
   // ============================================
   // GAME INITIALIZATION
@@ -329,8 +399,25 @@ export default function DoodleJump() {
       setSpectatorCount(0);
     }
 
+    if (deathFallAnimationRef.current) {
+      cancelAnimationFrame(deathFallAnimationRef.current);
+      deathFallAnimationRef.current = null;
+    }
+
+    if (socket && user && isMultiplayer && !spectatingRef.current) {
+      const expectedRoomId = `doodle:multiplayer:${selectedMode}:${new Date().toISOString().slice(0, 10)}`;
+      if (!multiplayerRoomIdRef.current || multiplayerRoomIdRef.current !== expectedRoomId || multiplayerSeedRef.current === null) {
+        pendingMultiplayerStartRef.current = true;
+        socket.emit('doodle:multiplayer-join', { mode: selectedMode });
+        return;
+      }
+    }
+
     activeModeRef.current = selectedMode;
     activeGameTypeRef.current = selectedGameType;
+    multiplayerPlatformIndexRef.current = 0;
+    multiplayerDisplayPlayersRef.current.clear();
+    setMultiplayerRoster([]);
 
     // Reset state
     platformsRef.current = [];
@@ -346,10 +433,13 @@ export default function DoodleJump() {
     platformsRef.current.push(createPlatform(160, 100, startType.movement, startType.effect));
 
     for (let i = 1; i < PLATFORM_COUNT; i++) {
-      const { movement, effect } = i < 3 ? { movement: 'normal' as PlatformMovement, effect: null } : getRandomPlatformType();
+      const platformIndex = getPlatformSequenceIndex();
+      const { movement, effect } = i < 3
+        ? { movement: 'normal' as PlatformMovement, effect: null }
+        : getRandomPlatformType(platformIndex);
       const adjustedType = applyMortSubiteRules(movement, effect);
       const platform = createPlatform(
-        Math.random() * (CANVAS_WIDTH - PLATFORM_WIDTH),
+        getSeededValue(platformIndex, 3) * (CANVAS_WIDTH - PLATFORM_WIDTH),
         100 + i * 100,
         adjustedType.movement,
         adjustedType.effect
@@ -366,7 +456,10 @@ export default function DoodleJump() {
     lastBroadcastAtRef.current = 0;
 
     socket?.emit('doodle:spectate-start', { mode: selectedMode });
-  }, [applyMortSubiteRules, createPlatform, getRandomPlatformType, selectedGameType, selectedMode]);
+    if (!isMultiplayer) {
+      clearMultiplayerRoom();
+    }
+  }, [applyMortSubiteRules, clearMultiplayerRoom, createPlatform, getPlatformSequenceIndex, getRandomPlatformType, getSeededValue, isMultiplayer, selectedGameType, selectedMode, socket, user]);
 
   const stopSpectateBroadcast = useCallback(() => {
     socket?.emit('doodle:spectate-stop');
@@ -391,6 +484,42 @@ export default function DoodleJump() {
     };
   }, [selectedSkin]);
 
+  const emitMultiplayerState = useCallback((isDead: boolean) => {
+    if (!socket || !user || !multiplayerRoomIdRef.current || spectatingRef.current) return;
+    socket.emit('doodle:multiplayer-state', {
+      mode: activeModeRef.current,
+      state: {
+        score: scoreRef.current,
+        x: positionRef.current.x,
+        y: positionRef.current.y,
+        velocity: velocityRef.current,
+        facingLeft: facingLeftRef.current,
+        selectedSkin,
+        isDead,
+      },
+    });
+  }, [selectedSkin, socket, user]);
+
+  const startDeathFallAnimation = useCallback(() => {
+    if (!socket || !user || !multiplayerRoomIdRef.current) return;
+    if (deathFallAnimationRef.current) {
+      cancelAnimationFrame(deathFallAnimationRef.current);
+    }
+    let frames = 0;
+    const animate = () => {
+      frames += 1;
+      velocityRef.current += GRAVITY * GAME_SPEED;
+      positionRef.current.y -= velocityRef.current;
+      emitMultiplayerState(true);
+      if (frames < 40) {
+        deathFallAnimationRef.current = requestAnimationFrame(animate);
+      } else {
+        deathFallAnimationRef.current = null;
+      }
+    };
+    deathFallAnimationRef.current = requestAnimationFrame(animate);
+  }, [emitMultiplayerState, socket, user]);
+
   // ============================================
   // GAME OVER HANDLING
   // ============================================
@@ -401,6 +530,8 @@ export default function DoodleJump() {
     if (socket) {
       socket.emit('doodle:spectate-frame', { frame: buildSpectateFrame(performance.now(), true) });
     }
+    emitMultiplayerState(true);
+    startDeathFallAnimation();
     stopSpectateBroadcast();
 
     try {
@@ -425,7 +556,7 @@ export default function DoodleJump() {
     } catch (error) {
       console.error('Failed to submit score:', error);
     }
-  }, [buildSpectateFrame, fetchLeaderboard, refreshUser, socket, stopSpectateBroadcast]);
+  }, [buildSpectateFrame, emitMultiplayerState, fetchLeaderboard, refreshUser, socket, startDeathFallAnimation, stopSpectateBroadcast]);
 
   const drawCurrentScene = useCallback((ctx: CanvasRenderingContext2D, timestamp: number, skinId: SkinId) => {
     // Clear canvas
@@ -525,7 +656,43 @@ export default function DoodleJump() {
       ctx.arc(positionRef.current.x + CHARACTER_WIDTH / 2 + 6 + eyeOffsetX, playerScreenY + CHARACTER_HEIGHT / 2 - 5, 4, 0, Math.PI * 2);
       ctx.fill();
     }
-  }, [colors, playerImageLoaded]);
+
+    // Draw multiplayer players in the same world space
+    for (const remote of multiplayerDisplayPlayersRef.current.values()) {
+      if (user && remote.userId === user.id) continue;
+      const liveLerp = remote.isDead ? 0.2 : 0.3;
+      remote.displayX += (remote.x - remote.displayX) * liveLerp;
+      if (remote.isDead) {
+        if (!remote.deadFallStarted) {
+          remote.deadFallStarted = true;
+          remote.displayVelocity = Math.max(1, remote.velocity);
+        }
+        remote.displayVelocity += GRAVITY * GAME_SPEED * 0.9;
+        remote.displayY -= remote.displayVelocity * 0.7;
+      } else {
+        remote.deadFallStarted = false;
+        remote.displayY += (remote.y - remote.displayY) * liveLerp;
+        remote.displayVelocity = remote.velocity;
+      }
+
+      const remoteScreenY = CANVAS_HEIGHT - remote.displayY - CHARACTER_HEIGHT;
+      if (remoteScreenY < -80 || remoteScreenY > CANVAS_HEIGHT + 80) continue;
+
+      const remoteSkin = SKINS.find((item) => item.id === remote.selectedSkin) ?? SKINS[0];
+      ctx.fillStyle = remoteSkin.color;
+      ctx.globalAlpha = remote.isDead ? 0.7 : 0.9;
+      ctx.beginPath();
+      ctx.arc(
+        remote.displayX + CHARACTER_WIDTH / 2,
+        remoteScreenY + CHARACTER_HEIGHT / 2,
+        CHARACTER_WIDTH / 2,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }, [colors, playerImageLoaded, user]);
 
   // ============================================
   // GAME LOOP (physics from old implementation)
@@ -724,6 +891,7 @@ export default function DoodleJump() {
 
     if (socket && user && timestamp - lastBroadcastAtRef.current >= 50) {
       socket.emit('doodle:spectate-frame', { frame: buildSpectateFrame(timestamp, false) });
+      emitMultiplayerState(false);
       lastBroadcastAtRef.current = timestamp;
     }
 
@@ -731,7 +899,7 @@ export default function DoodleJump() {
 
     // Continue loop
     animationRef.current = requestAnimationFrame(gameLoop);
-  }, [handleGameOver, generateNewPlatforms, socket, user, buildSpectateFrame, drawCurrentScene, selectedSkin]);
+  }, [handleGameOver, generateNewPlatforms, socket, user, buildSpectateFrame, emitMultiplayerState, drawCurrentScene, selectedSkin]);
 
   const applySpectateFrame = useCallback((frame: DoodleSpectateFrame, smooth: boolean) => {
     const lerp = smooth ? 0.35 : 1;
@@ -781,6 +949,7 @@ export default function DoodleJump() {
       spectatorCount: number;
     }) => {
       stopSpectateBroadcast();
+      clearMultiplayerRoom();
       spectatingRef.current = true;
       setSpectatingHost({ hostUserId: data.hostUserId, hostUsername: data.hostUsername });
       setRewards(null);
@@ -841,7 +1010,7 @@ export default function DoodleJump() {
       socket.off('doodle:spectate-stopped', handleStopped);
       socket.off('doodle:spectate-error', handleError);
     };
-  }, [applySpectateFrame, location.pathname, navigate, socket, spectatingHost, stopSpectateBroadcast, user]);
+  }, [applySpectateFrame, clearMultiplayerRoom, location.pathname, navigate, socket, spectatingHost, stopSpectateBroadcast, user]);
 
   useEffect(() => {
     if (!socket || !user || !spectateHostUserIdFromRoute) return;
@@ -873,6 +1042,108 @@ export default function DoodleJump() {
     animationRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animationRef.current);
   }, [applySpectateFrame, drawCurrentScene, spectatingHost]);
+
+  useEffect(() => {
+    if (!socket || !user) return;
+
+    const upsertDisplayPlayer = (player: DoodleMultiplayerNetState) => {
+      if (player.userId === user.id) return;
+      const existing = multiplayerDisplayPlayersRef.current.get(player.userId);
+      if (!existing) {
+        multiplayerDisplayPlayersRef.current.set(player.userId, {
+          ...player,
+          displayX: player.x,
+          displayY: player.y,
+          displayVelocity: player.velocity,
+          deadFallStarted: player.isDead,
+        });
+        return;
+      }
+      const wasDead = existing.isDead;
+      existing.username = player.username;
+      existing.usernameColor = player.usernameColor ?? null;
+      existing.score = player.score;
+      existing.x = player.x;
+      existing.y = player.y;
+      existing.velocity = player.velocity;
+      existing.facingLeft = player.facingLeft;
+      existing.selectedSkin = player.selectedSkin;
+      existing.updatedAt = player.updatedAt;
+      existing.isDead = player.isDead;
+      if (!wasDead && player.isDead) {
+        existing.deadFallStarted = false;
+        existing.displayVelocity = Math.max(player.velocity, 1);
+      }
+      if (!player.isDead) {
+        existing.displayY = player.y;
+      }
+    };
+
+    const handleJoined = (data: {
+      roomId: string;
+      mode: DoodleGameMode;
+      dayKey: string;
+      seed: number;
+      players: DoodleMultiplayerNetState[];
+    }) => {
+      multiplayerRoomIdRef.current = data.roomId;
+      multiplayerSeedRef.current = data.seed;
+      multiplayerPlatformIndexRef.current = 0;
+      multiplayerDisplayPlayersRef.current.clear();
+      (data.players ?? []).forEach((player) => upsertDisplayPlayer(player));
+      setMultiplayerRoster(
+        (data.players ?? [])
+          .map((player) => ({
+            userId: player.userId,
+            username: player.username,
+            usernameColor: player.usernameColor ?? null,
+            score: player.score,
+            isDead: player.isDead,
+          }))
+          .sort((a, b) => b.score - a.score)
+      );
+      if (pendingMultiplayerStartRef.current) {
+        pendingMultiplayerStartRef.current = false;
+        initGame();
+      }
+    };
+
+    const handleState = (data: { roomId: string; player: DoodleMultiplayerNetState }) => {
+      if (!multiplayerRoomIdRef.current || data.roomId !== multiplayerRoomIdRef.current) return;
+      upsertDisplayPlayer(data.player);
+    };
+
+    const handleRoster = (data: {
+      roomId: string;
+      players: DoodleMultiplayerRosterItem[];
+    }) => {
+      if (!multiplayerRoomIdRef.current || data.roomId !== multiplayerRoomIdRef.current) return;
+      setMultiplayerRoster((data.players ?? []).sort((a, b) => b.score - a.score));
+    };
+
+    const handlePlayerJoined = (player: DoodleMultiplayerNetState) => {
+      upsertDisplayPlayer(player);
+    };
+
+    const handlePlayerLeft = (data: { userId: string }) => {
+      multiplayerDisplayPlayersRef.current.delete(data.userId);
+      setMultiplayerRoster((prev) => prev.filter((player) => player.userId !== data.userId));
+    };
+
+    socket.on('doodle:multiplayer-joined', handleJoined);
+    socket.on('doodle:multiplayer-state', handleState);
+    socket.on('doodle:multiplayer-players', handleRoster);
+    socket.on('doodle:multiplayer-player-joined', handlePlayerJoined);
+    socket.on('doodle:multiplayer-player-left', handlePlayerLeft);
+
+    return () => {
+      socket.off('doodle:multiplayer-joined', handleJoined);
+      socket.off('doodle:multiplayer-state', handleState);
+      socket.off('doodle:multiplayer-players', handleRoster);
+      socket.off('doodle:multiplayer-player-joined', handlePlayerJoined);
+      socket.off('doodle:multiplayer-player-left', handlePlayerLeft);
+    };
+  }, [initGame, socket, user]);
 
   // ============================================
   // INPUT HANDLING
@@ -926,11 +1197,21 @@ export default function DoodleJump() {
   }, [started]);
 
   useEffect(() => {
+    if (!isMultiplayer) {
+      clearMultiplayerRoom();
+    }
+  }, [clearMultiplayerRoom, isMultiplayer]);
+
+  useEffect(() => {
     return () => {
       stopSpectateBroadcast();
       socket?.emit('doodle:spectate-leave');
+      clearMultiplayerRoom();
+      if (deathFallAnimationRef.current) {
+        cancelAnimationFrame(deathFallAnimationRef.current);
+      }
     };
-  }, [socket, stopSpectateBroadcast]);
+  }, [clearMultiplayerRoom, socket, stopSpectateBroadcast]);
 
   // Close skin selector when clicking outside
   useEffect(() => {
@@ -1025,6 +1306,9 @@ export default function DoodleJump() {
             <div className="text-right text-sm text-muted-foreground tabular-nums">
               <div className="text-3xl font-light text-foreground">{score.toLocaleString()}</div>
               <div>Record: {highScore.toLocaleString()}</div>
+              {isMultiplayer && !spectatingHost && (
+                <div className="text-xs">Daily seed active</div>
+              )}
               {started && !spectatingHost && (
                 <div className="flex items-center justify-end gap-1 text-xs">
                   <Eye className="h-3 w-3" />
@@ -1041,6 +1325,28 @@ export default function DoodleJump() {
       <div className="flex justify-center gap-6">
         {/* Canvas */}
         <div className="relative">
+          {started && isMultiplayer && !spectatingHost && (
+            <div className="absolute left-2 right-2 top-2 z-20 rounded-md border border-border/40 bg-background/80 px-2 py-1 backdrop-blur-sm">
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                <Users className="h-3 w-3" />
+                <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
+                  {multiplayerRoster.length === 0 ? (
+                    <span>Connexion...</span>
+                  ) : (
+                    multiplayerRoster.map((player) => (
+                      <span
+                        key={player.userId}
+                        className={`whitespace-nowrap ${player.isDead ? 'line-through opacity-70' : ''}`}
+                        style={player.usernameColor ? { color: player.usernameColor } : undefined}
+                      >
+                        {player.username} ({player.score})
+                      </span>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
           <canvas
             ref={canvasRef}
             width={CANVAS_WIDTH}
@@ -1062,6 +1368,17 @@ export default function DoodleJump() {
                   }`}
                 >
                   Mort subite: {isMortSubite ? 'ON' : 'OFF'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsMultiplayer((prev) => !prev)}
+                  className={`w-56 px-3 py-2 rounded-md border transition-colors text-sm ${
+                    isMultiplayer
+                      ? 'border-sky-500 bg-sky-500/10 text-sky-500'
+                      : 'border-border/50 text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Multijoueur quotidien: {isMultiplayer ? 'ON' : 'OFF'}
                 </button>
                 <button
                   onClick={initGame}
