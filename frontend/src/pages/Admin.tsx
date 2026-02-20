@@ -341,7 +341,7 @@ export default function Admin() {
   const [mutingUser, setMutingUser] = useState<string | null>(null);
   const [clearingChat, setClearingChat] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'pending' | 'users' | 'items' | 'badges' | 'chat' | 'bugs' | 'bans' | 'logs' | 'announcement' | 'updates' | 'attention' | 'blocks' | 'settings' | 'gifts'>('pending');
+  const [activeTab, setActiveTab] = useState<'users' | 'logs' | 'bans' | 'content' | 'communication' | 'bugs' | 'blocks' | 'settings'>('users');
   const [inventoryDialogOpen, setInventoryDialogOpen] = useState(false);
   const [inventoryUser, setInventoryUser] = useState<AdminUser | null>(null);
   const [inventoryItems, setInventoryItems] = useState<AdminInventoryItem[]>([]);
@@ -424,6 +424,7 @@ export default function Admin() {
   const [_gameSettings, setGameSettings] = useState<Record<string, string>>({});
   const [loadingSettings, setLoadingSettings] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [savingChatDeleteSettings, setSavingChatDeleteSettings] = useState(false);
   const [settingsForm, setSettingsForm] = useState({
     bombparty_wpp_easy: '500',
     bombparty_wpp_medium: '200',
@@ -431,6 +432,8 @@ export default function Admin() {
     bombparty_3letter_start_round: '10',
     bombparty_language: 'dictionary.txt',
   });
+  const [chatDeleteRetentionDays, setChatDeleteRetentionDays] = useState('0');
+  const [chatDeleteRequiresConfirmation, setChatDeleteRequiresConfirmation] = useState(true);
   const [bombPartyLanguages, setBombPartyLanguages] = useState<{ fileName: string; label: string }[]>([]);
   const [loadingBombPartyLanguages, setLoadingBombPartyLanguages] = useState(false);
   const [recalculatingBombPartyPrompts, setRecalculatingBombPartyPrompts] = useState(false);
@@ -693,7 +696,7 @@ export default function Admin() {
       releaseDate: popup.releaseDate.slice(0, 16),
       isPublished: popup.isPublished,
     });
-    setActiveTab('updates');
+    setActiveTab('communication');
   };
 
   const toggleLogExpand = (logId: string) => {
@@ -914,6 +917,8 @@ export default function Admin() {
         bombparty_3letter_start_round: res.data.settings.bombparty_3letter_start_round || '10',
         bombparty_language: res.data.settings.bombparty_language || 'dictionary.txt',
       });
+      setChatDeleteRetentionDays(res.data.settings.chat_delete_retention_days || '0');
+      setChatDeleteRequiresConfirmation((res.data.settings.chat_delete_requires_confirmation || 'true') === 'true');
       setMaintenanceMessage(res.data.settings.maintenance_message || '');
       setBlockedMessage(res.data.settings.blocked_message || '');
 
@@ -1041,6 +1046,29 @@ export default function Admin() {
       showMessage('error', 'Erreur lors de la sauvegarde');
     } finally {
       setSavingSettings(false);
+    }
+  };
+
+  const saveChatDeleteSettings = async () => {
+    const retentionDays = parseInt(chatDeleteRetentionDays, 10);
+    if (Number.isNaN(retentionDays) || retentionDays < 0) {
+      showMessage('error', 'La rétention du chat doit être un entier positif ou zéro');
+      return;
+    }
+
+    try {
+      setSavingChatDeleteSettings(true);
+      await adminApi.updateSettings({
+        chat_delete_retention_days: retentionDays,
+        chat_delete_requires_confirmation: chatDeleteRequiresConfirmation ? 'true' : 'false',
+      });
+      showMessage('success', 'Paramètres de suppression du chat sauvegardés');
+      fetchSettings();
+    } catch (error) {
+      console.error('Failed to save chat delete settings:', error);
+      showMessage('error', 'Erreur lors de la sauvegarde des paramètres de suppression du chat');
+    } finally {
+      setSavingChatDeleteSettings(false);
     }
   };
 
@@ -1681,35 +1709,17 @@ export default function Admin() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
         <TabsList className="flex flex-wrap h-auto p-1">
-          <TabsTrigger value="pending" className="flex items-center gap-2">
-            Demandes
+          <TabsTrigger value="users" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Utilisateurs
             {pendingUsers.length > 0 && (
-              <span className={TYPOGRAPHY.XS}>
+              <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[11px] font-semibold leading-none">
                 {pendingUsers.length}
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="users">Utilisateurs</TabsTrigger>
-          <TabsTrigger value="items">Objets</TabsTrigger>
-          <TabsTrigger value="badges">Badges</TabsTrigger>
-          <TabsTrigger value="chat">Chat</TabsTrigger>
-          <TabsTrigger value="bugs" className="flex items-center gap-2">
-            Bugs
-            {bugReports.filter(b => b.status === 'PENDING').length > 0 && (
-              <span className={TYPOGRAPHY.XS}>
-                {bugReports.filter(b => b.status === 'PENDING').length}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="bans" className="flex items-center gap-2">
-            Bannissements
-            {bans.filter(b => b.isActive).length > 0 && (
-              <span className={TYPOGRAPHY.XS}>
-                {bans.filter(b => b.isActive).length}
-              </span>
-            )}
-          </TabsTrigger>
           <TabsTrigger value="logs" className="flex items-center gap-2">
+            <ScrollText className="h-4 w-4" />
             Logs
             {logStats && (
               <span className={TYPOGRAPHY.XS}>
@@ -1717,15 +1727,43 @@ export default function Admin() {
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="announcement">Annonce</TabsTrigger>
-          <TabsTrigger value="updates">Updates</TabsTrigger>
-          <TabsTrigger value="attention">Attention</TabsTrigger>
-          <TabsTrigger value="blocks">Blocage</TabsTrigger>
-          <TabsTrigger value="settings">Paramètres</TabsTrigger>
-          <TabsTrigger value="gifts">Cadeaux</TabsTrigger>
+          <TabsTrigger value="bans" className="flex items-center gap-2">
+            <Gavel className="h-4 w-4" />
+            Sanctions
+            {bans.filter(b => b.isActive).length > 0 && (
+              <span className={TYPOGRAPHY.XS}>
+                {bans.filter(b => b.isActive).length}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="content" className="flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            Objets
+          </TabsTrigger>
+          <TabsTrigger value="communication" className="flex items-center gap-2">
+            <MessageCircle className="h-4 w-4" />
+            Communication
+          </TabsTrigger>
+          <TabsTrigger value="bugs" className="flex items-center gap-2">
+            <Bug className="h-4 w-4" />
+            Bugs
+            {bugReports.filter(b => b.status === 'PENDING').length > 0 && (
+              <span className={TYPOGRAPHY.XS}>
+                {bugReports.filter(b => b.status === 'PENDING').length}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="blocks" className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            Blocage
+          </TabsTrigger>
+          <TabsTrigger value="settings" className="flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            Parametres
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="pending" className={SPACING.SECTION_SPACING}>
+        <TabsContent value="users" className={SPACING.SECTION_SPACING}>
           <Card className="border-border/40">
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -2135,7 +2173,7 @@ export default function Admin() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="items" className={SPACING.SECTION_SPACING}>
+        <TabsContent value="content" className={SPACING.SECTION_SPACING}>
           <Card className="border-border/40">
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -2261,7 +2299,7 @@ export default function Admin() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="badges" className={SPACING.SECTION_SPACING}>
+        <TabsContent value="content" className={SPACING.SECTION_SPACING}>
           <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             <Card className="border-border/40">
               <CardHeader>
@@ -2426,10 +2464,10 @@ export default function Admin() {
           </div>
         </TabsContent>
 
-        <TabsContent value="chat" className={SPACING.SECTION_SPACING}>
+        <TabsContent value="settings" className={SPACING.SECTION_SPACING}>
           <Card className="border-border/40">
             <CardHeader>
-              <CardDescription>Gestion du chat</CardDescription>
+              <CardDescription>Parametres de suppression du chat</CardDescription>
             </CardHeader>
             <CardContent className={SPACING.CARD_SPACING}>
               <div className="flex items-start gap-4">
@@ -2439,6 +2477,46 @@ export default function Admin() {
                   <p className="text-sm text-muted-foreground">
                     Supprime définitivement tous les messages du chat global. Cette action est irréversible.
                   </p>
+                </div>
+              </div>
+
+              <div className="space-y-4 p-4 rounded-lg border bg-muted/20">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Retention auto (jours)</label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={chatDeleteRetentionDays}
+                      onChange={(e) => setChatDeleteRetentionDays(e.target.value)}
+                      className="max-w-xs"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      0 = desactive la suppression automatique (reglage reserve).
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Confirmation obligatoire</label>
+                    <div className="h-10 px-3 rounded-md border flex items-center justify-between bg-background/50">
+                      <span className="text-sm text-muted-foreground">
+                        {chatDeleteRequiresConfirmation ? 'Activee' : 'Desactivee'}
+                      </span>
+                      <Switch
+                        checked={chatDeleteRequiresConfirmation}
+                        onCheckedChange={setChatDeleteRequiresConfirmation}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <Button onClick={saveChatDeleteSettings} disabled={savingChatDeleteSettings}>
+                    {savingChatDeleteSettings ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Save className="h-4 w-4 mr-2" />
+                    )}
+                    Sauvegarder les parametres chat
+                  </Button>
                 </div>
               </div>
               
@@ -3063,7 +3141,7 @@ export default function Admin() {
           )}
         </TabsContent>
 
-        <TabsContent value="announcement" className={SPACING.SECTION_SPACING}>
+        <TabsContent value="communication" className={SPACING.SECTION_SPACING}>
           <Card className="border-border/40">
             <CardHeader>
               <CardDescription>Annonce top bar</CardDescription>
@@ -3115,7 +3193,7 @@ export default function Admin() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="updates" className={SPACING.SECTION_SPACING}>
+        <TabsContent value="communication" className={SPACING.SECTION_SPACING}>
           <Card className="border-border/40">
             <CardHeader>
               <CardDescription>Popups de mise a jour visibles a la connexion</CardDescription>
@@ -3373,7 +3451,7 @@ export default function Admin() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="attention" className={SPACING.SECTION_SPACING}>
+        <TabsContent value="communication" className={SPACING.SECTION_SPACING}>
           <Card className="border-border/40">
             <CardHeader>
               <CardDescription>Maintenance</CardDescription>
@@ -4372,7 +4450,7 @@ export default function Admin() {
         </DialogContent>
       </Dialog>
         {/* GIFTS TAB */}
-        <TabsContent value="gifts" className={SPACING.SECTION_SPACING}>
+        <TabsContent value="content" className={SPACING.SECTION_SPACING}>
           <Card className="border-border/40">
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -4526,4 +4604,6 @@ export default function Admin() {
     </PageLayout>
   );
 }
+
+
 
