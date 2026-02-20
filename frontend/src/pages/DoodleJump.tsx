@@ -208,6 +208,7 @@ export default function DoodleJump() {
   const multiplayerPlatformIndexRef = useRef(0);
   const platformIdCounterRef = useRef(0);
   const multiplayerRoomIdRef = useRef<string | null>(null);
+  const multiplayerSocketIdRef = useRef<string | null>(null);
   const multiplayerDisplayPlayersRef = useRef<Map<string, DoodleMultiplayerDisplayState>>(new Map());
   const pendingMultiplayerStartRef = useRef(false);
 
@@ -326,6 +327,7 @@ export default function DoodleJump() {
       socket.emit('doodle:multiplayer-leave');
     }
     multiplayerRoomIdRef.current = null;
+    multiplayerSocketIdRef.current = null;
     multiplayerSeedRef.current = null;
     multiplayerPlatformIndexRef.current = 0;
     pendingMultiplayerStartRef.current = false;
@@ -404,7 +406,13 @@ export default function DoodleJump() {
 
     if (socket && user && isMultiplayer && !spectatingRef.current) {
       const expectedRoomId = `doodle:multiplayer:${selectedMode}:${new Date().toISOString().slice(0, 10)}`;
-      if (!multiplayerRoomIdRef.current || multiplayerRoomIdRef.current !== expectedRoomId || multiplayerSeedRef.current === null) {
+      const needsJoin =
+        !socket.connected ||
+        !multiplayerRoomIdRef.current ||
+        multiplayerRoomIdRef.current !== expectedRoomId ||
+        multiplayerSeedRef.current === null ||
+        multiplayerSocketIdRef.current !== socket.id;
+      if (needsJoin) {
         pendingMultiplayerStartRef.current = true;
         socket.emit('doodle:multiplayer-join', { mode: selectedMode });
         return;
@@ -456,8 +464,21 @@ export default function DoodleJump() {
     socket?.emit('doodle:spectate-start', { mode: selectedMode });
     if (!isMultiplayer) {
       clearMultiplayerRoom();
+    } else if (socket && user && multiplayerRoomIdRef.current && !spectatingRef.current) {
+      socket.emit('doodle:multiplayer-state', {
+        mode: activeModeRef.current,
+        state: {
+          score: scoreRef.current,
+          x: positionRef.current.x,
+          worldY: worldOffsetRef.current + positionRef.current.y,
+          velocity: velocityRef.current,
+          facingLeft: facingLeftRef.current,
+          selectedSkin,
+          isDead: false,
+        },
+      });
     }
-  }, [applyMortSubiteRules, clearMultiplayerRoom, createPlatform, getPlatformSequenceIndex, getRandomPlatformType, getSeededValue, isMultiplayer, selectedGameType, selectedMode, socket, user]);
+  }, [applyMortSubiteRules, clearMultiplayerRoom, createPlatform, getPlatformSequenceIndex, getRandomPlatformType, getSeededValue, isMultiplayer, selectedGameType, selectedMode, selectedSkin, socket, user]);
 
   const stopSpectateBroadcast = useCallback(() => {
     socket?.emit('doodle:spectate-stop');
@@ -1091,6 +1112,7 @@ export default function DoodleJump() {
       players: DoodleMultiplayerNetState[];
     }) => {
       multiplayerRoomIdRef.current = data.roomId;
+      multiplayerSocketIdRef.current = socket.id ?? null;
       multiplayerSeedRef.current = data.seed;
       multiplayerPlatformIndexRef.current = 0;
       multiplayerDisplayPlayersRef.current.clear();
@@ -1199,6 +1221,20 @@ export default function DoodleJump() {
       setShowSkinSelector(false);
     }
   }, [started]);
+
+  useEffect(() => {
+    if (!socket || !user || spectatingRef.current || !isMultiplayer) return;
+
+    const handleReconnect = () => {
+      pendingMultiplayerStartRef.current = true;
+      socket.emit('doodle:multiplayer-join', { mode: started ? activeModeRef.current : selectedMode });
+    };
+
+    socket.on('connect', handleReconnect);
+    return () => {
+      socket.off('connect', handleReconnect);
+    };
+  }, [isMultiplayer, selectedMode, socket, started, user]);
 
   useEffect(() => {
     if (!isMultiplayer) {
