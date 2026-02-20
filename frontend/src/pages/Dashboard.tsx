@@ -48,19 +48,19 @@ const shortcutStorageKey = 'auratracker:dashboard-shortcuts';
 
 const welcomeTemplates = [
   'Bienvenue, {username}',
-  'Heureux de te revoir {username}, prÃªt pour AuraTracker ?',
+  'Heureux de te revoir {username}, prêt pour AuraTracker ?',
   'Salut {username} ! On lance une partie ?',
-  'Yo {username}, le crew tâ€™attend.',
-  'Hey {username}, tu reviens charger lâ€™aura ?',
-  '{username}, Ã§a faisait longtemps !',
+  'Yo {username}, le crew t’attend.',
+  'Hey {username}, tu reviens charger l’aura ?',
+  '{username}, ça faisait longtemps !',
   'Content de te revoir {username} !',
-  'Re {username} â€” place au fun.',
-  'PrÃªt Ã  tout Ã©clater, {username} ?',
-  'Bon retour {username}, Ã§a va chauffer.',
-  '{username}, on remet Ã§a ?',
-  'Bienvenue Ã  bord, {username}.',
-  'Hello {username}, Ã§a part en jeux ?',
-  '{username}, le tableau de bord est prÃªt.',
+  'Re {username} - place au fun.',
+  'Prêt à tout éclater, {username} ?',
+  'Bon retour {username}, ça va chauffer.',
+  '{username}, on remet ça ?',
+  'Bienvenue à bord, {username}.',
+  'Hello {username}, ça part en jeux ?',
+  '{username}, le tableau de bord est prêt.',
   'Heureux de te revoir {username} !',
   'Bon retour {username}, ready ?',
 ];
@@ -72,18 +72,18 @@ const pickWelcomeMessage = (username?: string) => {
 };
 
 const gameShortcuts: GameShortcut[] = [
-  { id: 'bomb-party', label: 'Bomb Party', path: '/games/bomb-party', description: 'Mots explosifs en ??quipe.', image: '/images/games/bombparty.png' },
+  { id: 'bomb-party', label: 'Bomb Party', path: '/games/bomb-party', description: 'Mots explosifs en équipe.', image: '/images/games/bombparty.png' },
   { id: 'poker', label: 'Poker', path: '/games/poker', description: 'Table rapide, mise prudente.', image: '/images/games/poker.png' },
-  { id: 'petit-bac', label: 'Petit Bac', path: '/games/petit-bac', description: 'Cat??gories, lettres, vitesse.', image: '/images/games/petitbac.png' },
-  { id: 'clash', label: 'Clash', path: '/games/clash', description: 'Duel strat??gique instantan??.', image: '/images/games/clash.png' },
+  { id: 'petit-bac', label: 'Petit Bac', path: '/games/petit-bac', description: 'Catégories, lettres, vitesse.', image: '/images/games/petitbac.png' },
+  { id: 'clash', label: 'Clash', path: '/games/clash', description: 'Duel stratégique instantané.', image: '/images/games/clash.png' },
   { id: 'casino', label: 'Casino', path: '/games/casino', description: 'Mini-jeux et mises rapides.', image: '/images/games/casino.png' },
-  { id: 'market', label: 'March??', path: '/games/market', description: 'Salle de march?? en direct.', image: '/images/games/market.png' },
+  { id: 'market', label: 'Marché', path: '/games/market', description: 'Salle de marché en direct.', image: '/images/games/market.png' },
   { id: 'aura-coin', label: 'Aura Coin', path: '/games/aura-coin', description: 'Suivi des coins aura.', image: '/images/games/auracoin.png' },
-  { id: 'polymarket', label: 'Polymarket', path: '/games/polymarket', description: 'Paris en temps r??el.' },
+  { id: 'polymarket', label: 'Polymarket', path: '/games/polymarket', description: 'Paris en temps réel.' },
   { id: 'doodle-jump', label: 'Doodle Jump', path: '/games/doodle-jump', description: 'Grimpe sans fin.', image: '/images/games/doodlejump.png' },
-  { id: '2048', label: '2048', path: '/games/2048', description: "Fusionne jusqu'?? 2048.", image: '/images/games/2048.png' },
+  { id: '2048', label: '2048', path: '/games/2048', description: "Fusionne jusqu'à 2048.", image: '/images/games/2048.png' },
   { id: 'flappy-bird', label: 'Flappy Bird', path: '/games/flappy-bird', description: 'Timing parfait.', image: '/images/games/flappybird.png' },
-  { id: 'bataille-navale', label: 'Bataille Navale', path: '/games/bataille-navale', description: 'Touches, coul??s, gagne.', image: '/images/games/bataillenavale.png' },
+  { id: 'bataille-navale', label: 'Bataille Navale', path: '/games/bataille-navale', description: 'Touches, coulés, gagne.', image: '/images/games/bataillenavale.png' },
   { id: 'solitaire', label: 'Solitaire', path: '/games/solitaire', description: 'Classique et relax.', image: '/images/games/solitaire.png' },
   { id: 'racer', label: 'Racer', path: '/games/racer', description: 'Course pseudo-3D style Outrun.', image: '/images/games/racer.png' },
   { id: 'tetris', label: 'Tetris', path: '/games/tetris', description: 'Puzzle classique et addictif.', image: '/images/games/tetris.png' },
@@ -290,7 +290,7 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <PageLayout variant="compact">
+      <PageLayout variant="full">
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
         </div>
@@ -299,9 +299,9 @@ export default function Dashboard() {
   }
 
   return (
-    <PageLayout variant="compact" className="space-y-8">
+    <PageLayout variant="full" className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
       {/* Stats */}
-      <Card className="border-border/40">
+      <Card className="border-border/40 xl:col-span-2">
         <CardContent className="p-8 md:p-10">
           <div className={cn("space-y-2 text-center", SPACING.TIGHT_SPACING)}>
             <p
@@ -324,13 +324,13 @@ export default function Dashboard() {
             </div>
           <Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
             <Button variant="outline" onClick={() => setShortcutsOpen(true)}>
-              GÃ©rer les widgets
+              Gérer les widgets
             </Button>
             <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className={TYPOGRAPHY.H5}>Widgets de raccourcis</DialogTitle>
                 <DialogDescription>
-                  Active les jeux Ã  afficher en haut du tableau de bord.
+                  Active les jeux à afficher en haut du tableau de bord.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3">
@@ -368,7 +368,7 @@ export default function Dashboard() {
                   variant="ghost"
                   onClick={() => setShortcutWidgets(defaultShortcuts)}
                 >
-                  RÃ©initialiser
+                  Réinitialiser
                 </Button>
                 <Button onClick={() => setShortcutsOpen(false)}>Terminer</Button>
               </DialogFooter>
@@ -407,7 +407,7 @@ export default function Dashboard() {
           ) : (
             <Card className="col-span-full border-dashed border-border/60">
               <CardContent className="p-6 text-center">
-                <p className={TYPOGRAPHY.SMALL}>Aucun widget actif. Ajoute des jeux pour un accÃ¨s rapide.</p>
+                <p className={TYPOGRAPHY.SMALL}>Aucun widget actif. Ajoute des jeux pour un accès rapide.</p>
               </CardContent>
             </Card>
           )}
@@ -473,7 +473,7 @@ export default function Dashboard() {
             <div>
               <CardDescription>Envoyer un cadeau</CardDescription>
               <CardTitle className={TYPOGRAPHY.H5}>
-                Offre de l'aura, de l'argent ou des articles Ã  un joueur.
+                Offre de l'aura, de l'argent ou des articles à un joueur.
               </CardTitle>
             </div>
             <Button
@@ -495,7 +495,7 @@ export default function Dashboard() {
 
 
       {/* Recent Activity + Activity Sidebar */}
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)] xl:col-span-2">
         <div className={SPACING.SECTION_SPACING}>
           <div className="flex items-center justify-between">
             <h2 className={TYPOGRAPHY.MUTED}>Activité récente</h2>
