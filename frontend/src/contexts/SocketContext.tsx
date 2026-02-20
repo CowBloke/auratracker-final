@@ -621,6 +621,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setPokerJoinPrompt(null);
         setPokerPlayAgainPrompt(null);
         setPokerGameOver(null);
+        partyEvents.list();
       });
 
       s.on('party:joined', (data: { party: Party; members: PartyMember[] }) => {
@@ -643,6 +644,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
           navigate('/party');
         }
         setPendingJoinRedirectPartyId(null);
+        partyEvents.list();
       });
 
       s.on('party:restored', (data: { party: Party; members: PartyMember[] }) => {
@@ -663,10 +665,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
       s.on('party:member-joined', (member: { userId: string; username: string; usernameColor?: string | null }) => {
         setPartyMembers((prev) => [...prev, { ...member, isLeader: false }]);
+        partyEvents.list();
       });
 
       s.on('party:member-left', (data: { userId: string }) => {
         setPartyMembers((prev) => prev.filter((m) => m.userId !== data.userId));
+        partyEvents.list();
       });
 
       s.on('party:disbanded', () => {
@@ -681,6 +685,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setPokerJoinPrompt(null);
         setPokerPlayAgainPrompt(null);
         setPokerGameOver(null);
+        partyEvents.list();
       });
 
       s.on('party:left', () => {
@@ -695,6 +700,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setPokerJoinPrompt(null);
         setPokerPlayAgainPrompt(null);
         setPokerGameOver(null);
+        partyEvents.list();
       });
 
       s.on('party:kicked', () => {
@@ -709,6 +715,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setPokerJoinPrompt(null);
         setPokerPlayAgainPrompt(null);
         setPokerGameOver(null);
+        partyEvents.list();
       });
 
       s.on('party:invite', (invite: PartyInvite) => {
