@@ -13,7 +13,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import PageLayout from '@/components/layout/PageLayout';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { getPageMeta } from '@/components/chat/presence';
 
 interface Transfer {
   id: string;
@@ -95,8 +94,6 @@ export default function Dashboard() {
   const { user } = useAuth();
   const {
     fetchPublicParties,
-    requestOnlineUsers,
-    onlineUsers,
     publicParties,
     currentParty,
     joinParty,
@@ -124,20 +121,6 @@ export default function Dashboard() {
   const orderedShortcuts = useMemo(
     () => shortcutWidgets.map((id) => shortcutMap.get(id)).filter(Boolean) as GameShortcut[],
     [shortcutMap, shortcutWidgets]
-  );
-  const onlinePlayersByGame = useMemo(
-    () =>
-      onlineUsers
-        .filter((onlineUser) => onlineUser.currentPage?.startsWith('/games'))
-        .sort((a, b) => a.username.localeCompare(b.username)),
-    [onlineUsers]
-  );
-  const onlinePlayersElsewhere = useMemo(
-    () =>
-      onlineUsers
-        .filter((onlineUser) => !onlineUser.currentPage?.startsWith('/games'))
-        .sort((a, b) => a.username.localeCompare(b.username)),
-    [onlineUsers]
   );
 
   // Update time every second for countdown
@@ -234,17 +217,15 @@ export default function Dashboard() {
 
     fetchData();
     fetchPublicParties();
-    requestOnlineUsers();
   }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
       fetchPublicParties();
-      requestOnlineUsers();
     }, 20000);
 
     return () => clearInterval(interval);
-  }, [fetchPublicParties, requestOnlineUsers]);
+  }, [fetchPublicParties]);
 
   useEffect(() => {
     try {
@@ -624,40 +605,9 @@ export default function Dashboard() {
       <Card className="border-border/40 h-fit">
           <CardHeader>
             <CardDescription>En direct</CardDescription>
-            <CardTitle className={TYPOGRAPHY.H5}>Activité des joueurs</CardTitle>
+            <CardTitle className={TYPOGRAPHY.H5}>Activité des parties</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-3">
-              <p className={cn(TYPOGRAPHY.XS, "uppercase tracking-[0.2em] text-muted-foreground")}>
-                Qui joue
-              </p>
-              {onlinePlayersByGame.length === 0 ? (
-                <p className={TYPOGRAPHY.SMALL}>Aucun joueur en partie pour le moment.</p>
-              ) : (
-                <div className="space-y-0">
-                  {onlinePlayersByGame.slice(0, 8).map((onlineUser) => {
-                    const pageMeta = getPageMeta(onlineUser.currentPage);
-                    return (
-                      <div
-                        key={onlineUser.userId}
-                        className="flex items-center justify-between gap-3 py-3 border-b border-border/30 last:border-0"
-                      >
-                        <span className={TYPOGRAPHY.SMALL} style={onlineUser.usernameColor ? { color: onlineUser.usernameColor } : undefined}>
-                          {onlineUser.username}
-                        </span>
-                        <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>{pageMeta.label}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              {onlinePlayersElsewhere.length > 0 && (
-                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>
-                  +{onlinePlayersElsewhere.length} en ligne ailleurs
-                </p>
-              )}
-            </div>
-
             <div className="space-y-3">
               <p className={cn(TYPOGRAPHY.XS, "uppercase tracking-[0.2em] text-muted-foreground")}>
                 Parties ouvertes
