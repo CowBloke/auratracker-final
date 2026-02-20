@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSocket } from '../contexts/SocketContext';
 import { gamesApi } from '../services/api';
-import { Play, RotateCcw, Trophy, X, Palette } from 'lucide-react';
+import { Play, RotateCcw, Trophy, X, Palette, Eye, EyeOff } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 // ============================================
 // GAME CONSTANTS (from old implementation)
@@ -85,6 +87,22 @@ interface LeaderboardEntry {
   };
 }
 
+interface DoodleSpectateFrame {
+  timestamp: number;
+  score: number;
+  mode: DoodleGameMode;
+  gameRunning: boolean;
+  gameOver: boolean;
+  selectedSkin: SkinId;
+  facingLeft: boolean;
+  player: {
+    x: number;
+    y: number;
+    velocity: number;
+  };
+  platforms: Platform[];
+}
+
 // ============================================
 // COLOR SCHEME (theme-aware)
 // ============================================
@@ -122,6 +140,8 @@ const getColors = (theme: 'light' | 'dark') => {
 // COMPONENT
 // ============================================
 export default function DoodleJump() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
@@ -141,8 +161,14 @@ export default function DoodleJump() {
   const playerImageRef = useRef<HTMLImageElement | null>(null);
   const activeGameTypeRef = useRef<DoodleGameType>('doodle_jump');
   const activeModeRef = useRef<DoodleGameMode>('classic');
+  const lastBroadcastAtRef = useRef(0);
+  const spectatingRef = useRef(false);
+  const spectateTargetFrameRef = useRef<DoodleSpectateFrame | null>(null);
+  const spectateReplayQueueRef = useRef<DoodleSpectateFrame[]>([]);
+  const spectateSkinRef = useRef<SkinId>('default');
 
   const { user, refreshUser } = useAuth();
+  const { socket } = useSocket();
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
@@ -157,6 +183,9 @@ export default function DoodleJump() {
   });
   const [showSkinSelector, setShowSkinSelector] = useState(false);
   const [isMortSubite, setIsMortSubite] = useState(false);
+  const [spectatorCount, setSpectatorCount] = useState(0);
+  const [spectatingHost, setSpectatingHost] = useState<{ hostUserId: string; hostUsername: string } | null>(null);
+  const spectateHostUserIdFromRoute = ((location.state as { spectateHostUserId?: string } | null)?.spectateHostUserId) ?? null;
   const selectedGameType: DoodleGameType = isMortSubite ? 'doodle_jump_mort_subite' : 'doodle_jump';
   const selectedMode: DoodleGameMode = isMortSubite ? 'mort_subite' : 'classic';
   const displayMode: DoodleGameMode = started ? activeModeRef.current : selectedMode;
@@ -291,6 +320,15 @@ export default function DoodleJump() {
   // GAME INITIALIZATION
   // ============================================
   const initGame = useCallback(() => {
+    if (spectatingRef.current) {
+      socket?.emit('doodle:spectate-leave');
+      spectatingRef.current = false;
+      spectateTargetFrameRef.current = null;
+      spectateReplayQueueRef.current = [];
+      setSpectatingHost(null);
+      setSpectatorCount(0);
+    }
+
     activeModeRef.current = selectedMode;
     activeGameTypeRef.current = selectedGameType;
 
@@ -324,7 +362,34 @@ export default function DoodleJump() {
     setStarted(true);
     setRewards(null);
     setIsNewHighScore(false);
+    setSpectatorCount(0);
+    lastBroadcastAtRef.current = 0;
+
+    socket?.emit('doodle:spectate-start', { mode: selectedMode });
   }, [applyMortSubiteRules, createPlatform, getRandomPlatformType, selectedGameType, selectedMode]);
+
+  const stopSpectateBroadcast = useCallback(() => {
+    socket?.emit('doodle:spectate-stop');
+    setSpectatorCount(0);
+  }, [socket]);
+
+  const buildSpectateFrame = useCallback((timestamp: number, ended: boolean): DoodleSpectateFrame => {
+    return {
+      timestamp,
+      score: scoreRef.current,
+      mode: activeModeRef.current,
+      gameRunning: gameRunningRef.current && !ended,
+      gameOver: ended,
+      selectedSkin,
+      facingLeft: facingLeftRef.current,
+      player: {
+        x: positionRef.current.x,
+        y: positionRef.current.y,
+        velocity: velocityRef.current,
+      },
+      platforms: platformsRef.current.map((platform) => ({ ...platform })),
+    };
+  }, [selectedSkin]);
 
   // ============================================
   // GAME OVER HANDLING
@@ -333,6 +398,10 @@ export default function DoodleJump() {
     const finalScore = scoreRef.current;
     gameRunningRef.current = false;
     setGameOver(true);
+    if (socket) {
+      socket.emit('doodle:spectate-frame', { frame: buildSpectateFrame(performance.now(), true) });
+    }
+    stopSpectateBroadcast();
 
     try {
       const response = await gamesApi.complete(activeGameTypeRef.current, {
@@ -356,7 +425,107 @@ export default function DoodleJump() {
     } catch (error) {
       console.error('Failed to submit score:', error);
     }
-  }, [fetchLeaderboard, refreshUser]);
+  }, [buildSpectateFrame, fetchLeaderboard, refreshUser, socket, stopSpectateBroadcast]);
+
+  const drawCurrentScene = useCallback((ctx: CanvasRenderingContext2D, timestamp: number, skinId: SkinId) => {
+    // Clear canvas
+    ctx.fillStyle = colors.background;
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+    // Draw platforms
+    for (const platform of platformsRef.current) {
+      ctx.save();
+      ctx.globalAlpha = platform.opacity;
+
+      if (activeModeRef.current === 'mort_subite') {
+        ctx.fillStyle = MORT_SUBITE_PLATFORM_COLOR;
+      } else {
+        if (platform.effect === 'bounce') {
+          ctx.fillStyle = colors.platformBounce;
+        } else if (platform.effect === 'disappear') {
+          ctx.fillStyle = colors.platformDisappear;
+        } else if (platform.effect === 'instant-disappear') {
+          ctx.fillStyle = colors.platformInstantDisappear;
+        } else if (platform.movement === 'moving') {
+          ctx.fillStyle = colors.platformMoving;
+        } else if (platform.movement === 'conveyor-left' || platform.movement === 'conveyor-right') {
+          ctx.fillStyle = colors.platformConveyor;
+        } else {
+          ctx.fillStyle = colors.platformNormal;
+        }
+      }
+
+      const platY = CANVAS_HEIGHT - platform.y - PLATFORM_HEIGHT;
+      if (platform.effect === 'bounce') {
+        ctx.beginPath();
+        ctx.ellipse(
+          platform.x + PLATFORM_WIDTH / 2,
+          platY + PLATFORM_HEIGHT / 2,
+          PLATFORM_WIDTH / 2,
+          PLATFORM_HEIGHT / 2,
+          0, 0, Math.PI * 2
+        );
+        ctx.fill();
+      } else {
+        ctx.beginPath();
+        ctx.roundRect(platform.x, platY, PLATFORM_WIDTH, PLATFORM_HEIGHT, 5);
+        ctx.fill();
+      }
+
+      if (platform.movement === 'conveyor-left' || platform.movement === 'conveyor-right') {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        const stripeOffset = (timestamp / 20) % 20;
+        const dir = platform.movement === 'conveyor-left' ? -1 : 1;
+        for (let i = -1; i < PLATFORM_WIDTH / 20 + 1; i++) {
+          const sx = platform.x + i * 20 + (dir * stripeOffset);
+          if (sx >= platform.x && sx + 10 <= platform.x + PLATFORM_WIDTH) {
+            ctx.fillRect(sx, platY, 10, PLATFORM_HEIGHT);
+          }
+        }
+      }
+
+      ctx.restore();
+    }
+
+    const playerScreenY = CANVAS_HEIGHT - positionRef.current.y - CHARACTER_HEIGHT;
+    const skin = SKINS.find((s) => s.id === skinId) || SKINS[0];
+
+    if (playerImageLoaded && playerImageRef.current && skinId === 'default') {
+      ctx.save();
+      if (facingLeftRef.current) {
+        ctx.translate(positionRef.current.x + CHARACTER_WIDTH, playerScreenY);
+        ctx.scale(-1, 1);
+        ctx.drawImage(playerImageRef.current, 0, 0, CHARACTER_WIDTH, CHARACTER_HEIGHT);
+      } else {
+        ctx.drawImage(
+          playerImageRef.current,
+          positionRef.current.x,
+          playerScreenY,
+          CHARACTER_WIDTH,
+          CHARACTER_HEIGHT
+        );
+      }
+      ctx.restore();
+    } else {
+      ctx.fillStyle = skin.color;
+      ctx.beginPath();
+      ctx.arc(
+        positionRef.current.x + CHARACTER_WIDTH / 2,
+        playerScreenY + CHARACTER_HEIGHT / 2,
+        CHARACTER_WIDTH / 2,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+
+      ctx.fillStyle = skin.eyeColor;
+      const eyeOffsetX = facingLeftRef.current ? -4 : 4;
+      ctx.beginPath();
+      ctx.arc(positionRef.current.x + CHARACTER_WIDTH / 2 - 6 + eyeOffsetX, playerScreenY + CHARACTER_HEIGHT / 2 - 5, 4, 0, Math.PI * 2);
+      ctx.arc(positionRef.current.x + CHARACTER_WIDTH / 2 + 6 + eyeOffsetX, playerScreenY + CHARACTER_HEIGHT / 2 - 5, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }, [colors, playerImageLoaded]);
 
   // ============================================
   // GAME LOOP (physics from old implementation)
@@ -553,122 +722,164 @@ export default function DoodleJump() {
       return;
     }
 
-    // ========== RENDER ==========
-    // Clear canvas
-    ctx.fillStyle = colors.background;
-    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-    // Draw platforms
-    for (const platform of platformsRef.current) {
-      ctx.save();
-      ctx.globalAlpha = platform.opacity;
-
-      // Platform color based on type
-      if (activeModeRef.current === 'mort_subite') {
-        ctx.fillStyle = MORT_SUBITE_PLATFORM_COLOR;
-      } else {
-        if (platform.effect === 'bounce') {
-          ctx.fillStyle = colors.platformBounce;
-        } else if (platform.effect === 'disappear') {
-          ctx.fillStyle = colors.platformDisappear;
-        } else if (platform.effect === 'instant-disappear') {
-          ctx.fillStyle = colors.platformInstantDisappear;
-        } else if (platform.movement === 'moving') {
-          ctx.fillStyle = colors.platformMoving;
-        } else if (platform.movement === 'conveyor-left' || platform.movement === 'conveyor-right') {
-          ctx.fillStyle = colors.platformConveyor;
-        } else {
-          ctx.fillStyle = colors.platformNormal;
-        }
-      }
-
-      // Draw platform (bounce is round, others are rectangular)
-      const platY = CANVAS_HEIGHT - platform.y - PLATFORM_HEIGHT;
-      if (platform.effect === 'bounce') {
-        ctx.beginPath();
-        ctx.ellipse(
-          platform.x + PLATFORM_WIDTH / 2,
-          platY + PLATFORM_HEIGHT / 2,
-          PLATFORM_WIDTH / 2,
-          PLATFORM_HEIGHT / 2,
-          0, 0, Math.PI * 2
-        );
-        ctx.fill();
-      } else {
-        ctx.beginPath();
-        ctx.roundRect(platform.x, platY, PLATFORM_WIDTH, PLATFORM_HEIGHT, 5);
-        ctx.fill();
-      }
-
-      // Conveyor animation stripes
-      if (platform.movement === 'conveyor-left' || platform.movement === 'conveyor-right') {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-        const stripeOffset = (timestamp / 20) % 20;
-        const dir = platform.movement === 'conveyor-left' ? -1 : 1;
-        for (let i = -1; i < PLATFORM_WIDTH / 20 + 1; i++) {
-          const sx = platform.x + i * 20 + (dir * stripeOffset);
-          if (sx >= platform.x && sx + 10 <= platform.x + PLATFORM_WIDTH) {
-            ctx.fillRect(sx, platY, 10, PLATFORM_HEIGHT);
-          }
-        }
-      }
-
-      ctx.restore();
+    if (socket && user && timestamp - lastBroadcastAtRef.current >= 50) {
+      socket.emit('doodle:spectate-frame', { frame: buildSpectateFrame(timestamp, false) });
+      lastBroadcastAtRef.current = timestamp;
     }
 
-    const playerScreenY = CANVAS_HEIGHT - positionRef.current.y - CHARACTER_HEIGHT;
-    
-    // Draw player with selected skin
-    const skin = SKINS.find(s => s.id === selectedSkin) || SKINS[0];
-    
-    if (playerImageLoaded && playerImageRef.current && selectedSkin === 'default') {
-      // Use original image only for default skin
-      ctx.save();
-      if (facingLeftRef.current) {
-        ctx.translate(positionRef.current.x + CHARACTER_WIDTH, playerScreenY);
-        ctx.scale(-1, 1);
-        ctx.drawImage(playerImageRef.current, 0, 0, CHARACTER_WIDTH, CHARACTER_HEIGHT);
-      } else {
-        ctx.drawImage(
-          playerImageRef.current,
-          positionRef.current.x,
-          playerScreenY,
-          CHARACTER_WIDTH,
-          CHARACTER_HEIGHT
-        );
-      }
-      ctx.restore();
-    } else {
-      // Draw colored player (ball with skin color)
-      ctx.fillStyle = skin.color;
-      ctx.beginPath();
-      ctx.arc(
-        positionRef.current.x + CHARACTER_WIDTH / 2,
-        playerScreenY + CHARACTER_HEIGHT / 2,
-        CHARACTER_WIDTH / 2,
-        0,
-        Math.PI * 2
-      );
-      ctx.fill();
-
-      // Draw eyes
-      ctx.fillStyle = skin.eyeColor;
-      const eyeOffsetX = facingLeftRef.current ? -4 : 4;
-      ctx.beginPath();
-      ctx.arc(positionRef.current.x + CHARACTER_WIDTH / 2 - 6 + eyeOffsetX, playerScreenY + CHARACTER_HEIGHT / 2 - 5, 4, 0, Math.PI * 2);
-      ctx.arc(positionRef.current.x + CHARACTER_WIDTH / 2 + 6 + eyeOffsetX, playerScreenY + CHARACTER_HEIGHT / 2 - 5, 4, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    drawCurrentScene(ctx, timestamp, selectedSkin);
 
     // Continue loop
     animationRef.current = requestAnimationFrame(gameLoop);
-  }, [handleGameOver, generateNewPlatforms, colors, playerImageLoaded, selectedSkin]);
+  }, [handleGameOver, generateNewPlatforms, socket, user, buildSpectateFrame, drawCurrentScene, selectedSkin]);
+
+  const applySpectateFrame = useCallback((frame: DoodleSpectateFrame, smooth: boolean) => {
+    const lerp = smooth ? 0.35 : 1;
+
+    activeModeRef.current = frame.mode;
+    facingLeftRef.current = frame.facingLeft;
+    spectateSkinRef.current = frame.selectedSkin;
+
+    if (platformsRef.current.length !== frame.platforms.length) {
+      platformsRef.current = frame.platforms.map((platform) => ({ ...platform }));
+    } else {
+      platformsRef.current = platformsRef.current.map((platform, index) => {
+        const next = frame.platforms[index];
+        return {
+          ...next,
+          x: platform.x + (next.x - platform.x) * lerp,
+          y: platform.y + (next.y - platform.y) * lerp,
+          opacity: platform.opacity + (next.opacity - platform.opacity) * lerp,
+        };
+      });
+    }
+
+    positionRef.current = {
+      x: positionRef.current.x + (frame.player.x - positionRef.current.x) * lerp,
+      y: positionRef.current.y + (frame.player.y - positionRef.current.y) * lerp,
+    };
+    velocityRef.current = velocityRef.current + (frame.player.velocity - velocityRef.current) * lerp;
+
+    if (scoreRef.current !== frame.score) {
+      scoreRef.current = frame.score;
+      setScore(frame.score);
+    }
+    setStarted(true);
+    if (gameOver !== frame.gameOver) {
+      setGameOver(frame.gameOver);
+    }
+  }, [gameOver]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleJoined = (data: {
+      hostUserId: string;
+      hostUsername: string;
+      frame: DoodleSpectateFrame | null;
+      replayFrames: DoodleSpectateFrame[];
+      spectatorCount: number;
+    }) => {
+      stopSpectateBroadcast();
+      spectatingRef.current = true;
+      setSpectatingHost({ hostUserId: data.hostUserId, hostUsername: data.hostUsername });
+      setRewards(null);
+      setIsNewHighScore(false);
+      setSpectatorCount(data.spectatorCount ?? 0);
+      spectateReplayQueueRef.current = Array.isArray(data.replayFrames) ? data.replayFrames : [];
+      spectateTargetFrameRef.current = data.frame;
+      if (data.frame) {
+        applySpectateFrame(data.frame, false);
+      }
+      gameRunningRef.current = false;
+      navigate(location.pathname, { replace: true, state: null });
+    };
+
+    const handleFrame = (data: { hostUserId: string; frame: DoodleSpectateFrame }) => {
+      if (!spectatingRef.current || !spectatingHost || data.hostUserId !== spectatingHost.hostUserId) return;
+      spectateTargetFrameRef.current = data.frame;
+    };
+
+    const handleSpectatorCount = (data: { hostUserId: string; spectatorCount: number }) => {
+      if (user && data.hostUserId === user.id) {
+        setSpectatorCount(data.spectatorCount);
+      }
+      if (spectatingHost && data.hostUserId === spectatingHost.hostUserId) {
+        setSpectatorCount(data.spectatorCount);
+      }
+    };
+
+    const handleStopped = (data: { hostUserId: string }) => {
+      if (!spectatingRef.current || !spectatingHost || data.hostUserId !== spectatingHost.hostUserId) return;
+      spectatingRef.current = false;
+      setSpectatingHost(null);
+      spectateTargetFrameRef.current = null;
+      spectateReplayQueueRef.current = [];
+      setStarted(false);
+      setGameOver(false);
+      setScore(0);
+      scoreRef.current = 0;
+      setSpectatorCount(0);
+    };
+
+    const handleError = () => {
+      spectatingRef.current = false;
+      setSpectatingHost(null);
+      setSpectatorCount(0);
+    };
+
+    socket.on('doodle:spectate-joined', handleJoined);
+    socket.on('doodle:spectate-frame', handleFrame);
+    socket.on('doodle:spectator-count', handleSpectatorCount);
+    socket.on('doodle:spectate-stopped', handleStopped);
+    socket.on('doodle:spectate-error', handleError);
+
+    return () => {
+      socket.off('doodle:spectate-joined', handleJoined);
+      socket.off('doodle:spectate-frame', handleFrame);
+      socket.off('doodle:spectator-count', handleSpectatorCount);
+      socket.off('doodle:spectate-stopped', handleStopped);
+      socket.off('doodle:spectate-error', handleError);
+    };
+  }, [applySpectateFrame, location.pathname, navigate, socket, spectatingHost, stopSpectateBroadcast, user]);
+
+  useEffect(() => {
+    if (!socket || !user || !spectateHostUserIdFromRoute) return;
+    if (spectateHostUserIdFromRoute === user.id) {
+      navigate(location.pathname, { replace: true, state: null });
+      return;
+    }
+    socket.emit('doodle:spectate-join', { hostUserId: spectateHostUserIdFromRoute });
+  }, [location.pathname, navigate, socket, spectateHostUserIdFromRoute, user]);
+
+  useEffect(() => {
+    if (!spectatingHost) return;
+    const loop = (timestamp: number) => {
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext('2d');
+      if (!canvas || !ctx || !spectatingRef.current) return;
+
+      const replayFrame = spectateReplayQueueRef.current.length > 0
+        ? spectateReplayQueueRef.current.shift() ?? null
+        : null;
+      const frame = replayFrame ?? spectateTargetFrameRef.current;
+      if (frame) {
+        applySpectateFrame(frame, replayFrame === null);
+        drawCurrentScene(ctx, timestamp, spectateSkinRef.current);
+      }
+      animationRef.current = requestAnimationFrame(loop);
+    };
+
+    animationRef.current = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(animationRef.current);
+  }, [applySpectateFrame, drawCurrentScene, spectatingHost]);
 
   // ============================================
   // INPUT HANDLING
   // ============================================
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (spectatingRef.current) return;
       if (e.key === 'ArrowLeft' || e.key === 'a') {
         moveLeftRef.current = true;
         e.preventDefault();
@@ -680,6 +891,7 @@ export default function DoodleJump() {
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
+      if (spectatingRef.current) return;
       if (e.key === 'ArrowLeft' || e.key === 'a') {
         moveLeftRef.current = false;
       }
@@ -700,11 +912,11 @@ export default function DoodleJump() {
 
   // Start game loop when game starts
   useEffect(() => {
-    if (started && !gameOver) {
+    if (started && !gameOver && !spectatingHost) {
       animationRef.current = requestAnimationFrame(gameLoop);
     }
     return () => cancelAnimationFrame(animationRef.current);
-  }, [started, gameOver, gameLoop]);
+  }, [started, gameOver, gameLoop, spectatingHost]);
 
   // Close skin selector when game starts
   useEffect(() => {
@@ -712,6 +924,13 @@ export default function DoodleJump() {
       setShowSkinSelector(false);
     }
   }, [started]);
+
+  useEffect(() => {
+    return () => {
+      stopSpectateBroadcast();
+      socket?.emit('doodle:spectate-leave');
+    };
+  }, [socket, stopSpectateBroadcast]);
 
   // Close skin selector when clicking outside
   useEffect(() => {
@@ -734,10 +953,31 @@ export default function DoodleJump() {
   return (
     <div className="max-w-4xl mx-auto py-12 px-6 space-y-8">
       <div className="flex items-center justify-end gap-4">
+            {spectatingHost && (
+              <button
+                type="button"
+                onClick={() => {
+                  socket?.emit('doodle:spectate-leave');
+                  spectatingRef.current = false;
+                  setSpectatingHost(null);
+                  spectateTargetFrameRef.current = null;
+                  spectateReplayQueueRef.current = [];
+                  setStarted(false);
+                  setGameOver(false);
+                  setScore(0);
+                  scoreRef.current = 0;
+                  setSpectatorCount(0);
+                }}
+                className="flex items-center gap-2 rounded-lg border border-border/50 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <EyeOff className="h-4 w-4" />
+                Quitter spectate
+              </button>
+            )}
             <div className="relative" data-skin-selector>
               <button
                 onClick={() => setShowSkinSelector(!showSkinSelector)}
-                disabled={started && !gameOver}
+                disabled={(started && !gameOver) || !!spectatingHost}
                 className="flex items-center gap-2 px-4 py-2 border border-border/50 rounded-lg hover:bg-muted/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Choisir un skin"
               >
@@ -785,6 +1025,15 @@ export default function DoodleJump() {
             <div className="text-right text-sm text-muted-foreground tabular-nums">
               <div className="text-3xl font-light text-foreground">{score.toLocaleString()}</div>
               <div>Record: {highScore.toLocaleString()}</div>
+              {started && !spectatingHost && (
+                <div className="flex items-center justify-end gap-1 text-xs">
+                  <Eye className="h-3 w-3" />
+                  <span>{spectatorCount} spectateurs</span>
+                </div>
+              )}
+              {spectatingHost && (
+                <div className="text-xs">Spectate: {spectatingHost.hostUsername}</div>
+              )}
             </div>
           </div>
 
@@ -800,7 +1049,7 @@ export default function DoodleJump() {
           />
 
           {/* Start Screen */}
-          {!started && (
+          {!started && !spectatingHost && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
               <div className="flex flex-col items-center gap-4">
                 <button
@@ -826,7 +1075,7 @@ export default function DoodleJump() {
           )}
 
           {/* Game Over Screen */}
-          {gameOver && (
+          {gameOver && !spectatingHost && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
               <div className="text-center space-y-6">
                 <div>

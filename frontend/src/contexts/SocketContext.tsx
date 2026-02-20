@@ -41,6 +41,14 @@ interface OnlineUser {
   currentPage?: string | null;
 }
 
+interface DoodleSpectateSession {
+  hostUserId: string;
+  hostUsername: string;
+  mode: 'classic' | 'mort_subite';
+  spectatorCount: number;
+  score: number;
+}
+
 interface TypingUser {
   userId: string;
   username: string;
@@ -378,6 +386,8 @@ interface SocketContextType {
   deleteMessage: (messageId: string) => void;
   pinMessage: (messageId: string, pinned: boolean) => void;
   requestOnlineUsers: () => void;
+  doodleSpectateSessions: DoodleSpectateSession[];
+  requestDoodleSpectateSessions: () => void;
   // Party
   currentParty: Party | null;
   partyMembers: PartyMember[];
@@ -452,6 +462,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [onlineCount, setOnlineCount] = useState(0);
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
+  const [doodleSpectateSessions, setDoodleSpectateSessions] = useState<DoodleSpectateSession[]>([]);
   
   // Party state
   const [currentParty, setCurrentParty] = useState<Party | null>(null);
@@ -501,6 +512,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         partyEvents.sync(user.id);
         partyEvents.list();
         gameEvents.register(user.id);
+        s.emit('doodle:spectate-list-request');
         pokerEvents.register(user.id);
       });
 
@@ -562,6 +574,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
       s.on('users:online-count', (data: { count: number }) => {
         setOnlineCount(data.count);
+      });
+
+      s.on('doodle:spectate-sessions', (data: { sessions: DoodleSpectateSession[] }) => {
+        setDoodleSpectateSessions(Array.isArray(data.sessions) ? data.sessions : []);
       });
 
       s.on('user:online', (user: OnlineUser) => {
@@ -1143,6 +1159,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const requestDoodleSpectateSessions = () => {
+    if (socket) {
+      socket.emit('doodle:spectate-list-request');
+    }
+  };
+
   const deleteMessage = (messageId: string) => {
     if (user && socket) {
       socket.emit('chat:delete-message', { messageId, adminId: user.id });
@@ -1378,6 +1400,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setTyping,
         setCurrentPage,
         requestOnlineUsers,
+        doodleSpectateSessions,
+        requestDoodleSpectateSessions,
         deleteMessage,
         pinMessage,
         currentParty,

@@ -1,4 +1,5 @@
 import { Socket, Server } from 'socket.io';
+import { onlineUsers } from './chat.js';
 
 interface GameInvite {
   gameType: string;
@@ -8,6 +9,111 @@ interface GameInvite {
 
 const gameInvites = new Map<string, GameInvite[]>(); // userId -> invites
 const userGameSockets = new Map<string, string>(); // userId -> socketId
+
+type DoodleMode = 'classic' | 'mort_subite';
+type PlatformMovement = 'normal' | 'moving' | 'conveyor-left' | 'conveyor-right';
+type PlatformEffect = 'bounce' | 'disappear' | 'instant-disappear' | null;
+type SkinId = 'default' | 'red' | 'blue' | 'green' | 'yellow' | 'purple' | 'orange' | 'pink';
+
+interface DoodlePlatformFrame {
+  x: number;
+  y: number;
+  movement: PlatformMovement;
+  effect: PlatformEffect;
+  direction: number;
+  touched: boolean;
+  opacity: number;
+  fadingOut: boolean;
+}
+
+interface DoodleSpectateFrame {
+  timestamp: number;
+  score: number;
+  mode: DoodleMode;
+  gameRunning: boolean;
+  gameOver: boolean;
+  selectedSkin: SkinId;
+  facingLeft: boolean;
+  player: {
+    x: number;
+    y: number;
+    velocity: number;
+  };
+  platforms: DoodlePlatformFrame[];
+}
+
+interface DoodleSession {
+  hostUserId: string;
+  hostUsername: string;
+  hostSocketId: string;
+  mode: DoodleMode;
+  spectators: Set<string>; // socket ids
+  latestFrame: DoodleSpectateFrame | null;
+  replayFrames: DoodleSpectateFrame[];
+}
+
+const doodleSessions = new Map<string, DoodleSession>(); // hostUserId -> session
+const doodleSpectatorToHost = new Map<string, string>(); // spectatorSocketId -> hostUserId
+const DOODLE_REPLAY_LIMIT = 240;
+
+const getDoodleRoom = (hostUserId: string) => `doodle:spectate:${hostUserId}`;
+
+const cloneFrame = (frame: DoodleSpectateFrame): DoodleSpectateFrame => ({
+  ...frame,
+  player: { ...frame.player },
+  platforms: frame.platforms.map((platform) => ({ ...platform })),
+});
+
+const emitDoodleSessionList = (io: Server) => {
+  const sessions = Array.from(doodleSessions.values()).map((session) => ({
+    hostUserId: session.hostUserId,
+    hostUsername: session.hostUsername,
+    mode: session.mode,
+    spectatorCount: session.spectators.size,
+    score: session.latestFrame?.score ?? 0,
+  }));
+  io.emit('doodle:spectate-sessions', { sessions });
+};
+
+const emitDoodleSpectatorCount = (io: Server, hostUserId: string) => {
+  const session = doodleSessions.get(hostUserId);
+  if (!session) {
+    io.emit('doodle:spectator-count', { hostUserId, spectatorCount: 0 });
+    return;
+  }
+  io.to(getDoodleRoom(hostUserId)).emit('doodle:spectator-count', {
+    hostUserId,
+    spectatorCount: session.spectators.size,
+  });
+  io.to(session.hostSocketId).emit('doodle:spectator-count', {
+    hostUserId,
+    spectatorCount: session.spectators.size,
+  });
+};
+
+const removeDoodleSpectator = (io: Server, spectatorSocketId: string) => {
+  const hostUserId = doodleSpectatorToHost.get(spectatorSocketId);
+  if (!hostUserId) return;
+  doodleSpectatorToHost.delete(spectatorSocketId);
+  const session = doodleSessions.get(hostUserId);
+  if (!session) return;
+  session.spectators.delete(spectatorSocketId);
+  emitDoodleSpectatorCount(io, hostUserId);
+  emitDoodleSessionList(io);
+};
+
+const stopDoodleSession = (io: Server, hostUserId: string) => {
+  const session = doodleSessions.get(hostUserId);
+  if (!session) return;
+  io.to(getDoodleRoom(hostUserId)).emit('doodle:spectate-stopped', { hostUserId });
+  for (const spectatorSocketId of session.spectators) {
+    doodleSpectatorToHost.delete(spectatorSocketId);
+    const spectatorSocket = io.sockets.sockets.get(spectatorSocketId);
+    spectatorSocket?.leave(getDoodleRoom(hostUserId));
+  }
+  doodleSessions.delete(hostUserId);
+  emitDoodleSessionList(io);
+};
 
 export const setupGameHandlers = (socket: Socket, io: Server) => {
   // Register socket for game events
@@ -144,12 +250,132 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
     // Clean up room
     io.in(roomId).socketsLeave(roomId);
   });
+
+  socket.on('doodle:spectate-start', (data?: { mode?: DoodleMode }) => {
+    const hostUserId = socket.data.userId as string | undefined;
+    const hostUsername = socket.data.username as string | undefined;
+    if (!hostUserId || !hostUsername) return;
+
+    const onlineUser = onlineUsers.get(hostUserId);
+    if (!onlineUser?.currentPage?.startsWith('/games/doodle-jump')) {
+      return;
+    }
+
+    const existing = doodleSessions.get(hostUserId);
+    const mode: DoodleMode = data?.mode === 'mort_subite' ? 'mort_subite' : 'classic';
+    doodleSessions.set(hostUserId, {
+      hostUserId,
+      hostUsername,
+      hostSocketId: socket.id,
+      mode,
+      spectators: existing?.spectators ?? new Set<string>(),
+      latestFrame: existing?.latestFrame ?? null,
+      replayFrames: existing?.replayFrames ?? [],
+    });
+    socket.join(getDoodleRoom(hostUserId));
+    emitDoodleSpectatorCount(io, hostUserId);
+    emitDoodleSessionList(io);
+  });
+
+  socket.on('doodle:spectate-stop', () => {
+    const hostUserId = socket.data.userId as string | undefined;
+    if (!hostUserId) return;
+    stopDoodleSession(io, hostUserId);
+  });
+
+  socket.on('doodle:spectate-frame', (data: { frame: DoodleSpectateFrame }) => {
+    const hostUserId = socket.data.userId as string | undefined;
+    if (!hostUserId) return;
+    const session = doodleSessions.get(hostUserId);
+    if (!session || session.hostSocketId !== socket.id) return;
+
+    const onlineUser = onlineUsers.get(hostUserId);
+    if (!onlineUser?.currentPage?.startsWith('/games/doodle-jump')) {
+      stopDoodleSession(io, hostUserId);
+      return;
+    }
+
+    const incomingFrame = data.frame;
+    if (!incomingFrame || !Array.isArray(incomingFrame.platforms)) return;
+
+    const nextFrame = cloneFrame(incomingFrame);
+    session.latestFrame = nextFrame;
+    session.mode = nextFrame.mode === 'mort_subite' ? 'mort_subite' : 'classic';
+    session.replayFrames.push(nextFrame);
+    if (session.replayFrames.length > DOODLE_REPLAY_LIMIT) {
+      session.replayFrames.splice(0, session.replayFrames.length - DOODLE_REPLAY_LIMIT);
+    }
+
+    io.to(getDoodleRoom(hostUserId)).emit('doodle:spectate-frame', {
+      hostUserId,
+      frame: nextFrame,
+    });
+    emitDoodleSessionList(io);
+  });
+
+  socket.on('doodle:spectate-list-request', () => {
+    const sessions = Array.from(doodleSessions.values()).map((session) => ({
+      hostUserId: session.hostUserId,
+      hostUsername: session.hostUsername,
+      mode: session.mode,
+      spectatorCount: session.spectators.size,
+      score: session.latestFrame?.score ?? 0,
+    }));
+    socket.emit('doodle:spectate-sessions', { sessions });
+  });
+
+  socket.on('doodle:spectate-join', (data: { hostUserId: string }) => {
+    const spectatorUserId = socket.data.userId as string | undefined;
+    if (!spectatorUserId) return;
+
+    removeDoodleSpectator(io, socket.id);
+
+    const hostUserId = data.hostUserId;
+    const session = doodleSessions.get(hostUserId);
+    if (!session) {
+      socket.emit('doodle:spectate-error', { message: 'Session indisponible.' });
+      return;
+    }
+
+    if (session.hostUserId === spectatorUserId) {
+      socket.emit('doodle:spectate-error', { message: 'Tu ne peux pas te spectate toi-meme.' });
+      return;
+    }
+
+    socket.join(getDoodleRoom(hostUserId));
+    doodleSpectatorToHost.set(socket.id, hostUserId);
+    session.spectators.add(socket.id);
+
+    socket.emit('doodle:spectate-joined', {
+      hostUserId,
+      hostUsername: session.hostUsername,
+      frame: session.latestFrame,
+      replayFrames: session.replayFrames,
+      spectatorCount: session.spectators.size,
+    });
+
+    emitDoodleSpectatorCount(io, hostUserId);
+    emitDoodleSessionList(io);
+  });
+
+  socket.on('doodle:spectate-leave', () => {
+    removeDoodleSpectator(io, socket.id);
+  });
   
   // Handle disconnect
   socket.on('disconnect', () => {
+    removeDoodleSpectator(io, socket.id);
+
     for (const [userId, socketId] of userGameSockets.entries()) {
       if (socketId === socket.id) {
         userGameSockets.delete(userId);
+        break;
+      }
+    }
+
+    for (const [hostUserId, session] of doodleSessions.entries()) {
+      if (session.hostSocketId === socket.id) {
+        stopDoodleSession(io, hostUserId);
         break;
       }
     }

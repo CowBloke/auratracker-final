@@ -13,7 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSocket } from '@/contexts/SocketContext';
 import { useCallback, useEffect, useState, useMemo } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronUp, Maximize2, Minimize2, Users, LogOut, Bomb, Gamepad2, Trash2, UserPlus } from 'lucide-react';
+import { ChevronDown, ChevronUp, Maximize2, Minimize2, Users, LogOut, Bomb, Gamepad2, Trash2, UserPlus, Eye } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getPageMeta } from '@/components/chat/presence';
 import { resolveImageUrl } from '@/lib/images';
@@ -51,6 +51,8 @@ export default function Layout() {
     onlineUsers,
     onlineCount,
     requestOnlineUsers,
+    doodleSpectateSessions,
+    requestDoodleSpectateSessions,
     currentParty,
     partyMembers,
     leaveParty,
@@ -68,6 +70,10 @@ export default function Layout() {
   const isGameRoute = location.pathname.startsWith('/games/');
   
   const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
+  const doodleSpectateSessionMap = useMemo(
+    () => new Map(doodleSpectateSessions.map((session) => [session.hostUserId, session])),
+    [doodleSpectateSessions]
+  );
   const gameStatus = bombPartyGame
     ? `Bomb Party - Round ${bombPartyGame.round}`
     : petitBacGame
@@ -423,7 +429,10 @@ export default function Layout() {
                     <div className="relative">
                       <Collapsible open={showUsers} onOpenChange={(open) => {
                         setShowUsers(open);
-                        if (open) requestOnlineUsers();
+                        if (open) {
+                          requestOnlineUsers();
+                          requestDoodleSpectateSessions();
+                        }
                       }}>
                         <CollapsibleTrigger asChild>
                           <button
@@ -443,45 +452,71 @@ export default function Layout() {
                             <ScrollArea className="h-48">
                               <div className="px-3 py-2 space-y-1">
                                 {onlineUsers.map((u) => (
-                                  <button
-                                    key={u.userId}
-                                    onClick={() => {
-                                      setShowUsers(false);
-                                      navigate(`/profile/${u.userId}`);
-                                    }}
-                                    className="flex items-center gap-2 py-1 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-left"
-                                  >
-                                    {u.profilePicture ? (
-                                      <img
-                                        src={resolveImageUrl(u.profilePicture)}
-                                        alt={u.username}
-                                        className="w-4 h-4 rounded-full object-cover"
-                                        onError={(e) => {
-                                          (e.target as HTMLImageElement).style.display = 'none';
-                                        }}
-                                      />
-                                    ) : (
-                                      <div className="w-1 h-1 rounded-full bg-foreground/50" />
-                                    )}
-                                    <div className="min-w-0 flex-1">
-                                      <span
-                                        className="block truncate"
-                                        style={u.usernameColor ? { color: u.usernameColor } : undefined}
-                                      >
-                                        {u.username}
-                                      </span>
-                                      {(() => {
-                                        const pageMeta = getPageMeta(u.currentPage);
-                                        const PageIcon = pageMeta.icon;
-                                        return (
-                                          <span className="flex items-center gap-1 text-[10px] text-muted-foreground/80">
-                                            <PageIcon className="h-3 w-3" />
-                                            <span className="truncate">{pageMeta.label}</span>
-                                          </span>
-                                        );
-                                      })()}
-                                    </div>
-                                  </button>
+                                  <div key={u.userId} className="flex items-center gap-2 py-1 text-sm text-muted-foreground">
+                                    <button
+                                      onClick={() => {
+                                        setShowUsers(false);
+                                        navigate(`/profile/${u.userId}`);
+                                      }}
+                                      className="flex min-w-0 flex-1 items-center gap-2 text-left hover:text-foreground transition-colors"
+                                    >
+                                      {u.profilePicture ? (
+                                        <img
+                                          src={resolveImageUrl(u.profilePicture)}
+                                          alt={u.username}
+                                          className="w-4 h-4 rounded-full object-cover"
+                                          onError={(e) => {
+                                            (e.target as HTMLImageElement).style.display = 'none';
+                                          }}
+                                        />
+                                      ) : (
+                                        <div className="w-1 h-1 rounded-full bg-foreground/50" />
+                                      )}
+                                      <div className="min-w-0 flex-1">
+                                        <span
+                                          className="block truncate"
+                                          style={u.usernameColor ? { color: u.usernameColor } : undefined}
+                                        >
+                                          {u.username}
+                                        </span>
+                                        {(() => {
+                                          const pageMeta = getPageMeta(u.currentPage);
+                                          const PageIcon = pageMeta.icon;
+                                          return (
+                                            <span className="flex items-center gap-1 text-[10px] text-muted-foreground/80">
+                                              <PageIcon className="h-3 w-3" />
+                                              <span className="truncate">{pageMeta.label}</span>
+                                            </span>
+                                          );
+                                        })()}
+                                      </div>
+                                    </button>
+                                    {(() => {
+                                      const session = doodleSpectateSessionMap.get(u.userId);
+                                      const canSpectate = Boolean(
+                                        session &&
+                                        u.userId !== user?.id &&
+                                        u.currentPage?.startsWith('/games/doodle-jump')
+                                      );
+                                      if (!canSpectate || !session) return null;
+                                      return (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setShowUsers(false);
+                                            navigate('/games/doodle-jump', {
+                                              state: { spectateHostUserId: u.userId },
+                                            });
+                                          }}
+                                          className="inline-flex items-center gap-1 rounded border border-border/50 px-1.5 py-1 text-[10px] hover:border-foreground/40 hover:text-foreground transition-colors"
+                                          title={`Spectate ${u.username}`}
+                                        >
+                                          <Eye className="h-3 w-3" />
+                                          <span className="tabular-nums">{session.spectatorCount}</span>
+                                        </button>
+                                      );
+                                    })()}
+                                  </div>
                                 ))}
                               </div>
                             </ScrollArea>
