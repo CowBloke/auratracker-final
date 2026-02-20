@@ -499,6 +499,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         chatEvents.join(user.id, user.username, initialPage);
         partyEvents.register(user.id);
         partyEvents.sync(user.id);
+        partyEvents.list();
         gameEvents.register(user.id);
         pokerEvents.register(user.id);
       });
@@ -1213,7 +1214,20 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   };
 
   const fetchPublicParties = () => {
-    partyEvents.list();
+    const activeSocket = socket ?? initSocket();
+    if (!socket) {
+      setSocket(activeSocket);
+    }
+
+    if (activeSocket.connected) {
+      partyEvents.list();
+      return;
+    }
+
+    activeSocket.once('connect', () => {
+      partyEvents.list();
+    });
+    connectSocket();
   };
 
   const syncParty = () => {
