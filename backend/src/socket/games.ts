@@ -542,15 +542,11 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
     if (!room) return;
 
     const onlineUser = onlineUsers.get(userId);
-    if (!onlineUser?.currentPage?.startsWith('/games/doodle-jump')) {
-      cleanupDoodleMultiplayerSocket(io, socket.id);
-      return;
-    }
 
     const nextState: DoodleMultiplayerState = {
       userId,
       username,
-      usernameColor: onlineUser.usernameColor ?? null,
+      usernameColor: onlineUser?.usernameColor ?? room.players.get(userId)?.usernameColor ?? null,
       score: Number.isFinite(data.state.score) ? data.state.score : 0,
       x: Number.isFinite(data.state.x) ? data.state.x : 0,
       worldY: Number.isFinite(data.state.worldY) ? data.state.worldY as number : (Number.isFinite(data.state.y) ? data.state.y as number : 0),

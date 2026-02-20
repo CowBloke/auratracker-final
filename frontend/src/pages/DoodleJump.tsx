@@ -208,7 +208,6 @@ export default function DoodleJump() {
   const multiplayerRoomIdRef = useRef<string | null>(null);
   const multiplayerDisplayPlayersRef = useRef<Map<string, DoodleMultiplayerDisplayState>>(new Map());
   const pendingMultiplayerStartRef = useRef(false);
-  const deathFallAnimationRef = useRef<number | null>(null);
 
   const { user, refreshUser } = useAuth();
   const { socket } = useSocket();
@@ -400,11 +399,6 @@ export default function DoodleJump() {
       setSpectatorCount(0);
     }
 
-    if (deathFallAnimationRef.current) {
-      cancelAnimationFrame(deathFallAnimationRef.current);
-      deathFallAnimationRef.current = null;
-    }
-
     if (socket && user && isMultiplayer && !spectatingRef.current) {
       const expectedRoomId = `doodle:multiplayer:${selectedMode}:${new Date().toISOString().slice(0, 10)}`;
       if (!multiplayerRoomIdRef.current || multiplayerRoomIdRef.current !== expectedRoomId || multiplayerSeedRef.current === null) {
@@ -502,26 +496,6 @@ export default function DoodleJump() {
     });
   }, [selectedSkin, socket, user]);
 
-  const startDeathFallAnimation = useCallback(() => {
-    if (!socket || !user || !multiplayerRoomIdRef.current) return;
-    if (deathFallAnimationRef.current) {
-      cancelAnimationFrame(deathFallAnimationRef.current);
-    }
-    let frames = 0;
-    const animate = () => {
-      frames += 1;
-      velocityRef.current += GRAVITY * GAME_SPEED;
-      positionRef.current.y -= velocityRef.current;
-      emitMultiplayerState(true);
-      if (frames < 40) {
-        deathFallAnimationRef.current = requestAnimationFrame(animate);
-      } else {
-        deathFallAnimationRef.current = null;
-      }
-    };
-    deathFallAnimationRef.current = requestAnimationFrame(animate);
-  }, [emitMultiplayerState, socket, user]);
-
   // ============================================
   // GAME OVER HANDLING
   // ============================================
@@ -533,7 +507,6 @@ export default function DoodleJump() {
       socket.emit('doodle:spectate-frame', { frame: buildSpectateFrame(performance.now(), true) });
     }
     emitMultiplayerState(true);
-    startDeathFallAnimation();
     stopSpectateBroadcast();
 
     try {
@@ -558,7 +531,7 @@ export default function DoodleJump() {
     } catch (error) {
       console.error('Failed to submit score:', error);
     }
-  }, [buildSpectateFrame, emitMultiplayerState, fetchLeaderboard, refreshUser, socket, startDeathFallAnimation, stopSpectateBroadcast]);
+  }, [buildSpectateFrame, emitMultiplayerState, fetchLeaderboard, refreshUser, socket, stopSpectateBroadcast]);
 
   const drawCurrentScene = useCallback((ctx: CanvasRenderingContext2D, timestamp: number, skinId: SkinId) => {
     // Clear canvas
@@ -1228,9 +1201,6 @@ export default function DoodleJump() {
       stopSpectateBroadcast();
       socket?.emit('doodle:spectate-leave');
       clearMultiplayerRoom();
-      if (deathFallAnimationRef.current) {
-        cancelAnimationFrame(deathFallAnimationRef.current);
-      }
     };
   }, [clearMultiplayerRoom, socket, stopSpectateBroadcast]);
 
