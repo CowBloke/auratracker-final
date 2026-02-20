@@ -58,7 +58,7 @@ interface DoodleMultiplayerState {
   usernameColor?: string | null;
   score: number;
   x: number;
-  y: number;
+  worldY: number;
   velocity: number;
   facingLeft: boolean;
   selectedSkin: SkinId;
@@ -480,7 +480,7 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
       usernameColor: onlineUser.usernameColor ?? null,
       score: 0,
       x: 175,
-      y: 100,
+      worldY: 100,
       velocity: 0,
       facingLeft: false,
       selectedSkin: 'default',
@@ -505,7 +505,7 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
       usernameColor: onlineUser.usernameColor ?? null,
       score: 0,
       x: 175,
-      y: 100,
+      worldY: 100,
       velocity: 0,
       facingLeft: false,
       selectedSkin: 'default',
@@ -524,7 +524,8 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
     state: {
       score: number;
       x: number;
-      y: number;
+      worldY?: number;
+      y?: number;
       velocity: number;
       facingLeft: boolean;
       selectedSkin: SkinId;
@@ -552,7 +553,7 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
       usernameColor: onlineUser.usernameColor ?? null,
       score: Number.isFinite(data.state.score) ? data.state.score : 0,
       x: Number.isFinite(data.state.x) ? data.state.x : 0,
-      y: Number.isFinite(data.state.y) ? data.state.y : 0,
+      worldY: Number.isFinite(data.state.worldY) ? data.state.worldY as number : (Number.isFinite(data.state.y) ? data.state.y as number : 0),
       velocity: Number.isFinite(data.state.velocity) ? data.state.velocity : 0,
       facingLeft: !!data.state.facingLeft,
       selectedSkin: data.state.selectedSkin ?? 'default',

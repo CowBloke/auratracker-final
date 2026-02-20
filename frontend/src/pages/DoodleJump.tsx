@@ -109,7 +109,7 @@ interface DoodleMultiplayerNetState {
   usernameColor?: string | null;
   score: number;
   x: number;
-  y: number;
+  worldY: number;
   velocity: number;
   facingLeft: boolean;
   selectedSkin: SkinId;
@@ -119,7 +119,7 @@ interface DoodleMultiplayerNetState {
 
 interface DoodleMultiplayerDisplayState extends DoodleMultiplayerNetState {
   displayX: number;
-  displayY: number;
+  displayWorldY: number;
   displayVelocity: number;
   deadFallStarted: boolean;
 }
@@ -188,6 +188,7 @@ export default function DoodleJump() {
   // Game state refs
   const platformsRef = useRef<Platform[]>([]);
   const scoreRef = useRef(0);
+  const worldOffsetRef = useRef(0);
   const gameRunningRef = useRef(false);
   const velocityRef = useRef(0);
   const positionRef = useRef({ x: 175, y: 100 });
@@ -422,6 +423,7 @@ export default function DoodleJump() {
     // Reset state
     platformsRef.current = [];
     scoreRef.current = 0;
+    worldOffsetRef.current = 0;
     velocityRef.current = 0;
     positionRef.current = { x: CANVAS_WIDTH / 2 - CHARACTER_WIDTH / 2, y: 200 };
     gameRunningRef.current = true;
@@ -491,7 +493,7 @@ export default function DoodleJump() {
       state: {
         score: scoreRef.current,
         x: positionRef.current.x,
-        y: positionRef.current.y,
+        worldY: worldOffsetRef.current + positionRef.current.y,
         velocity: velocityRef.current,
         facingLeft: facingLeftRef.current,
         selectedSkin,
@@ -668,15 +670,33 @@ export default function DoodleJump() {
           remote.displayVelocity = Math.max(1, remote.velocity);
         }
         remote.displayVelocity += GRAVITY * GAME_SPEED * 0.9;
-        remote.displayY -= remote.displayVelocity * 0.7;
+        remote.displayWorldY -= remote.displayVelocity * 0.7;
       } else {
         remote.deadFallStarted = false;
-        remote.displayY += (remote.y - remote.displayY) * liveLerp;
+        remote.displayWorldY += (remote.worldY - remote.displayWorldY) * liveLerp;
         remote.displayVelocity = remote.velocity;
       }
 
-      const remoteScreenY = CANVAS_HEIGHT - remote.displayY - CHARACTER_HEIGHT;
-      if (remoteScreenY < -80 || remoteScreenY > CANVAS_HEIGHT + 80) continue;
+      const remoteLocalY = remote.displayWorldY - worldOffsetRef.current;
+      const remoteScreenY = CANVAS_HEIGHT - remoteLocalY - CHARACTER_HEIGHT;
+      if (remoteScreenY < -80) {
+        const markerX = Math.max(10, Math.min(CANVAS_WIDTH - 10, remote.displayX + CHARACTER_WIDTH / 2));
+        ctx.fillStyle = remote.usernameColor || '#f8fafc';
+        ctx.beginPath();
+        ctx.moveTo(markerX, 6);
+        ctx.lineTo(markerX - 6, 16);
+        ctx.lineTo(markerX + 6, 16);
+        ctx.closePath();
+        ctx.fill();
+        ctx.font = '10px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = remote.usernameColor || '#e5e7eb';
+        ctx.fillText(remote.username, markerX, 26);
+        continue;
+      }
+      if (remoteScreenY > CANVAS_HEIGHT + 80) {
+        continue;
+      }
 
       const remoteSkin = SKINS.find((item) => item.id === remote.selectedSkin) ?? SKINS[0];
       ctx.fillStyle = remoteSkin.color;
@@ -830,6 +850,7 @@ export default function DoodleJump() {
     if (positionRef.current.y > 300) {
       const diff = positionRef.current.y - 300;
       positionRef.current.y = 300;
+      worldOffsetRef.current += diff;
 
       const platformsToRemove: Platform[] = [];
 
@@ -1053,7 +1074,7 @@ export default function DoodleJump() {
         multiplayerDisplayPlayersRef.current.set(player.userId, {
           ...player,
           displayX: player.x,
-          displayY: player.y,
+          displayWorldY: player.worldY,
           displayVelocity: player.velocity,
           deadFallStarted: player.isDead,
         });
@@ -1064,7 +1085,7 @@ export default function DoodleJump() {
       existing.usernameColor = player.usernameColor ?? null;
       existing.score = player.score;
       existing.x = player.x;
-      existing.y = player.y;
+      existing.worldY = player.worldY;
       existing.velocity = player.velocity;
       existing.facingLeft = player.facingLeft;
       existing.selectedSkin = player.selectedSkin;
@@ -1075,7 +1096,7 @@ export default function DoodleJump() {
         existing.displayVelocity = Math.max(player.velocity, 1);
       }
       if (!player.isDead) {
-        existing.displayY = player.y;
+        existing.displayWorldY = player.worldY;
       }
     };
 
