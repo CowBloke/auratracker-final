@@ -1122,7 +1122,19 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
       const parties = await prisma.party.findMany({
         include: {
           members: {
-            select: { id: true },
+            select: {
+              id: true,
+              userId: true,
+              isLeader: true,
+              joinedAt: true,
+              user: {
+                select: {
+                  username: true,
+                  usernameColor: true,
+                },
+              },
+            },
+            orderBy: { joinedAt: 'asc' },
           },
         },
         orderBy: { lastActivity: 'desc' },
@@ -1136,6 +1148,13 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
           isPublic: p.isPublic,
           memberCount: p.members.length,
           maxSize: p.maxSize,
+          selectedGame: partySelectedGames.get(p.id) ?? null,
+          members: p.members.map((member) => ({
+            userId: member.userId,
+            username: member.user.username,
+            usernameColor: member.user.usernameColor,
+            isLeader: member.isLeader,
+          })),
         })),
       });
     } catch (error) {

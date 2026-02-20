@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+﻿import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import PageLayout from '@/components/layout/PageLayout';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { getPageMeta } from '@/components/chat/presence';
 
 interface Transfer {
   id: string;
@@ -47,19 +48,19 @@ const shortcutStorageKey = 'auratracker:dashboard-shortcuts';
 
 const welcomeTemplates = [
   'Bienvenue, {username}',
-  'Heureux de te revoir {username}, prêt pour AuraTracker ?',
+  'Heureux de te revoir {username}, prÃªt pour AuraTracker ?',
   'Salut {username} ! On lance une partie ?',
-  'Yo {username}, le crew t’attend.',
-  'Hey {username}, tu reviens charger l’aura ?',
-  '{username}, ça faisait longtemps !',
+  'Yo {username}, le crew tâ€™attend.',
+  'Hey {username}, tu reviens charger lâ€™aura ?',
+  '{username}, Ã§a faisait longtemps !',
   'Content de te revoir {username} !',
-  'Re {username} — place au fun.',
-  'Prêt à tout éclater, {username} ?',
-  'Bon retour {username}, ça va chauffer.',
-  '{username}, on remet ça ?',
-  'Bienvenue à bord, {username}.',
-  'Hello {username}, ça part en jeux ?',
-  '{username}, le tableau de bord est prêt.',
+  'Re {username} â€” place au fun.',
+  'PrÃªt Ã  tout Ã©clater, {username} ?',
+  'Bon retour {username}, Ã§a va chauffer.',
+  '{username}, on remet Ã§a ?',
+  'Bienvenue Ã  bord, {username}.',
+  'Hello {username}, Ã§a part en jeux ?',
+  '{username}, le tableau de bord est prÃªt.',
   'Heureux de te revoir {username} !',
   'Bon retour {username}, ready ?',
 ];
@@ -92,7 +93,16 @@ const defaultShortcuts = ['doodle-jump', 'flappy-bird', 'bomb-party', '2048'];
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { fetchPublicParties } = useSocket();
+  const {
+    fetchPublicParties,
+    requestOnlineUsers,
+    onlineUsers,
+    publicParties,
+    currentParty,
+    joinParty,
+    requestJoinParty,
+    pendingJoinRequests,
+  } = useSocket();
   const [recentTransfers, setRecentTransfers] = useState<Transfer[]>([]);
   const [userRank, setUserRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -114,6 +124,20 @@ export default function Dashboard() {
   const orderedShortcuts = useMemo(
     () => shortcutWidgets.map((id) => shortcutMap.get(id)).filter(Boolean) as GameShortcut[],
     [shortcutMap, shortcutWidgets]
+  );
+  const onlinePlayersByGame = useMemo(
+    () =>
+      onlineUsers
+        .filter((onlineUser) => onlineUser.currentPage?.startsWith('/games'))
+        .sort((a, b) => a.username.localeCompare(b.username)),
+    [onlineUsers]
+  );
+  const onlinePlayersElsewhere = useMemo(
+    () =>
+      onlineUsers
+        .filter((onlineUser) => !onlineUser.currentPage?.startsWith('/games'))
+        .sort((a, b) => a.username.localeCompare(b.username)),
+    [onlineUsers]
   );
 
   // Update time every second for countdown
@@ -210,7 +234,17 @@ export default function Dashboard() {
 
     fetchData();
     fetchPublicParties();
+    requestOnlineUsers();
   }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchPublicParties();
+      requestOnlineUsers();
+    }, 20000);
+
+    return () => clearInterval(interval);
+  }, [fetchPublicParties, requestOnlineUsers]);
 
   useEffect(() => {
     try {
@@ -290,13 +324,13 @@ export default function Dashboard() {
             </div>
           <Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
             <Button variant="outline" onClick={() => setShortcutsOpen(true)}>
-              Gérer les widgets
+              GÃ©rer les widgets
             </Button>
             <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className={TYPOGRAPHY.H5}>Widgets de raccourcis</DialogTitle>
                 <DialogDescription>
-                  Active les jeux à afficher en haut du tableau de bord.
+                  Active les jeux Ã  afficher en haut du tableau de bord.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3">
@@ -334,7 +368,7 @@ export default function Dashboard() {
                   variant="ghost"
                   onClick={() => setShortcutWidgets(defaultShortcuts)}
                 >
-                  Réinitialiser
+                  RÃ©initialiser
                 </Button>
                 <Button onClick={() => setShortcutsOpen(false)}>Terminer</Button>
               </DialogFooter>
@@ -373,7 +407,7 @@ export default function Dashboard() {
           ) : (
             <Card className="col-span-full border-dashed border-border/60">
               <CardContent className="p-6 text-center">
-                <p className={TYPOGRAPHY.SMALL}>Aucun widget actif. Ajoute des jeux pour un accès rapide.</p>
+                <p className={TYPOGRAPHY.SMALL}>Aucun widget actif. Ajoute des jeux pour un accÃ¨s rapide.</p>
               </CardContent>
             </Card>
           )}
@@ -439,7 +473,7 @@ export default function Dashboard() {
             <div>
               <CardDescription>Envoyer un cadeau</CardDescription>
               <CardTitle className={TYPOGRAPHY.H5}>
-                Offre de l'aura, de l'argent ou des articles à un joueur.
+                Offre de l'aura, de l'argent ou des articles Ã  un joueur.
               </CardTitle>
             </div>
             <Button
@@ -460,133 +494,229 @@ export default function Dashboard() {
       />
 
 
-      {/* Recent Activity */}
-      <div className={SPACING.SECTION_SPACING}>
-        <div className="flex items-center justify-between">
-          <h2 className={TYPOGRAPHY.MUTED}>
-            Activité récente
-          </h2>
-          <Sheet open={historyOpen} onOpenChange={(open) => {
-            setHistoryOpen(open);
-            if (open && allTransfers.length === 0) {
-              fetchAllHistory();
-            }
-          }}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                Voir tout <ArrowRight className="h-3 w-3 ml-1" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent className="w-full sm:max-w-md overflow-y-auto">
-              <SheetHeader>
-                <SheetTitle className="text-sm text-muted-foreground tracking-wide uppercase font-normal">
-                  Historique d'activité
-                </SheetTitle>
-              </SheetHeader>
-              <div className="mt-6 space-y-0">
-                {historyLoading && allTransfers.length === 0 ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  </div>
-                ) : allTransfers.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-12">Aucun transfert</p>
-                ) : (
-                  <>
-                    {allTransfers.map((transfer) => (
-                      <div
-                        key={transfer.id}
-                        className="py-3 border-b border-border/30 last:border-0"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <span className="text-xs text-muted-foreground shrink-0 w-10">
-                              {formatTimeAgo(transfer.createdAt)}
+      {/* Recent Activity + Activity Sidebar */}
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+        <div className={SPACING.SECTION_SPACING}>
+          <div className="flex items-center justify-between">
+            <h2 className={TYPOGRAPHY.MUTED}>Activité récente</h2>
+            <Sheet open={historyOpen} onOpenChange={(open) => {
+              setHistoryOpen(open);
+              if (open && allTransfers.length === 0) {
+                fetchAllHistory();
+              }
+            }}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                  Voir tout <ArrowRight className="h-3 w-3 ml-1" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+                <SheetHeader>
+                  <SheetTitle className="text-sm text-muted-foreground tracking-wide uppercase font-normal">
+                    Historique d'activité
+                  </SheetTitle>
+                </SheetHeader>
+                <div className="mt-6 space-y-0">
+                  {historyLoading && allTransfers.length === 0 ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : allTransfers.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-12">Aucun transfert</p>
+                  ) : (
+                    <>
+                      {allTransfers.map((transfer) => (
+                        <div
+                          key={transfer.id}
+                          className="py-3 border-b border-border/30 last:border-0"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span className="text-xs text-muted-foreground shrink-0 w-10">
+                                {formatTimeAgo(transfer.createdAt)}
+                              </span>
+                              <span className="truncate">
+                                <span style={transfer.sender.usernameColor ? { color: transfer.sender.usernameColor } : undefined}>
+                                  {transfer.sender.username}
+                                </span>
+                                {' -> '}
+                                <span style={transfer.receiver.usernameColor ? { color: transfer.receiver.usernameColor } : undefined}>
+                                  {transfer.receiver.username}
+                                </span>
+                              </span>
+                            </div>
+                            <span className="tabular-nums shrink-0">
+                              {transfer.auraAmount}
                             </span>
-<span className="truncate">
-                                      <span style={transfer.sender.usernameColor ? { color: transfer.sender.usernameColor } : undefined}>
-                                        {transfer.sender.username}
-                                      </span>
-                                      {' → '}
-                                      <span style={transfer.receiver.usernameColor ? { color: transfer.receiver.usernameColor } : undefined}>
-                                        {transfer.receiver.username}
-                                      </span>
-                                    </span>
                           </div>
-                          <span className="tabular-nums shrink-0">
-                            {transfer.auraAmount}
+                          {transfer.message && (
+                            <p className="text-sm text-muted-foreground mt-1 ml-[3.25rem] italic truncate">
+                              "{transfer.message}"
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                      {hasMoreHistory && (
+                        <Button
+                          variant="ghost"
+                          className="w-full mt-4"
+                          onClick={loadMoreHistory}
+                          disabled={historyLoading}
+                        >
+                          {historyLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            'Charger plus'
+                          )}
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
+
+          {recentTransfers.length === 0 ? (
+            <p className={TYPOGRAPHY.MUTED}>Aucun transfert</p>
+          ) : (
+            <Card className="border-border/40">
+              <CardContent className="p-0">
+                <div className="divide-y divide-border/30">
+                  {recentTransfers.map((transfer) => (
+                    <div
+                      key={transfer.id}
+                      className="py-3 px-6"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground w-8")}>
+                            {formatTimeAgo(transfer.createdAt)}
+                          </span>
+                          <span>
+                            <span style={transfer.sender.usernameColor ? { color: transfer.sender.usernameColor } : undefined}>
+                              {transfer.sender.username}
+                            </span>
+                            {' -> '}
+                            <span style={transfer.receiver.usernameColor ? { color: transfer.receiver.usernameColor } : undefined}>
+                              {transfer.receiver.username}
+                            </span>
                           </span>
                         </div>
-                        {transfer.message && (
-                          <p className="text-sm text-muted-foreground mt-1 ml-[3.25rem] italic truncate">
-                            "{transfer.message}"
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                    {hasMoreHistory && (
-                      <Button
-                        variant="ghost"
-                        className="w-full mt-4"
-                        onClick={loadMoreHistory}
-                        disabled={historyLoading}
-                      >
-                        {historyLoading ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          'Charger plus'
-                        )}
-                      </Button>
-                    )}
-                  </>
-                )}
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
-        
-        {recentTransfers.length === 0 ? (
-          <p className={TYPOGRAPHY.MUTED}>Aucun transfert</p>
-        ) : (
-          <Card className="border-border/40">
-            <CardContent className="p-0">
-              <div className="divide-y divide-border/30">
-                {recentTransfers.map((transfer) => (
-                  <div
-                    key={transfer.id}
-                    className="py-3 px-6"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground w-8")}>
-                          {formatTimeAgo(transfer.createdAt)}
-                        </span>
-                        <span>
-                          <span style={transfer.sender.usernameColor ? { color: transfer.sender.usernameColor } : undefined}>
-                            {transfer.sender.username}
-                          </span>
-                          {' → '}
-                          <span style={transfer.receiver.usernameColor ? { color: transfer.receiver.usernameColor } : undefined}>
-                            {transfer.receiver.username}
-                          </span>
+                        <span className="tabular-nums">
+                          {transfer.auraAmount}
                         </span>
                       </div>
-                      <span className="tabular-nums">
-                        {transfer.auraAmount}
-                      </span>
+                      {transfer.message && (
+                        <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground mt-1 ml-12 italic")}>
+                          "{transfer.message}"
+                        </p>
+                      )}
                     </div>
-                    {transfer.message && (
-                      <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground mt-1 ml-12 italic")}>
-                        "{transfer.message}"
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        <Card className="border-border/40 h-fit">
+          <CardHeader>
+            <CardDescription>En direct</CardDescription>
+            <CardTitle className={TYPOGRAPHY.H5}>Activité des joueurs</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-3">
+              <p className={cn(TYPOGRAPHY.XS, "uppercase tracking-[0.2em] text-muted-foreground")}>
+                Qui joue
+              </p>
+              {onlinePlayersByGame.length === 0 ? (
+                <p className={TYPOGRAPHY.SMALL}>Aucun joueur en partie pour le moment.</p>
+              ) : (
+                <div className="space-y-0">
+                  {onlinePlayersByGame.slice(0, 8).map((onlineUser) => {
+                    const pageMeta = getPageMeta(onlineUser.currentPage);
+                    return (
+                      <div
+                        key={onlineUser.userId}
+                        className="flex items-center justify-between gap-3 py-3 border-b border-border/30 last:border-0"
+                      >
+                        <span className={TYPOGRAPHY.SMALL} style={onlineUser.usernameColor ? { color: onlineUser.usernameColor } : undefined}>
+                          {onlineUser.username}
+                        </span>
+                        <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>{pageMeta.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {onlinePlayersElsewhere.length > 0 && (
+                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>
+                  +{onlinePlayersElsewhere.length} en ligne ailleurs
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <p className={cn(TYPOGRAPHY.XS, "uppercase tracking-[0.2em] text-muted-foreground")}>
+                Parties ouvertes
+              </p>
+              {publicParties.length === 0 ? (
+                <p className={TYPOGRAPHY.SMALL}>Aucune party active.</p>
+              ) : (
+                <div className="space-y-3">
+                  {publicParties.slice(0, 6).map((party) => {
+                    const isFull = party.memberCount >= party.maxSize;
+                    const isPending = pendingJoinRequests.includes(party.id);
+                    const isCurrentParty = currentParty?.id === party.id;
+                    return (
+                      <Card key={party.id} className="border-border/50">
+                        <CardContent className="p-4 space-y-3">
+                          <div>
+                            <p className={TYPOGRAPHY.SMALL}>{party.name || 'Party sans nom'}</p>
+                            <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>
+                              {party.selectedGame?.gameName || 'Pas de jeu sélectionné'} · {party.memberCount}/{party.maxSize}
+                            </p>
+                          </div>
+                          <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>
+                            {party.members?.length
+                              ? party.members.map((member) => member.username).join(', ')
+                              : `${party.memberCount} membre${party.memberCount > 1 ? 's' : ''}`}
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => {
+                              if (party.isPublic) {
+                                joinParty(party.id);
+                                return;
+                              }
+                              requestJoinParty(party.id);
+                            }}
+                            disabled={isFull || isPending || isCurrentParty}
+                          >
+                            {isCurrentParty
+                              ? 'Dans ta party'
+                              : isFull
+                                ? 'Pleine'
+                                : isPending
+                                  ? 'Demande envoyée'
+                                  : 'Rejoindre'}
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
     </PageLayout>
   );
 }
+
+

@@ -82,6 +82,20 @@ interface PartyDirectoryItem {
   memberCount: number;
   maxSize: number;
   isPublic: boolean;
+  members?: Array<{
+    userId: string;
+    username: string;
+    usernameColor?: string | null;
+    isLeader: boolean;
+  }>;
+  selectedGame?: {
+    gameId: string;
+    gameName: string;
+    selectedById: string;
+    selectedByName: string;
+    selectedByColor?: string | null;
+    selectedAt: number;
+  } | null;
 }
 
 interface PartyGameSuggestion {
