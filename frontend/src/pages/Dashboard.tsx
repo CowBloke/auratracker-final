@@ -314,6 +314,7 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
+      <div className="space-y-8">
       {/* Shortcuts */}
       <Card className="border-border/40">
         <CardHeader>
@@ -494,9 +495,8 @@ export default function Dashboard() {
       />
 
 
-      {/* Recent Activity + Activity Sidebar */}
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)] xl:col-span-2">
-        <div className={SPACING.SECTION_SPACING}>
+      {/* Recent Activity */}
+      <div className={SPACING.SECTION_SPACING}>
           <div className="flex items-center justify-between">
             <h2 className={TYPOGRAPHY.MUTED}>Activité récente</h2>
             <Sheet open={historyOpen} onOpenChange={(open) => {
@@ -618,9 +618,10 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           )}
-        </div>
+      </div>
+      </div>
 
-        <Card className="border-border/40 h-fit">
+      <Card className="border-border/40 h-fit">
           <CardHeader>
             <CardDescription>En direct</CardDescription>
             <CardTitle className={TYPOGRAPHY.H5}>Activité des joueurs</CardTitle>
@@ -712,8 +713,7 @@ export default function Dashboard() {
               )}
             </div>
           </CardContent>
-        </Card>
-      </div>
+      </Card>
 
     </PageLayout>
   );
