@@ -68,6 +68,7 @@ type DoodleGameType = 'doodle_jump' | 'doodle_jump_mort_subite';
 type DoodleGameMode = 'classic' | 'mort_subite';
 
 interface Platform {
+  id?: string;
   x: number;
   y: number;
   movement: PlatformMovement;
@@ -205,6 +206,7 @@ export default function DoodleJump() {
   const spectateSkinRef = useRef<SkinId>('default');
   const multiplayerSeedRef = useRef<number | null>(null);
   const multiplayerPlatformIndexRef = useRef(0);
+  const platformIdCounterRef = useRef(0);
   const multiplayerRoomIdRef = useRef<string | null>(null);
   const multiplayerDisplayPlayersRef = useRef<Map<string, DoodleMultiplayerDisplayState>>(new Map());
   const pendingMultiplayerStartRef = useRef(false);
@@ -356,6 +358,7 @@ export default function DoodleJump() {
 
   const createPlatform = useCallback((x: number, y: number, movement: PlatformMovement = 'normal', effect: PlatformEffect = null): Platform => {
     return {
+      id: `platform-${platformIdCounterRef.current++}`,
       x,
       y,
       movement,
@@ -411,6 +414,7 @@ export default function DoodleJump() {
     activeModeRef.current = selectedMode;
     activeGameTypeRef.current = selectedGameType;
     multiplayerPlatformIndexRef.current = 0;
+    platformIdCounterRef.current = 0;
 
     // Reset state
     platformsRef.current = [];
@@ -900,16 +904,24 @@ export default function DoodleJump() {
     facingLeftRef.current = frame.facingLeft;
     spectateSkinRef.current = frame.selectedSkin;
 
-    if (platformsRef.current.length !== frame.platforms.length) {
+    if (!smooth) {
       platformsRef.current = frame.platforms.map((platform) => ({ ...platform }));
     } else {
-      platformsRef.current = platformsRef.current.map((platform, index) => {
-        const next = frame.platforms[index];
+      const previousById = new Map(
+        platformsRef.current
+          .filter((platform) => typeof platform.id === 'string' && platform.id.length > 0)
+          .map((platform) => [platform.id as string, platform])
+      );
+      platformsRef.current = frame.platforms.map((next, index) => {
+        const previous = next.id ? previousById.get(next.id) : platformsRef.current[index];
+        if (!previous) {
+          return { ...next };
+        }
         return {
           ...next,
-          x: platform.x + (next.x - platform.x) * lerp,
-          y: platform.y + (next.y - platform.y) * lerp,
-          opacity: platform.opacity + (next.opacity - platform.opacity) * lerp,
+          x: previous.x + (next.x - previous.x) * lerp,
+          y: previous.y + (next.y - previous.y) * lerp,
+          opacity: previous.opacity + (next.opacity - previous.opacity) * lerp,
         };
       });
     }
