@@ -10,6 +10,7 @@ import { logAdmin, logSuggestion, logBan } from '../utils/logger.js';
 import { isAllowedImageUrl } from '../utils/uploads.js';
 import { listBombPartyLanguageFiles } from '../utils/bombpartyDictionary.js';
 import { recalculateBombPartyPrompts } from '../utils/bombpartyPrompts.js';
+import { getOnlineCount } from '../socket/chat.js';
 
 const router = Router();
 const ANNOUNCEMENT_KEY = 'topbar_announcement';
@@ -1987,6 +1988,143 @@ router.delete('/gift-templates/:id', authMiddleware, requireAdmin, async (req: A
   } catch (error) {
     console.error('Admin delete gift template error:', error);
     res.status(500).json({ error: 'Failed to delete gift template' });
+  }
+});
+
+// ========== ONLINE ACTIVITY / PLAYER HISTORY ==========
+
+// POST /api/admin/online-snapshot — take an immediate snapshot
+router.post('/online-snapshot', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    const count = getOnlineCount();
+    await prisma.onlineSnapshot.create({ data: { count } });
+    res.json({ success: true, count });
+  } catch (error) {
+    console.error('Manual snapshot error:', error);
+    res.status(500).json({ error: 'Failed to create snapshot' });
+  }
+});
+
+// GET /api/admin/online-history
+// Query params:
+//   period: 'day' | 'week' | 'month' | 'custom' (default: 'day')
+//   startDate, endDate: ISO strings (for 'custom')
+//   granularity: 'auto' | 'minute' | 'hour' | 'day' (default: 'auto')
+router.get('/online-history', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { period = 'day', startDate, endDate } = req.query as Record<string, string>;
+
+    let start: Date;
+    let end: Date = new Date();
+
+    switch (period) {
+      case 'week':
+        start = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'month':
+        start = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case 'custom':
+        if (!startDate || !endDate) {
+          return res.status(400).json({ error: 'startDate and endDate required for custom period' });
+        }
+        start = new Date(startDate);
+        end = new Date(endDate);
+        break;
+      default: // 'day'
+        start = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    }
+
+    const snapshots = await prisma.onlineSnapshot.findMany({
+      where: { createdAt: { gte: start, lte: end } },
+      orderBy: { createdAt: 'asc' },
+      select: { count: true, createdAt: true },
+    });
+
+    // Determine bucket size based on period
+    const rangeMs = end.getTime() - start.getTime();
+    const dayMs = 24 * 60 * 60 * 1000;
+
+    let bucketMs: number;
+    if (rangeMs <= dayMs) {
+      bucketMs = 30 * 60 * 1000; // 30-minute buckets for day view
+    } else if (rangeMs <= 7 * dayMs) {
+      bucketMs = 2 * 60 * 60 * 1000; // 2-hour buckets for week view
+    } else {
+      bucketMs = 6 * 60 * 60 * 1000; // 6-hour buckets for month view
+    }
+
+    // Bucket snapshots and compute average per bucket
+    const buckets = new Map<number, number[]>();
+    for (const snap of snapshots) {
+      const bucket = Math.floor(snap.createdAt.getTime() / bucketMs) * bucketMs;
+      if (!buckets.has(bucket)) buckets.set(bucket, []);
+      buckets.get(bucket)!.push(snap.count);
+    }
+
+    const data = Array.from(buckets.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([ts, counts]) => ({
+        timestamp: new Date(ts).toISOString(),
+        count: Math.round(counts.reduce((s, c) => s + c, 0) / counts.length),
+        max: Math.max(...counts),
+      }));
+
+    // Peak for the queried period
+    const peak = snapshots.reduce((m, s) => (s.count > m ? s.count : m), 0);
+    const peakSnapshot = snapshots.find(s => s.count === peak);
+
+    res.json({
+      data,
+      peak,
+      peakAt: peakSnapshot?.createdAt ?? null,
+      period,
+      start: start.toISOString(),
+      end: end.toISOString(),
+    });
+  } catch (error) {
+    console.error('Online history error:', error);
+    res.status(500).json({ error: 'Failed to fetch online history' });
+  }
+});
+
+// GET /api/admin/online-stats
+// Returns overall record, current count, and 24h/7d/30d averages
+router.get('/online-stats', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const now = new Date();
+    const day1Ago = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const days7Ago = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const days30Ago = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const [allTimeRecord, day1Snaps, days7Snaps, days30Snaps] = await Promise.all([
+      prisma.onlineSnapshot.findFirst({ orderBy: { count: 'desc' }, select: { count: true, createdAt: true } }),
+      prisma.onlineSnapshot.findMany({ where: { createdAt: { gte: day1Ago } }, select: { count: true } }),
+      prisma.onlineSnapshot.findMany({ where: { createdAt: { gte: days7Ago } }, select: { count: true } }),
+      prisma.onlineSnapshot.findMany({ where: { createdAt: { gte: days30Ago } }, select: { count: true } }),
+    ]);
+
+    const avg = (snaps: { count: number }[]) =>
+      snaps.length ? Math.round(snaps.reduce((s, x) => s + x.count, 0) / snaps.length) : 0;
+
+    const peak1d = day1Snaps.reduce((m, s) => (s.count > m ? s.count : m), 0);
+    const peak7d = days7Snaps.reduce((m, s) => (s.count > m ? s.count : m), 0);
+    const peak30d = days30Snaps.reduce((m, s) => (s.count > m ? s.count : m), 0);
+
+    res.json({
+      current: getOnlineCount(),
+      allTimeRecord: allTimeRecord?.count ?? 0,
+      allTimeRecordAt: allTimeRecord?.createdAt ?? null,
+      avg1d: avg(day1Snaps),
+      avg7d: avg(days7Snaps),
+      avg30d: avg(days30Snaps),
+      peak1d,
+      peak7d,
+      peak30d,
+    });
+  } catch (error) {
+    console.error('Online stats error:', error);
+    res.status(500).json({ error: 'Failed to fetch online stats' });
   }
 });
 

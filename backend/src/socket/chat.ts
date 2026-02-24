@@ -49,6 +49,83 @@ export const startOnlineCountBroadcast = (io: Server) => {
   }, 5000);
 };
 
+// ── Smart snapshot recording ──────────────────────────────────────────────────
+// Rules:
+//   INCREASE  → write immediately (every new join captured, no debounce)
+//   DECREASE  → debounce 30 s; only write if the lower count persists
+//               (absorbs users who flicker offline for a moment)
+//   HEARTBEAT → adaptive interval: fewer players = rarer writes
+//               0→30min | 10→5min | 20→3min | 28+→1min
+//               so during a peak session the graph has dense data
+
+const DECREASE_DEBOUNCE_MS = 30_000; // wait 30 s before recording a drop
+
+// Heartbeat interval (piecewise linear): 0→30min, 10→5min, 20→3min, 28+→1min
+const _HEARTBEAT_POINTS: [number, number][] = [
+  [0,  30 * 60_000],
+  [10,  5 * 60_000],
+  [20,  3 * 60_000],
+  [28,  1 * 60_000],
+];
+const _heartbeatMs = (count: number): number => {
+  if (count <= 0)  return _HEARTBEAT_POINTS[0][1];
+  if (count >= 28) return _HEARTBEAT_POINTS[_HEARTBEAT_POINTS.length - 1][1];
+  for (let i = 0; i < _HEARTBEAT_POINTS.length - 1; i++) {
+    const [x0, y0] = _HEARTBEAT_POINTS[i];
+    const [x1, y1] = _HEARTBEAT_POINTS[i + 1];
+    if (count >= x0 && count <= x1) {
+      const t = (count - x0) / (x1 - x0);
+      return Math.round(y0 + t * (y1 - y0));
+    }
+  }
+  return 60_000;
+};
+
+let _lastSnapshotCount = -1;
+let _decreaseTimer:  ReturnType<typeof setTimeout> | null = null;
+let _heartbeatTimer: ReturnType<typeof setTimeout> | null = null;
+
+const _write = async () => {
+  const count = onlineUsers.size;
+  if (count === _lastSnapshotCount) return; // nothing changed, skip
+  _lastSnapshotCount = count;
+  try {
+    await prisma.onlineSnapshot.create({ data: { count } });
+  } catch {
+    // Don't let snapshot errors disrupt the socket layer
+  }
+};
+
+// Reschedule the heartbeat based on current player count
+const _rescheduleHeartbeat = () => {
+  if (_heartbeatTimer) clearTimeout(_heartbeatTimer);
+  _heartbeatTimer = setTimeout(async () => {
+    await _write();
+    _rescheduleHeartbeat();
+  }, _heartbeatMs(onlineUsers.size));
+};
+
+/** Call when a player joins — captured immediately. */
+const _onPlayerJoined = () => {
+  _write();
+  _rescheduleHeartbeat(); // reset heartbeat since activity just happened
+};
+
+/** Call when a player leaves — debounced to absorb quick reconnects. */
+const _onPlayerLeft = () => {
+  if (_decreaseTimer) clearTimeout(_decreaseTimer);
+  _decreaseTimer = setTimeout(async () => {
+    await _write();
+    _rescheduleHeartbeat();
+  }, DECREASE_DEBOUNCE_MS);
+  _rescheduleHeartbeat(); // adjust heartbeat immediately for the new lower count
+};
+
+/** Starts the adaptive heartbeat. Call once at server startup. */
+export const startOnlineSnapshotRecording = () => _rescheduleHeartbeat();
+
+export const getOnlineCount = () => onlineUsers.size;
+
 export const setupChatHandlers = (socket: Socket, io: Server) => {
   // Join chat
   socket.on('chat:join', async (data: { currentPage?: string }) => {
@@ -116,6 +193,7 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
       currentPage: currentPage ?? null,
     });
     socket.join(`user:${userId}`);
+    _onPlayerJoined();
 
     // Join global chat room
     socket.join('global-chat');
@@ -536,6 +614,7 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
           userId,
           username: user.username,
         });
+        _onPlayerLeft();
         break;
       }
     }

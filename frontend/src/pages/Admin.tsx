@@ -11,7 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import PageLayout from '@/components/layout/PageLayout';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Swords, Rocket, Download, Gift as GiftIcon, Sparkles, Upload, Eye } from 'lucide-react';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Swords, Rocket, Download, Gift as GiftIcon, Sparkles, Upload, Eye, Activity, Trophy, CalendarRange, RefreshCw } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -341,7 +342,18 @@ export default function Admin() {
   const [mutingUser, setMutingUser] = useState<string | null>(null);
   const [clearingChat, setClearingChat] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'users' | 'logs' | 'bans' | 'content' | 'communication' | 'bugs' | 'blocks' | 'settings'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'logs' | 'bans' | 'content' | 'communication' | 'bugs' | 'blocks' | 'settings' | 'activity'>('users');
+
+  // Activity tab state
+  type OnlineHistoryPoint = { timestamp: string; count: number; max: number };
+  type OnlineStats = { current: number; allTimeRecord: number; allTimeRecordAt: string | null; avg1d: number; avg7d: number; avg30d: number; peak1d: number; peak7d: number; peak30d: number };
+  const [activityPeriod, setActivityPeriod] = useState<'day' | 'week' | 'month' | 'custom'>('day');
+  const [activityCustomStart, setActivityCustomStart] = useState('');
+  const [activityCustomEnd, setActivityCustomEnd] = useState('');
+  const [activityHistory, setActivityHistory] = useState<{ data: OnlineHistoryPoint[]; peak: number; peakAt: string | null } | null>(null);
+  const [onlineStats, setOnlineStats] = useState<OnlineStats | null>(null);
+  const [loadingActivity, setLoadingActivity] = useState(false);
+  const [snapshotting, setSnapshotting] = useState(false);
   const [inventoryDialogOpen, setInventoryDialogOpen] = useState(false);
   const [inventoryUser, setInventoryUser] = useState<AdminUser | null>(null);
   const [inventoryItems, setInventoryItems] = useState<AdminInventoryItem[]>([]);
@@ -744,6 +756,7 @@ export default function Admin() {
     fetchBombPartyLanguages();
     fetchGiftTemplates();
     fetchUpdatePopups();
+    fetchActivity('day');
   }, []);
 
   useEffect(() => {
@@ -829,6 +842,32 @@ export default function Admin() {
       showMessage('error', 'Erreur lors du chargement des bannissements');
     } finally {
       setLoadingBans(false);
+    }
+  };
+
+  const fetchActivity = async (period?: 'day' | 'week' | 'month' | 'custom', customStart?: string, customEnd?: string) => {
+    const p = period ?? activityPeriod;
+    setLoadingActivity(true);
+    try {
+      const startStr = customStart ?? activityCustomStart;
+      const endStr = customEnd ?? activityCustomEnd;
+      // Convert YYYY-MM-DD date strings to full ISO datetimes for the API
+      const startISO = startStr ? (startStr.includes('T') ? startStr : `${startStr}T00:00:00`) : undefined;
+      const endISO = endStr ? (endStr.includes('T') ? endStr : `${endStr}T23:59:59`) : undefined;
+      const [histRes, statsRes] = await Promise.all([
+        adminApi.getOnlineHistory({
+          period: p,
+          startDate: p === 'custom' ? startISO : undefined,
+          endDate: p === 'custom' ? endISO : undefined,
+        }),
+        adminApi.getOnlineStats(),
+      ]);
+      setActivityHistory({ data: histRes.data.data, peak: histRes.data.peak, peakAt: histRes.data.peakAt });
+      setOnlineStats(statsRes.data);
+    } catch {
+      // ignore
+    } finally {
+      setLoadingActivity(false);
     }
   };
 
@@ -1760,6 +1799,13 @@ export default function Admin() {
           <TabsTrigger value="settings" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
             Parametres
+          </TabsTrigger>
+          <TabsTrigger value="activity" className="flex items-center gap-2" onClick={() => fetchActivity(activityPeriod)}>
+            <Activity className="h-4 w-4" />
+            Activité
+            {onlineStats && (
+              <span className={TYPOGRAPHY.XS}>{onlineStats.current} en ligne</span>
+            )}
           </TabsTrigger>
         </TabsList>
 
@@ -4598,6 +4644,310 @@ export default function Admin() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* ===== ACTIVITY TAB ===== */}
+        <TabsContent value="activity" className={SPACING.SECTION_SPACING}>
+
+          {/* ── TOP ROW: all-time record hero + live stats ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4">
+
+            {/* All-time record — hero block */}
+            <div
+              className="relative overflow-hidden rounded-xl border border-amber-500/25 p-4"
+              style={{ background: 'radial-gradient(ellipse at 20% 50%, rgba(245,158,11,0.08) 0%, transparent 60%), hsl(var(--card))' }}
+            >
+              {/* decorative glow orb */}
+              <div
+                className="pointer-events-none absolute -left-8 top-1/2 -translate-y-1/2 h-24 w-24 rounded-full"
+                style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.18) 0%, transparent 70%)', filter: 'blur(8px)' }}
+              />
+              <div className="relative flex items-center gap-4">
+                <div
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-500/30"
+                  style={{ background: 'rgba(245,158,11,0.12)' }}
+                >
+                  <Trophy className="h-5 w-5 text-amber-400" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold uppercase tracking-widest text-amber-500/80 mb-0.5">
+                    Record absolu
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span
+                      className="font-bold leading-none tracking-tight text-amber-300"
+                      style={{ fontSize: 'clamp(1.75rem, 4vw, 2.5rem)', fontVariantNumeric: 'tabular-nums' }}
+                    >
+                      {onlineStats?.allTimeRecord ?? '—'}
+                    </span>
+                    <span className="text-sm text-muted-foreground">joueurs simultanés</span>
+                  </div>
+                  {onlineStats?.allTimeRecordAt ? (
+                    <div className="mt-0.5 text-xs text-muted-foreground">
+                      {new Date(onlineStats.allTimeRecordAt).toLocaleString('fr-FR', {
+                        weekday: 'long', day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                      })}
+                    </div>
+                  ) : (
+                    <div className="mt-0.5 text-xs text-muted-foreground">Aucun record enregistré pour l'instant</div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Live + period peaks — compact right column */}
+            <div className="grid grid-cols-3 lg:grid-cols-1 gap-3 lg:min-w-[160px]">
+
+              {/* En ligne maintenant */}
+              <div className="rounded-xl border border-border/40 bg-card p-4 flex flex-col gap-1.5">
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="h-2 w-2 rounded-full bg-emerald-400 shrink-0"
+                    style={{ boxShadow: '0 0 6px 1px rgba(52,211,153,0.6)', animation: 'pulse 2s ease-in-out infinite' }}
+                  />
+                  <span className="text-xs text-muted-foreground">En ligne</span>
+                </div>
+                <span
+                  className="font-bold text-emerald-300 leading-none"
+                  style={{ fontSize: '2rem', fontVariantNumeric: 'tabular-nums' }}
+                >
+                  {onlineStats?.current ?? '—'}
+                </span>
+              </div>
+
+              {/* Peak 24h */}
+              <div className="rounded-xl border border-border/40 bg-card p-4 flex flex-col gap-1.5">
+                <div className="text-xs text-muted-foreground">Pic 24h</div>
+                <span
+                  className="font-bold leading-none"
+                  style={{ fontSize: '2rem', fontVariantNumeric: 'tabular-nums' }}
+                >
+                  {onlineStats?.peak1d ?? '—'}
+                </span>
+              </div>
+
+              {/* Peak 7d */}
+              <div className="rounded-xl border border-border/40 bg-card p-4 flex flex-col gap-1.5">
+                <div className="text-xs text-muted-foreground">Pic 7 jours</div>
+                <span
+                  className="font-bold leading-none"
+                  style={{ fontSize: '2rem', fontVariantNumeric: 'tabular-nums' }}
+                >
+                  {onlineStats?.peak7d ?? '—'}
+                </span>
+              </div>
+
+            </div>
+          </div>
+
+          {/* ── CHART CARD ── */}
+          <Card className="border-border/40">
+            <CardHeader className="pb-0">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-semibold text-sm">Joueurs en ligne</span>
+                  {loadingActivity && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                </div>
+
+                {/* Period segmented control */}
+                <div
+                  className="flex items-center rounded-lg p-0.5 gap-0.5"
+                  style={{ background: 'hsl(var(--muted)/0.4)', border: '1px solid hsl(var(--border)/0.4)' }}
+                >
+                  {(['day', 'week', 'month', 'custom'] as const).map(p => (
+                    <button
+                      key={p}
+                      onClick={() => {
+                        setActivityPeriod(p);
+                        if (p !== 'custom') fetchActivity(p);
+                      }}
+                      className={cn(
+                        'px-3 py-1 rounded-md text-xs font-medium transition-all duration-150',
+                        activityPeriod === p
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      {p === 'day' ? "Aujourd'hui" : p === 'week' ? '7j' : p === 'month' ? '30j' : 'Plage'}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => fetchActivity(activityPeriod)}
+                    className="p-1 rounded-md text-muted-foreground hover:text-foreground transition-colors ml-0.5"
+                    title="Rafraîchir"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                  </button>
+                </div>
+                <button
+                  onClick={async () => {
+                    setSnapshotting(true);
+                    try {
+                      await adminApi.takeOnlineSnapshot();
+                      await fetchActivity(activityPeriod);
+                    } finally {
+                      setSnapshotting(false);
+                    }
+                  }}
+                  disabled={snapshotting}
+                  className="flex items-center gap-1.5 rounded-md border border-border/50 px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground hover:border-border transition-colors disabled:opacity-50"
+                  title="Enregistrer un snapshot maintenant"
+                >
+                  {snapshotting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                  Snapshot
+                </button>
+              </div>
+
+              {/* Custom date range — native date pickers (open system calendar) */}
+              {activityPeriod === 'custom' && (
+                <div className="flex items-center gap-2 mt-3 flex-wrap">
+                  <CalendarRange className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <input
+                    type="date"
+                    value={activityCustomStart}
+                    onChange={e => setActivityCustomStart(e.target.value)}
+                    className="h-8 rounded-md border border-border/60 bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  <span className="text-xs text-muted-foreground">→</span>
+                  <input
+                    type="date"
+                    value={activityCustomEnd}
+                    onChange={e => setActivityCustomEnd(e.target.value)}
+                    className="h-8 rounded-md border border-border/60 bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  <Button
+                    size="sm"
+                    className="h-8 px-3 text-xs"
+                    onClick={() => fetchActivity('custom', activityCustomStart, activityCustomEnd)}
+                    disabled={!activityCustomStart || !activityCustomEnd}
+                  >
+                    Appliquer
+                  </Button>
+                </div>
+              )}
+            </CardHeader>
+
+            <CardContent className="pt-4">
+              {loadingActivity && !activityHistory ? (
+                <div className="flex justify-center py-20">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : activityHistory && activityHistory.data.length > 0 ? (
+                <>
+                  {/* Period peak banner — sits just above the chart */}
+                  {activityHistory.peak > 0 && (
+                    <div
+                      className="flex items-center justify-between mb-4 px-4 py-2.5 rounded-lg"
+                      style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.18)' }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Trophy className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                        <span className="text-xs text-amber-400/80">Pic sur la période</span>
+                      </div>
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-lg font-bold text-amber-300" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                          {activityHistory.peak}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {activityHistory.peakAt
+                            ? new Date(activityHistory.peakAt).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+                            : 'joueurs'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  <ResponsiveContainer width="100%" height={300}>
+                    <AreaChart data={activityHistory.data} margin={{ top: 6, right: 4, left: -8, bottom: 0 }}>
+                      <defs>
+                        {/* Stroke: vivid green at peak (top), dim/dark green near zero (bottom) */}
+                        <linearGradient id="strokeGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%"   stopColor="#16a34a" />
+                          <stop offset="40%"  stopColor="#22c55e" />
+                          <stop offset="100%" stopColor="#14532d" stopOpacity={0.4} />
+                        </linearGradient>
+                        {/* Fill: intense green at the top, fully transparent at baseline */}
+                        <linearGradient id="activityGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%"   stopColor="#22c55e" stopOpacity={0.28} />
+                          <stop offset="55%"  stopColor="#16a34a" stopOpacity={0.07} />
+                          <stop offset="100%" stopColor="#14532d" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                      <XAxis
+                        dataKey="timestamp"
+                        tickFormatter={ts => {
+                          const d = new Date(ts);
+                          if (activityPeriod === 'day') return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                          if (activityPeriod === 'week') return d.toLocaleDateString('fr-FR', { weekday: 'short' }) + ' ' + d.getHours() + 'h';
+                          return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+                        }}
+                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                        axisLine={false}
+                        tickLine={false}
+                        interval="preserveStartEnd"
+                      />
+                      <YAxis
+                        allowDecimals={false}
+                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                        axisLine={false}
+                        tickLine={false}
+                        width={24}
+                      />
+                      <RechartsTooltip
+                        contentStyle={{
+                          background: 'hsl(var(--popover))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: 8,
+                          fontSize: 12,
+                          padding: '8px 12px',
+                        }}
+                        labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: 6, fontSize: 11 }}
+                        labelFormatter={ts => new Date(ts as string).toLocaleString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        formatter={(value: number) => [
+                          <span style={{ fontWeight: 600 }}>{value}</span>,
+                          'Joueurs'
+                        ]}
+                      />
+                      {activityHistory.peak > 0 && (
+                        <ReferenceLine
+                          y={activityHistory.peak}
+                          stroke="rgba(245,158,11,0.5)"
+                          strokeDasharray="5 4"
+                          strokeWidth={1.5}
+                          label={{ value: `↑ ${activityHistory.peak}`, fill: 'rgba(245,158,11,0.7)', fontSize: 10, position: 'insideTopRight', dy: -4 }}
+                        />
+                      )}
+                      <Area
+                        type="basis"
+                        dataKey="max"
+                        stroke="url(#strokeGradient)"
+                        strokeWidth={3.5}
+                        fill="url(#activityGradient)"
+                        dot={false}
+                        activeDot={{ r: 5, fill: '#22c55e', strokeWidth: 0 }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
+                  <div
+                    className="flex h-14 w-14 items-center justify-center rounded-full"
+                    style={{ background: 'hsl(var(--muted)/0.3)' }}
+                  >
+                    <Activity className="h-6 w-6 opacity-40" />
+                  </div>
+                  <div className="text-center">
+                    <p className={TYPOGRAPHY.SMALL}>Aucune donnée pour cette période</p>
+                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60 mt-0.5')}>Les snapshots sont enregistrés toutes les 5 minutes</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
         </TabsContent>
 
       </Tabs>

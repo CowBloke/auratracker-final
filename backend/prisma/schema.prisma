@@ -835,6 +835,15 @@ model GiftItem {
   @@index([giftTemplateId])
 }
 
+// Online User Snapshot (for activity graphs)
+model OnlineSnapshot {
+  id        String   @id @default(uuid())
+  count     Int      // Number of online users at this moment
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
 // Update Popup System
 model UpdatePopup {
   id          String   @id @default(uuid())

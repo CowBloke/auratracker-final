@@ -38,7 +38,7 @@ import solitaireRoutes from './routes/solitaire.js';
 import giftsRoutes from './routes/gifts.js';
 
 // Socket handlers
-import { setupChatHandlers, startOnlineCountBroadcast } from './socket/chat.js';
+import { setupChatHandlers, startOnlineCountBroadcast, startOnlineSnapshotRecording } from './socket/chat.js';
 import { setupPartyHandlers } from './socket/party.js';
 import { setupGameHandlers } from './socket/games.js';
 import { setupBombPartyHandlers, startBombPartyCleanup } from './socket/bombparty.js';
@@ -249,6 +249,9 @@ const start = async () => {
 
     // Start online user count broadcast (every 5s)
     startOnlineCountBroadcast(io);
+
+    // Record online user count snapshots every 5 minutes for activity graphs
+    startOnlineSnapshotRecording();
 
     // Start bomb party game cleanup
     startBombPartyCleanup(io);

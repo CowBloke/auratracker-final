@@ -1059,6 +1059,31 @@ export const adminApi = {
   uploadUpdatePopupImage: (data: { base64Data: string; mimeType: string }) =>
     api.post<{ imageUrl: string }>('/admin/update-popups/upload-image', data),
   suggestUpdatePopupSummary: () => api.get<{ suggestion: string; sinceDate: string }>('/admin/update-popups/suggest-summary'),
+  // Online activity history
+  takeOnlineSnapshot: () => api.post<{ success: boolean; count: number }>('/admin/online-snapshot'),
+  getOnlineHistory: (params?: {
+    period?: 'day' | 'week' | 'month' | 'custom';
+    startDate?: string;
+    endDate?: string;
+  }) => api.get<{
+    data: { timestamp: string; count: number; max: number }[];
+    peak: number;
+    peakAt: string | null;
+    period: string;
+    start: string;
+    end: string;
+  }>('/admin/online-history', { params }),
+  getOnlineStats: () => api.get<{
+    current: number;
+    allTimeRecord: number;
+    allTimeRecordAt: string | null;
+    avg1d: number;
+    avg7d: number;
+    avg30d: number;
+    peak1d: number;
+    peak7d: number;
+    peak30d: number;
+  }>('/admin/online-stats'),
 };
 
 export const maintenanceApi = {
