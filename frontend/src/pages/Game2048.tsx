@@ -4,6 +4,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { gamesApi } from '../services/api';
 import { Play, RotateCcw, Trophy, X, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 // ============================================
 // GAME CONSTANTS
@@ -444,7 +445,7 @@ export default function Game2048() {
   };
   
   return (
-    <div className="max-w-4xl mx-auto py-12 px-6 space-y-8">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
       <div className="flex items-center justify-end">
         <div className="text-right text-sm text-muted-foreground tabular-nums">
           <div className="text-3xl font-light text-foreground">{score.toLocaleString()}</div>
@@ -508,13 +509,13 @@ export default function Game2048() {
             {/* Start Screen */}
             {!started && (
               <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
-                <button
+                <Button variant="ghost"
                   onClick={initGame}
                   className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
                 >
                   <Play className="w-4 h-4" />
                   Jouer
-                </button>
+                </Button>
               </div>
             )}
             
@@ -524,12 +525,12 @@ export default function Game2048() {
                 <div className="text-center space-y-4 bg-card border border-border/50 rounded-lg p-6">
                   <h2 className="text-2xl font-light">Tu as atteint 2048!</h2>
                   <p className="text-sm text-muted-foreground">Continue pour un meilleur score</p>
-                  <button
+                  <Button variant="ghost"
                     onClick={() => setWon(false)}
                     className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
                   >
                     Continuer
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -555,13 +556,13 @@ export default function Game2048() {
                     </p>
                   )}
                   
-                  <button
+                  <Button variant="ghost"
                     onClick={initGame}
                     className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors mx-auto"
                   >
                     <RotateCcw className="w-4 h-4" />
                     Rejouer
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -610,13 +611,13 @@ export default function Game2048() {
                       {entry.highScore.toLocaleString()}
                     </span>
                     {user?.isAdmin && (
-                      <button
+                      <Button variant="ghost"
                         onClick={() => handleDeleteScore(entry.user.id, entry.user.username)}
                         className="opacity-0 group-hover:opacity-100 p-1 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-all"
                         title="Supprimer ce score"
                       >
                         <X className="w-3.5 h-3.5" />
-                      </button>
+                      </Button>
                     )}
                   </div>
                 ))}

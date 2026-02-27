@@ -6,10 +6,10 @@ import { Edit2, Save, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
-import PageLayout from '@/components/layout/PageLayout';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { resolveImageUrl } from '@/lib/images';
-import { BadgeWithTooltip } from '@/components/ui/badge-tooltip';
 import { cn } from '@/lib/utils';
 
 interface ProfileUser {
@@ -128,21 +128,21 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <PageLayout variant="compact">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
         </div>
-      </PageLayout>
+      </div>
     );
   }
 
   if (!profileUser) {
     return (
-      <PageLayout variant="compact">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
         <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
           Utilisateur introuvable
         </p>
-      </PageLayout>
+      </div>
     );
   }
 
@@ -162,7 +162,7 @@ export default function Profile() {
     : null;
 
   return (
-    <PageLayout variant="compact">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
       {/* Profile Picture */}
       <div className="flex items-start gap-6">
         {profileUser.profilePicture ? (
@@ -193,16 +193,27 @@ export default function Profile() {
               {profileUser.username}
             </p>
             {profileUser.badges?.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-3">
-                {profileUser.badges.map((badge) => (
-                  <BadgeWithTooltip
-                    key={badge.userBadgeId || badge.id}
-                    name={badge.name}
-                    description={badge.description}
-                    color={badge.color}
-                  />
-                ))}
-              </div>
+              <TooltipProvider>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {profileUser.badges.map((badge) => (
+                    <Tooltip key={badge.userBadgeId || badge.id}>
+                      <TooltipTrigger asChild>
+                        <Badge
+                          className="text-white border-transparent"
+                          style={{ backgroundColor: badge.color }}
+                        >
+                          {badge.name}
+                        </Badge>
+                      </TooltipTrigger>
+                      {badge.description ? (
+                        <TooltipContent>
+                          <p>{badge.description}</p>
+                        </TooltipContent>
+                      ) : null}
+                    </Tooltip>
+                  ))}
+                </div>
+              </TooltipProvider>
             )}
             <p className={cn(TYPOGRAPHY.SMALL, "mt-2")}>
               Membre depuis {new Date(profileUser.createdAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
@@ -211,7 +222,7 @@ export default function Profile() {
         </div>
 
       {/* Bio Section */}
-      <Card className="border-border/40">
+      <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardDescription>À propos</CardDescription>
@@ -278,7 +289,7 @@ export default function Profile() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-8 md:gap-12">
-        <Card className="border-border/40">
+        <Card>
           <CardContent className="p-4 space-y-1">
             <p className={cn(TYPOGRAPHY.H2, "md:text-5xl tabular-nums")}>
               {profileUser.aura.toLocaleString()}
@@ -288,7 +299,7 @@ export default function Profile() {
             </p>
           </CardContent>
         </Card>
-        <Card className="border-border/40">
+        <Card>
           <CardContent className="p-4 space-y-1">
             <p className={cn(TYPOGRAPHY.H2, "md:text-5xl tabular-nums")}>
               ${profileUser.money.toLocaleString()}
@@ -298,7 +309,7 @@ export default function Profile() {
             </p>
           </CardContent>
         </Card>
-        <Card className="border-border/40">
+        <Card>
           <CardContent className="p-4 space-y-1">
             <p className={cn(TYPOGRAPHY.H2, "md:text-5xl tabular-nums")}>
               {profileUser.auraCoinBalance.toFixed(4)} AC
@@ -311,7 +322,7 @@ export default function Profile() {
             </p>
           </CardContent>
         </Card>
-        <Card className="border-border/40">
+        <Card>
           <CardContent className="p-4 space-y-1">
             <p className={cn(TYPOGRAPHY.H2, "md:text-5xl tabular-nums")}>
               ${totalMoneyValue !== null ? totalMoneyValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
@@ -321,7 +332,7 @@ export default function Profile() {
             </p>
           </CardContent>
         </Card>
-        <Card className="border-border/40">
+        <Card>
           <CardContent className="p-4 space-y-1">
             <p className={cn(TYPOGRAPHY.H2, "md:text-5xl tabular-nums")}>
               {totalWins}
@@ -329,7 +340,7 @@ export default function Profile() {
             <p className={TYPOGRAPHY.SMALL}>victoires</p>
           </CardContent>
         </Card>
-        <Card className="border-border/40">
+        <Card>
           <CardContent className="p-4 space-y-1">
             <p className={cn(TYPOGRAPHY.H2, "md:text-5xl tabular-nums")}>
               {totalGames}
@@ -341,7 +352,7 @@ export default function Profile() {
 
 
       {/* Game Stats */}
-      <Card className="border-border/40">
+      <Card>
         <CardHeader>
           <CardDescription>Statistiques par jeu</CardDescription>
         </CardHeader>
@@ -396,6 +407,6 @@ export default function Profile() {
           </div>
         </CardContent>
       </Card>
-    </PageLayout>
+    </div>
   );
 }

@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { giftsApi } from '@/services/api';
 import { useSocket } from '@/contexts/SocketContext';
 import GiftDialog from './GiftDialog';
+import { Button } from '@/components/ui/button';
 
 export default function GiftBubble() {
   const [count, setCount] = useState(0);
@@ -35,10 +36,13 @@ export default function GiftBubble() {
 
   return (
     <>
-      <button
+      <Button
+        type="button"
         onClick={() => setDialogOpen(true)}
         title="Cadeaux"
-        className={`relative flex items-center justify-center transition-colors hover:opacity-80 ${count > 0 ? 'animate-gift-wiggle' : ''}`}
+        variant="outline"
+        size="icon"
+        className={`relative h-11 w-11 rounded-full shadow-sm ${count > 0 ? 'animate-gift-wiggle' : ''}`}
       >
         <Gift className="h-5 w-5" />
         {count > 0 && (
@@ -46,7 +50,7 @@ export default function GiftBubble() {
             {count > 99 ? '99+' : count}
           </span>
         )}
-      </button>
+      </Button>
       <GiftDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}

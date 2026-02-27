@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageHeader, PageShell } from '@/components/layout/page-shell';
 
 const tracks = [
   {
@@ -77,21 +80,30 @@ export default function MusicLounge() {
   };
 
   return (
-    <div className="min-h-screen bg-background px-6 py-12 text-foreground">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
-        <div className="rounded-3xl border border-border/40 bg-gradient-to-br from-emerald-500/20 via-background to-background p-8">
-          <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
+    <PageShell>
+      <PageHeader
+        eyebrow="Maintenance"
+        title="Music Lounge"
+        description="Player simple, playlist claire et cartes homogènes avec le reste de l'interface."
+      />
+      <Card className="bg-gradient-to-br from-emerald-500/20 via-background to-background">
+        <CardContent className="pt-6">
+          <p className="max-w-2xl text-sm text-muted-foreground">
             Une interface inspiree des players modernes pour patienter. Depose tes fichiers mp3 dans
             <span className="font-medium text-foreground"> frontend/public/music/auratracker-playlist</span> et renomme-les
             <span className="font-medium text-foreground"> track-01.mp3</span>,
             <span className="font-medium text-foreground"> track-02.mp3</span>, etc.
           </p>
-        </div>
+        </CardContent>
+      </Card>
 
-        <div className="grid gap-6 lg:grid-cols-[240px,1fr]">
-          <aside className="rounded-2xl border border-border/50 bg-muted/20 p-6">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">Mixes</h2>
-            <ul className="mt-4 space-y-3 text-sm">
+      <div className="grid gap-6 lg:grid-cols-[240px,1fr]">
+        <Card className="bg-muted/20">
+          <CardHeader>
+            <CardTitle className="text-sm uppercase tracking-[0.2em] text-muted-foreground">Mixes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-3 text-sm">
               <li className="rounded-xl border border-border/40 bg-background/70 px-4 py-3">
                 AuraTracker Focus
               </li>
@@ -102,40 +114,30 @@ export default function MusicLounge() {
                 Late Night Drift
               </li>
             </ul>
-          </aside>
+          </CardContent>
+        </Card>
 
-          <section className="rounded-2xl border border-border/50 bg-muted/20 p-6">
+        <Card className="bg-muted/20">
+          <CardContent className="space-y-6 pt-6">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h2 className="text-xl font-semibold">Playlist AuraTracker</h2>
                 <p className="text-sm text-muted-foreground">{tracks.length} tracks • curated for maintenance</p>
               </div>
               <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={handlePrev}
-                  className="rounded-full border border-border/50 px-4 py-2 text-sm text-muted-foreground transition hover:text-foreground"
-                >
+                <Button type="button" onClick={handlePrev} variant="outline" size="sm">
                   Prev
-                </button>
-                <button
-                  type="button"
-                  onClick={handleToggle}
-                  className="rounded-full bg-emerald-500/90 px-6 py-2 text-sm font-semibold text-foreground transition hover:bg-emerald-500"
-                >
+                </Button>
+                <Button type="button" onClick={handleToggle} size="sm" className="bg-emerald-500/90 hover:bg-emerald-500">
                   {isPlaying ? 'Pause' : 'Play'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleNext}
-                  className="rounded-full border border-border/50 px-4 py-2 text-sm text-muted-foreground transition hover:text-foreground"
-                >
+                </Button>
+                <Button type="button" onClick={handleNext} variant="outline" size="sm">
                   Next
-                </button>
+                </Button>
               </div>
             </div>
 
-            <div className="mt-6 overflow-hidden rounded-2xl border border-border/40">
+            <div className="overflow-hidden rounded-2xl border border-border/40">
               <div className="grid grid-cols-[44px,1fr,64px] gap-4 border-b border-border/40 bg-background/80 px-4 py-3 text-xs uppercase tracking-[0.2em] text-muted-foreground">
                 <span>#</span>
                 <span>Title</span>
@@ -145,11 +147,12 @@ export default function MusicLounge() {
                 {tracks.map((track, index) => {
                   const isActive = index === currentIndex;
                   return (
-                    <button
+                    <Button
                       key={track.id}
                       type="button"
                       onClick={() => handleSelect(index)}
-                      className={`grid w-full grid-cols-[44px,1fr,64px] gap-4 px-4 py-4 text-left text-sm transition ${
+                      variant="ghost"
+                      className={`grid h-auto w-full grid-cols-[44px,1fr,64px] gap-4 rounded-none px-4 py-4 text-left text-sm ${
                         isActive
                           ? 'bg-emerald-500/10 text-foreground'
                           : 'bg-background/60 text-muted-foreground hover:bg-background/80 hover:text-foreground'
@@ -161,15 +164,17 @@ export default function MusicLounge() {
                         <span className="text-xs text-muted-foreground">{track.artist}</span>
                       </span>
                       <span className="text-right text-xs text-muted-foreground">{track.duration}</span>
-                    </button>
+                    </Button>
                   );
                 })}
               </div>
             </div>
-          </section>
-        </div>
+          </CardContent>
+        </Card>
+      </div>
 
-        <section className="rounded-2xl border border-border/40 bg-muted/30 p-6">
+      <Card className="bg-muted/30">
+        <CardContent className="space-y-4 pt-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Now playing</p>
@@ -177,38 +182,26 @@ export default function MusicLounge() {
               <p className="text-sm text-muted-foreground">{currentTrack.artist}</p>
             </div>
             <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handlePrev}
-                className="rounded-full border border-border/50 px-3 py-2 text-xs text-muted-foreground transition hover:text-foreground"
-              >
+              <Button type="button" onClick={handlePrev} variant="outline" size="sm">
                 Prev
-              </button>
-              <button
-                type="button"
-                onClick={handleToggle}
-                className="rounded-full bg-emerald-500/90 px-5 py-2 text-xs font-semibold text-foreground transition hover:bg-emerald-500"
-              >
+              </Button>
+              <Button type="button" onClick={handleToggle} size="sm" className="bg-emerald-500/90 hover:bg-emerald-500">
                 {isPlaying ? 'Pause' : 'Play'}
-              </button>
-              <button
-                type="button"
-                onClick={handleNext}
-                className="rounded-full border border-border/50 px-3 py-2 text-xs text-muted-foreground transition hover:text-foreground"
-              >
+              </Button>
+              <Button type="button" onClick={handleNext} variant="outline" size="sm">
                 Next
-              </button>
+              </Button>
             </div>
           </div>
           <audio
             ref={audioRef}
             src={currentTrack.src}
             onEnded={handleNext}
-            className="mt-4 w-full"
+            className="w-full"
             controls
           />
-        </section>
-      </div>
-    </div>
+        </CardContent>
+      </Card>
+    </PageShell>
   );
 }

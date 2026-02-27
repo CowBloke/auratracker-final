@@ -2,6 +2,7 @@
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
 import { RotateCcw, Trophy, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface LeaderboardEntry {
   id: string;
@@ -124,10 +125,10 @@ export default function Tetris() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto py-12 px-6 space-y-8">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Tetris</h1>
+          <h2 className="text-2xl font-semibold">Tetris</h2>
           <p className="text-sm text-muted-foreground">Version tetr.js avec mode Sprint simple.</p>
         </div>
         <div className="text-right text-sm text-muted-foreground tabular-nums">
@@ -139,13 +140,13 @@ export default function Tetris() {
       <div className="flex justify-center gap-6 items-start flex-nowrap overflow-x-auto pb-2">
         <div className="space-y-3">
           <div className="flex gap-2 justify-end">
-            <button
+            <Button variant="ghost"
               onClick={restartSession}
               className="flex items-center gap-2 px-4 py-2 border border-border/50 rounded-md hover:bg-muted transition-colors text-sm"
             >
               <RotateCcw className="w-4 h-4" />
               Recharger
-            </button>
+            </Button>
             </div>
 
           <iframe
@@ -204,13 +205,13 @@ export default function Tetris() {
                     <span className="flex-1 truncate text-sm">{entry.user.username}</span>
                     <span className="font-mono text-sm tabular-nums text-muted-foreground">{entry.highScore.toLocaleString()}</span>
                     {user?.isAdmin && (
-                      <button
+                      <Button variant="ghost"
                         onClick={() => handleDeleteScore(entry.user.id, entry.user.username)}
                         className="opacity-0 group-hover:opacity-100 p-1 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-all"
                         title="Supprimer ce score"
                       >
                         <X className="w-3.5 h-3.5" />
-                      </button>
+                      </Button>
                     )}
                   </div>
                 ))}
@@ -222,4 +223,3 @@ export default function Tetris() {
     </div>
   );
 }
-

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { passApi } from '@/services/api';
-import PageLayout from '@/components/layout/PageLayout';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -120,20 +119,20 @@ export default function Pass() {
 
   if (loading) {
     return (
-      <PageLayout variant="compact">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
         <p className={TYPOGRAPHY.MUTED}>Chargement...</p>
-      </PageLayout>
+      </div>
     );
   }
 
   return (
-    <PageLayout variant="compact">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
       <p className={cn(TYPOGRAPHY.SMALL, "max-w-2xl")}>
         Connecte-toi chaque jour pour monter les paliers. Un jour manqué remet la série à zéro.
       </p>
 
       {/* Main Section */}
-      <Card className="border-border/40">
+      <Card>
         <CardContent className="p-6">
           <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
             <div className={SPACING.SECTION_SPACING}>
@@ -193,7 +192,7 @@ export default function Pass() {
       </Card>
 
       {/* Paliers */}
-      <Card className="border-border/40">
+      <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardDescription>Paliers</CardDescription>
@@ -231,6 +230,6 @@ export default function Pass() {
           </div>
         </CardContent>
       </Card>
-    </PageLayout>
+    </div>
   );
 }

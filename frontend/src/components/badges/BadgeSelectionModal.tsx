@@ -101,11 +101,13 @@ export function BadgeSelectionModal({ open, onOpenChange, onUpdate }: BadgeSelec
             {badges.map((userBadge) => {
               const isSelected = selectedBadgeIds.includes(userBadge.badgeId);
               return (
-                <button
+                <Button
                   key={userBadge.id}
+                  type="button"
                   onClick={() => toggleBadge(userBadge.badgeId)}
+                  variant="ghost"
                   className={cn(
-                    "w-full flex items-center justify-between p-3 border border-border/40 hover:border-foreground/30 transition-colors",
+                    "h-auto w-full justify-between border border-border/40 p-3 hover:border-foreground/30",
                     isSelected && "border-foreground/60 bg-muted/30"
                   )}
                 >
@@ -128,7 +130,7 @@ export function BadgeSelectionModal({ open, onOpenChange, onUpdate }: BadgeSelec
                   {isSelected && (
                     <Check className="h-4 w-4 text-foreground shrink-0" />
                   )}
-                </button>
+                </Button>
               );
             })}
           </div>

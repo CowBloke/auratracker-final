@@ -5,7 +5,6 @@ import { riftApi, RiftTransaction, RiftPriceHistory } from '../services/api';
 import { cn } from '@/lib/utils';
 import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import PageLayout from '@/components/layout/PageLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -162,19 +161,19 @@ export default function Rift() {
   };
 
   return (
-    <PageLayout variant="compact">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
       {/* Main Trading Card */}
-      <Card className="border-border/40">
+      <Card>
         <CardContent className={SPACING.SECTION_SPACING}>
           {/* Balances and Current Price */}
           <div className="grid grid-cols-3 gap-4">
-            <Card className="border-border/40">
+            <Card>
               <CardContent className="p-4">
                 <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Solde Money</p>
                 <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>${moneyBalance.toLocaleString()}</p>
               </CardContent>
             </Card>
-            <Card className="border-border/40">
+            <Card>
               <CardContent className="p-4">
                 <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Solde Rift</p>
                 <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>{riftBalance.toFixed(4)} RFT</p>
@@ -183,7 +182,7 @@ export default function Rift() {
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-border/40">
+            <Card>
               <CardContent className="p-4">
                 <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Prix Actuel</p>
                 <div className="flex items-center gap-2">
@@ -204,7 +203,7 @@ export default function Rift() {
           </div>
 
           {/* Professional Chart */}
-          <Card className="border-border/40">
+          <Card>
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-3">
                 <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground uppercase tracking-wide")}>Cours 24h</span>
@@ -252,7 +251,7 @@ export default function Rift() {
           {/* Trading Interface */}
           <div className="grid md:grid-cols-2 gap-4">
             {/* Buy */}
-            <Card className="border-border/40">
+            <Card>
               <CardContent className={SPACING.CARD_SPACING}>
                 <div className="flex items-center gap-2">
                   <ArrowUpRight className="w-4 h-4 text-emerald-500" />
@@ -312,7 +311,7 @@ export default function Rift() {
             </Card>
 
             {/* Sell */}
-            <Card className="border-border/40">
+            <Card>
               <CardContent className={SPACING.CARD_SPACING}>
                 <div className="flex items-center gap-2">
                   <ArrowDownRight className="w-4 h-4 text-red-500" />
@@ -391,7 +390,7 @@ export default function Rift() {
       )}
 
       {/* Transactions */}
-      <Card className="border-border/40">
+      <Card>
         <CardContent className={SPACING.CARD_SPACING}>
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'my' | 'all')}>
             <TabsList>
@@ -457,6 +456,6 @@ export default function Rift() {
           </Tabs>
         </CardContent>
       </Card>
-    </PageLayout>
+    </div>
   );
 }

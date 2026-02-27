@@ -46,9 +46,11 @@ export default function GiftOpenAnimation({ gift, onComplete, onClose }: GiftOpe
             Clique pour ouvrir ! ({clicks}/{CLICKS_NEEDED})
           </p>
 
-          <button
+          <Button
+            type="button"
             onClick={handleClick}
-            className="relative cursor-pointer select-none transition-transform active:scale-95"
+            variant="ghost"
+            className="relative h-auto w-auto cursor-pointer select-none p-0 transition-transform hover:bg-transparent active:scale-95"
             style={{
               animation: clicks > 0
                 ? `gift-shake ${Math.max(0.15, 0.5 - shakeIntensity * 0.35)}s ease-in-out infinite`
@@ -79,7 +81,7 @@ export default function GiftOpenAnimation({ gift, onComplete, onClose }: GiftOpe
                 }}
               />
             )}
-          </button>
+          </Button>
 
           {/* Progress dots */}
           <div className="flex gap-2">
@@ -114,12 +116,15 @@ export default function GiftOpenAnimation({ gift, onComplete, onClose }: GiftOpe
           style={{ animation: 'appear 0.5s ease-out forwards' }}
         >
           {/* Close button */}
-          <button
+          <Button
+            type="button"
             onClick={onClose}
-            className="absolute top-6 right-6 text-white/50 hover:text-white transition-colors"
+            variant="ghost"
+            size="icon"
+            className="absolute right-6 top-6 text-white/50 hover:bg-white/10 hover:text-white"
           >
             <X className="h-6 w-6" />
-          </button>
+          </Button>
 
           {/* Gift icon */}
           <div className="h-20 w-20 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center shadow-xl shadow-amber-500/30">

@@ -4,6 +4,8 @@ import { useSocket } from '@/contexts/SocketContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Users, LogOut, Bomb, ChevronUp, ChevronDown, Gamepad2, Trash2, UserPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 export default function PartyBubble() {
   const { user } = useAuth();
@@ -37,11 +39,14 @@ export default function PartyBubble() {
   };
 
   return (
-    <div className="bg-background border border-border rounded-lg shadow-lg overflow-hidden min-w-[200px] max-w-[280px]">
+    <Card className="min-w-[200px] max-w-[280px] overflow-hidden shadow-lg">
+      <CardContent className="p-0">
         {/* Header - always visible */}
-        <button
+        <Button
+          type="button"
           onClick={() => setExpanded(!expanded)}
-          className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors"
+          variant="ghost"
+          className="h-auto w-full justify-between rounded-none px-4 py-3"
         >
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />
@@ -57,7 +62,7 @@ export default function PartyBubble() {
           ) : (
             <ChevronUp className="h-4 w-4 text-muted-foreground" />
           )}
-        </button>
+        </Button>
 
         {/* Expanded content */}
         {expanded && (
@@ -104,55 +109,63 @@ export default function PartyBubble() {
 
             {/* Actions */}
             <div className="px-3 py-2 border-t border-border/30 flex flex-wrap gap-2">
-              <button
+              <Button
+                type="button"
                 onClick={sendChatInvite}
-                className="flex items-center justify-center gap-1 px-2 py-1.5 text-xs border border-border/50 text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors rounded"
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1 px-2 text-xs text-muted-foreground"
                 title="Inviter via le chat"
               >
                 <UserPlus className="h-3 w-3" />
                 Inviter
-              </button>
+              </Button>
               {/* Go to game */}
               {bombPartyGame && location.pathname !== '/games/bomb-party' && (
-                <Link
-                  to="/games/bomb-party"
-                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors rounded"
-                >
-                  <Bomb className="h-3 w-3" />
-                  Rejoindre
-                </Link>
+                <Button asChild size="sm" className="h-7 flex-1 gap-1 px-2 text-xs">
+                  <Link to="/games/bomb-party">
+                    <Bomb className="h-3 w-3" />
+                    Rejoindre
+                  </Link>
+                </Button>
               )}
               {petitBacGame && location.pathname !== '/games/petit-bac' && (
-                <Link
-                  to="/games/petit-bac"
-                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors rounded"
-                >
-                  <Gamepad2 className="h-3 w-3" />
-                  Rejoindre
-                </Link>
+                <Button asChild size="sm" className="h-7 flex-1 gap-1 px-2 text-xs">
+                  <Link to="/games/petit-bac">
+                    <Gamepad2 className="h-3 w-3" />
+                    Rejoindre
+                  </Link>
+                </Button>
               )}
 
               {/* Leave or delete */}
               {isLeader ? (
-                <button
+                <Button
+                  type="button"
                   onClick={deleteParty}
-                  className="flex items-center justify-center gap-1 px-2 py-1.5 text-xs border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors rounded"
+                  variant="destructive"
+                  size="sm"
+                  className="h-7 gap-1 px-2 text-xs"
                 >
                   <Trash2 className="h-3 w-3" />
                   Supprimer
-                </button>
+                </Button>
               ) : (
-                <button
+                <Button
+                  type="button"
                   onClick={leaveParty}
-                  className="flex items-center justify-center gap-1 px-2 py-1.5 text-xs border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors rounded"
+                  variant="destructive"
+                  size="sm"
+                  className="h-7 gap-1 px-2 text-xs"
                 >
                   <LogOut className="h-3 w-3" />
                   Quitter
-                </button>
+                </Button>
               )}
             </div>
           </div>
         )}
-    </div>
+      </CardContent>
+    </Card>
   );
 }

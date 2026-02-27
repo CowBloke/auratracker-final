@@ -132,7 +132,7 @@ export default function BombParty() {
   // Not in a party - show message
   if (!currentParty) {
     return (
-      <div className="max-w-4xl mx-auto py-12 px-6 space-y-8">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
         <Link
           to="/games"
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -162,7 +162,7 @@ export default function BombParty() {
   // Lobby state (no game active)
   if (!bombPartyGame) {
     return (
-      <div className="max-w-4xl mx-auto py-12 px-6 space-y-16">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-16">
         {/* Players in party */}
         <section className="space-y-4">
           <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
@@ -196,7 +196,7 @@ export default function BombParty() {
         {/* Start button (leader only) */}
         {isLeader ? (
           <div className="flex justify-center">
-            <button
+            <Button variant="ghost"
               onClick={() => setShowSettings(true)}
               disabled={partyMembers.length < 2}
               className={cn(
@@ -208,7 +208,7 @@ export default function BombParty() {
             >
               <Play className="h-5 w-5" />
               Lancer la partie
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="text-center text-muted-foreground py-8">
@@ -234,7 +234,7 @@ export default function BombParty() {
                 <label className="text-sm text-muted-foreground">Vies</label>
                 <div className="flex gap-2">
                   {[2, 3, 4, 5].map((l) => (
-                    <button
+                    <Button variant="ghost"
                       key={l}
                       onClick={() => setLives(l)}
                       className={cn(
@@ -245,7 +245,7 @@ export default function BombParty() {
                       )}
                     >
                       {l}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
@@ -255,7 +255,7 @@ export default function BombParty() {
                 <label className="text-sm text-muted-foreground">Difficulte</label>
                 <div className="flex gap-2">
                   {(['easy', 'medium', 'hard'] as const).map((d) => (
-                    <button
+                    <Button variant="ghost"
                       key={d}
                       onClick={() => setDifficulty(d)}
                       className={cn(
@@ -266,7 +266,7 @@ export default function BombParty() {
                       )}
                     >
                       {d === 'easy' ? 'Facile' : d === 'medium' ? 'Moyen' : 'Difficile'}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
@@ -300,14 +300,14 @@ export default function BombParty() {
 
   // Game active
   return (
-    <div className="max-w-4xl mx-auto py-12 px-6 space-y-8">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
       <div className="flex items-center justify-end">
-        <button
+        <Button variant="ghost"
           onClick={leaveBombParty}
           className="px-4 py-2 text-sm border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
         >
           Quitter
-        </button>
+        </Button>
       </div>
 
       {/* Players */}

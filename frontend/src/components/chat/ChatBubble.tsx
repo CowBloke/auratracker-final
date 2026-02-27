@@ -1,14 +1,18 @@
 import { MessageCircle } from 'lucide-react';
 import { useChatSidebar } from './ChatSidebarWrapper';
+import { Button } from '@/components/ui/button';
 
 export default function ChatBubble() {
   const { setOpen, unreadCount } = useChatSidebar();
 
   return (
-    <button
+    <Button
+      type="button"
       onClick={() => setOpen((prev) => !prev)}
       title="Toggle Chat"
-      className="relative flex items-center justify-center transition-colors hover:opacity-80"
+      variant="outline"
+      size="icon"
+      className="relative h-11 w-11 rounded-full shadow-sm"
     >
       <MessageCircle className="h-5 w-5" />
       {unreadCount > 0 && (
@@ -16,6 +20,6 @@ export default function ChatBubble() {
           {unreadCount > 99 ? '99+' : unreadCount}
         </span>
       )}
-    </button>
+    </Button>
   );
 }

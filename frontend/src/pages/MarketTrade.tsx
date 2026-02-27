@@ -6,7 +6,6 @@ import { cn } from '@/lib/utils';
 import { buildSyntheticHistory, getMarketCoin, marketCoins } from '@/data/marketCoins';
 import { loadSimState, recordSimTransaction, saveSimState, SimTransaction, SimState } from '@/lib/marketSim';
 import type { AuraCoinPriceHistory } from '@/services/api';
-import PageLayout from '@/components/layout/PageLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -209,7 +208,7 @@ export default function MarketTrade() {
   const displayedTransactions = activeTab === 'my' ? transactions : transactions;
 
   return (
-    <PageLayout variant="compact">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
       <div className="flex items-center justify-end">
         <div className="text-right">
           <div className="flex items-center gap-2 justify-end">
@@ -231,7 +230,7 @@ export default function MarketTrade() {
         </div>
       </div>
 
-      <Card className="border-border/40">
+      <Card>
         <CardContent className="p-6">
           <div className="flex items-center justify-between mb-4">
             <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground uppercase tracking-wide")}>Cours 24h</span>
@@ -275,13 +274,13 @@ export default function MarketTrade() {
       </Card>
 
       <div className="grid grid-cols-2 gap-4">
-        <Card className="border-border/40">
+        <Card>
           <CardContent className="p-4">
             <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Solde $ (simu)</p>
             <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>${cash.toLocaleString()}</p>
           </CardContent>
         </Card>
-        <Card className="border-border/40">
+        <Card>
           <CardContent className="p-4">
             <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Solde {coin.name}</p>
             <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>{balance.toFixed(4)} {coin.symbol}</p>
@@ -293,7 +292,7 @@ export default function MarketTrade() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        <Card className="border-border/40">
+        <Card>
           <CardContent className={SPACING.CARD_SPACING}>
             <div className="flex items-center gap-2">
               <ArrowUpRight className="w-5 h-5 text-emerald-500" />
@@ -374,7 +373,7 @@ export default function MarketTrade() {
           </CardContent>
         </Card>
 
-        <Card className="border-border/40">
+        <Card>
           <CardContent className={SPACING.CARD_SPACING}>
             <div className="flex items-center gap-2">
               <ArrowDownRight className="w-5 h-5 text-red-500" />
@@ -469,7 +468,7 @@ export default function MarketTrade() {
         </Card>
       )}
 
-      <Card className="border-border/40">
+      <Card>
         <CardContent className={SPACING.CARD_SPACING}>
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'my' | 'all')}>
             <TabsList>
@@ -533,6 +532,6 @@ export default function MarketTrade() {
           </Tabs>
         </CardContent>
       </Card>
-    </PageLayout>
+    </div>
   );
 }

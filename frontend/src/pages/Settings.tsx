@@ -1,10 +1,10 @@
 import { Sun, Moon } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
-import PageLayout from '@/components/layout/PageLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { PageHeader, PageShell } from '@/components/layout/page-shell';
 
 const themeOptions = [
   {
@@ -58,8 +58,13 @@ export default function Settings() {
   const { theme, setTheme, accent, setAccent } = useTheme();
 
   return (
-    <PageLayout variant="compact">
-      <Card className="border-border/40">
+    <PageShell>
+      <PageHeader
+        eyebrow="Préférences"
+        title="Paramètres"
+        description="Même structure, mêmes espacements, une carte par bloc de décision."
+      />
+      <Card>
         <CardHeader>
           <CardDescription>Thème</CardDescription>
           <CardTitle className={TYPOGRAPHY.H5}>
@@ -105,7 +110,7 @@ export default function Settings() {
         </CardContent>
       </Card>
 
-      <Card className="border-border/40">
+      <Card>
         <CardHeader>
           <CardDescription>Couleur d'accent</CardDescription>
           <CardTitle className={TYPOGRAPHY.H5}>
@@ -144,6 +149,6 @@ export default function Settings() {
           </p>
         </CardContent>
       </Card>
-    </PageLayout>
+    </PageShell>
   );
 }

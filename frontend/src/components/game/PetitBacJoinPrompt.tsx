@@ -45,7 +45,7 @@ export default function PetitBacJoinPrompt() {
 
   return (
     <Dialog open={!!petitBacJoinPrompt} onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-md" hideCloseButton>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="font-normal flex items-center gap-2">
             Petit Bac ?

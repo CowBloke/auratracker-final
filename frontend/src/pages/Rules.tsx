@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { bugReportApi } from '../services/api';
 import { Loader2 } from 'lucide-react';
-import PageLayout from '@/components/layout/PageLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -198,7 +197,7 @@ export default function Rules() {
   };
 
   return (
-    <PageLayout variant="compact">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
       {/* Header */}
       <p className={cn(TYPOGRAPHY.SMALL, "max-w-2xl")}>
         Tout est rassemblé ici : règlement, notes de version et signalement de bugs.
@@ -207,7 +206,7 @@ export default function Rules() {
       <Separator />
 
       {/* Bug report */}
-      <Card className="border-border/40">
+      <Card>
         <CardHeader>
           <CardDescription>Signalement</CardDescription>
           <CardTitle className={TYPOGRAPHY.H2}>Reporter un bug</CardTitle>
@@ -312,7 +311,7 @@ export default function Rules() {
       <Separator />
 
       {/* Changelog */}
-      <Card className="border-border/40">
+      <Card>
         <CardHeader>
           <CardDescription>Notes de version</CardDescription>
           <CardTitle className={TYPOGRAPHY.H2}>Changelog 1.0.0</CardTitle>
@@ -363,7 +362,7 @@ export default function Rules() {
       <Separator />
 
       {/* Rules Sections */}
-      <Card className="border-border/40">
+      <Card>
         <CardHeader>
           <CardDescription>Règlement</CardDescription>
           <CardTitle className={TYPOGRAPHY.H2}>Règles de la communauté</CardTitle>
@@ -396,7 +395,7 @@ export default function Rules() {
       <Separator />
 
       {/* Sanctions */}
-      <Card className="border-border/40">
+      <Card>
         <CardHeader>
           <CardDescription>Modération</CardDescription>
           <CardTitle className={TYPOGRAPHY.H2}>Sanctions</CardTitle>
@@ -425,7 +424,7 @@ export default function Rules() {
       <Separator />
 
       {/* Footer note */}
-      <Card className="border-border/40">
+      <Card>
         <CardHeader>
           <CardDescription>Informations</CardDescription>
           <CardTitle className={TYPOGRAPHY.H2}>Contact & mise à jour</CardTitle>
@@ -439,6 +438,6 @@ export default function Rules() {
           </p>
         </CardContent>
       </Card>
-    </PageLayout>
+    </div>
   );
 }

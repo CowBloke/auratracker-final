@@ -3,6 +3,7 @@ import { RotateCcw, Trophy } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { gamesApi } from '@/services/api';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades';
 
@@ -522,7 +523,7 @@ export default function Solitaire() {
   const hideLeaderboardForSpace = viewportWidth < 1450;
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-3 py-4 md:px-6 md:py-6">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-950/85 p-3 text-emerald-50 shadow-xl">
         <div className="flex flex-wrap gap-4 text-sm">
           <span>Score: <strong>{score}</strong></span>
@@ -530,14 +531,14 @@ export default function Solitaire() {
           <span>Time: <strong>{formatTime(seconds)}</strong></span>
           <span>Best: <strong>{highScore}</strong></span>
         </div>
-        <button
+        <Button variant="ghost"
           type="button"
           onClick={startNewGame}
           className="inline-flex items-center gap-2 rounded-lg border border-emerald-300/40 bg-emerald-800/60 px-3 py-2 text-sm font-medium transition hover:bg-emerald-700"
         >
           <RotateCcw className="h-4 w-4" />
           New Game
-        </button>
+        </Button>
       </div>
 
       <div className={cn('grid grid-cols-1 gap-4', !hideLeaderboardForSpace && 'xl:grid-cols-[1fr_280px]')}>
@@ -735,8 +736,8 @@ export default function Solitaire() {
         </section>
 
         {!hideLeaderboardForSpace && (
-        <aside className="rounded-2xl border border-border/40 bg-card shadow-sm">
-          <div className="flex items-center gap-2 border-b border-border/40 p-3">
+        <aside className="rounded-2xl border bg-card shadow-sm">
+          <div className="flex items-center gap-2 border-b p-3">
             <Trophy className="h-4 w-4 text-yellow-500" />
             <h3 className="text-sm font-semibold">Solitaire Leaderboard</h3>
           </div>

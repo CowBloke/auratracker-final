@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import PageLayout from '@/components/layout/PageLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   DailyWordleGuessEvaluation,
@@ -8,6 +7,7 @@ import {
   gamesApi,
 } from '@/services/api';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 const KEYBOARD_ROWS = ['QWERTYUIOP', 'ASDFGHJKL', 'ENTERZXCVBNMBACK'];
 
@@ -207,12 +207,12 @@ export default function Wordle() {
   }, [currentGuess, isCompleted, loading, submitting, wordLength]);
 
   return (
-    <PageLayout variant="compact">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
       <div className="mx-auto w-full max-w-6xl space-y-8">
         <section className="flex flex-col items-start justify-center gap-6 lg:flex-row">
           <div className="w-full max-w-3xl rounded-xl border border-border bg-card">
             <header className="border-b border-border px-4 py-3 text-center">
-              <h1 className="text-3xl font-bold tracking-wide">WORDLE</h1>
+              <h2 className="text-3xl font-bold tracking-wide">WORDLE</h2>
               <p className="mt-1 text-xs text-muted-foreground">{puzzleDate ? toDateLabel(puzzleDate) : '-'}</p>
             </header>
 
@@ -264,7 +264,7 @@ export default function Wordle() {
                             const letterState = key.length === 1 ? usedLetters.get(key) : undefined;
                             const keyTone = letterState ?? 'default';
                             return (
-                              <button
+                              <Button variant="ghost"
                                 key={key}
                                 type="button"
                                 onClick={() => onKeyPress(key)}
@@ -276,7 +276,7 @@ export default function Wordle() {
                                 )}
                               >
                                 {key === 'BACK' ? 'DEL' : key}
-                              </button>
+                              </Button>
                             );
                           })}
                         </div>
@@ -340,6 +340,6 @@ export default function Wordle() {
           </div>
         </section>
       </div>
-    </PageLayout>
+    </div>
   );
 }

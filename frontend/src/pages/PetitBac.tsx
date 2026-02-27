@@ -6,7 +6,6 @@ import { ArrowLeft, Users, Play, Send, LogOut, Trophy } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import PlayAgainPrompt from '@/components/game/PlayAgainPrompt';
 import { cn } from '@/lib/utils';
 
 const DEFAULT_CATEGORIES = ['Prenom', 'Ville', 'Pays', 'Animal', 'Objet', 'Metier'];
@@ -36,6 +35,7 @@ export default function PetitBac() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [timeLeft, setTimeLeft] = useState(0);
   const [hasQuitPlayAgain, setHasQuitPlayAgain] = useState(false);
+  const [playAgainProgress, setPlayAgainProgress] = useState(100);
 
   const categories = useMemo(() => {
     return categoriesInput
@@ -85,22 +85,68 @@ export default function PetitBac() {
   const myPlayAgainResponse = petitBacPlayAgainPrompt?.responses.find((r) => r.userId === user?.id);
   const hasQuit = hasQuitPlayAgain || (!!myPlayAgainResponse && !myPlayAgainResponse.playAgain);
   const showPlayAgainPrompt = !!petitBacPlayAgainPrompt && !hasQuit;
+
+  useEffect(() => {
+    if (!showPlayAgainPrompt || !petitBacPlayAgainPrompt) {
+      setPlayAgainProgress(100);
+      return;
+    }
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - petitBacPlayAgainPrompt.startTime;
+      setPlayAgainProgress(Math.max(0, 100 - (elapsed / petitBacPlayAgainPrompt.timeLimit) * 100));
+    }, 120);
+    return () => clearInterval(interval);
+  }, [showPlayAgainPrompt, petitBacPlayAgainPrompt]);
+
   const playAgainModals = (
     <>
       {petitBacPlayAgainPrompt && (
-        <PlayAgainPrompt
-          open={showPlayAgainPrompt}
-          detail={`Manches ${petitBacPlayAgainPrompt.rounds} - temps ${Math.round(petitBacPlayAgainPrompt.roundDuration / 1000)}s - ${petitBacPlayAgainPrompt.categories.length} categories`}
-          players={petitBacPlayAgainPrompt.players}
-          responses={petitBacPlayAgainPrompt.responses}
-          timeLimit={petitBacPlayAgainPrompt.timeLimit}
-          startTime={petitBacPlayAgainPrompt.startTime}
-          onQuit={() => {
-            respondToPetitBacPlayAgainPrompt(false);
-            setHasQuitPlayAgain(true);
-          }}
-          onPlayAgain={() => respondToPetitBacPlayAgainPrompt(true)}
-        />
+        <Dialog open={showPlayAgainPrompt} onOpenChange={() => {}}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Relancer une partie ?</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Manches {petitBacPlayAgainPrompt.rounds} - temps {Math.round(petitBacPlayAgainPrompt.roundDuration / 1000)}s - {petitBacPlayAgainPrompt.categories.length} categories
+              </p>
+              <div className="space-y-2">
+                {petitBacPlayAgainPrompt.players.map((player) => {
+                  const response = petitBacPlayAgainPrompt.responses.find((r) => r.userId === player.userId);
+                  return (
+                    <div key={player.userId} className="flex items-center justify-between text-sm">
+                      <span style={{ color: player.usernameColor || undefined }}>{player.username}</span>
+                      {response ? (
+                        <span className={cn('text-xs uppercase', response.playAgain ? 'text-green-500' : 'text-red-500')}>
+                          {response.playAgain ? 'OK' : 'Quitte'}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">En attente</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="h-1 rounded bg-muted">
+                <div className="h-full bg-foreground transition-all" style={{ width: `${playAgainProgress}%` }} />
+              </div>
+              <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    respondToPetitBacPlayAgainPrompt(false);
+                    setHasQuitPlayAgain(true);
+                  }}
+                >
+                  Quitter
+                </Button>
+                <Button onClick={() => respondToPetitBacPlayAgainPrompt(true)}>
+                  Relancer
+                </Button>
+              </DialogFooter>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       <Dialog open={!!petitBacGameOver} onOpenChange={clearPetitBacGameOver}>
@@ -139,7 +185,7 @@ export default function PetitBac() {
 
   if (!currentParty) {
     return (
-      <div className="max-w-4xl mx-auto py-12 px-6 space-y-8">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
         <Link
           to="/games"
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -168,7 +214,7 @@ export default function PetitBac() {
 
   if (!petitBacGame) {
     return (
-      <div className="max-w-4xl mx-auto py-12 px-6 space-y-8">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
         <Link
           to="/games"
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -236,7 +282,7 @@ export default function PetitBac() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-6 space-y-8">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
       <div className="flex items-center justify-between">
         <Link
           to="/games"
@@ -294,7 +340,7 @@ export default function PetitBac() {
               {petitBacGame.players.map((player) => (
                 <div
                   key={player.userId}
-                  className="flex items-center justify-between border border-border/40 rounded px-3 py-2"
+                  className="flex items-center justify-between border rounded px-3 py-2"
                 >
                   <span
                     className={cn('text-sm', player.userId === user?.id && 'font-medium')}
@@ -318,7 +364,7 @@ export default function PetitBac() {
         </div>
 
         {petitBacRoundResult && (
-          <div className="border border-border/40 rounded-lg p-4 space-y-3">
+          <div className="border rounded-lg p-4 space-y-3">
             <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
               Resultats manche {petitBacRoundResult.round}
             </div>

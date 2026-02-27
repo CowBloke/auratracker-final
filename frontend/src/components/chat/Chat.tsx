@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../../contexts/SocketContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Send, ChevronDown, ChevronUp, Trash2, MoreHorizontal, Pin, PinOff } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -115,7 +116,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
     >
       <Collapsible open={isOpen} onOpenChange={onToggle}>
         <CollapsibleTrigger asChild>
-          <button className="w-full h-12 px-6 flex items-center justify-between text-sm hover:bg-muted/30 transition-colors">
+          <Button variant="ghost" className="h-12 w-full justify-between rounded-none px-6 text-sm">
             <div className="flex items-center gap-3">
               <span className="text-muted-foreground">chat</span>
               <span className="text-xs text-muted-foreground tabular-nums">
@@ -132,7 +133,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
             ) : (
               <ChevronUp className="w-4 h-4 text-muted-foreground" />
             )}
-          </button>
+          </Button>
         </CollapsibleTrigger>
 
         <CollapsibleContent className="flex h-[calc(100%-3rem)]">
@@ -167,16 +168,18 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                             }}
                           />
                         )}
-                        <button
+                        <Button
+                          type="button"
                           onClick={() => navigate(`/profile/${msg.userId}`)}
+                          variant="link"
                           className={cn(
-                            "text-xs font-medium hover:underline cursor-pointer",
+                            "h-auto px-0 py-0 text-xs font-medium",
                             !msg.usernameColor && (msg.userId === user?.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')
                           )}
                           style={msg.usernameColor ? { color: msg.usernameColor } : undefined}
                         >
                           {msg.username}
-                        </button>
+                        </Button>
                         {msg.badges && msg.badges.length > 0 && (
                           <div className="flex items-center gap-1">
                             {msg.badges.map((badge) => (
@@ -241,47 +244,57 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                         <div className="ml-auto flex items-center gap-2">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <button
+                              <Button
                                 type="button"
+                                variant="ghost"
+                                size="icon"
                                 className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/70 hover:text-foreground"
                                 title="Réagir"
                               >
                                 <MoreHorizontal className="h-3.5 w-3.5" />
-                              </button>
+                              </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent
                               align={msg.userId === user?.id ? 'end' : 'start'}
                               className="flex items-center gap-1 p-2"
                             >
                               {REACTION_OPTIONS.map((reaction) => (
-                                <button
+                                <Button
                                   key={reaction.emoji}
                                   type="button"
                                   onClick={() => reactToMessage(msg.id, reaction.emoji)}
-                                  className="h-8 w-8 rounded-md hover:bg-muted/60 transition-colors"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
                                   title={reaction.label}
                                 >
                                   <span className="text-base">{reaction.emoji}</span>
-                                </button>
+                                </Button>
                               ))}
                             </DropdownMenuContent>
                           </DropdownMenu>
                           {user?.isAdmin && (
                             <>
-                              <button
+                              <Button
+                                type="button"
                                 onClick={() => pinMessage(msg.id, !msg.pinned)}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/70 hover:text-foreground"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 opacity-0 transition-opacity text-muted-foreground/70 group-hover:opacity-100 hover:text-foreground"
                                 title={msg.pinned ? 'Désépingler' : 'Épingler'}
                               >
                                 {msg.pinned ? <PinOff className="w-3 h-3" /> : <Pin className="w-3 h-3" />}
-                              </button>
-                              <button
+                              </Button>
+                              <Button
+                                type="button"
                                 onClick={() => deleteMessage(msg.id)}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive/80"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 opacity-0 transition-opacity text-destructive group-hover:opacity-100 hover:text-destructive/80"
                                 title="Delete message"
                               >
                                 <Trash2 className="w-3 h-3" />
-                              </button>
+                              </Button>
                             </>
                           )}
                         </div>
@@ -322,13 +335,15 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                   placeholder="Message..."
                   className="flex-1 h-9 bg-transparent border-border/50"
                 />
-                <button
+                <Button
                   type="submit"
                   disabled={!input.trim()}
-                  className="h-9 w-9 flex items-center justify-center border border-border/50 text-muted-foreground hover:text-foreground hover:border-foreground/30 disabled:opacity-30 transition-colors"
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 text-muted-foreground"
                 >
                   <Send className="h-4 w-4" />
-                </button>
+                </Button>
               </div>
             </form>
           </div>
@@ -340,19 +355,21 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
               if (open) requestOnlineUsers();
             }}>
               <CollapsibleTrigger asChild>
-                <button className="w-full px-4 py-3 flex items-center justify-between text-xs text-muted-foreground hover:text-foreground transition-colors">
+                <Button variant="ghost" className="h-auto w-full justify-between rounded-none px-4 py-3 text-xs text-muted-foreground">
                   <span>en ligne</span>
                   <span className="tabular-nums">{onlineCount}</span>
-                </button>
+                </Button>
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <ScrollArea className="h-40">
                   <div className="px-4 space-y-1">
                     {onlineUsers.map((u) => (
-                      <button
+                      <Button
                         key={u.userId}
+                        type="button"
                         onClick={() => navigate(`/profile/${u.userId}`)}
-                        className="flex items-center gap-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors w-full text-left"
+                        variant="ghost"
+                        className="h-auto w-full justify-start gap-2 px-0 py-1 text-left text-xs text-muted-foreground"
                       >
                         <div className="w-1 h-1 rounded-full bg-foreground/50" />
                         <div className="min-w-0 flex-1">
@@ -368,7 +385,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                             );
                           })()}
                         </div>
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </ScrollArea>

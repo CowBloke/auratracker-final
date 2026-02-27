@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { auraCoinApi, AuraCoinLeaderboardEntry, leaderboardsApi } from '../services/api';
-import PageLayout from '@/components/layout/PageLayout';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
@@ -130,134 +130,134 @@ export default function Leaderboards() {
   };
 
   return (
-    <PageLayout variant="compact">
-      {userRank && (
-        <div className="flex items-center justify-end">
-          <div className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tabular-nums")}>
-            #{userRank}
-          </div>
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1.5">
+          <h1 className={TYPOGRAPHY.PAGE_TITLE}>Classements</h1>
+          <p className={TYPOGRAPHY.PAGE_DESCRIPTION}>Classements economie et jeux.</p>
         </div>
-      )}
+        {userRank ? (
+          <p className={cn(TYPOGRAPHY.PAGE_META, "tabular-nums")}>Classement personnel #{userRank}</p>
+        ) : null}
+      </header>
 
-      {/* Navigation */}
-      <div className="flex flex-wrap gap-2">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
-            className={({ isActive }) => cn(
-              "px-4 py-2 text-sm border transition-colors rounded-md",
-              isActive
-                ? "border-foreground text-foreground"
-                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-            )}
-          >
-            {item.label}
-          </NavLink>
-        ))}
-      </div>
+      <div className={SPACING.PAGE_CONTENT}>
+        {/* Navigation */}
+        <div className="flex flex-wrap gap-2">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className={({ isActive }) =>
+                cn(
+                  buttonVariants({
+                    variant: isActive ? 'secondary' : 'outline',
+                    size: 'sm',
+                  }),
+                  'h-9'
+                )}
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </div>
 
-      {/* Category Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'economy' | 'games')}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="economy">Économie</TabsTrigger>
-          <TabsTrigger value="games">Jeux</TabsTrigger>
-        </TabsList>
+        {/* Category Tabs */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'economy' | 'games')}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="economy">Économie</TabsTrigger>
+            <TabsTrigger value="games">Jeux</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="economy" className={SPACING.SECTION_SPACING}>
-          <div className="flex flex-wrap gap-2">
-            {categories
-              .filter((cat) => economyCategories.includes(cat.id))
-              .map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => setCategory(cat.id)}
-                  className={cn(
-                    "px-4 py-2 text-sm border transition-colors rounded-md",
-                    category === cat.id
-                      ? "border-foreground text-foreground bg-muted"
-                      : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-                  )}
-                >
-                  {cat.name}
-                </button>
-              ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="games" className={SPACING.SECTION_SPACING}>
-          <div className="flex flex-wrap gap-2">
-            {categories
-              .filter((cat) => gameCategories.includes(cat.id))
-              .map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => setCategory(cat.id)}
-                  className={cn(
-                    "px-4 py-2 text-sm border transition-colors rounded-md",
-                    category === cat.id
-                      ? "border-foreground text-foreground bg-muted"
-                      : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-                  )}
-                >
-                  {cat.name}
-                </button>
-              ))}
-          </div>
-        </TabsContent>
-      </Tabs>
-
-      {/* Rankings */}
-      <div>
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
-          </div>
-        ) : rankings.length === 0 ? (
-          <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
-            Aucun classement pour le moment
-          </p>
-        ) : (
-          <Card className="border-border/40">
-            <CardContent className="p-0">
-              <div className="divide-y divide-border/30">
-                {rankings.map((ranking) => (
-                  <div
-                    key={ranking.userId}
-                    className={cn(
-                      "flex items-center justify-between py-4 px-6",
-                      ranking.userId === user?.id && "bg-muted/30"
-                    )}
+          <TabsContent value="economy" className={SPACING.SECTION_SPACING}>
+            <div className="flex flex-wrap gap-2">
+              {categories
+                .filter((cat) => economyCategories.includes(cat.id))
+                .map((cat) => (
+                  <Button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setCategory(cat.id)}
+                    variant={category === cat.id ? 'secondary' : 'outline'}
+                    size="sm"
                   >
-                    <div className="flex items-center gap-6">
-                      <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground w-8 tabular-nums")}>
-                        {ranking.rank}
-                      </span>
-                      <span 
-                        className={cn(
-                          TYPOGRAPHY.BODY,
-                          "font-medium",
-                          ranking.userId === user?.id && "text-foreground"
-                        )}
-                        style={ranking.usernameColor ? { color: ranking.usernameColor } : undefined}
-                      >
-                        {ranking.username}
-                        {ranking.userId === user?.id && (
-                          <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground ml-2")}>(toi)</span>
-                        )}
+                    {cat.name}
+                  </Button>
+                ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="games" className={SPACING.SECTION_SPACING}>
+            <div className="flex flex-wrap gap-2">
+              {categories
+                .filter((cat) => gameCategories.includes(cat.id))
+                .map((cat) => (
+                  <Button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setCategory(cat.id)}
+                    variant={category === cat.id ? 'secondary' : 'outline'}
+                    size="sm"
+                  >
+                    {cat.name}
+                  </Button>
+                ))}
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {/* Rankings */}
+        <div>
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+            </div>
+          ) : rankings.length === 0 ? (
+            <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
+              Aucun classement pour le moment
+            </p>
+          ) : (
+            <Card>
+              <CardContent className="p-0">
+                <div className="divide-y divide-border/30">
+                  {rankings.map((ranking) => (
+                    <div
+                      key={ranking.userId}
+                      className={cn(
+                        "flex items-center justify-between py-4 px-6",
+                        ranking.userId === user?.id && "bg-muted/30"
+                      )}
+                    >
+                      <div className="flex items-center gap-6">
+                        <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground w-8 tabular-nums")}>
+                          {ranking.rank}
+                        </span>
+                        <span 
+                          className={cn(
+                            TYPOGRAPHY.BODY,
+                            "font-medium",
+                            ranking.userId === user?.id && "text-foreground"
+                          )}
+                          style={ranking.usernameColor ? { color: ranking.usernameColor } : undefined}
+                        >
+                          {ranking.username}
+                          {ranking.userId === user?.id && (
+                            <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground ml-2")}>(toi)</span>
+                          )}
+                        </span>
+                      </div>
+                      <span className={cn("tabular-nums", TYPOGRAPHY.MUTED)}>
+                        {formatValue(ranking)}
                       </span>
                     </div>
-                    <span className={cn("tabular-nums", TYPOGRAPHY.MUTED)}>
-                      {formatValue(ranking)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
-    </PageLayout>
+    </div>
   );
 }

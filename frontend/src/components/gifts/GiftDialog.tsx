@@ -181,12 +181,14 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened, initialTa
                     Pas de cadeaux en attente
                   </div>
                 ) : (
-                  <div className="space-y-2 pr-4">
+                    <div className="space-y-2 pr-4">
                     {inboxGifts.map(gift => (
-                      <button
+                      <Button
                         key={gift.id}
+                        type="button"
                         onClick={() => handleOpenGift(gift)}
-                        className="w-full flex items-center gap-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors text-left"
+                        variant="ghost"
+                        className="h-auto w-full justify-start gap-3 rounded-lg border p-3 text-left hover:bg-accent/50"
                       >
                         <div className="h-10 w-10 rounded-full bg-gradient-to-br from-red-500 to-pink-500 flex items-center justify-center text-white flex-shrink-0">
                           <GiftIcon className="h-5 w-5" />
@@ -205,7 +207,7 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened, initialTa
                           </p>
                         </div>
                         <span className="text-xs font-medium text-primary">Ouvrir</span>
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 )}
@@ -266,10 +268,12 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened, initialTa
                       <label className="text-sm font-medium mb-2 block">Articles cadeaux</label>
                       <div className="space-y-2">
                         {templates.map(t => (
-                          <button
+                          <Button
                             key={t.id}
+                            type="button"
                             onClick={() => toggleTemplate(t.id)}
-                            className={`w-full flex items-center gap-3 p-2.5 rounded-lg border transition-colors text-left ${
+                            variant="ghost"
+                            className={`h-auto w-full justify-start gap-3 rounded-lg border p-2.5 text-left transition-colors ${
                               selectedTemplates.includes(t.id)
                                 ? 'border-primary bg-primary/10'
                                 : 'hover:bg-accent/50'
@@ -296,7 +300,7 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened, initialTa
                               )}
                             </div>
                             <span className="text-sm font-medium text-yellow-500">${t.price}</span>
-                          </button>
+                          </Button>
                         ))}
                       </div>
                     </div>

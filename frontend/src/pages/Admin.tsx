@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
-import PageLayout from '@/components/layout/PageLayout';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Swords, Rocket, Download, Gift as GiftIcon, Sparkles, Upload, Eye, Activity, Trophy, CalendarRange, RefreshCw } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
@@ -1732,7 +1731,7 @@ export default function Admin() {
   };
 
   return (
-    <PageLayout variant="full">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
       {/* Message */}
       {message && (
         <Card className={cn(
@@ -1810,7 +1809,7 @@ export default function Admin() {
         </TabsList>
 
         <TabsContent value="users" className={SPACING.SECTION_SPACING}>
-          <Card className="border-border/40">
+          <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardDescription>Demandes d'inscription en attente</CardDescription>
@@ -1933,7 +1932,7 @@ export default function Admin() {
         </TabsContent>
 
         <TabsContent value="users" className={SPACING.SECTION_SPACING}>
-          <Card className="border-border/40">
+          <Card>
             <CardHeader>
               {/* Search Bar */}
               <div className="relative">
@@ -2220,7 +2219,7 @@ export default function Admin() {
         </TabsContent>
 
         <TabsContent value="content" className={SPACING.SECTION_SPACING}>
-          <Card className="border-border/40">
+          <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardDescription>Gestion des objets de la boutique</CardDescription>
@@ -2347,7 +2346,7 @@ export default function Admin() {
 
         <TabsContent value="content" className={SPACING.SECTION_SPACING}>
           <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-            <Card className="border-border/40">
+            <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardDescription>Créer un badge</CardDescription>
@@ -2364,11 +2363,11 @@ export default function Admin() {
                   placeholder="Nom du badge"
                 />
                 <div className="flex items-center gap-3">
-                  <input
+                  <Input
                     type="color"
                     value={badgeForm.color}
                     onChange={(e) => setBadgeForm((prev) => ({ ...prev, color: e.target.value }))}
-                    className="h-10 w-16 rounded border border-border/40 bg-transparent"
+                    className="h-10 w-16 rounded border bg-transparent p-1"
                     aria-label="Couleur du badge"
                   />
                   <Input
@@ -2417,7 +2416,7 @@ export default function Admin() {
             </CardContent>
           </Card>
 
-            <Card className="border-border/40">
+            <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardDescription>Attribuer un badge</CardDescription>
@@ -2511,7 +2510,7 @@ export default function Admin() {
         </TabsContent>
 
         <TabsContent value="settings" className={SPACING.SECTION_SPACING}>
-          <Card className="border-border/40">
+          <Card>
             <CardHeader>
               <CardDescription>Parametres de suppression du chat</CardDescription>
             </CardHeader>
@@ -2612,7 +2611,7 @@ export default function Admin() {
         </TabsContent>
 
         <TabsContent value="bugs" className={SPACING.SECTION_SPACING}>
-          <Card className="border-border/40">
+          <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardDescription>Rapports de bugs des utilisateurs</CardDescription>
@@ -2751,7 +2750,7 @@ export default function Admin() {
         </TabsContent>
 
         <TabsContent value="bans" className={SPACING.SECTION_SPACING}>
-          <Card className="border-border/40">
+          <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardDescription>Gestion des bannissements</CardDescription>
@@ -2882,7 +2881,7 @@ export default function Admin() {
                 const isSelected = logFilter.type === type;
 
                 return (
-                  <button
+                  <Button variant="ghost"
                     key={type}
                     onClick={() => {
                       const newType = logFilter.type === type ? 'ALL' : type;
@@ -2904,7 +2903,7 @@ export default function Admin() {
                     )}>
                       {count}
                     </span>
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -2916,7 +2915,7 @@ export default function Admin() {
               {GAME_TYPES.map((game) => {
                 const isSelected = logFilter.gameType === game.value;
                 return (
-                  <button
+                  <Button variant="ghost"
                     key={game.value}
                     onClick={() => {
                       const newGameType = logFilter.gameType === game.value ? 'ALL' : game.value;
@@ -2932,7 +2931,7 @@ export default function Admin() {
                   >
                     <Gamepad2 className="h-3 w-3" />
                     <span>{game.label}</span>
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -3056,7 +3055,7 @@ export default function Admin() {
                 return (
                   <div key={log.id}>
                     {/* Collapsed single-line view */}
-                    <button
+                    <Button variant="ghost"
                       onClick={() => toggleLogExpand(log.id)}
                       className={cn(
                         "w-full px-3 py-2 flex items-center gap-2 transition-colors text-left",
@@ -3091,7 +3090,7 @@ export default function Admin() {
                         "h-4 w-4 text-muted-foreground/50 shrink-0 transition-transform",
                         isExpanded && "rotate-180"
                       )} />
-                    </button>
+                    </Button>
 
                     {/* Expanded details */}
                     {isExpanded && (
@@ -3188,7 +3187,7 @@ export default function Admin() {
         </TabsContent>
 
         <TabsContent value="communication" className={SPACING.SECTION_SPACING}>
-          <Card className="border-border/40">
+          <Card>
             <CardHeader>
               <CardDescription>Annonce top bar</CardDescription>
             </CardHeader>
@@ -3240,7 +3239,7 @@ export default function Admin() {
         </TabsContent>
 
         <TabsContent value="communication" className={SPACING.SECTION_SPACING}>
-          <Card className="border-border/40">
+          <Card>
             <CardHeader>
               <CardDescription>Popups de mise a jour visibles a la connexion</CardDescription>
             </CardHeader>
@@ -3317,7 +3316,7 @@ export default function Admin() {
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Image</label>
                     <div className="space-y-2">
-                      <input
+                      <Input
                         ref={updatePopupFileInputRef}
                         type="file"
                         accept="image/*"
@@ -3498,7 +3497,7 @@ export default function Admin() {
         </TabsContent>
 
         <TabsContent value="communication" className={SPACING.SECTION_SPACING}>
-          <Card className="border-border/40">
+          <Card>
             <CardHeader>
               <CardDescription>Maintenance</CardDescription>
             </CardHeader>
@@ -3571,7 +3570,7 @@ export default function Admin() {
         </TabsContent>
 
         <TabsContent value="blocks" className={SPACING.SECTION_SPACING}>
-          <Card className="border-border/40">
+          <Card>
             <CardHeader>
               <CardDescription>Blocage de pages</CardDescription>
             </CardHeader>
@@ -3664,7 +3663,7 @@ export default function Admin() {
         </TabsContent>
 
         <TabsContent value="settings" className={SPACING.SECTION_SPACING}>
-          <Card className="border-border/40">
+          <Card>
             <CardHeader>
               <CardDescription>Paramètres de jeu</CardDescription>
             </CardHeader>
@@ -4377,7 +4376,7 @@ export default function Admin() {
                       (e.target as HTMLImageElement).style.display = 'none';
                     }}
                   />
-                  <button
+                  <Button variant="ghost"
                     type="button"
                     onClick={() => {
                       setItemForm(prev => ({ ...prev, imageUrl: '' }));
@@ -4386,7 +4385,7 @@ export default function Admin() {
                     aria-label="Retirer l'image"
                   >
                     <X className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
@@ -4497,7 +4496,7 @@ export default function Admin() {
       </Dialog>
         {/* GIFTS TAB */}
         <TabsContent value="content" className={SPACING.SECTION_SPACING}>
-          <Card className="border-border/40">
+          <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <h3 className={TYPOGRAPHY.H3}>Templates de cadeaux</h3>
@@ -4699,7 +4698,7 @@ export default function Admin() {
             <div className="grid grid-cols-3 lg:grid-cols-1 gap-3 lg:min-w-[160px]">
 
               {/* En ligne maintenant */}
-              <div className="rounded-xl border border-border/40 bg-card p-4 flex flex-col gap-1.5">
+              <div className="rounded-xl border bg-card p-4 flex flex-col gap-1.5">
                 <div className="flex items-center gap-1.5">
                   <span
                     className="h-2 w-2 rounded-full bg-emerald-400 shrink-0"
@@ -4716,7 +4715,7 @@ export default function Admin() {
               </div>
 
               {/* Peak 24h */}
-              <div className="rounded-xl border border-border/40 bg-card p-4 flex flex-col gap-1.5">
+              <div className="rounded-xl border bg-card p-4 flex flex-col gap-1.5">
                 <div className="text-xs text-muted-foreground">Pic 24h</div>
                 <span
                   className="font-bold leading-none"
@@ -4727,7 +4726,7 @@ export default function Admin() {
               </div>
 
               {/* Peak 7d */}
-              <div className="rounded-xl border border-border/40 bg-card p-4 flex flex-col gap-1.5">
+              <div className="rounded-xl border bg-card p-4 flex flex-col gap-1.5">
                 <div className="text-xs text-muted-foreground">Pic 7 jours</div>
                 <span
                   className="font-bold leading-none"
@@ -4741,7 +4740,7 @@ export default function Admin() {
           </div>
 
           {/* ── CHART CARD ── */}
-          <Card className="border-border/40">
+          <Card>
             <CardHeader className="pb-0">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
@@ -4756,7 +4755,7 @@ export default function Admin() {
                   style={{ background: 'hsl(var(--muted)/0.4)', border: '1px solid hsl(var(--border)/0.4)' }}
                 >
                   {(['day', 'week', 'month', 'custom'] as const).map(p => (
-                    <button
+                    <Button variant="ghost"
                       key={p}
                       onClick={() => {
                         setActivityPeriod(p);
@@ -4770,17 +4769,17 @@ export default function Admin() {
                       )}
                     >
                       {p === 'day' ? "Aujourd'hui" : p === 'week' ? '7j' : p === 'month' ? '30j' : 'Plage'}
-                    </button>
+                    </Button>
                   ))}
-                  <button
+                  <Button variant="ghost"
                     onClick={() => fetchActivity(activityPeriod)}
                     className="p-1 rounded-md text-muted-foreground hover:text-foreground transition-colors ml-0.5"
                     title="Rafraîchir"
                   >
                     <RefreshCw className="h-3 w-3" />
-                  </button>
+                  </Button>
                 </div>
-                <button
+                <Button variant="ghost"
                   onClick={async () => {
                     setSnapshotting(true);
                     try {
@@ -4796,25 +4795,25 @@ export default function Admin() {
                 >
                   {snapshotting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
                   Snapshot
-                </button>
+                </Button>
               </div>
 
               {/* Custom date range — native date pickers (open system calendar) */}
               {activityPeriod === 'custom' && (
                 <div className="flex items-center gap-2 mt-3 flex-wrap">
                   <CalendarRange className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <input
+                  <Input
                     type="date"
                     value={activityCustomStart}
                     onChange={e => setActivityCustomStart(e.target.value)}
-                    className="h-8 rounded-md border border-border/60 bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    className="h-8 w-auto text-xs"
                   />
                   <span className="text-xs text-muted-foreground">→</span>
-                  <input
+                  <Input
                     type="date"
                     value={activityCustomEnd}
                     onChange={e => setActivityCustomEnd(e.target.value)}
-                    className="h-8 rounded-md border border-border/60 bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    className="h-8 w-auto text-xs"
                   />
                   <Button
                     size="sm"
@@ -4951,9 +4950,7 @@ export default function Admin() {
         </TabsContent>
 
       </Tabs>
-    </PageLayout>
+    </div>
   );
 }
-
-
 

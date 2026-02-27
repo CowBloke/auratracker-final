@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import PageLayout from '@/components/layout/PageLayout';
+import { Card, CardContent } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 type GamesTab = 'singleplayer' | 'multiplayer' | 'daily';
 
@@ -182,12 +183,12 @@ export default function Games() {
   const gamesToRender = activeTab === 'multiplayer' ? multiplayerGames : activeTab === 'daily' ? dailyGames : soloGames;
 
   return (
-    <PageLayout variant="compact">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
       <div className={SPACING.PAGE_SPACING}>
         <div className={SPACING.SECTION_SPACING}>
           <div className="flex flex-wrap gap-3">
             {tabConfig.map((tab) => (
-              <button
+              <Button variant="ghost"
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
@@ -195,11 +196,11 @@ export default function Games() {
                   'rounded-xl border px-5 py-2.5 text-sm font-semibold transition',
                   activeTab === tab.id
                     ? `bg-gradient-to-r ${tab.className} shadow-md`
-                    : 'border-border/40 bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground'
+                    : 'bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground'
                 )}
               >
                 {tab.label}
-              </button>
+              </Button>
             ))}
           </div>
 
@@ -212,29 +213,31 @@ export default function Games() {
                 <Link
                   key={game.id}
                   to={getGameLink(game.id)}
-                  className="group relative aspect-square overflow-hidden rounded-lg border border-border/40 bg-card text-card-foreground shadow-sm transition hover:-translate-y-1 hover:border-foreground/40 hover:shadow-md"
+                  className="group block"
                 >
-                  {'image' in game ? (
-                    <img
-                      src={game.image}
-                      alt={game.name}
-                      className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className={cn('absolute inset-0 bg-gradient-to-br', game.gradient)} />
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-                  <div className="relative z-10 flex h-full flex-col justify-end p-5 text-white">
-                    <h3 className={TYPOGRAPHY.H4}>{game.name}</h3>
-                    <p className="mt-1 text-xs text-white/85">{game.description}</p>
-                  </div>
+                  <Card className="relative aspect-square overflow-hidden transition hover:-translate-y-1 hover:border-foreground/40 hover:shadow-md">
+                    {'image' in game ? (
+                      <img
+                        src={game.image}
+                        alt={game.name}
+                        className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className={cn('absolute inset-0 bg-gradient-to-br', game.gradient)} />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+                    <CardContent className="relative z-10 flex h-full flex-col justify-end p-5 text-white">
+                      <h3 className={TYPOGRAPHY.H4}>{game.name}</h3>
+                      <p className="mt-1 text-xs text-white/85">{game.description}</p>
+                    </CardContent>
+                  </Card>
                 </Link>
               ))}
             </div>
           </div>
         </div>
       </div>
-    </PageLayout>
+    </div>
   );
 }

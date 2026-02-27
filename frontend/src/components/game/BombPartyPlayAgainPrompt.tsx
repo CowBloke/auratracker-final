@@ -62,7 +62,7 @@ export default function BombPartyPlayAgainPrompt() {
 
   return (
     <Dialog open onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-md" hideCloseButton>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <RotateCcw className="h-5 w-5" />

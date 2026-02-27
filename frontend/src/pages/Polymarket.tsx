@@ -26,7 +26,6 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { toast } from '@/hooks/use-toast';
-import PageLayout from '@/components/layout/PageLayout';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 
 export default function Polymarket() {
@@ -304,7 +303,7 @@ export default function Polymarket() {
 
   return (
     <>
-      <PageLayout variant="compact">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="events">Événements</TabsTrigger>
@@ -732,7 +731,7 @@ export default function Polymarket() {
           </TabsContent>
         )}
         </Tabs>
-      </PageLayout>
+      </div>
 
       {/* Suggestion Dialog */}
       <Dialog open={suggestionDialogOpen} onOpenChange={setSuggestionDialogOpen}>

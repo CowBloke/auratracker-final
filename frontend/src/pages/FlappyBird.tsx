@@ -404,7 +404,7 @@ export default function FlappyBird() {
   // RENDER
   // ============================================
   return (
-    <div className="max-w-4xl mx-auto py-12 px-6 space-y-8">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
       {/* Game Area */}
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Canvas */}
@@ -514,12 +514,12 @@ export default function FlappyBird() {
                       </div>
                       <span className="text-sm tabular-nums">{entry.highScore}</span>
                       {user?.isAdmin && (
-                        <button
+                        <Button variant="ghost"
                           onClick={() => handleDeleteScore(entry.user.id, entry.user.username)}
                           className="ml-2 text-xs text-destructive hover:underline"
                         >
                           Supprimer
-                        </button>
+                        </Button>
                       )}
                     </div>
                   ))}

@@ -48,7 +48,7 @@ export default function BombPartyJoinPrompt() {
 
   return (
     <Dialog open={!!bombPartyJoinPrompt} onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-md" hideCloseButton>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="font-normal flex items-center gap-2">
             <Play className="h-5 w-5 text-yellow-500" />

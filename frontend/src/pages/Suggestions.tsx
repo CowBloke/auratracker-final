@@ -16,7 +16,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
-import PageLayout from '@/components/layout/PageLayout';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 
 export default function Suggestions() {
@@ -337,7 +336,7 @@ export default function Suggestions() {
           return (
             <Card
               key={suggestion.id}
-              className="group border-border/40 hover:border-border/60 transition-colors"
+              className="group hover:border-border/60 transition-colors"
             >
               <div className="flex">
                 {/* Vote Column */}
@@ -452,7 +451,7 @@ export default function Suggestions() {
                   </p>
 
                   {suggestion.imageUrl && (
-                    <Card className="mt-4 border-border/40">
+                    <Card className="mt-4 ">
                       <CardContent className="p-0">
                         <img
                           src={resolveImageUrl(suggestion.imageUrl)}
@@ -525,7 +524,7 @@ export default function Suggestions() {
                     {suggestion.comments.length > 0 && (
                       <div className="space-y-3">
                         {suggestion.comments.map((comment) => (
-                          <Card key={comment.id} className="border-border/40">
+                          <Card key={comment.id}>
                             <CardContent className="p-3">
                               <div className="flex gap-3">
                                 <div className="min-w-0 flex-1">
@@ -610,16 +609,22 @@ export default function Suggestions() {
 
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+        </div>
       </div>
     );
   }
 
   return (
     <>
-      <PageLayout variant="compact">
-        <div className="flex items-center justify-end">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+        <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="space-y-1.5">
+            <h1 className={TYPOGRAPHY.PAGE_TITLE}>Suggestions</h1>
+            <p className={TYPOGRAPHY.PAGE_DESCRIPTION}>Idees en cours, votes et suivi d'avancement.</p>
+          </div>
           <Button
             onClick={() => setDialogOpen(true)}
             variant="outline"
@@ -627,28 +632,30 @@ export default function Suggestions() {
             <Plus className="h-4 w-4 mr-2" />
             Créer
           </Button>
+        </header>
+
+        <div className={SPACING.PAGE_CONTENT}>
+          {/* Tab Selector */}
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'pending' | 'done')}>
+            <TabsList>
+              <TabsTrigger value="pending">
+                Suggestions ({pendingSuggestions.length})
+              </TabsTrigger>
+              <TabsTrigger value="done">
+                Réalisées ({doneSuggestions.length})
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Content */}
+            <TabsContent value="pending" className={SPACING.SECTION_SPACING}>
+              {renderSuggestions(pendingSuggestions, false)}
+            </TabsContent>
+            <TabsContent value="done" className={SPACING.SECTION_SPACING}>
+              {renderSuggestions(doneSuggestions, true)}
+            </TabsContent>
+          </Tabs>
         </div>
-
-        {/* Tab Selector */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'pending' | 'done')}>
-          <TabsList>
-            <TabsTrigger value="pending">
-              Suggestions ({pendingSuggestions.length})
-            </TabsTrigger>
-            <TabsTrigger value="done">
-              Réalisées ({doneSuggestions.length})
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Content */}
-          <TabsContent value="pending" className={SPACING.SECTION_SPACING}>
-            {renderSuggestions(pendingSuggestions, false)}
-          </TabsContent>
-          <TabsContent value="done" className={SPACING.SECTION_SPACING}>
-            {renderSuggestions(doneSuggestions, true)}
-          </TabsContent>
-        </Tabs>
-      </PageLayout>
+      </div>
 
       <Dialog
         open={dialogOpen}
@@ -696,7 +703,7 @@ export default function Suggestions() {
               />
               {imageUrl && (
                 <div className="relative">
-                  <Card className="border-border/40">
+                  <Card>
                     <CardContent className="p-0">
                       <img
                         src={imageUrl}

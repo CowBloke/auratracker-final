@@ -12,7 +12,6 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import PageLayout from '@/components/layout/PageLayout';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 
 interface User {
@@ -139,11 +138,11 @@ export default function Party() {
   const selectedGameId = partySelectedGame?.gameId;
   return (
     <>
-      <PageLayout variant="compact">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
 
       {/* Invites */}
       {partyInvites.length > 0 && (
-        <Card className="border-border/40">
+        <Card>
           <CardHeader>
             <h2 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tracking-wide uppercase")}>
               Invitations
@@ -186,7 +185,7 @@ export default function Party() {
 
       {/* Current Party or Public Parties */}
       {currentParty ? (
-        <Card className="border-border/40">
+        <Card>
           <CardContent className={SPACING.SECTION_SPACING}>
             <div className="flex items-center justify-between">
               <div>
@@ -231,7 +230,7 @@ export default function Party() {
             </div>
 
             {/* Members */}
-            <Card className="border-border/40">
+            <Card>
               <CardContent className="space-y-0">
                 {partyMembers.map((member) => (
                   <div
@@ -274,7 +273,7 @@ export default function Party() {
                 {currentParty.maxSize === 2 ? 'Jeux de duel' : 'Jeux multijoueur'}
               </h3>
               {partySelectedGame ? (
-                <Card className="border-border/40">
+                <Card>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between gap-4">
                       <div>
@@ -435,7 +434,7 @@ export default function Party() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="border-border/40">
+        <Card>
           <CardContent className={SPACING.SECTION_SPACING}>
             <div className="flex items-center justify-between gap-3">
               <h2 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tracking-wide uppercase")}>
@@ -515,7 +514,7 @@ export default function Party() {
           </CardContent>
         </Card>
       )}
-      </PageLayout>
+      </div>
 
       {/* Create Party Modal */}
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
@@ -634,13 +633,13 @@ export default function Party() {
               </p>
             ) : (
               availableUsersToInvite.map((u) => (
-                <button
+                <Button variant="ghost"
                   key={u.id}
                   onClick={() => handleInvite(u.id)}
                   className="w-full text-left py-3 border-b border-border/30 last:border-0 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {u.username}
-                </button>
+                </Button>
               ))
             )}
           </div>

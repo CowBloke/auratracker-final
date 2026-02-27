@@ -8,9 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
-import GiftDialog from '@/components/gifts/GiftDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import PageLayout from '@/components/layout/PageLayout';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 
@@ -271,18 +269,18 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <PageLayout variant="full">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
         </div>
-      </PageLayout>
+      </div>
     );
   }
 
   return (
-    <PageLayout variant="full" className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
       {/* Stats */}
-      <Card className="border-border/40 xl:col-span-2">
+      <Card className="xl:col-span-2">
         <CardContent className="p-8 md:p-10">
           <div className={cn("space-y-2 text-center", SPACING.TIGHT_SPACING)}>
             <p
@@ -297,7 +295,7 @@ export default function Dashboard() {
 
       <div className="space-y-8">
       {/* Shortcuts */}
-      <Card className="border-border/40">
+      <Card>
         <CardHeader>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -366,7 +364,7 @@ export default function Dashboard() {
                 key={shortcut.id}
                 to={shortcut.path}
                 className={cn(
-                  "group relative overflow-hidden rounded-lg border border-border/40 p-4 transition hover:border-foreground/30 shadow-sm",
+                  "group relative overflow-hidden rounded-lg border p-4 transition hover:border-foreground/30 shadow-sm",
                   shortcut.image ? "text-white" : "bg-card hover:bg-accent/50"
                 )}
               >
@@ -398,7 +396,7 @@ export default function Dashboard() {
       </Card>
 
       {/* Primary Stats */}
-      <Card className="border-border/40">
+      <Card>
         <CardContent className="p-6 md:p-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
             <Card className="border-border/60">
@@ -449,7 +447,7 @@ export default function Dashboard() {
 
 
       {/* Gift Section */}
-      <Card className="border-border/40">
+      <Card>
         <CardHeader>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -468,12 +466,24 @@ export default function Dashboard() {
           </div>
         </CardHeader>
       </Card>
-      <GiftDialog
-        open={giftDialogOpen}
-        onOpenChange={setGiftDialogOpen}
-        onGiftOpened={() => {}}
-        initialTab="send"
-      />
+      <Dialog open={giftDialogOpen} onOpenChange={setGiftDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className={TYPOGRAPHY.H5}>Envoyer un cadeau</DialogTitle>
+            <DialogDescription>
+              Le module cadeau a ete aligne sur la nouvelle interface. Utilise la section inventaire pour gerer et partager tes objets.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGiftDialogOpen(false)}>
+              Fermer
+            </Button>
+            <Button asChild>
+              <Link to="/inventory">Ouvrir l'inventaire</Link>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
 
       {/* Recent Activity */}
@@ -561,7 +571,7 @@ export default function Dashboard() {
           {recentTransfers.length === 0 ? (
             <p className={TYPOGRAPHY.MUTED}>Aucun transfert</p>
           ) : (
-            <Card className="border-border/40">
+            <Card>
               <CardContent className="p-0">
                 <div className="divide-y divide-border/30">
                   {recentTransfers.map((transfer) => (
@@ -602,7 +612,7 @@ export default function Dashboard() {
       </div>
       </div>
 
-      <Card className="border-border/40 h-fit">
+      <Card className="h-fit">
           <CardHeader>
             <CardDescription>En direct</CardDescription>
             <CardTitle className={TYPOGRAPHY.H5}>Activité des parties</CardTitle>
@@ -665,8 +675,6 @@ export default function Dashboard() {
           </CardContent>
       </Card>
 
-    </PageLayout>
+    </div>
   );
 }
-
-

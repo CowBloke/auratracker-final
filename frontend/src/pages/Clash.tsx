@@ -262,14 +262,16 @@ export default function Clash() {
 
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-6 space-y-16">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-16">
       {/* Stats */}
       <div className="flex items-center justify-end gap-4 text-sm text-muted-foreground tabular-nums">
         <span>{trophies} 🏆</span>
@@ -282,7 +284,7 @@ export default function Clash() {
       {/* Tabs */}
       <div className="flex gap-2">
         {(['base', 'attack', 'history'] as ViewMode[]).map((mode) => (
-          <button
+          <Button variant="ghost"
             key={mode}
             onClick={() => setViewMode(mode)}
             className={cn(
@@ -293,7 +295,7 @@ export default function Clash() {
             )}
           >
             {mode === 'base' ? 'Base' : mode === 'attack' ? 'Attaque' : 'Historique'}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -306,27 +308,27 @@ export default function Clash() {
               <div className="flex gap-2">
                 {isEditing ? (
                   <>
-                    <button
+                    <Button variant="ghost"
                       onClick={() => { setIsEditing(false); setPlacingBuilding(null); setSelectedBuilding(null); loadBase(); }}
                       className="px-3 py-1 text-sm border border-border/30 text-muted-foreground hover:text-foreground"
                     >
                       Annuler
-                    </button>
-                    <button
+                    </Button>
+                    <Button variant="ghost"
                       onClick={saveBase}
                       disabled={saving}
                       className="px-3 py-1 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background disabled:opacity-50"
                     >
                       {saving ? 'Sauvegarde...' : 'Sauvegarder'}
-                    </button>
+                    </Button>
                   </>
                 ) : (
-                  <button
+                  <Button variant="ghost"
                     onClick={() => setIsEditing(true)}
                     className="px-3 py-1 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background"
                   >
                     Modifier
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
@@ -339,7 +341,7 @@ export default function Clash() {
                 <h3 className="text-sm text-muted-foreground uppercase tracking-wide">Bâtiments</h3>
                 <div className="grid grid-cols-2 gap-2">
                   {Object.entries(BUILDING_CONFIG).map(([type, config]) => (
-                    <button
+                    <Button variant="ghost"
                       key={type}
                       onClick={() => setPlacingBuilding(type === placingBuilding ? null : type)}
                       className={cn(
@@ -351,7 +353,7 @@ export default function Clash() {
                     >
                       <span className="mr-2">{config.emoji}</span>
                       {config.name}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
@@ -360,12 +362,12 @@ export default function Clash() {
             {selectedBuilding && isEditing && (
               <div className="space-y-4">
                 <h3 className="text-sm text-muted-foreground uppercase tracking-wide">Sélectionné</h3>
-                <button
+                <Button variant="ghost"
                   onClick={deleteBuilding}
                   className="w-full px-3 py-2 text-sm border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
                 >
                   Supprimer
-                </button>
+                </Button>
               </div>
             )}
 
@@ -391,9 +393,9 @@ export default function Clash() {
         <section className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-medium">Cibles</h2>
-            <button onClick={loadTargets} className="text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" onClick={loadTargets} className="text-muted-foreground hover:text-foreground">
               <RefreshCw className="w-4 h-4" />
-            </button>
+            </Button>
           </div>
 
           {attackCooldown && new Date() < attackCooldown ? (
@@ -416,12 +418,12 @@ export default function Clash() {
                     <span className="text-sm text-muted-foreground tabular-nums">
                       ${target.potentialMoney} · {target.potentialAura} aura
                     </span>
-                    <button
+                    <Button variant="ghost"
                       onClick={() => scoutTarget(target)}
                       className="px-3 py-1 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background"
                     >
                       Scout
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -434,9 +436,9 @@ export default function Clash() {
       {viewMode === 'scout' && selectedTarget && (
         <div className="space-y-6">
           <div className="flex items-center gap-4">
-            <button onClick={() => { setViewMode('attack'); setSelectedTarget(null); }} className="text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" onClick={() => { setViewMode('attack'); setSelectedTarget(null); }} className="text-muted-foreground hover:text-foreground">
               <X className="w-4 h-4" />
-            </button>
+            </Button>
             <div>
               <h2 className="text-lg font-medium">Scout: {selectedTarget.username}</h2>
               <p className="text-sm text-muted-foreground">
@@ -450,12 +452,12 @@ export default function Clash() {
               {renderGrid(targetBase, () => {}, false)}
             </div>
             <div>
-              <button
+              <Button variant="ghost"
                 onClick={startBattle}
                 className="w-full px-4 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background"
               >
                 Attaquer
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -467,13 +469,13 @@ export default function Clash() {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-medium">Bataille: {selectedTarget.username}</h2>
             {!battleResult && (
-              <button
+              <Button variant="ghost"
                 onClick={endBattle}
                 className="px-3 py-1 text-sm border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
               >
                 <ChevronRight className="w-4 h-4 inline mr-1" />
                 Terminer
-              </button>
+              </Button>
             )}
           </div>
 
@@ -530,7 +532,7 @@ export default function Clash() {
                   <h3 className="text-sm text-muted-foreground uppercase tracking-wide">Troupes</h3>
                   <div className="space-y-2">
                     {troops.map((troop) => (
-                      <button
+                      <Button variant="ghost"
                         key={troop.type}
                         onClick={() => setSelectedTroop(troop.type === selectedTroop ? null : troop.type)}
                         disabled={troop.count <= 0}
@@ -542,7 +544,7 @@ export default function Clash() {
                       >
                         <span>{TROOP_CONFIG[troop.type]?.emoji} {TROOP_CONFIG[troop.type]?.name}</span>
                         <span className="tabular-nums">{troop.count}</span>
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>

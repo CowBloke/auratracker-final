@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { TYPOGRAPHY } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { CenteredShell } from '@/components/layout/centered-shell';
 
 interface MaintenanceProps {
   message?: string;
@@ -54,8 +55,8 @@ export default function Maintenance({ message, endDate }: MaintenanceProps) {
   }, [endDate]);
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center py-12 px-6">
-      <div className="max-w-4xl text-center space-y-6">
+    <CenteredShell widthClassName="max-w-5xl">
+      <div className="space-y-6 text-center">
         <div className={TYPOGRAPHY.H2}>
           Site en maintenance
         </div>
@@ -69,7 +70,7 @@ export default function Maintenance({ message, endDate }: MaintenanceProps) {
               Retour prévu dans :
             </div>
             <div className="grid grid-cols-4 gap-4 max-w-2xl mx-auto">
-              <Card className="border-border/40">
+              <Card>
                 <CardContent className="p-6">
                   <div className={cn(TYPOGRAPHY.H1, "mb-2 tabular-nums")}>
                     {String(timeLeft.days).padStart(2, '0')}
@@ -79,7 +80,7 @@ export default function Maintenance({ message, endDate }: MaintenanceProps) {
                   </div>
                 </CardContent>
               </Card>
-              <Card className="border-border/40">
+              <Card>
                 <CardContent className="p-6">
                   <div className={cn(TYPOGRAPHY.H1, "mb-2 tabular-nums")}>
                     {String(timeLeft.hours).padStart(2, '0')}
@@ -89,7 +90,7 @@ export default function Maintenance({ message, endDate }: MaintenanceProps) {
                   </div>
                 </CardContent>
               </Card>
-              <Card className="border-border/40">
+              <Card>
                 <CardContent className="p-6">
                   <div className={cn(TYPOGRAPHY.H1, "mb-2 tabular-nums")}>
                     {String(timeLeft.minutes).padStart(2, '0')}
@@ -99,7 +100,7 @@ export default function Maintenance({ message, endDate }: MaintenanceProps) {
                   </div>
                 </CardContent>
               </Card>
-              <Card className="border-border/40">
+              <Card>
                 <CardContent className="p-6">
                   <div className={cn(TYPOGRAPHY.H1, "mb-2 tabular-nums")}>
                     {String(timeLeft.seconds).padStart(2, '0')}
@@ -119,7 +120,7 @@ export default function Maintenance({ message, endDate }: MaintenanceProps) {
           </div>
           <div className="grid gap-4 md:grid-cols-3">
             <Link to="/maintenance/wallace-gromit">
-              <Card className="border-border/40 hover:border-foreground/30 transition-colors">
+              <Card className="hover:border-foreground/30 transition-colors">
                 <CardHeader>
                   <CardTitle className={TYPOGRAPHY.SMALL}>Wallace & Gromit</CardTitle>
                 </CardHeader>
@@ -131,7 +132,7 @@ export default function Maintenance({ message, endDate }: MaintenanceProps) {
               </Card>
             </Link>
             <Link to="/maintenance/news">
-              <Card className="border-border/40 hover:border-foreground/30 transition-colors">
+              <Card className="hover:border-foreground/30 transition-colors">
                 <CardHeader>
                   <CardTitle className={TYPOGRAPHY.SMALL}>News lounge</CardTitle>
                 </CardHeader>
@@ -143,7 +144,7 @@ export default function Maintenance({ message, endDate }: MaintenanceProps) {
               </Card>
             </Link>
             <Link to="/maintenance/musique">
-              <Card className="border-border/40 hover:border-foreground/30 transition-colors">
+              <Card className="hover:border-foreground/30 transition-colors">
                 <CardHeader>
                   <CardTitle className={TYPOGRAPHY.SMALL}>Playlist AuraTracker</CardTitle>
                 </CardHeader>
@@ -158,13 +159,13 @@ export default function Maintenance({ message, endDate }: MaintenanceProps) {
         </div>
 
         {message && message.trim().length > 0 && (
-          <Card className="border-border/40">
+          <Card>
             <CardContent className="p-4">
               <p className={TYPOGRAPHY.SMALL}>{message}</p>
             </CardContent>
           </Card>
         )}
       </div>
-    </div>
+    </CenteredShell>
   );
 }

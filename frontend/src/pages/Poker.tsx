@@ -5,7 +5,6 @@ import { useSocket } from '@/contexts/SocketContext';
 import { ArrowLeft, Clock, Coins, LogOut, Play, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import PlayAgainPrompt from '@/components/game/PlayAgainPrompt';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
@@ -62,6 +61,7 @@ export default function Poker() {
   const [raiseTarget, setRaiseTarget] = useState(0);
   const [turnProgress, setTurnProgress] = useState(100);
   const [hasQuitPlayAgain, setHasQuitPlayAgain] = useState(false);
+  const [playAgainProgress, setPlayAgainProgress] = useState(100);
 
   const me = useMemo(() => pokerGame?.players.find((p) => p.userId === user?.id), [pokerGame, user?.id]);
   const isLeader = useMemo(
@@ -184,7 +184,7 @@ export default function Poker() {
 
   if (!currentParty) {
     return (
-      <div className="max-w-4xl mx-auto py-12 px-6 space-y-8">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
         <Link
           to="/games"
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -221,8 +221,20 @@ export default function Poker() {
   const hasQuit = hasQuitPlayAgain || (!!myPlayAgainResponse && !myPlayAgainResponse.playAgain);
   const showPlayAgainPrompt = !!pokerPlayAgainPrompt && !hasQuit;
 
+  useEffect(() => {
+    if (!showPlayAgainPrompt || !pokerPlayAgainPrompt) {
+      setPlayAgainProgress(100);
+      return;
+    }
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - pokerPlayAgainPrompt.startTime;
+      setPlayAgainProgress(Math.max(0, 100 - (elapsed / pokerPlayAgainPrompt.timeLimit) * 100));
+    }, 120);
+    return () => clearInterval(interval);
+  }, [showPlayAgainPrompt, pokerPlayAgainPrompt]);
+
   return (
-    <div className="max-w-4xl mx-auto py-12 px-6 space-y-10">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-10">
       {lobby ? (
         <div className="space-y-12">
           <section className="space-y-2">
@@ -233,7 +245,7 @@ export default function Poker() {
               {partyMembers.map((member) => (
                 <div
                   key={member.userId}
-                  className="flex items-center justify-between py-3 border-b border-border/40 last:border-0"
+                  className="flex items-center justify-between py-3 border-b last:border-0"
                 >
                   <div className="flex items-center gap-3">
                     <span className="h-2 w-2 rounded-full bg-foreground/50" />
@@ -409,19 +421,52 @@ export default function Poker() {
 
       {/* Play again prompt */}
       {pokerPlayAgainPrompt && (
-        <PlayAgainPrompt
-          open={showPlayAgainPrompt}
-          detail={`Stack ${pokerPlayAgainPrompt.startStack} - blindes ${pokerPlayAgainPrompt.bigBlind / 2}/${pokerPlayAgainPrompt.bigBlind}`}
-          players={pokerPlayAgainPrompt.players}
-          responses={pokerPlayAgainPrompt.responses}
-          timeLimit={pokerPlayAgainPrompt.timeLimit}
-          startTime={pokerPlayAgainPrompt.startTime}
-          onQuit={() => {
-            respondToPokerPlayAgainPrompt(false);
-            setHasQuitPlayAgain(true);
-          }}
-          onPlayAgain={() => respondToPokerPlayAgainPrompt(true)}
-        />
+        <Dialog open={showPlayAgainPrompt} onOpenChange={() => {}}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Relancer une partie ?</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Stack {pokerPlayAgainPrompt.startStack} - blindes {pokerPlayAgainPrompt.bigBlind / 2}/{pokerPlayAgainPrompt.bigBlind}
+              </p>
+              <div className="space-y-2">
+                {pokerPlayAgainPrompt.players.map((player) => {
+                  const response = pokerPlayAgainPrompt.responses.find((r) => r.userId === player.userId);
+                  return (
+                    <div key={player.userId} className="flex items-center justify-between text-sm">
+                      <span style={{ color: player.usernameColor || undefined }}>{player.username}</span>
+                      {response ? (
+                        <span className={cn('text-xs uppercase', response.playAgain ? 'text-green-500' : 'text-red-500')}>
+                          {response.playAgain ? 'OK' : 'Quitte'}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">En attente</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="h-1 rounded bg-muted">
+                <div className="h-full bg-foreground transition-all" style={{ width: `${playAgainProgress}%` }} />
+              </div>
+              <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    respondToPokerPlayAgainPrompt(false);
+                    setHasQuitPlayAgain(true);
+                  }}
+                >
+                  Quitter
+                </Button>
+                <Button onClick={() => respondToPokerPlayAgainPrompt(true)}>
+                  Relancer
+                </Button>
+              </DialogFooter>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* Game over */}

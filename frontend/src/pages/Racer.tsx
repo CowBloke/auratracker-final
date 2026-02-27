@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi, DailyRacerLeaderboardEntry } from '../services/api';
 import { Play, RotateCcw, Trophy } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 // ============================================
 // GAME CONSTANTS
@@ -1305,7 +1306,7 @@ export default function Racer() {
   };
 
   return (
-    <div className="max-w-[1500px] mx-auto py-12 px-6 space-y-8">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
       <div className="flex items-center justify-end gap-4">
         <div className="text-right text-sm text-muted-foreground tabular-nums">
           <div className="text-2xl font-light text-foreground">{speed} mph</div>
@@ -1327,13 +1328,13 @@ export default function Racer() {
                   <div className="text-lg mb-2">Chargement...</div>
                 </div>
               ) : (
-                <button
+                <Button variant="ghost"
                   onClick={initGame}
                   className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
                 >
                   <Play className="w-4 h-4" />
                   Jouer
-                </button>
+                </Button>
               )}
             </div>
           )}
@@ -1356,13 +1357,13 @@ export default function Racer() {
                   </p>
                 )}
 
-                <button
+                <Button variant="ghost"
                   onClick={initGame}
                   className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors mx-auto"
                 >
                   <RotateCcw className="w-4 h-4" />
                   Rejouer
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -1435,4 +1436,3 @@ export default function Racer() {
     </div>
   );
 }
-

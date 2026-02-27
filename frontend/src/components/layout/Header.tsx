@@ -6,6 +6,8 @@ import { Sparkles, Coins, User, LogOut, Wifi, WifiOff, Search } from 'lucide-rea
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -103,16 +105,16 @@ export default function Header() {
                 <SheetTitle>Rechercher un joueur</SheetTitle>
               </SheetHeader>
               <div className="mt-6 space-y-4">
-                <input
+                <Input
                   type="text"
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
                   placeholder="Pseudo, ID..."
                   autoFocus
-                  className="w-full h-12 bg-transparent border border-border/50 px-4 text-sm focus:outline-none focus:border-foreground/30"
+                  className="h-12 border-border/50"
                 />
-                <div className="h-px bg-border" />
-                <div className="max-h-[60vh] space-y-0 overflow-y-auto">
+                <ScrollArea className="max-h-[60vh]">
+                  <div className="space-y-0 pr-4">
                   {isLoadingUsers ? (
                     <p className="text-sm text-muted-foreground py-4">Chargement des joueurs...</p>
                   ) : loadError ? (
@@ -121,11 +123,12 @@ export default function Header() {
                     <p className="text-sm text-muted-foreground py-4">Aucun joueur trouvé.</p>
                   ) : (
                     filteredUsers.map((u) => (
-                      <button
+                      <Button
                         key={u.id}
                         type="button"
                         onClick={() => handleUserSelect(u.id)}
-                        className="flex w-full items-center gap-3 border-b border-border/30 px-3 py-4 text-left transition-colors hover:bg-muted/30 last:border-0"
+                        variant="ghost"
+                        className="h-auto w-full justify-start gap-3 rounded-none border-b border-border/30 px-3 py-4 text-left last:border-0"
                       >
                         <Avatar className="h-9 w-9">
                           {u.profilePicture ? (
@@ -146,10 +149,11 @@ export default function Header() {
                             {getBioPreview(u.bio)}
                           </span>
                         </div>
-                      </button>
+                      </Button>
                     ))
                   )}
-                </div>
+                  </div>
+                </ScrollArea>
               </div>
             </SheetContent>
           </Sheet>

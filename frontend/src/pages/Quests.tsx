@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Progress } from '../components/ui/progress';
-import PageLayout from '@/components/layout/PageLayout';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { questsApi, DailyQuest, UserDailyQuest } from '../services/api';
 import { toast } from 'sonner';
 import { CheckCircle2, Circle, Coins, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 export default function Quests() {
   const [dailyQuests, setDailyQuests] = useState<DailyQuest[]>([]);
@@ -117,7 +116,7 @@ export default function Quests() {
 
   if (loading) {
     return (
-      <PageLayout variant="compact">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-muted rounded w-1/4"></div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -126,7 +125,7 @@ export default function Quests() {
             ))}
           </div>
         </div>
-      </PageLayout>
+      </div>
     );
   }
 
@@ -135,7 +134,7 @@ export default function Quests() {
   const canSelectNewQuests = !hasSelectedQuests && dailyQuests.length > 0;
 
   return (
-    <PageLayout variant="compact">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
       <div className="flex items-center justify-between">
         <div>
           <p className={cn(TYPOGRAPHY.MUTED, "mt-2")}>
@@ -281,7 +280,7 @@ export default function Quests() {
           </div>
 
           {selectedQuestIds.length > 0 && (
-            <Card className="border-border/40">
+            <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <span className={TYPOGRAPHY.SMALL}>
@@ -301,7 +300,7 @@ export default function Quests() {
       )}
 
       {!hasSelectedQuests && !canSelectNewQuests && (
-        <Card className="border-border/40">
+        <Card>
           <CardContent className="p-6 text-center">
             <p className={TYPOGRAPHY.MUTED}>
               Aucune quête disponible pour le moment. Revenez demain pour de nouvelles quêtes !
@@ -309,6 +308,6 @@ export default function Quests() {
           </CardContent>
         </Card>
       )}
-    </PageLayout>
+    </div>
   );
 }

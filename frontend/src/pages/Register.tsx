@@ -7,6 +7,7 @@ import { authApi } from '../services/api';
 import { Loader2, CheckCircle2, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Form,
   FormControl,
@@ -16,6 +17,7 @@ import {
 } from '@/components/ui/form';
 import { TYPOGRAPHY } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { CenteredShell } from '@/components/layout/centered-shell';
 
 const registerSchema = z.object({
   firstName: z.string()
@@ -73,168 +75,163 @@ export default function Register() {
   // Success state - show confirmation message
   if (success) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center py-12 px-6">
-        <div className="w-full max-w-sm space-y-8 text-center">
-          <div className="space-y-4">
-            <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto" />
-            <h1 className={TYPOGRAPHY.H2}>
-              Demande envoyée !
-            </h1>
-            <p className={TYPOGRAPHY.MUTED}>
-              Un administrateur doit approuver votre compte avant que vous puissiez vous connecter.
-            </p>
-          </div>
+      <CenteredShell widthClassName="max-w-sm">
+        <Card>
+          <CardContent className="space-y-8 pt-6 text-center">
+            <div className="space-y-4">
+              <CheckCircle2 className="mx-auto h-16 w-16 text-green-500" />
+              <h1 className={TYPOGRAPHY.H2}>
+                Demande envoyée !
+              </h1>
+              <p className={TYPOGRAPHY.MUTED}>
+                Un administrateur doit approuver votre compte avant que vous puissiez vous connecter.
+              </p>
+            </div>
           
-          <Button asChild variant="outline" className="w-full h-12">
-            <Link to="/login">
-              Retour à la connexion
-            </Link>
-          </Button>
-        </div>
-      </div>
+            <Button asChild className="h-12 w-full">
+              <Link to="/login">
+                Retour à la connexion
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </CenteredShell>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center py-12 px-6">
-      <div className="w-full max-w-sm space-y-12">
-        {/* Logo */}
-        <div className="text-center space-y-2">
-          <h1 className={TYPOGRAPHY.H1}>
-            aura
-          </h1>
-          <p className={TYPOGRAPHY.MUTED}>Demande d'inscription</p>
-        </div>
+    <CenteredShell widthClassName="max-w-sm">
+      <Card>
+        <CardHeader className="space-y-2 text-center">
+          <CardTitle className={TYPOGRAPHY.H1}>aura</CardTitle>
+          <CardDescription>Demande d'inscription</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {error && (
+            <p className={cn(TYPOGRAPHY.SMALL, "text-destructive text-center")}>{error}</p>
+          )}
 
-        {/* Error */}
-        {error && (
-          <p className={cn(TYPOGRAPHY.SMALL, "text-destructive text-center")}>{error}</p>
-        )}
+          <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground text-center border border-border/30 p-3 rounded")}>
+            Votre demande sera examinée par un administrateur avant d'être approuvée.
+          </p>
 
-        {/* Info */}
-        <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground text-center border border-border/30 p-3 rounded")}>
-          Votre demande sera examinée par un administrateur avant d'être approuvée.
-        </p>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="firstName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        placeholder="Prénom (réel)"
+                        className="h-12 border-border/50 text-center"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage className="text-center" />
+                  </FormItem>
+                )}
+              />
 
-        {/* Form */}
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="firstName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <Input
-                      type="text"
-                      placeholder="Prénom (réel)"
-                      className="h-12 bg-transparent border-border/50 text-center"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage className="text-center" />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        placeholder="Pseudo"
+                        className="h-12 border-border/50 text-center"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage className="text-center" />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="username"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <Input
-                      type="text"
-                      placeholder="Pseudo"
-                      className="h-12 bg-transparent border-border/50 text-center"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage className="text-center" />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input
+                        type="email"
+                        placeholder="Email"
+                        className="h-12 border-border/50 text-center"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage className="text-center" />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <Input
-                      type="email"
-                      placeholder="Email"
-                      className="h-12 bg-transparent border-border/50 text-center"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage className="text-center" />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        placeholder="Mot de passe"
+                        className="h-12 border-border/50 text-center"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage className="text-center" />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <Input
-                      type="password"
-                      placeholder="Mot de passe"
-                      className="h-12 bg-transparent border-border/50 text-center"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage className="text-center" />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        placeholder="Confirmer le mot de passe"
+                        className="h-12 border-border/50 text-center"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage className="text-center" />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="confirmPassword"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <Input
-                      type="password"
-                      placeholder="Confirmer le mot de passe"
-                      className="h-12 bg-transparent border-border/50 text-center"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage className="text-center" />
-                </FormItem>
-              )}
-            />
+              <Button
+                type="submit"
+                disabled={loading}
+                className="h-12 w-full"
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Send className="mr-2 h-4 w-4" />
+                    Envoyer la demande
+                  </>
+                )}
+              </Button>
+            </form>
+          </Form>
 
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full h-12"
-              variant="outline"
-            >
-              {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <>
-                  <Send className="h-4 w-4 mr-2" />
-                  Envoyer la demande
-                </>
-              )}
-            </Button>
-          </form>
-        </Form>
-
-        {/* Link */}
-        <p className={cn(TYPOGRAPHY.SMALL, "text-center text-muted-foreground")}>
-          Déjà un compte ?{' '}
-          <Link to="/login" className="text-foreground hover:underline">
-            Connexion
-          </Link>
-        </p>
-      </div>
-    </div>
+          <p className={cn(TYPOGRAPHY.SMALL, "text-center text-muted-foreground")}>
+            Déjà un compte ?{' '}
+            <Link to="/login" className="text-foreground hover:underline">
+              Connexion
+            </Link>
+          </p>
+        </CardContent>
+      </Card>
+    </CenteredShell>
   );
 }

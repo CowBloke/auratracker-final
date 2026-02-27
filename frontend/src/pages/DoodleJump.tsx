@@ -5,6 +5,7 @@ import { useSocket } from '../contexts/SocketContext';
 import { gamesApi } from '../services/api';
 import { Play, RotateCcw, Trophy, X, Palette, Eye, EyeOff, Users } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 
 // ============================================
 // GAME CONSTANTS (from old implementation)
@@ -1269,10 +1270,10 @@ export default function DoodleJump() {
   // RENDER
   // ============================================
   return (
-    <div className="max-w-4xl mx-auto py-12 px-6 space-y-8">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
       <div className="flex items-center justify-end gap-4">
             {spectatingHost && (
-              <button
+              <Button variant="ghost"
                 type="button"
                 onClick={() => {
                   socket?.emit('doodle:spectate-leave');
@@ -1290,10 +1291,10 @@ export default function DoodleJump() {
               >
                 <EyeOff className="h-4 w-4" />
                 Quitter spectate
-              </button>
+              </Button>
             )}
             <div className="relative" data-skin-selector>
-              <button
+              <Button variant="ghost"
                 onClick={() => setShowSkinSelector(!showSkinSelector)}
                 disabled={(started && !gameOver) || !!spectatingHost}
                 className="flex items-center gap-2 px-4 py-2 border border-border/50 rounded-lg hover:bg-muted/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1301,14 +1302,14 @@ export default function DoodleJump() {
               >
                 <Palette className="w-4 h-4" />
                 <span className="text-sm">Skin</span>
-              </button>
+              </Button>
               
               {showSkinSelector && !started && (
                 <div className="absolute top-full right-0 mt-2 bg-card border border-border/50 rounded-lg shadow-lg p-4 z-50 w-[320px]" data-skin-selector>
                   <h3 className="text-sm font-semibold mb-3">Choisir un skin</h3>
                   <div className="grid grid-cols-4 gap-2">
                     {SKINS.map((skin) => (
-                      <button
+                      <Button variant="ghost"
                         key={skin.id}
                         onClick={() => {
                           setSelectedSkin(skin.id);
@@ -1334,7 +1335,7 @@ export default function DoodleJump() {
                           />
                         </div>
                         <span className="text-xs mt-1.5 block text-center text-muted-foreground">{skin.name}</span>
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -1363,7 +1364,7 @@ export default function DoodleJump() {
         {/* Canvas */}
         <div className="relative">
           {started && isMultiplayer && !spectatingHost && (
-            <div className="absolute left-2 right-2 top-2 z-20 rounded-md border border-border/40 bg-background/80 px-2 py-1 backdrop-blur-sm">
+            <div className="absolute left-2 right-2 top-2 z-20 rounded-md border bg-background/80 px-2 py-1 backdrop-blur-sm">
               <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                 <Users className="h-3 w-3" />
                 <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
@@ -1395,7 +1396,7 @@ export default function DoodleJump() {
           {!started && !spectatingHost && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
               <div className="flex flex-col items-center gap-4">
-                <button
+                <Button variant="ghost"
                   type="button"
                   onClick={() => setIsMortSubite((prev) => !prev)}
                   className={`w-56 px-3 py-2 rounded-md border transition-colors text-sm ${
@@ -1405,8 +1406,8 @@ export default function DoodleJump() {
                   }`}
                 >
                   Mort subite: {isMortSubite ? 'ON' : 'OFF'}
-                </button>
-                <button
+                </Button>
+                <Button variant="ghost"
                   type="button"
                   onClick={() => setIsMultiplayer((prev) => !prev)}
                   className={`w-56 px-3 py-2 rounded-md border transition-colors text-sm ${
@@ -1416,14 +1417,14 @@ export default function DoodleJump() {
                   }`}
                 >
                   Multijoueur quotidien: {isMultiplayer ? 'ON' : 'OFF'}
-                </button>
-                <button
+                </Button>
+                <Button variant="ghost"
                   onClick={initGame}
                   className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
                 >
                   <Play className="w-4 h-4" />
                   Jouer
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -1449,13 +1450,13 @@ export default function DoodleJump() {
                   </p>
                 )}
 
-                <button
+                <Button variant="ghost"
                   onClick={initGame}
                   className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors mx-auto"
                 >
                   <RotateCcw className="w-4 h-4" />
                   Rejouer
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -1503,13 +1504,13 @@ export default function DoodleJump() {
                       {entry.highScore.toLocaleString()}
                     </span>
                     {user?.isAdmin && (
-                      <button
+                      <Button variant="ghost"
                         onClick={() => handleDeleteScore(entry.user.id, entry.user.username)}
                         className="opacity-0 group-hover:opacity-100 p-1 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-all"
                         title="Supprimer ce score"
                       >
                         <X className="w-3.5 h-3.5" />
-                      </button>
+                      </Button>
                     )}
                   </div>
                 ))}

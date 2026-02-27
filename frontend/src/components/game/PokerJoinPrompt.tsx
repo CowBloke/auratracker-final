@@ -45,7 +45,7 @@ export default function PokerJoinPrompt() {
 
   return (
     <Dialog open={!!pokerJoinPrompt} onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-md" hideCloseButton>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="font-normal flex items-center gap-2">
             Poker ?

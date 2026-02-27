@@ -14,6 +14,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -197,15 +198,16 @@ export default function ChatSidebar() {
       const resolved = mentionMap.get(username.toLowerCase());
       if (resolved) {
         parts.push(
-          <button
+          <Button
             key={`${resolved.userId}-${matchIndex}`}
             type="button"
             onClick={() => navigate(`/profile/${resolved.userId}`)}
-            className="font-medium hover:underline"
+            variant="link"
+            className="h-auto px-0 py-0 font-medium"
             style={resolved.usernameColor ? { color: resolved.usernameColor } : undefined}
           >
             @{resolved.username}
-          </button>
+          </Button>
         );
       } else {
         parts.push(fullMatch);
@@ -294,13 +296,16 @@ export default function ChatSidebar() {
               </span>
             )}
           </div>
-          <button
+          <Button
+            type="button"
             onClick={() => setBadgeModalOpen(true)}
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground"
             title="Gérer tes badges"
           >
             <Award className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
       </SidebarHeader>
 
@@ -367,16 +372,18 @@ export default function ChatSidebar() {
                             }}
                           />
                         )}
-                        <button
+                        <Button
+                          type="button"
                           onClick={() => navigate(`/profile/${msg.userId}`)}
+                          variant="link"
                           className={cn(
-                            "text-xs font-medium hover:underline cursor-pointer",
+                            "h-auto px-0 py-0 text-xs font-medium",
                             !msg.usernameColor && (msg.userId === user?.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')
                           )}
                           style={msg.usernameColor ? { color: msg.usernameColor } : undefined}
                         >
                           {msg.username}
-                        </button>
+                        </Button>
                         {msg.badges && msg.badges.length > 0 && (
                           <div className="flex items-center gap-1">
                             {msg.badges.map((badge) => (
@@ -441,42 +448,48 @@ export default function ChatSidebar() {
                         <div className="ml-auto flex items-center gap-2">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <button
+                              <Button
                                 type="button"
+                                variant="ghost"
+                                size="icon"
                                 className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/70 hover:text-foreground"
                                 title="Réagir"
                               >
                                 <MoreHorizontal className="h-3.5 w-3.5" />
-                              </button>
+                              </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent
                               align={msg.userId === user?.id ? 'end' : 'start'}
                               className="flex items-center gap-1 p-2"
                             >
                               {REACTION_OPTIONS.map((reaction) => (
-                                <button
+                                <Button
                                   key={reaction.emoji}
                                   type="button"
                                   onClick={() => reactToMessage(msg.id, reaction.emoji)}
-                                  className="h-8 w-8 rounded-md hover:bg-muted/60 transition-colors"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
                                   title={reaction.label}
                                 >
                                   <span className="text-base">{reaction.emoji}</span>
-                                </button>
+                                </Button>
                               ))}
                             </DropdownMenuContent>
                           </DropdownMenu>
                           {user?.isAdmin && (
-                            <button
+                            <Button
                               type="button"
                               onClick={() => pinMessage(msg.id, !msg.pinned)}
-                              className="text-[10px] text-muted-foreground/60 hover:text-foreground transition-colors opacity-0 group-hover:opacity-100"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-[10px] text-muted-foreground/60 opacity-0 transition-colors group-hover:opacity-100 hover:text-foreground"
                               title={msg.pinned ? 'Désépingler' : 'Épingler'}
                             >
                               {msg.pinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
-                            </button>
+                            </Button>
                           )}
-                          <button
+                          <Button
                             type="button"
                             onClick={() =>
                               setReplyTarget({
@@ -487,17 +500,19 @@ export default function ChatSidebar() {
                                 message: msg.message,
                               })
                             }
-                            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/70 hover:text-foreground"
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 opacity-0 transition-opacity text-muted-foreground/70 group-hover:opacity-100 hover:text-foreground"
                             title="Répondre"
                           >
                             <Reply className="h-3.5 w-3.5" />
-                          </button>
+                          </Button>
                         </div>
                       </div>
                       {invite ? (
                         <div className="space-y-2">
                           <p className="text-sm break-words">{renderMessageContent(invite.label)}</p>
-                          <button
+                          <Button
                             type="button"
                             onClick={() => {
                               if (inviteDisabled) return;
@@ -508,15 +523,11 @@ export default function ChatSidebar() {
                               }
                             }}
                             disabled={inviteDisabled}
-                            className={cn(
-                              "w-full rounded border px-2 py-1 text-xs transition-colors",
-                              inviteDisabled
-                                ? "border-border/50 text-muted-foreground cursor-not-allowed"
-                                : "border-foreground text-foreground hover:bg-foreground hover:text-background"
-                            )}
+                            variant={inviteDisabled ? 'outline' : 'default'}
+                            className="h-8 w-full text-xs"
                           >
                             {inviteActionLabel}
-                          </button>
+                          </Button>
                         </div>
                       ) : (
                         <p className="text-sm break-words">{renderMessageContent(msg.message)}</p>
@@ -560,13 +571,15 @@ export default function ChatSidebar() {
                   </span>
                   <span className="block break-words whitespace-normal text-muted-foreground">{getSnippet(replyTarget.message)}</span>
                 </div>
-                <button
+                <Button
                   type="button"
                   onClick={() => setReplyTarget(null)}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-muted-foreground"
                 >
                   <X className="h-3.5 w-3.5" />
-                </button>
+                </Button>
               </div>
             )}
             <div className="flex gap-2">
@@ -586,13 +599,14 @@ export default function ChatSidebar() {
                   <div className="absolute bottom-full z-50 mb-2 w-full rounded-md border border-border/60 bg-background/95 shadow-lg">
                     <div className="max-h-40 overflow-auto py-1">
                       {mentionCandidates.map((candidate, index) => (
-                        <button
+                        <Button
                           key={candidate.userId}
                           type="button"
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => applyMention(candidate.username)}
+                          variant="ghost"
                           className={cn(
-                            "flex w-full items-center gap-2 px-2 py-1 text-sm transition-colors",
+                            "h-auto w-full justify-start gap-2 px-2 py-1 text-sm transition-colors",
                             index === mentionIndex
                               ? "bg-foreground/10 text-foreground"
                               : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
@@ -616,19 +630,21 @@ export default function ChatSidebar() {
                           >
                             {candidate.username}
                           </span>
-                        </button>
+                        </Button>
                       ))}
                     </div>
                   </div>
                 )}
               </div>
-              <button
+              <Button
                 type="submit"
                 disabled={!input.trim()}
-                className="h-9 w-9 flex items-center justify-center border border-border/50 text-muted-foreground hover:text-foreground hover:border-foreground/30 disabled:opacity-30 transition-colors"
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 text-muted-foreground"
               >
                 <Send className="h-3.5 w-3.5" />
-              </button>
+              </Button>
             </div>
           </form>
         </div>

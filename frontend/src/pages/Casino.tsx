@@ -3,6 +3,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
 import { cn } from '@/lib/utils';
 import { Coins, RotateCcw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 type GameTab = 'roulette' | 'slots' | 'blackjack';
 
@@ -236,18 +238,18 @@ export default function Casino() {
         : blackjackBet;
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-6 space-y-8">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
       <p className="text-muted-foreground">
         Choisis ta table: machine a sous classique, roulette animee ou blackjack.
       </p>
       {activeGame && (
             <div className="flex flex-col items-end gap-2 text-right">
-              <button
+              <Button variant="ghost"
                 onClick={() => setActiveGame(null)}
                 className="text-xs uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground transition-colors"
               >
                 Changer de jeu
-              </button>
+              </Button>
               <div className="text-sm text-muted-foreground tabular-nums space-y-1">
                 <div className="text-base text-foreground">
                   Solde: ${user?.money.toLocaleString() || 0}
@@ -272,7 +274,7 @@ export default function Casino() {
         </div>
       ) : (
         <div className="grid gap-2 md:grid-cols-3">
-          <button
+          <Button variant="ghost"
             onClick={() => setActiveGame('roulette')}
             className="group border border-foreground px-6 py-8 text-left transition-colors hover:bg-foreground hover:text-background"
           >
@@ -281,8 +283,8 @@ export default function Casino() {
             <p className="mt-2 text-sm text-muted-foreground">
               Mises multi-cases, roue animée et tirage rapide.
             </p>
-          </button>
-          <button
+          </Button>
+          <Button variant="ghost"
             onClick={() => setActiveGame('slots')}
             className="group border border-foreground px-6 py-8 text-left transition-colors hover:bg-foreground hover:text-background"
           >
@@ -291,8 +293,8 @@ export default function Casino() {
             <p className="mt-2 text-sm text-muted-foreground">
               Classique, rapide et minimaliste.
             </p>
-          </button>
-          <button
+          </Button>
+          <Button variant="ghost"
             onClick={() => setActiveGame('blackjack')}
             className="group border border-foreground px-6 py-8 text-left transition-colors hover:bg-foreground hover:text-background"
           >
@@ -301,7 +303,7 @@ export default function Casino() {
             <p className="mt-2 text-sm text-muted-foreground">
               Cartes grandes, actions simples: tirer ou rester.
             </p>
-          </button>
+          </Button>
         </div>
       )}
     </div>
@@ -484,7 +486,7 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
           </p>
           <div className="flex flex-wrap gap-2">
             {CHIP_VALUES.map((value) => (
-              <button
+              <Button variant="ghost"
                 key={value}
                 onClick={() => setChipValue(value)}
                 className={cn(
@@ -495,7 +497,7 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
                 )}
               >
                 ${value}
-              </button>
+              </Button>
             ))}
           </div>
           <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
@@ -515,7 +517,7 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
         )}
 
         <div className="flex flex-col sm:flex-row gap-2">
-          <button
+          <Button variant="ghost"
             onClick={clearBets}
             disabled={spinning || bets.length === 0}
             className={cn(
@@ -526,8 +528,8 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
             )}
           >
             Réinitialiser les mises
-          </button>
-          <button
+          </Button>
+          <Button variant="ghost"
             onClick={spinWheel}
             disabled={!canSpin}
             className={cn(
@@ -538,7 +540,7 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
             )}
           >
             {spinning ? <RotateCcw className="h-5 w-5 animate-spin" /> : 'Lancer la roue'}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -549,7 +551,7 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
           <div className="border border-border/30 p-4">
             <div className="relative aspect-square w-full max-w-[280px] mx-auto">
             <div
-              className="absolute inset-0 rounded-full overflow-hidden border border-border/40 shadow-2xl shadow-black/30"
+              className="absolute inset-0 rounded-full overflow-hidden border shadow-2xl shadow-black/30"
               style={{
                 transform: `rotate(${wheelRotation}deg)`,
                 transition: `transform ${SPIN_DURATION}ms cubic-bezier(0.21, 0.8, 0.34, 1)`,
@@ -660,7 +662,7 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
         <div className="border border-border/30 p-3">
           <div className="grid gap-2 lg:grid-cols-[60px_1fr_auto]">
             {/* Zero column */}
-            <button
+            <Button variant="ghost"
               onClick={() => placeBet('straight', 0)}
               className={cn(
                 "relative flex items-center justify-center border px-1 py-2 font-medium text-xs transition-colors",
@@ -675,7 +677,7 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
                   {renderChip(getBetFor('straight', 0)!.amount)}
                 </div>
               )}
-            </button>
+            </Button>
 
             {/* Main number grid */}
             <div className="grid grid-cols-3 gap-1" style={{ gridTemplateRows: 'repeat(12, minmax(0, 1fr))' }}>
@@ -683,7 +685,7 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
                 row.map((num) => {
                   const bet = getBetFor('straight', num);
                   return (
-                    <button
+                    <Button variant="ghost"
                       key={num}
                       onClick={() => placeBet('straight', num)}
                       className={cn(
@@ -699,7 +701,7 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
                           {renderChip(bet.amount)}
                         </div>
                       )}
-                    </button>
+                    </Button>
                   );
                 })
               )}
@@ -709,7 +711,7 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
             <div className="space-y-1.5">
               {/* Colors and parity */}
               <div className="grid grid-cols-2 gap-1">
-                <button
+                <Button variant="ghost"
                   onClick={() => placeBet('color', 'red')}
                   className={cn(
                     "relative flex items-center justify-between border px-2 py-1.5 text-[10px] font-medium transition-colors",
@@ -720,8 +722,8 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
                 >
                   <span>Rouge</span>
                   {getBetFor('color', 'red') && renderChip(getBetFor('color', 'red')!.amount)}
-                </button>
-                <button
+                </Button>
+                <Button variant="ghost"
                   onClick={() => placeBet('color', 'black')}
                   className={cn(
                     "relative flex items-center justify-between border px-2 py-1.5 text-[10px] font-medium transition-colors",
@@ -732,8 +734,8 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
                 >
                   <span>Noir</span>
                   {getBetFor('color', 'black') && renderChip(getBetFor('color', 'black')!.amount)}
-                </button>
-                <button
+                </Button>
+                <Button variant="ghost"
                   onClick={() => placeBet('parity', 'even')}
                   className={cn(
                     "relative flex items-center justify-between border px-2 py-1.5 text-[10px] font-medium transition-colors",
@@ -744,8 +746,8 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
                 >
                   <span>Pair</span>
                   {getBetFor('parity', 'even') && renderChip(getBetFor('parity', 'even')!.amount)}
-                </button>
-                <button
+                </Button>
+                <Button variant="ghost"
                   onClick={() => placeBet('parity', 'odd')}
                   className={cn(
                     "relative flex items-center justify-between border px-2 py-1.5 text-[10px] font-medium transition-colors",
@@ -756,12 +758,12 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
                 >
                   <span>Impair</span>
                   {getBetFor('parity', 'odd') && renderChip(getBetFor('parity', 'odd')!.amount)}
-                </button>
+                </Button>
               </div>
 
               {/* Ranges */}
               <div className="grid grid-cols-2 gap-1">
-                <button
+                <Button variant="ghost"
                   onClick={() => placeBet('range', 'low')}
                   className={cn(
                     "relative flex items-center justify-between border px-2 py-1.5 text-[10px] font-medium transition-colors",
@@ -772,8 +774,8 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
                 >
                   <span>1-18</span>
                   {getBetFor('range', 'low') && renderChip(getBetFor('range', 'low')!.amount)}
-                </button>
-                <button
+                </Button>
+                <Button variant="ghost"
                   onClick={() => placeBet('range', 'high')}
                   className={cn(
                     "relative flex items-center justify-between border px-2 py-1.5 text-[10px] font-medium transition-colors",
@@ -784,13 +786,13 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
                 >
                   <span>19-36</span>
                   {getBetFor('range', 'high') && renderChip(getBetFor('range', 'high')!.amount)}
-                </button>
+                </Button>
               </div>
 
               {/* Dozens */}
               <div className="grid grid-cols-1 gap-1">
                 {[1, 2, 3].map((dozen) => (
-                  <button
+                  <Button variant="ghost"
                     key={dozen}
                     onClick={() => placeBet('dozen', dozen)}
                     className={cn(
@@ -802,14 +804,14 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
                   >
                     <span>{dozen === 1 ? '1-12' : dozen === 2 ? '13-24' : '25-36'}</span>
                     {getBetFor('dozen', dozen) && renderChip(getBetFor('dozen', dozen)!.amount)}
-                  </button>
+                  </Button>
                 ))}
               </div>
 
               {/* Columns */}
               <div className="grid grid-cols-1 gap-1">
                 {[1, 2, 3].map((column) => (
-                  <button
+                  <Button variant="ghost"
                     key={column}
                     onClick={() => placeBet('column', column)}
                     className={cn(
@@ -821,7 +823,7 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
                   >
                     <span>Col {column}</span>
                     {getBetFor('column', column) && renderChip(getBetFor('column', column)!.amount)}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -1211,7 +1213,7 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
     <div
       key={key}
       className={cn(
-        "relative flex h-32 w-24 items-center justify-center border border-border/40 text-2xl font-semibold",
+        "relative flex h-32 w-24 items-center justify-center border text-2xl font-semibold",
         "sm:h-36 sm:w-28 sm:text-3xl",
         hidden && "bg-muted/30 text-muted-foreground",
         card && !hidden && (card.isRed ? "text-rose-500" : "text-foreground")
@@ -1239,7 +1241,7 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             {BLACKJACK_BET_STEPS.map((step) => (
-              <button
+              <Button variant="ghost"
                 key={step}
                 onClick={() => selectBet(step)}
                 disabled={status === 'player' || status === 'dealer' || !!(user && user.money < step)}
@@ -1253,25 +1255,25 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
                 )}
               >
                 ${step}
-              </button>
+              </Button>
             ))}
             <div className="flex items-center gap-2">
-              <input
+              <Input
                 type="number"
                 min={BLACKJACK_MIN_BET}
                 step={5}
                 value={betDraft}
-                onChange={(event) => setBetDraft(event.target.value)}
+                onChange={(event: React.ChangeEvent<HTMLInputElement>) => setBetDraft(event.target.value)}
                 onBlur={applyCustomBet}
                 disabled={status === 'player' || status === 'dealer'}
                 className={cn(
-                  "h-10 w-28 border border-border/30 bg-transparent px-3 text-base",
+                  "h-10 w-28 text-base",
                   status === 'player' || status === 'dealer'
                     ? "opacity-40 cursor-not-allowed"
-                    : "focus:border-foreground focus:outline-none"
+                    : ""
                 )}
               />
-              <button
+              <Button variant="ghost"
                 onClick={applyCustomBet}
                 disabled={status === 'player' || status === 'dealer'}
                 className={cn(
@@ -1282,7 +1284,7 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
                 )}
               >
                 Valider
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -1371,7 +1373,7 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
         </div>
 
         <div className="mt-6 flex flex-wrap gap-3">
-          <button
+          <Button variant="ghost"
             onClick={deal}
             disabled={!canDeal}
             className={cn(
@@ -1382,8 +1384,8 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
             )}
           >
             {status === 'finished' ? 'Nouvelle main' : 'Distribuer'}
-          </button>
-          <button
+          </Button>
+          <Button variant="ghost"
             onClick={hit}
             disabled={!canPlay}
             className={cn(
@@ -1394,8 +1396,8 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
             )}
           >
             Tirer
-          </button>
-          <button
+          </Button>
+          <Button variant="ghost"
             onClick={stand}
             disabled={!canPlay}
             className={cn(
@@ -1406,8 +1408,8 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
             )}
           >
             Rester
-          </button>
-          <button
+          </Button>
+          <Button variant="ghost"
             onClick={doubleDown}
             disabled={!canDouble}
             className={cn(
@@ -1418,8 +1420,8 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
             )}
           >
             Doubler
-          </button>
-          <button
+          </Button>
+          <Button variant="ghost"
             onClick={splitHand}
             disabled={!canSplit}
             className={cn(
@@ -1430,7 +1432,7 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
             )}
           >
             Splitter
-          </button>
+          </Button>
         </div>
 
         {status === 'finished' && hands.length > 0 && (
@@ -1582,10 +1584,10 @@ function SlotMachineGame({ onBetChange }: { onBetChange?: (value: number) => voi
   const canSpin = user && user.money >= bet && !spinning;
 
   return (
-    <div className="max-w-4xl mx-auto py-12 px-6 space-y-8">
+    <div className="space-y-8">
       <div className="flex flex-wrap justify-center gap-2">
         {BET_STEPS.map((step) => (
-          <button
+          <Button variant="ghost"
             key={step}
             onClick={() => setBet(step)}
             disabled={spinning || !!(user && user.money < step)}
@@ -1598,7 +1600,7 @@ function SlotMachineGame({ onBetChange }: { onBetChange?: (value: number) => voi
             )}
           >
             ${step}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -1641,7 +1643,7 @@ function SlotMachineGame({ onBetChange }: { onBetChange?: (value: number) => voi
           </p>
         )}
 
-        <button
+        <Button variant="ghost"
           onClick={spin}
           disabled={!canSpin}
           className={cn(
@@ -1658,7 +1660,7 @@ function SlotMachineGame({ onBetChange }: { onBetChange?: (value: number) => voi
           ) : (
             'LANCER'
           )}
-        </button>
+        </Button>
       </div>
 
     </div>

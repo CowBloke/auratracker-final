@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { auraCoinApi, bombPartyApi, clansApi, leaderboardsApi, usersApi } from '../services/api';
-import PageLayout from '@/components/layout/PageLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
@@ -51,7 +50,7 @@ const formatNumber = (value: number, digits = 0) =>
 const formatMoney = (value: number, digits = 0) => `$${formatNumber(value, digits)}`;
 
 const StatCard = ({ label, value, hint }: StatItem) => (
-  <Card className="border-border/40">
+  <Card>
     <CardContent className="p-4 md:p-5 space-y-2">
       <p className={cn(TYPOGRAPHY.H2, "md:text-4xl tabular-nums")}>{value}</p>
       <p className={TYPOGRAPHY.SMALL}>{label}</p>
@@ -163,7 +162,7 @@ export default function Numbers() {
   ]), []);
 
   return (
-    <PageLayout variant="compact">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
       <div className="flex flex-wrap gap-2">
         {navItems.map((item) => (
           <NavLink
@@ -206,6 +205,6 @@ export default function Numbers() {
           ))}
         </div>
       )}
-    </PageLayout>
+    </div>
   );
 }

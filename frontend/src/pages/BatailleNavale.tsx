@@ -5,7 +5,6 @@ import { useSocket } from '../contexts/SocketContext';
 import { ArrowLeft, Play, LogOut, Trophy } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import PlayAgainPrompt from '@/components/game/PlayAgainPrompt';
 import { cn } from '@/lib/utils';
 
 const BOARD_SIZE = 10;
@@ -55,6 +54,7 @@ export default function BatailleNavale() {
   } | null>(null);
   const [playAgainPrompt, setPlayAgainPrompt] = useState<BattleshipPlayAgainPrompt | null>(null);
   const [hasQuitPlayAgain, setHasQuitPlayAgain] = useState(false);
+  const [playAgainProgress, setPlayAgainProgress] = useState(100);
 
   const handleCloseGameOver = () => {
     setGameOver(null);
@@ -66,34 +66,80 @@ export default function BatailleNavale() {
   const myPlayAgainResponse = playAgainPrompt?.responses.find((r) => r.userId === user?.id);
   const hasQuit = hasQuitPlayAgain || (!!myPlayAgainResponse && !myPlayAgainResponse.playAgain);
   const showPlayAgainPrompt = !!playAgainPrompt && !hasQuit;
+
+  useEffect(() => {
+    if (!showPlayAgainPrompt || !playAgainPrompt) {
+      setPlayAgainProgress(100);
+      return;
+    }
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - playAgainPrompt.startTime;
+      setPlayAgainProgress(Math.max(0, 100 - (elapsed / playAgainPrompt.timeLimit) * 100));
+    }, 120);
+    return () => clearInterval(interval);
+  }, [showPlayAgainPrompt, playAgainPrompt]);
+
   const postGameModals = (
     <>
       {playAgainPrompt && (
-        <PlayAgainPrompt
-          open={showPlayAgainPrompt}
-          detail="Duel 2 joueurs"
-          players={playAgainPrompt.players}
-          responses={playAgainPrompt.responses}
-          timeLimit={playAgainPrompt.timeLimit}
-          startTime={playAgainPrompt.startTime}
-          onQuit={() => {
-            if (!socket || !user || !currentParty) return;
-            socket.emit('battleship:play-again-response', {
-              userId: user.id,
-              partyId: currentParty.id,
-              playAgain: false,
-            });
-            setHasQuitPlayAgain(true);
-          }}
-          onPlayAgain={() => {
-            if (!socket || !user || !currentParty) return;
-            socket.emit('battleship:play-again-response', {
-              userId: user.id,
-              partyId: currentParty.id,
-              playAgain: true,
-            });
-          }}
-        />
+        <Dialog open={showPlayAgainPrompt} onOpenChange={() => {}}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Relancer une partie ?</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">Duel 2 joueurs</p>
+              <div className="space-y-2">
+                {playAgainPrompt.players.map((player) => {
+                  const response = playAgainPrompt.responses.find((r) => r.userId === player.userId);
+                  return (
+                    <div key={player.userId} className="flex items-center justify-between text-sm">
+                      <span style={{ color: player.usernameColor || undefined }}>{player.username}</span>
+                      {response ? (
+                        <span className={cn('text-xs uppercase', response.playAgain ? 'text-green-500' : 'text-red-500')}>
+                          {response.playAgain ? 'OK' : 'Quitte'}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">En attente</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="h-1 rounded bg-muted">
+                <div className="h-full bg-foreground transition-all" style={{ width: `${playAgainProgress}%` }} />
+              </div>
+              <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (!socket || !user || !currentParty) return;
+                    socket.emit('battleship:play-again-response', {
+                      userId: user.id,
+                      partyId: currentParty.id,
+                      playAgain: false,
+                    });
+                    setHasQuitPlayAgain(true);
+                  }}
+                >
+                  Quitter
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (!socket || !user || !currentParty) return;
+                    socket.emit('battleship:play-again-response', {
+                      userId: user.id,
+                      partyId: currentParty.id,
+                      playAgain: true,
+                    });
+                  }}
+                >
+                  Relancer
+                </Button>
+              </DialogFooter>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       <Dialog open={!!gameOver} onOpenChange={handleCloseGameOver}>
@@ -318,7 +364,7 @@ export default function BatailleNavale() {
     }
 
     return (
-      <button
+      <Button variant="ghost"
         key={`${x}-${y}`}
         onClick={onClick}
         disabled={!isClickable}
@@ -336,7 +382,7 @@ export default function BatailleNavale() {
   // Not in a party
   if (!currentParty) {
     return (
-      <div className="max-w-4xl mx-auto py-12 px-6 space-y-8">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
         <Link
           to="/games"
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -365,7 +411,7 @@ export default function BatailleNavale() {
   // Lobby (no game active)
   if (!gameState) {
     return (
-      <div className="max-w-4xl mx-auto py-12 px-6 space-y-16">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-16">
         <section className="space-y-4">
           <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
             Joueurs dans le duel ({partyMembers.length}/2)
@@ -403,13 +449,13 @@ export default function BatailleNavale() {
 
         {isLeader && partyMembers.length === 2 && (
           <div className="flex justify-center">
-            <button
+            <Button variant="ghost"
               onClick={handleStartGame}
               className="flex items-center gap-3 px-8 py-4 text-lg border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
             >
               <Play className="h-5 w-5" />
               Lancer la partie
-            </button>
+            </Button>
           </div>
         )}
 
@@ -425,15 +471,15 @@ export default function BatailleNavale() {
 
   // Game active
   return (
-    <div className="max-w-4xl mx-auto py-12 px-6 space-y-8">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
       <div className="flex items-center justify-between">
-        <button
+        <Button variant="ghost"
           onClick={handleLeave}
           className="px-4 py-2 text-sm border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
         >
           <LogOut className="h-4 w-4 inline mr-2" />
           Quitter
-        </button>
+        </Button>
       </div>
 
       {error && (
@@ -479,7 +525,7 @@ export default function BatailleNavale() {
             {remainingShips.length > 0 && (
               <div className="flex gap-2 justify-center mb-4">
                 {remainingShips.map((length) => (
-                  <button
+                  <Button variant="ghost"
                     key={length}
                     onClick={() => {
                       setSelectedShipLength(length);
@@ -493,13 +539,13 @@ export default function BatailleNavale() {
                     )}
                   >
                     {length} cases
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}
             {selectedShipLength && (
               <div className="flex gap-2 justify-center mb-4">
-                <button
+                <Button variant="ghost"
                   onClick={() => setSelectedHorizontal(true)}
                   className={cn(
                     "px-3 py-1 border text-sm transition-colors",
@@ -509,8 +555,8 @@ export default function BatailleNavale() {
                   )}
                 >
                   Horizontal
-                </button>
-                <button
+                </Button>
+                <Button variant="ghost"
                   onClick={() => setSelectedHorizontal(false)}
                   className={cn(
                     "px-3 py-1 border text-sm transition-colors",
@@ -520,7 +566,7 @@ export default function BatailleNavale() {
                   )}
                 >
                   Vertical
-                </button>
+                </Button>
               </div>
             )}
             {gameState.myShipsPlaced && (

@@ -14,7 +14,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Card, CardContent } from '@/components/ui/card';
-import PageLayout from '@/components/layout/PageLayout';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { resolveImageUrl } from '@/lib/images';
 
@@ -233,22 +232,27 @@ export default function Inventory() {
 
   if (loading) {
     return (
-      <PageLayout variant="compact">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
         </div>
-      </PageLayout>
+      </div>
     );
   }
 
   return (
-    <PageLayout variant="compact">
-      <div className="flex items-center justify-end">
-        <div className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tabular-nums")}>
-          {items.length} objet{items.length !== 1 ? 's' : ''}
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1.5">
+          <h1 className={TYPOGRAPHY.PAGE_TITLE}>Inventaire</h1>
+          <p className={TYPOGRAPHY.PAGE_DESCRIPTION}>Objets, consommables et cosmetiques.</p>
         </div>
-      </div>
+        <p className={cn(TYPOGRAPHY.PAGE_META, "tabular-nums")}>
+          {items.length} objet{items.length !== 1 ? 's' : ''}
+        </p>
+      </header>
 
+      <div className={SPACING.PAGE_CONTENT}>
       {/* Message */}
       {message && (
         <p className={cn(
@@ -266,7 +270,7 @@ export default function Inventory() {
             Inventaire vide
           </p>
         ) : (
-          <Card className="border-border/40">
+          <Card>
             <CardContent className="p-0">
               <div className="divide-y divide-border/30">
                 {items.map((userItem) => {
@@ -388,14 +392,14 @@ export default function Inventory() {
 
             {/* Custom color input */}
             <div className="flex items-center gap-2">
-              <input
+              <Input
                 type="color"
                 value={customColor}
                 onChange={(e) => {
                   setCustomColor(e.target.value);
                   setSelectedColor(e.target.value);
                 }}
-                className="w-10 h-10 rounded cursor-pointer"
+                className="h-10 w-10 cursor-pointer p-1"
               />
               <Input
                 value={customColor}
@@ -488,6 +492,7 @@ export default function Inventory() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </PageLayout>
+      </div>
+    </div>
   );
 }

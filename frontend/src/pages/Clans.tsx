@@ -11,7 +11,6 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
-import PageLayout from '@/components/layout/PageLayout';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 
 type ActionMessage = { type: 'success' | 'error'; text: string };
@@ -209,18 +208,23 @@ export default function Clans() {
 
   return (
     <>
-      <PageLayout variant="compact">
-        <div className="flex items-center justify-end">
-          <Button 
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+        <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="space-y-1.5">
+            <h1 className={TYPOGRAPHY.PAGE_TITLE}>Clans</h1>
+            <p className={TYPOGRAPHY.PAGE_DESCRIPTION}>Communaute, membres et progression de clan.</p>
+          </div>
+          <Button
             onClick={() => setDialogOpen(true)}
             variant="outline"
           >
             <Plus className="h-4 w-4 mr-2" />
             Creer un clan (100$)
           </Button>
-        </div>
+        </header>
 
-      {message ? (
+        <div className={SPACING.PAGE_CONTENT}>
+          {message ? (
           <Alert variant={message.type === 'error' ? 'destructive' : 'default'}>
             <AlertTitle>{message.type === 'error' ? 'Erreur' : 'Info'}</AlertTitle>
             <AlertDescription>{message.text}</AlertDescription>
@@ -246,7 +250,7 @@ export default function Clans() {
                     tabIndex={0}
                     onClick={() => setSelectedClanId(clan.id)}
                     className={cn(
-                      "cursor-pointer border-border/40 transition-colors hover:border-foreground/30",
+                      "cursor-pointer transition-colors hover:border-foreground/30",
                       clan.id === selectedClanId && "bg-muted/30 border-foreground/50"
                     )}
                   >
@@ -301,7 +305,7 @@ export default function Clans() {
               <div className={cn(TYPOGRAPHY.MUTED, "py-12 text-center")}>Chargement...</div>
             ) : selectedClan ? (
               <div className={SPACING.SECTION_SPACING}>
-                <Card className="border-border/40">
+                <Card>
                   <CardContent className={SPACING.CARD_SPACING}>
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div className="flex items-center gap-4">
@@ -390,7 +394,7 @@ export default function Clans() {
                     </div>
                   </CardContent>
                 </Card>
-                <Card className="border-border/40">
+                <Card>
                   <CardContent className={SPACING.SECTION_SPACING}>
                     <div className={SPACING.CARD_SPACING}>
                       <h3 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tracking-wide uppercase")}>Membres (classement aura)</h3>
@@ -399,7 +403,7 @@ export default function Clans() {
                           <Card
                             key={member.id}
                             className={cn(
-                              "border-border/40",
+                              "",
                               member.userId === selectedClan.leader.id && "bg-muted/30 border-foreground/50"
                             )}
                           >
@@ -459,7 +463,7 @@ export default function Clans() {
                             {selectedClan.joinRequests.map((request) => (
                               <Card
                                 key={request.id}
-                                className="border-border/40"
+                               
                               >
                                 <CardContent className="p-4">
                                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -526,7 +530,8 @@ export default function Clans() {
             )}
           </div>
         </div>
-      </PageLayout>
+        </div>
+      </div>
 
       <Dialog open={dialogOpen} onOpenChange={(open) => {
         setDialogOpen(open);
@@ -553,7 +558,7 @@ export default function Clans() {
                 maxLength={300}
               />
             </div>
-            <Card className="border-border/40">
+            <Card>
               <CardContent className="p-3">
                 <div className="flex items-center justify-between">
                   <div>
