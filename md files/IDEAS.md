@@ -1,22 +1,24 @@
 Games
 Solo
 Multijoueur
-- grand jeux à part : entrepreneur : créer entreprise avec salariés, parts de marché, actions, carte payer rues, propriétés etc
+- grand jeux à part : entrepreneur : créer entreprise avec salariés, parts de marché, actions, carte payer rues, propriétés etc/IDLE
 - jeux multijoueurs/solo : pas de casino : party : quitter/venir sur latable
 - complet clash
 - animation/événements échecs
 - monopoly
-- subway sirfer
+- subway surfer
 
 Design
-Brand
-Mascotte 
-logo
-couleurs
+- Brand
+- Mascotte 
+- logo
+- couleurs
+
 UI
 - vrai/faux pseudo
 - badges promo/classe
 - photo background chat bulle
+- hiérarchie des titres sur les pages et consistence
 
 Big improvement
 - plus d'effets objets, objets en quantité limité
@@ -32,8 +34,6 @@ Small improvement
 - scooby serie
 - regsiter : ajouter mot demande d'adhésion
 
-
-
 Bugs
 
 - fix aura recompense bataille navale
@@ -43,5 +43,6 @@ Bugs
 - intégrer jeux github
 https://github.com/DavidNHill/JSMinesweeper
 https://github.com/pi0/space-invaders
-- subway surfer
-- skin payant
+
+- skins payants
+- parties payantes
