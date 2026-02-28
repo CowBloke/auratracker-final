@@ -164,7 +164,7 @@ export function SiteHeader() {
         <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
         {announcement && (
           <div className="flex max-w-[45vw] min-w-0 items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs text-amber-400">
-            <span className="font-medium uppercase tracking-wide">Annonce</span>
+            <span className="font-medium  ">Annonce</span>
             <span className="truncate">{announcement}</span>
           </div>
         )}

@@ -132,7 +132,7 @@ export default function BombParty() {
   // Not in a party - show message
   if (!currentParty) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
         <Link
           to="/games"
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -162,10 +162,10 @@ export default function BombParty() {
   // Lobby state (no game active)
   if (!bombPartyGame) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-16">
+      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-16">
         {/* Players in party */}
         <section className="space-y-4">
-          <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
+          <h2 className="text-sm text-muted-foreground  ">
             Joueurs dans la party ({partyMembers.length})
           </h2>
           <div className="space-y-0">
@@ -300,7 +300,7 @@ export default function BombParty() {
 
   // Game active
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+    <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
       <div className="flex items-center justify-end">
         <Button variant="ghost"
           onClick={leaveBombParty}
@@ -366,7 +366,7 @@ export default function BombParty() {
         {/* Current prompt */}
         <div className="text-center">
           <div className="inline-block px-10 py-6 border-2 border-yellow-500 bg-yellow-500/5 rounded-lg">
-            <span className="text-5xl md:text-7xl font-mono font-bold tracking-widest text-yellow-400">
+            <span className="text-5xl md:text-7xl font-mono font-bold  text-yellow-400">
               {bombPartyGame?.currentPrompt}
             </span>
           </div>
@@ -374,7 +374,7 @@ export default function BombParty() {
 
         {/* Current input display with highlighted prompt */}
         <div className="text-center min-h-[60px]">
-          <span className="text-3xl md:text-4xl font-mono tracking-wide">
+          <span className="text-3xl md:text-4xl font-mono ">
             <HighlightedWord
               word={displayInput}
               prompt={bombPartyGame?.currentPrompt || ''}
@@ -411,7 +411,7 @@ export default function BombParty() {
       {/* Used words */}
       {bombPartyGame && bombPartyGame.usedWords.length > 0 && (
         <section className="space-y-2">
-          <h3 className="text-sm text-muted-foreground tracking-wide uppercase">
+          <h3 className="text-sm text-muted-foreground  ">
             Mots utilises ({bombPartyGame.usedWords.length})
           </h3>
           <div className="flex flex-wrap gap-2">

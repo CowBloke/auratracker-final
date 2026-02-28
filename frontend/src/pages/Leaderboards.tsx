@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { PageShell } from '@/components/layout/page-shell';
 
 interface Ranking {
   rank: number;
@@ -130,18 +131,14 @@ export default function Leaderboards() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1.5">
-          <h1 className={TYPOGRAPHY.PAGE_TITLE}>Classements</h1>
-          <p className={TYPOGRAPHY.PAGE_DESCRIPTION}>Classements economie et jeux.</p>
-        </div>
-        {userRank ? (
-          <p className={cn(TYPOGRAPHY.PAGE_META, "tabular-nums")}>Classement personnel #{userRank}</p>
-        ) : null}
-      </header>
-
+    <PageShell>
       <div className={SPACING.PAGE_CONTENT}>
+        {userRank ? (
+          <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tabular-nums")}>
+            Position personnelle #{userRank}
+          </p>
+        ) : null}
+
         {/* Navigation */}
         <div className="flex flex-wrap gap-2">
           {navItems.map((item) => (
@@ -258,6 +255,6 @@ export default function Leaderboards() {
           )}
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }

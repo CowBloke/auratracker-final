@@ -207,12 +207,12 @@ export default function Wordle() {
   }, [currentGuess, isCompleted, loading, submitting, wordLength]);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+    <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
       <div className="mx-auto w-full max-w-6xl space-y-8">
         <section className="flex flex-col items-start justify-center gap-6 lg:flex-row">
           <div className="w-full max-w-3xl rounded-xl border border-border bg-card">
             <header className="border-b border-border px-4 py-3 text-center">
-              <h2 className="text-3xl font-bold tracking-wide">WORDLE</h2>
+              <h2 className="text-3xl font-bold ">WORDLE</h2>
               <p className="mt-1 text-xs text-muted-foreground">{puzzleDate ? toDateLabel(puzzleDate) : '-'}</p>
             </header>
 
@@ -232,7 +232,7 @@ export default function Wordle() {
                           <div
                             key={`cell-${rowIndex}-${cellIndex}`}
                             className={cn(
-                              'flex h-14 w-14 items-center justify-center border-2 text-2xl font-bold uppercase transition-colors',
+                              'flex h-14 w-14 items-center justify-center border-2 text-2xl font-bold  transition-colors',
                               TILE_CLASS[cell.state]
                             )}
                           >
@@ -290,7 +290,7 @@ export default function Wordle() {
 
           <div className="w-full rounded-xl border border-border bg-card lg:w-72 lg:overflow-hidden">
             <div className="border-b border-border px-4 py-3">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Daily Leaderboard</h2>
+              <h2 className="text-sm font-semibold   text-muted-foreground">Daily Leaderboard</h2>
             </div>
             <div className="max-h-[300px] overflow-y-auto lg:max-h-[620px]">
               {leaderboard.length === 0 ? (
@@ -319,7 +319,7 @@ export default function Wordle() {
 
         <section className="grid grid-cols-1 gap-4">
           <div className="rounded-xl border border-border bg-card p-4">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Previous Games</h2>
+            <h2 className="mb-3 text-sm font-semibold   text-muted-foreground">Previous Games</h2>
             {history.length === 0 ? (
               <p className="text-sm text-muted-foreground">Pas encore d'historique.</p>
             ) : (
@@ -329,7 +329,7 @@ export default function Wordle() {
                     key={entry.puzzleDate}
                     className="rounded-md border border-border px-3 py-2 text-sm"
                   >
-                    <div className="font-semibold uppercase">{entry.word}</div>
+                    <div className="font-semibold ">{entry.word}</div>
                     <div className="text-muted-foreground">
                       {toDateLabel(entry.puzzleDate)} - trouves: {entry.solvedCount}/{entry.totalPlayers}
                     </div>

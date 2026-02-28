@@ -6,9 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Separator } from '@/components/ui/separator';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { PageShell } from '@/components/layout/page-shell';
 
 interface RuleSection {
   title: string;
@@ -197,15 +197,7 @@ export default function Rules() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
-      {/* Header */}
-      <p className={cn(TYPOGRAPHY.SMALL, "max-w-2xl")}>
-        Tout est rassemblé ici : règlement, notes de version et signalement de bugs.
-      </p>
-
-      <Separator />
-
-      {/* Bug report */}
+    <PageShell>
       <Card>
         <CardHeader>
           <CardDescription>Signalement</CardDescription>
@@ -277,8 +269,6 @@ export default function Rules() {
                 </p>
               </div>
 
-              <Separator />
-
               <div className="flex items-center justify-between">
                 <Button
                   type="button"
@@ -307,10 +297,6 @@ export default function Rules() {
           )}
         </CardContent>
       </Card>
-
-      <Separator />
-
-      {/* Changelog */}
       <Card>
         <CardHeader>
           <CardDescription>Notes de version</CardDescription>
@@ -358,10 +344,6 @@ export default function Rules() {
           </div>
         </CardContent>
       </Card>
-
-      <Separator />
-
-      {/* Rules Sections */}
       <Card>
         <CardHeader>
           <CardDescription>Règlement</CardDescription>
@@ -391,10 +373,6 @@ export default function Rules() {
           ))}
         </CardContent>
       </Card>
-
-      <Separator />
-
-      {/* Sanctions */}
       <Card>
         <CardHeader>
           <CardDescription>Modération</CardDescription>
@@ -420,10 +398,6 @@ export default function Rules() {
           </div>
         </CardContent>
       </Card>
-
-      <Separator />
-
-      {/* Footer note */}
       <Card>
         <CardHeader>
           <CardDescription>Informations</CardDescription>
@@ -438,6 +412,6 @@ export default function Rules() {
           </p>
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 }

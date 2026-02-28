@@ -83,7 +83,7 @@ export function BadgeSelectionModal({ open, onOpenChange, onUpdate }: BadgeSelec
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-sm text-muted-foreground tracking-wide uppercase font-normal">
+          <DialogTitle className="text-sm text-muted-foreground   font-normal">
             Sélectionner tes badges (max 2)
           </DialogTitle>
         </DialogHeader>
@@ -113,7 +113,7 @@ export function BadgeSelectionModal({ open, onOpenChange, onUpdate }: BadgeSelec
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div
-                      className="px-2.5 py-1 rounded-full border text-xs uppercase tracking-wide"
+                      className="px-2.5 py-1 rounded-full border text-xs  "
                       style={{
                         color: userBadge.badge.color,
                         borderColor: userBadge.badge.color,

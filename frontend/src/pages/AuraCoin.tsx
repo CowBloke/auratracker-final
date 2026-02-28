@@ -259,21 +259,21 @@ export default function AuraCoin() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+    <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
       {/* Main Trading Card */}
       <Card>
-        <CardContent className={SPACING.SECTION_SPACING}>
+        <CardContent className={`p-6 ${SPACING.SECTION_SPACING}`}>
           {/* Balances and Current Price */}
           <div className="grid grid-cols-3 gap-4">
             <Card>
               <CardContent className="p-4">
-                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Solde Money</p>
+                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground  ")}>Solde Money</p>
                 <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>${moneyBalance.toLocaleString()}</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4">
-                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Solde AuraCoin</p>
+                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground  ")}>Solde AuraCoin</p>
                 <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>{auraCoinBalance.toFixed(4)} AC</p>
                 <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground tabular-nums")}>
                   ≈ ${(auraCoinBalance * currentPrice).toFixed(2)}
@@ -282,7 +282,7 @@ export default function AuraCoin() {
             </Card>
             <Card>
               <CardContent className="p-4">
-                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Prix Actuel</p>
+                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground  ")}>Prix Actuel</p>
                 <div className="flex items-center gap-2">
                   <span className={cn(TYPOGRAPHY.H2, "tabular-nums")}>
                     ${currentPrice.toFixed(2)}
@@ -304,7 +304,7 @@ export default function AuraCoin() {
           <Card>
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-3">
-                <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground uppercase tracking-wide")}>
+                <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground  ")}>
                   Cours {timePeriod === 'hour' ? '1h' : timePeriod === 'day' ? '24h' : timePeriod === 'week' ? '7j' : '30j'}
                 </span>
                 <div className="flex gap-1 border border-border/30 rounded-md">
@@ -393,7 +393,7 @@ export default function AuraCoin() {
               <div className="grid md:grid-cols-2 gap-4">
                 {/* Buy */}
                 <Card>
-                  <CardContent className={SPACING.CARD_SPACING}>
+                  <CardContent className={`p-6 ${SPACING.CARD_SPACING}`}>
                     <div className="flex items-center gap-2">
                       <ArrowUpRight className="w-4 h-4 text-emerald-500" />
                       <h2 className={TYPOGRAPHY.H6}>Acheter</h2>
@@ -415,7 +415,7 @@ export default function AuraCoin() {
                           disabled={loading || moneyBalance <= 0}
                           variant="outline"
                           size="sm"
-                          className="text-[10px] uppercase tracking-widest whitespace-nowrap border-emerald-500/60 text-emerald-500 hover:bg-emerald-500 hover:text-background"
+                          className="text-[10px]   whitespace-nowrap border-emerald-500/60 text-emerald-500 hover:bg-emerald-500 hover:text-background"
                         >
                           Max
                         </Button>
@@ -453,7 +453,7 @@ export default function AuraCoin() {
 
                 {/* Sell */}
                 <Card>
-                  <CardContent className={SPACING.CARD_SPACING}>
+                  <CardContent className={`p-6 ${SPACING.CARD_SPACING}`}>
                     <div className="flex items-center gap-2">
                       <ArrowDownRight className="w-4 h-4 text-red-500" />
                       <h2 className={TYPOGRAPHY.H6}>Vendre</h2>
@@ -476,7 +476,7 @@ export default function AuraCoin() {
                           disabled={loading || auraCoinBalance <= 0}
                           variant="outline"
                           size="sm"
-                          className="text-[10px] uppercase tracking-widest whitespace-nowrap border-red-500/60 text-red-500 hover:bg-red-500 hover:text-background"
+                          className="text-[10px]   whitespace-nowrap border-red-500/60 text-red-500 hover:bg-red-500 hover:text-background"
                         >
                           Max
                         </Button>
@@ -523,7 +523,7 @@ export default function AuraCoin() {
                 <div className="grid md:grid-cols-2 gap-4">
                   {/* Open Position */}
                   <Card>
-                    <CardContent className={SPACING.CARD_SPACING}>
+                    <CardContent className={`p-6 ${SPACING.CARD_SPACING}`}>
                       <div className="flex items-center gap-2">
                         <h2 className={TYPOGRAPHY.H6}>Ouvrir une Position</h2>
                       </div>
@@ -587,7 +587,7 @@ export default function AuraCoin() {
                             disabled={loading || moneyBalance <= 0}
                             variant="outline"
                             size="sm"
-                            className="text-[10px] uppercase tracking-widest whitespace-nowrap"
+                            className="text-[10px]   whitespace-nowrap"
                           >
                             Max
                           </Button>
@@ -631,7 +631,7 @@ export default function AuraCoin() {
 
                   {/* Open Positions */}
                   <Card>
-                    <CardContent className={SPACING.CARD_SPACING}>
+                    <CardContent className={`p-6 ${SPACING.CARD_SPACING}`}>
                       <h2 className={TYPOGRAPHY.H6}>Positions Ouvertes</h2>
                       <div className="space-y-2 max-h-[300px] overflow-y-auto">
                         {openPositions.length === 0 ? (
@@ -730,7 +730,7 @@ export default function AuraCoin() {
 
       {/* Transactions */}
       <Card>
-        <CardContent className={SPACING.CARD_SPACING}>
+        <CardContent className={`p-6 ${SPACING.CARD_SPACING}`}>
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'my' | 'all')}>
             <TabsList>
               <TabsTrigger value="my">Mes Transactions</TabsTrigger>
@@ -768,7 +768,7 @@ export default function AuraCoin() {
                               </span>
                             )}
                             <span className={cn(
-                              "text-[10px] uppercase",
+                              "text-[10px] ",
                               tx.type === 'BUY' ? "text-emerald-500" : "text-red-500"
                             )}>
                               {tx.type === 'BUY' ? 'Achat' : 'Vente'}

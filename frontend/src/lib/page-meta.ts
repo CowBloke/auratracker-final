@@ -1,6 +1,7 @@
 export interface PageMeta {
   title: string;
   description?: string;
+  contentHeader?: boolean;
 }
 
 const STATIC_PAGE_META: Record<string, PageMeta> = {
@@ -77,4 +78,3 @@ export function getPageMetaForPath(pathname: string): PageMeta {
         .join(' / ') || 'Dashboard',
     };
 }
-

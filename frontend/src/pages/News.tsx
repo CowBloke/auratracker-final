@@ -30,9 +30,8 @@ const articles = [
 
 export default function News() {
   return (
-    <PageShell>
+    <PageShell padTop>
       <PageHeader
-        eyebrow="Maintenance"
         title="News Lounge"
         description="Une sélection courte, rangée en cartes, pour garder la même lecture visuelle que le reste du site."
       />
@@ -56,7 +55,7 @@ export default function News() {
             <Card className="h-full bg-muted/20 transition hover:-translate-y-1 hover:border-foreground/40">
               <CardContent className="flex h-full flex-col justify-between p-6">
                 <div className="space-y-4">
-                  <div className="inline-flex w-fit items-center rounded-full bg-background/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                  <div className="inline-flex w-fit items-center rounded-full bg-background/80 px-3 py-1 text-xs font-semibold   text-muted-foreground">
                     {article.tag}
                   </div>
                   <div>

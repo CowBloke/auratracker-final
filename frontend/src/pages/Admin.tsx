@@ -1731,7 +1731,7 @@ export default function Admin() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+    <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
       {/* Message */}
       {message && (
         <Card className={cn(
@@ -2268,7 +2268,7 @@ export default function Admin() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <span className="font-medium truncate">{item.name}</span>
-                            <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                            <span className="text-xs text-muted-foreground  ">
                               {item.type}
                             </span>
                           </div>
@@ -2382,7 +2382,7 @@ export default function Admin() {
                 </div>
                 {badgeForm.name && (
                   <span
-                    className="inline-flex text-xs uppercase tracking-wide px-2.5 py-1 rounded-full border"
+                    className="inline-flex text-xs   px-2.5 py-1 rounded-full border"
                     style={{ color: badgeForm.color, borderColor: badgeForm.color }}
                   >
                     {badgeForm.name}
@@ -2390,7 +2390,7 @@ export default function Admin() {
                 )}
               </div>
               <div className="space-y-2">
-                <h3 className="text-xs text-muted-foreground uppercase tracking-wide">
+                <h3 className="text-xs text-muted-foreground  ">
                   Badges disponibles
                 </h3>
                 {loadingBadges ? (
@@ -2404,7 +2404,7 @@ export default function Admin() {
                     {badges.map((badge) => (
                       <span
                         key={badge.id}
-                        className="text-xs uppercase tracking-wide px-2.5 py-1 rounded-full border"
+                        className="text-xs   px-2.5 py-1 rounded-full border"
                         style={{ color: badge.color, borderColor: badge.color }}
                       >
                         {badge.name}
@@ -2465,7 +2465,7 @@ export default function Admin() {
                   </div>
                 </div>
                 <div className="space-y-2 mt-4">
-                  <h3 className="text-xs text-muted-foreground uppercase tracking-wide">
+                  <h3 className="text-xs text-muted-foreground  ">
                     Badges de l'utilisateur
                   </h3>
                   {!badgeUserId ? (
@@ -2481,7 +2481,7 @@ export default function Admin() {
                       {userBadges.map((userBadge) => (
                         <div key={userBadge.id} className="flex items-center justify-between border border-border/30 px-3 py-2">
                           <span
-                            className="text-xs uppercase tracking-wide px-2.5 py-1 rounded-full border"
+                            className="text-xs   px-2.5 py-1 rounded-full border"
                             style={{ color: userBadge.badge.color, borderColor: userBadge.badge.color }}
                           >
                             {userBadge.badge.name}
@@ -4094,7 +4094,7 @@ export default function Admin() {
 
           <div className="space-y-6 py-4">
             <div className="border border-border/30 rounded p-4 space-y-3">
-              <h3 className="text-sm text-muted-foreground tracking-wide uppercase">
+              <h3 className="text-sm text-muted-foreground  ">
                 Ajouter un objet
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
@@ -4149,7 +4149,7 @@ export default function Admin() {
 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm text-muted-foreground tracking-wide uppercase">
+                <h3 className="text-sm text-muted-foreground  ">
                   Inventaire actuel
                 </h3>
                 <span className="text-xs text-muted-foreground">
@@ -4194,7 +4194,7 @@ export default function Admin() {
                             <div className="min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-medium truncate">{inventoryItem.item.name}</span>
-                                <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                                <span className="text-xs text-muted-foreground  ">
                                   {ITEM_TYPE_LABELS[inventoryItem.item.type] || inventoryItem.item.type}
                                 </span>
                               </div>
@@ -4669,7 +4669,7 @@ export default function Admin() {
                   <Trophy className="h-5 w-5 text-amber-400" />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-xs font-semibold uppercase tracking-widest text-amber-500/80 mb-0.5">
+                  <div className="text-xs font-semibold   text-amber-500/80 mb-0.5">
                     Record absolu
                   </div>
                   <div className="flex items-baseline gap-2">

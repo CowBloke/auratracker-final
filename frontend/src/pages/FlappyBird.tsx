@@ -404,7 +404,7 @@ export default function FlappyBird() {
   // RENDER
   // ============================================
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+    <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
       {/* Game Area */}
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Canvas */}
@@ -466,7 +466,7 @@ export default function FlappyBird() {
         <div className="lg:w-80 space-y-6">
           {/* Stats */}
           <section className="space-y-2">
-            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
+            <h2 className="text-sm text-muted-foreground  ">
               Statistiques
             </h2>
             <div className="space-y-2 border border-border/30 rounded-lg p-4">
@@ -483,7 +483,7 @@ export default function FlappyBird() {
 
           {/* Leaderboard */}
           <section className="space-y-2">
-            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
+            <h2 className="text-sm text-muted-foreground  ">
               Classement
             </h2>
             <div className="border border-border/30 rounded-lg overflow-hidden">

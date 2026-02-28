@@ -96,7 +96,7 @@ export default function BombPartyPlayAgainPrompt() {
                     {player.userId === user?.id ? ' (toi)' : ''}
                   </span>
                   {response ? (
-                    <span className={cn('text-xs uppercase', response.playAgain ? 'text-green-500' : 'text-red-500')}>
+                    <span className={cn('text-xs ', response.playAgain ? 'text-green-500' : 'text-red-500')}>
                       {response.playAgain ? 'Replay' : 'Leave'}
                     </span>
                   ) : (

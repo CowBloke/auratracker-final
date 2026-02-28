@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PageShell } from '@/components/layout/page-shell';
 
 type GamesTab = 'singleplayer' | 'multiplayer' | 'daily';
 
@@ -122,21 +123,18 @@ const dailyGames = [
   },
 ];
 
-const tabConfig: Array<{ id: GamesTab; label: string; className: string }> = [
+const tabConfig: Array<{ id: GamesTab; label: string }> = [
   {
     id: 'singleplayer',
     label: 'Singleplayer',
-    className: 'from-sky-500 to-blue-500 text-white border-sky-300/50',
   },
   {
     id: 'multiplayer',
     label: 'Multiplayer',
-    className: 'from-emerald-500 to-teal-500 text-white border-emerald-300/50',
   },
   {
     id: 'daily',
     label: 'Daily Games',
-    className: 'from-fuchsia-500 to-rose-500 text-white border-fuchsia-300/50',
   },
 ];
 
@@ -183,61 +181,50 @@ export default function Games() {
   const gamesToRender = activeTab === 'multiplayer' ? multiplayerGames : activeTab === 'daily' ? dailyGames : soloGames;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
-      <div className={SPACING.PAGE_SPACING}>
-        <div className={SPACING.SECTION_SPACING}>
-          <div className="flex flex-wrap gap-3">
-            {tabConfig.map((tab) => (
-              <Button variant="ghost"
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  'rounded-xl border px-5 py-2.5 text-sm font-semibold transition',
-                  activeTab === tab.id
-                    ? `bg-gradient-to-r ${tab.className} shadow-md`
-                    : 'bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground'
-                )}
+    <PageShell>
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as GamesTab)} className={SPACING.SECTION_SPACING}>
+        <TabsList className="grid w-full grid-cols-3">
+          {tabConfig.map((tab) => (
+            <TabsTrigger key={tab.id} value={tab.id}>
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        <TabsContent value={activeTab} className={SPACING.CARD_SPACING}>
+          <p className={TYPOGRAPHY.PAGE_DESCRIPTION}>
+            {activeTab === 'multiplayer' ? 'Jeux en party et duels.' : activeTab === 'daily' ? 'Défis courts et renouvelés.' : 'Jeux solo et runs à score.'}
+          </p>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+            {gamesToRender.map((game) => (
+              <Link
+                key={game.id}
+                to={getGameLink(game.id)}
+                className="group block"
               >
-                {tab.label}
-              </Button>
+                <Card className="relative aspect-square overflow-hidden transition hover:-translate-y-1 hover:border-foreground/40 hover:shadow-md">
+                  {'image' in game ? (
+                    <img
+                      src={game.image}
+                      alt={game.name}
+                      className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className={cn('absolute inset-0 bg-gradient-to-br', game.gradient)} />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+                  <CardContent className="relative z-10 flex h-full flex-col justify-end p-5 text-white">
+                    <p className="text-xs font-medium   text-white/70">{game.type}</p>
+                    <h3 className={TYPOGRAPHY.H4}>{game.name}</h3>
+                    <p className="mt-1 text-xs text-white/85">{game.description}</p>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
-
-          <div className={SPACING.CARD_SPACING}>
-            <h2 className={TYPOGRAPHY.MUTED}>
-              {activeTab === 'multiplayer' ? 'Multiplayer' : activeTab === 'daily' ? 'Daily Games' : 'Singleplayer'}
-            </h2>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
-              {gamesToRender.map((game) => (
-                <Link
-                  key={game.id}
-                  to={getGameLink(game.id)}
-                  className="group block"
-                >
-                  <Card className="relative aspect-square overflow-hidden transition hover:-translate-y-1 hover:border-foreground/40 hover:shadow-md">
-                    {'image' in game ? (
-                      <img
-                        src={game.image}
-                        alt={game.name}
-                        className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className={cn('absolute inset-0 bg-gradient-to-br', game.gradient)} />
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-                    <CardContent className="relative z-10 flex h-full flex-col justify-end p-5 text-white">
-                      <h3 className={TYPOGRAPHY.H4}>{game.name}</h3>
-                      <p className="mt-1 text-xs text-white/85">{game.description}</p>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+        </TabsContent>
+      </Tabs>
+    </PageShell>
   );
 }

@@ -75,7 +75,7 @@ export default function Maintenance({ message, endDate }: MaintenanceProps) {
                   <div className={cn(TYPOGRAPHY.H1, "mb-2 tabular-nums")}>
                     {String(timeLeft.days).padStart(2, '0')}
                   </div>
-                  <div className={cn(TYPOGRAPHY.SMALL, "uppercase")}>
+                  <div className={cn(TYPOGRAPHY.SMALL, "")}>
                     {timeLeft.days === 1 ? 'Jour' : 'Jours'}
                   </div>
                 </CardContent>
@@ -85,7 +85,7 @@ export default function Maintenance({ message, endDate }: MaintenanceProps) {
                   <div className={cn(TYPOGRAPHY.H1, "mb-2 tabular-nums")}>
                     {String(timeLeft.hours).padStart(2, '0')}
                   </div>
-                  <div className={cn(TYPOGRAPHY.SMALL, "uppercase")}>
+                  <div className={cn(TYPOGRAPHY.SMALL, "")}>
                     {timeLeft.hours === 1 ? 'Heure' : 'Heures'}
                   </div>
                 </CardContent>
@@ -95,7 +95,7 @@ export default function Maintenance({ message, endDate }: MaintenanceProps) {
                   <div className={cn(TYPOGRAPHY.H1, "mb-2 tabular-nums")}>
                     {String(timeLeft.minutes).padStart(2, '0')}
                   </div>
-                  <div className={cn(TYPOGRAPHY.SMALL, "uppercase")}>
+                  <div className={cn(TYPOGRAPHY.SMALL, "")}>
                     {timeLeft.minutes === 1 ? 'Minute' : 'Minutes'}
                   </div>
                 </CardContent>
@@ -105,7 +105,7 @@ export default function Maintenance({ message, endDate }: MaintenanceProps) {
                   <div className={cn(TYPOGRAPHY.H1, "mb-2 tabular-nums")}>
                     {String(timeLeft.seconds).padStart(2, '0')}
                   </div>
-                  <div className={cn(TYPOGRAPHY.SMALL, "uppercase")}>
+                  <div className={cn(TYPOGRAPHY.SMALL, "")}>
                     {timeLeft.seconds === 1 ? 'Seconde' : 'Secondes'}
                   </div>
                 </CardContent>

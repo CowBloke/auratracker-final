@@ -3,9 +3,8 @@ import { PageHeader, PageShell } from '@/components/layout/page-shell';
 
 export default function WallaceGromit() {
   return (
-    <PageShell>
+    <PageShell padTop>
       <PageHeader
-        eyebrow="Maintenance"
         title="Wallace & Gromit"
         description="Lecture continue, sans distraction, pendant l'indisponibilité du site."
       />

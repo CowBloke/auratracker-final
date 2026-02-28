@@ -303,7 +303,7 @@ export default function Polymarket() {
 
   return (
     <>
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="events">Événements</TabsTrigger>
@@ -598,7 +598,7 @@ export default function Polymarket() {
                             </span>
                           )}
                           <span className={cn(
-                            "text-xs uppercase",
+                            "text-xs ",
                             bet.prediction === 'YES' ? "text-green-500" : "text-red-500"
                           )}>
                             {bet.prediction === 'YES' ? 'Oui' : 'Non'}

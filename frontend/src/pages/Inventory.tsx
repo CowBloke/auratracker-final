@@ -16,6 +16,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { resolveImageUrl } from '@/lib/images';
+import { PageShell } from '@/components/layout/page-shell';
 
 interface UserItem {
   id: string;
@@ -232,7 +233,7 @@ export default function Inventory() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
         </div>
@@ -241,17 +242,7 @@ export default function Inventory() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1.5">
-          <h1 className={TYPOGRAPHY.PAGE_TITLE}>Inventaire</h1>
-          <p className={TYPOGRAPHY.PAGE_DESCRIPTION}>Objets, consommables et cosmetiques.</p>
-        </div>
-        <p className={cn(TYPOGRAPHY.PAGE_META, "tabular-nums")}>
-          {items.length} objet{items.length !== 1 ? 's' : ''}
-        </p>
-      </header>
-
+    <PageShell>
       <div className={SPACING.PAGE_CONTENT}>
       {/* Message */}
       {message && (
@@ -303,7 +294,7 @@ export default function Inventory() {
                         <div className="space-y-1 flex-1 min-w-0">
                           <div className="flex items-center gap-4">
                             <h2 className={cn(TYPOGRAPHY.H5, "truncate")}>{userItem.item.name}</h2>
-                            <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide shrink-0")}>
+                            <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground   shrink-0")}>
                               {typeLabels[userItem.item.type]}
                             </span>
                             <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground shrink-0")}>
@@ -493,6 +484,6 @@ export default function Inventory() {
         </DialogContent>
       </Dialog>
       </div>
-    </div>
+    </PageShell>
   );
 }

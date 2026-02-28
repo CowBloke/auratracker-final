@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { PageHeader, PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/page-shell';
 
 const themeOptions = [
   {
@@ -59,11 +59,6 @@ export default function Settings() {
 
   return (
     <PageShell>
-      <PageHeader
-        eyebrow="Préférences"
-        title="Paramètres"
-        description="Même structure, mêmes espacements, une carte par bloc de décision."
-      />
       <Card>
         <CardHeader>
           <CardDescription>Thème</CardDescription>

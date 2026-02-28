@@ -11,8 +11,10 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
+import { PageShell } from '@/components/layout/page-shell';
 
 interface User {
   id: string;
@@ -138,13 +140,12 @@ export default function Party() {
   const selectedGameId = partySelectedGame?.gameId;
   return (
     <>
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
-
+      <PageShell>
       {/* Invites */}
       {partyInvites.length > 0 && (
         <Card>
           <CardHeader>
-            <h2 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tracking-wide uppercase")}>
+            <h2 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground  ")}>
               Invitations
             </h2>
           </CardHeader>
@@ -186,7 +187,7 @@ export default function Party() {
       {/* Current Party or Public Parties */}
       {currentParty ? (
         <Card>
-          <CardContent className={SPACING.SECTION_SPACING}>
+          <CardContent className={`p-6 ${SPACING.SECTION_SPACING}`}>
             <div className="flex items-center justify-between">
               <div>
                 <h2 className={TYPOGRAPHY.H2}>
@@ -231,13 +232,13 @@ export default function Party() {
 
             {/* Members */}
             <Card>
-              <CardContent className="space-y-0">
+              <CardContent className="p-6 space-y-0">
                 {partyMembers.map((member) => (
                   <div
                     key={member.userId}
                     className={cn(
                       "flex items-center justify-between py-4 border-b border-border/30 last:border-0",
-                      member.userId === user?.id && "bg-muted/30 -mx-4 px-4"
+                      member.userId === user?.id && "bg-muted/30 -mx-6 px-6"
                     )}
                   >
                     <div className="flex items-center gap-4">
@@ -269,7 +270,7 @@ export default function Party() {
             </Card>
 
             <div className={SPACING.CARD_SPACING}>
-              <h3 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tracking-wide uppercase")}>
+              <h3 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground  ")}>
                 {currentParty.maxSize === 2 ? 'Jeux de duel' : 'Jeux multijoueur'}
               </h3>
               {partySelectedGame ? (
@@ -320,7 +321,7 @@ export default function Party() {
                       <div className="space-y-1">
                         <div className="flex items-center gap-3">
                           <p className={TYPOGRAPHY.SMALL}>{game.name}</p>
-                          <span className={cn(TYPOGRAPHY.XS, "uppercase tracking-wide text-muted-foreground")}>
+                          <span className={cn(TYPOGRAPHY.XS, "  text-muted-foreground")}>
                             {game.type}
                           </span>
                         </div>
@@ -354,7 +355,7 @@ export default function Party() {
               </div>
 
               <div className="space-y-2">
-                <p className={cn(TYPOGRAPHY.XS, "uppercase tracking-[0.2em] text-muted-foreground")}>
+                <p className={cn(TYPOGRAPHY.XS, "  text-muted-foreground")}>
                   Suggestions
                 </p>
                 {partyGameSuggestions.length === 0 ? (
@@ -394,7 +395,7 @@ export default function Party() {
 
             {isLeader && partyJoinRequests.length > 0 && (
               <div className={SPACING.CARD_SPACING}>
-                <h3 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tracking-wide uppercase")}>
+                <h3 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground  ")}>
                   Demandes en attente
                 </h3>
                 <div className="space-y-0">
@@ -435,15 +436,15 @@ export default function Party() {
         </Card>
       ) : (
         <Card>
-          <CardContent className={SPACING.SECTION_SPACING}>
+          <CardContent className={`p-6 ${SPACING.SECTION_SPACING}`}>
             <div className="flex items-center justify-between gap-3">
-              <h2 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tracking-wide uppercase")}>
+              <h2 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground  ")}>
                 Parties ouvertes
               </h2>
               <div className="flex items-center gap-2">
                 <Button
                   onClick={() => setShowCreateModal(true)}
-                  variant="outline"
+                  variant="default"
                   size="sm"
                 >
                   <Plus className="h-4 w-4 mr-2" />
@@ -478,7 +479,7 @@ export default function Party() {
                         <div className="space-y-1">
                           <div className="flex items-center gap-3">
                             <p className={TYPOGRAPHY.SMALL}>{party.name || (isDuel ? 'Duel sans nom' : 'Party sans nom')}</p>
-                            <span className={cn(TYPOGRAPHY.XS, "uppercase tracking-wide text-muted-foreground")}>
+                            <span className={cn(TYPOGRAPHY.XS, "  text-muted-foreground")}>
                               {isDuel ? 'Duel' : 'Party'}
                             </span>
                           </div>
@@ -514,43 +515,32 @@ export default function Party() {
           </CardContent>
         </Card>
       )}
-      </div>
+      </PageShell>
 
       {/* Create Party Modal */}
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-normal">Créer une party</DialogTitle>
+            <DialogTitle>Créer une party</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="partyType" className="text-sm text-muted-foreground">
+              <Label className="text-sm text-muted-foreground">
                 Type
               </Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={partyType === 'party' ? 'default' : 'outline'}
-                  className="flex-1"
-                  onClick={() => {
-                    setPartyType('party');
-                    setMaxSize(8);
-                  }}
-                >
-                  Party
-                </Button>
-                <Button
-                  type="button"
-                  variant={partyType === 'duel' ? 'default' : 'outline'}
-                  className="flex-1"
-                  onClick={() => {
-                    setPartyType('duel');
-                    setMaxSize(2);
-                  }}
-                >
-                  Duel
-                </Button>
-              </div>
+              <Tabs
+                value={partyType}
+                onValueChange={(value) => {
+                  const nextType = value as 'party' | 'duel';
+                  setPartyType(nextType);
+                  setMaxSize(nextType === 'duel' ? 2 : 8);
+                }}
+              >
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="party">Party</TabsTrigger>
+                  <TabsTrigger value="duel">Duel</TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
             {partyType && (
               <>
@@ -604,14 +594,11 @@ export default function Party() {
             <Button
               variant="outline"
               onClick={() => setShowCreateModal(false)}
-              className="border-border/30"
             >
               Annuler
             </Button>
             <Button
               onClick={handleCreateParty}
-              variant="outline"
-              className="border-foreground"
               disabled={!partyType}
             >
               Créer
@@ -624,7 +611,7 @@ export default function Party() {
       <Dialog open={showInviteModal} onOpenChange={setShowInviteModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-normal">Inviter</DialogTitle>
+            <DialogTitle>Inviter</DialogTitle>
           </DialogHeader>
           <div className="max-h-64 overflow-y-auto space-y-0">
             {availableUsersToInvite.length === 0 ? (
@@ -657,4 +644,3 @@ export default function Party() {
     </>
   );
 }
-

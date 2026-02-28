@@ -179,7 +179,7 @@ export default function GiftOpenAnimation({ gift, onComplete, onClose }: GiftOpe
 
             {gift.message && (
               <div className="bg-white/10 rounded-xl p-4 text-center">
-                <p className="text-white italic">"{gift.message}"</p>
+                <p className="text-white ">"{gift.message}"</p>
               </div>
             )}
           </div>

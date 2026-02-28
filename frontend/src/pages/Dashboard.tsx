@@ -269,7 +269,7 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
         </div>
@@ -278,7 +278,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+    <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
       {/* Stats */}
       <Card className="xl:col-span-2">
         <CardContent className="p-8 md:p-10">
@@ -503,7 +503,7 @@ export default function Dashboard() {
               </SheetTrigger>
               <SheetContent className="w-full sm:max-w-md overflow-y-auto">
                 <SheetHeader>
-                  <SheetTitle className="text-sm text-muted-foreground tracking-wide uppercase font-normal">
+                  <SheetTitle className="text-sm text-muted-foreground   font-normal">
                     Historique d'activité
                   </SheetTitle>
                 </SheetHeader>
@@ -541,7 +541,7 @@ export default function Dashboard() {
                             </span>
                           </div>
                           {transfer.message && (
-                            <p className="text-sm text-muted-foreground mt-1 ml-[3.25rem] italic truncate">
+                            <p className="text-sm text-muted-foreground mt-1 ml-[3.25rem]  truncate">
                               "{transfer.message}"
                             </p>
                           )}
@@ -599,7 +599,7 @@ export default function Dashboard() {
                         </span>
                       </div>
                       {transfer.message && (
-                        <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground mt-1 ml-12 italic")}>
+                        <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground mt-1 ml-12 ")}>
                           "{transfer.message}"
                         </p>
                       )}
@@ -619,7 +619,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-3">
-              <p className={cn(TYPOGRAPHY.XS, "uppercase tracking-[0.2em] text-muted-foreground")}>
+              <p className={cn(TYPOGRAPHY.XS, "  text-muted-foreground")}>
                 Parties ouvertes
               </p>
               {publicParties.length === 0 ? (

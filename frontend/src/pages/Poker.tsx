@@ -154,7 +154,7 @@ export default function Poker() {
                 {isDealer && <span>D</span>}
                 {isSmallBlind && <span>SB</span>}
                 {isBigBlind && <span>BB</span>}
-                {player.lastAction && <span className="uppercase tracking-wide">{player.lastAction}</span>}
+                {player.lastAction && <span className=" ">{player.lastAction}</span>}
                 {player.isAllIn && <span className="text-red-500">ALL-IN</span>}
               </div>
             </div>
@@ -184,7 +184,7 @@ export default function Poker() {
 
   if (!currentParty) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
         <Link
           to="/games"
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -234,11 +234,11 @@ export default function Poker() {
   }, [showPlayAgainPrompt, pokerPlayAgainPrompt]);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-10">
+    <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-10">
       {lobby ? (
         <div className="space-y-12">
           <section className="space-y-2">
-            <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
+            <h2 className="text-sm text-muted-foreground  ">
               Joueurs dans la party ({partyMembers.length})
             </h2>
             <div className="space-y-0">
@@ -254,7 +254,7 @@ export default function Poker() {
                         {member.username}
                       </p>
                       {member.isLeader && (
-                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Leader</p>
+                        <p className="text-xs text-muted-foreground  ">Leader</p>
                       )}
                     </div>
                   </div>
@@ -278,7 +278,7 @@ export default function Poker() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <label className="space-y-2">
-                <span className="text-xs uppercase tracking-wide text-muted-foreground">Stack de départ</span>
+                <span className="text-xs   text-muted-foreground">Stack de départ</span>
                 <Input
                   type="number"
                   min={200}
@@ -288,7 +288,7 @@ export default function Poker() {
                 />
               </label>
               <label className="space-y-2">
-                <span className="text-xs uppercase tracking-wide text-muted-foreground">Big blind</span>
+                <span className="text-xs   text-muted-foreground">Big blind</span>
                 <Input
                   type="number"
                   min={10}
@@ -339,7 +339,7 @@ export default function Poker() {
             {pokerGame.lastHandResult && (
               <div className="rounded bg-muted/40 p-3 text-sm flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="uppercase tracking-wide text-xs text-muted-foreground">Main précédente</span>
+                  <span className="  text-xs text-muted-foreground">Main précédente</span>
                   <span className="font-medium">
                     {pokerGame.lastHandResult.winners.map((w) => w.username).join(', ')} remportent {pokerGame.lastHandResult.pot}
                   </span>
@@ -437,7 +437,7 @@ export default function Poker() {
                     <div key={player.userId} className="flex items-center justify-between text-sm">
                       <span style={{ color: player.usernameColor || undefined }}>{player.username}</span>
                       {response ? (
-                        <span className={cn('text-xs uppercase', response.playAgain ? 'text-green-500' : 'text-red-500')}>
+                        <span className={cn('text-xs ', response.playAgain ? 'text-green-500' : 'text-red-500')}>
                           {response.playAgain ? 'OK' : 'Quitte'}
                         </span>
                       ) : (

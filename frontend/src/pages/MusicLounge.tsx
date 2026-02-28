@@ -80,9 +80,8 @@ export default function MusicLounge() {
   };
 
   return (
-    <PageShell>
+    <PageShell padTop>
       <PageHeader
-        eyebrow="Maintenance"
         title="Music Lounge"
         description="Player simple, playlist claire et cartes homogènes avec le reste de l'interface."
       />
@@ -100,7 +99,7 @@ export default function MusicLounge() {
       <div className="grid gap-6 lg:grid-cols-[240px,1fr]">
         <Card className="bg-muted/20">
           <CardHeader>
-            <CardTitle className="text-sm uppercase tracking-[0.2em] text-muted-foreground">Mixes</CardTitle>
+            <CardTitle className="text-sm   text-muted-foreground">Mixes</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-3 text-sm">
@@ -138,7 +137,7 @@ export default function MusicLounge() {
             </div>
 
             <div className="overflow-hidden rounded-2xl border border-border/40">
-              <div className="grid grid-cols-[44px,1fr,64px] gap-4 border-b border-border/40 bg-background/80 px-4 py-3 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              <div className="grid grid-cols-[44px,1fr,64px] gap-4 border-b border-border/40 bg-background/80 px-4 py-3 text-xs   text-muted-foreground">
                 <span>#</span>
                 <span>Title</span>
                 <span className="text-right">Time</span>
@@ -177,7 +176,7 @@ export default function MusicLounge() {
         <CardContent className="space-y-4 pt-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Now playing</p>
+              <p className="text-xs   text-muted-foreground">Now playing</p>
               <h3 className="text-lg font-semibold">{currentTrack.title}</h3>
               <p className="text-sm text-muted-foreground">{currentTrack.artist}</p>
             </div>

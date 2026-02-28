@@ -238,7 +238,7 @@ export default function Casino() {
         : blackjackBet;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+    <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
       <p className="text-muted-foreground">
         Choisis ta table: machine a sous classique, roulette animee ou blackjack.
       </p>
@@ -246,7 +246,7 @@ export default function Casino() {
             <div className="flex flex-col items-end gap-2 text-right">
               <Button variant="ghost"
                 onClick={() => setActiveGame(null)}
-                className="text-xs uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground transition-colors"
+                className="text-xs   text-muted-foreground hover:text-foreground transition-colors"
               >
                 Changer de jeu
               </Button>
@@ -278,7 +278,7 @@ export default function Casino() {
             onClick={() => setActiveGame('roulette')}
             className="group border border-foreground px-6 py-8 text-left transition-colors hover:bg-foreground hover:text-background"
           >
-            <p className="text-sm text-muted-foreground tracking-wide uppercase">Jeu</p>
+            <p className="text-sm text-muted-foreground  ">Jeu</p>
             <p className="mt-2 text-2xl font-light">Roulette</p>
             <p className="mt-2 text-sm text-muted-foreground">
               Mises multi-cases, roue animée et tirage rapide.
@@ -288,7 +288,7 @@ export default function Casino() {
             onClick={() => setActiveGame('slots')}
             className="group border border-foreground px-6 py-8 text-left transition-colors hover:bg-foreground hover:text-background"
           >
-            <p className="text-sm text-muted-foreground tracking-wide uppercase">Jeu</p>
+            <p className="text-sm text-muted-foreground  ">Jeu</p>
             <p className="mt-2 text-2xl font-light">Machine à sous</p>
             <p className="mt-2 text-sm text-muted-foreground">
               Classique, rapide et minimaliste.
@@ -298,7 +298,7 @@ export default function Casino() {
             onClick={() => setActiveGame('blackjack')}
             className="group border border-foreground px-6 py-8 text-left transition-colors hover:bg-foreground hover:text-background"
           >
-            <p className="text-sm text-muted-foreground tracking-wide uppercase">Jeu</p>
+            <p className="text-sm text-muted-foreground  ">Jeu</p>
             <p className="mt-2 text-2xl font-light">Blackjack</p>
             <p className="mt-2 text-sm text-muted-foreground">
               Cartes grandes, actions simples: tirer ou rester.
@@ -481,7 +481,7 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
       {/* Chip selection and controls at top */}
       <div className="border border-border/30 p-3">
         <div className="flex flex-wrap items-center gap-2 mb-3">
-          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+          <p className="text-xs   text-muted-foreground">
             Jetons
           </p>
           <div className="flex flex-wrap gap-2">
@@ -616,7 +616,7 @@ function RouletteGame({ onTotalBetChange }: { onTotalBetChange?: (value: number)
                     {lastResult.number}
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted-foreground tracking-wide uppercase">
+                    <p className="text-[10px] text-muted-foreground  ">
                       Dernier tirage
                     </p>
                     <p className="text-xs font-medium">
@@ -1236,7 +1236,7 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+          <p className="text-xs   text-muted-foreground">
             Mise
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -1290,7 +1290,7 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
         </div>
 
         <div className="text-right">
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+          <p className="text-xs   text-muted-foreground">
             Total
           </p>
           <p className="text-2xl font-semibold">${totalBet.toLocaleString()}</p>
@@ -1306,7 +1306,7 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
       <div className="border border-border/30 p-6">
         <div className="grid gap-6 md:grid-cols-2">
           <div className="space-y-3">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            <p className="text-xs   text-muted-foreground">
               Dealer
             </p>
             <div className="flex flex-wrap gap-3">
@@ -1324,7 +1324,7 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
           </div>
 
           <div className="space-y-3">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            <p className="text-xs   text-muted-foreground">
               Toi
             </p>
             {hands.length === 0 ? (
@@ -1344,7 +1344,7 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
                         isActive && "border-foreground"
                       )}
                     >
-                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs   text-muted-foreground">
                         <span>Main {index + 1}</span>
                         <span>
                           ${hand.bet.toLocaleString()}

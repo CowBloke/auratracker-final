@@ -117,7 +117,7 @@ export default function PetitBac() {
                     <div key={player.userId} className="flex items-center justify-between text-sm">
                       <span style={{ color: player.usernameColor || undefined }}>{player.username}</span>
                       {response ? (
-                        <span className={cn('text-xs uppercase', response.playAgain ? 'text-green-500' : 'text-red-500')}>
+                        <span className={cn('text-xs ', response.playAgain ? 'text-green-500' : 'text-red-500')}>
                           {response.playAgain ? 'OK' : 'Quitte'}
                         </span>
                       ) : (
@@ -185,7 +185,7 @@ export default function PetitBac() {
 
   if (!currentParty) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
         <Link
           to="/games"
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -214,7 +214,7 @@ export default function PetitBac() {
 
   if (!petitBacGame) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
         <Link
           to="/games"
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -230,7 +230,7 @@ export default function PetitBac() {
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2">
-              <label className="text-xs uppercase tracking-wide text-muted-foreground">Manches</label>
+              <label className="text-xs   text-muted-foreground">Manches</label>
               <Input
                 type="number"
                 min={1}
@@ -240,7 +240,7 @@ export default function PetitBac() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs uppercase tracking-wide text-muted-foreground">Temps (s)</label>
+              <label className="text-xs   text-muted-foreground">Temps (s)</label>
               <Input
                 type="number"
                 min={15}
@@ -250,7 +250,7 @@ export default function PetitBac() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs uppercase tracking-wide text-muted-foreground">Categories</label>
+              <label className="text-xs   text-muted-foreground">Categories</label>
               <Input
                 value={categoriesInput}
                 onChange={(e) => setCategoriesInput(e.target.value)}
@@ -282,7 +282,7 @@ export default function PetitBac() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+    <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
       <div className="flex items-center justify-between">
         <Link
           to="/games"
@@ -299,7 +299,7 @@ export default function PetitBac() {
 
       <div className="grid gap-6">
         <div className="flex flex-wrap items-center gap-6">
-          <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+          <div className="text-xs   text-muted-foreground">
             Manche {petitBacGame.round}/{petitBacGame.maxRounds}
           </div>
           <div className="text-6xl font-light tracking-tight">
@@ -314,7 +314,7 @@ export default function PetitBac() {
           <div className="space-y-4">
             {petitBacGame.categories.map((category) => (
               <div key={category} className="grid gap-2">
-                <label className="text-xs uppercase tracking-wide text-muted-foreground">
+                <label className="text-xs   text-muted-foreground">
                   {category}
                 </label>
                 <Input
@@ -335,7 +335,7 @@ export default function PetitBac() {
           </div>
 
           <div className="space-y-3">
-            <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Scores</div>
+            <div className="text-xs   text-muted-foreground">Scores</div>
             <div className="space-y-2">
               {petitBacGame.players.map((player) => (
                 <div
@@ -365,7 +365,7 @@ export default function PetitBac() {
 
         {petitBacRoundResult && (
           <div className="border rounded-lg p-4 space-y-3">
-            <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+            <div className="text-xs   text-muted-foreground">
               Resultats manche {petitBacRoundResult.round}
             </div>
             <div className="grid gap-3">

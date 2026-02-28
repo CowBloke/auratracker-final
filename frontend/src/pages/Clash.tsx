@@ -262,7 +262,7 @@ export default function Clash() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
         </div>
@@ -271,7 +271,7 @@ export default function Clash() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-16">
+    <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-16">
       {/* Stats */}
       <div className="flex items-center justify-end gap-4 text-sm text-muted-foreground tabular-nums">
         <span>{trophies} 🏆</span>
@@ -338,7 +338,7 @@ export default function Clash() {
           <div className="space-y-6">
             {isEditing && (
               <div className="space-y-4">
-                <h3 className="text-sm text-muted-foreground uppercase tracking-wide">Bâtiments</h3>
+                <h3 className="text-sm text-muted-foreground  ">Bâtiments</h3>
                 <div className="grid grid-cols-2 gap-2">
                   {Object.entries(BUILDING_CONFIG).map(([type, config]) => (
                     <Button variant="ghost"
@@ -361,7 +361,7 @@ export default function Clash() {
 
             {selectedBuilding && isEditing && (
               <div className="space-y-4">
-                <h3 className="text-sm text-muted-foreground uppercase tracking-wide">Sélectionné</h3>
+                <h3 className="text-sm text-muted-foreground  ">Sélectionné</h3>
                 <Button variant="ghost"
                   onClick={deleteBuilding}
                   className="w-full px-3 py-2 text-sm border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
@@ -373,7 +373,7 @@ export default function Clash() {
 
             {!isEditing && (
               <div className="space-y-4">
-                <h3 className="text-sm text-muted-foreground uppercase tracking-wide">Stats</h3>
+                <h3 className="text-sm text-muted-foreground  ">Stats</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between"><span className="text-muted-foreground">Défense</span><span>{defenseRating}</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Trophées</span><span>{trophies}</span></div>
@@ -529,7 +529,7 @@ export default function Clash() {
 
               <div className="space-y-6">
                 <div className="space-y-4">
-                  <h3 className="text-sm text-muted-foreground uppercase tracking-wide">Troupes</h3>
+                  <h3 className="text-sm text-muted-foreground  ">Troupes</h3>
                   <div className="space-y-2">
                     {troops.map((troop) => (
                       <Button variant="ghost"
@@ -551,7 +551,7 @@ export default function Clash() {
 
                 <div className="text-center">
                   <p className="text-3xl font-light tabular-nums">{deployedTroops.length}</p>
-                  <p className="text-xs text-muted-foreground uppercase">déployées</p>
+                  <p className="text-xs text-muted-foreground ">déployées</p>
                 </div>
               </div>
             </div>

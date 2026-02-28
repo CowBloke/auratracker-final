@@ -61,7 +61,7 @@ export default function PlayAgainPrompt({
                   {response ? (
                     <span
                       className={cn(
-                        'text-xs uppercase',
+                        'text-xs ',
                         response.playAgain ? 'text-green-500' : 'text-red-500'
                       )}
                     >

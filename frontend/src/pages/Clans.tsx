@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
+import { PageShell } from '@/components/layout/page-shell';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
@@ -208,22 +209,16 @@ export default function Clans() {
 
   return (
     <>
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
-        <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div className="space-y-1.5">
-            <h1 className={TYPOGRAPHY.PAGE_TITLE}>Clans</h1>
-            <p className={TYPOGRAPHY.PAGE_DESCRIPTION}>Communaute, membres et progression de clan.</p>
-          </div>
-          <Button
-            onClick={() => setDialogOpen(true)}
-            variant="outline"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Creer un clan (100$)
-          </Button>
-        </header>
-
+      <PageShell>
         <div className={SPACING.PAGE_CONTENT}>
+          <div className="flex items-center justify-between gap-3">
+            <p className={TYPOGRAPHY.SMALL}>Crée un clan ou consulte les groupes existants.</p>
+            <Button onClick={() => setDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Créer
+            </Button>
+          </div>
+
           {message ? (
           <Alert variant={message.type === 'error' ? 'destructive' : 'default'}>
             <AlertTitle>{message.type === 'error' ? 'Erreur' : 'Info'}</AlertTitle>
@@ -234,7 +229,7 @@ export default function Clans() {
         <div className="grid gap-6 lg:grid-cols-[1.1fr_1.4fr]">
           <div className={SPACING.CARD_SPACING}>
             <div className="flex items-center justify-between">
-              <h2 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tracking-wide uppercase")}>Tous les clans</h2>
+              <h2 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground  ")}>Tous les clans</h2>
               <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tabular-nums")}>{clans.length}</span>
             </div>
             {loading ? (
@@ -274,7 +269,7 @@ export default function Clans() {
                               </span>
                             </p>
                           </div>
-                          <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>
+                          <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground  ")}>
                             {clan.isPublic ? 'Public' : 'Prive'}
                           </span>
                         </div>
@@ -300,13 +295,13 @@ export default function Clans() {
           </div>
 
           <div className={SPACING.SECTION_SPACING}>
-            <h2 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tracking-wide uppercase")}>Details du clan</h2>
+            <h2 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground  ")}>Details du clan</h2>
             {detailLoading ? (
               <div className={cn(TYPOGRAPHY.MUTED, "py-12 text-center")}>Chargement...</div>
             ) : selectedClan ? (
               <div className={SPACING.SECTION_SPACING}>
                 <Card>
-                  <CardContent className={SPACING.CARD_SPACING}>
+                  <CardContent className={`p-6 ${SPACING.CARD_SPACING}`}>
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div className="flex items-center gap-4">
                         <Avatar className="h-14 w-14">
@@ -327,21 +322,21 @@ export default function Clans() {
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>
+                        <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground  ")}>
                           {selectedClan.isPublic ? 'Public' : 'Prive'}
                         </span>
                         {selectedClan.viewer.isLeader && (
-                          <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>
+                          <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground  ")}>
                             Chef
                           </span>
                         )}
                         {selectedClan.viewer.isMember && !selectedClan.viewer.isLeader && (
-                          <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>
+                          <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground  ")}>
                             Membre
                           </span>
                         )}
                         {selectedClan.viewer.hasPendingRequest && (
-                          <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>
+                          <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground  ")}>
                             Demande en attente
                           </span>
                         )}
@@ -395,9 +390,9 @@ export default function Clans() {
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardContent className={SPACING.SECTION_SPACING}>
+                  <CardContent className={`p-6 ${SPACING.SECTION_SPACING}`}>
                     <div className={SPACING.CARD_SPACING}>
-                      <h3 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tracking-wide uppercase")}>Membres (classement aura)</h3>
+                      <h3 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground  ")}>Membres (classement aura)</h3>
                       <div className="space-y-3">
                         {selectedClan.members.map((member, index) => (
                           <Card
@@ -455,7 +450,7 @@ export default function Clans() {
 
                     {selectedClan.viewer.isLeader && (
                       <div className={SPACING.CARD_SPACING}>
-                        <h3 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tracking-wide uppercase")}>Demandes en attente</h3>
+                        <h3 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground  ")}>Demandes en attente</h3>
                         {selectedClan.joinRequests.length === 0 ? (
                           <p className={TYPOGRAPHY.SMALL}>Aucune demande pour le moment.</p>
                         ) : (
@@ -531,7 +526,7 @@ export default function Clans() {
           </div>
         </div>
         </div>
-      </div>
+      </PageShell>
 
       <Dialog open={dialogOpen} onOpenChange={(open) => {
         setDialogOpen(open);

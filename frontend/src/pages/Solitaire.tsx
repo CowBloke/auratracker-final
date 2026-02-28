@@ -523,7 +523,7 @@ export default function Solitaire() {
   const hideLeaderboardForSpace = viewportWidth < 1450;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+    <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-950/85 p-3 text-emerald-50 shadow-xl">
         <div className="flex flex-wrap gap-4 text-sm">
           <span>Score: <strong>{score}</strong></span>
@@ -558,7 +558,7 @@ export default function Solitaire() {
           >
           <div className="mb-4 grid grid-cols-4 gap-[var(--pile-gap)]">
             <div className="rounded-xl border border-cyan-300/40 bg-cyan-950/55 p-2">
-              <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-cyan-200">Draw Pile</div>
+              <div className="mb-1 text-xs font-semibold   text-cyan-200">Draw Pile</div>
               <div
                 onClick={drawFromStock}
                 className="inline-block rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-300"
@@ -583,7 +583,7 @@ export default function Solitaire() {
             </div>
 
             <div className="rounded-xl border border-cyan-300/40 bg-cyan-950/55 p-2">
-              <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-cyan-200">Waste</div>
+              <div className="mb-1 text-xs font-semibold   text-cyan-200">Waste</div>
               <div>
                 {game.waste.length > 0 ? (
                   <SolitaireCard
@@ -602,7 +602,7 @@ export default function Solitaire() {
             </div>
 
             <div className="col-span-2 rounded-xl border border-amber-300/40 bg-amber-950/45 p-2">
-              <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-amber-100">Ace Foundations</div>
+              <div className="mb-1 text-xs font-semibold   text-amber-100">Ace Foundations</div>
               <div
                 className="grid justify-center gap-[var(--pile-gap)]"
                 style={{ gridTemplateColumns: 'repeat(4, var(--pile-col-w))' }}
@@ -640,7 +640,7 @@ export default function Solitaire() {
                       ) : (
                         <div className="flex h-[calc(var(--card-w)*1.4)] w-[var(--card-w)] flex-col items-center justify-center rounded-xl border-2 border-dashed border-amber-300/60 bg-amber-900/25">
                           <span className={cn('text-2xl', getCardColorClass(suit))}>{SUIT_SYMBOL[suit]}</span>
-                          <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-100">Ace</span>
+                          <span className="text-[10px] font-semibold   text-amber-100">Ace</span>
                         </div>
                       )}
                     </div>

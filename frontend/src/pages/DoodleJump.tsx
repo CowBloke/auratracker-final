@@ -1270,7 +1270,7 @@ export default function DoodleJump() {
   // RENDER
   // ============================================
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+    <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
       <div className="flex items-center justify-end gap-4">
             {spectatingHost && (
               <Button variant="ghost"

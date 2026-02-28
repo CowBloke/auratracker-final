@@ -96,7 +96,7 @@ export default function BatailleNavale() {
                     <div key={player.userId} className="flex items-center justify-between text-sm">
                       <span style={{ color: player.usernameColor || undefined }}>{player.username}</span>
                       {response ? (
-                        <span className={cn('text-xs uppercase', response.playAgain ? 'text-green-500' : 'text-red-500')}>
+                        <span className={cn('text-xs ', response.playAgain ? 'text-green-500' : 'text-red-500')}>
                           {response.playAgain ? 'OK' : 'Quitte'}
                         </span>
                       ) : (
@@ -382,7 +382,7 @@ export default function BatailleNavale() {
   // Not in a party
   if (!currentParty) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
         <Link
           to="/games"
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -411,9 +411,9 @@ export default function BatailleNavale() {
   // Lobby (no game active)
   if (!gameState) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-16">
+      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-16">
         <section className="space-y-4">
-          <h2 className="text-sm text-muted-foreground tracking-wide uppercase">
+          <h2 className="text-sm text-muted-foreground  ">
             Joueurs dans le duel ({partyMembers.length}/2)
           </h2>
           <div className="space-y-0">
@@ -471,7 +471,7 @@ export default function BatailleNavale() {
 
   // Game active
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+    <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
       <div className="flex items-center justify-between">
         <Button variant="ghost"
           onClick={handleLeave}

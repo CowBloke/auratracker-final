@@ -17,6 +17,7 @@ import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
+import { PageShell } from '@/components/layout/page-shell';
 
 export default function Suggestions() {
   const { user } = useAuth();
@@ -609,7 +610,7 @@ export default function Suggestions() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
         </div>
@@ -617,24 +618,18 @@ export default function Suggestions() {
     );
   }
 
-  return (
-    <>
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
-        <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div className="space-y-1.5">
-            <h1 className={TYPOGRAPHY.PAGE_TITLE}>Suggestions</h1>
-            <p className={TYPOGRAPHY.PAGE_DESCRIPTION}>Idees en cours, votes et suivi d'avancement.</p>
-          </div>
-          <Button
-            onClick={() => setDialogOpen(true)}
-            variant="outline"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Créer
-          </Button>
-        </header>
-
+    return (
+      <>
+        <PageShell>
         <div className={SPACING.PAGE_CONTENT}>
+          <div className="flex items-center justify-between gap-3">
+            <p className={TYPOGRAPHY.SMALL}>Propose une idée ou consulte l’avancement des demandes.</p>
+            <Button onClick={() => setDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Créer
+            </Button>
+          </div>
+
           {/* Tab Selector */}
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'pending' | 'done')}>
             <TabsList>
@@ -655,7 +650,7 @@ export default function Suggestions() {
             </TabsContent>
           </Tabs>
         </div>
-      </div>
+      </PageShell>
 
       <Dialog
         open={dialogOpen}

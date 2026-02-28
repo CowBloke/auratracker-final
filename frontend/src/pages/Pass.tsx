@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
+import { PageShell } from '@/components/layout/page-shell';
 
 const rewardSteps = [25, 40, 60, 90, 130, 180, 250];
 const rewardStepGrowth = 50;
@@ -119,18 +120,14 @@ export default function Pass() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
         <p className={TYPOGRAPHY.MUTED}>Chargement...</p>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
-      <p className={cn(TYPOGRAPHY.SMALL, "max-w-2xl")}>
-        Connecte-toi chaque jour pour monter les paliers. Un jour manqué remet la série à zéro.
-      </p>
-
+    <PageShell>
       {/* Main Section */}
       <Card>
         <CardContent className="p-6">
@@ -230,6 +227,6 @@ export default function Pass() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 }

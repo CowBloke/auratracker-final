@@ -6,6 +6,7 @@ import { loadSimState, SimTransaction } from '@/lib/marketSim';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { PageShell } from '@/components/layout/page-shell';
 
 const MINI_POINTS = 40;
 const AURA_BASE_PRICE = 100;
@@ -145,17 +146,7 @@ export default function MarketHall() {
   }, [auraTransactions, simTransactions]);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1.5">
-          <h1 className={TYPOGRAPHY.PAGE_TITLE}>Market Hall</h1>
-          <p className={TYPOGRAPHY.PAGE_DESCRIPTION}>Marche global et vue d'ensemble des actifs.</p>
-        </div>
-        <p className={cn(TYPOGRAPHY.PAGE_META, "tabular-nums")}>
-          {auraHistory.length ? `${auraHistory.length} points` : 'Chargement...'}
-        </p>
-      </header>
-
+    <PageShell>
       <div className={SPACING.PAGE_CONTENT}>
         <div className="grid gap-4 md:grid-cols-2">
           {coinViews.map((coin) => {
@@ -174,7 +165,7 @@ export default function MarketHall() {
                         <div className="flex items-center gap-3">
                           <CardTitle className={TYPOGRAPHY.H4}>{coin.name}</CardTitle>
                           {coin.primary && (
-                            <span className={cn(TYPOGRAPHY.XS, "uppercase tracking-wide text-muted-foreground")}>
+                            <span className={cn(TYPOGRAPHY.XS, "  text-muted-foreground")}>
                               Principal
                             </span>
                           )}
@@ -226,7 +217,7 @@ export default function MarketHall() {
                   return (
                     <div key={tx.id} className="flex items-center justify-between py-4">
                       <div className="flex items-center gap-4">
-                        <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase")}>
+                        <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground ")}>
                           {positive ? 'Achat' : 'Vente'}
                         </span>
                         <span
@@ -236,7 +227,7 @@ export default function MarketHall() {
                           {tx.user.username}
                         </span>
                         {coinMeta && (
-                          <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase")}>
+                          <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground ")}>
                             {coinMeta.symbol}
                           </span>
                         )}
@@ -260,6 +251,6 @@ export default function MarketHall() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </PageShell>
   );
 }

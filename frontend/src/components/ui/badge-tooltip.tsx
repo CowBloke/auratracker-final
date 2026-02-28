@@ -14,7 +14,7 @@ export function BadgeWithTooltip({ name, description, color, className }: BadgeW
     return (
       <span
         className={cn(
-          "text-xs uppercase tracking-wide px-2.5 py-1 rounded-full border cursor-default",
+          "text-xs   px-2.5 py-1 rounded-full border cursor-default",
           className
         )}
         style={{ color, borderColor: color }}
@@ -30,7 +30,7 @@ export function BadgeWithTooltip({ name, description, color, className }: BadgeW
         <TooltipPrimitive.Trigger asChild>
           <span
             className={cn(
-              "text-xs uppercase tracking-wide px-2.5 py-1 rounded-full border cursor-help transition-opacity hover:opacity-80",
+              "text-xs   px-2.5 py-1 rounded-full border cursor-help transition-opacity hover:opacity-80",
               className
             )}
             style={{ color, borderColor: color }}

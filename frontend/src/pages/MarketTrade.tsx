@@ -208,7 +208,7 @@ export default function MarketTrade() {
   const displayedTransactions = activeTab === 'my' ? transactions : transactions;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+    <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
       <div className="flex items-center justify-end">
         <div className="text-right">
           <div className="flex items-center gap-2 justify-end">
@@ -233,7 +233,7 @@ export default function MarketTrade() {
       <Card>
         <CardContent className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground uppercase tracking-wide")}>Cours 24h</span>
+            <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground  ")}>Cours 24h</span>
             <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tabular-nums")}>
               Min: ${minPrice.toFixed(2)} / Max: ${maxPrice.toFixed(2)}
             </span>
@@ -276,13 +276,13 @@ export default function MarketTrade() {
       <div className="grid grid-cols-2 gap-4">
         <Card>
           <CardContent className="p-4">
-            <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Solde $ (simu)</p>
+            <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground  ")}>Solde $ (simu)</p>
             <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>${cash.toLocaleString()}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Solde {coin.name}</p>
+            <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground  ")}>Solde {coin.name}</p>
             <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>{balance.toFixed(4)} {coin.symbol}</p>
             <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground tabular-nums")}>
               ≈ ${(balance * currentPrice).toFixed(2)}
@@ -293,7 +293,7 @@ export default function MarketTrade() {
 
       <div className="grid md:grid-cols-2 gap-6">
         <Card>
-          <CardContent className={SPACING.CARD_SPACING}>
+          <CardContent className={`p-6 ${SPACING.CARD_SPACING}`}>
             <div className="flex items-center gap-2">
               <ArrowUpRight className="w-5 h-5 text-emerald-500" />
               <h2 className={TYPOGRAPHY.H5}>Acheter</h2>
@@ -310,7 +310,7 @@ export default function MarketTrade() {
                     variant="outline"
                     size="sm"
                     className={cn(
-                      'text-[10px] uppercase tracking-widest',
+                      'text-[10px]  ',
                       canUseMinBuy
                         ? 'border-emerald-500/60 text-emerald-500 hover:bg-emerald-500 hover:text-background'
                         : ''
@@ -325,7 +325,7 @@ export default function MarketTrade() {
                     variant="outline"
                     size="sm"
                     className={cn(
-                      'text-[10px] uppercase tracking-widest',
+                      'text-[10px]  ',
                       cash > 0
                         ? 'border-emerald-500/60 text-emerald-500 hover:bg-emerald-500 hover:text-background'
                         : ''
@@ -374,7 +374,7 @@ export default function MarketTrade() {
         </Card>
 
         <Card>
-          <CardContent className={SPACING.CARD_SPACING}>
+          <CardContent className={`p-6 ${SPACING.CARD_SPACING}`}>
             <div className="flex items-center gap-2">
               <ArrowDownRight className="w-5 h-5 text-red-500" />
               <h2 className={TYPOGRAPHY.H5}>Vendre</h2>
@@ -391,7 +391,7 @@ export default function MarketTrade() {
                     variant="outline"
                     size="sm"
                     className={cn(
-                      'text-[10px] uppercase tracking-widest',
+                      'text-[10px]  ',
                       canUseMinSell
                         ? 'border-red-500/60 text-red-500 hover:bg-red-500 hover:text-background'
                         : ''
@@ -406,7 +406,7 @@ export default function MarketTrade() {
                     variant="outline"
                     size="sm"
                     className={cn(
-                      'text-[10px] uppercase tracking-widest',
+                      'text-[10px]  ',
                       balance > 0
                         ? 'border-red-500/60 text-red-500 hover:bg-red-500 hover:text-background'
                         : ''
@@ -469,7 +469,7 @@ export default function MarketTrade() {
       )}
 
       <Card>
-        <CardContent className={SPACING.CARD_SPACING}>
+        <CardContent className={`p-6 ${SPACING.CARD_SPACING}`}>
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'my' | 'all')}>
             <TabsList>
               <TabsTrigger value="my">Mes Transactions</TabsTrigger>
@@ -504,7 +504,7 @@ export default function MarketTrade() {
                             <span
                               className={cn(
                                 TYPOGRAPHY.XS,
-                                'uppercase',
+                                '',
                                 tx.type === 'BUY' ? 'text-emerald-500' : 'text-red-500'
                               )}
                             >

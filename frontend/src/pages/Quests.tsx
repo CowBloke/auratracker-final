@@ -6,7 +6,6 @@ import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { questsApi, DailyQuest, UserDailyQuest } from '../services/api';
 import { toast } from 'sonner';
 import { CheckCircle2, Circle, Coins, Sparkles } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
 export default function Quests() {
@@ -116,7 +115,7 @@ export default function Quests() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
+      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-muted rounded w-1/4"></div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -134,15 +133,7 @@ export default function Quests() {
   const canSelectNewQuests = !hasSelectedQuests && dailyQuests.length > 0;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className={cn(TYPOGRAPHY.MUTED, "mt-2")}>
-            Sélectionnez 3 quêtes parmi 10 disponibles chaque jour et gagnez des récompenses !
-          </p>
-        </div>
-      </div>
-
+    <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
       {hasSelectedQuests && (
         <div className={SPACING.CARD_SPACING}>
           <h2 className={TYPOGRAPHY.H3}>Mes Quêtes</h2>

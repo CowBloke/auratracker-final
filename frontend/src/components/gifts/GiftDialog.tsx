@@ -398,7 +398,7 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened, initialTa
                             </div>
                           )}
                           {gift.message && (
-                            <p className="text-xs text-muted-foreground mt-1 italic">"{gift.message}"</p>
+                            <p className="text-xs text-muted-foreground mt-1 ">"{gift.message}"</p>
                           )}
                           <p className="text-xs text-muted-foreground mt-1">
                             {new Date(gift.openedAt || gift.createdAt).toLocaleDateString('fr-FR', {
