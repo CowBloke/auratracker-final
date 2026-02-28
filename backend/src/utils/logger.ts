@@ -33,13 +33,7 @@ export type AdminAction = 'user_update' | 'user_delete' | 'user_approve' | 'user
 export type BanAction = 'ban_create' | 'ban_remove';
 export type AuraCoinAction =
   | 'auracoin_buy'
-  | 'auracoin_sell'
-  | 'solaris_buy'
-  | 'solaris_sell'
-  | 'zenith_buy'
-  | 'zenith_sell'
-  | 'rift_buy'
-  | 'rift_sell';
+  | 'auracoin_sell';
 export type ClashAction = 'attack_execute' | 'base_save' | 'building_upgrade';
 
 export type LogAction = AuthAction | ChatAction | GameAction | EconomyAction | PartyAction | SuggestionAction | MarketplaceAction | AdminAction | BanAction | AuraCoinAction | ClashAction;

@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   Bomb,
   Coins,
   Dice5,
@@ -13,7 +14,6 @@ import {
   Trophy,
   User,
   Users,
-  LineChart,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -36,12 +36,8 @@ const pageMatchers: Array<{ test: (path: string) => boolean; label: string; icon
   { test: (path) => path.startsWith('/games/tetris'), label: 'Tetris', icon: Gamepad2 },
   { test: (path) => path.startsWith('/games/clash'), label: 'Clash', icon: Swords },
   { test: (path) => path.startsWith('/games/casino'), label: 'Casino', icon: Dice5 },
-  { test: (path) => path.startsWith('/games/market/solaris'), label: 'Solaris', icon: Coins },
-  { test: (path) => path.startsWith('/games/market/zenith'), label: 'Zenith', icon: Coins },
-  { test: (path) => path.startsWith('/games/market/rift'), label: 'Rift', icon: Coins },
-  { test: (path) => path.startsWith('/games/market'), label: 'Salle de marche', icon: LineChart },
   { test: (path) => path.startsWith('/games/aura-coin'), label: 'Aura Coin', icon: Coins },
-  { test: (path) => path.startsWith('/games/polymarket'), label: 'Polymarket', icon: LineChart },
+  { test: (path) => path.startsWith('/games/polymarket'), label: 'Polymarket', icon: BarChart3 },
   { test: (path) => path.startsWith('/games'), label: 'Jeux', icon: Gamepad2 },
   { test: (path) => path.startsWith('/leaderboards'), label: 'Classements', icon: Trophy },
   { test: (path) => path.startsWith('/party'), label: 'Groupe', icon: Users },

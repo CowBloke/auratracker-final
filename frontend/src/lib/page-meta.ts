@@ -12,11 +12,7 @@ const STATIC_PAGE_META: Record<string, PageMeta> = {
   '/games/flappy-bird': { title: 'Flappy Bird', description: 'Session arcade rapide avec classement.' },
   '/games/clash': { title: 'Clash', description: 'Gère ta base, attaque, défends et progresse.' },
   '/games/casino': { title: 'Casino', description: 'Roulette, slots et blackjack.' },
-  '/games/market': { title: 'Market Hall', description: 'Marché global et vue d’ensemble des actifs.' },
   '/games/aura-coin': { title: 'Aura Coin', description: 'Trading et positions à effet de levier.' },
-  '/games/market/solaris': { title: 'Solaris', description: 'Marché Solaris: achat, vente et historique.' },
-  '/games/market/zenith': { title: 'Zenith', description: 'Marché Zenith: achat, vente et historique.' },
-  '/games/market/rift': { title: 'Rift', description: 'Marché Rift: achat, vente et historique.' },
   '/games/bomb-party': { title: 'Bomb Party', description: 'Partie multijoueur basée sur les mots.' },
   '/games/poker': { title: 'Poker', description: "Table de poker avec paramètres de party." },
   '/games/petit-bac': { title: 'Petit Bac', description: 'Manches chronométrées par catégories.' },
@@ -55,14 +51,8 @@ function resolveDynamicMeta(pathname: string): PageMeta | null {
     return { title: 'Profil', description: 'Statistiques, badges et activité joueur.' };
   }
 
-  if (pathname.startsWith('/games/market/')) {
-    const coinId = pathname.split('/games/market/')[1];
-    if (coinId && !['solaris', 'zenith', 'rift'].includes(coinId)) {
-      return {
-        title: 'Market Trade',
-        description: `Interface de trading pour ${humanizeSegment(coinId)}.`,
-      };
-    }
+  if (pathname.startsWith('/games/market')) {
+    return { title: 'Aura Coin', description: 'Trading et positions à effet de levier.' };
   }
 
   return null;

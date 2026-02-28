@@ -77,13 +77,6 @@ const games = [
     image: '/images/games/casino.png',
   },
   {
-    id: 'market',
-    name: 'Salle de marche',
-    description: 'Investis sur plusieurs cryptos avec une interface pro.',
-    type: 'Trading',
-    image: '/images/games/market.png',
-  },
-  {
     id: 'aura-coin',
     name: 'Aura Coin',
     description: 'Trade la cryptomonnaie virtuelle. Achete bas, vends haut.',

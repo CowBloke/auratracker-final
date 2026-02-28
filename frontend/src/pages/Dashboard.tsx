@@ -74,7 +74,6 @@ const gameShortcuts: GameShortcut[] = [
   { id: 'petit-bac', label: 'Petit Bac', path: '/games/petit-bac', description: 'Catégories, lettres, vitesse.', image: '/images/games/petitbac.png' },
   { id: 'clash', label: 'Clash', path: '/games/clash', description: 'Duel stratégique instantané.', image: '/images/games/clash.png' },
   { id: 'casino', label: 'Casino', path: '/games/casino', description: 'Mini-jeux et mises rapides.', image: '/images/games/casino.png' },
-  { id: 'market', label: 'Marché', path: '/games/market', description: 'Salle de marché en direct.', image: '/images/games/market.png' },
   { id: 'aura-coin', label: 'Aura Coin', path: '/games/aura-coin', description: 'Suivi des coins aura.', image: '/images/games/auracoin.png' },
   { id: 'polymarket', label: 'Polymarket', path: '/games/polymarket', description: 'Paris en temps réel.' },
   { id: 'doodle-jump', label: 'Doodle Jump', path: '/games/doodle-jump', description: 'Grimpe sans fin.', image: '/images/games/doodlejump.png' },
