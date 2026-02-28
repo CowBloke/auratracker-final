@@ -305,7 +305,7 @@ export default function Polymarket() {
     <>
       <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="h-auto flex-wrap">
           <TabsTrigger value="events">Événements</TabsTrigger>
           <TabsTrigger value="suggest">Suggérer</TabsTrigger>
           <TabsTrigger value="history">Mes paris</TabsTrigger>

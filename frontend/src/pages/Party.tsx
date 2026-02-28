@@ -536,7 +536,7 @@ export default function Party() {
                   setMaxSize(nextType === 'duel' ? 2 : 8);
                 }}
               >
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="h-auto flex-wrap">
                   <TabsTrigger value="party">Party</TabsTrigger>
                   <TabsTrigger value="duel">Duel</TabsTrigger>
                 </TabsList>

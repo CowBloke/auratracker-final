@@ -154,7 +154,7 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened, initialTa
           </DialogHeader>
 
           <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="h-auto flex-wrap">
               <TabsTrigger value="inbox" className="flex items-center gap-1">
                 <Inbox className="h-3.5 w-3.5" />
                 Boite

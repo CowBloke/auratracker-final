@@ -57,7 +57,7 @@ export default function Login() {
     <CenteredShell widthClassName="max-w-sm">
       <Card>
         <CardHeader className="space-y-2 text-center">
-          <CardTitle className={TYPOGRAPHY.H1}>aura</CardTitle>
+          <CardTitle className={TYPOGRAPHY.H1}>AuraTracker</CardTitle>
           <CardDescription>Connexion</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

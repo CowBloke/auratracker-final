@@ -183,7 +183,7 @@ export default function Games() {
   return (
     <PageShell>
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as GamesTab)} className={SPACING.SECTION_SPACING}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="h-auto flex-wrap">
           {tabConfig.map((tab) => (
             <TabsTrigger key={tab.id} value={tab.id}>
               {tab.label}
@@ -202,12 +202,12 @@ export default function Games() {
                 to={getGameLink(game.id)}
                 className="group block"
               >
-                <Card className="relative aspect-square overflow-hidden transition hover:-translate-y-1 hover:border-foreground/40 hover:shadow-md">
+                <Card className="relative aspect-square overflow-hidden transition hover:border-foreground/40 hover:shadow-md">
                   {'image' in game ? (
                     <img
                       src={game.image}
                       alt={game.name}
-                      className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                      className="absolute inset-0 h-full w-full object-cover"
                       loading="lazy"
                     />
                   ) : (

@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageShell } from '@/components/layout/page-shell';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
@@ -211,13 +211,18 @@ export default function Clans() {
     <>
       <PageShell>
         <div className={SPACING.PAGE_CONTENT}>
-          <div className="flex items-center justify-between gap-3">
-            <p className={TYPOGRAPHY.SMALL}>Crée un clan ou consulte les groupes existants.</p>
-            <Button onClick={() => setDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Créer
-            </Button>
-          </div>
+          <Card>
+            <CardContent className="flex items-center justify-between gap-3 p-6">
+              <div className="space-y-1">
+                <h1 className={TYPOGRAPHY.H2}>Clans</h1>
+                <p className={TYPOGRAPHY.SMALL}>Crée un clan ou consulte les groupes existants.</p>
+              </div>
+              <Button onClick={() => setDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Créer
+              </Button>
+            </CardContent>
+          </Card>
 
           {message ? (
           <Alert variant={message.type === 'error' ? 'destructive' : 'default'}>
@@ -227,79 +232,88 @@ export default function Clans() {
         ) : null}
 
         <div className="grid gap-6 lg:grid-cols-[1.1fr_1.4fr]">
-          <div className={SPACING.CARD_SPACING}>
-            <div className="flex items-center justify-between">
-              <h2 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground  ")}>Tous les clans</h2>
-              <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tabular-nums")}>{clans.length}</span>
-            </div>
-            {loading ? (
-              <div className={cn(TYPOGRAPHY.MUTED, "py-10")}>Chargement...</div>
-            ) : clans.length === 0 ? (
-              <div className={cn(TYPOGRAPHY.MUTED, "py-10")}>Aucun clan pour le moment.</div>
-            ) : (
-              <div className="space-y-3">
-                {clans.map((clan) => (
-                  <Card
-                    key={clan.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setSelectedClanId(clan.id)}
-                    className={cn(
-                      "cursor-pointer transition-colors hover:border-foreground/30",
-                      clan.id === selectedClanId && "bg-muted/30 border-foreground/50"
-                    )}
-                  >
-                    <CardContent className="p-4">
-                  <div className="flex items-start gap-4">
-                    <Avatar className="h-12 w-12">
-                      {clan.imageUrl ? (
-                        <AvatarImage src={resolveImageUrl(clan.imageUrl)} alt={clan.name} />
-                      ) : null}
-                      <AvatarFallback className="bg-muted text-sm font-semibold">
-                        {clan.name.slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                      <div className="space-y-2 flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <h3 className={TYPOGRAPHY.H6}>{clan.name}</h3>
-                            <p className={TYPOGRAPHY.XS}>
-                              Chef: <span style={clan.leader.usernameColor ? { color: clan.leader.usernameColor } : undefined}>
-                                {clan.leader.username}
-                              </span>
-                            </p>
-                          </div>
-                          <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground  ")}>
-                            {clan.isPublic ? 'Public' : 'Prive'}
-                          </span>
-                        </div>
-                        <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground line-clamp-2")}>
-                          {clan.description || 'Aucune description.'}
-                        </p>
-                        <div className={cn("flex flex-wrap gap-3", TYPOGRAPHY.XS, "text-muted-foreground")}>
-                          <span className="flex items-center gap-1">
-                            <Users className="h-3 w-3" /> {clan.memberCount}/{clan.maxMembers}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <ShieldCheck className="h-3 w-3" /> {formatAura(clan.totalAura)} aura
-                          </span>
-                          <span>{formatDate(clan.createdAt)}</span>
-                        </div>
-                      </div>
-                    </div>
-                    </CardContent>
-                  </Card>
-                ))}
+          <Card className="h-fit">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <div className="space-y-1">
+                <CardTitle className="text-base">Tous les clans</CardTitle>
+                <CardDescription>Choisis un clan pour afficher ses détails.</CardDescription>
               </div>
-            )}
-          </div>
+              <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tabular-nums")}>{clans.length}</span>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className={cn(TYPOGRAPHY.MUTED, "py-10")}>Chargement...</div>
+              ) : clans.length === 0 ? (
+                <div className={cn(TYPOGRAPHY.MUTED, "py-10")}>Aucun clan pour le moment.</div>
+              ) : (
+                <div className="space-y-3">
+                  {clans.map((clan) => (
+                    <Card
+                      key={clan.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelectedClanId(clan.id)}
+                      className={cn(
+                        "cursor-pointer transition-colors hover:border-foreground/30",
+                        clan.id === selectedClanId && "border-foreground/50 bg-muted/30"
+                      )}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-4">
+                          <Avatar className="h-12 w-12">
+                            {clan.imageUrl ? (
+                              <AvatarImage src={resolveImageUrl(clan.imageUrl)} alt={clan.name} />
+                            ) : null}
+                            <AvatarFallback className="bg-muted text-sm font-semibold">
+                              {clan.name.slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <h3 className={TYPOGRAPHY.H6}>{clan.name}</h3>
+                                <p className={TYPOGRAPHY.XS}>
+                                  Chef: <span style={clan.leader.usernameColor ? { color: clan.leader.usernameColor } : undefined}>
+                                    {clan.leader.username}
+                                  </span>
+                                </p>
+                              </div>
+                              <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>
+                                {clan.isPublic ? 'Public' : 'Prive'}
+                              </span>
+                            </div>
+                            <p className={cn(TYPOGRAPHY.SMALL, "line-clamp-2 text-muted-foreground")}>
+                              {clan.description || 'Aucune description.'}
+                            </p>
+                            <div className={cn("flex flex-wrap gap-3", TYPOGRAPHY.XS, "text-muted-foreground")}>
+                              <span className="flex items-center gap-1">
+                                <Users className="h-3 w-3" /> {clan.memberCount}/{clan.maxMembers}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <ShieldCheck className="h-3 w-3" /> {formatAura(clan.totalAura)} aura
+                              </span>
+                              <span>{formatDate(clan.createdAt)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-          <div className={SPACING.SECTION_SPACING}>
-            <h2 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground  ")}>Details du clan</h2>
-            {detailLoading ? (
-              <div className={cn(TYPOGRAPHY.MUTED, "py-12 text-center")}>Chargement...</div>
-            ) : selectedClan ? (
-              <div className={SPACING.SECTION_SPACING}>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Détails du clan</CardTitle>
+              <CardDescription>Vue d’ensemble, membres et demandes d’adhésion.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {detailLoading ? (
+                <div className={cn(TYPOGRAPHY.MUTED, "py-12 text-center")}>Chargement...</div>
+              ) : selectedClan ? (
+                <div className={SPACING.SECTION_SPACING}>
                 <Card>
                   <CardContent className={`p-6 ${SPACING.CARD_SPACING}`}>
                     <div className="flex flex-wrap items-start justify-between gap-4">
@@ -523,7 +537,8 @@ export default function Clans() {
                 Aucun clan selectionne.
               </div>
             )}
-          </div>
+            </CardContent>
+          </Card>
         </div>
         </div>
       </PageShell>

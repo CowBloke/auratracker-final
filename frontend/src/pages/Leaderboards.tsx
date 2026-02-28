@@ -162,7 +162,7 @@ export default function Leaderboards() {
 
         {/* Category Tabs */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'economy' | 'games')}>
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="h-auto flex-wrap">
             <TabsTrigger value="economy">Économie</TabsTrigger>
             <TabsTrigger value="games">Jeux</TabsTrigger>
           </TabsList>

@@ -2,8 +2,8 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
-import { leaderboardsApi, economyApi } from '../services/api';
-import { ArrowRight, Loader2, Clock, Gift } from 'lucide-react';
+import { economyApi } from '../services/api';
+import { ArrowRight, Loader2, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -99,12 +99,9 @@ export default function Dashboard() {
     pendingJoinRequests,
   } = useSocket();
   const [recentTransfers, setRecentTransfers] = useState<Transfer[]>([]);
-  const [userRank, setUserRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   
   const [dailyAllowance, setDailyAllowance] = useState<DailyAllowance | null>(null);
-  const [giftDialogOpen, setGiftDialogOpen] = useState(false);
-  
   const [historyOpen, setHistoryOpen] = useState(false);
   const [allTransfers, setAllTransfers] = useState<Transfer[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -197,13 +194,11 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [rankingsRes, transfersRes, allowanceRes] = await Promise.all([
-          leaderboardsApi.get('aura', { limit: 5 }),
+        const [transfersRes, allowanceRes] = await Promise.all([
           economyApi.getTransfers({ limit: 5, all: true }),
           economyApi.getDailyAllowance(),
         ]);
 
-        setUserRank(rankingsRes.data.userRank);
         setRecentTransfers(transfersRes.data.transfers);
         setDailyAllowance(allowanceRes.data);
       } catch (error) {
@@ -373,7 +368,7 @@ export default function Dashboard() {
                     <img
                       src={shortcut.image}
                       alt={shortcut.label}
-                      className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                      className="absolute inset-0 h-full w-full object-cover"
                       loading="lazy"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
@@ -398,7 +393,7 @@ export default function Dashboard() {
       {/* Primary Stats */}
       <Card>
         <CardContent className="p-6 md:p-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
             <Card className="border-border/60">
               <CardContent className="p-4 space-y-2">
                 <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>
@@ -413,14 +408,6 @@ export default function Dashboard() {
                   ${user?.money.toLocaleString()}
                 </p>
                 <p className={TYPOGRAPHY.SMALL}>argent</p>
-              </CardContent>
-            </Card>
-            <Card className="border-border/60">
-              <CardContent className="p-4 space-y-2">
-                <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>
-                  #{userRank || '-'}
-                </p>
-                <p className={TYPOGRAPHY.SMALL}>rang</p>
               </CardContent>
             </Card>
             <Card className="border-border/60">
@@ -444,47 +431,6 @@ export default function Dashboard() {
           </div>
         </CardContent>
       </Card>
-
-
-      {/* Gift Section */}
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardDescription>Envoyer un cadeau</CardDescription>
-              <CardTitle className={TYPOGRAPHY.H5}>
-                Offre de l'aura, de l'argent ou des articles à un joueur.
-              </CardTitle>
-            </div>
-            <Button
-              onClick={() => setGiftDialogOpen(true)}
-              className="h-12 px-6 text-base"
-            >
-              <Gift className="h-4 w-4 mr-2" />
-              Envoyer un cadeau
-            </Button>
-          </div>
-        </CardHeader>
-      </Card>
-      <Dialog open={giftDialogOpen} onOpenChange={setGiftDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className={TYPOGRAPHY.H5}>Envoyer un cadeau</DialogTitle>
-            <DialogDescription>
-              Le module cadeau a ete aligne sur la nouvelle interface. Utilise la section inventaire pour gerer et partager tes objets.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setGiftDialogOpen(false)}>
-              Fermer
-            </Button>
-            <Button asChild>
-              <Link to="/inventory">Ouvrir l'inventaire</Link>
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
 
       {/* Recent Activity */}
       <div className={SPACING.SECTION_SPACING}>
