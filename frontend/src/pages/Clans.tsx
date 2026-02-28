@@ -10,11 +10,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageShell } from '@/components/layout/page-shell';
+import { toast } from '@/hooks/use-toast';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-
-type ActionMessage = { type: 'success' | 'error'; text: string };
 
 const formatAura = (value: number | string) => {
   const numericValue = typeof value === 'string' ? Number(value) : value;
@@ -31,7 +30,6 @@ export default function Clans() {
   const [selectedClanId, setSelectedClanId] = useState<string | null>(null);
   const [selectedClan, setSelectedClan] = useState<ClanDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [message, setMessage] = useState<ActionMessage | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -64,7 +62,11 @@ export default function Clans() {
       setClans(res.data.clans || []);
     } catch (error) {
       console.error('Failed to fetch clans:', error);
-      setMessage({ type: 'error', text: 'Impossible de charger les clans.' });
+      toast({
+        title: 'Erreur',
+        description: 'Impossible de charger les clans.',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
@@ -77,7 +79,11 @@ export default function Clans() {
       setSelectedClan(res.data.clan);
     } catch (error) {
       console.error('Failed to fetch clan detail:', error);
-      setMessage({ type: 'error', text: 'Impossible de charger ce clan.' });
+      toast({
+        title: 'Erreur',
+        description: 'Impossible de charger ce clan.',
+        variant: 'destructive',
+      });
     } finally {
       setDetailLoading(false);
     }
@@ -95,7 +101,6 @@ export default function Clans() {
   const handleCreateClan = async (event: React.FormEvent) => {
     event.preventDefault();
     setFormError(null);
-    setMessage(null);
 
     if (!name.trim()) {
       setFormError('Le nom est obligatoire.');
@@ -115,7 +120,10 @@ export default function Clans() {
 
       setDialogOpen(false);
       resetForm();
-      setMessage({ type: 'success', text: 'Clan cree avec succes.' });
+      toast({
+        title: 'Clan créé',
+        description: 'Le clan a été créé avec succès.',
+      });
       await fetchClans();
       setSelectedClanId(res.data.clan.id);
     } catch (error: any) {
@@ -129,18 +137,27 @@ export default function Clans() {
   const handleJoin = async () => {
     if (!selectedClan) return;
     setActionLoading(true);
-    setMessage(null);
     try {
       const res = await clansApi.join(selectedClan.id);
       if (res.data.status === 'joined') {
-        setMessage({ type: 'success', text: 'Tu as rejoint le clan.' });
+        toast({
+          title: 'Clan rejoint',
+          description: 'Tu as rejoint le clan.',
+        });
       } else {
-        setMessage({ type: 'success', text: 'Demande envoyee au chef du clan.' });
+        toast({
+          title: 'Demande envoyée',
+          description: 'Ta demande a été envoyée au chef du clan.',
+        });
       }
       await Promise.all([fetchClans(), fetchClanDetail(selectedClan.id)]);
     } catch (error: any) {
       console.error('Failed to join clan:', error);
-      setMessage({ type: 'error', text: error.response?.data?.error || 'Impossible de rejoindre le clan.' });
+      toast({
+        title: 'Erreur',
+        description: error.response?.data?.error || 'Impossible de rejoindre le clan.',
+        variant: 'destructive',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -149,19 +166,28 @@ export default function Clans() {
   const handleRequestAction = async (requestId: string, action: 'accept' | 'reject') => {
     if (!selectedClan) return;
     setActionLoading(true);
-    setMessage(null);
     try {
       if (action === 'accept') {
         await clansApi.acceptRequest(selectedClan.id, requestId);
-        setMessage({ type: 'success', text: 'Demande acceptee.' });
+        toast({
+          title: 'Demande acceptée',
+          description: 'Le joueur a été ajouté au clan.',
+        });
       } else {
         await clansApi.rejectRequest(selectedClan.id, requestId);
-        setMessage({ type: 'success', text: 'Demande refusee.' });
+        toast({
+          title: 'Demande refusée',
+          description: 'La demande a été refusée.',
+        });
       }
       await Promise.all([fetchClans(), fetchClanDetail(selectedClan.id)]);
     } catch (error: any) {
       console.error('Failed to update request:', error);
-      setMessage({ type: 'error', text: error.response?.data?.error || 'Impossible de traiter la demande.' });
+      toast({
+        title: 'Erreur',
+        description: error.response?.data?.error || 'Impossible de traiter la demande.',
+        variant: 'destructive',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -170,14 +196,20 @@ export default function Clans() {
   const handleRemoveMember = async (userId: string) => {
     if (!selectedClan) return;
     setActionLoading(true);
-    setMessage(null);
     try {
       await clansApi.removeMember(selectedClan.id, userId);
-      setMessage({ type: 'success', text: 'Membre retire du clan.' });
+      toast({
+        title: 'Membre retiré',
+        description: 'Le membre a été retiré du clan.',
+      });
       await Promise.all([fetchClans(), fetchClanDetail(selectedClan.id)]);
     } catch (error: any) {
       console.error('Failed to remove member:', error);
-      setMessage({ type: 'error', text: error.response?.data?.error || 'Impossible de retirer ce membre.' });
+      toast({
+        title: 'Erreur',
+        description: error.response?.data?.error || 'Impossible de retirer ce membre.',
+        variant: 'destructive',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -187,16 +219,22 @@ export default function Clans() {
     if (!selectedClan) return;
     if (!confirm('Es-tu sur de vouloir quitter ce clan ?')) return;
     setActionLoading(true);
-    setMessage(null);
     try {
       await clansApi.leave(selectedClan.id);
-      setMessage({ type: 'success', text: 'Tu as quitte le clan.' });
+      toast({
+        title: 'Clan quitté',
+        description: 'Tu as quitté le clan.',
+      });
       await fetchClans();
       setSelectedClanId(null);
       setSelectedClan(null);
     } catch (error: any) {
       console.error('Failed to leave clan:', error);
-      setMessage({ type: 'error', text: error.response?.data?.error || 'Impossible de quitter le clan.' });
+      toast({
+        title: 'Erreur',
+        description: error.response?.data?.error || 'Impossible de quitter le clan.',
+        variant: 'destructive',
+      });
     } finally {
       setActionLoading(false);
     }
@@ -223,13 +261,6 @@ export default function Clans() {
               </Button>
             </CardContent>
           </Card>
-
-          {message ? (
-          <Alert variant={message.type === 'error' ? 'destructive' : 'default'}>
-            <AlertTitle>{message.type === 'error' ? 'Erreur' : 'Info'}</AlertTitle>
-            <AlertDescription>{message.text}</AlertDescription>
-          </Alert>
-        ) : null}
 
         <div className="grid gap-6 lg:grid-cols-[1.1fr_1.4fr]">
           <Card className="h-fit">

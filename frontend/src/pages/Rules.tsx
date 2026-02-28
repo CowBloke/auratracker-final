@@ -15,16 +15,6 @@ interface RuleSection {
   rules: string[];
 }
 
-interface HighlightCard {
-  title: string;
-  description: string;
-}
-
-interface FeatureGroup {
-  title: string;
-  items: string[];
-}
-
 const sections: RuleSection[] = [
   {
     title: "Principes généraux",
@@ -87,72 +77,6 @@ const sanctions = [
   { offense: "Récidive ou infraction modérée", sanction: "Suspension temporaire (1-7 jours)" },
   { offense: "Infraction grave", sanction: "Suspension longue (30 jours)" },
   { offense: "Infraction très grave ou récidive multiple", sanction: "Bannissement permanent" },
-];
-
-const highlights: HighlightCard[] = [
-  {
-    title: 'Lancement officiel',
-    description: "La v1.0.0 marque l'ouverture publique d'Aura Tracker et pose les bases de la suite.",
-  },
-  {
-    title: 'Ecosysteme Aura',
-    description: "Une monnaie centrale, des gains en jeu et un suivi complet pour progresser.",
-  },
-  {
-    title: 'Communautaire',
-    description: "Classements, profil dynamique, party et interactions directes avec les autres joueurs.",
-  },
-];
-
-const featureGroups: FeatureGroup[] = [
-  {
-    title: 'Jeux disponibles',
-    items: [
-      'Aura Coin pour gagner et depenser vos points',
-      'Clash pour les duels rapides',
-      'Doodle Jump pour les sessions chill',
-      'Casino pour tenter votre chance',
-      'Bomb Party pour les soirees collectives',
-    ],
-  },
-  {
-    title: 'Progression & social',
-    items: [
-      'Profils personnalises avec bio et couleurs',
-      'Classements en temps reel',
-      'Party system pour jouer en groupe',
-      "Recherche rapide d'utilisateurs",
-    ],
-  },
-  {
-    title: 'Economie & contenu',
-    items: [
-      'Marketplace pour acheter et gerer vos objets',
-      'Inventaire detaille et suivi de vos possessions',
-      'Pass de progression pour des recompenses',
-    ],
-  },
-  {
-    title: 'Qualite & securite',
-    items: [
-      'Signalement de bugs integre',
-      'Reglement accessible pour clarifier les regles',
-      'Administration dediee pour la moderation',
-    ],
-  },
-];
-
-const v1Notes = [
-  {
-    title: 'Focus v1.0.0',
-    description:
-      "Cette version met l'accent sur la stabilite, l'experience utilisateur et la performance.",
-  },
-  {
-    title: 'Equipe Aura Tracker',
-    description:
-      "Un lancement pense pour la communaute, avec une base solide pour les futures saisons.",
-  },
 ];
 
 export default function Rules() {
@@ -299,53 +223,6 @@ export default function Rules() {
       </Card>
       <Card>
         <CardHeader>
-          <CardDescription>Notes de version</CardDescription>
-          <CardTitle className={TYPOGRAPHY.H2}>Changelog 1.0.0</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="divide-y divide-border/30">
-            {highlights.map((card, index) => (
-              <div
-                key={index}
-                className="py-4 space-y-1"
-              >
-                <h3 className={TYPOGRAPHY.BODY}>{card.title}</h3>
-                <p className={TYPOGRAPHY.SMALL}>{card.description}</p>
-              </div>
-            ))}
-          </div>
-          <div className={SPACING.SECTION_SPACING}>
-            {featureGroups.map((group) => (
-              <div key={group.title} className={SPACING.CARD_SPACING}>
-                <h3 className={TYPOGRAPHY.BODY}>{group.title}</h3>
-                <ul className="divide-y divide-border/30">
-                  {group.items.map((item, itemIndex) => (
-                    <li
-                      key={itemIndex}
-                      className={cn("py-2", TYPOGRAPHY.SMALL)}
-                    >
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-          <div className="divide-y divide-border/30">
-            {v1Notes.map((note) => (
-              <div
-                key={note.title}
-                className="py-4 space-y-1"
-              >
-                <h3 className={TYPOGRAPHY.BODY}>{note.title}</h3>
-                <p className={TYPOGRAPHY.SMALL}>{note.description}</p>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
           <CardDescription>Règlement</CardDescription>
           <CardTitle className={TYPOGRAPHY.H2}>Règles de la communauté</CardTitle>
         </CardHeader>
@@ -401,12 +278,9 @@ export default function Rules() {
       <Card>
         <CardHeader>
           <CardDescription>Informations</CardDescription>
-          <CardTitle className={TYPOGRAPHY.H2}>Contact & mise à jour</CardTitle>
+          <CardTitle className={TYPOGRAPHY.H2}>Contact</CardTitle>
         </CardHeader>
         <CardContent className={SPACING.CARD_SPACING}>
-          <p className={TYPOGRAPHY.SMALL}>
-            Dernière mise à jour : Janvier 2026
-          </p>
           <p className={TYPOGRAPHY.SMALL}>
             Pour toute question concernant ce règlement, contactez l'équipe d'administration.
           </p>

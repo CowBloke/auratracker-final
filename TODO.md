@@ -15,3 +15,15 @@
 - fix classement tetris et racer
 - fix logs export
 - enligne pages
+
+Consistence UI
+- cards
+- margin
+- espaceement
+- taille/couleur/police textes
+- disposition
+- toasts
+- boutons
+- hovers
+- panels
+- panels confirmation

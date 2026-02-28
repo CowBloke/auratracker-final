@@ -223,6 +223,23 @@ export default function Quests() {
       {canSelectNewQuests && (
         <div className={SPACING.CARD_SPACING}>
           <h2 className={TYPOGRAPHY.H3}>Sélectionnez 3 Quêtes</h2>
+          {selectedQuestIds.length > 0 && (
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <span className={TYPOGRAPHY.SMALL}>
+                    {selectedQuestIds.length} / 3 quêtes sélectionnées
+                  </span>
+                  <Button
+                    onClick={handleConfirmSelection}
+                    disabled={selectedQuestIds.length !== 3 || selecting}
+                  >
+                    {selecting ? 'Sélection en cours...' : 'Confirmer la sélection'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {dailyQuests.map((quest) => {
               const isSelected = selectedQuestIds.includes(quest.id);
@@ -269,24 +286,6 @@ export default function Quests() {
               );
             })}
           </div>
-
-          {selectedQuestIds.length > 0 && (
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <span className={TYPOGRAPHY.SMALL}>
-                    {selectedQuestIds.length} / 3 quêtes sélectionnées
-                  </span>
-                  <Button
-                    onClick={handleConfirmSelection}
-                    disabled={selectedQuestIds.length !== 3 || selecting}
-                  >
-                    {selecting ? 'Sélection en cours...' : 'Confirmer la sélection'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
       )}
 

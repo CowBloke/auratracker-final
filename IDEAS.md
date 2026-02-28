@@ -1,54 +1,47 @@
-## Party
-- Makeitmeme
-- loup garou
-- mariokart 2D avec temps à comprarer
-
-# Idées
+Games
+Solo
+Multijoueur
 - grand jeux à part : entrepreneur : créer entreprise avec salariés, parts de marché, actions, carte payer rues, propriétés etc
 - jeux multijoueurs/solo : pas de casino : party : quitter/venir sur latable
-- argent mise (cours ancien) à coté gauche du prix du cours ancien
-- plus d'effets objets, objets en quantité limité
 - complet clash
 - animation/événements échecs
-- messagerie (avec le notifs : par ex nouvelle demande d'adhésion au club)
-- resend
-- cote qui change en fonctiion des inestissements
-- grand musé pour visiter tout le monde
-- guerres de clans
-- gains totaux casino
-- -- force pur le deploy
-- sondage chat
-- fix aura recompense bataille navale
-- recompenses aura bombparty
-- auracoin : ne plus varier en fonction des achats
-- envoyer mails quand accepté sur le site avec présentation : Resend vérifier si domaine = saintdo
+- monopoly
+- subway sirfer
+
+Design
+Brand
+Mascotte 
+logo
+couleurs
+UI
 - vrai/faux pseudo
-- page bloqué avec retour button : page maintenance par page/page maintennace globale
 - badges promo/classe
-- pop up
 - photo background chat bulle
+
+Big improvement
+- plus d'effets objets, objets en quantité limité
+- envoyer mails quand accepté sur le site avec présentation : Resend vérifier si domaine = saintdo
+- guerres des clans
+- boite de notification
+- seasons : space + scoby and wallace
+Small improvement
+- messagerie (avec le notifs : par ex nouvelle demande d'adhésion au club)
 - chat in den clan
 - chat in den partys
 - party liste topbar
-- changer le message d'erreur : erreur plus de tableaux
-- page maintenace : news, music, wallace and gromit
-- notifications : par mail et bureau
-- redirection sur créer un compte : bienvenue
-- guerres de clans
-- topbar parties en ligne
 - scooby serie
-- classe comme prenom ajouter sql raw
-- monopoly
-- FIX les autres coins
-- ajouter logs coins, jeux, etc.
-- nom de famille
-- si vous recevez c'est que compte acceté
-- supprimer nombres leaderboard prompt bombparty
 - regsiter : ajouter mot demande d'adhésion
-- chat responsive
+
+
+
+Bugs
+
+- fix aura recompense bataille navale
+- auracoin : ne plus varier en fonction des achats → calquer sur une vraie coin
+- supprimer nombres leaderboard prompt bombparty
+
 - intégrer jeux github
-https://github.com/gabrielecirulli/2048
-https://github.com/jakesgordon/javascript-tetris
 https://github.com/DavidNHill/JSMinesweeper
 https://github.com/pi0/space-invaders
 - subway surfer
+- skin payant

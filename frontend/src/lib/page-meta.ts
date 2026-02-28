@@ -29,7 +29,7 @@ const STATIC_PAGE_META: Record<string, PageMeta> = {
   '/clans': { title: 'Clans', description: 'Communauté, membres et progression de clan.' },
   '/inventory': { title: 'Inventaire', description: 'Objets, consommables et cosmétiques.' },
   '/admin': { title: 'Admin', description: 'Outils de modération et d’administration.' },
-  '/rules': { title: 'Infos', description: 'Règles, changelog et signalement de bugs.' },
+  '/rules': { title: 'Infos', description: 'Règles et signalement de bugs.' },
   '/pass': { title: 'Pass', description: 'Récompenses journalières et progression de série.' },
   '/quests': { title: 'Quêtes', description: 'Objectifs actifs et récompenses.' },
   '/suggestions': { title: 'Suggestions', description: "Idées en cours, votes et suivi d'avancement." },
