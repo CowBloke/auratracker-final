@@ -184,7 +184,7 @@ export default function Poker() {
 
   if (!currentParty) {
     return (
-      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
+      <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
         <Link
           to="/games"
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -234,7 +234,7 @@ export default function Poker() {
   }, [showPlayAgainPrompt, pokerPlayAgainPrompt]);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-10">
+    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-10">
       {lobby ? (
         <div className="space-y-12">
           <section className="space-y-2">

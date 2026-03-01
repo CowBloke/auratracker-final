@@ -238,7 +238,7 @@ export default function Casino() {
         : blackjackBet;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
+    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
       <p className="text-muted-foreground">
         Choisis ta table: machine a sous classique, roulette animee ou blackjack.
       </p>

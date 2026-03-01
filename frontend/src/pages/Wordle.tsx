@@ -207,8 +207,8 @@ export default function Wordle() {
   }, [currentGuess, isCompleted, loading, submitting, wordLength]);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
-      <div className="mx-auto w-full max-w-6xl space-y-8">
+    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
+      <div className="w-full space-y-8">
         <section className="flex flex-col items-start justify-center gap-6 lg:flex-row">
           <div className="w-full max-w-3xl rounded-xl border border-border bg-card">
             <header className="border-b border-border px-4 py-3 text-center">

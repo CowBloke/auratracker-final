@@ -42,6 +42,7 @@ interface GameShortcut {
 }
 
 const shortcutStorageKey = 'auratracker:dashboard-shortcuts';
+const maxShortcutWidgets = 4;
 
 const welcomeTemplates = [
   'Bienvenue, {username}',
@@ -113,7 +114,7 @@ export default function Dashboard() {
 
   const shortcutMap = useMemo(() => new Map(gameShortcuts.map((item) => [item.id, item])), []);
   const orderedShortcuts = useMemo(
-    () => shortcutWidgets.map((id) => shortcutMap.get(id)).filter(Boolean) as GameShortcut[],
+    () => shortcutWidgets.slice(0, maxShortcutWidgets).map((id) => shortcutMap.get(id)).filter(Boolean) as GameShortcut[],
     [shortcutMap, shortcutWidgets]
   );
 
@@ -225,7 +226,7 @@ export default function Dashboard() {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
-          const filtered = parsed.filter((id: string) => shortcutMap.has(id));
+          const filtered = parsed.filter((id: string) => shortcutMap.has(id)).slice(0, maxShortcutWidgets);
           if (filtered.length > 0) {
             setShortcutWidgets(filtered);
           }
@@ -263,7 +264,7 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
+      <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
         </div>
@@ -272,7 +273,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
       {/* Stats */}
       <Card className="xl:col-span-2">
         <CardContent className="p-8 md:p-10">
@@ -304,27 +305,35 @@ export default function Dashboard() {
               <DialogHeader>
                 <DialogTitle className={TYPOGRAPHY.H5}>Widgets de raccourcis</DialogTitle>
                 <DialogDescription>
-                  Active les jeux à afficher en haut du tableau de bord.
+                  Active les jeux à afficher en haut du tableau de bord. Maximum {maxShortcutWidgets} jeux.
                 </DialogDescription>
               </DialogHeader>
+              <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>
+                {shortcutWidgets.length}/{maxShortcutWidgets} selectionnes
+              </p>
               <div className="space-y-3">
                 {gameShortcuts.map((shortcut) => {
                   const checked = shortcutWidgets.includes(shortcut.id);
+                  const limitReached = !checked && shortcutWidgets.length >= maxShortcutWidgets;
                   return (
                     <label
                       key={shortcut.id}
                       className={cn(
                         "flex items-start gap-3 rounded-xl border px-3 py-3 transition",
-                        checked ? "border-foreground/30 bg-muted/40" : "border-border/50"
+                        checked ? "border-foreground/30 bg-muted/40" : "border-border/50",
+                        limitReached && "opacity-50"
                       )}
                     >
                       <Checkbox
                         checked={checked}
+                        disabled={limitReached}
                         onCheckedChange={() => {
                           setShortcutWidgets((prev) =>
                             prev.includes(shortcut.id)
                               ? prev.filter((id) => id !== shortcut.id)
-                              : [...prev, shortcut.id]
+                              : prev.length >= maxShortcutWidgets
+                                ? prev
+                                : [...prev, shortcut.id]
                           );
                         }}
                         className="mt-1"
@@ -432,9 +441,10 @@ export default function Dashboard() {
       </Card>
 
       {/* Recent Activity */}
-      <div className={SPACING.SECTION_SPACING}>
-          <div className="flex items-center justify-between">
-            <h2 className={TYPOGRAPHY.MUTED}>Activité récente</h2>
+      <Card className={SPACING.SECTION_SPACING}>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className={TYPOGRAPHY.MUTED}>Activité récente</CardTitle>
             <Sheet open={historyOpen} onOpenChange={(open) => {
               setHistoryOpen(open);
               if (open && allTransfers.length === 0) {
@@ -512,49 +522,47 @@ export default function Dashboard() {
               </SheetContent>
             </Sheet>
           </div>
-
+        </CardHeader>
+        <CardContent className="p-0">
           {recentTransfers.length === 0 ? (
-            <p className={TYPOGRAPHY.MUTED}>Aucun transfert</p>
+            <p className={cn(TYPOGRAPHY.MUTED, "px-6 pb-6")}>Aucun transfert</p>
           ) : (
-            <Card>
-              <CardContent className="p-0">
-                <div className="divide-y divide-border/30">
-                  {recentTransfers.map((transfer) => (
-                    <div
-                      key={transfer.id}
-                      className="py-3 px-6"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground w-8")}>
-                            {formatTimeAgo(transfer.createdAt)}
-                          </span>
-                          <span>
-                            <span style={transfer.sender.usernameColor ? { color: transfer.sender.usernameColor } : undefined}>
-                              {transfer.sender.username}
-                            </span>
-                            {' -> '}
-                            <span style={transfer.receiver.usernameColor ? { color: transfer.receiver.usernameColor } : undefined}>
-                              {transfer.receiver.username}
-                            </span>
-                          </span>
-                        </div>
-                        <span className="tabular-nums">
-                          {transfer.auraAmount}
+            <div className="divide-y divide-border/30">
+              {recentTransfers.map((transfer) => (
+                <div
+                  key={transfer.id}
+                  className="py-3 px-6"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground w-8")}>
+                        {formatTimeAgo(transfer.createdAt)}
+                      </span>
+                      <span>
+                        <span style={transfer.sender.usernameColor ? { color: transfer.sender.usernameColor } : undefined}>
+                          {transfer.sender.username}
                         </span>
-                      </div>
-                      {transfer.message && (
-                        <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground mt-1 ml-12 ")}>
-                          "{transfer.message}"
-                        </p>
-                      )}
+                        {' -> '}
+                        <span style={transfer.receiver.usernameColor ? { color: transfer.receiver.usernameColor } : undefined}>
+                          {transfer.receiver.username}
+                        </span>
+                      </span>
                     </div>
-                  ))}
+                    <span className="tabular-nums">
+                      {transfer.auraAmount}
+                    </span>
+                  </div>
+                  {transfer.message && (
+                    <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground mt-1 ml-12 ")}>
+                      "{transfer.message}"
+                    </p>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
+              ))}
+            </div>
           )}
-      </div>
+        </CardContent>
+      </Card>
       </div>
 
       <Card className="h-fit">

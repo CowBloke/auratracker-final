@@ -1306,7 +1306,7 @@ export default function Racer() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
+    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
       <div className="flex items-center justify-end gap-4">
         <div className="text-right text-sm text-muted-foreground tabular-nums">
           <div className="text-2xl font-light text-foreground">{speed} mph</div>

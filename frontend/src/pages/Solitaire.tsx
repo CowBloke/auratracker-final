@@ -523,7 +523,7 @@ export default function Solitaire() {
   const hideLeaderboardForSpace = viewportWidth < 1450;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
+    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-950/85 p-3 text-emerald-50 shadow-xl">
         <div className="flex flex-wrap gap-4 text-sm">
           <span>Score: <strong>{score}</strong></span>

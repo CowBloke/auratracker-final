@@ -262,7 +262,7 @@ export default function Clash() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
+      <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
         </div>
@@ -271,7 +271,7 @@ export default function Clash() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-16">
+    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-16">
       {/* Stats */}
       <div className="flex items-center justify-end gap-4 text-sm text-muted-foreground tabular-nums">
         <span>{trophies} 🏆</span>

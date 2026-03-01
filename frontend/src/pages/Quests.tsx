@@ -115,7 +115,7 @@ export default function Quests() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
+      <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-muted rounded w-1/4"></div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -133,7 +133,45 @@ export default function Quests() {
   const canSelectNewQuests = !hasSelectedQuests && dailyQuests.length > 0;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
+    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
+      {(completedQuests.length > 0 || canSelectNewQuests) && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              {completedQuests.length > 0 && (
+                <>
+                  <span className={TYPOGRAPHY.SMALL}>
+                    {completedQuests.length} récompense{completedQuests.length > 1 ? 's' : ''} à réclamer
+                  </span>
+                  <Button
+                    onClick={() => handleClaim(completedQuests.map((q) => q.id))}
+                    disabled={claiming}
+                    className="w-full sm:w-auto"
+                  >
+                    Réclamer toutes les récompenses ({completedQuests.length})
+                  </Button>
+                </>
+              )}
+
+              {canSelectNewQuests && (
+                <>
+                  <span className={TYPOGRAPHY.SMALL}>
+                    {selectedQuestIds.length} / 3 quêtes sélectionnées
+                  </span>
+                  <Button
+                    onClick={handleConfirmSelection}
+                    disabled={selectedQuestIds.length !== 3 || selecting}
+                    className="w-full sm:w-auto"
+                  >
+                    {selecting ? 'Sélection en cours...' : 'Confirmer la sélection'}
+                  </Button>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {hasSelectedQuests && (
         <div className={SPACING.CARD_SPACING}>
           <h2 className={TYPOGRAPHY.H3}>Mes Quêtes</h2>
@@ -165,6 +203,15 @@ export default function Quests() {
                           Réclamée
                         </Badge>
                       )}
+                      {isCompleted && !isClaimed && (
+                        <Button
+                          size="sm"
+                          onClick={() => handleClaim([userQuest.id])}
+                          disabled={claiming}
+                        >
+                          Réclamer
+                        </Button>
+                      )}
                     </div>
                     <CardDescription>{userQuest.quest.description}</CardDescription>
                   </CardHeader>
@@ -190,56 +237,18 @@ export default function Quests() {
                           <span className="font-semibold">{userQuest.quest.auraReward}</span>
                         </div>
                       </div>
-                      {isCompleted && !isClaimed && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleClaim([userQuest.id])}
-                          disabled={claiming}
-                        >
-                          Réclamer
-                        </Button>
-                      )}
                     </div>
                   </CardContent>
                 </Card>
               );
             })}
           </div>
-
-          {completedQuests.length > 0 && (
-            <div className="mt-4">
-              <Button
-                onClick={() => handleClaim(completedQuests.map((q) => q.id))}
-                disabled={claiming}
-                className="w-full"
-              >
-                Réclamer toutes les récompenses ({completedQuests.length})
-              </Button>
-            </div>
-          )}
         </div>
       )}
 
       {canSelectNewQuests && (
         <div className={SPACING.CARD_SPACING}>
           <h2 className={TYPOGRAPHY.H3}>Sélectionnez 3 Quêtes</h2>
-          {selectedQuestIds.length > 0 && (
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <span className={TYPOGRAPHY.SMALL}>
-                    {selectedQuestIds.length} / 3 quêtes sélectionnées
-                  </span>
-                  <Button
-                    onClick={handleConfirmSelection}
-                    disabled={selectedQuestIds.length !== 3 || selecting}
-                  >
-                    {selecting ? 'Sélection en cours...' : 'Confirmer la sélection'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {dailyQuests.map((quest) => {
               const isSelected = selectedQuestIds.includes(quest.id);

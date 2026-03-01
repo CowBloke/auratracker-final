@@ -128,7 +128,7 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
+      <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
         </div>
@@ -138,7 +138,7 @@ export default function Profile() {
 
   if (!profileUser) {
     return (
-      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
+      <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
         <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
           Utilisateur introuvable
         </p>
@@ -162,7 +162,7 @@ export default function Profile() {
     : null;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
+    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
       {/* Profile Picture */}
       <div className="flex items-start gap-6">
         {profileUser.profilePicture ? (

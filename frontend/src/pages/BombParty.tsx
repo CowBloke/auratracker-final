@@ -132,7 +132,7 @@ export default function BombParty() {
   // Not in a party - show message
   if (!currentParty) {
     return (
-      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
+      <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
         <Link
           to="/games"
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -162,7 +162,7 @@ export default function BombParty() {
   // Lobby state (no game active)
   if (!bombPartyGame) {
     return (
-      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-16">
+      <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-16">
         {/* Players in party */}
         <section className="space-y-4">
           <h2 className="text-sm text-muted-foreground  ">
@@ -300,7 +300,7 @@ export default function BombParty() {
 
   // Game active
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
+    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
       <div className="flex items-center justify-end">
         <Button variant="ghost"
           onClick={leaveBombParty}

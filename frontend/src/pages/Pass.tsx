@@ -120,7 +120,7 @@ export default function Pass() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-5xl px-4 pb-6 sm:px-6 lg:px-8 lg:pb-8 space-y-8">
+      <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
         <p className={TYPOGRAPHY.MUTED}>Chargement...</p>
       </div>
     );
