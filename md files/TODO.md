@@ -1,8 +1,5 @@
 ## à FIX
 
-- supprimer tab paramètres admin et tout ce qui se rapporte à ce tab
-- admin doit pouvoi modifer les événements pari
-- fix classement tetris et racer
 - fix logs export
 - enligne pages
 

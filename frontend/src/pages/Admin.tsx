@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Rocket, Download, Gift as GiftIcon, Sparkles, Upload, Eye, Activity, Trophy, CalendarRange, RefreshCw } from 'lucide-react';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Gift as GiftIcon, Sparkles, Upload, Eye, Activity, Trophy, CalendarRange, RefreshCw } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import {
   AlertDialog,
@@ -426,23 +426,8 @@ export default function Admin() {
   const [downloadingLogs, setDownloadingLogs] = useState(false);
   const [downloadLogsError, setDownloadLogsError] = useState<string | null>(null);
 
-  // Game settings state
-  const [_gameSettings, setGameSettings] = useState<Record<string, string>>({});
+  // Settings state
   const [loadingSettings, setLoadingSettings] = useState(false);
-  const [savingSettings, setSavingSettings] = useState(false);
-  const [savingChatDeleteSettings, setSavingChatDeleteSettings] = useState(false);
-  const [settingsForm, setSettingsForm] = useState({
-    bombparty_wpp_easy: '500',
-    bombparty_wpp_medium: '200',
-    bombparty_wpp_hard: '100',
-    bombparty_3letter_start_round: '10',
-    bombparty_language: 'dictionary.txt',
-  });
-  const [chatDeleteRetentionDays, setChatDeleteRetentionDays] = useState('0');
-  const [chatDeleteRequiresConfirmation, setChatDeleteRequiresConfirmation] = useState(true);
-  const [bombPartyLanguages, setBombPartyLanguages] = useState<{ fileName: string; label: string }[]>([]);
-  const [loadingBombPartyLanguages, setLoadingBombPartyLanguages] = useState(false);
-  const [recalculatingBombPartyPrompts, setRecalculatingBombPartyPrompts] = useState(false);
   const [maintenanceMessage, setMaintenanceMessage] = useState('');
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
   const [maintenanceEndDate, setMaintenanceEndDate] = useState<string>('');
@@ -463,14 +448,6 @@ export default function Admin() {
   const [updatePopupForm, setUpdatePopupForm] = useState<UpdatePopupFormData>(defaultUpdatePopupForm);
   const updatePopupFileInputRef = useRef<HTMLInputElement | null>(null);
   const [isUpdatePopupDropzoneActive, setIsUpdatePopupDropzoneActive] = useState(false);
-
-  // Deploy state
-  const [deploying, setDeploying] = useState(false);
-  const [deployResult, setDeployResult] = useState<{ success: boolean; message: string; stdout?: string; stderr?: string } | null>(null);
-
-  // Reset extreme aura state
-  const [resettingAura, setResettingAura] = useState(false);
-  const [resetAuraResult, setResetAuraResult] = useState<{ success: boolean; message: string; usersReset: number; users: { id: string; username: string; oldAura: string }[] } | null>(null);
 
   // Gift templates state
   const [giftTemplates, setGiftTemplates] = useState<{ id: string; name: string; description: string | null; imageUrl: string | null; price: number; createdAt: string }[]>([]);
@@ -747,7 +724,6 @@ export default function Admin() {
     fetchLogs();
     fetchLogStats();
     fetchSettings();
-    fetchBombPartyLanguages();
     fetchGiftTemplates();
     fetchUpdatePopups();
     fetchActivity('day');
@@ -940,18 +916,7 @@ export default function Admin() {
     try {
       setLoadingSettings(true);
       const res = await adminApi.getSettings();
-      setGameSettings(res.data.settings);
       setAnnouncementMessage(res.data.settings.topbar_announcement || '');
-      // Update form with loaded values
-      setSettingsForm({
-        bombparty_wpp_easy: res.data.settings.bombparty_wpp_easy || '500',
-        bombparty_wpp_medium: res.data.settings.bombparty_wpp_medium || '200',
-        bombparty_wpp_hard: res.data.settings.bombparty_wpp_hard || '100',
-        bombparty_3letter_start_round: res.data.settings.bombparty_3letter_start_round || '10',
-        bombparty_language: res.data.settings.bombparty_language || 'dictionary.txt',
-      });
-      setChatDeleteRetentionDays(res.data.settings.chat_delete_retention_days || '0');
-      setChatDeleteRequiresConfirmation((res.data.settings.chat_delete_requires_confirmation || 'true') === 'true');
       setMaintenanceMessage(res.data.settings.maintenance_message || '');
       setBlockedMessage(res.data.settings.blocked_message || '');
 
@@ -1006,115 +971,6 @@ export default function Admin() {
       showMessage('error', 'Erreur lors du chargement des paramètres');
     } finally {
       setLoadingSettings(false);
-    }
-  };
-
-  const fetchBombPartyLanguages = async () => {
-    try {
-      setLoadingBombPartyLanguages(true);
-      const res = await adminApi.getBombPartyLanguages();
-      setBombPartyLanguages(res.data.languages);
-
-      if (res.data.languages.length > 0) {
-        const valid = res.data.languages.some((lang) => lang.fileName === settingsForm.bombparty_language);
-        if (!valid) {
-          setSettingsForm((prev) => ({ ...prev, bombparty_language: res.data.languages[0].fileName }));
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch Bomb Party languages:', error);
-      showMessage('error', 'Erreur lors du chargement des langues Bomb Party');
-    } finally {
-      setLoadingBombPartyLanguages(false);
-    }
-  };
-
-  const saveSettings = async () => {
-    try {
-      setSavingSettings(true);
-
-      // Validate values
-      const easy = parseInt(settingsForm.bombparty_wpp_easy);
-      const medium = parseInt(settingsForm.bombparty_wpp_medium);
-      const hard = parseInt(settingsForm.bombparty_wpp_hard);
-      const startRound = parseInt(settingsForm.bombparty_3letter_start_round);
-
-      if (isNaN(easy) || easy < 1 || isNaN(medium) || medium < 1 || isNaN(hard) || hard < 1) {
-        showMessage('error', 'Les seuils WPP doivent être des entiers positifs');
-        return;
-      }
-
-      if (isNaN(startRound) || startRound < 0) {
-        showMessage('error', 'Le round de début doit être un entier positif ou zéro');
-        return;
-      }
-
-      if (easy <= medium || medium <= hard) {
-        showMessage('error', 'Les seuils doivent être: Facile > Moyen > Difficile');
-        return;
-      }
-
-      if (!settingsForm.bombparty_language) {
-        showMessage('error', 'Veuillez sÃ©lectionner une langue pour Bomb Party');
-        return;
-      }
-
-      if (bombPartyLanguages.length > 0 && !bombPartyLanguages.some((lang) => lang.fileName === settingsForm.bombparty_language)) {
-        showMessage('error', 'Langue Bomb Party invalide');
-        return;
-      }
-
-      await adminApi.updateSettings({
-        bombparty_wpp_easy: easy,
-        bombparty_wpp_medium: medium,
-        bombparty_wpp_hard: hard,
-        bombparty_3letter_start_round: startRound,
-        bombparty_language: settingsForm.bombparty_language,
-      });
-
-      showMessage('success', 'Paramètres sauvegardés');
-      fetchSettings();
-    } catch (error) {
-      console.error('Failed to save settings:', error);
-      showMessage('error', 'Erreur lors de la sauvegarde');
-    } finally {
-      setSavingSettings(false);
-    }
-  };
-
-  const saveChatDeleteSettings = async () => {
-    const retentionDays = parseInt(chatDeleteRetentionDays, 10);
-    if (Number.isNaN(retentionDays) || retentionDays < 0) {
-      showMessage('error', 'La rétention du chat doit être un entier positif ou zéro');
-      return;
-    }
-
-    try {
-      setSavingChatDeleteSettings(true);
-      await adminApi.updateSettings({
-        chat_delete_retention_days: retentionDays,
-        chat_delete_requires_confirmation: chatDeleteRequiresConfirmation ? 'true' : 'false',
-      });
-      showMessage('success', 'Paramètres de suppression du chat sauvegardés');
-      fetchSettings();
-    } catch (error) {
-      console.error('Failed to save chat delete settings:', error);
-      showMessage('error', 'Erreur lors de la sauvegarde des paramètres de suppression du chat');
-    } finally {
-      setSavingChatDeleteSettings(false);
-    }
-  };
-
-  const recalculateBombPartyPrompts = async () => {
-    try {
-      setRecalculatingBombPartyPrompts(true);
-      const res = await adminApi.recalculateBombPartyPrompts();
-      showMessage('success', `Prompts rÃ©gÃ©nÃ©rÃ©s (${res.data.result.totalPrompts})`);
-    } catch (error: any) {
-      console.error('Failed to recalculate Bomb Party prompts:', error);
-      showMessage('error', error.response?.data?.error || 'Erreur lors du recalcul des prompts');
-    } finally {
-      setRecalculatingBombPartyPrompts(false);
     }
   };
 
@@ -1198,53 +1054,6 @@ export default function Admin() {
     }
   };
 
-  const runDeploy = async () => {
-    try {
-      setDeploying(true);
-      setDeployResult(null);
-      const res = await adminApi.deploy();
-      setDeployResult(res.data);
-      showMessage('success', 'Déploiement lancé avec succès');
-    } catch (error: unknown) {
-      console.error('Deploy failed:', error);
-      const errorData = (error as { response?: { data?: { message?: string; stderr?: string } } })?.response?.data;
-      setDeployResult({
-        success: false,
-        message: errorData?.message || 'Erreur lors du déploiement',
-        stderr: errorData?.stderr,
-      });
-      showMessage('error', 'Erreur lors du déploiement');
-    } finally {
-      setDeploying(false);
-    }
-  };
-
-  const resetExtremeAura = async () => {
-    try {
-      setResettingAura(true);
-      setResetAuraResult(null);
-      const res = await adminApi.resetExtremeAura();
-      setResetAuraResult(res.data);
-      if (res.data.usersReset > 0) {
-        showMessage('success', `${res.data.usersReset} utilisateur(s) réinitialisé(s)`);
-        fetchUsers();
-      } else {
-        showMessage('success', 'Aucun utilisateur avec des valeurs extrêmes');
-      }
-    } catch (error: unknown) {
-      console.error('Reset extreme aura failed:', error);
-      const errorData = (error as { response?: { data?: { message?: string } } })?.response?.data;
-      setResetAuraResult({
-        success: false,
-        message: errorData?.message || 'Erreur lors de la réinitialisation',
-        usersReset: 0,
-        users: []
-      });
-      showMessage('error', 'Erreur lors de la réinitialisation');
-    } finally {
-      setResettingAura(false);
-    }
-  };
 
   const openBanDialog = (userId: string) => {
     setBanUserId(userId);
@@ -2507,7 +2316,7 @@ export default function Admin() {
         <TabsContent value="settings" className={SPACING.SECTION_SPACING}>
           <Card>
             <CardHeader>
-              <CardDescription>Parametres de suppression du chat</CardDescription>
+              <CardDescription>Actions sensibles</CardDescription>
             </CardHeader>
             <CardContent className={SPACING.CARD_SPACING}>
               <div className="flex items-start gap-4">
@@ -2517,46 +2326,6 @@ export default function Admin() {
                   <p className="text-sm text-muted-foreground">
                     Supprime définitivement tous les messages du chat global. Cette action est irréversible.
                   </p>
-                </div>
-              </div>
-
-              <div className="space-y-4 p-4 rounded-lg border bg-muted/20">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Retention auto (jours)</label>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={chatDeleteRetentionDays}
-                      onChange={(e) => setChatDeleteRetentionDays(e.target.value)}
-                      className="max-w-xs"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      0 = desactive la suppression automatique (reglage reserve).
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Confirmation obligatoire</label>
-                    <div className="h-10 px-3 rounded-md border flex items-center justify-between bg-background/50">
-                      <span className="text-sm text-muted-foreground">
-                        {chatDeleteRequiresConfirmation ? 'Activee' : 'Desactivee'}
-                      </span>
-                      <Switch
-                        checked={chatDeleteRequiresConfirmation}
-                        onCheckedChange={setChatDeleteRequiresConfirmation}
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className="flex justify-end">
-                  <Button onClick={saveChatDeleteSettings} disabled={savingChatDeleteSettings}>
-                    {savingChatDeleteSettings ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <Save className="h-4 w-4 mr-2" />
-                    )}
-                    Sauvegarder les parametres chat
-                  </Button>
                 </div>
               </div>
               
@@ -3653,335 +3422,6 @@ export default function Admin() {
               </div>
             </div>
           )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="settings" className={SPACING.SECTION_SPACING}>
-          <Card>
-            <CardHeader>
-              <CardDescription>Paramètres de jeu</CardDescription>
-            </CardHeader>
-            <CardContent className={SPACING.SECTION_SPACING}>
-
-          {loadingSettings ? (
-            <div className="flex justify-center py-12">
-              <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
-            </div>
-          ) : (
-            <div className="space-y-8">
-              {/* Word Bomb Settings */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Word Bomb - Seuils WPP (Words Per Prompt)</h3>
-                <p className="text-sm text-muted-foreground">
-                  Les seuils déterminent la difficulté des prompts en fonction du nombre de mots valides.
-                  Un prompt avec plus de mots est plus facile car il y a plus de réponses possibles.
-                </p>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2 p-4 border border-border/30 rounded-lg bg-green-500/5">
-                    <label className="text-sm font-medium text-green-400">Facile (mots minimum)</label>
-                    <Input
-                      type="number"
-                      value={settingsForm.bombparty_wpp_easy}
-                      onChange={(e) => setSettingsForm(prev => ({ ...prev, bombparty_wpp_easy: e.target.value }))}
-                      className="bg-transparent"
-                      min={1}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Prompts avec {settingsForm.bombparty_wpp_easy}+ mots valides
-                    </p>
-                  </div>
-
-                  <div className="space-y-2 p-4 border border-border/30 rounded-lg bg-yellow-500/5">
-                    <label className="text-sm font-medium text-yellow-400">Moyen (mots minimum)</label>
-                    <Input
-                      type="number"
-                      value={settingsForm.bombparty_wpp_medium}
-                      onChange={(e) => setSettingsForm(prev => ({ ...prev, bombparty_wpp_medium: e.target.value }))}
-                      className="bg-transparent"
-                      min={1}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Prompts avec {settingsForm.bombparty_wpp_medium}-{parseInt(settingsForm.bombparty_wpp_easy) - 1 || '?'} mots
-                    </p>
-                  </div>
-
-                  <div className="space-y-2 p-4 border border-border/30 rounded-lg bg-red-500/5">
-                    <label className="text-sm font-medium text-red-400">Difficile (mots minimum)</label>
-                    <Input
-                      type="number"
-                      value={settingsForm.bombparty_wpp_hard}
-                      onChange={(e) => setSettingsForm(prev => ({ ...prev, bombparty_wpp_hard: e.target.value }))}
-                      className="bg-transparent"
-                      min={1}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Prompts avec {settingsForm.bombparty_wpp_hard}-{parseInt(settingsForm.bombparty_wpp_medium) - 1 || '?'} mots
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bomb Party Language */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Langue du dictionnaire Bomb Party</h3>
-                <p className="text-sm text-muted-foreground">
-                  Selectionnez le fichier texte utilise pour generer les prompts (backend/data/*.txt).
-                </p>
-
-                <div className="flex flex-col md:flex-row gap-4 items-start md:items-end">
-                  <div className="space-y-2 w-full md:max-w-sm">
-                    <label className="text-sm font-medium">Langue</label>
-                    <Select
-                      value={settingsForm.bombparty_language}
-                      onValueChange={(value) => setSettingsForm(prev => ({ ...prev, bombparty_language: value }))}
-                    >
-                      <SelectTrigger className="bg-transparent">
-                        <SelectValue placeholder={loadingBombPartyLanguages ? 'Chargement...' : 'Choisir une langue'} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {bombPartyLanguages.length === 0 ? (
-                          <SelectItem value={settingsForm.bombparty_language} disabled>
-                            {settingsForm.bombparty_language.replace(/\.txt$/i, '') || 'Aucune langue trouvÃ©e'}
-                          </SelectItem>
-                        ) : (
-                          bombPartyLanguages.map((lang) => (
-                            <SelectItem key={lang.fileName} value={lang.fileName}>
-                              {lang.label}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Fichier sÃ©lectionnÃ©: {settingsForm.bombparty_language || 'Aucun'}
-                    </p>
-                  </div>
-
-                  <Button
-                    onClick={recalculateBombPartyPrompts}
-                    disabled={recalculatingBombPartyPrompts || loadingBombPartyLanguages || !settingsForm.bombparty_language}
-                    variant="outline"
-                  >
-                    {recalculatingBombPartyPrompts ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <Download className="h-4 w-4 mr-2" />
-                    )}
-                    Recalculer les prompts
-                  </Button>
-                </div>
-              </div>
-
-              {/* 3-Letter Start Round */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Apparition des prompts à 3 lettres</h3>
-                <p className="text-sm text-muted-foreground">
-                  Les prompts à 3 lettres sont plus difficiles. Définissez à partir de quel round ils commencent à apparaître.
-                </p>
-
-                <div className="space-y-2 max-w-xs p-4 border border-border/30 rounded-lg">
-                  <label className="text-sm font-medium">Round de début</label>
-                  <Input
-                    type="number"
-                    value={settingsForm.bombparty_3letter_start_round}
-                    onChange={(e) => setSettingsForm(prev => ({ ...prev, bombparty_3letter_start_round: e.target.value }))}
-                    className="bg-transparent"
-                    min={0}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Les prompts à 3 lettres apparaissent à partir du round {settingsForm.bombparty_3letter_start_round}
-                  </p>
-                </div>
-              </div>
-
-              {/* Save Button */}
-              <div className="flex justify-end pt-4 border-t border-border/30">
-                <Button
-                  onClick={saveSettings}
-                  disabled={savingSettings}
-                >
-                  {savingSettings ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Save className="h-4 w-4 mr-2" />
-                  )}
-                  Sauvegarder les paramètres
-                </Button>
-              </div>
-
-              {/* Info Note */}
-              <div className="p-4 border border-border/30 rounded-lg bg-muted/20">
-                <p className="text-sm text-muted-foreground">
-                  <strong>Note:</strong> Les modifications des seuils WPP prendront effet immédiatement pour les nouvelles parties.
-                  Utilisez le bouton de recalcul pour regenerer les prompts si le dictionnaire change.
-                </p>
-              </div>
-
-              {/* Reset Extreme Aura Section */}
-              <div className="space-y-4 pt-8 border-t border-border/30">
-                <h3 className="text-lg font-medium">Réinitialiser les valeurs d'aura extrêmes</h3>
-                <p className="text-sm text-muted-foreground">
-                  Réinitialise à 0 l'aura des utilisateurs ayant des valeurs supérieures à 1 milliard (valeurs corrompues ou overflow).
-                </p>
-
-                <div className="flex items-center gap-4">
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        disabled={resettingAura}
-                        className="border-orange-500/50 text-orange-500 hover:bg-orange-500/10"
-                      >
-                        {resettingAura ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Réinitialisation en cours...
-                          </>
-                        ) : (
-                          <>
-                            <AlertTriangle className="h-4 w-4 mr-2" />
-                            Réinitialiser les valeurs extrêmes
-                          </>
-                        )}
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                          <AlertTriangle className="h-5 w-5 text-orange-500" />
-                          Réinitialiser les valeurs d'aura extrêmes ?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Cette action va réinitialiser à 0 l'aura de tous les utilisateurs ayant des valeurs supérieures à 1 milliard. Cette action est irréversible.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Annuler</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={resetExtremeAura}
-                          className="bg-orange-500 hover:bg-orange-600"
-                        >
-                          Réinitialiser
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-
-                {resetAuraResult && (
-                  <div className={cn(
-                    "p-4 border rounded-lg space-y-2",
-                    resetAuraResult.success
-                      ? "border-green-500/50 bg-green-500/10"
-                      : "border-red-500/50 bg-red-500/10"
-                  )}>
-                    <p className={cn(
-                      "text-sm font-medium",
-                      resetAuraResult.success ? "text-green-400" : "text-red-400"
-                    )}>
-                      {resetAuraResult.success ? 'Réinitialisation réussie' : 'Échec de la réinitialisation'}
-                    </p>
-                    <p className="text-sm text-muted-foreground">{resetAuraResult.message}</p>
-                    {resetAuraResult.users.length > 0 && (
-                      <div className="mt-2 space-y-1">
-                        <p className="text-xs text-muted-foreground">Utilisateurs réinitialisés:</p>
-                        <ul className="text-xs space-y-1">
-                          {resetAuraResult.users.map(u => (
-                            <li key={u.id} className="flex items-center gap-2">
-                              <span className="font-medium">{u.username}</span>
-                              <span className="text-muted-foreground">-</span>
-                              <span className="text-red-400">{BigInt(u.oldAura).toLocaleString()} aura</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Server Deployment Section */}
-              <div className="space-y-4 pt-8 border-t border-border/30">
-                <h3 className="text-lg font-medium">Déploiement serveur</h3>
-                <p className="text-sm text-muted-foreground">
-                  Exécute le script de déploiement sur le serveur (<code className="bg-muted px-1 rounded">/var/scripts/deploy.sh</code>).
-                </p>
-
-                <div className="flex items-center gap-4">
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        disabled={deploying}
-                        className="border-blue-500/50 text-blue-500 hover:bg-blue-500/10"
-                      >
-                        {deploying ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Déploiement en cours...
-                          </>
-                        ) : (
-                          <>
-                            <Rocket className="h-4 w-4 mr-2" />
-                            Déployer
-                          </>
-                        )}
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                          <Rocket className="h-5 w-5 text-blue-500" />
-                          Lancer le déploiement ?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Cette action va exécuter le script de déploiement sur le serveur. Le site pourrait être temporairement indisponible pendant le processus.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Annuler</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={runDeploy}
-                          className="bg-blue-500 hover:bg-blue-600"
-                        >
-                          Déployer
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-
-                {deployResult && (
-                  <div className={cn(
-                    "p-4 border rounded-lg space-y-2",
-                    deployResult.success
-                      ? "border-green-500/50 bg-green-500/10"
-                      : "border-red-500/50 bg-red-500/10"
-                  )}>
-                    <p className={cn(
-                      "text-sm font-medium",
-                      deployResult.success ? "text-green-400" : "text-red-400"
-                    )}>
-                      {deployResult.success ? 'Déploiement réussi' : 'Échec du déploiement'}
-                    </p>
-                    <p className="text-sm text-muted-foreground">{deployResult.message}</p>
-                    {deployResult.stdout && (
-                      <pre className="text-xs bg-black/30 p-2 rounded overflow-x-auto max-h-40 overflow-y-auto">
-                        {deployResult.stdout}
-                      </pre>
-                    )}
-                    {deployResult.stderr && (
-                      <pre className="text-xs bg-black/30 p-2 rounded overflow-x-auto max-h-40 overflow-y-auto text-red-400">
-                        {deployResult.stderr}
-                      </pre>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-            )}
             </CardContent>
           </Card>
         </TabsContent>

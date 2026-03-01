@@ -57,14 +57,17 @@ export default function Polymarket() {
   
   // Admin dialogs
   const [createEventDialogOpen, setCreateEventDialogOpen] = useState(false);
+  const [editEventDialogOpen, setEditEventDialogOpen] = useState(false);
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [resolveDialogOpen, setResolveDialogOpen] = useState(false);
   const [selectedSuggestion, setSelectedSuggestion] = useState<PolymarketSuggestion | null>(null);
+  const [selectedEventForEdit, setSelectedEventForEdit] = useState<PolymarketEvent | null>(null);
   const [selectedEventForResolve, setSelectedEventForResolve] = useState<PolymarketEvent | null>(null);
   const [yesOdds, setYesOdds] = useState('');
   const [noOdds, setNoOdds] = useState('');
   const [approveEventDate, setApproveEventDate] = useState('');
   const [resolution, setResolution] = useState<'YES' | 'NO'>('YES');
+  const [editSubmitting, setEditSubmitting] = useState(false);
 
   const formatDateTimeLocal = (value?: string | null) => {
     if (!value) return '';
@@ -289,6 +292,64 @@ export default function Polymarket() {
     }
   };
 
+  const openEditEventDialog = (event: PolymarketEvent) => {
+    setSelectedEventForEdit(event);
+    setEditEventDialogOpen(true);
+  };
+
+  const handleUpdateEvent = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!selectedEventForEdit) return;
+
+    const formData = new FormData(e.currentTarget);
+    const titleValue = (formData.get('title') as string)?.trim();
+    const descriptionValue = (formData.get('description') as string)?.trim();
+    const eventDateValue = formData.get('eventDate') as string;
+    const imageUrlValue = ((formData.get('imageUrl') as string) || '').trim();
+    const yesOddsValue = parseFloat(formData.get('yesOdds') as string);
+    const noOddsValue = parseFloat(formData.get('noOdds') as string);
+    const statusValue = formData.get('status') as PolymarketEvent['status'];
+
+    if (!titleValue || !descriptionValue || !eventDateValue || !Number.isFinite(yesOddsValue) || !Number.isFinite(noOddsValue)) {
+      toast({
+        title: 'Erreur',
+        description: 'Tous les champs requis doivent être renseignés.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setEditSubmitting(true);
+    try {
+      await polymarketApi.updateEvent(selectedEventForEdit.id, {
+        title: titleValue,
+        description: descriptionValue,
+        eventDate: eventDateValue,
+        imageUrl: imageUrlValue || null,
+        yesOdds: yesOddsValue,
+        noOdds: noOddsValue,
+        status: statusValue,
+      });
+
+      toast({
+        title: 'Événement modifié',
+        description: 'Les changements ont été enregistrés.',
+      });
+
+      setEditEventDialogOpen(false);
+      setSelectedEventForEdit(null);
+      fetchData();
+    } catch (error: any) {
+      toast({
+        title: 'Erreur',
+        description: error.response?.data?.error || 'Impossible de modifier l\'événement',
+        variant: 'destructive',
+      });
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
   const openEvents = events.filter((e) => e.status === 'OPEN');
   const resolvedEvents = events.filter((e) => e.status === 'RESOLVED');
   const pendingSuggestions = suggestions.filter((s) => s.status === 'PENDING');
@@ -418,16 +479,25 @@ export default function Polymarket() {
                               </Button>
                             )}
                             {user?.isAdmin && event.status === 'OPEN' && (
-                              <Button
-                                variant="outline"
-                                className="w-full"
-                                onClick={() => {
-                                  setSelectedEventForResolve(event);
-                                  setResolveDialogOpen(true);
-                                }}
-                              >
-                                Résoudre
-                              </Button>
+                              <>
+                                <Button
+                                  variant="outline"
+                                  className="w-full"
+                                  onClick={() => openEditEventDialog(event)}
+                                >
+                                  Modifier
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  className="w-full"
+                                  onClick={() => {
+                                    setSelectedEventForResolve(event);
+                                    setResolveDialogOpen(true);
+                                  }}
+                                >
+                                  Résoudre
+                                </Button>
+                              </>
                             )}
                           </div>
                         </div>
@@ -653,6 +723,56 @@ export default function Polymarket() {
             <h2 className={TYPOGRAPHY.H2}>Administration</h2>
 
             <div className={SPACING.SECTION_SPACING}>
+              <div>
+                <h3 className={TYPOGRAPHY.H4}>Événements</h3>
+                {events.length === 0 ? (
+                  <Card>
+                    <CardContent className="py-8 text-center text-muted-foreground">
+                      Aucun événement disponible
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-3">
+                    {events.map((event) => (
+                      <Card key={event.id}>
+                        <CardContent className="py-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                          <div className="space-y-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium">{event.title}</span>
+                              <Badge variant={event.status === 'OPEN' ? 'default' : 'secondary'}>
+                                {event.status}
+                              </Badge>
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {new Date(event.eventDate).toLocaleString('fr-FR')}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              Oui {event.yesOdds.toFixed(2)}x / Non {event.noOdds.toFixed(2)}x
+                            </div>
+                          </div>
+                          <div className="flex gap-2 shrink-0">
+                            <Button variant="outline" size="sm" onClick={() => openEditEventDialog(event)}>
+                              Modifier
+                            </Button>
+                            {event.status === 'OPEN' && (
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedEventForResolve(event);
+                                  setResolveDialogOpen(true);
+                                }}
+                              >
+                                Résoudre
+                              </Button>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div>
                 <h3 className={TYPOGRAPHY.H4}>Suggestions en attente</h3>
                 {pendingSuggestions.length === 0 ? (
@@ -993,6 +1113,105 @@ export default function Polymarket() {
                 </Button>
               </div>
             </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Event Dialog (Admin) */}
+      <Dialog
+        open={editEventDialogOpen}
+        onOpenChange={(open) => {
+          setEditEventDialogOpen(open);
+          if (!open) {
+            setSelectedEventForEdit(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Modifier un événement</DialogTitle>
+          </DialogHeader>
+          {selectedEventForEdit && (
+            <form onSubmit={handleUpdateEvent} className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Titre</label>
+                <Input name="title" defaultValue={selectedEventForEdit.title} required maxLength={200} />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Description</label>
+                <Textarea
+                  name="description"
+                  defaultValue={selectedEventForEdit.description}
+                  required
+                  maxLength={2000}
+                  rows={4}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Date de réalisation</label>
+                <Input
+                  name="eventDate"
+                  type="datetime-local"
+                  defaultValue={formatDateTimeLocal(selectedEventForEdit.eventDate)}
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Image URL (optionnel)</label>
+                <Input name="imageUrl" type="url" defaultValue={selectedEventForEdit.imageUrl || ''} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Cote Oui</label>
+                  <Input
+                    name="yesOdds"
+                    type="number"
+                    step="0.1"
+                    min="1.01"
+                    defaultValue={selectedEventForEdit.yesOdds}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Cote Non</label>
+                  <Input
+                    name="noOdds"
+                    type="number"
+                    step="0.1"
+                    min="1.01"
+                    defaultValue={selectedEventForEdit.noOdds}
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Statut</label>
+                <select
+                  name="status"
+                  defaultValue={selectedEventForEdit.status}
+                  className="mt-2 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="OPEN">OPEN</option>
+                  <option value="CLOSED">CLOSED</option>
+                  <option value="RESOLVED">RESOLVED</option>
+                </select>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setEditEventDialogOpen(false)}>
+                  Annuler
+                </Button>
+                <Button type="submit" disabled={editSubmitting}>
+                  {editSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Enregistrement...
+                    </>
+                  ) : (
+                    'Enregistrer'
+                  )}
+                </Button>
+              </div>
+            </form>
           )}
         </DialogContent>
       </Dialog>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { auraCoinApi, bombPartyApi, clansApi, leaderboardsApi, usersApi } from '../services/api';
+import { auraCoinApi, clansApi, leaderboardsApi, usersApi } from '../services/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
@@ -73,10 +73,9 @@ export default function Numbers() {
     const fetchNumbers = async () => {
       try {
         setLoading(true);
-        const [usersRes, clansRes, promptsRes, priceRes, gamesPlayedRes] = await Promise.all([
+        const [usersRes, clansRes, priceRes, gamesPlayedRes] = await Promise.all([
           usersApi.getAll(),
           clansApi.list(),
-          bombPartyApi.getPromptStats(),
           auraCoinApi.getPrice(24),
           leaderboardsApi.get('games_played', { limit: 1000 }),
         ]);
@@ -97,8 +96,6 @@ export default function Numbers() {
         const clans = clansRes.data.clans || [];
         const totalClans = clans.length;
         const totalClanMembers = clans.reduce((sum, clan) => sum + (clan.memberCount || 0), 0);
-
-        const promptStats = promptsRes.data;
 
         const gamesPlayedRankings = (gamesPlayedRes.data.rankings || []) as GamesPlayedRanking[];
         const totalGamesPlayed = gamesPlayedRankings.reduce((sum, entry) => sum + Number(entry.value || 0), 0);
@@ -127,15 +124,6 @@ export default function Numbers() {
             items: [
               { label: 'Jeux disponibles', value: formatNumber(gamesCatalog.length), hint: gamesCatalog.join(', ') + '.' },
               { label: 'Parties jouees (tous jeux)', value: formatNumber(totalGamesPlayed), hint: 'Total cumule des parties enregistrees.' },
-            ],
-          },
-          {
-            title: 'Bomb Party',
-            items: [
-              { label: 'Prompts disponibles', value: formatNumber(promptStats.total || 0), hint: 'Total des prompts jouables.' },
-              { label: 'Prompts faciles', value: formatNumber(promptStats.easy || 0), hint: 'Liste des prompts faciles.' },
-              { label: 'Prompts moyens', value: formatNumber(promptStats.medium || 0), hint: 'Liste des prompts moyens.' },
-              { label: 'Prompts difficiles', value: formatNumber(promptStats.hard || 0), hint: 'Liste des prompts difficiles.' },
             ],
           },
         ];
