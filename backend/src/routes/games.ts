@@ -405,6 +405,7 @@ function calculateTetrisRewards(score: number, isNewHighScore: boolean): { money
   return { money: moneyReward, aura: auraReward };
 }
 
+
 // Daily Wordle state, leaderboard and history
 router.get('/daily/wordle', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {

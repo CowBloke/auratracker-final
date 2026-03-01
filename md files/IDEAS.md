@@ -1,11 +1,11 @@
 Games
 Solo
+- subway surfer
 Multijoueur
 - grand jeux à part : entrepreneur : créer entreprise avec salariés, parts de marché, actions, carte payer rues, propriétés etc/IDLE
 - jeux multijoueurs/solo : pas de casino : party : quitter/venir sur latable
 - animation/événements échecs
 - monopoly
-- subway surfer
 
 Design
 - Brand
@@ -14,10 +14,8 @@ Design
 - couleurs
 
 UI
-- vrai/faux pseudo
 - badges promo/classe
 - photo background chat bulle
-- hiérarchie des titres sur les pages et consistence
 
 Big improvement
 - plus d'effets objets, objets en quantité limité

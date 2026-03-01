@@ -7,6 +7,7 @@ import { authApi } from '../services/api';
 import { Loader2, CheckCircle2, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Form,
@@ -30,6 +31,10 @@ const registerSchema = z.object({
   email: z.string().email('Email invalide').min(1, 'Email requis'),
   password: z.string().min(6, 'Minimum 6 caractères'),
   confirmPassword: z.string().min(1, 'Confirmation requise'),
+  motivationMessage: z.string()
+    .trim()
+    .min(10, 'Minimum 10 caractères')
+    .max(500, 'Maximum 500 caractères'),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Les mots de passe ne correspondent pas",
   path: ["confirmPassword"],
@@ -50,6 +55,7 @@ export default function Register() {
       email: '',
       password: '',
       confirmPassword: '',
+      motivationMessage: '',
     },
   });
 
@@ -62,6 +68,7 @@ export default function Register() {
         firstName: data.firstName,
         email: data.email,
         password: data.password,
+        motivationMessage: data.motivationMessage,
       });
       // Account created successfully, show success message
       setSuccess(true);
@@ -163,6 +170,24 @@ export default function Register() {
                         type="email"
                         placeholder="Email"
                         className="h-12 border-border/50 text-center"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage className="text-center" />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="motivationMessage"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Message de motivation: explique pourquoi on devrait t'accepter"
+                        className="min-h-28 border-border/50"
+                        maxLength={500}
                         {...field}
                       />
                     </FormControl>

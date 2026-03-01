@@ -59,6 +59,7 @@ router.get('/pending-users', authMiddleware, requireAdmin, async (req: AuthReque
         username: true,
         firstName: true,
         email: true,
+        motivationMessage: true,
         createdAt: true,
       },
       orderBy: { createdAt: 'desc' },

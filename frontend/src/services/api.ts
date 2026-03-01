@@ -50,7 +50,7 @@ api.interceptors.response.use(
 
 // Auth API
 export const authApi = {
-  register: (data: { username: string; firstName: string; email: string; password: string }) =>
+  register: (data: { username: string; firstName: string; email: string; password: string; motivationMessage: string }) =>
     api.post('/auth/register', data),
   login: (data: { username: string; password: string }) =>
     api.post('/auth/login', data),
@@ -512,6 +512,7 @@ export interface PendingUser {
   username: string;
   firstName: string | null;
   email: string;
+  motivationMessage: string | null;
   createdAt: string;
 }
 

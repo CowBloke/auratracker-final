@@ -19,7 +19,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
-  register: (username: string, firstName: string, email: string, password: string) => Promise<void>;
+  register: (username: string, firstName: string, email: string, password: string, motivationMessage: string) => Promise<void>;
   logout: () => void;
   updateBalance: (aura: number, money: number) => void;
   refreshUser: () => Promise<void>;
@@ -60,11 +60,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearBanInfo();
   };
 
-  const register = async (username: string, firstName: string, email: string, password: string) => {
-    const response = await authApi.register({ username, firstName, email, password });
-    localStorage.setItem('token', response.data.token);
-    setUser(response.data.user);
-    clearBanInfo();
+  const register = async (username: string, firstName: string, email: string, password: string, motivationMessage: string) => {
+    await authApi.register({ username, firstName, email, password, motivationMessage });
   };
 
   const logout = () => {

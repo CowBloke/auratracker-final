@@ -108,17 +108,38 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
+  const getNextLocalMidnightTimestamp = () => {
+    const nextMidnight = new Date();
+    nextMidnight.setHours(24, 0, 0, 0);
+    return nextMidnight.getTime();
+  };
+
+  const getNextRefillTimestamp = (value: string | null | undefined) => {
+    if (!value) return getNextLocalMidnightTimestamp();
+    const timestamp = new Date(value).getTime();
+    return Number.isNaN(timestamp) ? getNextLocalMidnightTimestamp() : timestamp;
+  };
+
   const fetchGiftOverview = async () => {
     setGiftsLoading(true);
     try {
-      const [inboxRes, receivedRes, statusRes] = await Promise.all([
+      const [inboxRes, receivedRes, statusRes] = await Promise.allSettled([
         giftsApi.getInbox(),
         giftsApi.getReceived(),
         giftsApi.getStatus(),
       ]);
-      setInboxGifts(inboxRes.data.gifts);
-      setReceivedGifts(receivedRes.data.gifts);
-      setGiftStatus(statusRes.data);
+
+      if (inboxRes.status === 'fulfilled') {
+        setInboxGifts(inboxRes.value.data.gifts);
+      }
+
+      if (receivedRes.status === 'fulfilled') {
+        setReceivedGifts(receivedRes.value.data.gifts);
+      }
+
+      if (statusRes.status === 'fulfilled') {
+        setGiftStatus(statusRes.value.data);
+      }
     } catch (error) {
       console.error('Failed to fetch gifts overview:', error);
     } finally {
@@ -129,15 +150,23 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [inboxRes, receivedRes, statusRes] = await Promise.all([
+        const [inboxRes, receivedRes, statusRes] = await Promise.allSettled([
           giftsApi.getInbox(),
           giftsApi.getReceived(),
           giftsApi.getStatus(),
         ]);
 
-        setInboxGifts(inboxRes.data.gifts);
-        setReceivedGifts(receivedRes.data.gifts);
-        setGiftStatus(statusRes.data);
+        if (inboxRes.status === 'fulfilled') {
+          setInboxGifts(inboxRes.value.data.gifts);
+        }
+
+        if (receivedRes.status === 'fulfilled') {
+          setReceivedGifts(receivedRes.value.data.gifts);
+        }
+
+        if (statusRes.status === 'fulfilled') {
+          setGiftStatus(statusRes.value.data);
+        }
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
       } finally {
@@ -217,8 +246,10 @@ export default function Dashboard() {
   };
 
   const nextRefillCountdown = useMemo(() => {
-    if (!giftStatus?.nextRefillAt) return null;
-    const diff = new Date(giftStatus.nextRefillAt).getTime() - now;
+    const nextRefillTimestamp = getNextRefillTimestamp(giftStatus?.nextRefillAt);
+    if (!nextRefillTimestamp) return null;
+
+    const diff = nextRefillTimestamp - now;
     if (diff <= 0) return '00:00:00';
 
     const hours = Math.floor(diff / (1000 * 60 * 60));
@@ -229,8 +260,9 @@ export default function Dashboard() {
   }, [giftStatus?.nextRefillAt, now]);
 
   useEffect(() => {
-    if (!giftStatus?.nextRefillAt) return;
-    if (new Date(giftStatus.nextRefillAt).getTime() > now) return;
+    const nextRefillTimestamp = getNextRefillTimestamp(giftStatus?.nextRefillAt);
+    if (!nextRefillTimestamp) return;
+    if (nextRefillTimestamp > now) return;
     fetchGiftOverview();
   }, [giftStatus?.nextRefillAt, now]);
 

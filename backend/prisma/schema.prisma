@@ -28,6 +28,7 @@ model User {
   usernameColor      String? // Custom username color for chat (hex)
   profilePicture     String? // Custom profile picture URL for chat
   bio                String? // User bio/description
+  motivationMessage  String? // Registration motivation shown to admins before approval
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 

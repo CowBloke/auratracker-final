@@ -1657,6 +1657,14 @@ export default function Admin() {
                       <p className="text-xs text-muted-foreground/80 mt-0.5">
                         Prénom: {u.firstName ? u.firstName : 'Non défini'}
                       </p>
+                      <div className="mt-2 rounded-md border border-border/40 bg-muted/20 px-3 py-2">
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70">
+                          Message de motivation
+                        </p>
+                        <p className="mt-1 text-sm whitespace-pre-wrap break-words text-foreground/90">
+                          {u.motivationMessage?.trim() ? u.motivationMessage : 'Non renseigné'}
+                        </p>
+                      </div>
                       <p className="text-xs text-muted-foreground/60 mt-0.5">
                         Demandé le {new Date(u.createdAt).toLocaleDateString('fr-FR', { 
                           day: 'numeric', 

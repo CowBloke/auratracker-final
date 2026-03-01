@@ -14,6 +14,7 @@ Consistence UI
 - hovers
 - panels
 - panels confirmation
+- hiérarchie des titres sur les pages et consistence
 
 - clean repo
 - do .md ai rules (ui : shadcn only, consistency, etc.)

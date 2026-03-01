@@ -278,7 +278,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
           value: s.highScore,
         }));
         break;
-        
+
       case 'casino':
         rankings = await prisma.gameStats.findMany({
           where: { gameType: 'casino', user: { isAdmin: false } },
@@ -759,4 +759,3 @@ router.get('/user/:userId', authMiddleware, async (req: AuthRequest, res: Respon
 });
 
 export default router;
-
