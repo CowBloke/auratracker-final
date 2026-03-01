@@ -18,6 +18,7 @@ import {
 import { usersApi } from '@/services/api';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { resolveImageUrl } from '@/lib/images';
+import { UsernameDisplay } from '@/components/ui/username-display';
 
 interface SearchUser {
   id: string;
@@ -139,12 +140,12 @@ export default function Header() {
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0 flex-1">
-                          <span
-                            className="block text-sm font-medium"
-                            style={u.usernameColor ? { color: u.usernameColor } : undefined}
-                          >
-                            {u.username}
-                          </span>
+                          <UsernameDisplay
+                            username={u.username}
+                            usernameColor={u.usernameColor}
+                            className="block"
+                            usernameClassName="text-sm font-medium"
+                          />
                           <span className="block text-xs text-muted-foreground">
                             {getBioPreview(u.bio)}
                           </span>
@@ -196,7 +197,9 @@ export default function Header() {
                       <User className="w-5 h-5 text-white" />
                     </AvatarFallback>
                   </Avatar>
-                  <span className="font-medium">{user?.username}</span>
+                  {user?.username ? (
+                    <UsernameDisplay username={user.username} className="font-medium" />
+                  ) : null}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">

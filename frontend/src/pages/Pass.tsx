@@ -2,9 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { passApi } from '@/services/api';
-import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { PageShell } from '@/components/layout/page-shell';
 
@@ -15,7 +14,6 @@ const getRewardForDay = (day: number) => {
   if (day <= rewardSteps.length) return rewardSteps[day - 1];
   return rewardSteps[rewardSteps.length - 1] + (day - rewardSteps.length) * rewardStepGrowth;
 };
-
 
 const formatCountdown = (ms: number) => {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
@@ -116,8 +114,6 @@ export default function Pass() {
     }
   };
 
-  const streakProgress = Math.min((streak / rewardSteps.length) * 100, 100);
-
   if (loading) {
     return (
       <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
@@ -128,78 +124,68 @@ export default function Pass() {
 
   return (
     <PageShell>
-      {/* Main Section */}
       <Card>
         <CardContent className="p-6">
-          <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className={SPACING.SECTION_SPACING}>
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div className={SPACING.CARD_SPACING}>
                 <CardDescription>Récompense du jour</CardDescription>
                 <div className="flex items-baseline gap-3">
-                  <span className={cn(TYPOGRAPHY.H1, "tabular-nums")}>${claimReward}</span>
+                  <span className={cn(TYPOGRAPHY.H1, 'tabular-nums')}>${claimReward}</span>
                   <span className={TYPOGRAPHY.SMALL}>argent</span>
                 </div>
+                <p className={TYPOGRAPHY.MUTED}>
+                  Jour {claimDay} · Série actuelle {streak} jour{streak > 1 ? 's' : ''}
+                </p>
+              </div>
+
+              <Button
+                onClick={handleClaim}
+                disabled={status === 'claimed' || claiming}
+                variant={status === 'claimed' ? 'secondary' : 'default'}
+                className="sm:min-w-44"
+              >
+                {claiming ? 'Récupération...' : status === 'claimed' ? 'Déjà récupérée' : 'Récupérer'}
+              </Button>
+            </div>
+
+            {(message || resetNotice) && (
+              <div className="rounded-md border border-border/60 bg-muted/30 px-4 py-3">
                 <p className={TYPOGRAPHY.SMALL}>
-                  Jour {claimDay} · Série {streak} jour{streak > 1 ? 's' : ''}
+                  {message ?? 'Série réinitialisée.'}
                 </p>
               </div>
+            )}
 
-              <div className="flex flex-wrap items-center gap-3">
-                <Button
-                  onClick={handleClaim}
-                  disabled={status === 'claimed' || claiming}
-                  variant={status === 'claimed' ? 'secondary' : 'default'}
-                >
-                  {claiming ? 'Récupération...' : status === 'claimed' ? 'Récompense récupérée' : 'Récupérer'}
-                </Button>
-                {message && <span className={TYPOGRAPHY.SMALL}>{message}</span>}
-                {resetNotice && (
-                  <span className={TYPOGRAPHY.SMALL}>
-                    Série réinitialisée.
-                  </span>
-                )}
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-lg border border-border/60 px-4 py-4">
+                <p className={TYPOGRAPHY.XS}>Série</p>
+                <p className={cn(TYPOGRAPHY.H4, 'mt-1 tabular-nums')}>{streak}</p>
               </div>
-
-              <div className={cn("flex items-center justify-between", TYPOGRAPHY.SMALL)}>
-                <span>Prochaine récompense</span>
-                <span className="font-medium tabular-nums">${nextReward}</span>
+              <div className="rounded-lg border border-border/60 px-4 py-4">
+                <p className={TYPOGRAPHY.XS}>Prochaine récompense</p>
+                <p className={cn(TYPOGRAPHY.H4, 'mt-1 tabular-nums')}>${nextReward}</p>
+              </div>
+              <div className="rounded-lg border border-border/60 px-4 py-4">
+                <p className={TYPOGRAPHY.XS}>Reset</p>
+                <p className={cn(TYPOGRAPHY.H4, 'mt-1 tabular-nums')}>{countdown}</p>
               </div>
             </div>
 
-            <div className={SPACING.SECTION_SPACING}>
-              <div className={SPACING.CARD_SPACING}>
-                <CardDescription>Prochain reset</CardDescription>
-                <p className={cn(TYPOGRAPHY.H3, "tabular-nums")}>{countdown}</p>
-              </div>
-              <div className={SPACING.CARD_SPACING}>
-                <div className={cn("flex items-center justify-between", TYPOGRAPHY.SMALL)}>
-                  <span>Progression série</span>
-                  <span className="font-medium tabular-nums">
-                    {Math.min(streak, rewardSteps.length)}/{rewardSteps.length}
-                  </span>
-                </div>
-                <Progress value={streakProgress} className="h-1" />
-                <p className={TYPOGRAPHY.XS}>
-                  Après le jour {rewardSteps.length}, les récompenses continuent de monter.
-                </p>
-              </div>
-            </div>
+            <p className={TYPOGRAPHY.XS}>
+              Après le jour {rewardSteps.length}, les récompenses continuent de monter de ${rewardStepGrowth} par jour.
+            </p>
           </div>
         </CardContent>
       </Card>
 
-      {/* Paliers */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardDescription>Paliers</CardDescription>
-            <span className={TYPOGRAPHY.XS}>
-              7 jours
-            </span>
-          </div>
+          <CardTitle className={TYPOGRAPHY.H5}>Paliers</CardTitle>
+          <CardDescription>Vue rapide des 7 premiers jours.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-0 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="space-y-2">
             {rewardSteps.map((reward, index) => {
               const day = index + 1;
               const isClaimed = day <= streak;
@@ -208,11 +194,11 @@ export default function Pass() {
                 <div
                   key={day}
                   className={cn(
-                    "border-b border-border/30 px-3 py-4 flex items-center justify-between last:border-0",
+                    'flex items-center justify-between rounded-lg border px-4 py-3',
                     TYPOGRAPHY.SMALL,
-                    isClaimed && "border-foreground/30",
-                    isCurrent && status === 'available' && "border-foreground",
-                    !isClaimed && !isCurrent && "text-muted-foreground"
+                    isClaimed && 'border-foreground/30 bg-muted/20',
+                    isCurrent && status === 'available' && 'border-foreground',
+                    !isClaimed && !isCurrent && 'text-muted-foreground'
                   )}
                 >
                   <span>Jour {day}</span>
@@ -220,7 +206,7 @@ export default function Pass() {
                 </div>
               );
             })}
-            <div className={cn("border-b border-border/30 px-3 py-4 flex items-center justify-between last:border-0", TYPOGRAPHY.SMALL)}>
+            <div className={cn('flex items-center justify-between rounded-lg border px-4 py-3', TYPOGRAPHY.SMALL)}>
               <span>Jour {rewardSteps.length + 1}+</span>
               <span className="font-medium tabular-nums">${getRewardForDay(rewardSteps.length + 1)}</span>
             </div>

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Aura Tracker is a full-stack TypeScript social gaming platform for a private community (~40 users). It features real-time chat, mini-games (Doodle Jump, Clash PvP base-building), a dual-currency economy (Aura prestige + Money), marketplace, and leaderboards.
+Aura Tracker is a full-stack TypeScript social gaming platform for a private community (~40 users). It features real-time chat, mini-games, a dual-currency economy (Aura prestige + Money), marketplace, and leaderboards.
 
 ## Development Commands
 
@@ -71,7 +71,7 @@ frontend/
 - Tokens stored client-side, refreshed via `/api/auth/refresh`
 
 ### Database Models (Prisma)
-Core models: User, Item, UserItem (inventory), Transfer, GameStats, Party, PartyMember, ChatMessage, ClashBase, Attack, AuraCoinPrice, AuraCoinTransaction, Suggestion, SuggestionVote, BugReport
+Core models: User, Item, UserItem (inventory), Transfer, GameStats, Party, PartyMember, ChatMessage, AuraCoinPrice, AuraCoinTransaction, Suggestion, SuggestionVote, BugReport
 
 ### Path Aliases
 Frontend uses `@/*` to resolve to `src/*` (configured in tsconfig and vite.config)

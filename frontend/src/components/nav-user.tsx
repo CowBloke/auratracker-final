@@ -33,6 +33,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { resolveImageUrl } from "@/lib/images"
+import { UsernameDisplay } from "@/components/ui/username-display"
 
 export function NavUser({
   user,
@@ -77,12 +78,11 @@ export function NavUser({
                 </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                <span 
-                  className="truncate font-semibold"
-                  style={user.usernameColor ? { color: user.usernameColor } : undefined}
-                >
-                  {user.name}
-                </span>
+                <UsernameDisplay
+                  username={user.name}
+                  usernameColor={user.usernameColor}
+                  usernameClassName="font-semibold"
+                />
                 <span className="truncate text-xs">{user.email || 'Utilisateur'}</span>
               </div>
               <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
@@ -105,12 +105,11 @@ export function NavUser({
                   </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span 
-                    className="truncate font-semibold"
-                    style={user.usernameColor ? { color: user.usernameColor } : undefined}
-                  >
-                    {user.name}
-                  </span>
+                  <UsernameDisplay
+                    username={user.name}
+                    usernameColor={user.usernameColor}
+                    usernameClassName="font-semibold"
+                  />
                   <span className="truncate text-xs">{user.email || 'Utilisateur'}</span>
                 </div>
               </div>

@@ -32,6 +32,7 @@ import {
   UserPlus,
   Eye,
 } from 'lucide-react';
+import { UsernameDisplay } from '@/components/ui/username-display';
 
 export function SiteHeader() {
   const { user } = useAuth();
@@ -247,11 +248,11 @@ export function SiteHeader() {
                                     : 'bg-green-500'
                               )}
                             />
-                            <span
-                              style={member.usernameColor ? { color: member.usernameColor } : undefined}
-                              className={cn(member.userId === user?.id && 'font-medium')}
-                            >
-                              {member.username}
+                            <span className={cn(member.userId === user?.id && 'font-medium')}>
+                              <UsernameDisplay
+                                username={member.username}
+                                usernameColor={member.usernameColor}
+                              />
                               {member.isLeader && ' *'}
                             </span>
                           </div>
@@ -382,12 +383,11 @@ export function SiteHeader() {
                                 <div className="h-1 w-1 rounded-full bg-foreground/50" />
                               )}
                               <div className="min-w-0 flex-1">
-                                <span
-                                  className="block truncate"
-                                  style={u.usernameColor ? { color: u.usernameColor } : undefined}
-                                >
-                                  {u.username}
-                                </span>
+                                <UsernameDisplay
+                                  username={u.username}
+                                  usernameColor={u.usernameColor}
+                                  className="block"
+                                />
                                 {(() => {
                                   const pageMeta = getPageMeta(u.currentPage);
                                   const PageIcon = pageMeta.icon;

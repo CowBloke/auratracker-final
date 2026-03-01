@@ -1,11 +1,4 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { bugReportApi } from '../services/api';
-import { Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { PageShell } from '@/components/layout/page-shell';
@@ -80,153 +73,10 @@ const sanctions = [
 ];
 
 export default function Rules() {
-  const navigate = useNavigate();
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!title.trim() || !description.trim()) {
-      setError('Veuillez remplir tous les champs');
-      return;
-    }
-    
-    if (title.length > 100) {
-      setError('Le titre doit faire moins de 100 caractères');
-      return;
-    }
-    
-    if (description.length > 2000) {
-      setError('La description doit faire moins de 2000 caractères');
-      return;
-    }
-    
-    setSubmitting(true);
-    setError(null);
-    
-    try {
-      await bugReportApi.create({ title: title.trim(), description: description.trim() });
-      setSubmitted(true);
-      setTitle('');
-      setDescription('');
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Une erreur est survenue');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   return (
     <PageShell>
       <Card>
-        <CardHeader>
-          <CardDescription>Signalement</CardDescription>
-          <CardTitle className={TYPOGRAPHY.H2}>Reporter un bug</CardTitle>
-        </CardHeader>
-        <CardContent className={SPACING.SECTION_SPACING}>
-
-          {submitted ? (
-            <div className={SPACING.SECTION_SPACING}>
-              <div className={SPACING.CARD_SPACING}>
-                <h3 className={TYPOGRAPHY.BODY}>Rapport envoyé</h3>
-                <p className={TYPOGRAPHY.SMALL}>
-                  Votre rapport de bug a été envoyé aux administrateurs.
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setSubmitted(false)}
-                >
-                  Signaler un autre bug
-                </Button>
-                <Button
-                  onClick={() => navigate('/')}
-                >
-                  Retour au tableau de bord
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className={SPACING.SECTION_SPACING}>
-              {error && (
-                <div className={cn("px-4 py-3 border border-border/30", TYPOGRAPHY.SMALL)}>
-                  {error}
-                </div>
-              )}
-
-              <div className={SPACING.CARD_SPACING}>
-                <label className={TYPOGRAPHY.SMALL}>
-                  Titre du bug
-                </label>
-                <Input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Ex: Le bouton ne fonctionne pas sur la page..."
-                  maxLength={100}
-                  disabled={submitting}
-                />
-                <p className={cn(TYPOGRAPHY.XS, "text-right")}>
-                  {title.length}/100
-                </p>
-              </div>
-
-              <div className={SPACING.CARD_SPACING}>
-                <label className={TYPOGRAPHY.SMALL}>
-                  Description détaillée
-                </label>
-                <Textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Décrivez le bug en détail : que faisiez-vous, qu'est-ce qui s'est passé, qu'est-ce qui aurait dû se passer..."
-                  className="min-h-[200px]"
-                  maxLength={2000}
-                  disabled={submitting}
-                />
-                <p className={cn(TYPOGRAPHY.XS, "text-right")}>
-                  {description.length}/2000
-                </p>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate(-1)}
-                  disabled={submitting}
-                >
-                  Annuler
-                </Button>
-                
-                <Button
-                  type="submit"
-                  disabled={submitting || !title.trim() || !description.trim()}
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Envoi...
-                    </>
-                  ) : (
-                    "Envoyer"
-                  )}
-                </Button>
-              </div>
-            </form>
-          )}
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardDescription>Règlement</CardDescription>
-          <CardTitle className={TYPOGRAPHY.H2}>Règles de la communauté</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="p-6">
           {sections.map((section, index) => (
             <div key={index} className={index > 0 ? "mt-6" : ""}>
               <h3 className={TYPOGRAPHY.MUTED}>
@@ -237,12 +87,12 @@ export default function Rules() {
                 {section.rules.map((rule, ruleIndex) => (
                   <div
                     key={ruleIndex}
-                    className="flex items-start gap-6 py-4"
+                    className="grid grid-cols-[1.5rem_minmax(0,1fr)] items-start gap-x-3 py-4"
                   >
-                    <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground w-6 tabular-nums shrink-0")}>
-                      {ruleIndex + 1}
+                    <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tabular-nums leading-5")}>
+                      {ruleIndex + 1}.
                     </span>
-                    <p className={TYPOGRAPHY.SMALL}>{rule}</p>
+                    <p className={cn(TYPOGRAPHY.SMALL, "leading-5")}>{rule}</p>
                   </div>
                 ))}
               </div>

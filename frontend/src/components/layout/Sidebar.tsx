@@ -14,6 +14,7 @@ import {
   BookOpen,
   Shield,
   Coins,
+  Store,
   Swords,
   ArrowUp,
   Dices,
@@ -22,6 +23,7 @@ import {
   BarChart3,
   Target,
   Layers,
+  Bug,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -48,6 +50,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { resolveImageUrl } from '@/lib/images';
+import BugReportPanel from '@/components/layout/BugReportPanel';
+import { UsernameDisplay } from '@/components/ui/username-display';
 
 interface SearchUser {
   id: string;
@@ -61,6 +65,7 @@ const navItems = [
   { to: '/leaderboards', label: 'Classement', icon: Trophy },
   { to: '/party', label: 'Party', icon: Users },
   { to: '/clans', label: 'Clans', icon: Flag },
+  { to: '/games/market', label: 'Shop', icon: Store },
   { to: '/inventory', label: 'Inventaire', icon: Backpack },
   { to: '/pass', label: 'Pass', icon: Ticket },
   { to: '/quests', label: 'Quêtes', icon: Target },
@@ -77,7 +82,6 @@ const gameItems = [
   { to: '/games/poker', label: 'Poker', icon: Dices },
   { to: '/games/petit-bac', label: 'Petit Bac', icon: BookOpen },
   { to: '/games/bataille-navale', label: 'Bataille Navale', icon: Swords },
-  { to: '/games/clash', label: 'Clash', icon: Swords },
   { to: '/games/doodle-jump', label: 'Doodle Jump', icon: ArrowUp },
   { to: '/games/2048', label: '2048', icon: Gamepad2 },
   { to: '/games/flappy-bird', label: 'Flappy Bird', icon: Gamepad2 },
@@ -97,6 +101,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [hasFetchedUsers, setHasFetchedUsers] = useState(false);
+  const [isBugReportOpen, setIsBugReportOpen] = useState(false);
 
   useEffect(() => {
     if (!isSearchOpen || hasFetchedUsers) return;
@@ -193,12 +198,12 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                               </AvatarFallback>
                             </Avatar>
                             <div className="min-w-0 flex-1">
-                              <span
-                                className="block text-sm font-medium"
-                                style={u.usernameColor ? { color: u.usernameColor } : undefined}
-                              >
-                                {u.username}
-                              </span>
+                              <UsernameDisplay
+                                username={u.username}
+                                usernameColor={u.usernameColor}
+                                className="block"
+                                usernameClassName="text-sm font-medium"
+                              />
                               <span className="block text-xs text-muted-foreground">
                                 {getBioPreview(u.bio)}
                               </span>
@@ -293,16 +298,16 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                isActive={location.pathname === '/polymarket' || location.pathname.startsWith('/polymarket')}
+                isActive={location.pathname === '/games/polymarket' || location.pathname.startsWith('/games/polymarket')}
                 tooltip="Polymarket"
                 className={cn(
                   "h-9 px-3 text-sm font-normal",
-                  location.pathname === '/polymarket' || location.pathname.startsWith('/polymarket')
+                  location.pathname === '/games/polymarket' || location.pathname.startsWith('/games/polymarket')
                     ? "text-foreground bg-muted/50"
                     : "text-muted-foreground hover:text-foreground hover:bg-transparent"
                 )}
               >
-                <NavLink to="/polymarket">
+                <NavLink to="/games/polymarket">
                   <BarChart3 className="h-4 w-4" />
                   <span className="group-data-[collapsible=icon]:hidden">Polymarket</span>
                 </NavLink>
@@ -336,6 +341,22 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                 </SidebarMenuItem>
               );
             })}
+
+            <SidebarMenuItem>
+              <BugReportPanel
+                open={isBugReportOpen}
+                onOpenChange={setIsBugReportOpen}
+                trigger={(
+                  <SidebarMenuButton
+                    tooltip="Reporter un bug"
+                    className="h-9 px-3 text-sm font-normal text-muted-foreground hover:bg-transparent hover:text-foreground"
+                  >
+                    <Bug className="h-4 w-4" />
+                    <span className="group-data-[collapsible=icon]:hidden">Reporter un bug</span>
+                  </SidebarMenuButton>
+                )}
+              />
+            </SidebarMenuItem>
 
             {/* Admin items (only for admins) */}
             {user?.isAdmin && adminItems.map((item) => {

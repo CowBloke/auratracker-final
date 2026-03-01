@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
+import { UsernameDisplay } from '@/components/ui/username-display';
 
 interface ProfileUser {
   id: string;
@@ -186,12 +187,12 @@ export default function Profile() {
         )}
         
         <div className="flex-1 min-w-0">
-          <p 
-            className={cn(TYPOGRAPHY.H1, "md:text-7xl truncate")}
-            style={profileUser.usernameColor ? { color: profileUser.usernameColor } : undefined}
-            >
-              {profileUser.username}
-            </p>
+          <UsernameDisplay
+            username={profileUser.username}
+            usernameColor={profileUser.usernameColor}
+            className={cn(TYPOGRAPHY.H1, "md:text-7xl")}
+            labelClassName="text-sm md:text-base text-muted-foreground"
+          />
             {profileUser.badges?.length > 0 && (
               <TooltipProvider>
                 <div className="flex flex-wrap gap-2 mt-3">

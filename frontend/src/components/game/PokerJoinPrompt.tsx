@@ -6,6 +6,7 @@ import { Check, X, Clock, Crown } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { UsernameDisplay } from '@/components/ui/username-display';
 
 export default function PokerJoinPrompt() {
   const { user } = useAuth();
@@ -85,11 +86,8 @@ export default function PokerJoinPrompt() {
                         : 'border-border/30'
                   )}
                 >
-                  <span
-                    className="font-medium"
-                    style={member.usernameColor ? { color: member.usernameColor } : undefined}
-                  >
-                    {member.username}
+                  <span className="font-medium">
+                    <UsernameDisplay username={member.username} usernameColor={member.usernameColor} />
                     {member.userId === user?.id && (
                       <span className="ml-2 text-xs text-muted-foreground">(toi)</span>
                     )}

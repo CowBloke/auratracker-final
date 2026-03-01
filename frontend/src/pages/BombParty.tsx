@@ -6,6 +6,7 @@ import { ArrowLeft, Play, Heart, Crown, Users } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { UsernameDisplay } from '@/components/ui/username-display';
 
 // Render word with highlighted prompt letters
 function HighlightedWord({ word, prompt }: { word: string; prompt: string }) {
@@ -178,9 +179,7 @@ export default function BombParty() {
                 )}
               >
                 <span className="font-medium">
-                  <span style={member.usernameColor ? { color: member.usernameColor } : undefined}>
-                    {member.username}
-                  </span>
+                  <UsernameDisplay username={member.username} usernameColor={member.usernameColor} />
                   {member.isLeader && (
                     <Crown className="inline-block ml-2 h-4 w-4 text-yellow-500" />
                   )}
@@ -325,12 +324,11 @@ export default function BombParty() {
                     : "border-border/30"
               )}
             >
-              <span
-                className="font-medium text-sm mb-2 truncate max-w-[100px]"
-                style={player.usernameColor ? { color: player.usernameColor } : undefined}
-              >
-                {player.username}
-              </span>
+              <UsernameDisplay
+                username={player.username}
+                usernameColor={player.usernameColor}
+                className="mb-2 max-w-[100px] truncate text-sm font-medium"
+              />
               <div className="flex gap-1">
                 {Array.from({ length: bombPartyGame.maxLives }).map((_, i) => (
                   <Heart
@@ -403,7 +401,13 @@ export default function BombParty() {
           </div>
         ) : (
           <div className="text-center text-muted-foreground py-4">
-            C'est le tour de <span className="text-foreground font-medium">{currentPlayer?.username}</span>
+            C'est le tour de {currentPlayer?.username ? (
+              <UsernameDisplay
+                username={currentPlayer.username}
+                usernameColor={currentPlayer.usernameColor}
+                className="text-foreground font-medium"
+              />
+            ) : null}
           </div>
         )}
       </section>

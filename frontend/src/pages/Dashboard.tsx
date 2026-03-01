@@ -2,36 +2,15 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
-import { economyApi } from '../services/api';
-import { ArrowRight, Loader2, Clock } from 'lucide-react';
+import { Gift, GiftStatus, giftsApi } from '../services/api';
+import { Gift as GiftIcon, Inbox, Send, History, Clock3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import GiftDialog from '@/components/gifts/GiftDialog';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-
-interface Transfer {
-  id: string;
-  senderId: string;
-  receiverId: string;
-  auraAmount: number;
-  moneyAmount: number;
-  isGift?: boolean;
-  message?: string | null;
-  createdAt: string;
-  sender: { id: string; username: string; usernameColor?: string | null };
-  receiver: { id: string; username: string; usernameColor?: string | null };
-}
-
-interface DailyAllowance {
-  dailyLimit: number;
-  used: number;
-  remaining: number;
-  lastReset: string;
-  nextReset: string;
-}
 
 interface GameShortcut {
   id: string;
@@ -73,7 +52,6 @@ const gameShortcuts: GameShortcut[] = [
   { id: 'bomb-party', label: 'Bomb Party', path: '/games/bomb-party', description: 'Mots explosifs en équipe.', image: '/images/games/bombparty.png' },
   { id: 'poker', label: 'Poker', path: '/games/poker', description: 'Table rapide, mise prudente.', image: '/images/games/poker.png' },
   { id: 'petit-bac', label: 'Petit Bac', path: '/games/petit-bac', description: 'Catégories, lettres, vitesse.', image: '/images/games/petitbac.png' },
-  { id: 'clash', label: 'Clash', path: '/games/clash', description: 'Duel stratégique instantané.', image: '/images/games/clash.png' },
   { id: 'casino', label: 'Casino', path: '/games/casino', description: 'Mini-jeux et mises rapides.', image: '/images/games/casino.png' },
   { id: 'aura-coin', label: 'Aura Coin', path: '/games/aura-coin', description: 'Suivi des coins aura.', image: '/images/games/auracoin.png' },
   { id: 'polymarket', label: 'Polymarket', path: '/games/polymarket', description: 'Paris en temps réel.' },
@@ -91,6 +69,7 @@ const defaultShortcuts = ['doodle-jump', 'flappy-bird', 'bomb-party', '2048'];
 export default function Dashboard() {
   const { user } = useAuth();
   const {
+    socket,
     fetchPublicParties,
     publicParties,
     currentParty,
@@ -98,19 +77,18 @@ export default function Dashboard() {
     requestJoinParty,
     pendingJoinRequests,
   } = useSocket();
-  const [recentTransfers, setRecentTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  const [dailyAllowance, setDailyAllowance] = useState<DailyAllowance | null>(null);
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [allTransfers, setAllTransfers] = useState<Transfer[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
-  const [hasMoreHistory, setHasMoreHistory] = useState(true);
-  const [now, setNow] = useState(new Date());
+  const [giftsLoading, setGiftsLoading] = useState(true);
+  const [inboxGifts, setInboxGifts] = useState<Gift[]>([]);
+  const [receivedGifts, setReceivedGifts] = useState<Gift[]>([]);
+  const [giftStatus, setGiftStatus] = useState<GiftStatus | null>(null);
+  const [giftDialogOpen, setGiftDialogOpen] = useState(false);
+  const [giftDialogInitialTab, setGiftDialogInitialTab] = useState<'inbox' | 'send' | 'received'>('inbox');
   const [welcomeMessage, setWelcomeMessage] = useState(() => pickWelcomeMessage(user?.username));
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [shortcutsLoaded, setShortcutsLoaded] = useState(false);
   const [shortcutWidgets, setShortcutWidgets] = useState<string[]>(defaultShortcuts);
+  const [now, setNow] = useState(Date.now());
 
   const shortcutMap = useMemo(() => new Map(gameShortcuts.map((item) => [item.id, item])), []);
   const orderedShortcuts = useMemo(
@@ -118,92 +96,52 @@ export default function Dashboard() {
     [shortcutMap, shortcutWidgets]
   );
 
-  // Update time every second for countdown
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setNow(new Date());
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
   useEffect(() => {
     if (!user?.username) return;
     setWelcomeMessage(pickWelcomeMessage(user.username));
   }, [user?.username]);
 
-  // Calculate countdown to next reset
-  const resetCountdown = useMemo(() => {
-    if (!dailyAllowance?.nextReset) return null;
-    
-    const nextReset = new Date(dailyAllowance.nextReset);
-    const diff = nextReset.getTime() - now.getTime();
-    
-    if (diff <= 0) return { hours: 0, minutes: 0, seconds: 0, total: 0 };
-    
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-    
-    return { hours, minutes, seconds, total: diff };
-  }, [dailyAllowance?.nextReset, now]);
-
-  // Refresh daily allowance when countdown reaches 0
   useEffect(() => {
-    if (resetCountdown && resetCountdown.total <= 0 && dailyAllowance?.remaining === 0) {
-      fetchDailyAllowance();
-    }
-  }, [resetCountdown?.total, dailyAllowance?.remaining]);
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const fetchDailyAllowance = async () => {
+  const fetchGiftOverview = async () => {
+    setGiftsLoading(true);
     try {
-      const res = await economyApi.getDailyAllowance();
-      setDailyAllowance(res.data);
+      const [inboxRes, receivedRes, statusRes] = await Promise.all([
+        giftsApi.getInbox(),
+        giftsApi.getReceived(),
+        giftsApi.getStatus(),
+      ]);
+      setInboxGifts(inboxRes.data.gifts);
+      setReceivedGifts(receivedRes.data.gifts);
+      setGiftStatus(statusRes.data);
     } catch (error) {
-      console.error('Failed to fetch daily allowance:', error);
-    }
-  };
-
-  const fetchAllHistory = async () => {
-    setHistoryLoading(true);
-    try {
-      const res = await economyApi.getTransfers({ limit: 50, all: true });
-      setAllTransfers(res.data.transfers);
-      setHasMoreHistory(res.data.transfers.length >= 50);
-    } catch (error) {
-      console.error('Failed to fetch history:', error);
+      console.error('Failed to fetch gifts overview:', error);
     } finally {
-      setHistoryLoading(false);
-    }
-  };
-
-  const loadMoreHistory = async () => {
-    if (historyLoading || !hasMoreHistory) return;
-    setHistoryLoading(true);
-    try {
-      const res = await economyApi.getTransfers({ limit: 50, offset: allTransfers.length, all: true });
-      const newTransfers = res.data.transfers;
-      setAllTransfers(prev => [...prev, ...newTransfers]);
-      setHasMoreHistory(newTransfers.length >= 50);
-    } catch (error) {
-      console.error('Failed to load more history:', error);
-    } finally {
-      setHistoryLoading(false);
+      setGiftsLoading(false);
     }
   };
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [transfersRes, allowanceRes] = await Promise.all([
-          economyApi.getTransfers({ limit: 5, all: true }),
-          economyApi.getDailyAllowance(),
+        const [inboxRes, receivedRes, statusRes] = await Promise.all([
+          giftsApi.getInbox(),
+          giftsApi.getReceived(),
+          giftsApi.getStatus(),
         ]);
 
-        setRecentTransfers(transfersRes.data.transfers);
-        setDailyAllowance(allowanceRes.data);
+        setInboxGifts(inboxRes.data.gifts);
+        setReceivedGifts(receivedRes.data.gifts);
+        setGiftStatus(statusRes.data);
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
       } finally {
+        setGiftsLoading(false);
         setLoading(false);
       }
     };
@@ -219,6 +157,17 @@ export default function Dashboard() {
 
     return () => clearInterval(interval);
   }, [fetchPublicParties]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const handleGiftReceived = () => {
+      fetchGiftOverview();
+    };
+    socket.on('gift:received', handleGiftReceived);
+    return () => {
+      socket.off('gift:received', handleGiftReceived);
+    };
+  }, [socket]);
 
   useEffect(() => {
     try {
@@ -261,6 +210,29 @@ export default function Dashboard() {
     if (minutes > 0) return `${minutes}m`;
     return 'maint.';
   };
+
+  const openGiftDialog = (tab: 'inbox' | 'send' | 'received') => {
+    setGiftDialogInitialTab(tab);
+    setGiftDialogOpen(true);
+  };
+
+  const nextRefillCountdown = useMemo(() => {
+    if (!giftStatus?.nextRefillAt) return null;
+    const diff = new Date(giftStatus.nextRefillAt).getTime() - now;
+    if (diff <= 0) return '00:00:00';
+
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }, [giftStatus?.nextRefillAt, now]);
+
+  useEffect(() => {
+    if (!giftStatus?.nextRefillAt) return;
+    if (new Date(giftStatus.nextRefillAt).getTime() > now) return;
+    fetchGiftOverview();
+  }, [giftStatus?.nextRefillAt, now]);
 
   if (loading) {
     return (
@@ -401,7 +373,7 @@ export default function Dashboard() {
       {/* Primary Stats */}
       <Card>
         <CardContent className="p-6 md:p-8">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+          <div className="grid grid-cols-2 gap-4 md:gap-6">
             <Card className="border-border/60">
               <CardContent className="p-4 space-y-2">
                 <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>
@@ -418,152 +390,162 @@ export default function Dashboard() {
                 <p className={TYPOGRAPHY.SMALL}>argent</p>
               </CardContent>
             </Card>
-            <Card className="border-border/60">
-              <CardContent className="p-4 space-y-2">
-                <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>
-                  {dailyAllowance?.remaining || 0}
-                </p>
-                <p className={TYPOGRAPHY.SMALL}>dons restants</p>
-                {resetCountdown && resetCountdown.total > 0 && (
-                  <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground/70 flex items-center gap-1")}>
-                    <Clock className="h-3 w-3" />
-                    <span className="tabular-nums">
-                      {String(resetCountdown.hours).padStart(2, '0')}:
-                      {String(resetCountdown.minutes).padStart(2, '0')}:
-                      {String(resetCountdown.seconds).padStart(2, '0')}
-                    </span>
-                  </p>
-                )}
-              </CardContent>
-            </Card>
           </div>
         </CardContent>
       </Card>
 
-      {/* Recent Activity */}
+      {/* Gifts */}
       <Card className={SPACING.SECTION_SPACING}>
         <CardHeader>
-          <div className="flex items-center justify-between gap-3">
-            <CardTitle className={TYPOGRAPHY.MUTED}>Activité récente</CardTitle>
-            <Sheet open={historyOpen} onOpenChange={(open) => {
-              setHistoryOpen(open);
-              if (open && allTransfers.length === 0) {
-                fetchAllHistory();
-              }
-            }}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                  Voir tout <ArrowRight className="h-3 w-3 ml-1" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent className="w-full sm:max-w-md overflow-y-auto">
-                <SheetHeader>
-                  <SheetTitle className="text-sm text-muted-foreground   font-normal">
-                    Historique d'activité
-                  </SheetTitle>
-                </SheetHeader>
-                <div className="mt-6 space-y-0">
-                  {historyLoading && allTransfers.length === 0 ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : allTransfers.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-12">Aucun transfert</p>
-                  ) : (
-                    <>
-                      {allTransfers.map((transfer) => (
-                        <div
-                          key={transfer.id}
-                          className="py-3 border-b border-border/30 last:border-0"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <span className="text-xs text-muted-foreground shrink-0 w-10">
-                                {formatTimeAgo(transfer.createdAt)}
-                              </span>
-                              <span className="truncate">
-                                <span style={transfer.sender.usernameColor ? { color: transfer.sender.usernameColor } : undefined}>
-                                  {transfer.sender.username}
-                                </span>
-                                {' -> '}
-                                <span style={transfer.receiver.usernameColor ? { color: transfer.receiver.usernameColor } : undefined}>
-                                  {transfer.receiver.username}
-                                </span>
-                              </span>
-                            </div>
-                            <span className="tabular-nums shrink-0">
-                              {transfer.auraAmount}
-                            </span>
-                          </div>
-                          {transfer.message && (
-                            <p className="text-sm text-muted-foreground mt-1 ml-[3.25rem]  truncate">
-                              "{transfer.message}"
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                      {hasMoreHistory && (
-                        <Button
-                          variant="ghost"
-                          className="w-full mt-4"
-                          onClick={loadMoreHistory}
-                          disabled={historyLoading}
-                        >
-                          {historyLoading ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            'Charger plus'
-                          )}
-                        </Button>
-                      )}
-                    </>
-                  )}
-                </div>
-              </SheetContent>
-            </Sheet>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardDescription>Nouveau système</CardDescription>
+              <CardTitle className={TYPOGRAPHY.H3}>Cadeaux</CardTitle>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => openGiftDialog('inbox')}>
+                <Inbox className="mr-2 h-4 w-4" />
+                Boite
+              </Button>
+              <Button size="sm" onClick={() => openGiftDialog('send')}>
+                <Send className="mr-2 h-4 w-4" />
+                Envoyer
+              </Button>
+            </div>
           </div>
         </CardHeader>
-        <CardContent className="p-0">
-          {recentTransfers.length === 0 ? (
-            <p className={cn(TYPOGRAPHY.MUTED, "px-6 pb-6")}>Aucun transfert</p>
+        <CardContent className="space-y-6">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Card className="border-border/60">
+              <CardContent className="p-4 space-y-1">
+                <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>{inboxGifts.length}</p>
+                <p className={TYPOGRAPHY.SMALL}>cadeaux en attente</p>
+              </CardContent>
+            </Card>
+            <Card className="border-border/60">
+              <CardContent className="p-4 space-y-1">
+                <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>{receivedGifts.length}</p>
+                <p className={TYPOGRAPHY.SMALL}>cadeaux ouverts</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="border-border/60 bg-muted/30">
+            <CardContent className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <p className={TYPOGRAPHY.SMALL}>Cooldown aura</p>
+                <p className={cn(TYPOGRAPHY.H5, "tabular-nums")}>
+                  {giftStatus?.remainingAura ?? 0}/{giftStatus?.limit ?? 50} disponibles
+                </p>
+                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>
+                  {giftStatus?.sentLast24h ?? 0} aura envoyee aujourd'hui
+                </p>
+              </div>
+              <div className="space-y-1 text-left sm:text-right">
+                <p className={cn(TYPOGRAPHY.XS, "flex items-center gap-1 text-muted-foreground sm:justify-end")}>
+                  <Clock3 className="h-3.5 w-3.5" />
+                  Reset a minuit
+                </p>
+                <p className={cn(TYPOGRAPHY.H5, "tabular-nums")}>
+                  {nextRefillCountdown ?? '--:--:--'}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {giftsLoading ? (
+            <p className={cn(TYPOGRAPHY.MUTED)}>Chargement des cadeaux...</p>
           ) : (
-            <div className="divide-y divide-border/30">
-              {recentTransfers.map((transfer) => (
-                <div
-                  key={transfer.id}
-                  className="py-3 px-6"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground w-8")}>
-                        {formatTimeAgo(transfer.createdAt)}
-                      </span>
-                      <span>
-                        <span style={transfer.sender.usernameColor ? { color: transfer.sender.usernameColor } : undefined}>
-                          {transfer.sender.username}
-                        </span>
-                        {' -> '}
-                        <span style={transfer.receiver.usernameColor ? { color: transfer.receiver.usernameColor } : undefined}>
-                          {transfer.receiver.username}
-                        </span>
-                      </span>
-                    </div>
-                    <span className="tabular-nums">
-                      {transfer.auraAmount}
-                    </span>
-                  </div>
-                  {transfer.message && (
-                    <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground mt-1 ml-12 ")}>
-                      "{transfer.message}"
-                    </p>
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className={TYPOGRAPHY.H5}>Boite de réception</h3>
+                  {inboxGifts.length > 0 && (
+                    <Button variant="ghost" size="sm" onClick={() => openGiftDialog('inbox')}>
+                      Tout ouvrir
+                    </Button>
                   )}
                 </div>
-              ))}
+                {inboxGifts.length === 0 ? (
+                  <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground")}>Aucun cadeau en attente.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {inboxGifts.slice(0, 3).map((gift) => (
+                      <button
+                        key={gift.id}
+                        type="button"
+                        onClick={() => openGiftDialog('inbox')}
+                        className="flex w-full items-start gap-3 rounded-lg border border-border/60 p-3 text-left transition hover:bg-accent/40"
+                      >
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-pink-500 text-white">
+                          <GiftIcon className="h-5 w-5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">Cadeau de {gift.sender.username}</p>
+                          <p className="text-xs text-muted-foreground">{formatTimeAgo(gift.createdAt)}</p>
+                          {gift.message && (
+                            <p className="mt-1 text-xs text-muted-foreground truncate">"{gift.message}"</p>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className={TYPOGRAPHY.H5}>Derniers cadeaux ouverts</h3>
+                  {receivedGifts.length > 0 && (
+                    <Button variant="ghost" size="sm" onClick={() => openGiftDialog('received')}>
+                      <History className="mr-2 h-4 w-4" />
+                      Historique
+                    </Button>
+                  )}
+                </div>
+                {receivedGifts.length === 0 ? (
+                  <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground")}>Aucun cadeau ouvert pour le moment.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {receivedGifts.slice(0, 3).map((gift) => (
+                      <button
+                        key={gift.id}
+                        type="button"
+                        onClick={() => openGiftDialog('received')}
+                        className="flex w-full items-start gap-3 rounded-lg border border-border/60 p-3 text-left transition hover:bg-accent/40"
+                      >
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-emerald-500 text-white">
+                          <GiftIcon className="h-5 w-5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">De {gift.sender.username}</p>
+                          <p className="text-xs text-muted-foreground">{formatTimeAgo(gift.openedAt || gift.createdAt)}</p>
+                          <div className="mt-1 flex flex-wrap gap-2 text-xs">
+                            {gift.auraAmount > 0 && <span className="text-purple-400">+{gift.auraAmount} aura</span>}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </CardContent>
       </Card>
       </div>
+
+      <GiftDialog
+        open={giftDialogOpen}
+        onOpenChange={(open) => {
+          setGiftDialogOpen(open);
+          if (!open) {
+            fetchGiftOverview();
+          }
+        }}
+        onGiftOpened={fetchGiftOverview}
+        initialTab={giftDialogInitialTab}
+      />
 
       <Card className="h-fit">
           <CardHeader>

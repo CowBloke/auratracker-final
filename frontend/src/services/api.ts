@@ -455,66 +455,6 @@ export const clansApi = {
     api.delete(`/clans/${clanId}/members/${userId}`),
 };
 
-// Clash API
-export interface Building {
-  id: string;
-  type: string;
-  level: number;
-  x: number;
-  y: number;
-}
-
-export interface ClashBase {
-  id: string;
-  userId: string;
-  baseLayout: { buildings: Building[]; version: number };
-  defenseRating: number;
-  trophies: number;
-  shieldUntil: string | null;
-  attackCooldown: string | null;
-  user: {
-    id: string;
-    username: string;
-    aura: number;
-    money: number;
-  };
-}
-
-export interface AttackTarget {
-  id: string;
-  username: string;
-  trophies: number;
-  defenseRating: number;
-  potentialMoney: number;
-  potentialAura: number;
-}
-
-export interface Troop {
-  type: string;
-  x: number;
-  y: number;
-  deployTime: number;
-}
-
-export const clashApi = {
-  getBase: (userId: string) => api.get(`/clash/base/${userId}`),
-  saveBase: (buildings: Building[]) => api.put('/clash/base', { buildings }),
-  getTargets: () => api.get('/clash/targets'),
-  checkAttack: (defenderId: string) => api.post('/clash/attack/check', { defenderId }),
-  executeAttack: (data: {
-    defenderId: string;
-    troops: Troop[];
-    duration: number;
-    destruction: number;
-    starsEarned: number;
-  }) => api.post('/clash/attack/execute', data),
-  getAttacks: (params?: { type?: 'all' | 'made' | 'received'; limit?: number }) =>
-    api.get('/clash/attacks', { params }),
-  getLeaderboard: (limit?: number) => api.get('/clash/leaderboard', { params: { limit } }),
-  upgradeBuilding: (data: { buildingId: string; buildingType: string; currentLevel: number }) =>
-    api.post('/clash/building/upgrade', data),
-};
-
 // Admin API
 export interface AdminUser {
   id: string;
@@ -700,7 +640,7 @@ export const suggestionsApi = {
 // Log Interface
 export interface ActivityLog {
   id: string;
-  type: 'AUTH' | 'CHAT' | 'GAME' | 'ECONOMY' | 'PARTY' | 'SUGGESTION' | 'MARKETPLACE' | 'ADMIN' | 'BAN' | 'AURACOIN' | 'CLASH';
+  type: 'AUTH' | 'CHAT' | 'GAME' | 'ECONOMY' | 'PARTY' | 'SUGGESTION' | 'MARKETPLACE' | 'ADMIN' | 'BAN' | 'AURACOIN';
   action: string;
   userId: string | null;
   username: string | null;
@@ -1117,12 +1057,24 @@ export interface Gift {
   items: GiftItem[];
 }
 
+export interface GiftStatus {
+  limit: number;
+  sentLast24h: number;
+  remainingAura: number;
+  nextRefillAt: string | null;
+}
+
 export const giftsApi = {
   getTemplates: () => api.get<{ templates: GiftTemplate[] }>('/gifts/templates'),
   getInbox: () => api.get<{ gifts: Gift[] }>('/gifts/inbox'),
   getInboxCount: () => api.get<{ count: number }>('/gifts/inbox/count'),
   getReceived: () => api.get<{ gifts: Gift[] }>('/gifts/received'),
-  send: (data: { receiverId: string; moneyAmount?: number; auraAmount?: number; templateIds?: string[]; message?: string }) =>
+  getStatus: () => api.get<GiftStatus>('/gifts/status'),
+  send: (data: {
+    receiverId: string;
+    auraAmount: number;
+    message?: string;
+  }) =>
     api.post<{ gift: Gift }>('/gifts/send', data),
   open: (id: string) => api.post<{ gift: Gift }>(`/gifts/${id}/open`),
 };

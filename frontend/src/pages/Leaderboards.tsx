@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { auraCoinApi, AuraCoinLeaderboardEntry, leaderboardsApi } from '../services/api';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { auraCoinApi, AuraCoinLeaderboardEntry, gamesApi, leaderboardsApi } from '../services/api';
+import { X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { PageShell } from '@/components/layout/page-shell';
+import { UsernameDisplay } from '@/components/ui/username-display';
 
 interface Ranking {
   rank: number;
@@ -42,11 +44,22 @@ const categories: { id: Category; name: string; valueLabel: string }[] = [
 
 const economyCategories: Category[] = ['aura', 'money', 'total_money', 'auracoin'];
 const gameCategories: Category[] = ['doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird', 'solitaire', 'racer', 'tetris', 'casino', 'casino_losses', 'bombparty', 'games_played'];
+const deletableGameCategories: Partial<Record<Category, string>> = {
+  doodle_jump: 'doodle_jump',
+  doodle_jump_mort_subite: 'doodle_jump_mort_subite',
+  game_2048: 'game_2048',
+  flappy_bird: 'flappy_bird',
+  solitaire: 'solitaire',
+  racer: 'racer',
+  tetris: 'tetris',
+  casino: 'casino',
+};
 
 export default function Leaderboards() {
   const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [category, setCategory] = useState<Category>('aura');
-  const [activeTab, setActiveTab] = useState<'economy' | 'games'>('economy');
   const [rankings, setRankings] = useState<Ranking[]>([]);
   const [userRank, setUserRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,15 +67,8 @@ export default function Leaderboards() {
     { to: '/leaderboards', label: 'Classements', end: true },
     { to: '/leaderboards/nombres', label: 'Nombres' },
   ]), []);
-
-  // Update activeTab when category changes
-  useEffect(() => {
-    if (economyCategories.includes(category)) {
-      setActiveTab('economy');
-    } else if (gameCategories.includes(category)) {
-      setActiveTab('games');
-    }
-  }, [category]);
+  const activeTab: 'economy' | 'games' = economyCategories.includes(category) ? 'economy' : 'games';
+  const activeNavTab = location.pathname === '/leaderboards/nombres' ? '/leaderboards/nombres' : '/leaderboards';
 
   useEffect(() => {
     fetchRankings();
@@ -130,6 +136,19 @@ export default function Leaderboards() {
     }
   };
 
+  const handleDeleteScore = async (userId: string, username: string) => {
+    const gameType = deletableGameCategories[category];
+    if (!gameType) return;
+    if (!confirm(`Supprimer le score de ${username} ?`)) return;
+
+    try {
+      await gamesApi.deleteStats(gameType, userId);
+      await fetchRankings();
+    } catch (error) {
+      console.error('Failed to delete score:', error);
+    }
+  };
+
   return (
     <PageShell>
       <div className={SPACING.PAGE_CONTENT}>
@@ -140,67 +159,60 @@ export default function Leaderboards() {
         ) : null}
 
         {/* Navigation */}
-        <div className="flex flex-wrap gap-2">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                cn(
-                  buttonVariants({
-                    variant: isActive ? 'secondary' : 'outline',
-                    size: 'sm',
-                  }),
-                  'h-9'
-                )}
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </div>
+        <Tabs value={activeNavTab} onValueChange={(value) => navigate(value)}>
+          <TabsList className="h-auto flex-wrap">
+            {navItems.map((item) => (
+              <TabsTrigger key={item.to} value={item.to}>
+                {item.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
 
         {/* Category Tabs */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'economy' | 'games')}>
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => {
+            if (value === 'economy' && !economyCategories.includes(category)) {
+              setCategory(economyCategories[0]);
+            }
+
+            if (value === 'games' && !gameCategories.includes(category)) {
+              setCategory(gameCategories[0]);
+            }
+          }}
+        >
           <TabsList className="h-auto flex-wrap">
             <TabsTrigger value="economy">Économie</TabsTrigger>
             <TabsTrigger value="games">Jeux</TabsTrigger>
           </TabsList>
 
           <TabsContent value="economy" className={SPACING.SECTION_SPACING}>
-            <div className="flex flex-wrap gap-2">
-              {categories
-                .filter((cat) => economyCategories.includes(cat.id))
-                .map((cat) => (
-                  <Button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setCategory(cat.id)}
-                    variant={category === cat.id ? 'secondary' : 'outline'}
-                    size="sm"
-                  >
-                    {cat.name}
-                  </Button>
-                ))}
-            </div>
+            <Tabs value={category} onValueChange={(value) => setCategory(value as Category)}>
+              <TabsList className="h-auto flex-wrap">
+                {categories
+                  .filter((cat) => economyCategories.includes(cat.id))
+                  .map((cat) => (
+                    <TabsTrigger key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </TabsTrigger>
+                  ))}
+              </TabsList>
+            </Tabs>
           </TabsContent>
 
           <TabsContent value="games" className={SPACING.SECTION_SPACING}>
-            <div className="flex flex-wrap gap-2">
-              {categories
-                .filter((cat) => gameCategories.includes(cat.id))
-                .map((cat) => (
-                  <Button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setCategory(cat.id)}
-                    variant={category === cat.id ? 'secondary' : 'outline'}
-                    size="sm"
-                  >
-                    {cat.name}
-                  </Button>
-                ))}
-            </div>
+            <Tabs value={category} onValueChange={(value) => setCategory(value as Category)}>
+              <TabsList className="h-auto flex-wrap">
+                {categories
+                  .filter((cat) => gameCategories.includes(cat.id))
+                  .map((cat) => (
+                    <TabsTrigger key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </TabsTrigger>
+                  ))}
+              </TabsList>
+            </Tabs>
           </TabsContent>
         </Tabs>
 
@@ -222,7 +234,7 @@ export default function Leaderboards() {
                     <div
                       key={ranking.userId}
                       className={cn(
-                        "flex items-center justify-between py-4 px-6",
+                        "group flex items-center justify-between py-4 px-6",
                         ranking.userId === user?.id && "bg-muted/30"
                       )}
                     >
@@ -230,23 +242,32 @@ export default function Leaderboards() {
                         <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground w-8 tabular-nums")}>
                           {ranking.rank}
                         </span>
-                        <span 
-                          className={cn(
-                            TYPOGRAPHY.BODY,
-                            "font-medium",
-                            ranking.userId === user?.id && "text-foreground"
-                          )}
-                          style={ranking.usernameColor ? { color: ranking.usernameColor } : undefined}
-                        >
-                          {ranking.username}
+                        <span className={cn(
+                          TYPOGRAPHY.BODY,
+                          "font-medium",
+                          ranking.userId === user?.id && "text-foreground"
+                        )}>
+                          <UsernameDisplay username={ranking.username} usernameColor={ranking.usernameColor} />
                           {ranking.userId === user?.id && (
                             <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground ml-2")}>(toi)</span>
                           )}
                         </span>
                       </div>
-                      <span className={cn("tabular-nums", TYPOGRAPHY.MUTED)}>
-                        {formatValue(ranking)}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={cn("tabular-nums", TYPOGRAPHY.MUTED)}>
+                          {formatValue(ranking)}
+                        </span>
+                        {user?.isAdmin && deletableGameCategories[category] && (
+                          <Button
+                            variant="ghost"
+                            onClick={() => handleDeleteScore(ranking.userId, ranking.username)}
+                            className="h-7 w-7 p-0 opacity-0 transition-opacity group-hover:opacity-100 text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                            title="Supprimer ce score"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>

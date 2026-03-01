@@ -42,13 +42,6 @@ const games = [
     image: '/images/games/bataillenavale.png',
   },
   {
-    id: 'clash',
-    name: 'Clash',
-    description: 'Construis ta base, entraine des troupes, attaque tes ennemis.',
-    type: 'PvP',
-    image: '/images/games/clash.png',
-  },
-  {
     id: 'doodle-jump',
     name: 'Doodle Jump',
     description: 'Saute le plus haut possible pour gagner des recompenses.',

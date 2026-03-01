@@ -3,7 +3,6 @@ Solo
 Multijoueur
 - grand jeux à part : entrepreneur : créer entreprise avec salariés, parts de marché, actions, carte payer rues, propriétés etc/IDLE
 - jeux multijoueurs/solo : pas de casino : party : quitter/venir sur latable
-- complet clash
 - animation/événements échecs
 - monopoly
 - subway surfer

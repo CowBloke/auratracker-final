@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
+import { UsernameDisplay } from '@/components/ui/username-display';
 
 const ACTION_TIME_LIMIT = 25000;
 
@@ -147,9 +148,7 @@ export default function Poker() {
           <div className="flex items-center gap-3">
             <div className="h-2 w-2 rounded-full bg-foreground/60" />
             <div>
-              <p className="text-sm font-medium" style={{ color: player.usernameColor || undefined }}>
-                {player.username}
-              </p>
+              <UsernameDisplay username={player.username} usernameColor={player.usernameColor} className="text-sm font-medium" />
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 {isDealer && <span>D</span>}
                 {isSmallBlind && <span>SB</span>}
@@ -250,9 +249,7 @@ export default function Poker() {
                   <div className="flex items-center gap-3">
                     <span className="h-2 w-2 rounded-full bg-foreground/50" />
                     <div>
-                      <p className="font-medium" style={{ color: member.usernameColor || undefined }}>
-                        {member.username}
-                      </p>
+                      <UsernameDisplay username={member.username} usernameColor={member.usernameColor} className="font-medium" />
                       {member.isLeader && (
                         <p className="text-xs text-muted-foreground  ">Leader</p>
                       )}
@@ -435,7 +432,7 @@ export default function Poker() {
                   const response = pokerPlayAgainPrompt.responses.find((r) => r.userId === player.userId);
                   return (
                     <div key={player.userId} className="flex items-center justify-between text-sm">
-                      <span style={{ color: player.usernameColor || undefined }}>{player.username}</span>
+                      <UsernameDisplay username={player.username} usernameColor={player.usernameColor} />
                       {response ? (
                         <span className={cn('text-xs ', response.playAgain ? 'text-green-500' : 'text-red-500')}>
                           {response.playAgain ? 'OK' : 'Quitte'}
@@ -483,7 +480,7 @@ export default function Poker() {
               <div className="space-y-2">
                 {pokerGameOver.standings.map((s) => (
                   <div key={s.userId} className="flex items-center justify-between text-sm">
-                    <span>{s.username}</span>
+                    <UsernameDisplay username={s.username} />
                     <span className="font-semibold">{s.chips}</span>
                   </div>
                 ))}

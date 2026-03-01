@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Swords, Rocket, Download, Gift as GiftIcon, Sparkles, Upload, Eye, Activity, Trophy, CalendarRange, RefreshCw } from 'lucide-react';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Rocket, Download, Gift as GiftIcon, Sparkles, Upload, Eye, Activity, Trophy, CalendarRange, RefreshCw } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import {
   AlertDialog,
@@ -63,7 +63,6 @@ const LOG_TYPE_CONFIG: Record<string, { label: string; color: string; bgColor: s
   BAN: { label: 'Bans', color: 'text-red-300', bgColor: 'bg-red-700', borderColor: 'border-red-700', icon: Gavel },
   SUGGESTION: { label: 'Suggestions', color: 'text-cyan-400', bgColor: 'bg-cyan-500', borderColor: 'border-cyan-500', icon: Lightbulb },
   AURACOIN: { label: 'AuraCoin', color: 'text-amber-400', bgColor: 'bg-amber-500', borderColor: 'border-amber-500', icon: TrendingUp },
-  CLASH: { label: 'Clash', color: 'text-indigo-400', bgColor: 'bg-indigo-500', borderColor: 'border-indigo-500', icon: Swords },
 };
 
 // Human-readable action labels
@@ -126,10 +125,6 @@ const ACTION_LABELS: Record<string, string> = {
   // AuraCoin
   auracoin_buy: 'Achat AuraCoin',
   auracoin_sell: 'Vente AuraCoin',
-  // Clash
-  attack_execute: 'Attaque lancée',
-  base_save: 'Base sauvegardée',
-  building_upgrade: 'Bâtiment amélioré',
 };
 
 // Human-readable metadata key labels
@@ -1776,7 +1771,7 @@ export default function Admin() {
           </TabsTrigger>
           <TabsTrigger value="content" className="flex items-center gap-2">
             <Package className="h-4 w-4" />
-            Objets
+            Boutique
           </TabsTrigger>
           <TabsTrigger value="communication" className="flex items-center gap-2">
             <MessageCircle className="h-4 w-4" />

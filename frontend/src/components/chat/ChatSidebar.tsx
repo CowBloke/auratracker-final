@@ -23,6 +23,7 @@ import { resolveImageUrl } from '@/lib/images';
 import { BadgeSelectionModal } from '@/components/badges/BadgeSelectionModal';
 import { BadgeWithTooltip } from '@/components/ui/badge-tooltip';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { UsernameDisplay } from '@/components/ui/username-display';
 
 type TimeoutRef = ReturnType<typeof setTimeout> | null;
 type ReplyTarget = {
@@ -352,12 +353,11 @@ export default function ChatSidebar() {
                     >
                       {msg.replyTo && (
                         <div className="mb-2 border-l-2 border-border/60 pl-2 text-xs text-muted-foreground">
-                          <span
+                          <UsernameDisplay
+                            username={msg.replyTo.username}
+                            usernameColor={msg.replyTo.usernameColor}
                             className="block font-medium"
-                            style={msg.replyTo.usernameColor ? { color: msg.replyTo.usernameColor } : undefined}
-                          >
-                            {msg.replyTo.username}
-                          </span>
+                          />
                           <span className="block break-words whitespace-normal">{getSnippet(msg.replyTo.message)}</span>
                         </div>
                       )}
@@ -380,9 +380,8 @@ export default function ChatSidebar() {
                             "h-auto px-0 py-0 text-xs font-medium",
                             !msg.usernameColor && (msg.userId === user?.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')
                           )}
-                          style={msg.usernameColor ? { color: msg.usernameColor } : undefined}
                         >
-                          {msg.username}
+                          <UsernameDisplay username={msg.username} usernameColor={msg.usernameColor} />
                         </Button>
                         {msg.badges && msg.badges.length > 0 && (
                           <div className="flex items-center gap-1">
@@ -563,12 +562,11 @@ export default function ChatSidebar() {
             {replyTarget && (
               <div className="mb-2 flex items-start justify-between gap-3 rounded-md border border-border/60 bg-foreground/5 px-3 py-2 text-xs">
                 <div className="min-w-0">
-                  <span
+                  <UsernameDisplay
+                    username={replyTarget.username}
+                    usernameColor={replyTarget.usernameColor}
                     className="block font-medium text-foreground/80"
-                    style={replyTarget.usernameColor ? { color: replyTarget.usernameColor } : undefined}
-                  >
-                    {replyTarget.username}
-                  </span>
+                  />
                   <span className="block break-words whitespace-normal text-muted-foreground">{getSnippet(replyTarget.message)}</span>
                 </div>
                 <Button
@@ -624,12 +622,11 @@ export default function ChatSidebar() {
                           ) : (
                             <div className="h-2 w-2 rounded-full bg-foreground/50" />
                           )}
-                          <span
+                          <UsernameDisplay
+                            username={candidate.username}
+                            usernameColor={candidate.usernameColor}
                             className="truncate"
-                            style={candidate.usernameColor ? { color: candidate.usernameColor } : undefined}
-                          >
-                            {candidate.username}
-                          </span>
+                          />
                         </Button>
                       ))}
                     </div>

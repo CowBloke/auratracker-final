@@ -14,6 +14,7 @@ import {
   Trophy,
   User,
   Users,
+  Store,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -34,8 +35,8 @@ const pageMatchers: Array<{ test: (path: string) => boolean; label: string; icon
   { test: (path) => path.startsWith('/games/solitaire'), label: 'Solitaire', icon: Gamepad2 },
   { test: (path) => path.startsWith('/games/racer'), label: 'Racer', icon: Gamepad2 },
   { test: (path) => path.startsWith('/games/tetris'), label: 'Tetris', icon: Gamepad2 },
-  { test: (path) => path.startsWith('/games/clash'), label: 'Clash', icon: Swords },
   { test: (path) => path.startsWith('/games/casino'), label: 'Casino', icon: Dice5 },
+  { test: (path) => path.startsWith('/games/market'), label: 'Shop', icon: Store },
   { test: (path) => path.startsWith('/games/aura-coin'), label: 'Aura Coin', icon: Coins },
   { test: (path) => path.startsWith('/games/polymarket'), label: 'Polymarket', icon: BarChart3 },
   { test: (path) => path.startsWith('/games'), label: 'Jeux', icon: Gamepad2 },
@@ -44,7 +45,7 @@ const pageMatchers: Array<{ test: (path: string) => boolean; label: string; icon
   { test: (path) => path.startsWith('/inventory'), label: 'Inventaire', icon: Package },
   { test: (path) => path.startsWith('/profile'), label: 'Profil', icon: User },
   { test: (path) => path.startsWith('/admin'), label: 'Admin', icon: Shield },
-  { test: (path) => path.startsWith('/rules'), label: 'Infos', icon: ScrollText },
+  { test: (path) => path.startsWith('/rules'), label: 'Règlement', icon: ScrollText },
   { test: (path) => path.startsWith('/suggestions'), label: 'Suggestions', icon: Lightbulb },
 ];
 

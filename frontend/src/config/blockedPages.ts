@@ -11,8 +11,8 @@ export const BLOCKABLE_PAGES: BlockablePage[] = [
   { key: 'game-2048', path: '/games/2048', label: '2048', category: 'Jeux' },
   { key: 'game-doodle-jump', path: '/games/doodle-jump', label: 'Doodle Jump', category: 'Jeux' },
   { key: 'game-flappy-bird', path: '/games/flappy-bird', label: 'Flappy Bird', category: 'Jeux' },
-  { key: 'game-clash', path: '/games/clash', label: 'Clash', category: 'Jeux' },
   { key: 'game-casino', path: '/games/casino', label: 'Casino', category: 'Jeux' },
+  { key: 'game-market', path: '/games/market', label: 'Shop', category: 'Jeux' },
   { key: 'game-aura-coin', path: '/games/aura-coin', label: 'Aura Coin', category: 'Jeux' },
   { key: 'game-bomb-party', path: '/games/bomb-party', label: 'Bomb Party', category: 'Jeux' },
   { key: 'game-poker', path: '/games/poker', label: 'Poker', category: 'Jeux' },
@@ -22,7 +22,6 @@ export const BLOCKABLE_PAGES: BlockablePage[] = [
   { key: 'game-racer', path: '/games/racer', label: 'Racer', category: 'Jeux' },
   { key: 'game-tetris', path: '/games/tetris', label: 'Tetris', category: 'Jeux' },
   { key: 'game-polymarket', path: '/games/polymarket', label: 'Polymarket (Jeux)', category: 'Jeux' },
-  { key: 'polymarket', path: '/polymarket', label: 'Polymarket (direct)', category: 'Jeux' },
   { key: 'leaderboards', path: '/leaderboards', label: 'Classements', category: 'Communauté' },
   { key: 'leaderboards-numbers', path: '/leaderboards/nombres', label: 'Classement Nombres', category: 'Communauté' },
   { key: 'party', path: '/party', label: 'Party', category: 'Communauté' },
@@ -32,7 +31,7 @@ export const BLOCKABLE_PAGES: BlockablePage[] = [
   { key: 'profile', path: '/profile', label: 'Profils', category: 'Profil' },
   { key: 'pass', path: '/pass', label: 'Pass', category: 'Général' },
   { key: 'quests', path: '/quests', label: 'Quêtes', category: 'Général' },
-  { key: 'rules', path: '/rules', label: 'Règles', category: 'Général' },
+  { key: 'rules', path: '/rules', label: 'Règlement', category: 'Général' },
   { key: 'settings', path: '/settings', label: 'Paramètres utilisateur', category: 'Profil' },
 ];
 

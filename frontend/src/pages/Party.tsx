@@ -15,6 +15,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { PageShell } from '@/components/layout/page-shell';
+import { UsernameDisplay } from '@/components/ui/username-display';
 
 interface User {
   id: string;
@@ -158,7 +159,7 @@ export default function Party() {
                 <div>
                   <p className={TYPOGRAPHY.SMALL}>{invite.partyName || 'Party sans nom'}</p>
                   <p className={TYPOGRAPHY.XS}>
-                    de {invite.inviterUsername}
+                    de <UsernameDisplay username={invite.inviterUsername} />
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -243,9 +244,7 @@ export default function Party() {
                   >
                     <div className="flex items-center gap-4">
                       <span className={TYPOGRAPHY.SMALL}>
-                        <span style={member.usernameColor ? { color: member.usernameColor } : undefined}>
-                          {member.username}
-                        </span>
+                        <UsernameDisplay username={member.username} usernameColor={member.usernameColor} />
                         {member.isLeader && (
                           <span className={cn(TYPOGRAPHY.XS, "ml-2 text-muted-foreground")}>leader</span>
                         )}
@@ -279,14 +278,13 @@ export default function Party() {
                     <div className="flex items-center justify-between gap-4">
                       <div>
                         <p className={TYPOGRAPHY.SMALL}>{partySelectedGame.gameName}</p>
-                        <p className={TYPOGRAPHY.XS}>
-                          selectionne par{' '}
-                          <span
-                            style={partySelectedGame.selectedByColor ? { color: partySelectedGame.selectedByColor } : undefined}
-                          >
-                            {partySelectedGame.selectedByName}
-                          </span>
-                        </p>
+                          <p className={TYPOGRAPHY.XS}>
+                            selectionne par{' '}
+                          <UsernameDisplay
+                            username={partySelectedGame.selectedByName}
+                            usernameColor={partySelectedGame.selectedByColor}
+                          />
+                          </p>
                       </div>
                       <Button
                         asChild
@@ -370,11 +368,10 @@ export default function Party() {
                         <div className={TYPOGRAPHY.SMALL}>
                           <span className="font-medium">{suggestion.gameName}</span>
                           <span className="text-muted-foreground"> · par </span>
-                          <span
-                            style={suggestion.suggestedByColor ? { color: suggestion.suggestedByColor } : undefined}
-                          >
-                            {suggestion.suggestedByName}
-                          </span>
+                          <UsernameDisplay
+                            username={suggestion.suggestedByName}
+                            usernameColor={suggestion.suggestedByColor}
+                          />
                         </div>
                         {isLeader && suggestion.gameId !== selectedGameId && (
                           <Button
@@ -405,9 +402,7 @@ export default function Party() {
                       className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
                     >
                       <div className={TYPOGRAPHY.SMALL}>
-                        <span style={request.usernameColor ? { color: request.usernameColor } : undefined}>
-                          {request.username}
-                        </span>
+                        <UsernameDisplay username={request.username} usernameColor={request.usernameColor} />
                       </div>
                       <div className="flex gap-2">
                         <Button
@@ -625,7 +620,7 @@ export default function Party() {
                   onClick={() => handleInvite(u.id)}
                   className="w-full text-left py-3 border-b border-border/30 last:border-0 text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {u.username}
+                  <UsernameDisplay username={u.username} />
                 </Button>
               ))
             )}

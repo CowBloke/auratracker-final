@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { auraCoinApi, bombPartyApi, clansApi, leaderboardsApi, usersApi } from '../services/api';
 import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 
@@ -32,7 +33,6 @@ const gamesCatalog = [
   'Doodle Jump',
   '2048',
   'Flappy Bird',
-  'Clash',
   'Casino',
   'Bomb Party',
   'Poker',
@@ -62,6 +62,8 @@ const StatCard = ({ label, value, hint }: StatItem) => (
 );
 
 export default function Numbers() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [sections, setSections] = useState<StatSection[]>([]);
 
@@ -160,26 +162,19 @@ export default function Numbers() {
     { to: '/leaderboards', label: 'Classements', end: true },
     { to: '/leaderboards/nombres', label: 'Nombres' },
   ]), []);
+  const activeNavTab = location.pathname === '/leaderboards/nombres' ? '/leaderboards/nombres' : '/leaderboards';
 
   return (
     <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
-      <div className="flex flex-wrap gap-2">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
-            className={({ isActive }) => cn(
-              "px-4 py-2 text-sm border transition-colors rounded-md",
-              isActive
-                ? "border-foreground text-foreground"
-                : "border-border/30 text-muted-foreground hover:text-foreground hover:border-foreground/30"
-            )}
-          >
-            {item.label}
-          </NavLink>
-        ))}
-      </div>
+      <Tabs value={activeNavTab} onValueChange={(value) => navigate(value)}>
+        <TabsList className="h-auto flex-wrap">
+          {navItems.map((item) => (
+            <TabsTrigger key={item.to} value={item.to}>
+              {item.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       {loading ? (
         <div className="flex justify-center py-12">

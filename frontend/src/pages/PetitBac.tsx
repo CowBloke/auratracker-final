@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { UsernameDisplay } from '@/components/ui/username-display';
 
 const DEFAULT_CATEGORIES = ['Prenom', 'Ville', 'Pays', 'Animal', 'Objet', 'Metier'];
 
@@ -115,7 +116,7 @@ export default function PetitBac() {
                   const response = petitBacPlayAgainPrompt.responses.find((r) => r.userId === player.userId);
                   return (
                     <div key={player.userId} className="flex items-center justify-between text-sm">
-                      <span style={{ color: player.usernameColor || undefined }}>{player.username}</span>
+                      <UsernameDisplay username={player.username} usernameColor={player.usernameColor} />
                       {response ? (
                         <span className={cn('text-xs ', response.playAgain ? 'text-green-500' : 'text-red-500')}>
                           {response.playAgain ? 'OK' : 'Quitte'}
@@ -167,7 +168,7 @@ export default function PetitBac() {
             <div className="space-y-2">
               {petitBacGameOver?.players.map((player) => (
                 <div key={player.userId} className="flex items-center justify-between text-sm">
-                  <span>{player.username}</span>
+                  <UsernameDisplay username={player.username} />
                   <span className="text-muted-foreground">{player.score}</span>
                 </div>
               ))}
@@ -342,11 +343,8 @@ export default function PetitBac() {
                   key={player.userId}
                   className="flex items-center justify-between border rounded px-3 py-2"
                 >
-                  <span
-                    className={cn('text-sm', player.userId === user?.id && 'font-medium')}
-                    style={player.usernameColor ? { color: player.usernameColor } : undefined}
-                  >
-                    {player.username}
+                  <span className={cn('text-sm', player.userId === user?.id && 'font-medium')}>
+                    <UsernameDisplay username={player.username} usernameColor={player.usernameColor} />
                   </span>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <span>{player.score}</span>
@@ -372,7 +370,7 @@ export default function PetitBac() {
               {petitBacRoundResult.submissions.map((submission) => (
                 <div key={submission.userId} className="border border-border/30 rounded p-3">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium">{submission.username}</span>
+                    <UsernameDisplay username={submission.username} className="font-medium" />
                     <span className="text-muted-foreground">
                       +{submission.score} / {submission.totalScore}
                     </span>

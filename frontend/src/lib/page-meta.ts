@@ -10,8 +10,8 @@ const STATIC_PAGE_META: Record<string, PageMeta> = {
   '/games/doodle-jump': { title: 'Doodle Jump', description: 'Mode score et classement en direct.' },
   '/games/2048': { title: '2048', description: 'Fusionne les tuiles et améliore ton record.' },
   '/games/flappy-bird': { title: 'Flappy Bird', description: 'Session arcade rapide avec classement.' },
-  '/games/clash': { title: 'Clash', description: 'Gère ta base, attaque, défends et progresse.' },
   '/games/casino': { title: 'Casino', description: 'Roulette, slots et blackjack.' },
+  '/games/market': { title: 'Shop', description: 'Boutique des objets, cosmetiques et bonus.' },
   '/games/aura-coin': { title: 'Aura Coin', description: 'Trading et positions à effet de levier.' },
   '/games/bomb-party': { title: 'Bomb Party', description: 'Partie multijoueur basée sur les mots.' },
   '/games/poker': { title: 'Poker', description: "Table de poker avec paramètres de party." },
@@ -22,14 +22,13 @@ const STATIC_PAGE_META: Record<string, PageMeta> = {
   '/games/tetris': { title: 'Tetris', description: 'Session puzzle et classement.' },
   '/games/wordle': { title: 'Wordle', description: 'Défi quotidien en 6 essais.' },
   '/games/polymarket': { title: 'Polymarket', description: 'Marché de prédictions communautaire.' },
-  '/polymarket': { title: 'Polymarket', description: 'Marché de prédictions communautaire.' },
   '/leaderboards': { title: 'Classements', description: 'Classements économie et jeux.' },
   '/leaderboards/nombres': { title: 'Nombres', description: 'Indicateurs globaux et statistiques clés.' },
   '/party': { title: 'Party', description: 'Crée, gère et rejoins des parties.' },
   '/clans': { title: 'Clans', description: 'Communauté, membres et progression de clan.' },
   '/inventory': { title: 'Inventaire', description: 'Objets, consommables et cosmétiques.' },
   '/admin': { title: 'Admin', description: 'Outils de modération et d’administration.' },
-  '/rules': { title: 'Infos', description: 'Règles et signalement de bugs.' },
+  '/rules': { title: 'Règlement', description: 'Règles de la communauté et modération.' },
   '/pass': { title: 'Pass', description: 'Récompenses journalières et progression de série.' },
   '/quests': { title: 'Quêtes', description: 'Objectifs actifs et récompenses.' },
   '/suggestions': { title: 'Suggestions', description: "Idées en cours, votes et suivi d'avancement." },
@@ -49,10 +48,6 @@ function resolveDynamicMeta(pathname: string): PageMeta | null {
 
   if (pathname === '/profile') {
     return { title: 'Profil', description: 'Statistiques, badges et activité joueur.' };
-  }
-
-  if (pathname.startsWith('/games/market')) {
-    return { title: 'Aura Coin', description: 'Trading et positions à effet de levier.' };
   }
 
   return null;

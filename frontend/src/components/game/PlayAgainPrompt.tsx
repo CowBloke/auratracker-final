@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { UsernameDisplay } from '@/components/ui/username-display';
 
 interface PlayAgainPromptProps {
   open: boolean;
@@ -57,7 +58,7 @@ export default function PlayAgainPrompt({
               const response = responses.find((r) => r.userId === player.userId);
               return (
                 <div key={player.userId} className="flex items-center justify-between text-sm">
-                  <span style={{ color: player.usernameColor || undefined }}>{player.username}</span>
+                  <UsernameDisplay username={player.username} usernameColor={player.usernameColor} />
                   {response ? (
                     <span
                       className={cn(

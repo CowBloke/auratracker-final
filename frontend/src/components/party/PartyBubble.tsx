@@ -6,6 +6,7 @@ import { Users, LogOut, Bomb, ChevronUp, ChevronDown, Gamepad2, Trash2, UserPlus
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { UsernameDisplay } from '@/components/ui/username-display';
 
 export default function PartyBubble() {
   const { user } = useAuth();
@@ -94,13 +95,11 @@ export default function PartyBubble() {
                           : "bg-green-500"
                     )}
                   />
-                  <span
-                    style={member.usernameColor ? { color: member.usernameColor } : undefined}
-                    className={cn(
-                      member.userId === user?.id && "font-medium"
-                    )}
-                  >
-                    {member.username}
+                  <span className={cn(member.userId === user?.id && "font-medium")}>
+                    <UsernameDisplay
+                      username={member.username}
+                      usernameColor={member.usernameColor}
+                    />
                     {member.isLeader && ' *'}
                   </span>
                 </div>

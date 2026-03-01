@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS "Attack";
+DROP TABLE IF EXISTS "ClashBase";

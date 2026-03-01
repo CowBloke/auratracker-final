@@ -11,8 +11,7 @@ export type LogType =
   | 'MARKETPLACE'// Item purchases, item usage
   | 'ADMIN'      // Admin actions (user edits, item management)
   | 'BAN'        // Bans created, removed
-  | 'AURACOIN'   // AuraCoin buy/sell
-  | 'CLASH';     // Clash attacks
+  | 'AURACOIN';  // AuraCoin buy/sell
 
 // Log actions by type
 export type AuthAction = 'login' | 'logout' | 'register' | 'login_failed' | 'login_banned';
@@ -34,9 +33,8 @@ export type BanAction = 'ban_create' | 'ban_remove';
 export type AuraCoinAction =
   | 'auracoin_buy'
   | 'auracoin_sell';
-export type ClashAction = 'attack_execute' | 'base_save' | 'building_upgrade';
 
-export type LogAction = AuthAction | ChatAction | GameAction | EconomyAction | PartyAction | SuggestionAction | MarketplaceAction | AdminAction | BanAction | AuraCoinAction | ClashAction;
+export type LogAction = AuthAction | ChatAction | GameAction | EconomyAction | PartyAction | SuggestionAction | MarketplaceAction | AdminAction | BanAction | AuraCoinAction;
 
 export interface LogEntry {
   type: LogType;
@@ -111,6 +109,3 @@ export const logBan = (action: BanAction, userId?: string | null, username?: str
 
 export const logAuraCoin = (action: AuraCoinAction, userId?: string | null, username?: string | null, metadata?: Record<string, unknown>) =>
   createLog({ type: 'AURACOIN', action, userId, username, metadata });
-
-export const logClash = (action: ClashAction, userId?: string | null, username?: string | null, targetId?: string | null, targetName?: string | null, metadata?: Record<string, unknown>) =>
-  createLog({ type: 'CLASH', action, userId, username, targetId, targetName, metadata });

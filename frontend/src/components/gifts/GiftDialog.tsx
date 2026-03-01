@@ -6,11 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { giftsApi, usersApi, Gift, GiftTemplate } from '@/services/api';
+import { giftsApi, usersApi, Gift } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, Gift as GiftIcon, Send, Inbox, History, Check } from 'lucide-react';
 import GiftOpenAnimation from './GiftOpenAnimation';
-import { resolveImageUrl } from '@/lib/images';
+import { UsernameDisplay } from '@/components/ui/username-display';
 
 interface GiftDialogProps {
   open: boolean;
@@ -22,7 +22,7 @@ interface GiftDialogProps {
 export default function GiftDialog({ open, onOpenChange, onGiftOpened, initialTab }: GiftDialogProps) {
   const { user } = useAuth();
   const [tab, setTab] = useState(initialTab || 'inbox');
-  const maxAuraPerGift = 50;
+  const maxAuraPerDay = 50;
 
   // Inbox state
   const [inboxGifts, setInboxGifts] = useState<Gift[]>([]);
@@ -34,11 +34,8 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened, initialTa
 
   // Send state
   const [users, setUsers] = useState<{ id: string; username: string }[]>([]);
-  const [templates, setTemplates] = useState<GiftTemplate[]>([]);
   const [selectedUser, setSelectedUser] = useState('');
-  const [moneyAmount, setMoneyAmount] = useState(0);
   const [auraAmount, setAuraAmount] = useState(0);
-  const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
@@ -71,14 +68,10 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened, initialTa
 
   const fetchSendData = useCallback(async () => {
     try {
-      const [usersRes, templatesRes] = await Promise.all([
-        usersApi.getAll(),
-        giftsApi.getTemplates(),
-      ]);
+      const usersRes = await usersApi.getAll();
       const allUsers = (usersRes.data as { users?: { id: string; username: string }[] }).users || usersRes.data as unknown as { id: string; username: string }[];
       const userList = Array.isArray(allUsers) ? allUsers : [];
       setUsers(userList.filter((u: { id: string }) => u.id !== user?.id));
-      setTemplates(templatesRes.data.templates);
     } catch { /* ignore */ }
   }, [user?.id]);
 
@@ -89,11 +82,7 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened, initialTa
     else if (tab === 'send') fetchSendData();
   }, [open, tab, fetchInbox, fetchReceived, fetchSendData]);
 
-  const templateCost = templates
-    .filter(t => selectedTemplates.includes(t.id))
-    .reduce((sum, t) => sum + t.price, 0);
-  const totalMoneyCost = moneyAmount + templateCost;
-  const hasContent = totalMoneyCost > 0 || auraAmount > 0;
+  const hasContent = auraAmount > 0;
 
   const handleSend = async () => {
     if (!selectedUser || !hasContent) return;
@@ -101,16 +90,12 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened, initialTa
     try {
       await giftsApi.send({
         receiverId: selectedUser,
-        moneyAmount: moneyAmount > 0 ? moneyAmount : undefined,
-        auraAmount: auraAmount > 0 ? auraAmount : undefined,
-        templateIds: selectedTemplates.length > 0 ? selectedTemplates : undefined,
+        auraAmount,
         message: message.trim() || undefined,
       });
       setSendSuccess(true);
       setSelectedUser('');
-      setMoneyAmount(0);
       setAuraAmount(0);
-      setSelectedTemplates([]);
       setMessage('');
       setTimeout(() => setSendSuccess(false), 2000);
     } catch { /* ignore */ }
@@ -134,12 +119,6 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened, initialTa
 
   const handleCloseAnimation = () => {
     setOpeningGift(null);
-  };
-
-  const toggleTemplate = (id: string) => {
-    setSelectedTemplates(prev =>
-      prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
-    );
   };
 
   return (
@@ -194,9 +173,9 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened, initialTa
                           <GiftIcon className="h-5 w-5" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">
-                            Cadeau de {gift.sender.username}
-                          </p>
+                          <div className="font-medium text-sm truncate">
+                            Cadeau de <UsernameDisplay username={gift.sender.username} />
+                          </div>
                           <p className="text-xs text-muted-foreground">
                             {new Date(gift.createdAt).toLocaleDateString('fr-FR', {
                               day: 'numeric',
@@ -228,83 +207,26 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened, initialTa
                       <SelectContent>
                         {users.map(u => (
                           <SelectItem key={u.id} value={u.id}>
-                            {u.username}
+                            <UsernameDisplay username={u.username} />
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {/* Money amount */}
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">Argent (max $1000)</label>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={1000}
-                      value={moneyAmount}
-                      onChange={(e) => setMoneyAmount(Math.min(1000, Math.max(0, Number(e.target.value))))}
-                      placeholder="0"
-                    />
-                  </div>
-
                   {/* Aura amount */}
                   <div>
-                    <label className="text-sm font-medium mb-1 block">Aura (max 50, 5x/jour)</label>
+                    <label className="text-sm font-medium mb-1 block">Aura (max 50 par jour)</label>
                     <Input
                       type="number"
-                      min={0}
-                      max={maxAuraPerGift}
+                      min={1}
+                      max={maxAuraPerDay}
                       value={auraAmount}
-                      onChange={(e) => setAuraAmount(Math.min(maxAuraPerGift, Math.max(0, Number(e.target.value))))}
+                      onChange={(e) => setAuraAmount(Math.min(maxAuraPerDay, Math.max(0, Number(e.target.value))))}
                       placeholder="0"
                     />
-                    <p className="text-xs text-muted-foreground mt-1">Ne co\u00fbte pas d'aura</p>
+                    <p className="text-xs text-muted-foreground mt-1">Reset chaque jour a 00:00.</p>
                   </div>
-
-                  {/* Gift templates */}
-                  {templates.length > 0 && (
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">Articles cadeaux</label>
-                      <div className="space-y-2">
-                        {templates.map(t => (
-                          <Button
-                            key={t.id}
-                            type="button"
-                            onClick={() => toggleTemplate(t.id)}
-                            variant="ghost"
-                            className={`h-auto w-full justify-start gap-3 rounded-lg border p-2.5 text-left transition-colors ${
-                              selectedTemplates.includes(t.id)
-                                ? 'border-primary bg-primary/10'
-                                : 'hover:bg-accent/50'
-                            }`}
-                          >
-                            <div className={`h-5 w-5 rounded border flex items-center justify-center flex-shrink-0 ${
-                              selectedTemplates.includes(t.id)
-                                ? 'bg-primary border-primary text-primary-foreground'
-                                : 'border-muted-foreground/30'
-                            }`}>
-                              {selectedTemplates.includes(t.id) && <Check className="h-3 w-3" />}
-                            </div>
-                            {t.imageUrl ? (
-                              <img src={resolveImageUrl(t.imageUrl)} alt={t.name} className="h-8 w-8 rounded object-cover flex-shrink-0" />
-                            ) : (
-                              <div className="h-8 w-8 rounded bg-muted flex items-center justify-center flex-shrink-0">
-                                <GiftIcon className="h-4 w-4 text-muted-foreground" />
-                              </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium">{t.name}</p>
-                              {t.description && (
-                                <p className="text-xs text-muted-foreground truncate">{t.description}</p>
-                              )}
-                            </div>
-                            <span className="text-sm font-medium text-yellow-500">${t.price}</span>
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
 
                   {/* Message */}
                   <div>
@@ -322,12 +244,6 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened, initialTa
                   {/* Total & Send */}
                   <div className="flex items-center justify-between pt-2 border-t">
                     <div className="space-y-0.5">
-                      {totalMoneyCost > 0 && (
-                        <p className="text-sm">
-                          <span className="text-muted-foreground">Co\u00fbt: </span>
-                          <span className="font-bold">${totalMoneyCost}</span>
-                        </p>
-                      )}
                       {auraAmount > 0 && (
                         <p className="text-sm">
                           <span className="text-muted-foreground">Aura: </span>
@@ -379,23 +295,8 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened, initialTa
                           <p className="font-medium text-sm">
                             De {gift.sender.username}
                           </p>
-                          {gift.moneyAmount > 0 && (
-                            <p className="text-xs text-yellow-500 font-medium">+${gift.moneyAmount}</p>
-                          )}
                           {gift.auraAmount > 0 && (
                             <p className="text-xs text-purple-400 font-medium">+{gift.auraAmount} aura</p>
-                          )}
-                          {gift.items.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {gift.items.map(item => (
-                                <span key={item.id} className="inline-flex items-center gap-1 text-xs bg-accent px-1.5 py-0.5 rounded">
-                                  {item.giftTemplate.imageUrl ? (
-                                    <img src={resolveImageUrl(item.giftTemplate.imageUrl)} alt={item.giftTemplate.name} className="h-4 w-4 rounded object-cover" />
-                                  ) : null}
-                                  {item.giftTemplate.name}
-                                </span>
-                              ))}
-                            </div>
                           )}
                           {gift.message && (
                             <p className="text-xs text-muted-foreground mt-1 ">"{gift.message}"</p>

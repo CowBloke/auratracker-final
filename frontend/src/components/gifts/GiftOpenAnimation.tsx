@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { Gift } from '@/services/api';
 import { Gift as GiftIcon, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { resolveImageUrl } from '@/lib/images';
+import { UsernameDisplay } from '@/components/ui/username-display';
 
 interface GiftOpenAnimationProps {
   gift: Gift;
@@ -134,46 +134,24 @@ export default function GiftOpenAnimation({ gift, onComplete, onClose }: GiftOpe
           {/* Gifter */}
           <div className="text-center">
             <p className="text-white/60 text-sm">Cadeau de</p>
-            <p className="text-white text-xl font-bold">{gift.sender.username}</p>
+            <UsernameDisplay
+              username={gift.sender.username}
+              className="justify-center text-xl font-bold"
+              usernameClassName="text-white"
+              labelClassName="text-white/60"
+            />
           </div>
 
           {/* Contents */}
           <div className="w-full space-y-3">
-            {(gift.moneyAmount > 0 || gift.auraAmount > 0) && (
+            {gift.auraAmount > 0 && (
               <div className="bg-white/10 rounded-xl p-4 text-center space-y-2">
-                {gift.moneyAmount > 0 && (
-                  <>
-                    <p className="text-yellow-400 text-2xl font-bold">${gift.moneyAmount}</p>
-                    <p className="text-white/50 text-xs">argent</p>
-                  </>
-                )}
                 {gift.auraAmount > 0 && (
                   <>
                     <p className="text-purple-400 text-2xl font-bold">{gift.auraAmount}</p>
                     <p className="text-white/50 text-xs">aura</p>
                   </>
                 )}
-              </div>
-            )}
-
-            {gift.items.length > 0 && (
-              <div className="bg-white/10 rounded-xl p-4">
-                <p className="text-white/50 text-xs mb-2 text-center">Articles</p>
-                <div className="flex flex-wrap justify-center gap-2">
-                  {gift.items.map(item => (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-3 bg-white/10 text-white text-sm px-3 py-2 rounded-lg border border-white/10"
-                    >
-                      {item.giftTemplate.imageUrl ? (
-                        <img src={resolveImageUrl(item.giftTemplate.imageUrl)} alt={item.giftTemplate.name} className="h-12 w-12 rounded object-cover" />
-                      ) : (
-                        <GiftIcon className="h-10 w-10 text-white/60" />
-                      )}
-                      {item.giftTemplate.name}
-                    </div>
-                  ))}
-                </div>
               </div>
             )}
 

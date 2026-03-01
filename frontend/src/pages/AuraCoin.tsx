@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
+import { UsernameDisplay } from '@/components/ui/username-display';
 
 export default function AuraCoin() {
   const { refreshUser } = useAuth();
@@ -760,12 +761,11 @@ export default function AuraCoin() {
                         <div>
                           <div className="flex items-center gap-2">
                             {activeTab === 'all' && (
-                              <span
+                              <UsernameDisplay
+                                username={tx.user.username}
+                                usernameColor={tx.user.usernameColor}
                                 className={TYPOGRAPHY.XS}
-                                style={{ color: tx.user.usernameColor || undefined }}
-                              >
-                                {tx.user.username}
-                              </span>
+                              />
                             )}
                             <span className={cn(
                               "text-[10px] ",

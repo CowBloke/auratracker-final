@@ -39,9 +39,6 @@ model User {
   partyMemberships      PartyMember[]
   sentMessages          ChatMessage[]
   chatReactions         ChatReaction[]
-  clashBase             ClashBase?
-  attacksMade           Attack[]               @relation("Attacker")
-  attacksReceived       Attack[]               @relation("Defender")
   auraCoinTransactions  AuraCoinTransaction[]
   auraCoinPositions     AuraCoinPosition[]
   bugReports            BugReport[]
@@ -327,48 +324,6 @@ model Season {
   isActive  Boolean  @default(true)
 
   @@index([isActive])
-}
-
-// Clash of Clans Base
-model ClashBase {
-  id             String    @id @default(uuid())
-  userId         String    @unique
-  baseLayout     String // JSON string storing building positions/levels
-  defenseRating  Int       @default(100)
-  trophies       Int       @default(0)
-  lastAttackedAt DateTime?
-  shieldUntil    DateTime?
-  attackCooldown DateTime? // When user can attack again
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([defenseRating])
-  @@index([trophies])
-}
-
-// Attack Log
-model Attack {
-  id           String   @id @default(uuid())
-  attackerId   String
-  defenderId   String
-  success      Boolean
-  starsEarned  Int      @default(0) // 0-3 stars
-  destruction  Int      @default(0) // Percentage 0-100
-  auraTaken    Int      @default(0)
-  moneyTaken   Int      @default(0)
-  trophiesWon  Int      @default(0)
-  trophiesLost Int      @default(0)
-  replayData   String? // JSON string for replay
-  attackedAt   DateTime @default(now())
-
-  attacker User @relation("Attacker", fields: [attackerId], references: [id], onDelete: Cascade)
-  defender User @relation("Defender", fields: [defenderId], references: [id], onDelete: Cascade)
-
-  @@index([attackerId])
-  @@index([defenderId])
-  @@index([attackedAt])
 }
 
 // Aura Coin Price History

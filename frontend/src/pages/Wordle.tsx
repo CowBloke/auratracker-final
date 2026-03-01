@@ -8,6 +8,7 @@ import {
 } from '@/services/api';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { UsernameDisplay } from '@/components/ui/username-display';
 
 const KEYBOARD_ROWS = ['QWERTYUIOP', 'ASDFGHJKL', 'ENTERZXCVBNMBACK'];
 
@@ -305,8 +306,8 @@ export default function Wordle() {
                         entry.userId === user?.id && 'border-foreground/40 bg-muted'
                       )}
                     >
-                      <span style={entry.usernameColor ? { color: entry.usernameColor } : undefined}>
-                        {index + 1}. {entry.username}
+                      <span>
+                        {index + 1}. <UsernameDisplay username={entry.username} usernameColor={entry.usernameColor} />
                       </span>
                       <span className="font-mono tabular-nums">{entry.guessCount}</span>
                     </div>

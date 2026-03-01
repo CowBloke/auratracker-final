@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Button } from '@/components/ui/button';
 import { Clock, RotateCcw, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { UsernameDisplay } from '@/components/ui/username-display';
 
 export default function BombPartyPlayAgainPrompt() {
   const { user } = useAuth();
@@ -91,8 +92,8 @@ export default function BombPartyPlayAgainPrompt() {
               const response = bombPartyPlayAgainPrompt.responses.find((r) => r.userId === player.userId);
               return (
                 <div key={player.userId} className="flex items-center justify-between text-sm">
-                  <span style={{ color: player.usernameColor || undefined }}>
-                    {player.username}
+                  <span>
+                    <UsernameDisplay username={player.username} usernameColor={player.usernameColor} />
                     {player.userId === user?.id ? ' (toi)' : ''}
                   </span>
                   {response ? (

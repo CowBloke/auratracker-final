@@ -1153,7 +1153,6 @@ router.get('/logs/stats', authMiddleware, requireAdmin, async (req: AuthRequest,
       banLogs,
       suggestionLogs,
       auraCoinLogs,
-      clashLogs,
     ] = await Promise.all([
       prisma.log.count(),
       prisma.log.count({ where: { type: 'AUTH' } }),
@@ -1166,7 +1165,6 @@ router.get('/logs/stats', authMiddleware, requireAdmin, async (req: AuthRequest,
       prisma.log.count({ where: { type: 'BAN' } }),
       prisma.log.count({ where: { type: 'SUGGESTION' } }),
       prisma.log.count({ where: { type: 'AURACOIN' } }),
-      prisma.log.count({ where: { type: 'CLASH' } }),
     ]);
 
     res.json({
@@ -1182,7 +1180,6 @@ router.get('/logs/stats', authMiddleware, requireAdmin, async (req: AuthRequest,
         BAN: banLogs,
         SUGGESTION: suggestionLogs,
         AURACOIN: auraCoinLogs,
-        CLASH: clashLogs,
       },
     });
   } catch (error) {

@@ -8,13 +8,12 @@
 
 ## 1. Executive Summary
 
-Aura Tracker is a web-based social gaming platform designed for a closed community of approximately 40 users. The platform combines real-time chat, multiple mini-games, and a Clash of Clans-style base-building PvP game with an economy system centered around two currencies: Aura (prestige) and Money.
+Aura Tracker is a web-based social gaming platform designed for a closed community of approximately 40 users. The platform combines real-time chat, multiple mini-games, and an economy system centered around two currencies: Aura (prestige) and Money.
 
 **Core Features:**
 - Global real-time chat
 - Party system for multiplayer gaming
 - Multiple mini-games (Doodle Jump, etc.)
-- Clash of Clans-style base-building PvP
 - Dual currency economy (Aura + Money)
 - Global leaderboards with multiple categories
 - In-app marketplace for items, cosmetics, and upgrades
@@ -27,7 +26,7 @@ Aura Tracker is a web-based social gaming platform designed for a closed communi
 - **Framework:** Vite + React
 - **Styling:** Tailwind CSS
 - **Real-time:** Socket.io-client
-- **Game Engine:** Phaser.js (Clash game), Canvas/React (mini-games)
+- **Game Engine:** Canvas/React (mini-games)
 - **State Management:** React Context/Zustand
 - **HTTP Client:** Axios/Fetch
 
@@ -115,9 +114,6 @@ model User {
   ownedItems    UserItem[]
   sentTransfers Transfer[] @relation("SentTransfers")
   receivedTransfers Transfer[] @relation("ReceivedTransfers")
-  clashBase     ClashBase?
-  attacks       Attack[]   @relation("Attacker")
-  defenses      Attack[]   @relation("Defender")
   gameStats     GameStats[]
   partyMemberships PartyMember[]
   
@@ -176,41 +172,11 @@ model Transfer {
   @@index([receiverId])
 }
 
-// Clash of Clans Base
-model ClashBase {
-  id              String    @id @default(uuid())
-  userId          String    @unique
-  baseLayout      Json      // Stores building positions/levels
-  defenseRating   Int       @default(0)
-  lastAttackedAt  DateTime?
-  shieldUntil     DateTime?
-  
-  user            User      @relation(fields: [userId], references: [id])
-}
-
-// Attack Log
-model Attack {
-  id          String    @id @default(uuid())
-  attackerId  String
-  defenderId  String
-  success     Boolean
-  auraTaken   Int
-  moneyTaken  Int
-  attackedAt  DateTime  @default(now())
-  
-  attacker    User      @relation("Attacker", fields: [attackerId], references: [id])
-  defender    User      @relation("Defender", fields: [defenderId], references: [id])
-  
-  @@index([attackerId])
-  @@index([defenderId])
-  @@index([attackedAt])
-}
-
 // Game Statistics
 model GameStats {
   id          String    @id @default(uuid())
   userId      String
-  gameType    String    // "doodle_jump", "clash"
+  gameType    String    // "doodle_jump", "casino"
   wins        Int       @default(0)
   losses      Int       @default(0)
   highScore   Int       @default(0)
@@ -457,8 +423,7 @@ socket.on('party:list', { parties[] })
 1. **Total Aura** (primary)
 2. **Total Money**
 3. **Best at Doodle Jump** (high score)
-4. **Best at Clash** (defense rating + attack success)
-5. **Most Games Played**
+4. **Most Games Played**
 
 **API Endpoints:**
 ```
@@ -485,55 +450,7 @@ GET /api/leaderboards/user/:userId
 
 ### 4.7 Game Integration
 
-#### 4.7.1 Clash of Clans-Style Game
-
-**Core Mechanics:**
-
-**Base Building:**
-- Grid-based layout system (e.g., 20x20 grid)
-- Building types: Resource generators, defenses, walls, decorations
-- Upgrade system for buildings
-- Building placement restrictions (distance, terrain)
-
-**Attack System:**
-- Asynchronous attacks (attack offline bases)
-- Attack cooldown: 1 hour per player
-- Shield system: 12-hour shield after being attacked
-- Troop deployment mechanics
-- Win conditions: Destroy X% of base or eliminate Town Hall
-
-**Resources & Rewards:**
-- Successful attack: Steal 10-30% of defender's money + 5-15% of aura
-- Failed attack: Lose 5% of your aura
-- Base defense rating affects attacker's difficulty
-
-**API Endpoints:**
-```
-GET /api/clash/base/:userId
-  Returns: { base }
-
-PUT /api/clash/base
-  Body: { baseLayout }
-  Returns: { success }
-
-POST /api/clash/attack
-  Body: { defenderId }
-  Returns: { canAttack, cooldownRemaining?, shieldRemaining? }
-
-POST /api/clash/attack/execute
-  Body: { defenderId, attackData }
-  Returns: { result, auraTaken, moneyTaken }
-
-GET /api/clash/available-targets
-  Returns: { users[] } // Users not on cooldown/shield
-```
-
-**Game State Management:**
-- Phaser.js for rendering
-- Client-side simulation, server validation
-- Replay system for attack logs
-
-#### 4.7.2 Mini-Games (Doodle Jump, etc.)
+#### 4.7.1 Mini-Games (Doodle Jump, etc.)
 
 **General Mini-Game Structure:**
 
@@ -581,7 +498,6 @@ GET /api/games/:gameType/leaderboard
 │  │                  │  │                              │    │
 │  │ • Dashboard      │  │  [Current View Content]      │    │
 │  │ • Games          │  │                              │    │
-│  │   - Clash        │  │                              │    │
 │  │   - Doodle Jump  │  │                              │    │
 │  │ • Leaderboards   │  │                              │    │
 │  │ • Marketplace    │  │                              │    │
@@ -594,7 +510,7 @@ GET /api/games/:gameType/leaderboard
 │  │  Global Chat (Collapsible)                           │  │
 │  │  ┌────────────────────────────────────────────────┐  │  │
 │  │  │ User1: Hey! Anyone want to play?               │  │  │
-│  │  │ User2: Sure, let's do Clash                    │  │  │
+│  │  │ User2: Sure, let's do Doodle Jump              │  │  │
 │  │  └────────────────────────────────────────────────┘  │  │
 │  │  [Message Input Field]                  [Send Btn]   │  │
 │  └──────────────────────────────────────────────────────┘  │
@@ -615,13 +531,6 @@ GET /api/games/:gameType/leaderboard
 - Currently active parties/lobbies
 - Quick play buttons
 - Game statistics
-
-**Clash Base View:**
-- Base editor mode / View mode toggle
-- Building palette
-- Resource counters
-- Attack button with available targets
-- Attack history log
 
 **Leaderboards:**
 - Category tabs
@@ -676,11 +585,6 @@ GET /api/games/:gameType/leaderboard
 - `economy:transfer` (notify receiver)
 - `economy:balance-update`
 
-**Clash Events:**
-- `clash:under-attack`
-- `clash:attack-complete`
-- `clash:shield-expired`
-
 ---
 
 ## 7. Security Considerations
@@ -701,8 +605,6 @@ GET /api/games/:gameType/leaderboard
 - Server-side validation of all game actions
 - Anti-cheat measures (score validation, time checks)
 - Cooldown enforcement on server
-- Attack simulation validation
-
 ### 7.4 Economy Security
 - Transaction validation (sufficient funds)
 - Prevent negative balances
@@ -770,21 +672,14 @@ GET /api/games/:gameType/leaderboard
 - [ ] Game statistics tracking
 - [ ] Rewards integration
 
-### Phase 6: Clash Game (Week 9-12)
-- [ ] Base building system
-- [ ] Attack mechanics
-- [ ] Defense simulation
-- [ ] Cooldown & shield system
-- [ ] Attack history & replays
-
-### Phase 7: Polish & Features (Week 13-14)
+### Phase 6: Polish & Features (Week 9-10)
 - [ ] Season system
 - [ ] Multiple leaderboard categories
 - [ ] Party auto-disbanding
 - [ ] Item expiration system
 - [ ] Mobile responsiveness
 
-### Phase 8: Testing & Launch (Week 15-16)
+### Phase 7: Testing & Launch (Week 11-12)
 - [ ] End-to-end testing
 - [ ] Performance optimization
 - [ ] Bug fixes
@@ -830,13 +725,6 @@ Headers: {
 - `POST /marketplace/purchase`
 - `GET /marketplace/inventory/:userId`
 - `POST /marketplace/use-item`
-
-**Clash:**
-- `GET /clash/base/:userId`
-- `PUT /clash/base`
-- `POST /clash/attack`
-- `POST /clash/attack/execute`
-- `GET /clash/available-targets`
 
 **Games:**
 - `GET /games/:gameType/stats/:userId`
@@ -901,17 +789,13 @@ Headers: {
 2. **Achievements & Badges**
 3. **Daily Quests**
 4. **More Mini-Games** (trivia, card games, etc.)
-5. **Clash Clans Features:**
-   - Defensive troops
-   - Multiple attack strategies
-   - Base templates
-6. **Social Features:**
+5. **Social Features:**
    - Private DMs
    - Friend requests
    - Profile customization
-7. **Mobile App** (React Native or PWA)
-8. **Replay System** for all games
-9. **Tournament Mode**
+6. **Mobile App** (React Native or PWA)
+7. **Replay System** for all games
+8. **Tournament Mode**
 
 ---
 
@@ -934,7 +818,6 @@ aura-tracker/
 │   │   │   └── PartyContext.jsx
 │   │   ├── pages/
 │   │   │   ├── Dashboard.jsx
-│   │   │   ├── Clash.jsx
 │   │   │   ├── Games.jsx
 │   │   │   ├── Marketplace.jsx
 │   │   │   └── Leaderboards.jsx
@@ -956,7 +839,6 @@ aura-tracker/
 │   │   │   ├── auth.js
 │   │   │   ├── economy.js
 │   │   │   ├── marketplace.js
-│   │   │   ├── clash.js
 │   │   │   ├── games.js
 │   │   │   └── leaderboards.js
 │   │   ├── controllers/

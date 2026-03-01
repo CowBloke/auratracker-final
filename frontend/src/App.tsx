@@ -9,13 +9,13 @@ import Games from './pages/Games';
 import DoodleJump from './pages/DoodleJump';
 import Game2048 from './pages/Game2048';
 import FlappyBird from './pages/FlappyBird';
-import Clash from './pages/Clash';
 import Casino from './pages/Casino';
 import AuraCoin from './pages/AuraCoin';
 import Leaderboards from './pages/Leaderboards';
 import Numbers from './pages/Numbers';
 import Profile from './pages/Profile';
 import Inventory from './pages/Inventory';
+import Shop from './pages/Shop';
 import Party from './pages/Party';
 import Clans from './pages/Clans';
 import BombParty from './pages/BombParty';
@@ -197,11 +197,10 @@ function App() {
         <Route path="games/doodle-jump" element={<DoodleJump />} />
         <Route path="games/2048" element={<Game2048 />} />
         <Route path="games/flappy-bird" element={<FlappyBird />} />
-        <Route path="games/clash" element={<Clash />} />
         <Route path="games/casino" element={<Casino />} />
         <Route path="games/aura-coin" element={<AuraCoin />} />
-        <Route path="games/market" element={<Navigate to="/games/aura-coin" replace />} />
-        <Route path="games/market/*" element={<Navigate to="/games/aura-coin" replace />} />
+        <Route path="games/market" element={<Shop />} />
+        <Route path="games/market/*" element={<Shop />} />
         <Route path="games/bomb-party" element={<BombParty />} />
         <Route path="games/poker" element={<Poker />} />
         <Route path="games/petit-bac" element={<PetitBac />} />
@@ -211,7 +210,7 @@ function App() {
         <Route path="games/tetris" element={<Tetris />} />
         <Route path="games/wordle" element={<Wordle />} />
         <Route path="games/polymarket" element={<Polymarket />} />
-        <Route path="polymarket" element={<Polymarket />} />
+        <Route path="polymarket" element={<Navigate to="/games/polymarket" replace />} />
         <Route path="leaderboards" element={<Leaderboards />} />
         <Route path="leaderboards/nombres" element={<Numbers />} />
         <Route path="party" element={<Party />} />

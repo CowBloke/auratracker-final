@@ -6,6 +6,7 @@ import { ArrowLeft, Play, LogOut, Trophy } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { UsernameDisplay } from '@/components/ui/username-display';
 
 const BOARD_SIZE = 10;
 const SHIPS = [5, 4, 3, 3, 2]; // Ship lengths
@@ -94,7 +95,7 @@ export default function BatailleNavale() {
                   const response = playAgainPrompt.responses.find((r) => r.userId === player.userId);
                   return (
                     <div key={player.userId} className="flex items-center justify-between text-sm">
-                      <span style={{ color: player.usernameColor || undefined }}>{player.username}</span>
+                      <UsernameDisplay username={player.username} usernameColor={player.usernameColor} />
                       {response ? (
                         <span className={cn('text-xs ', response.playAgain ? 'text-green-500' : 'text-red-500')}>
                           {response.playAgain ? 'OK' : 'Quitte'}
@@ -153,21 +154,28 @@ export default function BatailleNavale() {
           <div className="space-y-6 py-4">
             <div className="text-center">
               <p className="text-sm text-muted-foreground">Gagnant</p>
-              <p className="text-2xl font-light">{gameOver?.winnerUsername}</p>
+              {gameOver?.winnerUsername ? (
+                <UsernameDisplay username={gameOver.winnerUsername} className="justify-center text-2xl font-light" />
+              ) : null}
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between py-3 px-3 border rounded border-yellow-500/50 bg-yellow-500/5">
-                <span className="font-medium">{gameOver?.winnerUsername}</span>
+                {gameOver?.winnerUsername ? (
+                  <UsernameDisplay username={gameOver.winnerUsername} className="font-medium" />
+                ) : null}
                 <div className="text-sm">
                   <span className="text-purple-400">+{gameOver?.rewards.winner.aura} aura </span>
                   <span className="text-green-400">+{gameOver?.rewards.winner.money}$</span>
                 </div>
               </div>
               <div className="flex items-center justify-between py-3 px-3 border rounded border-border/30">
-                <span className="font-medium">
-                  {gameState?.players.find((p) => p.userId !== gameOver?.winnerId)?.username}
-                </span>
+                {(() => {
+                  const loser = gameState?.players.find((p) => p.userId !== gameOver?.winnerId);
+                  return loser ? (
+                    <UsernameDisplay username={loser.username} usernameColor={loser.usernameColor} className="font-medium" />
+                  ) : null;
+                })()}
                 <div className="text-sm">
                   <span className="text-green-400">+{gameOver?.rewards.loser.money}$</span>
                 </div>
@@ -426,9 +434,7 @@ export default function BatailleNavale() {
                 )}
               >
                 <span className="font-medium">
-                  <span style={member.usernameColor ? { color: member.usernameColor } : undefined}>
-                    {member.username}
-                  </span>
+                  <UsernameDisplay username={member.username} usernameColor={member.usernameColor} />
                   {member.isLeader && (
                     <span className="ml-2 text-xs text-muted-foreground">leader</span>
                   )}
@@ -502,11 +508,8 @@ export default function BatailleNavale() {
                 !isCurrentTurn && "border-border/30"
               )}
             >
-              <span
-                className="font-medium"
-                style={player.usernameColor ? { color: player.usernameColor } : undefined}
-              >
-                {player.username}
+              <span className="font-medium">
+                <UsernameDisplay username={player.username} usernameColor={player.usernameColor} />
                 {isMe && ' (toi)'}
                 {isCurrentTurn && gameState.phase === 'playing' && ' →'}
               </span>
@@ -611,7 +614,9 @@ export default function BatailleNavale() {
               </p>
             ) : (
               <p className="text-lg text-muted-foreground">
-                C'est le tour de <span className="font-medium">{opponent?.username}</span>
+                C'est le tour de {opponent?.username ? (
+                  <UsernameDisplay username={opponent.username} usernameColor={opponent.usernameColor} className="font-medium" />
+                ) : null}
               </p>
             )}
           </div>
@@ -634,7 +639,9 @@ export default function BatailleNavale() {
             {/* Opponent board */}
             <div className="space-y-2">
               <h3 className="text-sm font-medium text-center">
-                Grille de {opponent?.username}
+                Grille de {opponent?.username ? (
+                  <UsernameDisplay username={opponent.username} usernameColor={opponent.usernameColor} />
+                ) : null}
               </h3>
               <div className="flex justify-center">
                 <div className="grid grid-cols-10 gap-0 border-2 border-foreground/30 p-2">
