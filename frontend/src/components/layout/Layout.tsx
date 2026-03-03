@@ -11,9 +11,7 @@ import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { useSocket } from '@/contexts/SocketContext';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SiteHeader } from '@/components/site-header';
-import { CONTAINER, SPACING } from '@/lib/design-system';
-import { getPageMetaForPath } from '@/lib/page-meta';
-import { PageHeader } from '@/components/layout/page-shell';
+import { CONTAINER } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 
 function ChatBubbleContainer() {
@@ -32,8 +30,6 @@ function ChatBubbleContainer() {
 export default function Layout() {
   const { connected, setCurrentPage } = useSocket();
   const location = useLocation();
-  const pageMeta = getPageMetaForPath(location.pathname);
-  const showContentHeader = pageMeta.contentHeader !== false;
 
   useEffect(() => {
     if (connected) {
@@ -58,12 +54,9 @@ export default function Layout() {
             <SiteHeader />
             <div className="@container/main flex flex-1 flex-col">
               <main className="flex-1 overflow-auto">
-                {showContentHeader ? (
-                  <div className={cn('mx-auto w-full', CONTAINER.COMPACT, SPACING.PAGE_HEADER_PADDING)}>
-                    <PageHeader title={pageMeta.title} description={pageMeta.description} />
-                  </div>
-                ) : null}
-                <Outlet />
+                <div className={cn('mx-auto flex w-full flex-1 flex-col', CONTAINER.DEFAULT)}>
+                  <Outlet />
+                </div>
               </main>
             </div>
           </SidebarInset>

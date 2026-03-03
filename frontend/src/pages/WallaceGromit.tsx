@@ -1,13 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PageHeader, PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/page-shell';
 
 export default function WallaceGromit() {
   return (
     <PageShell padTop>
-      <PageHeader
-        title="Wallace & Gromit"
-        description="Lecture continue, sans distraction, pendant l'indisponibilité du site."
-      />
       <Card>
         <CardHeader>
           <CardTitle>Projection</CardTitle>

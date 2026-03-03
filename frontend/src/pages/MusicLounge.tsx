@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PageHeader, PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/page-shell';
 
 const tracks = [
   {
@@ -81,10 +81,6 @@ export default function MusicLounge() {
 
   return (
     <PageShell padTop>
-      <PageHeader
-        title="Music Lounge"
-        description="Player simple, playlist claire et cartes homogènes avec le reste de l'interface."
-      />
       <Card className="bg-gradient-to-br from-emerald-500/20 via-background to-background">
         <CardContent className="pt-6">
           <p className="max-w-2xl text-sm text-muted-foreground">

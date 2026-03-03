@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PageHeader, PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/page-shell';
 
 const articles = [
   {
@@ -31,10 +31,6 @@ const articles = [
 export default function News() {
   return (
     <PageShell padTop>
-      <PageHeader
-        title="News Lounge"
-        description="Une sélection courte, rangée en cartes, pour garder la même lecture visuelle que le reste du site."
-      />
       <Card>
         <CardContent className="pt-6">
           <p className="text-base text-muted-foreground">
