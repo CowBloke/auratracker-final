@@ -100,6 +100,20 @@ const GAME_REWARDS = {
       { minScore: 800000, moneyMultiplier: 0.002, auraBonus: 20 },
     ],
   },
+  goyave_empire: {
+    minScoreForReward: 100,
+    // Fixed rewards per tier (score = total guavas harvested before cash out)
+    scoreTiers: [
+      { minScore: 100,         moneyReward: 10,   auraBonus: 1   },
+      { minScore: 1_000,       moneyReward: 25,   auraBonus: 3   },
+      { minScore: 10_000,      moneyReward: 60,   auraBonus: 8   },
+      { minScore: 100_000,     moneyReward: 150,  auraBonus: 20  },
+      { minScore: 1_000_000,   moneyReward: 400,  auraBonus: 50  },
+      { minScore: 10_000_000,  moneyReward: 1000, auraBonus: 100 },
+    ],
+    highScoreBonusMin: 5,
+    highScoreBonusMax: 25,
+  },
 };
 
 // Calculate progressive rewards for Doodle Jump based on score
@@ -266,6 +280,35 @@ function calculateRacerRewards(score: number, isNewHighScore: boolean, won: bool
   }
 
   return { money: moneyReward, aura: auraReward };
+}
+
+// Calculate rewards for Goyave Empire based on total guavas harvested
+function calculateGoyaveEmpireRewards(score: number, isNewHighScore: boolean): { money: number; aura: number } {
+  const config = GAME_REWARDS.goyave_empire;
+
+  if (score < config.minScoreForReward) {
+    return { money: 0, aura: 0 };
+  }
+
+  let selectedTier = config.scoreTiers[0];
+  for (let i = config.scoreTiers.length - 1; i >= 0; i--) {
+    if (score >= config.scoreTiers[i].minScore) {
+      selectedTier = config.scoreTiers[i];
+      break;
+    }
+  }
+
+  let auraReward = selectedTier.auraBonus;
+  if (isNewHighScore) {
+    const tierIndex = config.scoreTiers.indexOf(selectedTier);
+    const tierFraction = tierIndex / (config.scoreTiers.length - 1);
+    const bonus = Math.round(
+      config.highScoreBonusMin + tierFraction * (config.highScoreBonusMax - config.highScoreBonusMin)
+    );
+    auraReward += bonus;
+  }
+
+  return { money: selectedTier.moneyReward, aura: auraReward };
 }
 
 // Calculate rewards for Tetris based on score
@@ -502,6 +545,10 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       const rewards = calculateTetrisRewards(score, isNewHighScore);
       moneyReward = rewards.money;
       auraReward = rewards.aura;
+    } else if (gameType === 'goyave_empire') {
+      const rewards = calculateGoyaveEmpireRewards(score, isNewHighScore);
+      moneyReward = rewards.money;
+      auraReward = rewards.aura;
     } else if (gameType === 'casino' && bet) {
       // Casino: score is the win amount, bet is deducted, netGain = score - bet
       // Deduct bet first, then add winnings
@@ -626,6 +673,11 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
     } else if (gameType === 'tetris') {
       await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
     } else if (gameType === 'casino') {
+      await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
+      if (won) {
+        await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
+      }
+    } else if (gameType === 'goyave_empire') {
       await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
       if (won) {
         await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);

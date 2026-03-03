@@ -96,6 +96,14 @@ const games = [
     type: 'Score',
     image: '/images/games/tetris.png',
   },
+  {
+    id: 'goyave-empire',
+    name: 'Goyave Empire',
+    description: "Construis un empire de goyaves. Récolte, améliore et encaisse des récompenses.",
+    type: 'Idle',
+    image: '/images/games/goyaveempire.png',
+    emoji: '🍈',
+  },
 ];
 
 const tabConfig: Array<{ id: GamesTab; label: string }> = [
@@ -168,11 +176,17 @@ export default function Games() {
                 className="group block"
               >
                 <Card className="relative aspect-square overflow-hidden transition hover:border-foreground/40 hover:shadow-md">
+                  {'emoji' in game && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-green-950/40 text-8xl">
+                      {game.emoji}
+                    </div>
+                  )}
                   <img
                     src={game.image}
                     alt={game.name}
                     className="absolute inset-0 h-full w-full object-cover"
                     loading="lazy"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
                   <CardContent className="relative z-10 flex h-full flex-col justify-end p-5 text-white">
