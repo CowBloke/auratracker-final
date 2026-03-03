@@ -34,6 +34,7 @@ import Quests from './pages/Quests';
 import Solitaire from './pages/Solitaire';
 import Racer from './pages/Racer';
 import Tetris from './pages/Tetris';
+import GoyaveEmpire from './pages/GoyaveEmpire';
 import WallaceGromit from './pages/WallaceGromit';
 import News from './pages/News';
 import Inbox from './pages/Inbox';
@@ -208,6 +209,7 @@ function App() {
         <Route path="games/solitaire" element={<Solitaire />} />
         <Route path="games/racer" element={<Racer />} />
         <Route path="games/tetris" element={<Tetris />} />
+        <Route path="games/goyave-empire" element={<GoyaveEmpire />} />
         <Route path="games/polymarket" element={<Polymarket />} />
         <Route path="polymarket" element={<Navigate to="/games/polymarket" replace />} />
         <Route path="leaderboards" element={<Leaderboards />} />
