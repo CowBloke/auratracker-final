@@ -789,6 +789,8 @@ export const adminApi = {
   deleteUpdatePopup: (id: string) => api.delete<{ success: boolean }>(`/admin/update-popups/${id}`),
   uploadUpdatePopupImage: (data: { base64Data: string; mimeType: string }) =>
     api.post<{ imageUrl: string }>('/admin/update-popups/upload-image', data),
+  uploadItemImage: (data: { base64Data: string; mimeType: string }) =>
+    api.post<{ imageUrl: string }>('/admin/items/upload-image', data),
   suggestUpdatePopupSummary: () => api.get<{ suggestion: string; sinceDate: string }>('/admin/update-popups/suggest-summary'),
   // Online activity history
   takeOnlineSnapshot: () => api.post<{ success: boolean; count: number }>('/admin/online-snapshot'),

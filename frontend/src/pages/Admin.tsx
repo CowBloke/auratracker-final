@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Upload, Eye, Activity, Trophy, CalendarRange, RefreshCw } from 'lucide-react';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import {
   AlertDialog,
@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
+import { ImagePicker } from '@/components/ui/image-picker';
 import { BLOCKABLE_PAGES } from '@/config/blockedPages';
 
 // Effect types for items
@@ -443,11 +444,8 @@ export default function Admin() {
   const [deletingUpdatePopup, setDeletingUpdatePopup] = useState<string | null>(null);
   const [updatingUpdatePopupId, setUpdatingUpdatePopupId] = useState<string | null>(null);
   const [suggestingUpdateSummary, setSuggestingUpdateSummary] = useState(false);
-  const [uploadingUpdateImage, setUploadingUpdateImage] = useState(false);
   const [editingUpdatePopupId, setEditingUpdatePopupId] = useState<string | null>(null);
   const [updatePopupForm, setUpdatePopupForm] = useState<UpdatePopupFormData>(defaultUpdatePopupForm);
-  const updatePopupFileInputRef = useRef<HTMLInputElement | null>(null);
-  const [isUpdatePopupDropzoneActive, setIsUpdatePopupDropzoneActive] = useState(false);
 
 
   const fetchUpdatePopups = async () => {
@@ -486,55 +484,41 @@ export default function Admin() {
     }
   };
 
-  const handleUploadUpdatePopupImage = async (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      showMessage('error', 'Veuillez sélectionner une image valide');
-      return;
-    }
+  const fileToBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const raw = typeof reader.result === 'string' ? reader.result : '';
+        const payload = raw.includes(',') ? raw.split(',')[1] : '';
+        if (!payload) reject(new Error('Invalid file'));
+        else resolve(payload);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
 
+  const uploadUpdatePopupImageFile = async (file: File): Promise<string> => {
     try {
-      setUploadingUpdateImage(true);
-      const base64Data = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const raw = typeof reader.result === 'string' ? reader.result : '';
-          const payload = raw.includes(',') ? raw.split(',')[1] : '';
-          if (!payload) {
-            reject(new Error('Invalid file'));
-            return;
-          }
-          resolve(payload);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-
-      const res = await adminApi.uploadUpdatePopupImage({
-        base64Data,
-        mimeType: file.type,
-      });
-      setUpdatePopupForm((prev) => ({ ...prev, imageUrl: res.data.imageUrl }));
+      const base64Data = await fileToBase64(file);
+      const res = await adminApi.uploadUpdatePopupImage({ base64Data, mimeType: file.type });
       showMessage('success', 'Image téléchargée');
+      return res.data.imageUrl;
     } catch {
       showMessage('error', 'Erreur lors du téléchargement de l\'image');
-    } finally {
-      setUploadingUpdateImage(false);
+      throw new Error();
     }
   };
 
-  const handleUpdatePopupFileSelect = (file: File | null) => {
-    if (!file || uploadingUpdateImage) return;
-    handleUploadUpdatePopupImage(file);
-  };
-
-  const handleUpdatePopupPaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
-    if (uploadingUpdateImage) return;
-
-    const imageItem = Array.from(event.clipboardData.items).find((item) => item.type.startsWith('image/'));
-    if (!imageItem) return;
-
-    event.preventDefault();
-    handleUpdatePopupFileSelect(imageItem.getAsFile());
+  const uploadItemImageFile = async (file: File): Promise<string> => {
+    try {
+      const base64Data = await fileToBase64(file);
+      const res = await adminApi.uploadItemImage({ base64Data, mimeType: file.type });
+      showMessage('success', 'Image téléchargée');
+      return res.data.imageUrl;
+    } catch {
+      showMessage('error', 'Erreur lors du téléchargement de l\'image');
+      throw new Error();
+    }
   };
 
   const handleSaveUpdatePopup = async () => {
@@ -3026,76 +3010,12 @@ export default function Admin() {
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Image</label>
-                    <div className="space-y-2">
-                      <Input
-                        ref={updatePopupFileInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          handleUpdatePopupFileSelect(e.target.files?.[0] || null);
-                          e.currentTarget.value = '';
-                        }}
-                      />
-                      <div className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={uploadingUpdateImage}
-                          onClick={() => updatePopupFileInputRef.current?.click()}
-                        >
-                          {uploadingUpdateImage ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Upload className="h-4 w-4 mr-1" />}
-                          Upload image
-                        </Button>
-                        <span className="text-xs text-muted-foreground">Drag & drop ou Ctrl+V</span>
-                      </div>
-                      <Input
-                        value={updatePopupForm.imageUrl}
-                        onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, imageUrl: e.target.value }))}
-                        placeholder="/uploads/update-popups/... ou https://..."
-                      />
-                      <div
-                        tabIndex={0}
-                        onPaste={handleUpdatePopupPaste}
-                        onDragEnter={(event) => {
-                          event.preventDefault();
-                          if (!uploadingUpdateImage) {
-                            setIsUpdatePopupDropzoneActive(true);
-                          }
-                        }}
-                        onDragOver={(event) => {
-                          event.preventDefault();
-                          if (!uploadingUpdateImage) {
-                            setIsUpdatePopupDropzoneActive(true);
-                          }
-                        }}
-                        onDragLeave={(event) => {
-                          event.preventDefault();
-                          if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
-                            return;
-                          }
-                          setIsUpdatePopupDropzoneActive(false);
-                        }}
-                        onDrop={(event) => {
-                          event.preventDefault();
-                          setIsUpdatePopupDropzoneActive(false);
-                          handleUpdatePopupFileSelect(event.dataTransfer.files?.[0] || null);
-                        }}
-                        onClick={() => {
-                          if (!uploadingUpdateImage) {
-                            updatePopupFileInputRef.current?.click();
-                          }
-                        }}
-                        className={cn(
-                          'rounded-md border border-dashed px-4 py-5 text-center text-sm outline-none transition-colors',
-                          isUpdatePopupDropzoneActive ? 'border-primary bg-primary/10' : 'border-border bg-background/60',
-                          uploadingUpdateImage ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:border-primary/60'
-                        )}
-                      >
-                        {uploadingUpdateImage ? 'Upload en cours...' : 'Glissez une image ici, cliquez pour choisir, ou collez avec Ctrl+V'}
-                      </div>
-                    </div>
+                    <ImagePicker
+                      value={updatePopupForm.imageUrl}
+                      onChange={(url) => setUpdatePopupForm((prev) => ({ ...prev, imageUrl: url }))}
+                      uploadFn={uploadUpdatePopupImageFile}
+                      placeholder="/uploads/update-popups/... ou https://..."
+                    />
                   </div>
 
                   <div className="flex justify-end">
@@ -3742,35 +3662,12 @@ export default function Admin() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm text-muted-foreground">Image (optionnel - URL uniquement)</label>
-              <Input
+              <label className="text-sm text-muted-foreground">Image (optionnel)</label>
+              <ImagePicker
                 value={itemForm.imageUrl}
-                onChange={(e) => setItemForm(prev => ({ ...prev, imageUrl: e.target.value }))}
-                placeholder="https://..."
-                className="bg-transparent"
+                onChange={(url) => setItemForm(prev => ({ ...prev, imageUrl: url }))}
+                uploadFn={uploadItemImageFile}
               />
-              {itemForm.imageUrl && (
-                <div className="relative">
-                  <img
-                    src={resolveImageUrl(itemForm.imageUrl)}
-                    alt="Preview"
-                    className="max-h-40 rounded-md object-cover border border-border/30"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                  <Button variant="ghost"
-                    type="button"
-                    onClick={() => {
-                      setItemForm(prev => ({ ...prev, imageUrl: '' }));
-                    }}
-                    className="absolute top-2 right-2 h-7 w-7 flex items-center justify-center bg-background/80 border border-border rounded-full text-muted-foreground hover:text-foreground"
-                    aria-label="Retirer l'image"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
             </div>
 
             {itemForm.type !== 'GIFT' && (<>

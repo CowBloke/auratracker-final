@@ -16,7 +16,9 @@ const router = Router();
 const ANNOUNCEMENT_KEY = 'topbar_announcement';
 const ANNOUNCEMENT_MAX_LENGTH = 120;
 const UPDATE_POPUP_UPLOAD_DIR = path.resolve('uploads', 'update-popups');
+const ITEM_UPLOAD_DIR = path.resolve('uploads', 'items');
 const MAX_UPDATE_POPUP_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_ITEM_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 
 const ensureUpdatePopupUploadDir = () => {
   if (!fs.existsSync(UPDATE_POPUP_UPLOAD_DIR)) {
@@ -1843,6 +1845,45 @@ router.post('/update-popups/upload-image', authMiddleware, requireAdmin, async (
     res.status(201).json({ imageUrl });
   } catch (error) {
     console.error('Admin upload update popup image error:', error);
+    res.status(500).json({ error: 'Failed to upload image' });
+  }
+});
+
+// Upload image for items (admin only)
+router.post('/items/upload-image', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const base64Data = typeof req.body.base64Data === 'string' ? req.body.base64Data : '';
+    const mimeType = typeof req.body.mimeType === 'string' ? req.body.mimeType : '';
+
+    if (!base64Data || !mimeType) {
+      return res.status(400).json({ error: 'base64Data and mimeType are required' });
+    }
+
+    const extension = inferImageExtension(mimeType);
+    if (!extension) {
+      return res.status(400).json({ error: 'Unsupported image type. Allowed: png, jpg, webp, gif' });
+    }
+
+    const buffer = Buffer.from(base64Data, 'base64');
+    if (buffer.byteLength === 0) {
+      return res.status(400).json({ error: 'Invalid image payload' });
+    }
+
+    if (buffer.byteLength > MAX_ITEM_IMAGE_SIZE_BYTES) {
+      return res.status(400).json({ error: 'Image too large (max 5MB)' });
+    }
+
+    if (!fs.existsSync(ITEM_UPLOAD_DIR)) {
+      fs.mkdirSync(ITEM_UPLOAD_DIR, { recursive: true });
+    }
+    const fileName = `${Date.now()}-${randomUUID()}.${extension}`;
+    const absolutePath = path.join(ITEM_UPLOAD_DIR, fileName);
+    fs.writeFileSync(absolutePath, buffer);
+
+    const imageUrl = `/api/uploads/items/${fileName}`;
+    res.status(201).json({ imageUrl });
+  } catch (error) {
+    console.error('Admin upload item image error:', error);
     res.status(500).json({ error: 'Failed to upload image' });
   }
 });
