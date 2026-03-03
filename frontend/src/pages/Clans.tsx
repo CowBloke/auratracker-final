@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Loader2, Plus, X, Check, UserX, Crown, LogOut } from 'lucide-react';
-import { clansApi, ClanDetail, ClanSummary } from '@/services/api';
+import { clansApi, ClanDetail, ClanSummary, uploadUserImage } from '@/services/api';
+import { ImagePicker } from '@/components/ui/image-picker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -98,6 +99,22 @@ export default function Clans() {
     setFormError(null);
   };
 
+
+  const uploadClanImageFile = async (file: File): Promise<string> => {
+    const base64Data = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const raw = typeof reader.result === 'string' ? reader.result : '';
+        const payload = raw.includes(',') ? raw.split(',')[1] : '';
+        if (!payload) reject(new Error('Invalid file'));
+        else resolve(payload);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    const res = await uploadUserImage({ base64Data, mimeType: file.type });
+    return res.data.imageUrl;
+  };
 
   const handleCreateClan = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -531,11 +548,12 @@ export default function Clans() {
                 </div>
               </CardContent>
             </Card>
-            <div className="space-y-3">
-              <Input
-                placeholder="https://..."
+            <div className="space-y-2">
+              <label className="text-sm text-muted-foreground">Logo (optionnel)</label>
+              <ImagePicker
                 value={imageUrl}
-                onChange={(event) => setImageUrl(event.target.value)}
+                onChange={setImageUrl}
+                uploadFn={uploadClanImageFile}
               />
             </div>
             {formError ? (

@@ -1121,4 +1121,8 @@ export const notificationsApi = {
     api.post<{ success: boolean; sent: number }>('/notifications/broadcast', data),
 };
 
+// Upload an image as any authenticated user (suggestions, clans, profile pictures, polymarket, etc.)
+export const uploadUserImage = (data: { base64Data: string; mimeType: string }) =>
+  api.post<{ imageUrl: string }>('/uploads/image', data);
+
 export default api;

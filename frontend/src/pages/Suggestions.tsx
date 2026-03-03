@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { suggestionsApi, Suggestion } from '../services/api';
+import { suggestionsApi, Suggestion, uploadUserImage } from '../services/api';
+import { ImagePicker } from '@/components/ui/image-picker';
 import { ChevronUp, ChevronDown, Loader2, Plus, Trash2, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -81,6 +82,22 @@ export default function Suggestions() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const uploadSuggestionImageFile = async (file: File): Promise<string> => {
+    const base64Data = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const raw = typeof reader.result === 'string' ? reader.result : '';
+        const payload = raw.includes(',') ? raw.split(',')[1] : '';
+        if (!payload) reject(new Error('Invalid file'));
+        else resolve(payload);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    const res = await uploadUserImage({ base64Data, mimeType: file.type });
+    return res.data.imageUrl;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -690,37 +707,11 @@ export default function Suggestions() {
               </p>
             </div>
             <div className="space-y-2">
-              <Input
+              <ImagePicker
                 value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="https://..."
-                className="h-12 bg-transparent border-border/50"
+                onChange={setImageUrl}
+                uploadFn={uploadSuggestionImageFile}
               />
-              {imageUrl && (
-                <div className="relative">
-                  <Card>
-                    <CardContent className="p-0">
-                      <img
-                        src={imageUrl}
-                        alt="Preview"
-                        className="max-h-40 rounded-md object-cover"
-                      />
-                    </CardContent>
-                  </Card>
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      setImageUrl('');
-                    }}
-                    variant="ghost"
-                    size="icon"
-                    className="absolute top-2 right-2 h-7 w-7 bg-background/80"
-                    aria-label="Retirer l'image"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button

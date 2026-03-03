@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { marketplaceApi } from '../services/api';
+import { marketplaceApi, uploadUserImage } from '../services/api';
+import { ImagePicker } from '@/components/ui/image-picker';
 import { Loader2, Palette, Camera, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -172,6 +173,22 @@ export default function Inventory() {
       setUsing(null);
       setColorPickerItem(null);
     }
+  };
+
+  const uploadProfileImageFile = async (file: File): Promise<string> => {
+    const base64Data = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const raw = typeof reader.result === 'string' ? reader.result : '';
+        const payload = raw.includes(',') ? raw.split(',')[1] : '';
+        if (!payload) reject(new Error('Invalid file'));
+        else resolve(payload);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    const res = await uploadUserImage({ base64Data, mimeType: file.type });
+    return res.data.imageUrl;
   };
 
   // Apply profile picture
@@ -441,9 +458,9 @@ export default function Inventory() {
             {imageUrl && (
               <div className="flex justify-center">
                 <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-border">
-                  <img 
-                    src={imageUrl} 
-                    alt="Preview" 
+                  <img
+                    src={imageUrl}
+                    alt="Preview"
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = 'none';
@@ -453,15 +470,12 @@ export default function Inventory() {
               </div>
             )}
 
-            {/* URL input */}
-            <div className="space-y-2">
-              <Input
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="https://..."
-                className="bg-transparent"
-              />
-            </div>
+            <ImagePicker
+              value={imageUrl}
+              onChange={setImageUrl}
+              uploadFn={uploadProfileImageFile}
+              hidePreview
+            />
           </div>
 
           <DialogFooter>

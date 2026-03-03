@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { polymarketApi, PolymarketEvent, PolymarketSuggestion, PolymarketBet } from '../services/api';
+import { polymarketApi, PolymarketEvent, PolymarketSuggestion, PolymarketBet, uploadUserImage } from '../services/api';
+import { ImagePicker } from '@/components/ui/image-picker';
 import {
   Loader2, Plus, Calendar,
   CheckCircle2, XCircle, DollarSign, Users,
@@ -67,6 +68,24 @@ export default function Polymarket() {
   const [noOdds, setNoOdds] = useState('');
   const [approveEventDate, setApproveEventDate] = useState('');
   const [resolution, setResolution] = useState<'YES' | 'NO'>('YES');
+  const [createEventImageUrl, setCreateEventImageUrl] = useState('');
+  const [editEventImageUrl, setEditEventImageUrl] = useState('');
+
+  const uploadPolymarketImageFile = async (file: File): Promise<string> => {
+    const base64Data = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const raw = typeof reader.result === 'string' ? reader.result : '';
+        const payload = raw.includes(',') ? raw.split(',')[1] : '';
+        if (!payload) reject(new Error('Invalid file'));
+        else resolve(payload);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    const res = await uploadUserImage({ base64Data, mimeType: file.type });
+    return res.data.imageUrl;
+  };
   const [editSubmitting, setEditSubmitting] = useState(false);
 
   const formatDateTimeLocal = (value?: string | null) => {
@@ -294,6 +313,7 @@ export default function Polymarket() {
 
   const openEditEventDialog = (event: PolymarketEvent) => {
     setSelectedEventForEdit(event);
+    setEditEventImageUrl(event.imageUrl || '');
     setEditEventDialogOpen(true);
   };
 
@@ -305,7 +325,7 @@ export default function Polymarket() {
     const titleValue = (formData.get('title') as string)?.trim();
     const descriptionValue = (formData.get('description') as string)?.trim();
     const eventDateValue = formData.get('eventDate') as string;
-    const imageUrlValue = ((formData.get('imageUrl') as string) || '').trim();
+    const imageUrlValue = editEventImageUrl.trim();
     const yesOddsValue = parseFloat(formData.get('yesOdds') as string);
     const noOddsValue = parseFloat(formData.get('noOdds') as string);
     const statusValue = formData.get('status') as PolymarketEvent['status'];
@@ -338,6 +358,7 @@ export default function Polymarket() {
 
       setEditEventDialogOpen(false);
       setSelectedEventForEdit(null);
+      setEditEventImageUrl('');
       fetchData();
     } catch (error: any) {
       toast({
@@ -911,15 +932,12 @@ export default function Polymarket() {
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium">Image (optionnel - URL uniquement)</label>
-              <Input
+              <label className="text-sm font-medium">Image (optionnel)</label>
+              <ImagePicker
                 value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="https://..."
+                onChange={setImageUrl}
+                uploadFn={uploadPolymarketImageFile}
               />
-              {imageUrl && (
-                <img src={imageUrl} alt="Preview" className="w-full h-48 object-cover rounded-md mt-2" />
-              )}
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setSuggestionDialogOpen(false)}>
@@ -1157,8 +1175,12 @@ export default function Polymarket() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Image URL (optionnel)</label>
-                <Input name="imageUrl" type="url" defaultValue={selectedEventForEdit.imageUrl || ''} />
+                <label className="text-sm font-medium">Image (optionnel)</label>
+                <ImagePicker
+                  value={editEventImageUrl}
+                  onChange={setEditEventImageUrl}
+                  uploadFn={uploadPolymarketImageFile}
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -1229,7 +1251,7 @@ export default function Polymarket() {
               const data = {
                 title: formData.get('title') as string,
                 description: formData.get('description') as string,
-                imageUrl: formData.get('imageUrl') as string || undefined,
+                imageUrl: createEventImageUrl.trim() || undefined,
                 eventDate: formData.get('eventDate') as string,
                 yesOdds: parseFloat(formData.get('yesOdds') as string),
                 noOdds: parseFloat(formData.get('noOdds') as string),
@@ -1241,6 +1263,7 @@ export default function Polymarket() {
                   description: 'L\'événement a été créé avec succès',
                 });
                 setCreateEventDialogOpen(false);
+                setCreateEventImageUrl('');
                 fetchData();
               } catch (error: any) {
                 toast({
@@ -1265,8 +1288,12 @@ export default function Polymarket() {
               <Input name="eventDate" type="datetime-local" required />
             </div>
             <div>
-              <label className="text-sm font-medium">Image URL (optionnel)</label>
-              <Input name="imageUrl" type="url" />
+              <label className="text-sm font-medium">Image (optionnel)</label>
+              <ImagePicker
+                value={createEventImageUrl}
+                onChange={setCreateEventImageUrl}
+                uploadFn={uploadPolymarketImageFile}
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>

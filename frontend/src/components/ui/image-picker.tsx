@@ -12,6 +12,7 @@ interface ImagePickerProps {
   disabled?: boolean;
   placeholder?: string;
   className?: string;
+  hidePreview?: boolean;
 }
 
 export function ImagePicker({
@@ -21,6 +22,7 @@ export function ImagePicker({
   disabled,
   placeholder = 'https://...',
   className,
+  hidePreview = false,
 }: ImagePickerProps) {
   const [uploading, setUploading] = useState(false);
   const [dropzoneActive, setDropzoneActive] = useState(false);
@@ -112,7 +114,7 @@ export function ImagePicker({
         className="bg-transparent"
       />
 
-      {value && (
+      {!hidePreview && value && (
         <div className="relative">
           <img
             src={resolveImageUrl(value)}
