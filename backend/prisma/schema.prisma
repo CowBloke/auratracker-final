@@ -103,19 +103,20 @@ model UserBadge {
 }
 
 // Item Model
-// type: "CONSUMABLE" | "COSMETIC" | "UPGRADE"
+// type: "CONSUMABLE" | "COSMETIC" | "UPGRADE" | "GIFT"
 model Item {
   id          String    @id @default(uuid())
   name        String
   description String
-  type        String // CONSUMABLE, COSMETIC, or UPGRADE
+  type        String // CONSUMABLE, COSMETIC, UPGRADE, or GIFT
   price       Int
   imageUrl    String?
   effect      String? // JSON string describing the effect
   expiresAt   DateTime?
   createdAt   DateTime  @default(now())
 
-  userItems UserItem[]
+  userItems       UserItem[]
+  receivedAsGifts Gift[]     @relation("GiftedItem")
 }
 
 // User Inventory
@@ -674,24 +675,27 @@ model GiftTemplate {
 
 // A gift sent from one user to another
 model Gift {
-  id          String    @id @default(uuid())
-  senderId    String
-  receiverId  String
-  message     String?   // Custom message from the gifter
-  moneyAmount Int       @default(0) // Money included (max 1000)
-  auraAmount  Int       @default(0) // Aura included in the gift
-  isOpened    Boolean   @default(false)
-  openedAt    DateTime?
-  createdAt   DateTime  @default(now())
+  id            String    @id @default(uuid())
+  senderId      String
+  receiverId    String
+  message       String?   // Custom message from the gifter
+  moneyAmount   Int       @default(0) // Money included (max 1000)
+  auraAmount    Int       @default(0) // Aura included in the gift
+  giftedItemId  String?   // Item.id when a shop GIFT-type item is sent
+  isOpened      Boolean   @default(false)
+  openedAt      DateTime?
+  createdAt     DateTime  @default(now())
 
-  sender   User       @relation("SentGifts", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver User       @relation("ReceivedGifts", fields: [receiverId], references: [id], onDelete: Cascade)
-  items    GiftItem[]
+  sender      User       @relation("SentGifts", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver    User       @relation("ReceivedGifts", fields: [receiverId], references: [id], onDelete: Cascade)
+  giftedItem  Item?      @relation("GiftedItem", fields: [giftedItemId], references: [id], onDelete: SetNull)
+  items       GiftItem[]
 
   @@index([senderId])
   @@index([receiverId])
   @@index([isOpened])
   @@index([createdAt])
+  @@index([giftedItemId])
 }
 
 // Items included in a gift (references GiftTemplate)

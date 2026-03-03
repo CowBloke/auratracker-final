@@ -128,8 +128,12 @@ export const marketplaceApi = {
   purchase: (data: { itemId: string; quantity?: number }) =>
     api.post('/marketplace/purchase', data),
   getInventory: (userId: string) => api.get(`/marketplace/inventory/${userId}`),
-  useItem: (userItemId: string, effectData?: { color?: string; imageUrl?: string }) => 
+  useItem: (userItemId: string, effectData?: { color?: string; imageUrl?: string }) =>
     api.post('/marketplace/use-item', { userItemId, effectData }),
+  sellGiftItem: (userItemId: string) =>
+    api.post<{ success: boolean; auraEarned: number }>('/marketplace/sell-gift-item', { userItemId }),
+  chuckGiftItem: (userItemId: string) =>
+    api.post<{ success: boolean }>('/marketplace/chuck-gift-item', { userItemId }),
   // Admin
   createItem: (data: {
     name: string;
@@ -1053,6 +1057,8 @@ export interface Gift {
   message: string | null;
   moneyAmount: number;
   auraAmount: number;
+  giftedItemId: string | null;
+  giftedItem: { id: string; name: string; imageUrl: string | null; price: number } | null;
   isOpened: boolean;
   openedAt: string | null;
   createdAt: string;

@@ -27,7 +27,8 @@ interface UserItem {
     id: string;
     name: string;
     description: string;
-    type: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE';
+    type: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE' | 'GIFT';
+    price: number;
     effect?: string;
     imageUrl?: string;
   };
@@ -42,6 +43,7 @@ const typeLabels: Record<string, string> = {
   CONSUMABLE: 'Consommable',
   COSMETIC: 'CosmÇ¸tique',
   UPGRADE: 'AmÇ¸lioration',
+  GIFT: 'Cadeau',
 };
 
 const PRESET_COLORS = [
@@ -56,6 +58,8 @@ export default function Inventory() {
   const [items, setItems] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [using, setUsing] = useState<string | null>(null);
+  const [selling, setSelling] = useState<string | null>(null);
+  const [chucking, setChucking] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Color picker state
@@ -146,6 +150,38 @@ export default function Inventory() {
       });
     } finally {
       setUsing(null);
+    }
+  };
+
+  const handleSellGiftItem = async (userItem: UserItem) => {
+    if (selling) return;
+    setSelling(userItem.id);
+    setMessage(null);
+    try {
+      const res = await marketplaceApi.sellGiftItem(userItem.id);
+      await fetchInventory();
+      setMessage({ type: 'success', text: `Vendu pour ${res.data.auraEarned} aura` });
+      setTimeout(() => setMessage(null), 3000);
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.response?.data?.error || 'Échec' });
+    } finally {
+      setSelling(null);
+    }
+  };
+
+  const handleChuckGiftItem = async (userItem: UserItem) => {
+    if (chucking) return;
+    setChucking(userItem.id);
+    setMessage(null);
+    try {
+      await marketplaceApi.chuckGiftItem(userItem.id);
+      await fetchInventory();
+      setMessage({ type: 'success', text: `${userItem.item.name} jeté` });
+      setTimeout(() => setMessage(null), 3000);
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.response?.data?.error || 'Échec' });
+    } finally {
+      setChucking(null);
     }
   };
 
@@ -330,7 +366,35 @@ export default function Inventory() {
                         </div>
                       </div>
                       
-                      {(userItem.item.type === 'CONSUMABLE' || userItem.item.type === 'COSMETIC') && (
+                      {userItem.item.type === 'GIFT' ? (
+                        <div className="flex gap-2 ml-4 shrink-0">
+                          <Button
+                            onClick={() => handleSellGiftItem(userItem)}
+                            disabled={selling === userItem.id || chucking === userItem.id}
+                            variant="outline"
+                            size="sm"
+                          >
+                            {selling === userItem.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              `Vendre (${Math.floor(userItem.item.price / 2)} aura)`
+                            )}
+                          </Button>
+                          <Button
+                            onClick={() => handleChuckGiftItem(userItem)}
+                            disabled={selling === userItem.id || chucking === userItem.id}
+                            variant="ghost"
+                            size="sm"
+                            className="text-muted-foreground hover:text-destructive"
+                          >
+                            {chucking === userItem.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              'Jeter'
+                            )}
+                          </Button>
+                        </div>
+                      ) : (userItem.item.type === 'CONSUMABLE' || userItem.item.type === 'COSMETIC') ? (
                         <Button
                           onClick={() => handleUseItem(userItem)}
                           disabled={using === userItem.id}
@@ -344,7 +408,7 @@ export default function Inventory() {
                             'Utiliser'
                           )}
                         </Button>
-                      )}
+                      ) : null}
                     </div>
                   );
                 })}

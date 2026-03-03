@@ -319,6 +319,71 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
   }
 });
 
+// Sell a gifted item — removes 1 from inventory and credits half its listed price in aura
+router.post('/sell-gift-item', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+
+    const { userItemId } = req.body;
+    if (!userItemId) return res.status(400).json({ error: 'userItemId is required' });
+
+    const userItem = await prisma.userItem.findUnique({
+      where: { id: userItemId },
+      include: { item: true },
+    });
+
+    if (!userItem) return res.status(404).json({ error: 'Item not found in inventory' });
+    if (userItem.userId !== req.user.id) return res.status(403).json({ error: 'Not your item' });
+    if (userItem.item.type !== 'GIFT') return res.status(400).json({ error: 'Only gift items can be sold this way' });
+
+    const auraEarned = Math.floor(userItem.item.price / 2);
+
+    await prisma.$transaction(async (tx) => {
+      if (userItem.quantity > 1) {
+        await tx.userItem.update({ where: { id: userItemId }, data: { quantity: { decrement: 1 } } });
+      } else {
+        await tx.userItem.delete({ where: { id: userItemId } });
+      }
+      await tx.user.update({ where: { id: req.user!.id }, data: { aura: { increment: auraEarned } } });
+    });
+
+    res.json({ success: true, auraEarned });
+  } catch (error) {
+    console.error('Sell gift item error:', error);
+    res.status(500).json({ error: 'Failed to sell item' });
+  }
+});
+
+// Chuck (discard) a gifted item — removes 1 from inventory with no reward
+router.post('/chuck-gift-item', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+
+    const { userItemId } = req.body;
+    if (!userItemId) return res.status(400).json({ error: 'userItemId is required' });
+
+    const userItem = await prisma.userItem.findUnique({
+      where: { id: userItemId },
+      include: { item: true },
+    });
+
+    if (!userItem) return res.status(404).json({ error: 'Item not found in inventory' });
+    if (userItem.userId !== req.user.id) return res.status(403).json({ error: 'Not your item' });
+    if (userItem.item.type !== 'GIFT') return res.status(400).json({ error: 'Only gift items can be chucked' });
+
+    if (userItem.quantity > 1) {
+      await prisma.userItem.update({ where: { id: userItemId }, data: { quantity: { decrement: 1 } } });
+    } else {
+      await prisma.userItem.delete({ where: { id: userItemId } });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Chuck gift item error:', error);
+    res.status(500).json({ error: 'Failed to chuck item' });
+  }
+});
+
 // Admin: Create item
 router.post('/admin/item', authMiddleware, adminMiddleware, validate(createItemSchema), async (req: AuthRequest, res: Response) => {
   try {

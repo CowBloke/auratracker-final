@@ -81,6 +81,7 @@ router.get('/inbox', authMiddleware, async (req: AuthRequest, res: Response) => 
       include: {
         sender: { select: { id: true, username: true, profilePicture: true } },
         items: { include: { giftTemplate: true } },
+        giftedItem: { select: { id: true, name: true, imageUrl: true, price: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -116,6 +117,7 @@ router.get('/received', authMiddleware, async (req: AuthRequest, res: Response) 
       include: {
         sender: { select: { id: true, username: true, profilePicture: true } },
         items: { include: { giftTemplate: true } },
+        giftedItem: { select: { id: true, name: true, imageUrl: true, price: true } },
       },
       orderBy: { openedAt: 'desc' },
     });
@@ -239,6 +241,7 @@ router.post('/:id/open', authMiddleware, async (req: AuthRequest, res: Response)
       include: {
         sender: { select: { id: true, username: true, profilePicture: true } },
         items: { include: { giftTemplate: true } },
+        giftedItem: { select: { id: true, name: true, imageUrl: true, price: true } },
       },
     });
 
@@ -254,40 +257,55 @@ router.post('/:id/open', authMiddleware, async (req: AuthRequest, res: Response)
       return res.status(400).json({ error: 'Gift already opened' });
     }
 
-    // Open the gift and credit money + aura in a transaction
-    await prisma.$transaction(async (tx) => {
-      await tx.gift.update({
-        where: { id },
-        data: { isOpened: true, openedAt: new Date() },
+    if (gift.giftedItemId) {
+      // Shop item gift — add the item to the receiver's inventory
+      await prisma.$transaction(async (tx) => {
+        await tx.gift.update({
+          where: { id },
+          data: { isOpened: true, openedAt: new Date() },
+        });
+        await tx.userItem.upsert({
+          where: { userId_itemId: { userId: req.user!.id, itemId: gift.giftedItemId! } },
+          create: { userId: req.user!.id, itemId: gift.giftedItemId!, quantity: 1 },
+          update: { quantity: { increment: 1 } },
+        });
+      });
+    } else {
+      // Aura/money gift — credit directly
+      await prisma.$transaction(async (tx) => {
+        await tx.gift.update({
+          where: { id },
+          data: { isOpened: true, openedAt: new Date() },
+        });
+
+        const creditData: Record<string, unknown> = {};
+        if (gift.moneyAmount > 0) {
+          creditData.money = { increment: gift.moneyAmount };
+        }
+        if (gift.auraAmount > 0) {
+          creditData.aura = { increment: gift.auraAmount };
+        }
+        if (Object.keys(creditData).length > 0) {
+          await tx.user.update({
+            where: { id: req.user!.id },
+            data: creditData,
+          });
+        }
       });
 
-      const creditData: Record<string, unknown> = {};
-      if (gift.moneyAmount > 0) {
-        creditData.money = { increment: gift.moneyAmount };
-      }
-      if (gift.auraAmount > 0) {
-        creditData.aura = { increment: gift.auraAmount };
-      }
-      if (Object.keys(creditData).length > 0) {
-        await tx.user.update({
-          where: { id: req.user!.id },
-          data: creditData,
+      // Emit balance update to receiver
+      if (gift.moneyAmount > 0 || gift.auraAmount > 0) {
+        const updatedReceiver = await prisma.user.findUnique({
+          where: { id: req.user.id },
+          select: { aura: true, money: true },
         });
-      }
-    });
-
-    // Emit balance update to receiver
-    if (gift.moneyAmount > 0 || gift.auraAmount > 0) {
-      const updatedReceiver = await prisma.user.findUnique({
-        where: { id: req.user.id },
-        select: { aura: true, money: true },
-      });
-      if (updatedReceiver) {
-        io.emit('economy:balance-update', {
-          userId: req.user.id,
-          aura: updatedReceiver.aura,
-          money: updatedReceiver.money,
-        });
+        if (updatedReceiver) {
+          io.emit('economy:balance-update', {
+            userId: req.user.id,
+            aura: updatedReceiver.aura,
+            money: updatedReceiver.money,
+          });
+        }
       }
     }
 
@@ -348,11 +366,13 @@ router.post('/send-item', authMiddleware, async (req: AuthRequest, res: Response
           receiverId,
           message: message || null,
           moneyAmount: 0,
-          auraAmount: item.price,
+          auraAmount: 0,
+          giftedItemId: itemId,
         },
         include: {
           sender: { select: { id: true, username: true, profilePicture: true } },
           items: { include: { giftTemplate: true } },
+          giftedItem: { select: { id: true, name: true, imageUrl: true, price: true } },
         },
       });
     });
@@ -373,9 +393,9 @@ router.post('/send-item', authMiddleware, async (req: AuthRequest, res: Response
       title: 'Cadeau reçu !',
       body: gift.message
         ? `${gift.sender.username} t'a envoyé "${item.name}" : "${gift.message}"`
-        : `${gift.sender.username} t'a envoyé "${item.name}" (${item.price} aura).`,
-      data: { senderId: gift.sender.id, senderUsername: gift.sender.username, itemName: item.name, auraAmount: item.price, giftId: gift.id },
-      link: '/inbox',
+        : `${gift.sender.username} t'a envoyé "${item.name}" — à récupérer dans ton inventaire.`,
+      data: { senderId: gift.sender.id, senderUsername: gift.sender.username, itemName: item.name, giftId: gift.id },
+      link: '/inventory',
       icon: 'gift',
     }).catch(() => {});
 

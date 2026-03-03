@@ -2,7 +2,6 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { useEffect, type CSSProperties } from 'react';
 import { ChatSidebarProvider, ChatSidebarWrapper, useChatSidebar } from '../chat/ChatSidebarWrapper';
 import ChatBubble from '../chat/ChatBubble';
-import GiftBubble from '../gifts/GiftBubble';
 import UpdatePopupModal from './UpdatePopupModal';
 import BombPartyJoinPrompt from '../game/BombPartyJoinPrompt';
 import BombPartyPlayAgainPrompt from '../game/BombPartyPlayAgainPrompt';
@@ -25,7 +24,6 @@ function ChatBubbleContainer() {
       className="fixed bottom-6 z-50 flex items-end gap-3 transition-all"
       style={{ right: open ? 'calc(20rem + 1.5rem)' : '1.5rem' }}
     >
-      <GiftBubble />
       <ChatBubble />
     </div>
   );

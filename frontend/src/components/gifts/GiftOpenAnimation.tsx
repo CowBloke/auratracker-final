@@ -144,20 +144,21 @@ export default function GiftOpenAnimation({ gift, onComplete, onClose }: GiftOpe
 
           {/* Contents */}
           <div className="w-full space-y-3">
-            {gift.auraAmount > 0 && (
-              <div className="bg-white/10 rounded-xl p-4 text-center space-y-2">
-                {gift.auraAmount > 0 && (
-                  <>
-                    <p className="text-purple-400 text-2xl font-bold">{gift.auraAmount}</p>
-                    <p className="text-white/50 text-xs">aura</p>
-                  </>
-                )}
+            {gift.giftedItem ? (
+              <div className="bg-white/10 rounded-xl p-4 text-center space-y-1">
+                <p className="text-amber-400 text-lg font-bold">{gift.giftedItem.name}</p>
+                <p className="text-white/50 text-xs">ajouté à ton inventaire</p>
               </div>
-            )}
+            ) : gift.auraAmount > 0 ? (
+              <div className="bg-white/10 rounded-xl p-4 text-center space-y-2">
+                <p className="text-purple-400 text-2xl font-bold">{gift.auraAmount}</p>
+                <p className="text-white/50 text-xs">aura</p>
+              </div>
+            ) : null}
 
             {gift.message && (
               <div className="bg-white/10 rounded-xl p-4 text-center">
-                <p className="text-white ">"{gift.message}"</p>
+                <p className="text-white">"{gift.message}"</p>
               </div>
             )}
           </div>
