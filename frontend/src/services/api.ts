@@ -1080,4 +1080,41 @@ export const giftsApi = {
   open: (id: string) => api.post<{ gift: Gift }>(`/gifts/${id}/open`),
 };
 
+// ─── Notifications API ────────────────────────────────────────────────────────
+
+export interface Notification {
+  id: string;
+  userId: string;
+  type: string;
+  title: string;
+  body: string;
+  data: Record<string, unknown> | null;
+  link: string | null;
+  icon: string | null;
+  isRead: boolean;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface NotificationsResponse {
+  notifications: Notification[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export const notificationsApi = {
+  getAll: (params?: { page?: number; limit?: number; unreadOnly?: boolean }) =>
+    api.get<NotificationsResponse>('/notifications', { params }),
+  getUnreadCount: () => api.get<{ count: number }>('/notifications/unread/count'),
+  markRead: (id: string) => api.post<{ notification: Notification }>(`/notifications/${id}/read`),
+  markAllRead: () => api.post<{ success: boolean }>('/notifications/read-all'),
+  delete: (id: string) => api.delete<{ success: boolean }>(`/notifications/${id}`),
+  deleteAllRead: () => api.delete<{ success: boolean }>('/notifications'),
+  /** Admin only */
+  broadcast: (data: { title: string; body: string; link?: string; icon?: string }) =>
+    api.post<{ success: boolean; sent: number }>('/notifications/broadcast', data),
+};
+
 export default api;

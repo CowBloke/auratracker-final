@@ -3,6 +3,7 @@ import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { validate, transferSchema, giftAuraSchema } from '../middleware/validation.js';
 import { logEconomy } from '../utils/logger.js';
+import { createNotification } from '../utils/notifications.js';
 
 const router = Router();
 
@@ -128,6 +129,30 @@ router.post('/transfer', authMiddleware, validate(transferSchema), async (req: A
       sender: { id: sender.id, username: sender.username },
       receiver: { id: receiver.id, username: receiver.username },
     });
+
+    // Notifications
+    if (auraAmount > 0) {
+      createNotification({
+        userId: receiverId,
+        type: 'AURA_RECEIVED',
+        title: `+${auraAmount} aura reçus`,
+        body: `${sender.username} vous a transféré ${auraAmount} aura.`,
+        data: { senderId: sender.id, senderUsername: sender.username, amount: auraAmount },
+        link: `/profile/${sender.id}`,
+        icon: 'star',
+      }).catch(() => {});
+    }
+    if (moneyAmount > 0) {
+      createNotification({
+        userId: receiverId,
+        type: 'MONEY_RECEIVED',
+        title: `+$${moneyAmount} reçus`,
+        body: `${sender.username} vous a transféré $${moneyAmount}.`,
+        data: { senderId: sender.id, senderUsername: sender.username, amount: moneyAmount },
+        link: `/profile/${sender.id}`,
+        icon: 'dollar-sign',
+      }).catch(() => {});
+    }
 
     // Log transfer
     logEconomy('transfer', req.user.id, sender.username, receiverId, receiver.username, {
@@ -321,6 +346,19 @@ router.post('/gift-aura', authMiddleware, validate(giftAuraSchema), async (req: 
       sender: { id: sender.id, username: sender.username },
       receiver: { id: receiver.id, username: receiver.username },
     });
+
+    // Notification
+    createNotification({
+      userId: receiverId,
+      type: 'AURA_RECEIVED',
+      title: `+${amount} aura reçus`,
+      body: message?.trim()
+        ? `${sender.username} : "${message.trim()}"`
+        : `${sender.username} vous a offert ${amount} aura.`,
+      data: { senderId: sender.id, senderUsername: sender.username, amount, message: message?.trim() || null },
+      link: `/profile/${sender.id}`,
+      icon: 'star',
+    }).catch(() => {});
 
     // Log gift aura
     logEconomy('gift_aura', req.user.id, sender.username, receiverId, receiver.username, {

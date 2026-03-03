@@ -33,6 +33,7 @@ const STATIC_PAGE_META: Record<string, PageMeta> = {
   '/quests': { title: 'Quêtes', description: 'Objectifs actifs et récompenses.' },
   '/suggestions': { title: 'Suggestions', description: "Idées en cours, votes et suivi d'avancement." },
   '/settings': { title: 'Paramètres', description: 'Thème et personnalisation de l’interface.' },
+  '/inbox': { title: 'Boîte de réception', description: 'Notifications et messages reçus.' },
 };
 
 function humanizeSegment(segment: string) {
