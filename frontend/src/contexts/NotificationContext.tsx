@@ -75,7 +75,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     import('../services/socket').then(({ initSocket }) => {
       const token = localStorage.getItem('token');
       if (!token) return;
-      const socket = initSocket(token);
+      const socket = initSocket();
       socketRef.current = socket;
 
       socket.on('notification:new', (n: Notification) => {
