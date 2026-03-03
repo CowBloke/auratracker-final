@@ -16,15 +16,18 @@ import {
   sortableKeyboardCoordinates,
   useSortable,
 } from '@dnd-kit/sortable';
+import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts';
 import { CSS } from '@dnd-kit/utilities';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
-import { Gift, GiftStatus, giftsApi } from '../services/api';
-import { Gift as GiftIcon, GripVertical, Inbox, Send, History, Clock3 } from 'lucide-react';
+import { Gift, GiftStatus, UserDailyQuest, auraCoinApi, giftsApi, leaderboardsApi, marketplaceApi, questsApi } from '../services/api';
+import { GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
+import { Progress } from '@/components/ui/progress';
 import GiftDialog from '@/components/gifts/GiftDialog';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
@@ -37,10 +40,29 @@ interface GameShortcut {
   image?: string;
 }
 
-type DashboardWidgetId = 'welcome' | 'shortcuts' | 'live' | 'stats' | 'gifts';
+type DashboardWidgetId = 'welcome' | 'shortcuts' | 'live' | 'stats' | 'gifts' | 'auracoin' | 'quests' | 'quick-actions' | 'inventory' | 'aura-leaders';
+
+interface DashboardInventoryItem {
+  id: string;
+  quantity: number;
+  item: {
+    id: string;
+    name: string;
+    type: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE' | 'GIFT';
+  };
+}
+
+interface AuraLeaderboardEntry {
+  rank: number;
+  userId: string;
+  username: string;
+  usernameColor?: string | null;
+  value: number;
+}
 
 const shortcutStorageKey = 'auratracker:dashboard-shortcuts';
 const dashboardLayoutStorageKey = 'auratracker:dashboard-layout';
+const dashboardVisibleWidgetsStorageKey = 'auratracker:dashboard-visible-widgets';
 const maxShortcutWidgets = 4;
 
 const welcomeTemplates = [
@@ -85,10 +107,39 @@ const gameShortcuts: GameShortcut[] = [
 ];
 
 const defaultShortcuts = ['doodle-jump', 'flappy-bird', 'bomb-party', '2048'];
-const defaultDashboardLayout: DashboardWidgetId[] = ['welcome', 'shortcuts', 'live', 'stats', 'gifts'];
+const quickActions = [
+  { label: 'Créer party', path: '/party' },
+  { label: 'Voir quêtes', path: '/quests' },
+  { label: 'Ouvrir shop', path: '/games/market' },
+  { label: 'Classements', path: '/leaderboards' },
+];
+
+const auraLeadersChartConfig = {
+  aura: {
+    label: 'Aura',
+    theme: {
+      light: 'hsl(var(--primary))',
+      dark: 'hsl(var(--primary))',
+    },
+  },
+} satisfies ChartConfig;
+
+const defaultDashboardLayout: DashboardWidgetId[] = ['welcome', 'quick-actions', 'shortcuts', 'quests', 'auracoin', 'aura-leaders', 'inventory', 'live', 'stats', 'gifts'];
+const dashboardWidgetLabels: Record<DashboardWidgetId, { title: string; description: string }> = {
+  welcome: { title: 'Accueil', description: 'Message de bienvenue.' },
+  'quick-actions': { title: 'Actions rapides', description: 'Liens utiles du dashboard.' },
+  shortcuts: { title: 'Raccourcis jeux', description: 'Acces rapide a tes jeux favoris.' },
+  quests: { title: 'Quetes du jour', description: 'Suivi des quetes actives.' },
+  auracoin: { title: 'Aura Coin', description: 'Prix et variation du marche.' },
+  'aura-leaders': { title: 'Top Aura', description: 'Utilisateurs avec le plus d aura.' },
+  inventory: { title: 'Inventaire', description: 'Resume de tes objets.' },
+  live: { title: 'Activite des parties', description: 'Parties ouvertes en direct.' },
+  stats: { title: 'Stats', description: 'Vue rapide de tes ressources.' },
+  gifts: { title: 'Cadeaux', description: 'Boite, envois et historique.' },
+};
 
 const isDashboardWidgetId = (value: string): value is DashboardWidgetId =>
-  ['welcome', 'shortcuts', 'live', 'stats', 'gifts'].includes(value);
+  ['welcome', 'shortcuts', 'live', 'stats', 'gifts', 'auracoin', 'quests', 'quick-actions', 'inventory', 'aura-leaders'].includes(value);
 
 function SortableDashboardWidget({
   widgetId,
@@ -145,7 +196,7 @@ function ShortcutTile({ shortcut }: { shortcut: GameShortcut }) {
     <Link
       to={shortcut.path}
       className={cn(
-        "group relative flex min-h-[164px] overflow-hidden rounded-lg border p-4 shadow-sm transition hover:border-foreground/30",
+        "group relative flex aspect-square overflow-hidden rounded-lg border p-4 shadow-sm transition hover:border-foreground/30",
         shortcut.image ? "text-white" : "bg-card hover:bg-accent/50"
       )}
     >
@@ -182,6 +233,16 @@ function coerceDashboardLayout(value: unknown): DashboardWidgetId[] | null {
   return normalized;
 }
 
+function coerceVisibleDashboardWidgets(value: unknown): DashboardWidgetId[] | null {
+  if (!Array.isArray(value)) return null;
+
+  const normalized = value.filter((item): item is DashboardWidgetId =>
+    typeof item === 'string' && isDashboardWidgetId(item)
+  );
+
+  return Array.from(new Set(normalized));
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const {
@@ -206,7 +267,16 @@ export default function Dashboard() {
   const [shortcutWidgets, setShortcutWidgets] = useState<string[]>(defaultShortcuts);
   const [dashboardLayout, setDashboardLayout] = useState<DashboardWidgetId[]>(defaultDashboardLayout);
   const [dashboardLayoutLoaded, setDashboardLayoutLoaded] = useState(false);
+  const [visibleWidgets, setVisibleWidgets] = useState<DashboardWidgetId[]>(defaultDashboardLayout);
+  const [visibleWidgetsLoaded, setVisibleWidgetsLoaded] = useState(false);
+  const [widgetsDialogOpen, setWidgetsDialogOpen] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const [auraCoinPrice, setAuraCoinPrice] = useState<number | null>(null);
+  const [auraCoinPreviousPrice, setAuraCoinPreviousPrice] = useState<number | null>(null);
+  const [questWidgets, setQuestWidgets] = useState<UserDailyQuest[]>([]);
+  const [availableQuestCount, setAvailableQuestCount] = useState(0);
+  const [inventoryItems, setInventoryItems] = useState<DashboardInventoryItem[]>([]);
+  const [auraLeaders, setAuraLeaders] = useState<AuraLeaderboardEntry[]>([]);
 
   const shortcutMap = useMemo(() => new Map(gameShortcuts.map((item) => [item.id, item])), []);
   const orderedShortcuts = useMemo(
@@ -222,6 +292,10 @@ export default function Dashboard() {
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
+  );
+  const visibleDashboardLayout = useMemo(
+    () => dashboardLayout.filter((widgetId) => visibleWidgets.includes(widgetId)),
+    [dashboardLayout, visibleWidgets]
   );
 
   useEffect(() => {
@@ -278,10 +352,15 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [inboxRes, receivedRes, statusRes] = await Promise.allSettled([
+        const [inboxRes, receivedRes, statusRes, auraCoinRes, myQuestsRes, dailyQuestsRes, inventoryRes, auraLeadersRes] = await Promise.allSettled([
           giftsApi.getInbox(),
           giftsApi.getReceived(),
           giftsApi.getStatus(),
+          auraCoinApi.getPrice(2),
+          questsApi.getMyQuests(),
+          questsApi.getDaily(),
+          user?.id ? marketplaceApi.getInventory(user.id) : Promise.resolve({ data: { items: [] as DashboardInventoryItem[] } }),
+          leaderboardsApi.get('aura', { limit: 5 }),
         ]);
 
         if (inboxRes.status === 'fulfilled') {
@@ -295,6 +374,28 @@ export default function Dashboard() {
         if (statusRes.status === 'fulfilled') {
           setGiftStatus(statusRes.value.data);
         }
+
+        if (auraCoinRes.status === 'fulfilled') {
+          const { currentPrice, history } = auraCoinRes.value.data;
+          setAuraCoinPrice(currentPrice);
+          setAuraCoinPreviousPrice(history[1]?.price ?? history[0]?.price ?? currentPrice);
+        }
+
+        if (myQuestsRes.status === 'fulfilled') {
+          setQuestWidgets(myQuestsRes.value.data.userQuests || []);
+        }
+
+        if (dailyQuestsRes.status === 'fulfilled') {
+          setAvailableQuestCount(dailyQuestsRes.value.data.quests?.length || 0);
+        }
+
+        if (inventoryRes.status === 'fulfilled') {
+          setInventoryItems((inventoryRes.value.data.items || []) as DashboardInventoryItem[]);
+        }
+
+        if (auraLeadersRes.status === 'fulfilled') {
+          setAuraLeaders((auraLeadersRes.value.data.rankings || []) as AuraLeaderboardEntry[]);
+        }
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
       } finally {
@@ -305,7 +406,7 @@ export default function Dashboard() {
 
     fetchData();
     fetchPublicParties();
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -325,6 +426,20 @@ export default function Dashboard() {
       socket.off('gift:received', handleGiftReceived);
     };
   }, [socket]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleAuraCoinPriceUpdate = (data: { price: number }) => {
+      setAuraCoinPreviousPrice((prev) => auraCoinPrice ?? prev);
+      setAuraCoinPrice(data.price);
+    };
+
+    socket.on('auracoin:price-update', handleAuraCoinPriceUpdate);
+    return () => {
+      socket.off('auracoin:price-update', handleAuraCoinPriceUpdate);
+    };
+  }, [socket, auraCoinPrice]);
 
   useEffect(() => {
     try {
@@ -362,6 +477,22 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
+    try {
+      const stored = localStorage.getItem(dashboardVisibleWidgetsStorageKey);
+      if (!stored) return;
+      const parsed = JSON.parse(stored);
+      const widgets = coerceVisibleDashboardWidgets(parsed);
+      if (widgets) {
+        setVisibleWidgets(widgets);
+      }
+    } catch {
+      // Ignore localStorage parse failures.
+    } finally {
+      setVisibleWidgetsLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
     if (!shortcutsLoaded) return;
     try {
       localStorage.setItem(shortcutStorageKey, JSON.stringify(shortcutWidgets));
@@ -378,6 +509,15 @@ export default function Dashboard() {
       // Ignore localStorage write failures.
     }
   }, [dashboardLayoutLoaded, dashboardLayout]);
+
+  useEffect(() => {
+    if (!visibleWidgetsLoaded) return;
+    try {
+      localStorage.setItem(dashboardVisibleWidgetsStorageKey, JSON.stringify(visibleWidgets));
+    } catch {
+      // Ignore localStorage write failures.
+    }
+  }, [visibleWidgetsLoaded, visibleWidgets]);
 
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
@@ -425,6 +565,32 @@ export default function Dashboard() {
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   }, [giftStatus?.nextRefillAt, now]);
 
+  const auraCoinDelta = useMemo(() => {
+    if (auraCoinPrice === null || auraCoinPreviousPrice === null || auraCoinPreviousPrice === 0) return null;
+    return ((auraCoinPrice - auraCoinPreviousPrice) / auraCoinPreviousPrice) * 100;
+  }, [auraCoinPrice, auraCoinPreviousPrice]);
+
+  const completedQuestCount = useMemo(
+    () => questWidgets.filter((quest) => quest.isCompleted && !quest.isClaimed).length,
+    [questWidgets]
+  );
+  const totalInventoryCount = useMemo(
+    () => inventoryItems.reduce((sum, item) => sum + item.quantity, 0),
+    [inventoryItems]
+  );
+  const giftInventoryCount = useMemo(
+    () => inventoryItems.filter((item) => item.item.type === 'GIFT').reduce((sum, item) => sum + item.quantity, 0),
+    [inventoryItems]
+  );
+  const auraLeadersChartData = useMemo(
+    () =>
+      auraLeaders.map((entry) => ({
+        username: entry.username,
+        aura: Number(entry.value || 0),
+      })),
+    [auraLeaders]
+  );
+
   useEffect(() => {
     const nextRefillTimestamp = getNextRefillTimestamp(giftStatus?.nextRefillAt);
     if (!nextRefillTimestamp) return;
@@ -445,19 +611,80 @@ export default function Dashboard() {
   return (
     <>
       <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-4">
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className={TYPOGRAPHY.H3}>Dashboard personnalisable</h1>
-            <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground")}>
-              Glisse les widgets pour changer l&apos;ordre. Tous les widgets gardent la meme taille et le contenu long se scrolle.
-            </p>
+        <div className="flex justify-end">
+          <div className="flex flex-wrap justify-end gap-2">
+            <Dialog open={widgetsDialogOpen} onOpenChange={setWidgetsDialogOpen}>
+              <Button variant="outline" onClick={() => setWidgetsDialogOpen(true)}>
+                Afficher / masquer
+              </Button>
+              <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className={TYPOGRAPHY.H5}>Widgets du dashboard</DialogTitle>
+                  <DialogDescription>
+                    Choisis les widgets a afficher sur la page.
+                  </DialogDescription>
+                </DialogHeader>
+                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>
+                  {visibleWidgets.length}/{defaultDashboardLayout.length} visibles
+                </p>
+                <div className="space-y-3">
+                  {defaultDashboardLayout.map((widgetId) => {
+                    const widget = dashboardWidgetLabels[widgetId];
+                    const checked = visibleWidgets.includes(widgetId);
+                    const isLastVisible = checked && visibleWidgets.length === 1;
+
+                    return (
+                      <label
+                        key={widgetId}
+                        className={cn(
+                          "flex items-start gap-3 rounded-xl border px-3 py-3 transition",
+                          checked ? "border-foreground/30 bg-muted/40" : "border-border/50",
+                          isLastVisible && "opacity-50"
+                        )}
+                      >
+                        <Checkbox
+                          checked={checked}
+                          disabled={isLastVisible}
+                          onCheckedChange={() => {
+                            setVisibleWidgets((prev) =>
+                              prev.includes(widgetId)
+                                ? prev.length === 1
+                                  ? prev
+                                  : prev.filter((id) => id !== widgetId)
+                                : [...prev, widgetId]
+                            );
+                          }}
+                          className="mt-1"
+                        />
+                        <div className="min-w-0">
+                          <p className="font-medium">{widget.title}</p>
+                          <p className="text-sm text-muted-foreground">{widget.description}</p>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+                <DialogFooter className="gap-2 sm:gap-0">
+                  <Button
+                    variant="ghost"
+                    onClick={() => setVisibleWidgets(defaultDashboardLayout)}
+                  >
+                    Tout afficher
+                  </Button>
+                  <Button onClick={() => setWidgetsDialogOpen(false)}>Terminer</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setDashboardLayout(defaultDashboardLayout);
+                setVisibleWidgets(defaultDashboardLayout);
+              }}
+            >
+              Réinitialiser la grille
+            </Button>
           </div>
-          <Button
-            variant="ghost"
-            onClick={() => setDashboardLayout(defaultDashboardLayout)}
-          >
-            Réinitialiser la grille
-          </Button>
         </div>
 
         <DndContext
@@ -466,11 +693,11 @@ export default function Dashboard() {
           onDragEnd={handleDashboardDragEnd}
         >
           <SortableContext
-            items={dashboardLayout}
+            items={visibleDashboardLayout}
             strategy={rectSortingStrategy}
           >
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              {dashboardLayout.map((widgetId) => (
+              {visibleDashboardLayout.map((widgetId) => (
                 <SortableDashboardWidget
                   key={widgetId}
                   widgetId={widgetId}
@@ -485,6 +712,33 @@ export default function Dashboard() {
                           >
                             {welcomeMessage || `Bienvenue, ${user?.username ?? ''}`}
                           </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {widgetId === 'quick-actions' && (
+                    <Card className="flex h-full flex-col overflow-hidden">
+                      <CardHeader>
+                        <CardDescription>Navigation</CardDescription>
+                        <CardTitle className={TYPOGRAPHY.H3}>Actions rapides</CardTitle>
+                      </CardHeader>
+                      <CardContent className="min-h-0 flex-1 p-6">
+                        <div className="grid grid-cols-2 gap-3">
+                          {quickActions.map((action) => {
+                            return (
+                              <Button
+                                key={action.path}
+                                asChild
+                                variant="outline"
+                                className="h-auto min-h-[112px] flex-col items-start justify-between rounded-xl p-4 text-left"
+                              >
+                                <Link to={action.path}>
+                                  <span className="text-sm font-medium">{action.label}</span>
+                                </Link>
+                              </Button>
+                            );
+                          })}
                         </div>
                       </CardContent>
                     </Card>
@@ -561,7 +815,7 @@ export default function Dashboard() {
                         </div>
                       </CardHeader>
                       <CardContent className={cn(SPACING.SECTION_SPACING, "min-h-0 flex-1 overflow-y-auto")}>
-                        <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="grid grid-cols-4 gap-3">
                           {orderedShortcuts.length > 0 ? (
                             orderedShortcuts.map((shortcut) => (
                               <ShortcutTile key={shortcut.id} shortcut={shortcut} />
@@ -574,6 +828,92 @@ export default function Dashboard() {
                             </Card>
                           )}
                         </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {widgetId === 'quests' && (
+                    <Card className="flex h-full flex-col overflow-hidden">
+                      <CardHeader>
+                        <div>
+                          <CardDescription>Journalier</CardDescription>
+                          <CardTitle className={TYPOGRAPHY.H3}>Quêtes du jour</CardTitle>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="min-h-0 flex-1 overflow-y-auto space-y-4">
+                        {questWidgets.length > 0 ? (
+                          <>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <Card className="border-border/60">
+                                <CardContent className="p-4 space-y-1">
+                                  <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>{questWidgets.length}</p>
+                                  <p className={TYPOGRAPHY.SMALL}>quêtes sélectionnées</p>
+                                </CardContent>
+                              </Card>
+                              <Card className="border-border/60">
+                                <CardContent className="p-4 space-y-1">
+                                  <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>{completedQuestCount}</p>
+                                  <p className={TYPOGRAPHY.SMALL}>récompenses à réclamer</p>
+                                </CardContent>
+                              </Card>
+                            </div>
+
+                            <div className="space-y-3">
+                              {questWidgets.slice(0, 3).map((quest) => {
+                                const progress = quest.progress?.currentValue || 0;
+                                const target = quest.quest.targetValue;
+                                const progressPercent = Math.min((progress / target) * 100, 100);
+
+                                return (
+                                  <Card key={quest.id} className="border-border/60">
+                                    <CardContent className="p-4 space-y-3">
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                          <p className="text-sm font-medium truncate">{quest.quest.title}</p>
+                                          <p className="text-xs text-muted-foreground truncate">{quest.quest.description}</p>
+                                        </div>
+                                        <span className={cn(
+                                          "rounded-full px-2 py-1 text-xs font-medium",
+                                          quest.isClaimed
+                                            ? "bg-muted text-muted-foreground"
+                                            : quest.isCompleted
+                                              ? "bg-emerald-500/10 text-emerald-600"
+                                              : "bg-amber-500/10 text-amber-600"
+                                        )}>
+                                          {quest.isClaimed ? 'Réclamée' : quest.isCompleted ? 'Terminée' : 'En cours'}
+                                        </span>
+                                      </div>
+                                      <div className="space-y-2">
+                                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                          <span>Progression</span>
+                                          <span className="tabular-nums">{progress}/{target}</span>
+                                        </div>
+                                        <Progress value={progressPercent} className="h-2" />
+                                      </div>
+                                    </CardContent>
+                                  </Card>
+                                );
+                              })}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex h-full flex-col justify-between gap-4">
+                            <div className="space-y-3">
+                              <p className={TYPOGRAPHY.SMALL}>Aucune quête active pour le moment.</p>
+                              <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground")}>
+                                {availableQuestCount > 0 ? `${availableQuestCount} quêtes journalières disponibles.` : 'Les quêtes du jour ne sont pas encore chargées.'}
+                              </p>
+                            </div>
+                            <Button asChild>
+                              <Link to="/quests">Choisir mes quêtes</Link>
+                            </Button>
+                          </div>
+                        )}
+                        {questWidgets.length > 0 && (
+                          <Button asChild variant="outline" className="w-full">
+                            <Link to="/quests">Ouvrir les quêtes</Link>
+                          </Button>
+                        )}
                       </CardContent>
                     </Card>
                   )}
@@ -670,6 +1010,166 @@ export default function Dashboard() {
                     </Card>
                   )}
 
+                  {widgetId === 'auracoin' && (
+                    <Card className="flex h-full flex-col overflow-hidden">
+                      <CardHeader>
+                        <CardDescription>Marché</CardDescription>
+                        <CardTitle className={TYPOGRAPHY.H3}>Aura Coin</CardTitle>
+                      </CardHeader>
+                      <CardContent className="flex min-h-0 flex-1 flex-col justify-between p-6 md:p-8">
+                        <div className="space-y-4">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="space-y-2">
+                              <p className={cn(TYPOGRAPHY.H1, "tabular-nums md:text-5xl")}>
+                                {auraCoinPrice === null ? '--' : `$${auraCoinPrice.toFixed(2)}`}
+                              </p>
+                              <div
+                                className={cn(
+                                  "inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium",
+                                  auraCoinDelta === null
+                                    ? "bg-muted text-muted-foreground"
+                                    : auraCoinDelta >= 0
+                                      ? "bg-emerald-500/10 text-emerald-600"
+                                      : "bg-red-500/10 text-red-600"
+                                )}
+                              >
+                                <span className="tabular-nums">
+                                  {auraCoinDelta === null ? 'Variation indisponible' : `${auraCoinDelta >= 0 ? '+' : ''}${auraCoinDelta.toFixed(2)}%`}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground")}>
+                            Prix actuel mis a jour depuis le marche Aura Coin.
+                          </p>
+                        </div>
+
+                        <Button asChild className="mt-6">
+                          <Link to="/games/aura-coin">Ouvrir Aura Coin</Link>
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {widgetId === 'aura-leaders' && (
+                    <Card className="flex h-full flex-col overflow-hidden py-0">
+                      <CardHeader className="border-b p-0">
+                        <div className="px-6 py-4">
+                          <div className="space-y-1">
+                            <CardTitle className={TYPOGRAPHY.H3}>Top Aura</CardTitle>
+                            <CardDescription>Utilisateurs avec le plus d&apos;aura actuellement</CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="flex min-h-0 flex-1 flex-col px-2 sm:p-6">
+                        {auraLeadersChartData.length > 0 ? (
+                          <>
+                            <ChartContainer
+                              config={auraLeadersChartConfig}
+                              className="aspect-auto h-[220px] w-full"
+                            >
+                              <BarChart
+                                accessibilityLayer
+                                data={auraLeadersChartData}
+                                margin={{
+                                  left: 12,
+                                  right: 12,
+                                }}
+                              >
+                                <CartesianGrid vertical={false} />
+                                <XAxis
+                                  dataKey="username"
+                                  tickLine={false}
+                                  axisLine={false}
+                                  tickMargin={8}
+                                  interval={0}
+                                  tickFormatter={(value) => String(value).slice(0, 8)}
+                                />
+                                <ChartTooltip
+                                  content={
+                                    <ChartTooltipContent
+                                      className="w-[160px]"
+                                      labelFormatter={(value) => String(value)}
+                                      formatter={(value) => [
+                                        <span className="font-medium tabular-nums">{Number(value).toLocaleString('fr-FR')}</span>,
+                                        'Aura',
+                                      ]}
+                                    />
+                                  }
+                                />
+                                <Bar dataKey="aura" fill="var(--color-aura)" radius={8} />
+                              </BarChart>
+                            </ChartContainer>
+
+                            <div className="mt-4 space-y-2">
+                              {auraLeaders.slice(0, 3).map((entry) => (
+                                <div key={entry.userId} className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2">
+                                  <p className="text-sm font-medium truncate">#{entry.rank} {entry.username}</p>
+                                  <span className="text-sm font-medium tabular-nums">{Number(entry.value).toLocaleString('fr-FR')}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex h-full items-center justify-center">
+                            <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground")}>Classement aura indisponible.</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {widgetId === 'inventory' && (
+                    <Card className="flex h-full flex-col overflow-hidden">
+                      <CardHeader>
+                        <div>
+                          <CardDescription>Objets</CardDescription>
+                          <CardTitle className={TYPOGRAPHY.H3}>Inventaire</CardTitle>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="min-h-0 flex-1 overflow-y-auto space-y-4">
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <Card className="border-border/60">
+                            <CardContent className="p-4 space-y-1">
+                              <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>{totalInventoryCount}</p>
+                              <p className={TYPOGRAPHY.SMALL}>objets au total</p>
+                            </CardContent>
+                          </Card>
+                          <Card className="border-border/60">
+                            <CardContent className="p-4 space-y-1">
+                              <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>{giftInventoryCount}</p>
+                              <p className={TYPOGRAPHY.SMALL}>cadeaux stockés</p>
+                            </CardContent>
+                          </Card>
+                        </div>
+
+                        {inventoryItems.length > 0 ? (
+                          <div className="space-y-2">
+                            {inventoryItems.slice(0, 4).map((item) => (
+                              <div
+                                key={item.id}
+                                className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-3"
+                              >
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium truncate">{item.item.name}</p>
+                                  <p className="text-xs text-muted-foreground">{item.item.type.toLowerCase()}</p>
+                                </div>
+                                <span className="text-sm font-medium tabular-nums">x{item.quantity}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground")}>Aucun objet dans l&apos;inventaire.</p>
+                        )}
+
+                        <Button asChild variant="outline" className="w-full">
+                          <Link to="/inventory">Ouvrir l&apos;inventaire</Link>
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )}
+
                   {widgetId === 'gifts' && (
                     <Card className="flex h-full flex-col overflow-hidden">
                       <CardHeader>
@@ -680,11 +1180,9 @@ export default function Dashboard() {
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
                             <Button variant="outline" size="sm" onClick={() => openGiftDialog('inbox')}>
-                              <Inbox className="mr-2 h-4 w-4" />
                               Boite
                             </Button>
                             <Button size="sm" onClick={() => openGiftDialog('send')}>
-                              <Send className="mr-2 h-4 w-4" />
                               Envoyer
                             </Button>
                           </div>
@@ -718,10 +1216,9 @@ export default function Dashboard() {
                               </p>
                             </div>
                             <div className="space-y-1 text-left sm:text-right">
-                              <p className={cn(TYPOGRAPHY.XS, "flex items-center gap-1 text-muted-foreground sm:justify-end")}>
-                                <Clock3 className="h-3.5 w-3.5" />
+                                <p className={cn(TYPOGRAPHY.XS, "flex items-center gap-1 text-muted-foreground sm:justify-end")}>
                                 Reset a minuit
-                              </p>
+                                </p>
                               <p className={cn(TYPOGRAPHY.H5, "tabular-nums")}>
                                 {nextRefillCountdown ?? '--:--:--'}
                               </p>
@@ -751,12 +1248,9 @@ export default function Dashboard() {
                                       key={gift.id}
                                       type="button"
                                       onClick={() => openGiftDialog('inbox')}
-                                      className="flex w-full items-start gap-3 rounded-lg border border-border/60 p-3 text-left transition hover:bg-accent/40"
+                                      className="block w-full rounded-lg border border-border/60 p-3 text-left transition hover:bg-accent/40"
                                     >
-                                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-pink-500 text-white">
-                                        <GiftIcon className="h-5 w-5" />
-                                      </div>
-                                      <div className="min-w-0 flex-1">
+                                      <div className="min-w-0">
                                         <p className="text-sm font-medium truncate">Cadeau de {gift.sender.username}</p>
                                         <p className="text-xs text-muted-foreground">{formatTimeAgo(gift.createdAt)}</p>
                                         {gift.message && (
@@ -774,7 +1268,6 @@ export default function Dashboard() {
                                 <h3 className={TYPOGRAPHY.H5}>Derniers cadeaux ouverts</h3>
                                 {receivedGifts.length > 0 && (
                                   <Button variant="ghost" size="sm" onClick={() => openGiftDialog('received')}>
-                                    <History className="mr-2 h-4 w-4" />
                                     Historique
                                   </Button>
                                 )}
@@ -788,12 +1281,9 @@ export default function Dashboard() {
                                       key={gift.id}
                                       type="button"
                                       onClick={() => openGiftDialog('received')}
-                                      className="flex w-full items-start gap-3 rounded-lg border border-border/60 p-3 text-left transition hover:bg-accent/40"
+                                      className="block w-full rounded-lg border border-border/60 p-3 text-left transition hover:bg-accent/40"
                                     >
-                                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-emerald-500 text-white">
-                                        <GiftIcon className="h-5 w-5" />
-                                      </div>
-                                      <div className="min-w-0 flex-1">
+                                      <div className="min-w-0">
                                         <p className="text-sm font-medium truncate">De {gift.sender.username}</p>
                                         <p className="text-xs text-muted-foreground">{formatTimeAgo(gift.openedAt || gift.createdAt)}</p>
                                         <div className="mt-1 flex flex-wrap gap-2 text-xs">

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
@@ -35,6 +36,7 @@ import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { ImagePicker } from '@/components/ui/image-picker';
 import { BLOCKABLE_PAGES } from '@/config/blockedPages';
+import { PageShell } from '@/components/layout/page-shell';
 
 // Effect types for items
 const EFFECT_TYPES = [
@@ -1456,22 +1458,27 @@ export default function Admin() {
   };
 
   return (
-    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
-      {/* Message */}
-      {message && (
-        <Card className={cn(
+    <PageShell>
+      <div className={SPACING.PAGE_CONTENT}>
+        {/* Message */}
+        {message && (
+          <Card className={cn(
           "border",
           message.type === 'success' ? 'border-green-500/30 bg-green-500/10 text-green-400' : 'border-destructive/30 bg-destructive/10 text-destructive'
         )}>
           <CardContent className="px-4 py-3">
             {message.text}
           </CardContent>
-        </Card>
-      )}
+          </Card>
+        )}
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
-        <TabsList className="flex flex-wrap h-auto p-1">
+        {/* Tabs */}
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => setActiveTab(v as typeof activeTab)}
+          className={SPACING.SECTION_SPACING}
+        >
+          <TabsList className="flex flex-wrap h-auto p-1">
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Utilisateurs
@@ -1579,7 +1586,7 @@ export default function Admin() {
                         Prénom: {u.firstName ? u.firstName : 'Non défini'}
                       </p>
                       <div className="mt-2 rounded-md border border-border/40 bg-muted/20 px-3 py-2">
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70">
+                        <p className="text-[11px] font-medium tracking-wide text-muted-foreground/70">
                           Message de motivation
                         </p>
                         <p className="mt-1 text-sm whitespace-pre-wrap break-words text-foreground/90">
@@ -2568,7 +2575,16 @@ export default function Admin() {
         <TabsContent value="logs" className={SPACING.CARD_SPACING}>
           {/* Category Pills - Single Line */}
           {logStats && (
-            <div className="flex flex-wrap gap-2">
+            <ToggleGroup
+              type="single"
+              value={logFilter.type === 'ALL' ? '' : logFilter.type}
+              onValueChange={(value) => {
+                const newType = value || 'ALL';
+                setLogFilter(prev => ({ ...prev, type: newType, gameType: 'ALL' }));
+                setTimeout(() => fetchLogs(0, newType, 'ALL'), 0);
+              }}
+              className="flex flex-wrap justify-start gap-2"
+            >
               {Object.entries(logStats.byType).map(([type, count]) => {
                 const config = LOG_TYPE_CONFIG[type];
                 if (!config) return null;
@@ -2576,18 +2592,16 @@ export default function Admin() {
                 const isSelected = logFilter.type === type;
 
                 return (
-                  <Button variant="ghost"
+                  <ToggleGroupItem
                     key={type}
-                    onClick={() => {
-                      const newType = logFilter.type === type ? 'ALL' : type;
-                      setLogFilter(prev => ({ ...prev, type: newType, gameType: 'ALL' }));
-                      setTimeout(() => fetchLogs(0, newType, 'ALL'), 0);
-                    }}
+                    value={type}
+                    variant="outline"
+                    size="sm"
                     className={cn(
-                      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all",
+                      "rounded-full text-xs transition-all data-[state=on]:hover:text-white",
                       isSelected
-                        ? `${config.bgColor} text-white`
-                        : `border ${config.borderColor} ${config.color} bg-transparent hover:bg-muted/30`
+                        ? `${config.bgColor} ${config.borderColor} text-white hover:${config.bgColor}`
+                        : `${config.borderColor} ${config.color} bg-transparent hover:bg-muted/30 hover:${config.color}`
                     )}
                   >
                     <Icon className="h-3 w-3" />
@@ -2598,38 +2612,45 @@ export default function Admin() {
                     )}>
                       {count}
                     </span>
-                  </Button>
+                  </ToggleGroupItem>
                 );
               })}
-            </div>
+            </ToggleGroup>
           )}
 
           {/* Game Type Filters (show when GAME type is selected) */}
           {logFilter.type === 'GAME' && (
-            <div className="flex flex-wrap gap-2">
+            <ToggleGroup
+              type="single"
+              value={logFilter.gameType === 'ALL' ? '' : logFilter.gameType}
+              onValueChange={(value) => {
+                const newGameType = value || 'ALL';
+                setLogFilter(prev => ({ ...prev, gameType: newGameType }));
+                setTimeout(() => fetchLogs(0, undefined, newGameType), 0);
+              }}
+              className="flex flex-wrap justify-start gap-2"
+            >
               {GAME_TYPES.map((game) => {
                 const isSelected = logFilter.gameType === game.value;
                 return (
-                  <Button variant="ghost"
+                  <ToggleGroupItem
                     key={game.value}
-                    onClick={() => {
-                      const newGameType = logFilter.gameType === game.value ? 'ALL' : game.value;
-                      setLogFilter(prev => ({ ...prev, gameType: newGameType }));
-                      setTimeout(() => fetchLogs(0, undefined, newGameType), 0);
-                    }}
+                    value={game.value}
+                    variant="outline"
+                    size="sm"
                     className={cn(
-                      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all",
+                      "rounded-full text-xs transition-all",
                       isSelected
-                        ? "bg-purple-500 text-white"
-                        : "border border-purple-500 text-purple-400 bg-transparent hover:bg-muted/30"
+                        ? "border-purple-500 bg-purple-500 text-white hover:bg-purple-500"
+                        : "border-purple-500 text-purple-400 bg-transparent hover:bg-muted/30 hover:text-purple-300"
                     )}
                   >
                     <Gamepad2 className="h-3 w-3" />
                     <span>{game.label}</span>
-                  </Button>
+                  </ToggleGroupItem>
                 );
               })}
-            </div>
+            </ToggleGroup>
           )}
 
           {/* Search Bar + Download */}
@@ -3780,95 +3801,50 @@ export default function Admin() {
         {/* ===== ACTIVITY TAB ===== */}
         <TabsContent value="activity" className={SPACING.SECTION_SPACING}>
 
-          {/* ── TOP ROW: all-time record hero + live stats ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4">
-
-            {/* All-time record — hero block */}
-            <div
-              className="relative overflow-hidden rounded-xl border border-amber-500/25 p-4"
-              style={{ background: 'radial-gradient(ellipse at 20% 50%, rgba(245,158,11,0.08) 0%, transparent 60%), hsl(var(--card))' }}
-            >
-              {/* decorative glow orb */}
-              <div
-                className="pointer-events-none absolute -left-8 top-1/2 -translate-y-1/2 h-24 w-24 rounded-full"
-                style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.18) 0%, transparent 70%)', filter: 'blur(8px)' }}
-              />
-              <div className="relative flex items-center gap-4">
-                <div
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-500/30"
-                  style={{ background: 'rgba(245,158,11,0.12)' }}
-                >
-                  <Trophy className="h-5 w-5 text-amber-400" />
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <Card className="border-border/40">
+              <CardContent className="flex items-start gap-3 p-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border/40 bg-muted/20">
+                  <Trophy className="h-5 w-5 text-muted-foreground" />
                 </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-semibold   text-amber-500/80 mb-0.5">
-                    Record absolu
-                  </div>
-                  <div className="flex items-baseline gap-2">
-                    <span
-                      className="font-bold leading-none tracking-tight text-amber-300"
-                      style={{ fontSize: 'clamp(1.75rem, 4vw, 2.5rem)', fontVariantNumeric: 'tabular-nums' }}
-                    >
-                      {onlineStats?.allTimeRecord ?? '—'}
-                    </span>
-                    <span className="text-sm text-muted-foreground">joueurs simultanés</span>
-                  </div>
-                  {onlineStats?.allTimeRecordAt ? (
-                    <div className="mt-0.5 text-xs text-muted-foreground">
-                      {new Date(onlineStats.allTimeRecordAt).toLocaleString('fr-FR', {
-                        weekday: 'long', day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
-                      })}
-                    </div>
-                  ) : (
-                    <div className="mt-0.5 text-xs text-muted-foreground">Aucun record enregistré pour l'instant</div>
-                  )}
+                <div className="min-w-0 space-y-1">
+                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Record absolu</p>
+                  <p className="text-2xl font-semibold tabular-nums">{onlineStats?.allTimeRecord ?? '—'}</p>
+                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
+                    {onlineStats?.allTimeRecordAt
+                      ? new Date(onlineStats.allTimeRecordAt).toLocaleString('fr-FR', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })
+                      : 'Aucun record enregistre'}
+                  </p>
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            {/* Live + period peaks — compact right column */}
-            <div className="grid grid-cols-3 lg:grid-cols-1 gap-3 lg:min-w-[160px]">
+            <Card className="border-border/40">
+              <CardContent className="space-y-1 p-4">
+                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>En ligne</p>
+                <p className="text-2xl font-semibold tabular-nums">{onlineStats?.current ?? '—'}</p>
+              </CardContent>
+            </Card>
 
-              {/* En ligne maintenant */}
-              <div className="rounded-xl border bg-card p-4 flex flex-col gap-1.5">
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className="h-2 w-2 rounded-full bg-emerald-400 shrink-0"
-                    style={{ boxShadow: '0 0 6px 1px rgba(52,211,153,0.6)', animation: 'pulse 2s ease-in-out infinite' }}
-                  />
-                  <span className="text-xs text-muted-foreground">En ligne</span>
-                </div>
-                <span
-                  className="font-bold text-emerald-300 leading-none"
-                  style={{ fontSize: '2rem', fontVariantNumeric: 'tabular-nums' }}
-                >
-                  {onlineStats?.current ?? '—'}
-                </span>
-              </div>
+            <Card className="border-border/40">
+              <CardContent className="space-y-1 p-4">
+                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Pic 24h</p>
+                <p className="text-2xl font-semibold tabular-nums">{onlineStats?.peak1d ?? '—'}</p>
+              </CardContent>
+            </Card>
 
-              {/* Peak 24h */}
-              <div className="rounded-xl border bg-card p-4 flex flex-col gap-1.5">
-                <div className="text-xs text-muted-foreground">Pic 24h</div>
-                <span
-                  className="font-bold leading-none"
-                  style={{ fontSize: '2rem', fontVariantNumeric: 'tabular-nums' }}
-                >
-                  {onlineStats?.peak1d ?? '—'}
-                </span>
-              </div>
-
-              {/* Peak 7d */}
-              <div className="rounded-xl border bg-card p-4 flex flex-col gap-1.5">
-                <div className="text-xs text-muted-foreground">Pic 7 jours</div>
-                <span
-                  className="font-bold leading-none"
-                  style={{ fontSize: '2rem', fontVariantNumeric: 'tabular-nums' }}
-                >
-                  {onlineStats?.peak7d ?? '—'}
-                </span>
-              </div>
-
-            </div>
+            <Card className="border-border/40">
+              <CardContent className="space-y-1 p-4">
+                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Pic 7 jours</p>
+                <p className="text-2xl font-semibold tabular-nums">{onlineStats?.peak7d ?? '—'}</p>
+              </CardContent>
+            </Card>
           </div>
 
           {/* ── CHART CARD ── */}
@@ -3881,37 +3857,31 @@ export default function Admin() {
                   {loadingActivity && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
                 </div>
 
-                {/* Period segmented control */}
-                <div
-                  className="flex items-center rounded-lg p-0.5 gap-0.5"
-                  style={{ background: 'hsl(var(--muted)/0.4)', border: '1px solid hsl(var(--border)/0.4)' }}
-                >
+                <div className="flex flex-wrap items-center gap-2">
                   {(['day', 'week', 'month', 'custom'] as const).map(p => (
-                    <Button variant="ghost"
+                    <Button
                       key={p}
+                      variant={activityPeriod === p ? 'default' : 'outline'}
                       onClick={() => {
                         setActivityPeriod(p);
                         if (p !== 'custom') fetchActivity(p);
                       }}
-                      className={cn(
-                        'px-3 py-1 rounded-md text-xs font-medium transition-all duration-150',
-                        activityPeriod === p
-                          ? 'bg-background text-foreground shadow-sm'
-                          : 'text-muted-foreground hover:text-foreground'
-                      )}
+                      className="h-8 px-3 text-xs"
                     >
                       {p === 'day' ? "Aujourd'hui" : p === 'week' ? '7j' : p === 'month' ? '30j' : 'Plage'}
                     </Button>
                   ))}
-                  <Button variant="ghost"
+                  <Button
+                    variant="outline"
                     onClick={() => fetchActivity(activityPeriod)}
-                    className="p-1 rounded-md text-muted-foreground hover:text-foreground transition-colors ml-0.5"
+                    className="h-8 px-2"
                     title="Rafraîchir"
                   >
                     <RefreshCw className="h-3 w-3" />
                   </Button>
                 </div>
-                <Button variant="ghost"
+                <Button
+                  variant="outline"
                   onClick={async () => {
                     setSnapshotting(true);
                     try {
@@ -3922,7 +3892,7 @@ export default function Admin() {
                     }
                   }}
                   disabled={snapshotting}
-                  className="flex items-center gap-1.5 rounded-md border border-border/50 px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground hover:border-border transition-colors disabled:opacity-50"
+                  className="h-8 gap-1.5 px-3 text-xs"
                   title="Enregistrer un snapshot maintenant"
                 >
                   {snapshotting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
@@ -3966,21 +3936,17 @@ export default function Admin() {
                 </div>
               ) : activityHistory && activityHistory.data.length > 0 ? (
                 <>
-                  {/* Period peak banner — sits just above the chart */}
                   {activityHistory.peak > 0 && (
-                    <div
-                      className="flex items-center justify-between mb-4 px-4 py-2.5 rounded-lg"
-                      style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.18)' }}
-                    >
+                    <div className="mb-4 flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <Trophy className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-                        <span className="text-xs text-amber-400/80">Pic sur la période</span>
+                        <Trophy className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Pic sur la période</span>
                       </div>
                       <div className="flex items-baseline gap-1.5">
-                        <span className="text-lg font-bold text-amber-300" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                        <span className="text-lg font-semibold tabular-nums">
                           {activityHistory.peak}
                         </span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
                           {activityHistory.peakAt
                             ? new Date(activityHistory.peakAt).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
                             : 'joueurs'}
@@ -3992,20 +3958,16 @@ export default function Admin() {
                   <ResponsiveContainer width="100%" height={300}>
                     <AreaChart data={activityHistory.data} margin={{ top: 6, right: 4, left: -8, bottom: 0 }}>
                       <defs>
-                        {/* Stroke: vivid green at peak (top), dim/dark green near zero (bottom) */}
                         <linearGradient id="strokeGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%"   stopColor="#16a34a" />
-                          <stop offset="40%"  stopColor="#22c55e" />
-                          <stop offset="100%" stopColor="#14532d" stopOpacity={0.4} />
+                          <stop offset="0%" stopColor="hsl(var(--foreground))" stopOpacity={0.95} />
+                          <stop offset="100%" stopColor="hsl(var(--foreground))" stopOpacity={0.35} />
                         </linearGradient>
-                        {/* Fill: intense green at the top, fully transparent at baseline */}
                         <linearGradient id="activityGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%"   stopColor="#22c55e" stopOpacity={0.28} />
-                          <stop offset="55%"  stopColor="#16a34a" stopOpacity={0.07} />
-                          <stop offset="100%" stopColor="#14532d" stopOpacity={0} />
+                          <stop offset="0%" stopColor="hsl(var(--foreground))" stopOpacity={0.12} />
+                          <stop offset="100%" stopColor="hsl(var(--foreground))" stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                      <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border))" />
                       <XAxis
                         dataKey="timestamp"
                         tickFormatter={ts => {
@@ -4044,30 +4006,27 @@ export default function Admin() {
                       {activityHistory.peak > 0 && (
                         <ReferenceLine
                           y={activityHistory.peak}
-                          stroke="rgba(245,158,11,0.5)"
+                          stroke="hsl(var(--muted-foreground))"
                           strokeDasharray="5 4"
-                          strokeWidth={1.5}
-                          label={{ value: `↑ ${activityHistory.peak}`, fill: 'rgba(245,158,11,0.7)', fontSize: 10, position: 'insideTopRight', dy: -4 }}
+                          strokeWidth={1}
+                          label={{ value: `↑ ${activityHistory.peak}`, fill: 'hsl(var(--muted-foreground))', fontSize: 10, position: 'insideTopRight', dy: -4 }}
                         />
                       )}
                       <Area
                         type="basis"
                         dataKey="max"
                         stroke="url(#strokeGradient)"
-                        strokeWidth={3.5}
+                        strokeWidth={2.5}
                         fill="url(#activityGradient)"
                         dot={false}
-                        activeDot={{ r: 5, fill: '#22c55e', strokeWidth: 0 }}
+                        activeDot={{ r: 4, fill: 'hsl(var(--foreground))', strokeWidth: 0 }}
                       />
                     </AreaChart>
                   </ResponsiveContainer>
                 </>
               ) : (
                 <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
-                  <div
-                    className="flex h-14 w-14 items-center justify-center rounded-full"
-                    style={{ background: 'hsl(var(--muted)/0.3)' }}
-                  >
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full border border-border/40 bg-muted/20">
                     <Activity className="h-6 w-6 opacity-40" />
                   </div>
                   <div className="text-center">
@@ -4081,7 +4040,8 @@ export default function Admin() {
 
         </TabsContent>
 
-      </Tabs>
-    </div>
+        </Tabs>
+      </div>
+    </PageShell>
   );
 }

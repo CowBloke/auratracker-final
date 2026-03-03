@@ -69,7 +69,6 @@ model User {
 
   // Notifications
   notifications       Notification[]
-  wordleAttempts      WordleAttempt[]
   dailyRacerRuns      DailyRacerRun[]
 
   @@index([aura])
@@ -164,38 +163,6 @@ model GameStats {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, gameType])
-}
-
-// Daily Wordle puzzle and user attempts
-model WordlePuzzle {
-  id         String   @id @default(uuid())
-  puzzleDate DateTime @unique
-  word       String
-  createdAt  DateTime @default(now())
-
-  attempts WordleAttempt[]
-
-  @@index([puzzleDate])
-}
-
-model WordleAttempt {
-  id            String   @id @default(uuid())
-  puzzleId      String
-  userId        String
-  guessesJson   String   @default("[]")
-  isCompleted   Boolean  @default(false)
-  solved        Boolean  @default(false)
-  guessCount    Int?
-  completedAt   DateTime?
-  firstPlayedAt DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  puzzle WordlePuzzle @relation(fields: [puzzleId], references: [id], onDelete: Cascade)
-  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([puzzleId, userId])
-  @@index([puzzleId, solved, guessCount])
-  @@index([userId, updatedAt])
 }
 
 model DailyRacerRun {

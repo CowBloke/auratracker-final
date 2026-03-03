@@ -147,7 +147,7 @@ export default function Polymarket() {
       if (!Number.isFinite(parsedYesOdds) || !Number.isFinite(parsedNoOdds) || parsedYesOdds <= 1 || parsedNoOdds <= 1) {
         toast({
           title: 'Erreur',
-          description: 'Les cotes doivent Ãªtre des nombres supÃ©rieurs Ã  1.',
+          description: 'Les cotes doivent être des nombres supérieurs à 1.',
           variant: 'destructive',
         });
         return;
@@ -239,7 +239,7 @@ export default function Polymarket() {
     if (!selectedSuggestion.eventDate && !approveEventDate) {
       toast({
         title: 'Erreur',
-        description: 'Merci de renseigner une date de rÃ©alisation avant dâ€™approuver.',
+        description: 'Merci de renseigner une date de réalisation avant d’approuver.',
         variant: 'destructive',
       });
       return;
@@ -400,8 +400,7 @@ export default function Polymarket() {
         </div>
 
         <TabsContent value="events" className={SPACING.SECTION_SPACING}>
-          <div className="flex items-center justify-between">
-            <h2 className={TYPOGRAPHY.H2}>Événements ouverts</h2>
+          <div className="flex justify-end">
             {user?.isAdmin && (
               <Button onClick={() => setCreateEventDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
@@ -577,10 +576,6 @@ export default function Polymarket() {
         </TabsContent>
 
         <TabsContent value="history" className={SPACING.SECTION_SPACING}>
-          <div className="flex items-center justify-between">
-            <h2 className={TYPOGRAPHY.H2}>Historique des paris</h2>
-          </div>
-
           <Tabs value={betHistoryTab} onValueChange={(v) => setBetHistoryTab(v as 'my' | 'all')}>
             <TabsList>
               <TabsTrigger value="my">Mes paris</TabsTrigger>
@@ -652,9 +647,9 @@ export default function Polymarket() {
                             isWinner ? "text-green-500" : "text-red-500"
                           )}>
                             {isWinner ? (
-                              <>✓ Gagné: {bet.payout} reçu</>
+                              <>Gain: {bet.payout} reçu</>
                             ) : (
-                              <>✗ Perdu: {bet.amount} perdu</>
+                              <>Perte: {bet.amount} perdu</>
                             )}
                           </p>
                         )}
@@ -1008,7 +1003,7 @@ export default function Polymarket() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Date de rÃ©alisation</label>
+              <label className="text-sm font-medium">Date de réalisation</label>
               <Input
                 type="datetime-local"
                 value={approveEventDate}
@@ -1158,9 +1153,9 @@ export default function Polymarket() {
                   defaultValue={selectedEventForEdit.status}
                   className="mt-2 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
-                  <option value="OPEN">OPEN</option>
-                  <option value="CLOSED">CLOSED</option>
-                  <option value="RESOLVED">RESOLVED</option>
+                  <option value="OPEN">Ouvert</option>
+                  <option value="CLOSED">Fermé</option>
+                  <option value="RESOLVED">Résolu</option>
                 </select>
               </div>
               <div className="flex justify-end gap-2">

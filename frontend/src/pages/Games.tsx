@@ -2,11 +2,10 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageShell } from '@/components/layout/page-shell';
 
-type GamesTab = 'singleplayer' | 'multiplayer' | 'daily';
+type GamesTab = 'singleplayer' | 'multiplayer';
 
 const games = [
   {
@@ -99,16 +98,6 @@ const games = [
   },
 ];
 
-const dailyGames = [
-  {
-    id: 'wordle',
-    name: 'Wordle',
-    description: 'Un mot de 5 lettres par jour. Compare ton nombre d\'essais.',
-    type: 'Daily',
-    gradient: 'from-fuchsia-500 via-pink-500 to-rose-500',
-  },
-];
-
 const tabConfig: Array<{ id: GamesTab; label: string }> = [
   {
     id: 'singleplayer',
@@ -117,10 +106,6 @@ const tabConfig: Array<{ id: GamesTab; label: string }> = [
   {
     id: 'multiplayer',
     label: 'Multiplayer',
-  },
-  {
-    id: 'daily',
-    label: 'Daily Games',
   },
 ];
 
@@ -158,13 +143,10 @@ export default function Games() {
     if (gameId === 'tetris') {
       return '/games/tetris';
     }
-    if (gameId === 'wordle') {
-      return '/games/wordle';
-    }
     return `/games/${gameId}`;
   };
 
-  const gamesToRender = activeTab === 'multiplayer' ? multiplayerGames : activeTab === 'daily' ? dailyGames : soloGames;
+  const gamesToRender = activeTab === 'multiplayer' ? multiplayerGames : soloGames;
 
   return (
     <PageShell>
@@ -178,10 +160,7 @@ export default function Games() {
         </TabsList>
 
         <TabsContent value={activeTab} className={SPACING.CARD_SPACING}>
-          <p className={TYPOGRAPHY.PAGE_DESCRIPTION}>
-            {activeTab === 'multiplayer' ? 'Jeux en party et duels.' : activeTab === 'daily' ? 'Défis courts et renouvelés.' : 'Jeux solo et runs à score.'}
-          </p>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
             {gamesToRender.map((game) => (
               <Link
                 key={game.id}
@@ -189,16 +168,12 @@ export default function Games() {
                 className="group block"
               >
                 <Card className="relative aspect-square overflow-hidden transition hover:border-foreground/40 hover:shadow-md">
-                  {'image' in game ? (
-                    <img
-                      src={game.image}
-                      alt={game.name}
-                      className="absolute inset-0 h-full w-full object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className={cn('absolute inset-0 bg-gradient-to-br', game.gradient)} />
-                  )}
+                  <img
+                    src={game.image}
+                    alt={game.name}
+                    className="absolute inset-0 h-full w-full object-cover"
+                    loading="lazy"
+                  />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
                   <CardContent className="relative z-10 flex h-full flex-col justify-end p-5 text-white">
                     <p className="text-xs font-medium   text-white/70">{game.type}</p>

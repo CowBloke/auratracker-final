@@ -48,21 +48,21 @@ const TYPE_ICON: Record<string, React.FC<{ className?: string }>> = {
 };
 
 const TYPE_COLOR: Record<string, string> = {
-  AURA_RECEIVED:      'text-yellow-500',
-  MONEY_RECEIVED:     'text-green-500',
-  GIFT_RECEIVED:      'text-pink-500',
-  ITEM_RECEIVED:      'text-blue-500',
-  CLAN_INVITE:        'text-purple-500',
-  CLAN_JOIN_REQUEST:  'text-purple-400',
-  CLAN_JOIN_ACCEPTED: 'text-green-500',
-  CLAN_JOIN_REJECTED: 'text-red-500',
-  BADGE_EARNED:       'text-amber-500',
-  QUEST_COMPLETED:    'text-cyan-500',
-  POLYMARKET_WIN:     'text-green-500',
-  POLYMARKET_LOSS:    'text-red-400',
-  PARTY_INVITE:       'text-indigo-400',
-  ADMIN:              'text-orange-500',
-  SYSTEM:             'text-muted-foreground',
+  AURA_RECEIVED: 'text-muted-foreground',
+  MONEY_RECEIVED: 'text-muted-foreground',
+  GIFT_RECEIVED: 'text-muted-foreground',
+  ITEM_RECEIVED: 'text-muted-foreground',
+  CLAN_INVITE: 'text-muted-foreground',
+  CLAN_JOIN_REQUEST: 'text-muted-foreground',
+  CLAN_JOIN_ACCEPTED: 'text-muted-foreground',
+  CLAN_JOIN_REJECTED: 'text-muted-foreground',
+  BADGE_EARNED: 'text-muted-foreground',
+  QUEST_COMPLETED: 'text-muted-foreground',
+  POLYMARKET_WIN: 'text-muted-foreground',
+  POLYMARKET_LOSS: 'text-muted-foreground',
+  PARTY_INVITE: 'text-muted-foreground',
+  ADMIN: 'text-muted-foreground',
+  SYSTEM: 'text-muted-foreground',
 };
 
 const FILTERS = [

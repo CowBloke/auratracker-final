@@ -41,8 +41,8 @@ interface ItemEffect {
 
 const typeLabels: Record<string, string> = {
   CONSUMABLE: 'Consommable',
-  COSMETIC: 'CosmÇ¸tique',
-  UPGRADE: 'AmÇ¸lioration',
+  COSMETIC: 'Cosmétique',
+  UPGRADE: 'Amélioration',
   GIFT: 'Cadeau',
 };
 
@@ -131,13 +131,13 @@ export default function Inventory() {
       await refreshUser();
       await fetchInventory();
       
-      let effectText = `${userItem.item.name} utilisÇ¸`;
+      let effectText = `${userItem.item.name} utilisé`;
       if (response.data.effect) {
         if (response.data.effect.bonusAura) {
-          effectText += ` ƒÅ' +${response.data.effect.bonusAura} aura`;
+          effectText += ` • +${response.data.effect.bonusAura} aura`;
         }
         if (response.data.effect.bonusMoney) {
-          effectText += ` ƒÅ' +$${response.data.effect.bonusMoney}`;
+          effectText += ` • +$${response.data.effect.bonusMoney}`;
         }
       }
       
@@ -146,7 +146,7 @@ export default function Inventory() {
     } catch (error: any) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.error || 'Ç%chec',
+        text: error.response?.data?.error || 'Échec',
       });
     } finally {
       setUsing(null);
@@ -197,13 +197,13 @@ export default function Inventory() {
       await refreshUser();
       await fetchInventory();
       
-      setMessage({ type: 'success', text: `Couleur de pseudo appliquÇ¸e: ${selectedColor}` });
+      setMessage({ type: 'success', text: `Couleur de pseudo appliquée : ${selectedColor}` });
       setTimeout(() => setMessage(null), 3000);
       setColorDialogOpen(false);
     } catch (error: any) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.error || 'Ç%chec',
+        text: error.response?.data?.error || 'Échec',
       });
     } finally {
       setUsing(null);

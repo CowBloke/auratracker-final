@@ -639,9 +639,6 @@ export default function Suggestions() {
       <>
         <PageShell>
         <div className={SPACING.PAGE_CONTENT}>
-          <h1 className={TYPOGRAPHY.H2}>Suggestions</h1>
-          <p className={TYPOGRAPHY.SMALL}>Propose une idée ou consulte l’avancement des demandes.</p>
-
           {/* Tab Selector */}
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'pending' | 'done')}>
             <div className="flex items-center justify-between gap-3">

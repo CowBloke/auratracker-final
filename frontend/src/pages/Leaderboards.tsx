@@ -70,7 +70,7 @@ export default function Leaderboards() {
 
   // Rankings state
   const [rankings, setRankings] = useState<Ranking[]>([]);
-  const [userRank, setUserRank] = useState<number | null>(null);
+  const [, setUserRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Nombres state
@@ -253,7 +253,7 @@ export default function Leaderboards() {
 
               {/* Économie group */}
               <div className="mt-3">
-                <p className={cn(TYPOGRAPHY.XS, "px-3 pb-1 text-muted-foreground/50 font-medium uppercase tracking-wider")}>
+                <p className={cn(TYPOGRAPHY.XS, "px-3 pb-1 text-muted-foreground/50 font-medium tracking-wider")}>
                   Économie
                 </p>
                 <div className="space-y-0.5">
@@ -281,7 +281,7 @@ export default function Leaderboards() {
 
               {/* Jeux group */}
               <div className="mt-3">
-                <p className={cn(TYPOGRAPHY.XS, "px-3 pb-1 text-muted-foreground/50 font-medium uppercase tracking-wider")}>
+                <p className={cn(TYPOGRAPHY.XS, "px-3 pb-1 text-muted-foreground/50 font-medium tracking-wider")}>
                   Jeux
                 </p>
                 <div className="space-y-0.5">
@@ -319,14 +319,12 @@ export default function Leaderboards() {
                   <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
                 </div>
               ) : nombresSections.length === 0 ? (
-                <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
-                  Impossible de charger les nombres pour le moment.
-                </p>
+                <div className="py-12" />
               ) : (
                 <div className="space-y-8">
                   {nombresSections.map((section) => (
                     <div key={section.title} className="space-y-3">
-                      <h3 className={cn(TYPOGRAPHY.XS, "text-muted-foreground/60 font-medium uppercase tracking-wider")}>
+                      <h3 className={cn(TYPOGRAPHY.XS, "text-muted-foreground/60 font-medium tracking-wider")}>
                         {section.title}
                       </h3>
                       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -335,9 +333,6 @@ export default function Leaderboards() {
                             <CardContent className="p-4 md:p-5 space-y-2">
                               <p className={cn(TYPOGRAPHY.H2, "md:text-4xl tabular-nums")}>{item.value}</p>
                               <p className={TYPOGRAPHY.SMALL}>{item.label}</p>
-                              {item.hint && (
-                                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground/70")}>{item.hint}</p>
-                              )}
                             </CardContent>
                           </Card>
                         ))}
@@ -348,20 +343,12 @@ export default function Leaderboards() {
               )
             ) : (
               <>
-                {userRank ? (
-                  <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tabular-nums")}>
-                    Position personnelle #{userRank}
-                  </p>
-                ) : null}
-
                 {loading ? (
                   <div className="flex justify-center py-12">
                     <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
                   </div>
                 ) : rankings.length === 0 ? (
-                  <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
-                    Aucun classement pour le moment
-                  </p>
+                  <div className="py-12" />
                 ) : (
                   <Card>
                     <CardContent className="p-0">
@@ -384,9 +371,6 @@ export default function Leaderboards() {
                                 ranking.userId === user?.id && "text-foreground"
                               )}>
                                 <UsernameDisplay username={ranking.username} usernameColor={ranking.usernameColor} />
-                                {ranking.userId === user?.id && (
-                                  <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground ml-2")}>(toi)</span>
-                                )}
                               </span>
                             </div>
                             <div className="flex items-center gap-2">

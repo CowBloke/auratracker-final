@@ -9,7 +9,6 @@ const router = Router();
 const INITIAL_PRICE = 100;
 const FEE_PERCENTAGE = 0.02; // 2% fee
 const MIN_FEE = 1; // Minimum fee in money units
-const PRICE_IMPACT_PER_100 = 0.001; // 0.1% per 100$ traded
 const RANDOM_VARIATION_PERCENTAGE = 0.005; // +/- 0.5%
 const PRICE_UPDATE_INTERVAL = 5000; // 5 seconds
 const MAX_LEVERAGE = 10; // Maximum leverage (x10)
@@ -144,14 +143,11 @@ router.post('/buy', authMiddleware, async (req: AuthRequest, res: Response) => {
     if (netAmount <= 0) {
       return res.status(400).json({ error: 'Amount too low to cover minimum fee' });
     }
-    const coinsReceived = netAmount / currentPrice;
-    
-    // Apply price impact (buying increases price)
-    const priceImpact = (moneyAmount / 100) * PRICE_IMPACT_PER_100;
-    currentPrice = currentPrice * (1 + priceImpact);
+    const tradePrice = currentPrice;
+    const coinsReceived = netAmount / tradePrice;
     
     // Update user balance and create transaction
-    const [updatedUser, transaction] = await prisma.$transaction([
+    const [updatedUser] = await prisma.$transaction([
       prisma.user.update({
         where: { id: req.user.id },
         data: {
@@ -165,7 +161,7 @@ router.post('/buy', authMiddleware, async (req: AuthRequest, res: Response) => {
           type: 'BUY',
           coinAmount: coinsReceived,
           moneyAmount,
-          price: currentPrice,
+          price: tradePrice,
           fee,
         },
       }),
@@ -186,7 +182,7 @@ router.post('/buy', authMiddleware, async (req: AuthRequest, res: Response) => {
       moneySpent: moneyAmount,
       coinsReceived,
       fee,
-      priceAtPurchase: currentPrice,
+      priceAtPurchase: tradePrice,
     });
 
     res.json({
@@ -196,7 +192,7 @@ router.post('/buy', authMiddleware, async (req: AuthRequest, res: Response) => {
         coinsReceived,
         moneySpent: moneyAmount,
         fee,
-        newPrice: currentPrice,
+        newPrice: tradePrice,
       },
       newBalance: {
         money: updatedUser.money,
@@ -235,19 +231,16 @@ router.post('/sell', authMiddleware, async (req: AuthRequest, res: Response) => 
     }
     
     // Calculate money received (before fee)
-    const grossAmount = Math.floor(coinAmount * currentPrice);
+    const tradePrice = currentPrice;
+    const grossAmount = Math.floor(coinAmount * tradePrice);
     const fee = Math.max(MIN_FEE, Math.floor(grossAmount * FEE_PERCENTAGE));
     const netAmount = grossAmount - fee;
     if (netAmount <= 0) {
       return res.status(400).json({ error: 'Amount too low to cover minimum fee' });
     }
     
-    // Apply price impact (selling decreases price)
-    const priceImpact = (grossAmount / 100) * PRICE_IMPACT_PER_100;
-    currentPrice = Math.max(1, currentPrice * (1 - priceImpact));
-    
     // Update user balance and create transaction
-    const [updatedUser, transaction] = await prisma.$transaction([
+    const [updatedUser] = await prisma.$transaction([
       prisma.user.update({
         where: { id: req.user.id },
         data: {
@@ -261,7 +254,7 @@ router.post('/sell', authMiddleware, async (req: AuthRequest, res: Response) => 
           type: 'SELL',
           coinAmount,
           moneyAmount: netAmount,
-          price: currentPrice,
+          price: tradePrice,
           fee,
         },
       }),
@@ -282,7 +275,7 @@ router.post('/sell', authMiddleware, async (req: AuthRequest, res: Response) => 
       coinsSold: coinAmount,
       moneyReceived: netAmount,
       fee,
-      priceAtSale: currentPrice,
+      priceAtSale: tradePrice,
     });
 
     res.json({
@@ -292,7 +285,7 @@ router.post('/sell', authMiddleware, async (req: AuthRequest, res: Response) => 
         coinsSold: coinAmount,
         moneyReceived: netAmount,
         fee,
-        newPrice: currentPrice,
+        newPrice: tradePrice,
       },
       newBalance: {
         money: updatedUser.money,

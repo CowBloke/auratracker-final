@@ -99,7 +99,7 @@ const getBetMultiplier = (bet: Bet, winningNumber: number) => {
 // -----------------------------
 // Slot machine setup (previous implementation)
 // -----------------------------
-type SlotSymbol = '🍒' | '🍋' | '🍊' | '🍇' | '🔔' | '⭐' | '💎' | '7️⃣';
+type SlotSymbol = 'CER' | 'CIT' | 'ORA' | 'RAI' | 'CLO' | 'ETO' | 'DIA' | 'SEP';
 
 interface SlotResult {
   reels: SlotSymbol[][];
@@ -108,16 +108,16 @@ interface SlotResult {
   winningLines: number[];
 }
 
-const SLOT_SYMBOLS: SlotSymbol[] = ['🍒', '🍋', '🍊', '🍇', '🔔', '⭐', '💎', '7️⃣'];
+const SLOT_SYMBOLS: SlotSymbol[] = ['CER', 'CIT', 'ORA', 'RAI', 'CLO', 'ETO', 'DIA', 'SEP'];
 const SLOT_SYMBOL_VALUES: Record<SlotSymbol, number> = {
-  '🍒': 2,
-  '🍋': 3,
-  '🍊': 4,
-  '🍇': 5,
-  '🔔': 10,
-  '⭐': 15,
-  '💎': 25,
-  '7️⃣': 50,
+  CER: 2,
+  CIT: 3,
+  ORA: 4,
+  RAI: 5,
+  CLO: 10,
+  ETO: 15,
+  DIA: 25,
+  SEP: 50,
 };
 
 const REEL_COUNT = 3;
@@ -1480,7 +1480,7 @@ function SlotMachineGame({ onBetChange }: { onBetChange?: (value: number) => voi
   const [bet, setBet] = useState(50);
   const [spinning, setSpinning] = useState(false);
   const [reels, setReels] = useState<SlotSymbol[][]>(
-    Array(REEL_COUNT).fill(null).map(() => Array(ROWS).fill('🍒'))
+    Array(REEL_COUNT).fill(null).map(() => Array(ROWS).fill('CER'))
   );
   const [winAmount, setWinAmount] = useState(0);
   const [lastResult, setLastResult] = useState<SlotResult | null>(null);
@@ -1620,7 +1620,7 @@ function SlotMachineGame({ onBetChange }: { onBetChange?: (value: number) => voi
                   <div
                     key={`${reelIndex}-${rowIndex}`}
                     className={cn(
-                      "text-4xl text-center py-3 border transition-all",
+                      "text-xl font-semibold tracking-wide text-center py-5 border transition-all",
                       isWinning && !isSpinning
                         ? 'border-foreground bg-muted/30'
                         : 'border-border/30'
@@ -1658,7 +1658,7 @@ function SlotMachineGame({ onBetChange }: { onBetChange?: (value: number) => voi
           ) : user && user.money < bet ? (
             'Fonds insuffisants'
           ) : (
-            'LANCER'
+            'Lancer'
           )}
         </Button>
       </div>

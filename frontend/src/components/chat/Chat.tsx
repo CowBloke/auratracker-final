@@ -23,13 +23,16 @@ interface ChatProps {
 }
 
 const REACTION_OPTIONS = [
-  { emoji: '❤️', label: 'Coeur' },
-  { emoji: '👍', label: 'Like' },
-  { emoji: '😂', label: 'Haha' },
-  { emoji: '😮', label: 'Wow' },
-  { emoji: '😢', label: 'Triste' },
-  { emoji: '😡', label: 'Grr' },
+  { value: 'like', label: 'Like' },
+  { value: 'ok', label: 'OK' },
+  { value: 'haha', label: 'Haha' },
+  { value: 'wow', label: 'Wow' },
+  { value: 'triste', label: 'Triste' },
+  { value: 'grr', label: 'Grr' },
 ];
+
+const getReactionLabel = (value: string) =>
+  REACTION_OPTIONS.find((reaction) => reaction.value === value)?.label ?? value;
 
 export default function Chat({ isOpen, onToggle }: ChatProps) {
   const navigate = useNavigate();
@@ -199,13 +202,13 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                               <TooltipProvider delayDuration={200}>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-yellow-300 text-[9px] font-semibold text-yellow-900 cursor-help">
-                                      $
+                                    <span className="inline-flex min-w-6 items-center justify-center rounded-full border border-border/60 px-1.5 text-[9px] font-semibold text-muted-foreground cursor-help">
+                                      ARG
                                     </span>
                                   </TooltipTrigger>
                                   <TooltipContent>
                                     <div className="space-y-1">
-                                      <p className="font-medium text-yellow-300">Top 5 Argent</p>
+                                      <p className="font-medium">Top 5 Argent</p>
                                       <p className="text-xs text-muted-foreground">
                                         Ce joueur fait partie des 5 joueurs avec le plus d'argent
                                       </p>
@@ -218,13 +221,13 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                               <TooltipProvider delayDuration={200}>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-sky-500 text-[9px] font-semibold text-white cursor-help">
-                                      A
+                                    <span className="inline-flex min-w-6 items-center justify-center rounded-full border border-border/60 px-1.5 text-[9px] font-semibold text-muted-foreground cursor-help">
+                                      AUR
                                     </span>
                                   </TooltipTrigger>
                                   <TooltipContent>
                                     <div className="space-y-1">
-                                      <p className="font-medium text-sky-500">Top 5 Aura</p>
+                                      <p className="font-medium">Top 5 Aura</p>
                                       <p className="text-xs text-muted-foreground">
                                         Ce joueur fait partie des 5 joueurs avec le plus d'aura
                                       </p>
@@ -239,7 +242,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                           {formatTime(msg.timestamp)}
                         </span>
                         {msg.pinned && (
-                          <Pin className="h-3 w-3 text-amber-500" />
+                          <Pin className="h-3 w-3 text-muted-foreground" />
                         )}
                         <div className="ml-auto flex items-center gap-2">
                           <DropdownMenu>
@@ -260,15 +263,14 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                             >
                               {REACTION_OPTIONS.map((reaction) => (
                                 <Button
-                                  key={reaction.emoji}
+                                  key={reaction.value}
                                   type="button"
-                                  onClick={() => reactToMessage(msg.id, reaction.emoji)}
+                                  onClick={() => reactToMessage(msg.id, reaction.value)}
                                   variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
+                                  className="h-8 px-2 text-xs"
                                   title={reaction.label}
                                 >
-                                  <span className="text-base">{reaction.emoji}</span>
+                                  <span>{reaction.label}</span>
                                 </Button>
                               ))}
                             </DropdownMenuContent>
@@ -307,7 +309,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                               key={`${msg.id}-${reaction.emoji}`}
                               className="inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-0.5 text-[10px] text-muted-foreground"
                             >
-                              <span>{reaction.emoji}</span>
+                              <span>{getReactionLabel(reaction.emoji)}</span>
                               <span className="tabular-nums">{reaction.count}</span>
                             </span>
                           ))}

@@ -20,7 +20,6 @@ const STATIC_PAGE_META: Record<string, PageMeta> = {
   '/games/solitaire': { title: 'Solitaire', description: 'Mode score avec classement.' },
   '/games/racer': { title: 'Racer', description: 'Course arcade style outrun.' },
   '/games/tetris': { title: 'Tetris', description: 'Session puzzle et classement.' },
-  '/games/wordle': { title: 'Wordle', description: 'Défi quotidien en 6 essais.' },
   '/games/polymarket': { title: 'Polymarket', description: 'Marché de prédictions communautaire.' },
   '/leaderboards': { title: 'Classements', description: 'Classements économie et jeux.' },
   '/leaderboards/nombres': { title: 'Nombres', description: 'Indicateurs globaux et statistiques clés.' },

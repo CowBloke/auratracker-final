@@ -154,7 +154,7 @@ export default function Poker() {
                 {isSmallBlind && <span>SB</span>}
                 {isBigBlind && <span>BB</span>}
                 {player.lastAction && <span className=" ">{player.lastAction}</span>}
-                {player.isAllIn && <span className="text-red-500">ALL-IN</span>}
+                {player.isAllIn && <span className="text-red-500">All-in</span>}
               </div>
             </div>
           </div>

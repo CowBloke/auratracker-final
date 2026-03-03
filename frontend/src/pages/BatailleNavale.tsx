@@ -574,7 +574,7 @@ export default function BatailleNavale() {
             )}
             {gameState.myShipsPlaced && (
               <p className="text-sm text-green-500">
-                ✓ Tous tes bateaux sont placés. En attente de l'adversaire...
+                Tous tes bateaux sont placés. En attente de l'adversaire...
               </p>
             )}
             {gameState.opponentShipsPlaced && !gameState.myShipsPlaced && (

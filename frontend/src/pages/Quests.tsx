@@ -5,7 +5,7 @@ import { Progress } from '../components/ui/progress';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { questsApi, DailyQuest, UserDailyQuest } from '../services/api';
 import { toast } from 'sonner';
-import { CheckCircle2, Circle, Coins, Sparkles } from 'lucide-react';
+import { CheckCircle2, Circle, Coins, Sparkles, Users, Gamepad2, Bomb, ScrollText, Ship, Trophy, Target, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function Quests() {
@@ -76,9 +76,7 @@ export default function Quests() {
     try {
       setClaiming(true);
       const res = await questsApi.claim(questIds);
-      toast.success(
-        `Récompenses réclamées ! +${res.data.rewards.money} 💰 +${res.data.rewards.aura} ✨`
-      );
+      toast.success(`Récompenses réclamées: +${res.data.rewards.money}$ et +${res.data.rewards.aura} aura`);
       await fetchQuests();
     } catch (error: any) {
       console.error('Error claiming quests:', error);
@@ -91,25 +89,25 @@ export default function Quests() {
   const getQuestIcon = (questType: string) => {
     switch (questType) {
       case 'JOIN_PARTIES':
-        return '👥';
+        return Users;
       case 'DOODLE_JUMP_SCORE':
       case 'GAME_2048_SCORE':
       case 'FLAPPY_BIRD_SCORE':
-        return '🎮';
+        return Gamepad2;
       case 'BOMB_PARTY_PLAYS':
-        return '💣';
+        return Bomb;
       case 'POKER_PLAYS':
-        return '🃏';
+        return Gamepad2;
       case 'PETIT_BAC_PLAYS':
-        return '📝';
+        return ScrollText;
       case 'BATTLESHIP_PLAYS':
-        return '🚢';
+        return Ship;
       case 'WIN_GAMES':
-        return '🏆';
+        return Trophy;
       case 'PLAY_GAMES':
-        return '🎯';
+        return Target;
       default:
-        return '📋';
+        return ClipboardList;
     }
   };
 
@@ -182,13 +180,14 @@ export default function Quests() {
               const progressPercent = Math.min((progress / target) * 100, 100);
               const isCompleted = userQuest.isCompleted;
               const isClaimed = userQuest.isClaimed;
+              const QuestIcon = getQuestIcon(userQuest.quest.questType);
 
               return (
                 <Card key={userQuest.id} className={isCompleted && !isClaimed ? 'border-green-500' : ''}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2">
-                        <span className={TYPOGRAPHY.H3}>{getQuestIcon(userQuest.quest.questType)}</span>
+                        <QuestIcon className="h-5 w-5 text-muted-foreground" />
                         <CardTitle className={TYPOGRAPHY.H5}>{userQuest.quest.title}</CardTitle>
                       </div>
                       {isCompleted && !isClaimed && (
@@ -228,11 +227,11 @@ export default function Quests() {
 
                     <div className="flex items-center justify-between pt-2 border-t">
                       <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1 text-yellow-600">
+                        <div className="flex items-center gap-1 text-muted-foreground">
                           <Coins className="w-4 h-4" />
                           <span className="font-semibold">{userQuest.quest.moneyReward}</span>
                         </div>
-                        <div className="flex items-center gap-1 text-purple-600">
+                        <div className="flex items-center gap-1 text-muted-foreground">
                           <Sparkles className="w-4 h-4" />
                           <span className="font-semibold">{userQuest.quest.auraReward}</span>
                         </div>
@@ -252,6 +251,7 @@ export default function Quests() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {dailyQuests.map((quest) => {
               const isSelected = selectedQuestIds.includes(quest.id);
+              const QuestIcon = getQuestIcon(quest.questType);
 
               return (
                 <Card
@@ -266,7 +266,7 @@ export default function Quests() {
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2">
-                        <span className={TYPOGRAPHY.H3}>{getQuestIcon(quest.questType)}</span>
+                        <QuestIcon className="h-5 w-5 text-muted-foreground" />
                         <CardTitle className={TYPOGRAPHY.H5}>{quest.title}</CardTitle>
                       </div>
                       {isSelected ? (
@@ -280,11 +280,11 @@ export default function Quests() {
                   <CardContent>
                     <div className="flex items-center justify-between pt-2 border-t">
                       <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1 text-yellow-600">
+                        <div className="flex items-center gap-1 text-muted-foreground">
                           <Coins className="w-4 h-4" />
                           <span className="font-semibold">{quest.moneyReward}</span>
                         </div>
-                        <div className="flex items-center gap-1 text-purple-600">
+                        <div className="flex items-center gap-1 text-muted-foreground">
                           <Sparkles className="w-4 h-4" />
                           <span className="font-semibold">{quest.auraReward}</span>
                         </div>

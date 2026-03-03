@@ -158,58 +158,10 @@ export const gamesApi = {
     api.get<DailyRacerStateResponse>('/games/daily/racer', { params: { limit } }),
   submitDailyRacerRun: (lapTimeMs: number) =>
     api.post<DailyRacerSubmitResponse>('/games/daily/racer/complete', { lapTimeMs }),
-  getDailyWordleState: () =>
-    api.get<DailyWordleStateResponse>('/games/daily/wordle'),
-  submitDailyWordleGuess: (guess: string) =>
-    api.post<DailyWordleGuessResponse>('/games/daily/wordle/guess', { guess }),
   // Admin: Delete a user's game stats
   deleteStats: (gameType: string, userId: string) =>
     api.delete(`/games/${gameType}/stats/${userId}`),
 };
-
-export interface DailyWordleGuessEvaluation {
-  guess: string;
-  result: Array<'correct' | 'present' | 'absent'>;
-}
-
-export interface DailyWordleLeaderboardEntry {
-  userId: string;
-  username: string;
-  usernameColor: string | null;
-  guessCount: number | null;
-  completedAt: string | null;
-}
-
-export interface DailyWordleHistoryEntry {
-  puzzleDate: string;
-  word: string;
-  totalPlayers: number;
-  solvedCount: number;
-}
-
-export interface DailyWordleStateResponse {
-  puzzleDate: string;
-  maxGuesses: number;
-  wordLength: number;
-  userAttempt: {
-    guesses: string[];
-    evaluations: DailyWordleGuessEvaluation[];
-    isCompleted: boolean;
-    solved: boolean;
-    guessCount: number | null;
-  };
-  leaderboard: DailyWordleLeaderboardEntry[];
-  history: DailyWordleHistoryEntry[];
-}
-
-export interface DailyWordleGuessResponse {
-  guess: string;
-  result: Array<'correct' | 'present' | 'absent'>;
-  guesses: string[];
-  solved: boolean;
-  isCompleted: boolean;
-  attemptsRemaining: number;
-}
 
 export interface DailyRacerLeaderboardEntry {
   rank: number;

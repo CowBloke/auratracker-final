@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS "WordleAttempt";
+DROP TABLE IF EXISTS "WordlePuzzle";

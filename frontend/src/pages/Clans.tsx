@@ -296,14 +296,14 @@ export default function Clans() {
               ) : (
                 <div className="space-y-1">
                   {!userBelongsToAnyClan && (
-                    <button
+                    <Button
                       type="button"
                       onClick={() => setDialogOpen(true)}
-                      className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-left transition-colors hover:bg-muted/40 border border-dashed border-border/40"
+                      className="w-full justify-start"
                     >
-                      <Plus className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground")}>Créer un clan</span>
-                    </button>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Créer un clan
+                    </Button>
                   )}
                   {clans.length === 0 && (
                     <div className={cn(TYPOGRAPHY.MUTED, "py-6")}>Aucun clan pour le moment.</div>

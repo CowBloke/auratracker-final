@@ -162,9 +162,9 @@ export default function Header() {
           {/* Connection Status */}
           <div className="flex items-center gap-2">
             {connected ? (
-              <Wifi className="w-4 h-4 text-accent-green" />
+              <Wifi className="w-4 h-4 text-muted-foreground" />
             ) : (
-              <WifiOff className="w-4 h-4 text-destructive" />
+              <WifiOff className="w-4 h-4 text-muted-foreground" />
             )}
             <span className="text-xs text-muted-foreground">
               {connected ? 'Connecté' : 'Déconnecté'}
@@ -172,17 +172,17 @@ export default function Header() {
           </div>
 
           {/* Aura */}
-          <Badge variant="outline" className="gap-2 px-4 py-2 bg-aura/10 border-aura/30">
-            <Sparkles className="w-4 h-4 text-aura-light" />
-            <span className="text-lg font-semibold text-aura-light">
+          <Badge variant="outline" className="gap-2 px-4 py-2">
+            <Sparkles className="w-4 h-4 text-muted-foreground" />
+            <span className="text-lg font-semibold">
               {user?.aura.toLocaleString()}
             </span>
           </Badge>
 
           {/* Money */}
-          <Badge variant="outline" className="gap-2 px-4 py-2 bg-money/10 border-money/30">
-            <Coins className="w-4 h-4 text-money-light" />
-            <span className="text-lg font-semibold text-money-light">
+          <Badge variant="outline" className="gap-2 px-4 py-2">
+            <Coins className="w-4 h-4 text-muted-foreground" />
+            <span className="text-lg font-semibold">
               ${user?.money.toLocaleString()}
             </span>
           </Badge>

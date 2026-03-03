@@ -911,7 +911,7 @@ function gameLoop() {
   } else if (gameState === 2) {
     // Count Down
     if (frame < 50) {
-      if (msg.innerHTML !== 'READY') msg.innerHTML = 'READY';
+      if (msg.innerHTML !== 'Ready') msg.innerHTML = 'Ready';
     } else if (frame < 100) {
       if (msg.innerHTML !== 'GO!') msg.innerHTML = 'GO!';
     } else {

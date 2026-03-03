@@ -1405,7 +1405,7 @@ export default function DoodleJump() {
                       : 'border-border/50 text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  Mort subite: {isMortSubite ? 'ON' : 'OFF'}
+                  Mort subite: {isMortSubite ? 'Oui' : 'Non'}
                 </Button>
                 <Button variant="ghost"
                   type="button"
@@ -1416,7 +1416,7 @@ export default function DoodleJump() {
                       : 'border-border/50 text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  Multijoueur quotidien: {isMultiplayer ? 'ON' : 'OFF'}
+                  Multijoueur quotidien: {isMultiplayer ? 'Oui' : 'Non'}
                 </Button>
                 <Button variant="ghost"
                   onClick={initGame}

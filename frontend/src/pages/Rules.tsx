@@ -80,27 +80,36 @@ export default function Rules() {
           <CardDescription>Règlement</CardDescription>
           <CardTitle className={TYPOGRAPHY.H2}>Principes</CardTitle>
         </CardHeader>
-        <CardContent className="p-6">
+        <CardContent className={SPACING.SECTION_SPACING}>
           {sections.map((section, index) => (
-            <div key={index} className={index > 0 ? "mt-6" : ""}>
-              <h3 className={TYPOGRAPHY.MUTED}>
-                {section.title}
-              </h3>
-              
-              <div className="divide-y divide-border/30 mt-4">
+            <section
+              key={index}
+              className={cn(
+                "space-y-3",
+                index > 0 && "border-t border-border/30 pt-6"
+              )}
+            >
+              <h3 className={TYPOGRAPHY.MUTED}>{section.title}</h3>
+
+              <div className="divide-y divide-border/30">
                 {section.rules.map((rule, ruleIndex) => (
                   <div
                     key={ruleIndex}
-                    className="grid grid-cols-[1.5rem_minmax(0,1fr)] items-start gap-x-3 py-4"
+                    className="grid grid-cols-[auto_1fr] items-start gap-x-1 py-4"
                   >
-                    <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground tabular-nums leading-5")}>
+                    <span
+                      className={cn(
+                        TYPOGRAPHY.SMALL,
+                        "text-muted-foreground tabular-nums leading-5"
+                      )}
+                    >
                       {ruleIndex + 1}.
                     </span>
                     <p className={cn(TYPOGRAPHY.SMALL, "leading-5")}>{rule}</p>
                   </div>
                 ))}
               </div>
-            </div>
+            </section>
           ))}
         </CardContent>
       </Card>
