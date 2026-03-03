@@ -1,28 +1,33 @@
-import { useEffect, useMemo, useState } from 'react';
-import { marketplaceApi, ShopItem } from '../services/api';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { marketplaceApi, giftsApi, usersApi, ShopItem } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { PageShell } from '@/components/layout/page-shell';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
-import { Coins, Loader2, Package } from 'lucide-react';
+import { Coins, Loader2, Package, Gift, Send } from 'lucide-react';
 
-type ShopFilter = 'ALL' | 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE';
+type ShopFilter = 'ALL' | 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE' | 'GIFT';
 
 const FILTERS: Array<{ value: ShopFilter; label: string }> = [
   { value: 'ALL', label: 'Tous' },
   { value: 'COSMETIC', label: 'Cosmetiques' },
   { value: 'CONSUMABLE', label: 'Consommables' },
   { value: 'UPGRADE', label: 'Ameliorations' },
+  { value: 'GIFT', label: 'Cadeaux' },
 ];
 
 const TYPE_LABELS: Record<ShopItem['type'], string> = {
   CONSUMABLE: 'Consommable',
   COSMETIC: 'Cosmetique',
   UPGRADE: 'Amelioration',
+  GIFT: 'Cadeau',
 };
 
 const getEffectLabel = (effect: string | null) => {
@@ -65,6 +70,14 @@ export default function Shop() {
   const [buyingItemId, setBuyingItemId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Gift send dialog state
+  const [sendDialogItem, setSendDialogItem] = useState<ShopItem | null>(null);
+  const [giftUsers, setGiftUsers] = useState<{ id: string; username: string }[]>([]);
+  const [selectedReceiver, setSelectedReceiver] = useState('');
+  const [giftMessage, setGiftMessage] = useState('');
+  const [sendingGift, setSendingGift] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+
   useEffect(() => {
     const fetchItems = async () => {
       try {
@@ -84,6 +97,19 @@ export default function Shop() {
 
     fetchItems();
   }, [filter]);
+
+  const fetchUsers = useCallback(async () => {
+    setLoadingUsers(true);
+    try {
+      const res = await usersApi.getAll();
+      const allUsers = (res.data as { users?: { id: string; username: string }[] }).users || res.data as unknown as { id: string; username: string }[];
+      const list = Array.isArray(allUsers) ? allUsers : [];
+      setGiftUsers(list.filter((u: { id: string }) => u.id !== user?.id));
+    } catch {
+      // ignore
+    }
+    setLoadingUsers(false);
+  }, [user?.id]);
 
   const availableItems = useMemo(() => (
     items.filter((item) => !item.expiresAt || new Date(item.expiresAt) >= new Date())
@@ -105,6 +131,36 @@ export default function Shop() {
       });
     } finally {
       setBuyingItemId(null);
+    }
+  };
+
+  const openSendDialog = (item: ShopItem) => {
+    setSendDialogItem(item);
+    setSelectedReceiver('');
+    setGiftMessage('');
+    setMessage(null);
+    fetchUsers();
+  };
+
+  const handleSendGift = async () => {
+    if (!sendDialogItem || !selectedReceiver) return;
+    setSendingGift(true);
+    try {
+      const res = await giftsApi.sendShopItem({
+        itemId: sendDialogItem.id,
+        receiverId: selectedReceiver,
+        message: giftMessage.trim() || undefined,
+      });
+      updateBalance(res.data.newBalance.aura, res.data.newBalance.money);
+      setSendDialogItem(null);
+      setMessage({ type: 'success', text: `"${sendDialogItem.name}" envoyé !` });
+    } catch (error: any) {
+      setMessage({
+        type: 'error',
+        text: error.response?.data?.error || 'Envoi impossible.',
+      });
+    } finally {
+      setSendingGift(false);
     }
   };
 
@@ -158,11 +214,12 @@ export default function Shop() {
             ) : (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {availableItems.map((item) => {
-                  const effectLabel = getEffectLabel(item.effect);
+                  const isGift = item.type === 'GIFT';
+                  const effectLabel = isGift ? `${item.price} aura pour le destinataire` : getEffectLabel(item.effect);
                   const canAfford = (user?.money ?? 0) >= item.price;
 
                   return (
-                    <Card key={item.id} className="overflow-hidden border-border/40">
+                    <Card key={item.id} className={cn('overflow-hidden border-border/40', isGift && 'border-pink-500/30')}>
                       <CardContent className="p-0">
                         {item.imageUrl ? (
                           <img
@@ -171,8 +228,11 @@ export default function Shop() {
                             className="h-44 w-full object-cover"
                           />
                         ) : (
-                          <div className="flex h-44 w-full items-center justify-center bg-muted/20">
-                            <Package className="h-10 w-10 text-muted-foreground" />
+                          <div className={cn('flex h-44 w-full items-center justify-center', isGift ? 'bg-pink-500/10' : 'bg-muted/20')}>
+                            {isGift
+                              ? <Gift className="h-10 w-10 text-pink-400" />
+                              : <Package className="h-10 w-10 text-muted-foreground" />
+                            }
                           </div>
                         )}
 
@@ -190,27 +250,39 @@ export default function Shop() {
                             <p className="text-sm text-muted-foreground">{item.description}</p>
                             {effectLabel && (
                               <p className="text-xs uppercase tracking-wide text-muted-foreground/80">
-                                Effet: {effectLabel}
+                                {isGift ? effectLabel : `Effet: ${effectLabel}`}
                               </p>
                             )}
                           </div>
 
-                          <Button
-                            onClick={() => handlePurchase(item)}
-                            disabled={!canAfford || buyingItemId === item.id}
-                            className="w-full"
-                          >
-                            {buyingItemId === item.id ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Achat...
-                              </>
-                            ) : canAfford ? (
-                              'Acheter'
-                            ) : (
-                              'Solde insuffisant'
-                            )}
-                          </Button>
+                          {isGift ? (
+                            <Button
+                              onClick={() => openSendDialog(item)}
+                              disabled={!canAfford}
+                              className="w-full"
+                              variant={canAfford ? 'default' : 'outline'}
+                            >
+                              <Gift className="mr-2 h-4 w-4" />
+                              {canAfford ? 'Envoyer un cadeau' : 'Solde insuffisant'}
+                            </Button>
+                          ) : (
+                            <Button
+                              onClick={() => handlePurchase(item)}
+                              disabled={!canAfford || buyingItemId === item.id}
+                              className="w-full"
+                            >
+                              {buyingItemId === item.id ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Achat...
+                                </>
+                              ) : canAfford ? (
+                                'Acheter'
+                              ) : (
+                                'Solde insuffisant'
+                              )}
+                            </Button>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
@@ -221,6 +293,77 @@ export default function Shop() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Send gift dialog */}
+      <Dialog open={!!sendDialogItem} onOpenChange={(open) => { if (!open) setSendDialogItem(null); }}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Gift className="h-5 w-5 text-pink-400" />
+              Envoyer {sendDialogItem?.name}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 px-3 py-2 text-sm">
+              <span className="text-muted-foreground">Prix</span>
+              <span className="font-medium tabular-nums">${sendDialogItem?.price}</span>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Destinataire</label>
+              {loadingUsers ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Chargement...
+                </div>
+              ) : (
+                <Select value={selectedReceiver} onValueChange={setSelectedReceiver}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choisir un utilisateur..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {giftUsers.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.username}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Message (optionnel)</label>
+              <Textarea
+                value={giftMessage}
+                onChange={(e) => setGiftMessage(e.target.value.slice(0, 200))}
+                placeholder="Ajouter un message..."
+                rows={2}
+                maxLength={200}
+              />
+              <p className="text-xs text-muted-foreground">{giftMessage.length}/200</p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSendDialogItem(null)}>
+              Annuler
+            </Button>
+            <Button
+              onClick={handleSendGift}
+              disabled={!selectedReceiver || sendingGift}
+            >
+              {sendingGift ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="mr-2 h-4 w-4" />
+              )}
+              Envoyer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageShell>
   );
 }

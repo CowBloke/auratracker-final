@@ -12,7 +12,7 @@ router.get('/items', authMiddleware, async (req: AuthRequest, res: Response) => 
   try {
     const { type, page = '1', limit = '20' } = req.query;
     
-    const where = type ? { type: type as 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE' } : {};
+    const where = type ? { type: type as string } : { NOT: { type: 'GIFT' } };
     
     const [items, total] = await Promise.all([
       prisma.item.findMany({

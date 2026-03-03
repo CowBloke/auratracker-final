@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Gift as GiftIcon, Sparkles, Upload, Eye, Activity, Trophy, CalendarRange, RefreshCw } from 'lucide-react';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Upload, Eye, Activity, Trophy, CalendarRange, RefreshCw } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import {
   AlertDialog,
@@ -277,7 +277,7 @@ const GAME_TYPES = [
 interface ItemFormData {
   name: string;
   description: string;
-  type: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE';
+  type: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE' | 'GIFT';
   price: number;
   imageUrl: string;
   effectType: string;
@@ -449,63 +449,6 @@ export default function Admin() {
   const updatePopupFileInputRef = useRef<HTMLInputElement | null>(null);
   const [isUpdatePopupDropzoneActive, setIsUpdatePopupDropzoneActive] = useState(false);
 
-  // Gift templates state
-  const [giftTemplates, setGiftTemplates] = useState<{ id: string; name: string; description: string | null; imageUrl: string | null; price: number; createdAt: string }[]>([]);
-  const [loadingGiftTemplates, setLoadingGiftTemplates] = useState(false);
-  const [giftTemplateForm, setGiftTemplateForm] = useState({ name: '', description: '', imageUrl: '', price: 0 });
-  const [editingGiftTemplate, setEditingGiftTemplate] = useState<string | null>(null);
-  const [savingGiftTemplate, setSavingGiftTemplate] = useState(false);
-  const [deletingGiftTemplate, setDeletingGiftTemplate] = useState<string | null>(null);
-
-  const fetchGiftTemplates = async () => {
-    setLoadingGiftTemplates(true);
-    try {
-      const res = await adminApi.getGiftTemplates();
-      setGiftTemplates(res.data.templates);
-    } catch { /* ignore */ }
-    setLoadingGiftTemplates(false);
-  };
-
-  const handleSaveGiftTemplate = async () => {
-    if (!giftTemplateForm.name || giftTemplateForm.price < 0) return;
-    setSavingGiftTemplate(true);
-    try {
-      if (editingGiftTemplate) {
-        await adminApi.updateGiftTemplate(editingGiftTemplate, {
-          name: giftTemplateForm.name,
-          description: giftTemplateForm.description || undefined,
-          imageUrl: giftTemplateForm.imageUrl || undefined,
-          price: giftTemplateForm.price,
-        });
-      } else {
-        await adminApi.createGiftTemplate({
-          name: giftTemplateForm.name,
-          description: giftTemplateForm.description || undefined,
-          imageUrl: giftTemplateForm.imageUrl || undefined,
-          price: giftTemplateForm.price,
-        });
-      }
-      setGiftTemplateForm({ name: '', description: '', imageUrl: '', price: 0 });
-      setEditingGiftTemplate(null);
-      fetchGiftTemplates();
-      setMessage({ type: 'success', text: editingGiftTemplate ? 'Template modifié' : 'Template créé' });
-    } catch {
-      setMessage({ type: 'error', text: 'Erreur lors de la sauvegarde' });
-    }
-    setSavingGiftTemplate(false);
-  };
-
-  const handleDeleteGiftTemplate = async (id: string) => {
-    setDeletingGiftTemplate(id);
-    try {
-      await adminApi.deleteGiftTemplate(id);
-      fetchGiftTemplates();
-      setMessage({ type: 'success', text: 'Template supprimé' });
-    } catch {
-      setMessage({ type: 'error', text: 'Erreur lors de la suppression' });
-    }
-    setDeletingGiftTemplate(null);
-  };
 
   const fetchUpdatePopups = async () => {
     try {
@@ -724,7 +667,6 @@ export default function Admin() {
     fetchLogs();
     fetchLogStats();
     fetchSettings();
-    fetchGiftTemplates();
     fetchUpdatePopups();
     fetchActivity('day');
   }, []);
@@ -1217,21 +1159,16 @@ export default function Admin() {
 
     setSavingItem(true);
     try {
-      // Build effect JSON based on effect type
-      let effect: string;
-      if (itemForm.effectType === 'BONUS_AURA') {
-        effect = JSON.stringify({
-          bonusAura: itemForm.bonusAura || 0,
-        });
-      } else if (itemForm.effectType === 'BONUS_MONEY') {
-        effect = JSON.stringify({
-          bonusMoney: itemForm.bonusMoney || 0,
-        });
-      } else {
-        effect = JSON.stringify({
-          type: itemForm.effectType,
-          value: itemForm.effectValue,
-        });
+      // Build effect JSON based on effect type (not applicable for GIFT items)
+      let effect: string | undefined;
+      if (itemForm.type !== 'GIFT') {
+        if (itemForm.effectType === 'BONUS_AURA') {
+          effect = JSON.stringify({ bonusAura: itemForm.bonusAura || 0 });
+        } else if (itemForm.effectType === 'BONUS_MONEY') {
+          effect = JSON.stringify({ bonusMoney: itemForm.bonusMoney || 0 });
+        } else {
+          effect = JSON.stringify({ type: itemForm.effectType, value: itemForm.effectValue });
+        }
       }
 
       const uploadedUrl = itemForm.imageUrl.trim() || undefined;
@@ -2087,9 +2024,11 @@ export default function Admin() {
                           <p className="text-xs text-muted-foreground truncate">
                             {item.description}
                           </p>
+                          {item.type !== 'GIFT' && (
                           <p className="text-xs text-muted-foreground/60">
                             Effet: {effectLabel}
                           </p>
+                          )}
                         </div>
                       </div>
                       
@@ -3774,7 +3713,7 @@ export default function Admin() {
                 <label className="text-sm text-muted-foreground">Type</label>
                 <Select
                   value={itemForm.type}
-                  onValueChange={(value: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE') => 
+                  onValueChange={(value: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE' | 'GIFT') =>
                     setItemForm(prev => ({ ...prev, type: value }))
                   }
                 >
@@ -3785,6 +3724,7 @@ export default function Admin() {
                     <SelectItem value="COSMETIC">Cosmétique</SelectItem>
                     <SelectItem value="CONSUMABLE">Consommable</SelectItem>
                     <SelectItem value="UPGRADE">Amélioration</SelectItem>
+                    <SelectItem value="GIFT">Cadeau</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -3833,6 +3773,7 @@ export default function Admin() {
               )}
             </div>
 
+            {itemForm.type !== 'GIFT' && (<>
             <div className="space-y-2">
               <label className="text-sm text-muted-foreground">Effet</label>
               <Select
@@ -3914,6 +3855,7 @@ export default function Admin() {
                 />
               </div>
             )}
+            </>)}
           </div>
 
           <DialogFooter>
@@ -3937,156 +3879,6 @@ export default function Admin() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-        {/* GIFTS TAB */}
-        <TabsContent value="content" className={SPACING.SECTION_SPACING}>
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <h3 className={TYPOGRAPHY.H3}>Templates de cadeaux</h3>
-              </div>
-              <CardDescription>
-                Cr\u00e9er des articles que les utilisateurs peuvent inclure dans leurs cadeaux. Chaque article a un co\u00fbt en argent.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Create/Edit form */}
-              <div className="space-y-3 p-4 rounded-lg border bg-muted/30">
-                <h4 className="text-sm font-medium">{editingGiftTemplate ? 'Modifier le template' : 'Nouveau template'}</h4>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs text-muted-foreground">Nom *</label>
-                    <Input
-                      value={giftTemplateForm.name}
-                      onChange={(e) => setGiftTemplateForm(f => ({ ...f, name: e.target.value }))}
-                      placeholder="Nom du cadeau"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground">Prix ($) *</label>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={giftTemplateForm.price}
-                      onChange={(e) => setGiftTemplateForm(f => ({ ...f, price: Math.max(0, Number(e.target.value)) }))}
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">Description</label>
-                  <Input
-                    value={giftTemplateForm.description}
-                    onChange={(e) => setGiftTemplateForm(f => ({ ...f, description: e.target.value }))}
-                    placeholder="Description optionnelle"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">URL image</label>
-                  <Input
-                    value={giftTemplateForm.imageUrl}
-                    onChange={(e) => setGiftTemplateForm(f => ({ ...f, imageUrl: e.target.value }))}
-                    placeholder="https://..."
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button onClick={handleSaveGiftTemplate} disabled={savingGiftTemplate || !giftTemplateForm.name} size="sm">
-                    {savingGiftTemplate ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                    ) : (
-                      <Save className="h-4 w-4 mr-1" />
-                    )}
-                    {editingGiftTemplate ? 'Modifier' : 'Cr\u00e9er'}
-                  </Button>
-                  {editingGiftTemplate && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setEditingGiftTemplate(null);
-                        setGiftTemplateForm({ name: '', description: '', imageUrl: '', price: 0 });
-                      }}
-                    >
-                      <X className="h-4 w-4 mr-1" />
-                      Annuler
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {/* Templates list */}
-              {loadingGiftTemplates ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : giftTemplates.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">Aucun template cr\u00e9\u00e9</p>
-              ) : (
-                <div className="space-y-2">
-                  {giftTemplates.map(t => (
-                    <div key={t.id} className="flex items-center justify-between p-3 rounded-lg border">
-                      <div className="flex items-center gap-3">
-                        {t.imageUrl ? (
-                          <img src={resolveImageUrl(t.imageUrl)} alt={t.name} className="h-10 w-10 rounded-lg object-cover flex-shrink-0" />
-                        ) : (
-                          <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                            <GiftIcon className="h-5 w-5 text-muted-foreground" />
-                          </div>
-                        )}
-                        <div>
-                          <p className="font-medium text-sm">{t.name}</p>
-                          {t.description && <p className="text-xs text-muted-foreground">{t.description}</p>}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-medium text-yellow-500">${t.price}</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setEditingGiftTemplate(t.id);
-                            setGiftTemplateForm({
-                              name: t.name,
-                              description: t.description || '',
-                              imageUrl: t.imageUrl || '',
-                              price: t.price,
-                            });
-                          }}
-                        >
-                          <Edit2 className="h-3.5 w-3.5" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="sm" className="text-destructive">
-                              {deletingGiftTemplate === t.id ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-3.5 w-3.5" />
-                              )}
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Supprimer ce template ?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Cette action est irr\u00e9versible. Le template "{t.name}" sera d\u00e9finitivement supprim\u00e9.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Annuler</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteGiftTemplate(t.id)}>
-                                Supprimer
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         {/* ===== ACTIVITY TAB ===== */}
         <TabsContent value="activity" className={SPACING.SECTION_SPACING}>

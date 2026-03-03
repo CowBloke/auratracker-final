@@ -298,4 +298,99 @@ router.post('/:id/open', authMiddleware, async (req: AuthRequest, res: Response)
   }
 });
 
+// Purchase a GIFT shop item and send it to another user
+router.post('/send-item', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+
+    const { itemId, receiverId, message } = req.body;
+
+    if (!itemId || !receiverId) {
+      return res.status(400).json({ error: 'itemId and receiverId are required' });
+    }
+
+    if (receiverId === req.user.id) {
+      return res.status(400).json({ error: 'Cannot send a gift to yourself' });
+    }
+
+    if (message && message.length > 200) {
+      return res.status(400).json({ error: 'Message must be 200 characters or less' });
+    }
+
+    const item = await prisma.item.findUnique({ where: { id: itemId } });
+    if (!item || item.type !== 'GIFT') {
+      return res.status(404).json({ error: 'Gift item not found' });
+    }
+
+    if (item.expiresAt && new Date(item.expiresAt) < new Date()) {
+      return res.status(400).json({ error: 'This gift is no longer available' });
+    }
+
+    const receiver = await prisma.user.findUnique({ where: { id: receiverId } });
+    if (!receiver) return res.status(404).json({ error: 'Receiver not found' });
+
+    const sender = await prisma.user.findUnique({ where: { id: req.user.id } });
+    if (!sender) return res.status(404).json({ error: 'Sender not found' });
+
+    if (sender.money < item.price) {
+      return res.status(400).json({ error: 'Insufficient balance' });
+    }
+
+    const gift = await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: req.user!.id },
+        data: { money: { decrement: item.price } },
+      });
+
+      return tx.gift.create({
+        data: {
+          senderId: req.user!.id,
+          receiverId,
+          message: message || null,
+          moneyAmount: 0,
+          auraAmount: item.price,
+        },
+        include: {
+          sender: { select: { id: true, username: true, profilePicture: true } },
+          items: { include: { giftTemplate: true } },
+        },
+      });
+    });
+
+    const updatedSender = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { money: true, aura: true },
+    });
+
+    io.emit('gift:received', {
+      receiverId,
+      gift: { id: gift.id, sender: gift.sender, createdAt: gift.createdAt },
+    });
+
+    createNotification({
+      userId: receiverId,
+      type: 'GIFT_RECEIVED',
+      title: 'Cadeau reçu !',
+      body: gift.message
+        ? `${gift.sender.username} t'a envoyé "${item.name}" : "${gift.message}"`
+        : `${gift.sender.username} t'a envoyé "${item.name}" (${item.price} aura).`,
+      data: { senderId: gift.sender.id, senderUsername: gift.sender.username, itemName: item.name, auraAmount: item.price, giftId: gift.id },
+      link: '/inbox',
+      icon: 'gift',
+    }).catch(() => {});
+
+    logEconomy('transfer', req.user.id, sender.username, receiverId, receiver.username, {
+      type: 'gift_item',
+      itemId: item.id,
+      itemName: item.name,
+      moneySpent: item.price,
+    });
+
+    res.json({ gift, newBalance: updatedSender });
+  } catch (error) {
+    console.error('Send gift item error:', error);
+    res.status(500).json({ error: 'Failed to send gift item' });
+  }
+});
+
 export default router;

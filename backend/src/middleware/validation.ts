@@ -55,7 +55,7 @@ export const giftAuraSchema = z.object({
 export const createItemSchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().min(1).max(500),
-  type: z.enum(['CONSUMABLE', 'COSMETIC', 'UPGRADE']),
+  type: z.enum(['CONSUMABLE', 'COSMETIC', 'UPGRADE', 'GIFT']),
   price: z.number().int().min(0),
   imageUrl: z.string().min(1).optional(),
   effect: z.string().optional(),

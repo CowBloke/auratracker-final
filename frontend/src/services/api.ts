@@ -134,7 +134,7 @@ export const marketplaceApi = {
   createItem: (data: {
     name: string;
     description: string;
-    type: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE';
+    type: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE' | 'GIFT';
     price: number;
     imageUrl?: string;
     effect?: string;
@@ -521,7 +521,7 @@ export interface ShopItem {
   id: string;
   name: string;
   description: string;
-  type: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE';
+  type: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE' | 'GIFT';
   price: number;
   imageUrl: string | null;
   effect: string | null;
@@ -1078,6 +1078,8 @@ export const giftsApi = {
   }) =>
     api.post<{ gift: Gift }>('/gifts/send', data),
   open: (id: string) => api.post<{ gift: Gift }>(`/gifts/${id}/open`),
+  sendShopItem: (data: { itemId: string; receiverId: string; message?: string }) =>
+    api.post<{ gift: Gift; newBalance: { money: number; aura: number } }>('/gifts/send-item', data),
 };
 
 // ─── Notifications API ────────────────────────────────────────────────────────
