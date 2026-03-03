@@ -66,6 +66,9 @@ model User {
   // Gift System
   sentGifts           Gift[]                 @relation("SentGifts")
   receivedGifts       Gift[]                 @relation("ReceivedGifts")
+
+  // Notifications
+  notifications       Notification[]
   wordleAttempts      WordleAttempt[]
   dailyRacerRuns      DailyRacerRun[]
 
@@ -744,4 +747,33 @@ model UserUpdatePopupView {
 
   @@unique([userId, popupId])
   @@index([userId, viewedAt])
+}
+
+// ============================================
+// NOTIFICATION / INBOX SYSTEM
+// ============================================
+
+// Notification types (extensible via the `type` string field):
+//   AURA_RECEIVED, MONEY_RECEIVED, GIFT_RECEIVED, ITEM_RECEIVED,
+//   CLAN_INVITE, CLAN_JOIN_REQUEST, CLAN_JOIN_ACCEPTED, CLAN_JOIN_REJECTED,
+//   BADGE_EARNED, QUEST_COMPLETED, POLYMARKET_WIN, POLYMARKET_LOSS,
+//   PARTY_INVITE, SYSTEM, ADMIN
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   // Recipient
+  type      String   // Notification type (see above)
+  title     String   // Short title
+  body      String   // Longer description
+  data      String?  // JSON string for flexible extra payload (amounts, senderIds, etc.)
+  link      String?  // Optional front-end route to navigate to on click
+  icon      String?  // Optional icon key (maps to a Lucide icon name on frontend)
+  isRead    Boolean  @default(false)
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@index([createdAt])
 }

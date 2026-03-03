@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { logEconomy } from '../utils/logger.js';
+import { createNotification } from '../utils/notifications.js';
 
 const router = Router();
 
@@ -198,6 +199,19 @@ router.post('/send', authMiddleware, async (req: AuthRequest, res: Response) => 
         createdAt: gift.createdAt,
       },
     });
+
+    // Inbox notification
+    createNotification({
+      userId: receiverId,
+      type: 'GIFT_RECEIVED',
+      title: 'Cadeau reçu !',
+      body: gift.message
+        ? `${gift.sender.username} : "${gift.message}"`
+        : `${gift.sender.username} vous a envoyé un cadeau (${auraAmount} aura).`,
+      data: { senderId: gift.sender.id, senderUsername: gift.sender.username, auraAmount, giftId: gift.id },
+      link: '/inbox',
+      icon: 'gift',
+    }).catch(() => {});
 
     // Log the gift
     logEconomy('transfer', req.user.id, sender.username, receiverId, receiver.username, {

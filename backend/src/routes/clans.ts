@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
+import { createNotification } from '../utils/notifications.js';
 
 const router = Router();
 
@@ -353,6 +354,23 @@ router.post('/:id/join', authMiddleware, async (req: AuthRequest, res: Response)
       },
     });
 
+    // Notify clan leader about the join request
+    const [clanDetail, requester] = await Promise.all([
+      prisma.clan.findUnique({ where: { id }, select: { name: true, ownerId: true } }),
+      prisma.user.findUnique({ where: { id: userId }, select: { username: true } }),
+    ]);
+    if (clanDetail && requester) {
+      createNotification({
+        userId: clanDetail.ownerId,
+        type: 'CLAN_JOIN_REQUEST',
+        title: 'Demande d\'adhésion',
+        body: `${requester.username} souhaite rejoindre ${clanDetail.name}.`,
+        data: { requesterId: userId, requesterUsername: requester.username, clanId: id, requestId: request.id },
+        link: '/clans',
+        icon: 'users',
+      }).catch(() => {});
+    }
+
     res.json({ status: 'requested', requestId: request.id });
   } catch (error) {
     if (error instanceof Error && error.message === 'CLAN_FULL') {
@@ -428,6 +446,20 @@ router.post('/:id/requests/:requestId/accept', authMiddleware, async (req: AuthR
       });
     });
 
+    // Notify the accepted user
+    const clanInfo = await prisma.clan.findUnique({ where: { id }, select: { name: true } });
+    if (clanInfo) {
+      createNotification({
+        userId: request.userId,
+        type: 'CLAN_JOIN_ACCEPTED',
+        title: 'Demande acceptée !',
+        body: `Vous avez rejoint le clan ${clanInfo.name}.`,
+        data: { clanId: id, clanName: clanInfo.name },
+        link: '/clans',
+        icon: 'users',
+      }).catch(() => {});
+    }
+
     res.json({ success: true });
   } catch (error) {
     if (error instanceof Error && error.message === 'CLAN_FULL') {
@@ -466,7 +498,7 @@ router.post('/:id/requests/:requestId/reject', authMiddleware, async (req: AuthR
 
     const request = await prisma.clanJoinRequest.findUnique({
       where: { id: requestId },
-      select: { id: true, clanId: true },
+      select: { id: true, clanId: true, userId: true },
     });
 
     if (!request || request.clanId !== id) {
@@ -476,6 +508,20 @@ router.post('/:id/requests/:requestId/reject', authMiddleware, async (req: AuthR
     await prisma.clanJoinRequest.delete({
       where: { id: request.id },
     });
+
+    // Notify the rejected user
+    const clanInfo = await prisma.clan.findUnique({ where: { id }, select: { name: true } });
+    if (clanInfo) {
+      createNotification({
+        userId: request.userId,
+        type: 'CLAN_JOIN_REJECTED',
+        title: 'Demande refusée',
+        body: `Votre demande pour rejoindre ${clanInfo.name} a été refusée.`,
+        data: { clanId: id, clanName: clanInfo.name },
+        link: '/clans',
+        icon: 'users',
+      }).catch(() => {});
+    }
 
     res.json({ success: true });
   } catch (error) {

@@ -5,6 +5,7 @@ import App from './App';
 import { AuthProvider } from './contexts/AuthContext';
 import { SocketProvider } from './contexts/SocketContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as SonnerToaster } from '@/components/ui/sonner';
 import './index.css';
@@ -15,9 +16,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <ThemeProvider>
         <AuthProvider>
           <SocketProvider>
-            <App />
-            <Toaster />
-            <SonnerToaster />
+            <NotificationProvider>
+              <App />
+              <Toaster />
+              <SonnerToaster />
+            </NotificationProvider>
           </SocketProvider>
         </AuthProvider>
       </ThemeProvider>

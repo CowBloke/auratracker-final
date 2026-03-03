@@ -37,6 +37,7 @@ import Tetris from './pages/Tetris';
 import Wordle from './pages/Wordle';
 import WallaceGromit from './pages/WallaceGromit';
 import News from './pages/News';
+import Inbox from './pages/Inbox';
 import MusicLounge from './pages/MusicLounge';
 import { maintenanceApi } from './services/api';
 import Blocked from './pages/Blocked';
@@ -223,6 +224,7 @@ function App() {
         <Route path="quests" element={<Quests />} />
         <Route path="suggestions" element={<Suggestions />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="inbox" element={<Inbox />} />
       </Route>
     </Routes>
   );

@@ -32,6 +32,7 @@ import passRoutes from './routes/pass.js';
 import questsRoutes from './routes/quests.js';
 import solitaireRoutes from './routes/solitaire.js';
 import giftsRoutes from './routes/gifts.js';
+import notificationsRoutes from './routes/notifications.js';
 
 // Socket handlers
 import { setupChatHandlers, startOnlineCountBroadcast, startOnlineSnapshotRecording } from './socket/chat.js';
@@ -92,6 +93,7 @@ app.use('/api/pass', passRoutes);
 app.use('/api/quests', questsRoutes);
 app.use('/api/solitaire', solitaireRoutes);
 app.use('/api/gifts', giftsRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -171,6 +173,11 @@ io.use(async (socket, next) => {
 
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
+
+  // Join personal room for targeted notifications
+  if (socket.data.userId) {
+    socket.join(`user:${socket.data.userId}`);
+  }
 
   socket.use(async (packet, next) => {
     const userId = socket.data.userId as string | undefined;

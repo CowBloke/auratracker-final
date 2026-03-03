@@ -7,7 +7,12 @@
       "Bash(dir:*)",
       "Bash(npx prisma migrate:*)",
       "Bash(find:*)",
-      "Bash(npm run db:push:*)"
+      "Bash(npm run db:push:*)",
+      "Bash(npm install)",
+      "Bash(npx prisma db push)",
+      "Bash(npx prisma generate)",
+      "Bash(npx prisma db push --accept-data-loss)",
+      "Bash(npx prisma generate --no-engine)"
     ]
   }
 }

@@ -33,6 +33,7 @@ import {
   Eye,
 } from 'lucide-react';
 import { UsernameDisplay } from '@/components/ui/username-display';
+import { InboxDropdown } from '@/components/inbox/InboxDropdown';
 
 export function SiteHeader() {
   const { user } = useAuth();
@@ -436,6 +437,8 @@ export function SiteHeader() {
               </Collapsible>
             </div>
           </div>
+
+          <InboxDropdown />
 
           <div className="flex items-center gap-6 tabular-nums">
             <span className="text-foreground">
