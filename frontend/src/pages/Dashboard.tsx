@@ -278,7 +278,6 @@ export default function Dashboard() {
 
   return (
     <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
-      {/* Stats */}
       <Card className="xl:col-span-2">
         <CardContent className="p-8 md:p-10">
           <div className={cn("space-y-2 text-center", SPACING.TIGHT_SPACING)}>

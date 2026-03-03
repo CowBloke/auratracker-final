@@ -76,6 +76,10 @@ export default function Rules() {
   return (
     <PageShell>
       <Card>
+        <CardHeader>
+          <CardDescription>Règlement</CardDescription>
+          <CardTitle className={TYPOGRAPHY.H2}>Principes</CardTitle>
+        </CardHeader>
         <CardContent className="p-6">
           {sections.map((section, index) => (
             <div key={index} className={index > 0 ? "mt-6" : ""}>

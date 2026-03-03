@@ -54,7 +54,7 @@ export default function Layout() {
             <SiteHeader />
             <div className="@container/main flex flex-1 flex-col">
               <main className="flex-1 overflow-auto">
-                <div className={cn('mx-auto flex w-full flex-1 flex-col', CONTAINER.DEFAULT)}>
+                <div className={cn('mx-auto flex w-full flex-1 flex-col pt-6 lg:pt-8', CONTAINER.DEFAULT)}>
                   <Outlet />
                 </div>
               </main>

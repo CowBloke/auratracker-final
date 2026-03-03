@@ -277,8 +277,7 @@ export default function Clans() {
     <>
       <PageShell>
         <div className={SPACING.PAGE_CONTENT}>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h1 className={TYPOGRAPHY.H2}>Clans</h1>
+          <div className="flex justify-end">
             <Button onClick={() => setDialogOpen(true)} size="sm">
               <Plus className="mr-2 h-4 w-4" />
               Créer
