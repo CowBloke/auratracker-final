@@ -13,7 +13,8 @@
       "Bash(npx prisma generate)",
       "Bash(npx prisma db push --accept-data-loss)",
       "Bash(npx prisma generate --no-engine)",
-      "Bash(node_modules/.bin/tsc --noEmit)"
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(powershell -Command \"\\(Get-Content ''c:\\\\Users\\\\cowbl\\\\source\\\\repos\\\\CRust\\\\auratracker-final\\\\frontend\\\\src\\\\pages\\\\Suggestions.tsx'' -Raw\\) -replace [char]0x2018, [char]0x27 -replace [char]0x2019, [char]0x27 | Set-Content ''c:\\\\Users\\\\cowbl\\\\source\\\\repos\\\\CRust\\\\auratracker-final\\\\frontend\\\\src\\\\pages\\\\Suggestions.tsx'' -NoNewline\")"
     ]
   }
 }

@@ -35,6 +35,7 @@ export default function Clans() {
   const [actionLoading, setActionLoading] = useState(false);
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [userBelongsToAnyClan, setUserBelongsToAnyClan] = useState(false);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -56,6 +57,12 @@ export default function Clans() {
     if (!selectedClanId) return;
     fetchClanDetail(selectedClanId);
   }, [selectedClanId]);
+
+  useEffect(() => {
+    if (selectedClan?.viewer?.isMember || selectedClan?.viewer?.isLeader) {
+      setUserBelongsToAnyClan(true);
+    }
+  }, [selectedClan]);
 
   const fetchClans = async () => {
     try {
@@ -277,13 +284,6 @@ export default function Clans() {
     <>
       <PageShell>
         <div className={SPACING.PAGE_CONTENT}>
-          <div className="flex justify-end">
-            <Button onClick={() => setDialogOpen(true)} size="sm">
-              <Plus className="mr-2 h-4 w-4" />
-              Créer
-            </Button>
-          </div>
-
         <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
           <Card className="h-fit">
             <CardContent className="space-y-2 p-3">
@@ -293,10 +293,21 @@ export default function Clans() {
               </div>
               {loading ? (
                 <div className={cn(TYPOGRAPHY.MUTED, "py-10")}>Chargement...</div>
-              ) : clans.length === 0 ? (
-                <div className={cn(TYPOGRAPHY.MUTED, "py-10")}>Aucun clan pour le moment.</div>
               ) : (
                 <div className="space-y-1">
+                  {!userBelongsToAnyClan && (
+                    <button
+                      type="button"
+                      onClick={() => setDialogOpen(true)}
+                      className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-left transition-colors hover:bg-muted/40 border border-dashed border-border/40"
+                    >
+                      <Plus className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground")}>Créer un clan</span>
+                    </button>
+                  )}
+                  {clans.length === 0 && (
+                    <div className={cn(TYPOGRAPHY.MUTED, "py-6")}>Aucun clan pour le moment.</div>
+                  )}
                   {clans.map((clan) => (
                     <button
                       key={clan.id}

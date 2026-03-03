@@ -1,8 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { auraCoinApi, clansApi, leaderboardsApi, usersApi } from '../services/api';
 import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 
@@ -62,8 +60,6 @@ const StatCard = ({ label, value, hint }: StatItem) => (
 );
 
 export default function Numbers() {
-  const location = useLocation();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [sections, setSections] = useState<StatSection[]>([]);
 
@@ -146,24 +142,8 @@ export default function Numbers() {
     };
   }, []);
 
-  const navItems = useMemo(() => ([
-    { to: '/leaderboards', label: 'Classements', end: true },
-    { to: '/leaderboards/nombres', label: 'Nombres' },
-  ]), []);
-  const activeNavTab = location.pathname === '/leaderboards/nombres' ? '/leaderboards/nombres' : '/leaderboards';
-
   return (
     <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
-      <Tabs value={activeNavTab} onValueChange={(value) => navigate(value)}>
-        <TabsList className="h-auto flex-wrap">
-          {navItems.map((item) => (
-            <TabsTrigger key={item.to} value={item.to}>
-              {item.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
-
       {loading ? (
         <div className="flex justify-center py-12">
           <div className="w-1 h-8 bg-foreground/20 animate-pulse" />

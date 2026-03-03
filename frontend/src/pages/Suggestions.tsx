@@ -639,24 +639,25 @@ export default function Suggestions() {
       <>
         <PageShell>
         <div className={SPACING.PAGE_CONTENT}>
-          <div className="flex items-center justify-between gap-3">
-            <p className={TYPOGRAPHY.SMALL}>Propose une idée ou consulte l’avancement des demandes.</p>
-            <Button onClick={() => setDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Créer
-            </Button>
-          </div>
+          <h1 className={TYPOGRAPHY.H2}>Suggestions</h1>
+          <p className={TYPOGRAPHY.SMALL}>Propose une idée ou consulte l’avancement des demandes.</p>
 
           {/* Tab Selector */}
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'pending' | 'done')}>
-            <TabsList>
-              <TabsTrigger value="pending">
-                Suggestions ({pendingSuggestions.length})
-              </TabsTrigger>
-              <TabsTrigger value="done">
-                Réalisées ({doneSuggestions.length})
-              </TabsTrigger>
-            </TabsList>
+            <div className="flex items-center justify-between gap-3">
+              <TabsList>
+                <TabsTrigger value="pending">
+                  Suggestions ({pendingSuggestions.length})
+                </TabsTrigger>
+                <TabsTrigger value="done">
+                  Réalisées ({doneSuggestions.length})
+                </TabsTrigger>
+              </TabsList>
+              <Button onClick={() => setDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Créer
+              </Button>
+            </div>
 
             {/* Content */}
             <TabsContent value="pending" className={SPACING.SECTION_SPACING}>

@@ -36,7 +36,7 @@ export default function Polymarket() {
   const [suggestions, setSuggestions] = useState<PolymarketSuggestion[]>([]);
   const [bets, setBets] = useState<PolymarketBet[]>([]);
   const [allBets, setAllBets] = useState<PolymarketBet[]>([]);
-  const [activeTab, setActiveTab] = useState<'events' | 'suggest' | 'history' | 'admin'>('events');
+  const [activeTab, setActiveTab] = useState<'events' | 'history' | 'admin'>('events');
   const [betHistoryTab, setBetHistoryTab] = useState<'my' | 'all'>('my');
   
   // Suggestion dialog
@@ -387,12 +387,17 @@ export default function Polymarket() {
     <>
       <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-        <TabsList className="h-auto flex-wrap">
-          <TabsTrigger value="events">Événements</TabsTrigger>
-          <TabsTrigger value="suggest">Suggérer</TabsTrigger>
-          <TabsTrigger value="history">Mes paris</TabsTrigger>
-          {user?.isAdmin && <TabsTrigger value="admin">Admin</TabsTrigger>}
-        </TabsList>
+        <div className="flex items-center justify-between gap-3">
+          <TabsList className="h-auto flex-wrap">
+            <TabsTrigger value="events">Événements</TabsTrigger>
+            <TabsTrigger value="history">Mes paris</TabsTrigger>
+            {user?.isAdmin && <TabsTrigger value="admin">Admin</TabsTrigger>}
+          </TabsList>
+          <Button onClick={() => setSuggestionDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Suggérer
+          </Button>
+        </div>
 
         <TabsContent value="events" className={SPACING.SECTION_SPACING}>
           <div className="flex items-center justify-between">
@@ -569,66 +574,6 @@ export default function Polymarket() {
               </div>
             </div>
           )}
-        </TabsContent>
-
-        <TabsContent value="suggest" className={SPACING.SECTION_SPACING}>
-          <div className="flex items-center justify-between">
-            <h2 className={TYPOGRAPHY.H2}>Suggérer un événement</h2>
-            <Button onClick={() => setSuggestionDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Nouvelle suggestion
-            </Button>
-          </div>
-
-          <div className="space-y-4">
-            {suggestions.filter((s) => s.userId === user?.id).length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center text-muted-foreground">
-                  Vous n'avez pas encore de suggestions
-                </CardContent>
-              </Card>
-            ) : (
-              suggestions
-                .filter((s) => s.userId === user?.id)
-                .map((suggestion) => (
-                  <Card key={suggestion.id}>
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <CardTitle>{suggestion.title}</CardTitle>
-                          <CardDescription>{suggestion.description}</CardDescription>
-                        </div>
-                        <Badge
-                          variant={
-                            suggestion.status === 'APPROVED'
-                              ? 'default'
-                              : suggestion.status === 'REJECTED'
-                              ? 'destructive'
-                              : 'secondary'
-                          }
-                        >
-                          {suggestion.status === 'PENDING' && 'En attente'}
-                          {suggestion.status === 'APPROVED' && 'Approuvée'}
-                          {suggestion.status === 'REJECTED' && 'Rejetée'}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-sm text-muted-foreground">
-                        Date de l'événement: {suggestion.eventDate
-                          ? new Date(suggestion.eventDate).toLocaleDateString('fr-FR')
-                          : 'Non renseignée'}
-                      </div>
-                      {suggestion.suggestedYesOdds && suggestion.suggestedNoOdds && (
-                        <div className="text-sm text-muted-foreground mt-1">
-                          Cotes proposées: Oui {suggestion.suggestedYesOdds.toFixed(2)}x / Non {suggestion.suggestedNoOdds.toFixed(2)}x
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))
-            )}
-          </div>
         </TabsContent>
 
         <TabsContent value="history" className={SPACING.SECTION_SPACING}>
