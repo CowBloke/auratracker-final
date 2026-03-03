@@ -13,6 +13,93 @@ interface OnlineUser {
 
 const onlineUsers = new Map<string, OnlineUser>();
 
+type PublicOnlineUser = Omit<OnlineUser, 'socketId'>;
+
+const MIN_ONLINE_RATIO = 0.1;
+
+const shuffle = <T>(items: T[]): T[] => {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+};
+
+const toPublicOnlineUser = (user: OnlineUser): PublicOnlineUser => ({
+  userId: user.userId,
+  username: user.username,
+  usernameColor: user.usernameColor,
+  profilePicture: user.profilePicture,
+  currentPage: user.currentPage ?? null,
+});
+
+const buildDisplayedOnlineState = async (): Promise<{ users: PublicOnlineUser[]; count: number }> => {
+  const realUsers = Array.from(onlineUsers.values()).map(toPublicOnlineUser);
+  const totalRegisteredUsers = await prisma.user.count({
+    where: {
+      isApproved: true,
+    },
+  });
+
+  const minimumDisplayedOnline = Math.min(
+    totalRegisteredUsers,
+    Math.ceil(totalRegisteredUsers * MIN_ONLINE_RATIO)
+  );
+  const additionalUsersNeeded = Math.max(0, minimumDisplayedOnline - realUsers.length);
+
+  if (additionalUsersNeeded === 0) {
+    return {
+      users: realUsers,
+      count: realUsers.length,
+    };
+  }
+
+  const connectedUserIds = realUsers.map((user) => user.userId);
+  const offlineCandidates = await prisma.user.findMany({
+    where: {
+      isApproved: true,
+      id: {
+        notIn: connectedUserIds,
+      },
+    },
+    select: {
+      id: true,
+      username: true,
+      usernameColor: true,
+      profilePicture: true,
+    },
+  });
+
+  const randomOfflineUsers = shuffle(offlineCandidates)
+    .slice(0, additionalUsersNeeded)
+    .map((user) => ({
+      userId: user.id,
+      username: user.username,
+      usernameColor: user.usernameColor,
+      profilePicture: user.profilePicture,
+      currentPage: null,
+    }));
+
+  const users = [...realUsers, ...randomOfflineUsers];
+  return {
+    users,
+    count: users.length,
+  };
+};
+
+const broadcastDisplayedOnlineState = async (io: Server) => {
+  const { users, count } = await buildDisplayedOnlineState();
+  io.to('global-chat').emit('users:online-list', { users });
+  io.to('global-chat').emit('users:online-count', { count });
+};
+
+const sendDisplayedOnlineState = async (socket: Socket) => {
+  const { users, count } = await buildDisplayedOnlineState();
+  socket.emit('users:online-list', { users });
+  socket.emit('users:online-count', { count });
+};
+
 const summarizeReactions = (reactions: Array<{ emoji: string }>) => {
   const counts = new Map<string, number>();
   reactions.forEach((reaction) => {
@@ -45,7 +132,7 @@ const getTopLeaderboardIds = async () => {
 
 export const startOnlineCountBroadcast = (io: Server) => {
   setInterval(() => {
-    io.to('global-chat').emit('users:online-count', { count: onlineUsers.size });
+    void broadcastDisplayedOnlineState(io);
   }, 5000);
 };
 
@@ -273,24 +360,7 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
       })),
     });
     
-    // Notify others with cosmetics
-    socket.to('global-chat').emit('user:online', { 
-      userId, 
-      username: dbUser.username,
-      usernameColor: dbUser?.usernameColor,
-      profilePicture: dbUser?.profilePicture,
-      currentPage: currentPage ?? null,
-    });
-    
-    // Send current online users to the joining user with cosmetics
-    const onlineList = Array.from(onlineUsers.values()).map((u) => ({
-      userId: u.userId,
-      username: u.username,
-      usernameColor: u.usernameColor,
-      profilePicture: u.profilePicture,
-      currentPage: u.currentPage ?? null,
-    }));
-    socket.emit('users:online-list', { users: onlineList });
+    await broadcastDisplayedOnlineState(io);
   });
   
   // Send message
@@ -463,15 +533,8 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
   });
 
   // On-demand: client requests the full online users list (with pages)
-  socket.on('chat:request-online-users', () => {
-    const onlineList = Array.from(onlineUsers.values()).map((u) => ({
-      userId: u.userId,
-      username: u.username,
-      usernameColor: u.usernameColor,
-      profilePicture: u.profilePicture,
-      currentPage: u.currentPage ?? null,
-    }));
-    socket.emit('users:online-list', { users: onlineList });
+  socket.on('chat:request-online-users', async () => {
+    await sendDisplayedOnlineState(socket);
   });
 
   socket.on('chat:reaction', async (data: { messageId: string; emoji: string }) => {
@@ -610,11 +673,8 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     for (const [userId, user] of onlineUsers.entries()) {
       if (user.socketId === socket.id) {
         onlineUsers.delete(userId);
-        io.to('global-chat').emit('user:offline', {
-          userId,
-          username: user.username,
-        });
         _onPlayerLeft();
+        void broadcastDisplayedOnlineState(io);
         break;
       }
     }
