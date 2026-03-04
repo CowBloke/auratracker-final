@@ -10,7 +10,7 @@ import { logAdmin, logSuggestion, logBan } from '../utils/logger.js';
 import { isAllowedImageUrl } from '../utils/uploads.js';
 import { listBombPartyLanguageFiles } from '../utils/bombpartyDictionary.js';
 import { recalculateBombPartyPrompts } from '../utils/bombpartyPrompts.js';
-import { getOnlineCount } from '../socket/chat.js';
+import { getOnlineCount, getOnlineUsers } from '../socket/chat.js';
 
 const router = Router();
 const ANNOUNCEMENT_KEY = 'topbar_announcement';
@@ -2036,7 +2036,8 @@ router.delete('/gift-templates/:id', authMiddleware, requireAdmin, async (req: A
 router.post('/online-snapshot', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response) => {
   try {
     const count = getOnlineCount();
-    await prisma.onlineSnapshot.create({ data: { count } });
+    const usernames = JSON.stringify(getOnlineUsers());
+    await prisma.onlineSnapshot.create({ data: { count, usernames } });
     res.json({ success: true, count });
   } catch (error) {
     console.error('Manual snapshot error:', error);
@@ -2077,37 +2078,46 @@ router.get('/online-history', authMiddleware, requireAdmin, async (req: AuthRequ
     const snapshots = await prisma.onlineSnapshot.findMany({
       where: { createdAt: { gte: start, lte: end } },
       orderBy: { createdAt: 'asc' },
-      select: { count: true, createdAt: true },
+      select: { count: true, createdAt: true, usernames: true },
     });
 
-    // Determine bucket size based on period
-    const rangeMs = end.getTime() - start.getTime();
-    const dayMs = 24 * 60 * 60 * 1000;
+    type SnapUser = { userId: string; username: string };
+    const MAX_POINTS = 300;
 
-    let bucketMs: number;
-    if (rangeMs <= dayMs) {
-      bucketMs = 30 * 60 * 1000; // 30-minute buckets for day view
-    } else if (rangeMs <= 7 * dayMs) {
-      bucketMs = 2 * 60 * 60 * 1000; // 2-hour buckets for week view
-    } else {
-      bucketMs = 6 * 60 * 60 * 1000; // 6-hour buckets for month view
-    }
+    const parseUsernames = (raw: string): SnapUser[] => {
+      try { return JSON.parse(raw) as SnapUser[]; } catch { return []; }
+    };
 
-    // Bucket snapshots and compute average per bucket
-    const buckets = new Map<number, number[]>();
-    for (const snap of snapshots) {
-      const bucket = Math.floor(snap.createdAt.getTime() / bucketMs) * bucketMs;
-      if (!buckets.has(bucket)) buckets.set(bucket, []);
-      buckets.get(bucket)!.push(snap.count);
-    }
+    let data: { timestamp: string; count: number; max: number; usernames: SnapUser[] }[];
 
-    const data = Array.from(buckets.entries())
-      .sort(([a], [b]) => a - b)
-      .map(([ts, counts]) => ({
-        timestamp: new Date(ts).toISOString(),
-        count: Math.round(counts.reduce((s, c) => s + c, 0) / counts.length),
-        max: Math.max(...counts),
+    if (snapshots.length <= MAX_POINTS) {
+      data = snapshots.map(s => ({
+        timestamp: s.createdAt.toISOString(),
+        count: s.count,
+        max: s.count,
+        usernames: parseUsernames(s.usernames),
       }));
+    } else {
+      // Downsample: divide range into MAX_POINTS equal slots, keep peak snapshot per slot
+      const rangeMs = end.getTime() - start.getTime();
+      const bucketMs = rangeMs / MAX_POINTS;
+      const buckets = new Map<number, typeof snapshots[number]>();
+      for (const snap of snapshots) {
+        const bucket = Math.floor((snap.createdAt.getTime() - start.getTime()) / bucketMs);
+        const existing = buckets.get(bucket);
+        if (!existing || snap.count > existing.count) {
+          buckets.set(bucket, snap);
+        }
+      }
+      data = Array.from(buckets.entries())
+        .sort(([a], [b]) => a - b)
+        .map(([, snap]) => ({
+          timestamp: snap.createdAt.toISOString(),
+          count: snap.count,
+          max: snap.count,
+          usernames: parseUsernames(snap.usernames),
+        }));
+    }
 
     // Peak for the queried period
     const peak = snapshots.reduce((m, s) => (s.count > m ? s.count : m), 0);

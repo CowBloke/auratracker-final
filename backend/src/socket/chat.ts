@@ -196,8 +196,11 @@ const _write = async () => {
   const count = onlineUsers.size;
   if (count === _lastSnapshotCount) return; // nothing changed, skip
   _lastSnapshotCount = count;
+  const usernames = JSON.stringify(
+    Array.from(onlineUsers.values()).map(u => ({ userId: u.userId, username: u.username }))
+  );
   try {
-    await prisma.onlineSnapshot.create({ data: { count } });
+    await prisma.onlineSnapshot.create({ data: { count, usernames } });
   } catch {
     // Don't let snapshot errors disrupt the socket layer
   }
@@ -232,6 +235,8 @@ const _onPlayerLeft = () => {
 export const startOnlineSnapshotRecording = () => _rescheduleHeartbeat();
 
 export const getOnlineCount = () => onlineUsers.size;
+export const getOnlineUsers = () =>
+  Array.from(onlineUsers.values()).map(u => ({ userId: u.userId, username: u.username }));
 
 export const setupChatHandlers = (socket: Socket, io: Server) => {
   // Join chat

@@ -755,7 +755,7 @@ export const adminApi = {
     startDate?: string;
     endDate?: string;
   }) => api.get<{
-    data: { timestamp: string; count: number; max: number }[];
+    data: { timestamp: string; count: number; max: number; usernames: { userId: string; username: string }[] }[];
     peak: number;
     peakAt: string | null;
     period: string;

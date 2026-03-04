@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, ToggleLeft } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, ReferenceDot } from 'recharts';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -344,7 +344,7 @@ export default function Admin() {
   const [activeTab, setActiveTab] = useState<'users' | 'logs' | 'bans' | 'content' | 'communication' | 'bugs' | 'features' | 'settings' | 'activity'>('users');
 
   // Activity tab state
-  type OnlineHistoryPoint = { timestamp: string; count: number; max: number };
+  type OnlineHistoryPoint = { timestamp: string; count: number; max: number; usernames: { userId: string; username: string }[] };
   type OnlineStats = { current: number; allTimeRecord: number; allTimeRecordAt: string | null; avg1d: number; avg7d: number; avg30d: number; peak1d: number; peak7d: number; peak30d: number };
   const [activityPeriod, setActivityPeriod] = useState<'day' | 'week' | 'month' | 'custom'>('day');
   const [activityCustomStart, setActivityCustomStart] = useState('');
@@ -353,6 +353,8 @@ export default function Admin() {
   const [onlineStats, setOnlineStats] = useState<OnlineStats | null>(null);
   const [loadingActivity, setLoadingActivity] = useState(false);
   const [snapshotting, setSnapshotting] = useState(false);
+  const [hoveredPoint, setHoveredPoint] = useState<OnlineHistoryPoint | null>(null);
+  const [lockedPoint, setLockedPoint] = useState<OnlineHistoryPoint | null>(null);
   const [inventoryDialogOpen, setInventoryDialogOpen] = useState(false);
   const [inventoryUser, setInventoryUser] = useState<AdminUser | null>(null);
   const [inventoryItems, setInventoryItems] = useState<AdminInventoryItem[]>([]);
@@ -766,6 +768,8 @@ export default function Admin() {
       ]);
       setActivityHistory({ data: histRes.data.data, peak: histRes.data.peak, peakAt: histRes.data.peakAt });
       setOnlineStats(statsRes.data);
+      setLockedPoint(null);
+      setHoveredPoint(null);
     } catch {
       // ignore
     } finally {
@@ -3996,74 +4000,140 @@ export default function Admin() {
                     </div>
                   )}
 
-                  <ResponsiveContainer width="100%" height={300}>
-                    <AreaChart data={activityHistory.data} margin={{ top: 6, right: 4, left: -8, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="strokeGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="hsl(var(--foreground))" stopOpacity={0.95} />
-                          <stop offset="100%" stopColor="hsl(var(--foreground))" stopOpacity={0.35} />
-                        </linearGradient>
-                        <linearGradient id="activityGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="hsl(var(--foreground))" stopOpacity={0.12} />
-                          <stop offset="100%" stopColor="hsl(var(--foreground))" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis
-                        dataKey="timestamp"
-                        tickFormatter={ts => {
-                          const d = new Date(ts);
-                          if (activityPeriod === 'day') return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-                          if (activityPeriod === 'week') return d.toLocaleDateString('fr-FR', { weekday: 'short' }) + ' ' + d.getHours() + 'h';
-                          return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
-                        }}
-                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                        axisLine={false}
-                        tickLine={false}
-                        interval="preserveStartEnd"
-                      />
-                      <YAxis
-                        allowDecimals={false}
-                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                        axisLine={false}
-                        tickLine={false}
-                        width={24}
-                      />
-                      <RechartsTooltip
-                        contentStyle={{
-                          background: 'hsl(var(--popover))',
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: 8,
-                          fontSize: 12,
-                          padding: '8px 12px',
-                        }}
-                        labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: 6, fontSize: 11 }}
-                        labelFormatter={ts => new Date(ts as string).toLocaleString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                        formatter={(value: number) => [
-                          <span style={{ fontWeight: 600 }}>{value}</span>,
-                          'Joueurs'
-                        ]}
-                      />
-                      {activityHistory.peak > 0 && (
-                        <ReferenceLine
-                          y={activityHistory.peak}
-                          stroke="hsl(var(--muted-foreground))"
-                          strokeDasharray="5 4"
-                          strokeWidth={1}
-                          label={{ value: `↑ ${activityHistory.peak}`, fill: 'hsl(var(--muted-foreground))', fontSize: 10, position: 'insideTopRight', dy: -4 }}
-                        />
-                      )}
-                      <Area
-                        type="basis"
-                        dataKey="max"
-                        stroke="url(#strokeGradient)"
-                        strokeWidth={2.5}
-                        fill="url(#activityGradient)"
-                        dot={false}
-                        activeDot={{ r: 4, fill: 'hsl(var(--foreground))', strokeWidth: 0 }}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                  {/* Chart + side panel */}
+                  <div className="flex gap-4 items-start">
+                    <div className="flex-1 min-w-0">
+                      <ResponsiveContainer width="100%" height={300}>
+                        <AreaChart
+                          data={activityHistory.data}
+                          margin={{ top: 6, right: 4, left: -8, bottom: 0 }}
+                          onMouseMove={(chartData) => {
+                            if (lockedPoint) return;
+                            const pt = chartData?.activePayload?.[0]?.payload as OnlineHistoryPoint | undefined;
+                            setHoveredPoint(pt ?? null);
+                          }}
+                          onMouseLeave={() => {
+                            if (!lockedPoint) setHoveredPoint(null);
+                          }}
+                          onClick={(chartData) => {
+                            const pt = chartData?.activePayload?.[0]?.payload as OnlineHistoryPoint | undefined;
+                            if (!pt) { setLockedPoint(null); return; }
+                            setLockedPoint(prev => prev?.timestamp === pt.timestamp ? null : pt);
+                          }}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          <defs>
+                            <linearGradient id="strokeGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="hsl(var(--foreground))" stopOpacity={0.95} />
+                              <stop offset="100%" stopColor="hsl(var(--foreground))" stopOpacity={0.35} />
+                            </linearGradient>
+                            <linearGradient id="activityGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="hsl(var(--foreground))" stopOpacity={0.12} />
+                              <stop offset="100%" stopColor="hsl(var(--foreground))" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                          <XAxis
+                            dataKey="timestamp"
+                            tickFormatter={ts => {
+                              const d = new Date(ts);
+                              if (activityPeriod === 'day') return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                              if (activityPeriod === 'week') return d.toLocaleDateString('fr-FR', { weekday: 'short' }) + ' ' + d.getHours() + 'h';
+                              return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+                            }}
+                            tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                            axisLine={false}
+                            tickLine={false}
+                            interval="preserveStartEnd"
+                          />
+                          <YAxis
+                            allowDecimals={false}
+                            tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                            axisLine={false}
+                            tickLine={false}
+                            width={24}
+                          />
+                          <RechartsTooltip
+                            active={!lockedPoint}
+                            contentStyle={{
+                              background: 'hsl(var(--popover))',
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: 8,
+                              fontSize: 12,
+                              padding: '8px 12px',
+                            }}
+                            labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: 6, fontSize: 11 }}
+                            labelFormatter={ts => new Date(ts as string).toLocaleString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            formatter={(value: number) => [
+                              <span style={{ fontWeight: 600 }}>{value}</span>,
+                              'Joueurs'
+                            ]}
+                          />
+                          {activityHistory.peak > 0 && (
+                            <ReferenceLine
+                              y={activityHistory.peak}
+                              stroke="hsl(var(--muted-foreground))"
+                              strokeDasharray="5 4"
+                              strokeWidth={1}
+                              label={{ value: `↑ ${activityHistory.peak}`, fill: 'hsl(var(--muted-foreground))', fontSize: 10, position: 'insideTopRight', dy: -4 }}
+                            />
+                          )}
+                          {lockedPoint && (
+                            <ReferenceDot
+                              x={lockedPoint.timestamp}
+                              y={lockedPoint.max}
+                              r={6}
+                              fill="hsl(var(--foreground))"
+                              stroke="hsl(var(--background))"
+                              strokeWidth={2}
+                            />
+                          )}
+                          <Area
+                            type="basis"
+                            dataKey="max"
+                            stroke="url(#strokeGradient)"
+                            strokeWidth={2.5}
+                            fill="url(#activityGradient)"
+                            dot={false}
+                            activeDot={{ r: 4, fill: 'hsl(var(--foreground))', strokeWidth: 0 }}
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    {/* User list side panel */}
+                    {(() => {
+                      const displayPoint = lockedPoint ?? hoveredPoint;
+                      if (!displayPoint) return null;
+                      const users = displayPoint.usernames ?? [];
+                      return (
+                        <div className="w-44 shrink-0 border border-border/40 rounded-lg bg-muted/10 flex flex-col" style={{ height: 300 }}>
+                          <div className="px-3 py-2 border-b border-border/40 shrink-0">
+                            <p className="text-xs font-medium tabular-nums">{displayPoint.max} joueur{displayPoint.max !== 1 ? 's' : ''}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {new Date(displayPoint.timestamp).toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}
+                            </p>
+                            {lockedPoint && (
+                              <p className="text-xs text-muted-foreground/60 mt-1">Clique à nouveau pour déverrouiller</p>
+                            )}
+                          </div>
+                          <div className="overflow-y-auto flex-1 p-1.5">
+                            {users.length === 0 ? (
+                              <p className="text-xs text-muted-foreground/60 text-center py-4">Aucun joueur enregistré</p>
+                            ) : (
+                              <ul className="space-y-0.5">
+                                {users.map(u => (
+                                  <li key={u.userId} className="text-xs px-1.5 py-1 rounded hover:bg-muted/30 truncate" title={u.username}>
+                                    {u.username}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </>
               ) : (
                 <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
@@ -4072,7 +4142,7 @@ export default function Admin() {
                   </div>
                   <div className="text-center">
                     <p className={TYPOGRAPHY.SMALL}>Aucune donnée pour cette période</p>
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60 mt-0.5')}>Les snapshots sont enregistrés toutes les 5 minutes</p>
+                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60 mt-0.5')}>Les snapshots sont enregistrés automatiquement</p>
                   </div>
                 </div>
               )}
