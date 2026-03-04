@@ -46,16 +46,13 @@ type MentionableUser = {
 };
 
 const REACTION_OPTIONS = [
-  { value: 'like', label: 'Like' },
-  { value: 'ok', label: 'OK' },
-  { value: 'haha', label: 'Haha' },
-  { value: 'wow', label: 'Wow' },
-  { value: 'triste', label: 'Triste' },
-  { value: 'grr', label: 'Grr' },
+  { value: '❤️', label: 'Coeur' },
+  { value: '👍', label: 'Like' },
+  { value: '😂', label: 'Haha' },
+  { value: '😮', label: 'Wow' },
+  { value: '😢', label: 'Triste' },
+  { value: '😡', label: 'Grr' },
 ];
-
-const getReactionLabel = (value: string) =>
-  REACTION_OPTIONS.find((reaction) => reaction.value === value)?.label ?? value;
 
 export default function ChatSidebar() {
   const navigate = useNavigate();
@@ -470,10 +467,11 @@ export default function ChatSidebar() {
                                   type="button"
                                   onClick={() => reactToMessage(msg.id, reaction.value)}
                                   variant="ghost"
-                                  className="h-8 px-2 text-xs"
+                                  size="icon"
+                                  className="h-8 w-8"
                                   title={reaction.label}
                                 >
-                                  <span>{reaction.label}</span>
+                                  <span className="text-base">{reaction.value}</span>
                                 </Button>
                               ))}
                             </DropdownMenuContent>
@@ -540,7 +538,7 @@ export default function ChatSidebar() {
                               key={`${msg.id}-${reaction.emoji}`}
                               className="inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-0.5 text-[10px] text-muted-foreground"
                             >
-                              <span>{getReactionLabel(reaction.emoji)}</span>
+                              <span>{reaction.emoji}</span>
                               <span className="tabular-nums">{reaction.count}</span>
                             </span>
                           ))}

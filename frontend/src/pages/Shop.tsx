@@ -111,7 +111,7 @@ function ShopCard({
             </div>
             <p className="text-sm text-muted-foreground">{item.description}</p>
             {effectLabel && (
-              <p className="text-xs tracking-wide text-muted-foreground/80">
+              <p className="text-xs text-muted-foreground/80">
                 {isGift ? effectLabel : `Effet: ${effectLabel}`}
               </p>
             )}
@@ -292,7 +292,7 @@ export default function Shop() {
             <div className="space-y-8">
               {sections.map((section) => (
                 <div key={section.type} className="space-y-4">
-                  <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground/60">{section.label}</p>
+                  <p className="text-xs font-medium text-muted-foreground/60">{section.label}</p>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {section.items.map((item) => <ShopCard key={item.id} item={item} user={user} buyingItemId={buyingItemId} onPurchase={handlePurchase} onSend={openSendDialog} />)}
                   </div>

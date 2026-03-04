@@ -252,7 +252,7 @@ export default function Leaderboards() {
 
               {/* Économie group */}
               <div className="mt-3">
-                <p className={cn(TYPOGRAPHY.XS, "px-3 pb-1 text-muted-foreground/50 font-medium tracking-wider")}>
+                <p className={cn(TYPOGRAPHY.XS, "px-3 pb-1 text-muted-foreground/50 font-medium")}>
                   Économie
                 </p>
                 <div className="space-y-0.5">
@@ -280,7 +280,7 @@ export default function Leaderboards() {
 
               {/* Jeux group */}
               <div className="mt-3">
-                <p className={cn(TYPOGRAPHY.XS, "px-3 pb-1 text-muted-foreground/50 font-medium tracking-wider")}>
+                <p className={cn(TYPOGRAPHY.XS, "px-3 pb-1 text-muted-foreground/50 font-medium")}>
                   Jeux
                 </p>
                 <div className="space-y-0.5">
@@ -323,7 +323,7 @@ export default function Leaderboards() {
                 <div className="space-y-8">
                   {nombresSections.map((section) => (
                     <div key={section.title} className="space-y-3">
-                      <h3 className={cn(TYPOGRAPHY.XS, "text-muted-foreground/60 font-medium tracking-wider")}>
+                      <h3 className={cn(TYPOGRAPHY.XS, "text-muted-foreground/60 font-medium")}>
                         {section.title}
                       </h3>
                       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

@@ -1653,7 +1653,7 @@ export default function Admin() {
                         Prénom: {u.firstName ? u.firstName : 'Non défini'}
                       </p>
                       <div className="mt-2 rounded-md border border-border/40 bg-muted/20 px-3 py-2">
-                        <p className="text-[11px] font-medium tracking-wide text-muted-foreground/70">
+                        <p className="text-[11px] font-medium text-muted-foreground/70">
                           Message de motivation
                         </p>
                         <p className="mt-1 text-sm whitespace-pre-wrap break-words text-foreground/90">

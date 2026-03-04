@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils';
 import { Coins, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import { PageHeader, PageShell } from '@/components/layout/page-shell';
 
 type GameTab = 'roulette' | 'slots' | 'blackjack';
 
@@ -99,7 +101,7 @@ const getBetMultiplier = (bet: Bet, winningNumber: number) => {
 // -----------------------------
 // Slot machine setup (previous implementation)
 // -----------------------------
-type SlotSymbol = 'CER' | 'CIT' | 'ORA' | 'RAI' | 'CLO' | 'ETO' | 'DIA' | 'SEP';
+type SlotSymbol = '🍒' | '🍋' | '🍊' | '🍇' | '🔔' | '⭐' | '💎' | '7️⃣';
 
 interface SlotResult {
   reels: SlotSymbol[][];
@@ -108,16 +110,16 @@ interface SlotResult {
   winningLines: number[];
 }
 
-const SLOT_SYMBOLS: SlotSymbol[] = ['CER', 'CIT', 'ORA', 'RAI', 'CLO', 'ETO', 'DIA', 'SEP'];
+const SLOT_SYMBOLS: SlotSymbol[] = ['🍒', '🍋', '🍊', '🍇', '🔔', '⭐', '💎', '7️⃣'];
 const SLOT_SYMBOL_VALUES: Record<SlotSymbol, number> = {
-  CER: 2,
-  CIT: 3,
-  ORA: 4,
-  RAI: 5,
-  CLO: 10,
-  ETO: 15,
-  DIA: 25,
-  SEP: 50,
+  '🍒': 2,
+  '🍋': 3,
+  '🍊': 4,
+  '🍇': 5,
+  '🔔': 10,
+  '⭐': 15,
+  '💎': 25,
+  '7️⃣': 50,
 };
 
 const REEL_COUNT = 3;
@@ -237,33 +239,68 @@ export default function Casino() {
         ? slotBet
         : blackjackBet;
 
+  const gameCards: Array<{
+    id: GameTab;
+    title: string;
+    description: string;
+    detail: string;
+  }> = [
+    {
+      id: 'roulette',
+      title: 'Roulette',
+      description: 'Mises multi-cases, roue animee et tirage rapide.',
+      detail: 'Jusqu a 36x sur un numero plein.',
+    },
+    {
+      id: 'slots',
+      title: 'Machine a sous',
+      description: 'Classique, rapide et minimaliste.',
+      detail: 'Tours rapides et paiements sur lignes.',
+    },
+    {
+      id: 'blackjack',
+      title: 'Blackjack',
+      description: 'Cartes grandes, actions simples: tirer ou rester.',
+      detail: 'Partie courte avec double et split.',
+    },
+  ];
+
   return (
-    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
-      <p className="text-muted-foreground">
-        Choisis ta table: machine a sous classique, roulette animee ou blackjack.
-      </p>
-      {activeGame && (
-            <div className="flex flex-col items-end gap-2 text-right">
-              <Button variant="ghost"
-                onClick={() => setActiveGame(null)}
-                className="text-xs   text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Changer de jeu
-              </Button>
-              <div className="text-sm text-muted-foreground tabular-nums space-y-1">
-                <div className="text-base text-foreground">
-                  Solde: ${user?.money.toLocaleString() || 0}
-                </div>
-                <div>
-                  Mises en cours: $
-                  {activeBet.toLocaleString()}
-                </div>
+    <PageShell size="wide">
+      <PageHeader
+        title="Casino"
+        description="Choisis ta table: machine a sous classique, roulette animee ou blackjack."
+        actions={(
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="rounded-lg border border-border/60 bg-card px-4 py-2 text-right">
+              <div className="text-xs text-muted-foreground">Solde</div>
+              <div className="text-sm font-semibold tabular-nums text-foreground">
+                ${user?.money.toLocaleString() || 0}
               </div>
             </div>
-          )}
+            {activeGame ? (
+              <>
+                <div className="rounded-lg border border-border/60 bg-card px-4 py-2 text-right">
+                  <div className="text-xs text-muted-foreground">Mises en cours</div>
+                  <div className="text-sm font-semibold tabular-nums text-foreground">
+                    ${activeBet.toLocaleString()}
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => setActiveGame(null)}
+                  className="h-10"
+                >
+                  Changer de jeu
+                </Button>
+              </>
+            ) : null}
+          </div>
+        )}
+      />
 
       {activeGame ? (
-        <div className="space-y-4">
+        <section className="space-y-4">
           {activeGame === 'roulette' ? (
             <RouletteGame onTotalBetChange={setRouletteTotalBet} />
           ) : activeGame === 'slots' ? (
@@ -271,42 +308,64 @@ export default function Casino() {
           ) : (
             <BlackjackGame onBetChange={setBlackjackBet} />
           )}
-        </div>
+        </section>
       ) : (
-        <div className="grid gap-2 md:grid-cols-3">
-          <Button variant="ghost"
-            onClick={() => setActiveGame('roulette')}
-            className="group border border-foreground px-6 py-8 text-left transition-colors hover:bg-foreground hover:text-background"
-          >
-            <p className="text-sm text-muted-foreground  ">Jeu</p>
-            <p className="mt-2 text-2xl font-light">Roulette</p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Mises multi-cases, roue animée et tirage rapide.
-            </p>
-          </Button>
-          <Button variant="ghost"
-            onClick={() => setActiveGame('slots')}
-            className="group border border-foreground px-6 py-8 text-left transition-colors hover:bg-foreground hover:text-background"
-          >
-            <p className="text-sm text-muted-foreground  ">Jeu</p>
-            <p className="mt-2 text-2xl font-light">Machine à sous</p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Classique, rapide et minimaliste.
-            </p>
-          </Button>
-          <Button variant="ghost"
-            onClick={() => setActiveGame('blackjack')}
-            className="group border border-foreground px-6 py-8 text-left transition-colors hover:bg-foreground hover:text-background"
-          >
-            <p className="text-sm text-muted-foreground  ">Jeu</p>
-            <p className="mt-2 text-2xl font-light">Blackjack</p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Cartes grandes, actions simples: tirer ou rester.
-            </p>
-          </Button>
-        </div>
+        <section className="space-y-6">
+          <Card>
+            <CardContent className="flex flex-col gap-6 p-6 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-2">
+                <h2 className="text-xl font-semibold tracking-tight">Tables disponibles</h2>
+                <p className="max-w-2xl text-sm text-muted-foreground">
+                  Les gains et pertes mettent a jour ton solde directement. Choisis un jeu, pose ta mise et lance une manche.
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-lg border border-border/50 bg-muted/20 px-4 py-3">
+                  <p className="text-sm font-medium">Regle simple</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Chaque partie debite la mise puis applique le resultat.
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border/50 bg-muted/20 px-4 py-3">
+                  <p className="text-sm font-medium">Session rapide</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Roulette, slots et blackjack se jouent en quelques clics.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <section className="grid gap-6 md:grid-cols-3">
+          {gameCards.map((game) => (
+            <button
+              key={game.id}
+              type="button"
+              onClick={() => setActiveGame(game.id)}
+              className="group block text-left"
+            >
+              <Card className="h-full border-border/50 transition hover:border-foreground/30 hover:bg-accent/20">
+                <CardContent className="flex min-h-[220px] flex-col justify-between p-6">
+                  <div className="space-y-3">
+                    <h2 className="text-2xl font-semibold tracking-tight">{game.title}</h2>
+                    <p className="max-w-xs text-sm text-muted-foreground">
+                      {game.description}
+                    </p>
+                    <div className="rounded-md border border-border/40 bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
+                      {game.detail}
+                    </div>
+                  </div>
+                  <div className="pt-8 text-sm font-medium text-foreground/80 transition group-hover:text-foreground">
+                    Ouvrir la table
+                  </div>
+                </CardContent>
+              </Card>
+            </button>
+          ))}
+          </section>
+        </section>
       )}
-    </div>
+    </PageShell>
   );
 }
 
@@ -1480,7 +1539,7 @@ function SlotMachineGame({ onBetChange }: { onBetChange?: (value: number) => voi
   const [bet, setBet] = useState(50);
   const [spinning, setSpinning] = useState(false);
   const [reels, setReels] = useState<SlotSymbol[][]>(
-    Array(REEL_COUNT).fill(null).map(() => Array(ROWS).fill('CER'))
+    Array(REEL_COUNT).fill(null).map(() => Array(ROWS).fill('🍒'))
   );
   const [winAmount, setWinAmount] = useState(0);
   const [lastResult, setLastResult] = useState<SlotResult | null>(null);
@@ -1620,7 +1679,7 @@ function SlotMachineGame({ onBetChange }: { onBetChange?: (value: number) => voi
                   <div
                     key={`${reelIndex}-${rowIndex}`}
                     className={cn(
-                      "text-xl font-semibold tracking-wide text-center py-5 border transition-all",
+                      "text-4xl text-center py-3 border transition-all",
                       isWinning && !isSpinning
                         ? 'border-foreground bg-muted/30'
                         : 'border-border/30'

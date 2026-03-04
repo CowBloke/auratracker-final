@@ -331,7 +331,7 @@ export default function GoyaveEmpire() {
         {/* ── LEFT: Upgrades ── */}
         <div className="flex-shrink-0 border border-border/30 border-r-0 rounded-l-xl bg-card flex flex-col overflow-hidden" style={{ width: 192 }}>
           <div className="px-4 py-3 border-b border-border/20 flex-shrink-0">
-            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Améliorations</div>
+            <div className="text-xs font-semibold text-muted-foreground">Améliorations</div>
           </div>
           <div className="flex-1 overflow-y-auto p-3">
             {unlockedUpgrades.length === 0 ? (
