@@ -4,7 +4,7 @@ import { auraCoinApi, AuraCoinLeaderboardEntry, gamesApi, leaderboardsApi, clans
 import { X, Zap, DollarSign, TrendingUp, Gem, ArrowUp, Skull, Layers, Wind, Diamond, Timer, LayoutGrid, Sparkles, TrendingDown, Flame, Gamepad2, Hash } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
+import { TYPOGRAPHY } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { PageShell } from '@/components/layout/page-shell';
 import { UsernameDisplay } from '@/components/ui/username-display';
@@ -231,10 +231,9 @@ export default function Leaderboards() {
 
   return (
     <PageShell>
-      <div className={SPACING.PAGE_CONTENT}>
-        <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
+      <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)] h-[calc(100svh-var(--header-height)-4rem)]">
           {/* Sidebar */}
-          <Card className="h-fit">
+          <Card className="h-full overflow-y-auto">
             <CardContent className="p-2">
               {/* Nombres — special entry */}
               <button
@@ -310,7 +309,7 @@ export default function Leaderboards() {
           </Card>
 
           {/* Main content */}
-          <div className="space-y-4">
+          <div className="h-full overflow-y-auto space-y-4">
             <h2 className={TYPOGRAPHY.H3}>{activeTitle}</h2>
 
             {activeView === 'nombres' ? (
@@ -397,7 +396,6 @@ export default function Leaderboards() {
               </>
             )}
           </div>
-        </div>
       </div>
     </PageShell>
   );
