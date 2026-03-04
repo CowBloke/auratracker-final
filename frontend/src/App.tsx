@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import Layout from './components/layout/Layout';
@@ -39,11 +39,11 @@ import WallaceGromit from './pages/WallaceGromit';
 import News from './pages/News';
 import Inbox from './pages/Inbox';
 import MusicLounge from './pages/MusicLounge';
-import { maintenanceApi } from './services/api';
 import Blocked from './pages/Blocked';
 import { BLOCKABLE_PAGES } from './config/blockedPages';
+import { useFeatures } from './contexts/FeaturesContext';
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   
   if (loading) {
@@ -65,55 +65,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   const location = useLocation();
-  const [maintenanceStatus, setMaintenanceStatus] = useState<{
-    enabled: boolean;
-    message: string;
-    pages: string[];
-    endDate: string | null;
-    blockedPages: string[];
-    blockedMessage: string;
-  }>({
-    enabled: false,
-    message: '',
-    pages: [],
-    endDate: null,
-    blockedPages: [],
-    blockedMessage: '',
-  });
-  const [maintenanceLoading, setMaintenanceLoading] = useState(true);
-
-  useEffect(() => {
-    let isActive = true;
-
-    const fetchMaintenance = async () => {
-      try {
-        const res = await maintenanceApi.getStatus();
-        if (!isActive) return;
-        setMaintenanceStatus({
-          enabled: res.data.enabled,
-          message: res.data.message || '',
-          pages: res.data.pages || [],
-          endDate: res.data.endDate || null,
-          blockedPages: res.data.blockedPages || [],
-          blockedMessage: res.data.blockedMessage || '',
-        });
-      } catch (error) {
-        if (!isActive) return;
-        setMaintenanceStatus({ enabled: false, message: '', pages: [], endDate: null, blockedPages: [], blockedMessage: '' });
-      } finally {
-        if (isActive) {
-          setMaintenanceLoading(false);
-        }
-      }
-    };
-
-    fetchMaintenance();
-    const interval = window.setInterval(fetchMaintenance, 60000);
-    return () => {
-      isActive = false;
-      window.clearInterval(interval);
-    };
-  }, []);
+  const { maintenanceStatus, maintenanceLoading } = useFeatures();
 
   // Vérifier si la page actuelle est en maintenance
   const isCurrentPageInMaintenance = () => {
@@ -149,12 +101,12 @@ function App() {
       return false;
     }
 
-    if (!maintenanceStatus.blockedPages || maintenanceStatus.blockedPages.length === 0) {
+    if (!maintenanceStatus.disabledPages || maintenanceStatus.disabledPages.length === 0) {
       return false;
     }
 
     return BLOCKABLE_PAGES.some((page) => {
-      if (!maintenanceStatus.blockedPages.includes(page.key)) {
+      if (!maintenanceStatus.disabledPages.includes(page.key)) {
         return false;
       }
 

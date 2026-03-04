@@ -319,7 +319,7 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
   }
 });
 
-// Sell a gifted item — removes 1 from inventory and credits half its listed price in aura
+// Sell a gifted item — removes 1 from inventory and credits half its listed price in money
 router.post('/sell-gift-item', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
@@ -336,7 +336,7 @@ router.post('/sell-gift-item', authMiddleware, async (req: AuthRequest, res: Res
     if (userItem.userId !== req.user.id) return res.status(403).json({ error: 'Not your item' });
     if (userItem.item.type !== 'GIFT') return res.status(400).json({ error: 'Only gift items can be sold this way' });
 
-    const auraEarned = Math.floor(userItem.item.price / 2);
+    const moneyEarned = Math.floor(userItem.item.price / 2);
 
     await prisma.$transaction(async (tx) => {
       if (userItem.quantity > 1) {
@@ -344,10 +344,10 @@ router.post('/sell-gift-item', authMiddleware, async (req: AuthRequest, res: Res
       } else {
         await tx.userItem.delete({ where: { id: userItemId } });
       }
-      await tx.user.update({ where: { id: req.user!.id }, data: { aura: { increment: auraEarned } } });
+      await tx.user.update({ where: { id: req.user!.id }, data: { money: { increment: moneyEarned } } });
     });
 
-    res.json({ success: true, auraEarned });
+    res.json({ success: true, moneyEarned });
   } catch (error) {
     console.error('Sell gift item error:', error);
     res.status(500).json({ error: 'Failed to sell item' });

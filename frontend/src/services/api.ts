@@ -131,7 +131,7 @@ export const marketplaceApi = {
   useItem: (userItemId: string, effectData?: { color?: string; imageUrl?: string }) =>
     api.post('/marketplace/use-item', { userItemId, effectData }),
   sellGiftItem: (userItemId: string) =>
-    api.post<{ success: boolean; auraEarned: number }>('/marketplace/sell-gift-item', { userItemId }),
+    api.post<{ success: boolean; moneyEarned: number }>('/marketplace/sell-gift-item', { userItemId }),
   chuckGiftItem: (userItemId: string) =>
     api.post<{ success: boolean }>('/marketplace/chuck-gift-item', { userItemId }),
   // Admin
@@ -755,7 +755,7 @@ export const adminApi = {
     startDate?: string;
     endDate?: string;
   }) => api.get<{
-    data: { timestamp: string; count: number; max: number }[];
+    data: { timestamp: string; count: number; max: number; usernames: { userId: string; username: string }[] }[];
     peak: number;
     peakAt: string | null;
     period: string;

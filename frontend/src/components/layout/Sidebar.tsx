@@ -52,6 +52,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { resolveImageUrl } from '@/lib/images';
 import BugReportPanel from '@/components/layout/BugReportPanel';
 import { UsernameDisplay } from '@/components/ui/username-display';
+import { useFeatures } from '@/contexts/FeaturesContext';
+import { BLOCKABLE_PAGES } from '@/config/blockedPages';
 
 interface SearchUser {
   id: string;
@@ -94,6 +96,14 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const { maintenanceStatus } = useFeatures();
+  const disabledPages = maintenanceStatus.disabledPages;
+
+  const isDisabled = (path: string) => {
+    const page = BLOCKABLE_PAGES.find((p) => p.path === path);
+    return page ? disabledPages.includes(page.key) : false;
+  };
+
   const isOnGames = location.pathname.startsWith('/games');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [users, setUsers] = useState<SearchUser[]>([]);
@@ -219,7 +229,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
             </SidebarMenuItem>
 
             {/* Dashboard */}
-            <SidebarMenuItem>
+            {!isDisabled('/') && <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
                 isActive={location.pathname === '/'}
@@ -236,9 +246,10 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                   <span className="group-data-[collapsible=icon]:hidden">Tableau de bord</span>
                 </NavLink>
               </SidebarMenuButton>
-            </SidebarMenuItem>
+            </SidebarMenuItem>}
 
             {/* Games with accordion */}
+            {!isDisabled('/games') && (
             <Collapsible asChild open={isOnGames} className="group/collapsible">
               <SidebarMenuItem>
                 <CollapsibleTrigger asChild>
@@ -266,7 +277,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <SidebarMenuSub>
-                    {gameItems.map((game) => {
+                    {gameItems.filter((game) => !isDisabled(game.to)).map((game) => {
                       const isGameActive = location.pathname === game.to;
                       const GameIcon = game.icon;
                       return (
@@ -293,8 +304,10 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                 </CollapsibleContent>
               </SidebarMenuItem>
             </Collapsible>
+            )}
 
             {/* Polymarket */}
+            {!isDisabled('/games/polymarket') && (
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
@@ -313,9 +326,10 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                 </NavLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
+            )}
 
             {/* Other nav items */}
-            {navItems.map((item) => {
+            {navItems.filter((item) => !isDisabled(item.to)).map((item) => {
               const isActive = location.pathname === item.to ||
                 (item.to !== '/' && location.pathname.startsWith(item.to));
               const ItemIcon = item.icon;

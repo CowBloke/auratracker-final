@@ -17,6 +17,21 @@ type PublicOnlineUser = Omit<OnlineUser, 'socketId'>;
 
 const MIN_ONLINE_RATIO = 0.1;
 
+let _fakeOnlineEnabled: boolean | null = null;
+let _fakeOnlineCacheAt = 0;
+const _FAKE_ONLINE_CACHE_TTL = 30_000; // re-read from DB at most every 30s
+
+const isFakeOnlineEnabled = async (): Promise<boolean> => {
+  const now = Date.now();
+  if (_fakeOnlineEnabled !== null && now - _fakeOnlineCacheAt < _FAKE_ONLINE_CACHE_TTL) {
+    return _fakeOnlineEnabled;
+  }
+  const setting = await prisma.gameSettings.findUnique({ where: { key: 'fake_online_enabled' } });
+  _fakeOnlineEnabled = setting ? setting.value !== 'false' : true;
+  _fakeOnlineCacheAt = now;
+  return _fakeOnlineEnabled;
+};
+
 const shuffle = <T>(items: T[]): T[] => {
   const copy = [...items];
   for (let i = copy.length - 1; i > 0; i -= 1) {
@@ -36,6 +51,11 @@ const toPublicOnlineUser = (user: OnlineUser): PublicOnlineUser => ({
 
 const buildDisplayedOnlineState = async (): Promise<{ users: PublicOnlineUser[]; count: number }> => {
   const realUsers = Array.from(onlineUsers.values()).map(toPublicOnlineUser);
+
+  if (!(await isFakeOnlineEnabled())) {
+    return { users: realUsers, count: realUsers.length };
+  }
+
   const totalRegisteredUsers = await prisma.user.count({
     where: {
       isApproved: true,
@@ -176,8 +196,11 @@ const _write = async () => {
   const count = onlineUsers.size;
   if (count === _lastSnapshotCount) return; // nothing changed, skip
   _lastSnapshotCount = count;
+  const usernames = JSON.stringify(
+    Array.from(onlineUsers.values()).map(u => ({ userId: u.userId, username: u.username }))
+  );
   try {
-    await prisma.onlineSnapshot.create({ data: { count } });
+    await prisma.onlineSnapshot.create({ data: { count, usernames } });
   } catch {
     // Don't let snapshot errors disrupt the socket layer
   }
@@ -212,6 +235,8 @@ const _onPlayerLeft = () => {
 export const startOnlineSnapshotRecording = () => _rescheduleHeartbeat();
 
 export const getOnlineCount = () => onlineUsers.size;
+export const getOnlineUsers = () =>
+  Array.from(onlineUsers.values()).map(u => ({ userId: u.userId, username: u.username }));
 
 export const setupChatHandlers = (socket: Socket, io: Server) => {
   // Join chat

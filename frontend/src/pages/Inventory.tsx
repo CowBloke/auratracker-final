@@ -160,7 +160,8 @@ export default function Inventory() {
     try {
       const res = await marketplaceApi.sellGiftItem(userItem.id);
       await fetchInventory();
-      setMessage({ type: 'success', text: `Vendu pour ${res.data.auraEarned} aura` });
+      await refreshUser();
+      setMessage({ type: 'success', text: `Vendu pour $${res.data.moneyEarned}` });
       setTimeout(() => setMessage(null), 3000);
     } catch (error: any) {
       setMessage({ type: 'error', text: error.response?.data?.error || 'Échec' });
@@ -377,7 +378,7 @@ export default function Inventory() {
                             {selling === userItem.id ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
-                              `Vendre (${Math.floor(userItem.item.price / 2)} aura)`
+                              `Vendre ($${Math.floor(userItem.item.price / 2)})`
                             )}
                           </Button>
                           <Button

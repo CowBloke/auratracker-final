@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { adminApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, Badge, UserBadge, AdminUpdatePopup } from '../services/api';
+import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,8 +12,8 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, ToggleLeft } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, ReferenceDot } from 'recharts';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -321,6 +322,7 @@ const defaultUpdatePopupForm: UpdatePopupFormData = {
 
 export default function Admin() {
   const { user } = useAuth();
+  const { refreshFeatures } = useFeatures();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -339,18 +341,25 @@ export default function Admin() {
   const [mutingUser, setMutingUser] = useState<string | null>(null);
   const [clearingChat, setClearingChat] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'users' | 'logs' | 'bans' | 'content' | 'communication' | 'bugs' | 'blocks' | 'settings' | 'activity'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'logs' | 'bans' | 'content' | 'communication' | 'bugs' | 'features' | 'settings' | 'activity'>('users');
 
   // Activity tab state
-  type OnlineHistoryPoint = { timestamp: string; count: number; max: number };
+  type OnlineHistoryPoint = { timestamp: string; count: number; max: number; usernames: { userId: string; username: string }[] };
   type OnlineStats = { current: number; allTimeRecord: number; allTimeRecordAt: string | null; avg1d: number; avg7d: number; avg30d: number; peak1d: number; peak7d: number; peak30d: number };
-  const [activityPeriod, setActivityPeriod] = useState<'day' | 'week' | 'month' | 'custom'>('day');
+  const [activityPeriod, setActivityPeriod] = useState<'day' | 'week' | 'month' | 'custom' | 'specific'>('day');
   const [activityCustomStart, setActivityCustomStart] = useState('');
   const [activityCustomEnd, setActivityCustomEnd] = useState('');
+  const [activitySpecificDay, setActivitySpecificDay] = useState('');
   const [activityHistory, setActivityHistory] = useState<{ data: OnlineHistoryPoint[]; peak: number; peakAt: string | null } | null>(null);
   const [onlineStats, setOnlineStats] = useState<OnlineStats | null>(null);
   const [loadingActivity, setLoadingActivity] = useState(false);
   const [snapshotting, setSnapshotting] = useState(false);
+  const [hoveredPoint, setHoveredPoint] = useState<OnlineHistoryPoint | null>(null);
+  const [lockedPoint, setLockedPoint] = useState<OnlineHistoryPoint | null>(null);
+  const [activityZoomDomain, setActivityZoomDomain] = useState<[number, number] | null>(null);
+  const activityZoomDomainRef = useRef<[number, number] | null>(null);
+  const activityFullDomainRef = useRef<[number, number]>([0, 0]);
+  const activityChartRef = useRef<HTMLDivElement>(null);
   const [inventoryDialogOpen, setInventoryDialogOpen] = useState(false);
   const [inventoryUser, setInventoryUser] = useState<AdminUser | null>(null);
   const [inventoryItems, setInventoryItems] = useState<AdminInventoryItem[]>([]);
@@ -438,6 +447,8 @@ export default function Admin() {
   const [blockedPages, setBlockedPages] = useState<string[]>([]);
   const [blockedMessage, setBlockedMessage] = useState('');
   const [savingBlocks, setSavingBlocks] = useState(false);
+  const [fakeOnlineEnabled, setFakeOnlineEnabled] = useState(true);
+  const [savingFakeOnline, setSavingFakeOnline] = useState(false);
   const [announcementMessage, setAnnouncementMessage] = useState('');
   const [savingAnnouncement, setSavingAnnouncement] = useState(false);
   const [updatePopups, setUpdatePopups] = useState<AdminUpdatePopup[]>([]);
@@ -665,6 +676,42 @@ export default function Admin() {
     }
   }, [badgeUserId]);
 
+  // Scroll-wheel horizontal zoom for the activity chart
+  useEffect(() => {
+    const el = activityChartRef.current;
+    if (!el) return;
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const [fullStart, fullEnd] = activityFullDomainRef.current;
+      if (fullEnd === fullStart) return;
+      const [currentStart, currentEnd] = activityZoomDomainRef.current ?? [fullStart, fullEnd];
+      const currentRange = currentEnd - currentStart;
+      // Left offset = left margin (8px removed by -8) + YAxis width (24) + right margin (4)
+      const leftOffset = 20;
+      const rightOffset = 4;
+      const rect = el.getBoundingClientRect();
+      const chartWidth = rect.width - leftOffset - rightOffset;
+      const mouseX = e.clientX - rect.left - leftOffset;
+      const fraction = Math.max(0, Math.min(1, mouseX / chartWidth));
+      const mouseTs = currentStart + fraction * currentRange;
+      const zoomFactor = e.deltaY > 0 ? 1.25 : 1 / 1.25;
+      const fullRange = fullEnd - fullStart;
+      const newRange = Math.min(currentRange * zoomFactor, fullRange);
+      let newStart = mouseTs - fraction * newRange;
+      let newEnd = mouseTs + (1 - fraction) * newRange;
+      // Clamp to full domain
+      if (newStart < fullStart) { newEnd += fullStart - newStart; newStart = fullStart; }
+      if (newEnd > fullEnd) { newStart -= newEnd - fullEnd; newEnd = fullEnd; }
+      newStart = Math.max(fullStart, newStart);
+      newEnd = Math.min(fullEnd, newEnd);
+      const next: [number, number] = [newStart, newEnd];
+      activityZoomDomainRef.current = next;
+      setActivityZoomDomain([...next]);
+    };
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [activityHistory]);
+
 
   const fetchUsers = async () => {
     try {
@@ -743,7 +790,7 @@ export default function Admin() {
     }
   };
 
-  const fetchActivity = async (period?: 'day' | 'week' | 'month' | 'custom', customStart?: string, customEnd?: string) => {
+  const fetchActivity = async (period?: 'day' | 'week' | 'month' | 'custom' | 'specific', customStart?: string, customEnd?: string) => {
     const p = period ?? activityPeriod;
     setLoadingActivity(true);
     try {
@@ -754,14 +801,18 @@ export default function Admin() {
       const endISO = endStr ? (endStr.includes('T') ? endStr : `${endStr}T23:59:59`) : undefined;
       const [histRes, statsRes] = await Promise.all([
         adminApi.getOnlineHistory({
-          period: p,
-          startDate: p === 'custom' ? startISO : undefined,
-          endDate: p === 'custom' ? endISO : undefined,
+          period: p === 'specific' ? 'custom' : p,
+          startDate: p === 'custom' ? startISO : p === 'specific' ? `${activitySpecificDay}T00:00:00` : undefined,
+          endDate: p === 'custom' ? endISO : p === 'specific' ? `${activitySpecificDay}T23:59:59` : undefined,
         }),
         adminApi.getOnlineStats(),
       ]);
       setActivityHistory({ data: histRes.data.data, peak: histRes.data.peak, peakAt: histRes.data.peakAt });
       setOnlineStats(statsRes.data);
+      setLockedPoint(null);
+      setHoveredPoint(null);
+      setActivityZoomDomain(null);
+      activityZoomDomainRef.current = null;
     } catch {
       // ignore
     } finally {
@@ -864,6 +915,8 @@ export default function Admin() {
         setBlockedPages([]);
       }
       
+      setFakeOnlineEnabled(res.data.settings.fake_online_enabled !== 'false');
+
       // Déterminer si la maintenance est activée : priorité au flag dédié, fallback legacy pages
       const enabledFromFlag = res.data.settings.maintenance_enabled === 'true';
       let enabledFromPages = false;
@@ -952,13 +1005,27 @@ export default function Admin() {
         blocked_pages: JSON.stringify(uniquePages),
         blocked_message: blockedMessage.trim(),
       });
-      showMessage('success', 'Blocage des pages mis à jour');
+      showMessage('success', 'Feature switches mis à jour');
       fetchSettings();
+      refreshFeatures();
     } catch (error) {
       console.error('Failed to save page blocks:', error);
       showMessage('error', 'Erreur lors de la sauvegarde du blocage');
     } finally {
       setSavingBlocks(false);
+    }
+  };
+
+  const saveFakeOnline = async (value: boolean) => {
+    try {
+      setSavingFakeOnline(true);
+      await adminApi.updateSettings({ fake_online_enabled: value ? 'true' : 'false' });
+      setFakeOnlineEnabled(value);
+      showMessage('success', value ? 'Faux online activé' : 'Faux online désactivé');
+    } catch {
+      showMessage('error', 'Erreur lors de la sauvegarde');
+    } finally {
+      setSavingFakeOnline(false);
     }
   };
 
@@ -1523,9 +1590,9 @@ export default function Admin() {
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="blocks" className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4" />
-            Blocage
+          <TabsTrigger value="features" className="flex items-center gap-2">
+            <ToggleLeft className="h-4 w-4" />
+            Fonctionnalités
           </TabsTrigger>
           <TabsTrigger value="settings" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
@@ -2252,6 +2319,27 @@ export default function Admin() {
         </TabsContent>
 
         <TabsContent value="settings" className={SPACING.SECTION_SPACING}>
+          <Card>
+            <CardHeader>
+              <CardDescription>Système de présence</CardDescription>
+            </CardHeader>
+            <CardContent className={SPACING.CARD_SPACING}>
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <h3 className="font-medium">Utilisateurs en ligne fictifs</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Complète automatiquement la liste des connectés avec des utilisateurs hors-ligne pour maintenir un minimum de 10 % affichés.
+                  </p>
+                </div>
+                <Switch
+                  checked={fakeOnlineEnabled}
+                  disabled={savingFakeOnline}
+                  onCheckedChange={saveFakeOnline}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardDescription>Actions sensibles</CardDescription>
@@ -3221,10 +3309,10 @@ export default function Admin() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="blocks" className={SPACING.SECTION_SPACING}>
+        <TabsContent value="features" className={SPACING.SECTION_SPACING}>
           <Card>
             <CardHeader>
-              <CardDescription>Blocage de pages</CardDescription>
+              <CardDescription>Feature Switches — activez ou désactivez chaque page du site. Une page désactivée disparaît de la navigation et est inaccessible par URL.</CardDescription>
             </CardHeader>
             <CardContent className={SPACING.SECTION_SPACING}>
 
@@ -3235,7 +3323,7 @@ export default function Admin() {
           ) : (
             <div className="space-y-6">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Message affiché sur la page bloquée</label>
+                <label className="text-sm font-medium">Message affiché si la page est accédée directement</label>
                 <Textarea
                   value={blockedMessage}
                   onChange={(e) => setBlockedMessage(e.target.value)}
@@ -3249,9 +3337,9 @@ export default function Admin() {
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-medium">Pages à bloquer</h3>
+                  <h3 className="text-lg font-medium">Fonctionnalités</h3>
                   <span className="text-xs text-muted-foreground">
-                    {blockedPages.length} sélectionnée{blockedPages.length > 1 ? 's' : ''}
+                    {blockedPages.length} désactivée{blockedPages.length > 1 ? 's' : ''}
                   </span>
                 </div>
 
@@ -3270,7 +3358,7 @@ export default function Admin() {
                       <div className="flex items-center justify-between">
                         <div className="text-sm font-semibold">{category}</div>
                         <span className="text-xs text-muted-foreground">
-                          {pages.filter(p => blockedPages.includes(p.key)).length}/{pages.length}
+                          {pages.filter(p => !blockedPages.includes(p.key)).length}/{pages.length} actives
                         </span>
                       </div>
                       <div className="space-y-3">
@@ -3280,11 +3368,11 @@ export default function Admin() {
                             className="flex items-center justify-between"
                           >
                             <div>
-                              <div className="text-sm font-medium">{page.label}</div>
+                              <div className={cn("text-sm font-medium", blockedPages.includes(page.key) && "text-muted-foreground line-through")}>{page.label}</div>
                               <div className="text-xs text-muted-foreground">{page.path}</div>
                             </div>
                             <Switch
-                              checked={blockedPages.includes(page.key)}
+                              checked={!blockedPages.includes(page.key)}
                               onCheckedChange={() => toggleBlockedPage(page.key)}
                             />
                           </div>
@@ -3305,7 +3393,7 @@ export default function Admin() {
                   ) : (
                     <Save className="h-4 w-4 mr-2" />
                   )}
-                  Sauvegarder le blocage
+                  Sauvegarder
                 </Button>
               </div>
             </div>
@@ -3858,17 +3946,17 @@ export default function Admin() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  {(['day', 'week', 'month', 'custom'] as const).map(p => (
+                  {(['day', 'week', 'month', 'specific', 'custom'] as const).map(p => (
                     <Button
                       key={p}
                       variant={activityPeriod === p ? 'default' : 'outline'}
                       onClick={() => {
                         setActivityPeriod(p);
-                        if (p !== 'custom') fetchActivity(p);
+                        if (p !== 'custom' && p !== 'specific') fetchActivity(p);
                       }}
                       className="h-8 px-3 text-xs"
                     >
-                      {p === 'day' ? "Aujourd'hui" : p === 'week' ? '7j' : p === 'month' ? '30j' : 'Plage'}
+                      {p === 'day' ? "Aujourd'hui" : p === 'week' ? '7j' : p === 'month' ? '30j' : p === 'specific' ? 'Jour' : 'Plage'}
                     </Button>
                   ))}
                   <Button
@@ -3927,6 +4015,27 @@ export default function Admin() {
                   </Button>
                 </div>
               )}
+
+              {/* Specific day picker */}
+              {activityPeriod === 'specific' && (
+                <div className="flex items-center gap-2 mt-3 flex-wrap">
+                  <CalendarRange className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <Input
+                    type="date"
+                    value={activitySpecificDay}
+                    onChange={e => setActivitySpecificDay(e.target.value)}
+                    className="h-8 w-auto text-xs"
+                  />
+                  <Button
+                    size="sm"
+                    className="h-8 px-3 text-xs"
+                    onClick={() => fetchActivity('specific')}
+                    disabled={!activitySpecificDay}
+                  >
+                    Appliquer
+                  </Button>
+                </div>
+              )}
             </CardHeader>
 
             <CardContent className="pt-4">
@@ -3936,6 +4045,21 @@ export default function Admin() {
                 </div>
               ) : activityHistory && activityHistory.data.length > 0 ? (
                 <>
+                  {/* Big period title */}
+                  <p className="text-2xl font-bold tracking-tight mb-4 capitalize">
+                    {activityPeriod === 'day'
+                      ? new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+                      : activityPeriod === 'week'
+                      ? '7 derniers jours'
+                      : activityPeriod === 'month'
+                      ? '30 derniers jours'
+                      : activityPeriod === 'specific' && activitySpecificDay
+                      ? new Date(activitySpecificDay + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+                      : activityPeriod === 'custom' && activityCustomStart && activityCustomEnd
+                      ? `${new Date(activityCustomStart + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} → ${new Date(activityCustomEnd + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                      : 'Activité'}
+                  </p>
+
                   {activityHistory.peak > 0 && (
                     <div className="mb-4 flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -3955,74 +4079,246 @@ export default function Admin() {
                     </div>
                   )}
 
-                  <ResponsiveContainer width="100%" height={300}>
-                    <AreaChart data={activityHistory.data} margin={{ top: 6, right: 4, left: -8, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="strokeGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="hsl(var(--foreground))" stopOpacity={0.95} />
-                          <stop offset="100%" stopColor="hsl(var(--foreground))" stopOpacity={0.35} />
-                        </linearGradient>
-                        <linearGradient id="activityGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="hsl(var(--foreground))" stopOpacity={0.12} />
-                          <stop offset="100%" stopColor="hsl(var(--foreground))" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis
-                        dataKey="timestamp"
-                        tickFormatter={ts => {
+                  {/* Chart + side panel */}
+                  <div className="flex gap-4 items-start">
+                    <div className="flex-1 min-w-0">
+                      {(() => {
+                        const MS_HOUR = 3600000;
+                        const MS_DAY = 86400000;
+
+                        // All periods use a numeric time axis for proportional spacing
+                        const chartData = activityHistory.data.map(pt => ({ ...pt, ts: new Date(pt.timestamp).getTime() }));
+
+                        // Compute full domain boundaries for this period
+                        const now = new Date();
+                        const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+                        let domainStart: number, domainEnd: number;
+                        if (activityPeriod === 'specific' && activitySpecificDay) {
+                          domainStart = new Date(activitySpecificDay + 'T00:00:00').getTime();
+                          domainEnd = domainStart + MS_DAY;
+                        } else if (activityPeriod === 'day') {
+                          domainStart = todayMidnight;
+                          domainEnd = todayMidnight + MS_DAY;
+                        } else if (activityPeriod === 'week') {
+                          domainStart = todayMidnight - 7 * MS_DAY;
+                          domainEnd = todayMidnight + MS_DAY;
+                        } else if (activityPeriod === 'month') {
+                          domainStart = todayMidnight - 30 * MS_DAY;
+                          domainEnd = todayMidnight + MS_DAY;
+                        } else if (activityPeriod === 'custom' && activityCustomStart && activityCustomEnd) {
+                          domainStart = new Date(activityCustomStart + 'T00:00:00').getTime();
+                          domainEnd = new Date(activityCustomEnd + 'T00:00:00').getTime() + MS_DAY;
+                        } else {
+                          const times = chartData.map(pt => pt.ts);
+                          domainStart = Math.min(...times);
+                          domainEnd = Math.max(...times);
+                        }
+
+                        // Keep full domain in ref so the wheel handler can read it
+                        activityFullDomainRef.current = [domainStart, domainEnd];
+
+                        // Apply zoom if active
+                        const [viewStart, viewEnd] = activityZoomDomain ?? [domainStart, domainEnd];
+                        const viewRange = viewEnd - viewStart;
+
+                        // Adaptive ticks and separator lines based on visible range
+                        const getTicksAndLines = (start: number, end: number, range: number) => {
+                          const alignedStart = (interval: number) => Math.ceil(start / interval) * interval;
+                          const generate = (interval: number, from: number, to: number) => {
+                            const out: number[] = [];
+                            for (let t = from; t <= to; t += interval) out.push(t);
+                            return out;
+                          };
+                          if (range <= 3 * MS_HOUR) {
+                            const lines = generate(30 * 60000, alignedStart(30 * 60000), end);
+                            return { ticks: lines, lines };
+                          } else if (range <= 8 * MS_HOUR) {
+                            const lines = generate(MS_HOUR, alignedStart(MS_HOUR), end);
+                            return { ticks: lines, lines };
+                          } else if (range <= 18 * MS_HOUR) {
+                            const lines = generate(MS_HOUR, alignedStart(MS_HOUR), end);
+                            const ticks = generate(2 * MS_HOUR, alignedStart(2 * MS_HOUR), end);
+                            return { ticks, lines };
+                          } else if (range <= MS_DAY * 1.5) {
+                            const lines = generate(MS_HOUR, alignedStart(MS_HOUR), end);
+                            const ticks = generate(3 * MS_HOUR, alignedStart(3 * MS_HOUR), end);
+                            return { ticks, lines };
+                          } else if (range <= 4 * MS_DAY) {
+                            const lines = generate(MS_DAY, alignedStart(MS_DAY), end);
+                            const ticks = generate(MS_DAY, alignedStart(MS_DAY), end);
+                            return { ticks, lines };
+                          } else if (range <= 10 * MS_DAY) {
+                            const lines = generate(MS_DAY, alignedStart(MS_DAY), end);
+                            const ticks = generate(2 * MS_DAY, alignedStart(2 * MS_DAY), end);
+                            return { ticks, lines };
+                          } else {
+                            const lines = generate(MS_DAY, alignedStart(MS_DAY), end);
+                            const ticks = generate(5 * MS_DAY, alignedStart(5 * MS_DAY), end);
+                            return { ticks, lines };
+                          }
+                        };
+
+                        const { ticks: xAxisTicks, lines: separatorLines } = getTicksAndLines(viewStart, viewEnd, viewRange);
+
+                        const tickFormatter = (ts: number) => {
                           const d = new Date(ts);
-                          if (activityPeriod === 'day') return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-                          if (activityPeriod === 'week') return d.toLocaleDateString('fr-FR', { weekday: 'short' }) + ' ' + d.getHours() + 'h';
+                          if (viewRange <= MS_DAY * 1.5) {
+                            const h = d.getHours(), m = d.getMinutes();
+                            return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, '0')}`;
+                          }
+                          if (viewRange <= 8 * MS_DAY) return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' });
                           return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
-                        }}
-                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                        axisLine={false}
-                        tickLine={false}
-                        interval="preserveStartEnd"
-                      />
-                      <YAxis
-                        allowDecimals={false}
-                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                        axisLine={false}
-                        tickLine={false}
-                        width={24}
-                      />
-                      <RechartsTooltip
-                        contentStyle={{
-                          background: 'hsl(var(--popover))',
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: 8,
-                          fontSize: 12,
-                          padding: '8px 12px',
-                        }}
-                        labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: 6, fontSize: 11 }}
-                        labelFormatter={ts => new Date(ts as string).toLocaleString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                        formatter={(value: number) => [
-                          <span style={{ fontWeight: 600 }}>{value}</span>,
-                          'Joueurs'
-                        ]}
-                      />
-                      {activityHistory.peak > 0 && (
-                        <ReferenceLine
-                          y={activityHistory.peak}
-                          stroke="hsl(var(--muted-foreground))"
-                          strokeDasharray="5 4"
-                          strokeWidth={1}
-                          label={{ value: `↑ ${activityHistory.peak}`, fill: 'hsl(var(--muted-foreground))', fontSize: 10, position: 'insideTopRight', dy: -4 }}
-                        />
-                      )}
-                      <Area
-                        type="basis"
-                        dataKey="max"
-                        stroke="url(#strokeGradient)"
-                        strokeWidth={2.5}
-                        fill="url(#activityGradient)"
-                        dot={false}
-                        activeDot={{ r: 4, fill: 'hsl(var(--foreground))', strokeWidth: 0 }}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                        };
+
+                        return (
+                          <div ref={activityChartRef}>
+                          <ResponsiveContainer width="100%" height={300}>
+                            <AreaChart
+                              data={chartData}
+                              margin={{ top: 6, right: 4, left: -8, bottom: 0 }}
+                              onMouseMove={(chartData) => {
+                                if (lockedPoint) return;
+                                const pt = chartData?.activePayload?.[0]?.payload as OnlineHistoryPoint | undefined;
+                                setHoveredPoint(pt ?? null);
+                              }}
+                              onMouseLeave={() => {
+                                if (!lockedPoint) setHoveredPoint(null);
+                              }}
+                              onClick={(chartData) => {
+                                const pt = chartData?.activePayload?.[0]?.payload as OnlineHistoryPoint | undefined;
+                                if (!pt) { setLockedPoint(null); return; }
+                                setLockedPoint(prev => prev?.timestamp === pt.timestamp ? null : pt);
+                              }}
+                              style={{ cursor: 'pointer' }}
+                            >
+                              <defs>
+                                <linearGradient id="strokeGradient" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor="hsl(var(--foreground))" stopOpacity={0.95} />
+                                  <stop offset="100%" stopColor="hsl(var(--foreground))" stopOpacity={0.35} />
+                                </linearGradient>
+                                <linearGradient id="activityGradient" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor="hsl(var(--foreground))" stopOpacity={0.12} />
+                                  <stop offset="100%" stopColor="hsl(var(--foreground))" stopOpacity={0} />
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                              <XAxis
+                                dataKey="ts"
+                                type="number"
+                                domain={[viewStart, viewEnd]}
+                                ticks={xAxisTicks}
+                                tickFormatter={tickFormatter}
+                                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                                axisLine={false}
+                                tickLine={false}
+                                interval={0}
+                              />
+                              <YAxis
+                                allowDecimals={false}
+                                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                                axisLine={false}
+                                tickLine={false}
+                                width={24}
+                              />
+                              <RechartsTooltip
+                                active={!lockedPoint}
+                                contentStyle={{
+                                  background: 'hsl(var(--popover))',
+                                  border: '1px solid hsl(var(--border))',
+                                  borderRadius: 8,
+                                  fontSize: 12,
+                                  padding: '8px 12px',
+                                }}
+                                labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: 6, fontSize: 11 }}
+                                labelFormatter={ts => new Date(ts as number).toLocaleString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                formatter={(value: number) => [
+                                  <span style={{ fontWeight: 600 }}>{value}</span>,
+                                  'Joueurs'
+                                ]}
+                              />
+                              {activityHistory.peak > 0 && (
+                                <ReferenceLine
+                                  y={activityHistory.peak}
+                                  stroke="hsl(var(--muted-foreground))"
+                                  strokeDasharray="5 4"
+                                  strokeWidth={1}
+                                  label={{ value: `↑ ${activityHistory.peak}`, fill: 'hsl(var(--muted-foreground))', fontSize: 10, position: 'insideTopRight', dy: -4 }}
+                                />
+                              )}
+                              {separatorLines.map(ts => (
+                                <ReferenceLine
+                                  key={`sep-${ts}`}
+                                  x={ts}
+                                  stroke="hsl(var(--border))"
+                                  strokeWidth={1.5}
+                                />
+                              ))}
+                              {lockedPoint && (
+                                <ReferenceDot
+                                  x={new Date(lockedPoint.timestamp).getTime()}
+                                  y={lockedPoint.max}
+                                  r={6}
+                                  fill="hsl(var(--foreground))"
+                                  stroke="hsl(var(--background))"
+                                  strokeWidth={2}
+                                />
+                              )}
+                              <Area
+                                type="monotone"
+                                dataKey="max"
+                                stroke="url(#strokeGradient)"
+                                strokeWidth={2.5}
+                                fill="url(#activityGradient)"
+                                dot={false}
+                                activeDot={{ r: 4, fill: 'hsl(var(--foreground))', strokeWidth: 0 }}
+                              />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    {/* User list side panel — always visible */}
+                    {(() => {
+                      const displayPoint = lockedPoint ?? hoveredPoint;
+                      const users = displayPoint?.usernames ?? [];
+                      return (
+                        <div className="w-44 shrink-0 border border-border/40 rounded-lg bg-muted/10 flex flex-col" style={{ height: 300 }}>
+                          <div className="px-3 py-2 border-b border-border/40 shrink-0">
+                            {displayPoint ? (
+                              <>
+                                <p className="text-xs font-medium tabular-nums">{displayPoint.max} joueur{displayPoint.max !== 1 ? 's' : ''}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {new Date(displayPoint.timestamp).toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}
+                                </p>
+                                {lockedPoint && (
+                                  <p className="text-xs text-muted-foreground/60 mt-1">Clique à nouveau pour déverrouiller</p>
+                                )}
+                              </>
+                            ) : (
+                              <p className="text-xs text-muted-foreground/60">Survolez un point</p>
+                            )}
+                          </div>
+                          <div className="overflow-y-auto flex-1 p-1.5">
+                            {!displayPoint ? (
+                              <p className="text-xs text-muted-foreground/40 text-center py-4">—</p>
+                            ) : users.length === 0 ? (
+                              <p className="text-xs text-muted-foreground/60 text-center py-4">Aucun joueur enregistré</p>
+                            ) : (
+                              <ul className="space-y-0.5">
+                                {users.map(u => (
+                                  <li key={u.userId} className="text-xs px-1.5 py-1 rounded hover:bg-muted/30 truncate" title={u.username}>
+                                    {u.username}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </>
               ) : (
                 <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
@@ -4031,7 +4327,7 @@ export default function Admin() {
                   </div>
                   <div className="text-center">
                     <p className={TYPOGRAPHY.SMALL}>Aucune donnée pour cette période</p>
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60 mt-0.5')}>Les snapshots sont enregistrés toutes les 5 minutes</p>
+                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60 mt-0.5')}>Les snapshots sont enregistrés automatiquement</p>
                   </div>
                 </div>
               )}

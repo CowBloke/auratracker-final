@@ -682,6 +682,7 @@ model GiftItem {
 model OnlineSnapshot {
   id        String   @id @default(uuid())
   count     Int      // Number of online users at this moment
+  usernames String   @default("[]") // JSON: [{userId, username}] captured at snapshot time
   createdAt DateTime @default(now())
 
   @@index([createdAt])
