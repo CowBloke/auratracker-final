@@ -23,6 +23,15 @@ const FILTERS: Array<{ value: ShopFilter; label: string }> = [
   { value: 'GIFT', label: 'Cadeaux' },
 ];
 
+const SECTION_ORDER: Array<ShopItem['type']> = ['COSMETIC', 'CONSUMABLE', 'UPGRADE', 'GIFT'];
+
+const SECTION_LABELS: Record<ShopItem['type'], string> = {
+  COSMETIC: 'Cosmétiques',
+  CONSUMABLE: 'Consommables',
+  UPGRADE: 'Améliorations',
+  GIFT: 'Cadeaux',
+};
+
 const TYPE_LABELS: Record<ShopItem['type'], string> = {
   CONSUMABLE: 'Consommable',
   COSMETIC: 'Cosmétique',
@@ -62,6 +71,69 @@ const getEffectLabel = (effect: string | null) => {
   return null;
 };
 
+function ShopCard({
+  item,
+  user,
+  buyingItemId,
+  onPurchase,
+  onSend,
+}: {
+  item: ShopItem;
+  user: ReturnType<typeof useAuth>['user'];
+  buyingItemId: string | null;
+  onPurchase: (item: ShopItem) => void;
+  onSend: (item: ShopItem) => void;
+}) {
+  const isGift = item.type === 'GIFT';
+  const effectLabel = isGift ? `${item.price} aura pour le destinataire` : getEffectLabel(item.effect);
+  const canAfford = (user?.money ?? 0) >= item.price;
+
+  return (
+    <Card className="overflow-hidden">
+      <CardContent className="p-0">
+        {item.imageUrl ? (
+          <img src={resolveImageUrl(item.imageUrl)} alt={item.name} className="h-44 w-full object-cover" />
+        ) : (
+          <div className="flex h-44 w-full items-center justify-center bg-muted/20">
+            {isGift ? <Gift className="h-10 w-10 text-muted-foreground" /> : <Package className="h-10 w-10 text-muted-foreground" />}
+          </div>
+        )}
+        <div className="space-y-4 p-5">
+          <div className="space-y-2">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h3 className={TYPOGRAPHY.H5}>{item.name}</h3>
+                <p className="text-xs text-muted-foreground">{TYPE_LABELS[item.type]}</p>
+              </div>
+              <div className="rounded-md border border-border/40 px-2 py-1 text-sm font-medium tabular-nums">
+                ${item.price}
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground">{item.description}</p>
+            {effectLabel && (
+              <p className="text-xs tracking-wide text-muted-foreground/80">
+                {isGift ? effectLabel : `Effet: ${effectLabel}`}
+              </p>
+            )}
+          </div>
+          {isGift ? (
+            <Button onClick={() => onSend(item)} disabled={!canAfford} className="w-full" variant={canAfford ? 'default' : 'outline'}>
+              <Gift className="mr-2 h-4 w-4" />
+              {canAfford ? 'Envoyer un cadeau' : 'Solde insuffisant'}
+            </Button>
+          ) : (
+            <Button onClick={() => onPurchase(item)} disabled={!canAfford || buyingItemId === item.id} className="w-full">
+              {buyingItemId === item.id ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Achat...</>
+              ) : canAfford ? 'Acheter' : 'Solde insuffisant'}
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Shop() {
   const { user, updateBalance } = useAuth();
   const [filter, setFilter] = useState<ShopFilter>('ALL');
@@ -82,10 +154,7 @@ export default function Shop() {
     const fetchItems = async () => {
       try {
         setLoading(true);
-        const response = await marketplaceApi.getItems({
-          type: filter === 'ALL' ? undefined : filter,
-          limit: 100,
-        });
+        const response = await marketplaceApi.getItems({ limit: 100 });
         setItems(response.data.items || []);
       } catch (error) {
         console.error('Failed to fetch shop items:', error);
@@ -96,7 +165,7 @@ export default function Shop() {
     };
 
     fetchItems();
-  }, [filter]);
+  }, []);
 
   const fetchUsers = useCallback(async () => {
     setLoadingUsers(true);
@@ -114,6 +183,20 @@ export default function Shop() {
   const availableItems = useMemo(() => (
     items.filter((item) => !item.expiresAt || new Date(item.expiresAt) >= new Date())
   ), [items]);
+
+  const filteredItems = useMemo(() => (
+    filter === 'ALL' ? availableItems : availableItems.filter((item) => item.type === filter)
+  ), [availableItems, filter]);
+
+  const sections = useMemo(() => (
+    SECTION_ORDER
+      .map((type) => ({
+        type,
+        label: SECTION_LABELS[type],
+        items: availableItems.filter((item) => item.type === type),
+      }))
+      .filter((s) => s.items.length > 0)
+  ), [availableItems]);
 
   const handlePurchase = async (item: ShopItem) => {
     if (!user || buyingItemId) return;
@@ -201,87 +284,24 @@ export default function Shop() {
             <div className="flex justify-center py-16">
               <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
             </div>
-          ) : availableItems.length === 0 ? (
+          ) : filteredItems.length === 0 ? (
             <p className={cn(TYPOGRAPHY.MUTED, 'py-12 text-center')}>
               Aucun objet disponible pour le moment.
             </p>
+          ) : filter === 'ALL' ? (
+            <div className="space-y-8">
+              {sections.map((section) => (
+                <div key={section.type} className="space-y-4">
+                  <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground/60">{section.label}</p>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {section.items.map((item) => <ShopCard key={item.id} item={item} user={user} buyingItemId={buyingItemId} onPurchase={handlePurchase} onSend={openSendDialog} />)}
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {availableItems.map((item) => {
-                const isGift = item.type === 'GIFT';
-                const effectLabel = isGift ? `${item.price} aura pour le destinataire` : getEffectLabel(item.effect);
-                const canAfford = (user?.money ?? 0) >= item.price;
-
-                return (
-                  <Card key={item.id} className="overflow-hidden">
-                    <CardContent className="p-0">
-                    {item.imageUrl ? (
-                      <img
-                        src={resolveImageUrl(item.imageUrl)}
-                        alt={item.name}
-                        className="h-44 w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-44 w-full items-center justify-center bg-muted/20">
-                        {isGift
-                          ? <Gift className="h-10 w-10 text-muted-foreground" />
-                          : <Package className="h-10 w-10 text-muted-foreground" />
-                        }
-                      </div>
-                    )}
-
-                    <div className="space-y-4 p-5">
-                      <div className="space-y-2">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <h3 className={TYPOGRAPHY.H5}>{item.name}</h3>
-                            <p className="text-xs text-muted-foreground">{TYPE_LABELS[item.type]}</p>
-                          </div>
-                          <div className="rounded-md border border-border/40 px-2 py-1 text-sm font-medium tabular-nums">
-                            ${item.price}
-                          </div>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{item.description}</p>
-                        {effectLabel && (
-                          <p className="text-xs tracking-wide text-muted-foreground/80">
-                            {isGift ? effectLabel : `Effet: ${effectLabel}`}
-                          </p>
-                        )}
-                      </div>
-
-                      {isGift ? (
-                        <Button
-                          onClick={() => openSendDialog(item)}
-                          disabled={!canAfford}
-                          className="w-full"
-                          variant={canAfford ? 'default' : 'outline'}
-                        >
-                          <Gift className="mr-2 h-4 w-4" />
-                          {canAfford ? 'Envoyer un cadeau' : 'Solde insuffisant'}
-                        </Button>
-                      ) : (
-                        <Button
-                          onClick={() => handlePurchase(item)}
-                          disabled={!canAfford || buyingItemId === item.id}
-                          className="w-full"
-                        >
-                          {buyingItemId === item.id ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Achat...
-                            </>
-                          ) : canAfford ? (
-                            'Acheter'
-                          ) : (
-                            'Solde insuffisant'
-                          )}
-                        </Button>
-                      )}
-                    </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+              {filteredItems.map((item) => <ShopCard key={item.id} item={item} user={user} buyingItemId={buyingItemId} onPurchase={handlePurchase} onSend={openSendDialog} />)}
             </div>
           )}
         </div>
