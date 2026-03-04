@@ -710,7 +710,7 @@ export default function Admin() {
     };
     el.addEventListener('wheel', handleWheel, { passive: false });
     return () => el.removeEventListener('wheel', handleWheel);
-  }, []);
+  }, [activityHistory]);
 
 
   const fetchUsers = async () => {
