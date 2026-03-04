@@ -2,8 +2,10 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { gamesApi } from '../services/api';
-import { Play, RotateCcw } from 'lucide-react';
+import { Play, RotateCcw, Trophy, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 
 // ============================================
@@ -404,131 +406,133 @@ export default function FlappyBird() {
   // RENDER
   // ============================================
   return (
-    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
-      {/* Game Area */}
-      <div className="flex flex-col lg:flex-row gap-8">
-        {/* Canvas */}
-        <div className="flex-1 flex flex-col items-center space-y-4">
-          <div className="relative">
-            <canvas
-              ref={canvasRef}
-              width={CANVAS_WIDTH}
-              height={CANVAS_HEIGHT}
-              className="border border-border rounded-lg cursor-pointer"
-              style={{ imageRendering: 'pixelated' }}
-            />
-            {!started && (
-              <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg">
-                <div className="text-center space-y-4">
-                  <p className="text-lg font-medium">Appuie sur Espace ou clique pour sauter</p>
-                  <Button onClick={initGame} variant="outline" className="border-foreground">
-                    <Play className="h-4 w-4 mr-2" />
-                    Commencer
-                  </Button>
-                </div>
-              </div>
-            )}
-            {gameOver && (
-              <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
-                <div className="text-center space-y-4 p-6">
-                  <p className="text-2xl font-bold">Game Over!</p>
-                  <p className="text-lg">Score: {score}</p>
-                  {isNewHighScore && (
-                    <p className="text-yellow-500 font-medium">Nouveau record personnel!</p>
-                  )}
-                  {rewards && (
-                    <div className="space-y-1">
-                      {rewards.aura > 0 && (
-                        <p className="text-purple-400">+{rewards.aura} aura</p>
-                      )}
-                      {rewards.money > 0 && (
-                        <p className="text-green-400">+{rewards.money}$</p>
-                      )}
-                    </div>
-                  )}
-                  <div className="flex gap-2 justify-center">
-                    <Button onClick={initGame} variant="outline" className="border-foreground">
-                      <RotateCcw className="h-4 w-4 mr-2" />
-                      Rejouer
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="text-sm text-muted-foreground text-center space-y-1">
-            <p>Meilleur score: {highScore}</p>
-            <p className="text-xs">Espace / Flèche haut / Clic pour sauter</p>
-          </div>
-        </div>
+    <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-start px-4 pb-6 lg:px-6 lg:pb-8">
 
-        {/* Stats and Leaderboard */}
-        <div className="lg:w-80 space-y-6">
-          {/* Stats */}
-          <section className="space-y-2">
-            <h2 className="text-sm text-muted-foreground  ">
-              Statistiques
-            </h2>
-            <div className="space-y-2 border border-border/30 rounded-lg p-4">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Meilleur score</span>
-                <span className="font-medium">{highScore}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Score actuel</span>
-                <span className="font-medium">{score}</span>
-              </div>
+      {/* ── Left column ── */}
+      <div className="flex flex-col gap-3">
+        <Card>
+          <CardHeader className="px-4 py-3">
+            <CardTitle className="text-sm font-medium">Score</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 space-y-4">
+            <div>
+              <p className="text-3xl font-light tabular-nums">{score}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Score actuel</p>
             </div>
-          </section>
+            <Separator />
+            <div>
+              <p className="text-xl font-medium tabular-nums">{highScore}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Meilleur score</p>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* Leaderboard */}
-          <section className="space-y-2">
-            <h2 className="text-sm text-muted-foreground  ">
-              Classement
-            </h2>
-            <div className="border border-border/30 rounded-lg overflow-hidden">
-              {leaderboard.length === 0 ? (
-                <div className="p-4 text-center text-muted-foreground text-sm">
-                  Aucun score pour le moment
-                </div>
-              ) : (
-                <div className="divide-y divide-border/30">
-                  {leaderboard.map((entry, index) => (
-                    <div
-                      key={entry.id}
-                      className={cn(
-                        "flex items-center justify-between p-3",
-                        entry.user.id === user?.id && "bg-muted/30"
-                      )}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs text-muted-foreground w-6 tabular-nums">
-                          {index + 1}
-                        </span>
-                        <span className="font-medium text-sm">
-                          {entry.user.username}
-                          {entry.user.id === user?.id && (
-                            <span className="ml-2 text-xs text-muted-foreground">(toi)</span>
-                          )}
-                        </span>
-                      </div>
-                      <span className="text-sm tabular-nums">{entry.highScore}</span>
-                      {user?.isAdmin && (
-                        <Button variant="ghost"
-                          onClick={() => handleDeleteScore(entry.user.id, entry.user.username)}
-                          className="ml-2 text-xs text-destructive hover:underline"
-                        >
-                          Supprimer
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+        <Card>
+          <CardHeader className="px-4 py-3">
+            <CardTitle className="text-sm font-medium">Contrôles</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 space-y-1.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <kbd className="px-2 py-0.5 border border-border/50 rounded text-xs">Espace</kbd>
+              <span className="text-xs text-muted-foreground">·</span>
+              <kbd className="px-2 py-0.5 border border-border/50 rounded text-xs">↑</kbd>
+              <span className="text-xs text-muted-foreground">·</span>
+              <span className="text-xs text-muted-foreground">Clic</span>
             </div>
-          </section>
-        </div>
+            <p className="text-xs text-muted-foreground">pour sauter</p>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* ── Center column — canvas ── */}
+      <div className="relative">
+        <canvas
+          ref={canvasRef}
+          width={CANVAS_WIDTH}
+          height={CANVAS_HEIGHT}
+          className="border border-border rounded-lg cursor-pointer block"
+          style={{ imageRendering: 'pixelated' }}
+        />
+        {!started && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg">
+            <div className="text-center space-y-4">
+              <p className="text-sm text-muted-foreground">Appuie sur Espace ou clique pour sauter</p>
+              <Button onClick={initGame} variant="outline" className="border-foreground">
+                <Play className="h-4 w-4 mr-2" />
+                Commencer
+              </Button>
+            </div>
+          </div>
+        )}
+        {gameOver && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
+            <div className="text-center space-y-4 p-6">
+              <p className="text-2xl font-light">Game Over</p>
+              <p className="text-3xl tabular-nums">{score}</p>
+              {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
+              {rewards && (
+                <p className="text-sm text-muted-foreground">
+                  {rewards.aura > 0 && `+${rewards.aura} aura`}
+                  {rewards.aura > 0 && rewards.money > 0 && ' · '}
+                  {rewards.money > 0 && `+${rewards.money}$`}
+                </p>
+              )}
+              <Button onClick={initGame} variant="outline" className="border-foreground">
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Rejouer
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Right column — leaderboard ── */}
+      <Card>
+        <CardHeader className="px-4 py-3">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Trophy className="h-4 w-4 text-muted-foreground" />
+            Classement
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {leaderboard.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm text-muted-foreground">Aucun score</p>
+          ) : (
+            <div className="divide-y divide-border/20 max-h-[560px] overflow-y-auto">
+              {leaderboard.map((entry, index) => (
+                <div
+                  key={entry.id}
+                  className={cn('flex items-center gap-3 px-4 py-2.5 group', entry.user.id === user?.id && 'bg-muted/30')}
+                >
+                  <span className={cn('w-5 text-center text-xs tabular-nums shrink-0',
+                    index === 0 ? 'text-yellow-500 font-bold' :
+                    index === 1 ? 'text-muted-foreground' :
+                    index === 2 ? 'text-amber-600 font-bold' : 'text-muted-foreground'
+                  )}>
+                    {index + 1}
+                  </span>
+                  <span className="flex-1 truncate text-sm">
+                    {entry.user.username}
+                    {entry.user.id === user?.id && <span className="ml-1 text-xs text-muted-foreground">(toi)</span>}
+                  </span>
+                  <span className="text-sm tabular-nums text-muted-foreground shrink-0">{entry.highScore}</span>
+                  {user?.isAdmin && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteScore(entry.user.id, entry.user.username)}
+                      className="opacity-0 group-hover:opacity-100 h-6 w-6 text-destructive hover:bg-destructive/10 shrink-0"
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
     </div>
   );
 }

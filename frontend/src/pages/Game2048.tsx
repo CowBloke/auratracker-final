@@ -5,6 +5,8 @@ import { gamesApi } from '../services/api';
 import { Play, RotateCcw, Trophy, X, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 
 // ============================================
 // GAME CONSTANTS
@@ -445,233 +447,209 @@ export default function Game2048() {
   };
   
   return (
-    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
-      <div className="flex items-center justify-end">
-        <div className="text-right text-sm text-muted-foreground tabular-nums">
-          <div className="text-3xl font-light text-foreground">{score.toLocaleString()}</div>
-          <div>Record: {highScore.toLocaleString()}</div>
-        </div>
+    <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-start px-4 pb-6 lg:px-6 lg:pb-8">
+
+      {/* ── Left column ── */}
+      <div className="flex flex-col gap-3">
+        <Card>
+          <CardHeader className="px-4 py-3">
+            <CardTitle className="text-sm font-medium">Score</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 space-y-4">
+            <div>
+              <p className="text-3xl font-light tabular-nums">{score.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Score actuel</p>
+            </div>
+            <Separator />
+            <div>
+              <p className="text-xl font-medium tabular-nums">{highScore.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Meilleur score</p>
+            </div>
+            {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
+            {rewards && (rewards.money > 0 || rewards.aura > 0) && (
+              <p className="text-sm text-muted-foreground">
+                {rewards.money > 0 && `+$${rewards.money}`}
+                {rewards.money > 0 && rewards.aura > 0 && ' · '}
+                {rewards.aura > 0 && `+${rewards.aura} aura`}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="px-4 py-3">
+            <CardTitle className="text-sm font-medium">Contrôles</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 space-y-2">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <kbd className="px-1.5 py-0.5 border border-border/50 rounded flex items-center"><ArrowUp className="w-3 h-3" /></kbd>
+              <kbd className="px-1.5 py-0.5 border border-border/50 rounded flex items-center"><ArrowDown className="w-3 h-3" /></kbd>
+              <kbd className="px-1.5 py-0.5 border border-border/50 rounded flex items-center"><ArrowLeft className="w-3 h-3" /></kbd>
+              <kbd className="px-1.5 py-0.5 border border-border/50 rounded flex items-center"><ArrowRight className="w-3 h-3" /></kbd>
+            </div>
+            <p className="text-xs text-muted-foreground">ou <kbd className="px-1.5 py-0.5 border border-border/50 rounded">WASD</kbd></p>
+            <p className="text-xs text-muted-foreground">ou glisser sur mobile</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="px-4 py-4">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Fusionne les tuiles pour atteindre <span className="font-medium text-foreground">2048</span> et gagner des récompenses !
+            </p>
+          </CardContent>
+        </Card>
       </div>
-      
-      {/* Game Area with Leaderboard */}
-      <div className="flex justify-center gap-6 flex-wrap">
-        {/* Game Board */}
-        <div className="relative">
-          <div
-            className="relative border border-border/30 rounded-lg bg-muted/20 p-2"
-            style={{
-              width: BOARD_SIZE,
-              height: BOARD_SIZE,
-            }}
-            onTouchStart={handleTouchStart}
-            onTouchEnd={handleTouchEnd}
-          >
-            {/* Background grid */}
-            <div className="absolute inset-2 grid grid-cols-4 gap-2.5">
-              {Array.from({ length: GRID_SIZE * GRID_SIZE }).map((_, i) => (
+
+      {/* ── Center column — board ── */}
+      <div
+        className="relative border border-border/30 rounded-lg bg-muted/20 p-2"
+        style={{ width: BOARD_SIZE, height: BOARD_SIZE }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Background grid */}
+        <div className="absolute inset-2 grid grid-cols-4 gap-2.5">
+          {Array.from({ length: GRID_SIZE * GRID_SIZE }).map((_, i) => (
+            <div key={i} className="bg-muted/30 rounded" />
+          ))}
+        </div>
+
+        {/* Tiles */}
+        <div className="absolute inset-0 p-2.5">
+          {tiles.map((tile) => {
+            const x = tile.col * (CELL_SIZE + CELL_GAP);
+            const y = tile.row * (CELL_SIZE + CELL_GAP);
+            return (
+              <div
+                key={tile.id}
+                className={cn(
+                  'absolute rounded flex items-center justify-center font-bold',
+                  'transition-transform duration-150 ease-out',
+                  tile.isNew && 'animate-tile-appear',
+                  tile.isMerged && 'animate-tile-merge'
+                )}
+                style={{
+                  width: CELL_SIZE,
+                  height: CELL_SIZE,
+                  transform: `translate(${x}px, ${y}px)`,
+                  backgroundColor: getTileColor(tile.value, theme),
+                  color: getTextColor(tile.value, theme),
+                  fontSize: tile.value >= 1024 ? '1.5rem' : tile.value >= 128 ? '1.75rem' : '2rem',
+                  zIndex: tile.isMerged ? 10 : 1,
+                }}
+              >
+                {tile.value}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Start Screen */}
+        {!started && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
+            <Button
+              variant="ghost"
+              onClick={initGame}
+              className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+            >
+              <Play className="w-4 h-4" />
+              Jouer
+            </Button>
+          </div>
+        )}
+
+        {/* Win Screen */}
+        {won && !gameOver && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg">
+            <div className="text-center space-y-4 bg-card border border-border/50 rounded-lg p-6">
+              <h2 className="text-2xl font-light">Tu as atteint 2048 !</h2>
+              <p className="text-sm text-muted-foreground">Continue pour un meilleur score</p>
+              <Button
+                variant="ghost"
+                onClick={() => setWon(false)}
+                className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+              >
+                Continuer
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Game Over Screen */}
+        {gameOver && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
+            <div className="text-center space-y-6">
+              <div>
+                <h2 className="text-2xl font-light mb-2">Fin de partie</h2>
+                <p className="text-3xl tabular-nums">{score.toLocaleString()}</p>
+              </div>
+              {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
+              {rewards && (rewards.money > 0 || rewards.aura > 0) && (
+                <p className="text-sm text-muted-foreground">
+                  {rewards.money > 0 && `+$${rewards.money}`}
+                  {rewards.money > 0 && rewards.aura > 0 && ' · '}
+                  {rewards.aura > 0 && `+${rewards.aura} aura`}
+                </p>
+              )}
+              <Button
+                variant="ghost"
+                onClick={initGame}
+                className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors mx-auto"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Rejouer
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Right column — leaderboard ── */}
+      <Card>
+        <CardHeader className="px-4 py-3">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Trophy className="h-4 w-4 text-muted-foreground" />
+            Classement
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {leaderboard.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm text-muted-foreground">Aucun score enregistré</p>
+          ) : (
+            <div className="divide-y divide-border/20 max-h-[350px] overflow-y-auto">
+              {leaderboard.map((entry, index) => (
                 <div
-                  key={i}
-                  className="bg-muted/30 rounded"
-                />
+                  key={entry.id}
+                  className={cn('flex items-center gap-3 px-4 py-2.5 group', entry.user.id === user?.id && 'bg-muted/30')}
+                >
+                  <span className={cn('w-5 text-center text-xs tabular-nums shrink-0',
+                    index === 0 ? 'text-yellow-500 font-bold' :
+                    index === 1 ? 'text-muted-foreground' :
+                    index === 2 ? 'text-amber-600 font-bold' : 'text-muted-foreground'
+                  )}>
+                    {index + 1}
+                  </span>
+                  <span className="flex-1 truncate text-sm">{entry.user.username}</span>
+                  <span className="font-mono text-sm tabular-nums text-muted-foreground shrink-0">{entry.highScore.toLocaleString()}</span>
+                  {user?.isAdmin && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteScore(entry.user.id, entry.user.username)}
+                      className="opacity-0 group-hover:opacity-100 h-6 w-6 text-destructive hover:bg-destructive/10 shrink-0"
+                      title="Supprimer ce score"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                </div>
               ))}
             </div>
-            
-            {/* Tiles with sliding animation */}
-            <div className="absolute inset-0 p-2.5">
-              {tiles.map((tile) => {
-                const x = tile.col * (CELL_SIZE + CELL_GAP);
-                const y = tile.row * (CELL_SIZE + CELL_GAP);
-                return (
-                  <div
-                    key={tile.id}
-                    className={cn(
-                      "absolute rounded flex items-center justify-center font-bold text-2xl",
-                      "transition-transform duration-150 ease-out",
-                      tile.isNew && "animate-tile-appear",
-                      tile.isMerged && "animate-tile-merge"
-                    )}
-                    style={{
-                      width: CELL_SIZE,
-                      height: CELL_SIZE,
-                      transform: `translate(${x}px, ${y}px)`,
-                      backgroundColor: getTileColor(tile.value, theme),
-                      color: getTextColor(tile.value, theme),
-                      fontSize: tile.value >= 1024 ? '1.5rem' : tile.value >= 128 ? '1.75rem' : '2rem',
-                      zIndex: tile.isMerged ? 10 : 1,
-                    }}
-                  >
-                    {tile.value}
-                  </div>
-                );
-              })}
-            </div>
-            
-            {/* Start Screen */}
-            {!started && (
-              <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
-                <Button variant="ghost"
-                  onClick={initGame}
-                  className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-                >
-                  <Play className="w-4 h-4" />
-                  Jouer
-                </Button>
-              </div>
-            )}
-            
-            {/* Win Screen (non-blocking) */}
-            {won && !gameOver && (
-              <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg">
-                <div className="text-center space-y-4 bg-card border border-border/50 rounded-lg p-6">
-                  <h2 className="text-2xl font-light">Tu as atteint 2048!</h2>
-                  <p className="text-sm text-muted-foreground">Continue pour un meilleur score</p>
-                  <Button variant="ghost"
-                    onClick={() => setWon(false)}
-                    className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-                  >
-                    Continuer
-                  </Button>
-                </div>
-              </div>
-            )}
-            
-            {/* Game Over Screen */}
-            {gameOver && (
-              <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
-                <div className="text-center space-y-6">
-                  <div>
-                    <h2 className="text-2xl font-light mb-2">Fin de partie</h2>
-                    <p className="text-3xl tabular-nums">{score.toLocaleString()}</p>
-                  </div>
-                  
-                  {isNewHighScore && (
-                    <p className="text-sm text-foreground">Nouveau record !</p>
-                  )}
-                  
-                  {rewards && (rewards.money > 0 || rewards.aura > 0) && (
-                    <p className="text-sm text-muted-foreground">
-                      {rewards.money > 0 && `+$${rewards.money}`}
-                      {rewards.money > 0 && rewards.aura > 0 && ' · '}
-                      {rewards.aura > 0 && `+${rewards.aura} aura`}
-                    </p>
-                  )}
-                  
-                  <Button variant="ghost"
-                    onClick={initGame}
-                    className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors mx-auto"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    Rejouer
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-        
-        {/* Leaderboard Panel */}
-        <div
-          className="w-64 border border-border/30 rounded-lg bg-card overflow-hidden"
-          style={{ height: BOARD_SIZE }}
-        >
-          <div className="p-4 border-b border-border/30 bg-muted/30">
-            <div className="flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-yellow-500" />
-              <h3 className="font-semibold">Classement</h3>
-            </div>
-          </div>
-          <div className="overflow-y-auto" style={{ height: BOARD_SIZE - 60 }}>
-            {leaderboard.length === 0 ? (
-              <div className="p-4 text-center text-muted-foreground text-sm">
-                Aucun score enregistré
-              </div>
-            ) : (
-              <div className="divide-y divide-border/20">
-                {leaderboard.map((entry, index) => (
-                  <div
-                    key={entry.id}
-                    className={cn(
-                      "flex items-center gap-3 px-4 py-2.5 group",
-                      entry.user.id === user?.id && "bg-primary/10"
-                    )}
-                  >
-                    <span className={cn(
-                      "w-6 text-center font-mono text-sm",
-                      index === 0 ? "text-yellow-500 font-bold" :
-                      index === 1 ? "text-gray-400 font-bold" :
-                      index === 2 ? "text-amber-600 font-bold" :
-                      "text-muted-foreground"
-                    )}>
-                      {index + 1}
-                    </span>
-                    <span className="flex-1 truncate text-sm">
-                      {entry.user.username}
-                    </span>
-                    <span className="font-mono text-sm tabular-nums text-muted-foreground">
-                      {entry.highScore.toLocaleString()}
-                    </span>
-                    {user?.isAdmin && (
-                      <Button variant="ghost"
-                        onClick={() => handleDeleteScore(entry.user.id, entry.user.username)}
-                        className="opacity-0 group-hover:opacity-100 p-1 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-all"
-                        title="Supprimer ce score"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-      
-      {/* Controls & Info */}
-      <div className="flex justify-center gap-8 text-xs text-muted-foreground flex-wrap">
-        <div className="flex items-center gap-2">
-          <kbd className="px-2 py-1 border border-border/50 rounded flex items-center gap-1">
-            <ArrowUp className="w-3 h-3" />
-          </kbd>
-          <span>Haut</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <kbd className="px-2 py-1 border border-border/50 rounded flex items-center gap-1">
-            <ArrowDown className="w-3 h-3" />
-          </kbd>
-          <span>Bas</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <kbd className="px-2 py-1 border border-border/50 rounded flex items-center gap-1">
-            <ArrowLeft className="w-3 h-3" />
-          </kbd>
-          <span>Gauche</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <kbd className="px-2 py-1 border border-border/50 rounded flex items-center gap-1">
-            <ArrowRight className="w-3 h-3" />
-          </kbd>
-          <span>Droite</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span>ou</span>
-          <kbd className="px-2 py-1 border border-border/50 rounded">WASD</kbd>
-        </div>
-        <div className="flex items-center gap-2">
-          <span>ou</span>
-          <span>Glisser sur mobile</span>
-        </div>
-      </div>
-      
-      {/* Instructions */}
-      <div className="text-center text-sm text-muted-foreground max-w-2xl mx-auto">
-        <p>
-          Utilise les flèches pour déplacer les tuiles. Quand deux tuiles avec le même nombre se touchent, elles fusionnent en une seule !
-        </p>
-        <p className="mt-2">
-          Objectif : atteindre la tuile 2048 (ou plus) pour gagner des récompenses !
-        </p>
-      </div>
+          )}
+        </CardContent>
+      </Card>
+
     </div>
   );
 }

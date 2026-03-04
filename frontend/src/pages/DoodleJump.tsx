@@ -3,9 +3,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSocket } from '../contexts/SocketContext';
 import { gamesApi } from '../services/api';
-import { Play, RotateCcw, Trophy, X, Palette, Eye, EyeOff, Users } from 'lucide-react';
+import { Play, RotateCcw, Trophy, X, Eye, EyeOff, Users } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 
 // ============================================
 // GAME CONSTANTS (from old implementation)
@@ -227,7 +229,6 @@ export default function DoodleJump() {
     const saved = localStorage.getItem(SKIN_STORAGE_KEY);
     return (saved as SkinId) || 'default';
   });
-  const [showSkinSelector, setShowSkinSelector] = useState(false);
   const [isMortSubite, setIsMortSubite] = useState(false);
   const [isMultiplayer, setIsMultiplayer] = useState(false);
   const [spectatorCount, setSpectatorCount] = useState(0);
@@ -1216,12 +1217,6 @@ export default function DoodleJump() {
     return () => cancelAnimationFrame(animationRef.current);
   }, [started, gameOver, gameLoop, spectatingHost]);
 
-  // Close skin selector when game starts
-  useEffect(() => {
-    if (started) {
-      setShowSkinSelector(false);
-    }
-  }, [started]);
 
   useEffect(() => {
     if (!socket || !user || spectatingRef.current || !isMultiplayer) return;
@@ -1251,262 +1246,306 @@ export default function DoodleJump() {
     };
   }, [clearMultiplayerRoom, socket, stopSpectateBroadcast]);
 
-  // Close skin selector when clicking outside
-  useEffect(() => {
-    if (!showSkinSelector) return;
-
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (!target.closest('[data-skin-selector]')) {
-        setShowSkinSelector(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showSkinSelector]);
 
   // ============================================
   // RENDER
   // ============================================
+  const isPlaying = started && !gameOver;
+
   return (
-    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
-      <div className="flex items-center justify-end gap-4">
-            {spectatingHost && (
-              <Button variant="ghost"
-                type="button"
-                onClick={() => {
-                  socket?.emit('doodle:spectate-leave');
-                  spectatingRef.current = false;
-                  setSpectatingHost(null);
-                  spectateTargetFrameRef.current = null;
-                  spectateReplayQueueRef.current = [];
-                  setStarted(false);
-                  setGameOver(false);
-                  setScore(0);
-                  scoreRef.current = 0;
-                  setSpectatorCount(0);
-                }}
-                className="flex items-center gap-2 rounded-lg border border-border/50 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <EyeOff className="h-4 w-4" />
-                Quitter spectate
-              </Button>
+    <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-start px-4 pb-6 lg:px-6 lg:pb-8">
+
+      {/* ── Left column ── */}
+      <div className="flex flex-col gap-3">
+
+        {/* Score */}
+        <Card>
+          <CardHeader className="px-4 py-3">
+            <CardTitle className="text-sm font-medium">Score</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 space-y-4">
+            <div>
+              <p className="text-3xl font-light tabular-nums">{score.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Score actuel</p>
+            </div>
+            <Separator />
+            <div>
+              <p className="text-xl font-medium tabular-nums">{highScore.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Record — {displayMode === 'mort_subite' ? 'Mort subite' : 'Classique'}</p>
+            </div>
+            {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
+            {rewards && (rewards.money > 0 || rewards.aura > 0) && (
+              <p className="text-sm text-muted-foreground">
+                {rewards.money > 0 && `+$${rewards.money}`}
+                {rewards.money > 0 && rewards.aura > 0 && ' · '}
+                {rewards.aura > 0 && `+${rewards.aura} aura`}
+              </p>
             )}
-            <div className="relative" data-skin-selector>
-              <Button variant="ghost"
-                onClick={() => setShowSkinSelector(!showSkinSelector)}
-                disabled={(started && !gameOver) || !!spectatingHost}
-                className="flex items-center gap-2 px-4 py-2 border border-border/50 rounded-lg hover:bg-muted/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Choisir un skin"
-              >
-                <Palette className="w-4 h-4" />
-                <span className="text-sm">Skin</span>
-              </Button>
-              
-              {showSkinSelector && !started && (
-                <div className="absolute top-full right-0 mt-2 bg-card border border-border/50 rounded-lg shadow-lg p-4 z-50 w-[320px]" data-skin-selector>
-                  <h3 className="text-sm font-semibold mb-3">Choisir un skin</h3>
-                  <div className="grid grid-cols-4 gap-2">
-                    {SKINS.map((skin) => (
-                      <Button variant="ghost"
-                        key={skin.id}
-                        onClick={() => {
-                          setSelectedSkin(skin.id);
-                          setShowSkinSelector(false);
-                        }}
-                        className={`relative p-2 rounded-lg border-2 transition-all hover:scale-105 ${
-                          selectedSkin === skin.id
-                            ? 'border-foreground bg-muted ring-2 ring-foreground/20'
-                            : 'border-border/30 hover:border-border/60'
-                        }`}
-                        title={skin.name}
-                      >
-                        <div
-                          className="w-full h-10 rounded-full flex items-center justify-center"
-                          style={{ backgroundColor: skin.color }}
-                        >
-                          <div
-                            className="w-2 h-2 rounded-full"
-                            style={{
-                              backgroundColor: skin.eyeColor,
-                              boxShadow: `-5px 0 0 0 ${skin.eyeColor}, 5px 0 0 0 ${skin.eyeColor}`,
-                            }}
-                          />
-                        </div>
-                        <span className="text-xs mt-1.5 block text-center text-muted-foreground">{skin.name}</span>
-                      </Button>
-                    ))}
+            {isPlaying && !spectatingHost && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Eye className="h-3 w-3" />
+                <span>{spectatorCount} spectateur{spectatorCount !== 1 ? 's' : ''}</span>
+              </div>
+            )}
+            {spectatingHost && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Eye className="h-3 w-3" />
+                <span>Spectate : {spectatingHost.hostUsername}</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Mode */}
+        <Card>
+          <CardHeader className="px-4 py-3">
+            <CardTitle className="text-sm font-medium">Mode</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 space-y-2">
+            <Button
+              variant="ghost"
+              type="button"
+              onClick={() => setIsMortSubite(prev => !prev)}
+              disabled={isPlaying}
+              className={`w-full justify-start px-3 py-2 h-auto text-sm border transition-colors ${
+                isMortSubite
+                  ? 'border-red-500 bg-red-500/10 text-red-500 hover:bg-red-500/15 hover:text-red-500'
+                  : 'border-border/50 text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Mort subite : {isMortSubite ? 'Oui' : 'Non'}
+            </Button>
+            <Button
+              variant="ghost"
+              type="button"
+              onClick={() => setIsMultiplayer(prev => !prev)}
+              disabled={isPlaying}
+              className={`w-full justify-start px-3 py-2 h-auto text-sm border transition-colors ${
+                isMultiplayer
+                  ? 'border-sky-500 bg-sky-500/10 text-sky-500 hover:bg-sky-500/15 hover:text-sky-500'
+                  : 'border-border/50 text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Multijoueur quotidien : {isMultiplayer ? 'Oui' : 'Non'}
+            </Button>
+            {isMultiplayer && !spectatingHost && (
+              <p className="text-xs text-muted-foreground px-1">Seed partagé du jour</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Skin selector */}
+        <Card>
+          <CardHeader className="px-4 py-3">
+            <CardTitle className="text-sm font-medium">Skin</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <div className={`grid grid-cols-4 gap-1.5 ${isPlaying ? 'opacity-40 pointer-events-none' : ''}`}>
+              {SKINS.map((skin) => (
+                <button
+                  key={skin.id}
+                  type="button"
+                  onClick={() => setSelectedSkin(skin.id)}
+                  className={`flex flex-col items-center gap-1 p-1.5 rounded-lg border-2 transition-all hover:scale-105 ${
+                    selectedSkin === skin.id
+                      ? 'border-foreground bg-muted'
+                      : 'border-transparent hover:border-border/50'
+                  }`}
+                  title={skin.name}
+                >
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: skin.color }}>
+                    <div
+                      className="w-1.5 h-1.5 rounded-full"
+                      style={{ backgroundColor: skin.eyeColor, boxShadow: `-4px 0 0 0 ${skin.eyeColor}, 4px 0 0 0 ${skin.eyeColor}` }}
+                    />
                   </div>
+                  <span className="text-[9px] text-muted-foreground truncate w-full text-center leading-tight">{skin.name}</span>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Controls + Legend */}
+        <Card>
+          <CardHeader className="px-4 py-3">
+            <CardTitle className="text-sm font-medium">Contrôles</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 space-y-3">
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1.5">
+                <kbd className="px-2 py-0.5 border border-border/50 rounded">←</kbd>
+                <span>Gauche</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <kbd className="px-2 py-0.5 border border-border/50 rounded">→</kbd>
+                <span>Droite</span>
+              </div>
+            </div>
+            <Separator />
+            <div className="space-y-1.5">
+              {displayMode === 'mort_subite' ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-2 rounded-sm shrink-0" style={{ backgroundColor: MORT_SUBITE_PLATFORM_COLOR }} />
+                  <span className="text-xs text-muted-foreground">Mort subite — disparition instantanée</span>
                 </div>
+              ) : (
+                <>
+                  {[
+                    { color: colors.platformNormal, label: 'Normal' },
+                    { color: colors.platformMoving, label: 'Mobile' },
+                    { color: colors.platformConveyor, label: 'Tapis roulant' },
+                    { color: colors.platformBounce, label: 'Trampoline', round: true },
+                    { color: colors.platformDisappear, label: 'Fragile' },
+                  ].map(({ color, label, round }) => (
+                    <div key={label} className="flex items-center gap-2">
+                      <div className={`w-4 h-2 shrink-0 ${round ? 'rounded-full' : 'rounded-sm'}`} style={{ backgroundColor: color }} />
+                      <span className="text-xs text-muted-foreground">{label}</span>
+                    </div>
+                  ))}
+                </>
               )}
             </div>
-            <div className="text-right text-sm text-muted-foreground tabular-nums">
-              <div className="text-3xl font-light text-foreground">{score.toLocaleString()}</div>
-              <div>Record: {highScore.toLocaleString()}</div>
-              {isMultiplayer && !spectatingHost && (
-                <div className="text-xs">Daily seed active</div>
-              )}
-              {started && !spectatingHost && (
-                <div className="flex items-center justify-end gap-1 text-xs">
-                  <Eye className="h-3 w-3" />
-                  <span>{spectatorCount} spectateurs</span>
-                </div>
-              )}
-              {spectatingHost && (
-                <div className="text-xs">Spectate: {spectatingHost.hostUsername}</div>
-              )}
+          </CardContent>
+        </Card>
+
+        {/* Spectate — quit button */}
+        {spectatingHost && (
+          <Button
+            variant="outline"
+            type="button"
+            onClick={() => {
+              socket?.emit('doodle:spectate-leave');
+              spectatingRef.current = false;
+              setSpectatingHost(null);
+              spectateTargetFrameRef.current = null;
+              spectateReplayQueueRef.current = [];
+              setStarted(false);
+              setGameOver(false);
+              setScore(0);
+              scoreRef.current = 0;
+              setSpectatorCount(0);
+            }}
+            className="flex items-center gap-2 w-full"
+          >
+            <EyeOff className="h-4 w-4" />
+            Quitter spectate
+          </Button>
+        )}
+      </div>
+
+      {/* ── Center column — canvas ── */}
+      <div className="relative">
+        {/* Multiplayer live roster bar */}
+        {isPlaying && isMultiplayer && !spectatingHost && (
+          <div className="absolute left-2 right-2 top-2 z-20 rounded-md border bg-background/80 px-2 py-1 backdrop-blur-sm">
+            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+              <Users className="h-3 w-3 shrink-0" />
+              <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
+                {multiplayerRoster.length === 0 ? (
+                  <span>Connexion…</span>
+                ) : (
+                  multiplayerRoster.map((player) => (
+                    <span
+                      key={player.userId}
+                      className={`whitespace-nowrap ${player.isDead ? 'line-through opacity-50' : ''}`}
+                      style={player.usernameColor ? { color: player.usernameColor } : undefined}
+                    >
+                      {player.username} ({player.score})
+                    </span>
+                  ))
+                )}
+              </div>
             </div>
           </div>
+        )}
 
-      {/* Game Area with Leaderboard */}
-      <div className="flex justify-center gap-6">
-        {/* Canvas */}
-        <div className="relative">
-          {started && isMultiplayer && !spectatingHost && (
-            <div className="absolute left-2 right-2 top-2 z-20 rounded-md border bg-background/80 px-2 py-1 backdrop-blur-sm">
-              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                <Users className="h-3 w-3" />
-                <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
-                  {multiplayerRoster.length === 0 ? (
-                    <span>Connexion...</span>
-                  ) : (
-                    multiplayerRoster.map((player) => (
-                      <span
-                        key={player.userId}
-                        className={`whitespace-nowrap ${player.isDead ? 'line-through opacity-70' : ''}`}
-                        style={player.usernameColor ? { color: player.usernameColor } : undefined}
-                      >
-                        {player.username} ({player.score})
-                      </span>
-                    ))
-                  )}
-                </div>
+        <canvas
+          ref={canvasRef}
+          width={CANVAS_WIDTH}
+          height={CANVAS_HEIGHT}
+          className="border border-border/30 rounded-lg block"
+        />
+
+        {/* Start Screen */}
+        {!started && !spectatingHost && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
+            <Button
+              variant="ghost"
+              onClick={initGame}
+              className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+            >
+              <Play className="w-4 h-4" />
+              Jouer
+            </Button>
+          </div>
+        )}
+
+        {/* Game Over Screen */}
+        {gameOver && !spectatingHost && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
+            <div className="text-center space-y-6">
+              <div>
+                <h2 className="text-2xl font-light mb-2">Fin de partie</h2>
+                <p className="text-3xl tabular-nums">{score.toLocaleString()}</p>
               </div>
-            </div>
-          )}
-          <canvas
-            ref={canvasRef}
-            width={CANVAS_WIDTH}
-            height={CANVAS_HEIGHT}
-            className="border border-border/30 rounded-lg"
-          />
-
-          {/* Start Screen */}
-          {!started && !spectatingHost && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
-              <div className="flex flex-col items-center gap-4">
-                <Button variant="ghost"
-                  type="button"
-                  onClick={() => setIsMortSubite((prev) => !prev)}
-                  className={`w-56 px-3 py-2 rounded-md border transition-colors text-sm ${
-                    isMortSubite
-                      ? 'border-red-500 bg-red-500/10 text-red-500'
-                      : 'border-border/50 text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  Mort subite: {isMortSubite ? 'Oui' : 'Non'}
-                </Button>
-                <Button variant="ghost"
-                  type="button"
-                  onClick={() => setIsMultiplayer((prev) => !prev)}
-                  className={`w-56 px-3 py-2 rounded-md border transition-colors text-sm ${
-                    isMultiplayer
-                      ? 'border-sky-500 bg-sky-500/10 text-sky-500'
-                      : 'border-border/50 text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  Multijoueur quotidien: {isMultiplayer ? 'Oui' : 'Non'}
-                </Button>
-                <Button variant="ghost"
-                  onClick={initGame}
-                  className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-                >
-                  <Play className="w-4 h-4" />
-                  Jouer
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Game Over Screen */}
-          {gameOver && !spectatingHost && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
-              <div className="text-center space-y-6">
-                <div>
-                  <h2 className="text-2xl font-light mb-2">Fin de partie</h2>
-                  <p className="text-3xl tabular-nums">{score.toLocaleString()}</p>
-                </div>
-
-                {isNewHighScore && (
-                  <p className="text-sm text-foreground">Nouveau record !</p>
-                )}
-
-                {rewards && (rewards.money > 0 || rewards.aura > 0) && (
-                  <p className="text-sm text-muted-foreground">
-                    {rewards.money > 0 && `+$${rewards.money}`}
-                    {rewards.money > 0 && rewards.aura > 0 && ' · '}
-                    {rewards.aura > 0 && `+${rewards.aura} aura`}
-                  </p>
-                )}
-
-                <Button variant="ghost"
-                  onClick={initGame}
-                  className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors mx-auto"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  Rejouer
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Leaderboard Panel */}
-        <div
-          className="w-64 border border-border/30 rounded-lg bg-card overflow-hidden"
-          style={{ height: CANVAS_HEIGHT }}
-        >
-          <div className="p-4 border-b border-border/30 bg-muted/30">
-            <div className="flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-yellow-500" />
-              <h3 className="font-semibold">
-                Classement {displayMode === 'mort_subite' ? 'Mort subite' : 'Classique'}
-              </h3>
+              {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
+              {rewards && (rewards.money > 0 || rewards.aura > 0) && (
+                <p className="text-sm text-muted-foreground">
+                  {rewards.money > 0 && `+$${rewards.money}`}
+                  {rewards.money > 0 && rewards.aura > 0 && ' · '}
+                  {rewards.aura > 0 && `+${rewards.aura} aura`}
+                </p>
+              )}
+              <Button
+                variant="ghost"
+                onClick={initGame}
+                className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors mx-auto"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Rejouer
+              </Button>
             </div>
           </div>
-          <div className="overflow-y-auto" style={{ height: CANVAS_HEIGHT - 60 }}>
+        )}
+      </div>
+
+      {/* ── Right column ── */}
+      <div className="flex flex-col gap-3">
+
+        {/* Leaderboard */}
+        <Card>
+          <CardHeader className="px-4 py-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Trophy className="h-4 w-4 text-muted-foreground" />
+              Classement — {displayMode === 'mort_subite' ? 'Mort subite' : 'Classique'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
             {leaderboard.length === 0 ? (
-              <div className="p-4 text-center text-muted-foreground text-sm">
-                Aucun score enregistré
-              </div>
+              <p className="px-4 py-8 text-center text-sm text-muted-foreground">Aucun score enregistré</p>
             ) : (
-              <div className="divide-y divide-border/20">
+              <div className="divide-y divide-border/20 max-h-[420px] overflow-y-auto">
                 {leaderboard.map((entry, index) => (
                   <div
                     key={entry.id}
-                    className={`flex items-center gap-3 px-4 py-2.5 group ${
-                      entry.user.id === user?.id ? 'bg-primary/10' : ''
-                    }`}
+                    className={`flex items-center gap-3 px-4 py-2.5 group ${entry.user.id === user?.id ? 'bg-muted/30' : ''}`}
                   >
-                    <span className={`w-6 text-center font-mono text-sm ${
+                    <span className={`w-5 text-center text-xs tabular-nums shrink-0 ${
                       index === 0 ? 'text-yellow-500 font-bold' :
-                      index === 1 ? 'text-gray-400 font-bold' :
-                      index === 2 ? 'text-amber-600 font-bold' :
-                      'text-muted-foreground'
+                      index === 1 ? 'text-muted-foreground' :
+                      index === 2 ? 'text-amber-600 font-bold' : 'text-muted-foreground'
                     }`}>
                       {index + 1}
                     </span>
-                    <span className="flex-1 truncate text-sm">
-                      {entry.user.username}
-                    </span>
-                    <span className="font-mono text-sm tabular-nums text-muted-foreground">
-                      {entry.highScore.toLocaleString()}
-                    </span>
+                    <span className="flex-1 truncate text-sm">{entry.user.username}</span>
+                    <span className="font-mono text-sm tabular-nums text-muted-foreground shrink-0">{entry.highScore.toLocaleString()}</span>
                     {user?.isAdmin && (
-                      <Button variant="ghost"
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => handleDeleteScore(entry.user.id, entry.user.username)}
-                        className="opacity-0 group-hover:opacity-100 p-1 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-all"
+                        className="opacity-0 group-hover:opacity-100 h-6 w-6 text-destructive hover:bg-destructive/10 shrink-0"
                         title="Supprimer ce score"
                       >
                         <X className="w-3.5 h-3.5" />
@@ -1516,54 +1555,37 @@ export default function DoodleJump() {
                 ))}
               </div>
             )}
-          </div>
-        </div>
-      </div>
+          </CardContent>
+        </Card>
 
-      {/* Controls & Info */}
-      <div className="flex justify-center gap-8 text-xs text-muted-foreground">
-        <div className="flex items-center gap-2">
-          <kbd className="px-2 py-1 border border-border/50 rounded">←</kbd>
-          <span>Gauche</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <kbd className="px-2 py-1 border border-border/50 rounded">→</kbd>
-          <span>Droite</span>
-        </div>
-      </div>
+        {/* Multiplayer roster */}
+        {isMultiplayer && multiplayerRoster.length > 0 && (
+          <Card>
+            <CardHeader className="px-4 py-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                Joueurs en ligne
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y divide-border/20 max-h-[200px] overflow-y-auto">
+                {multiplayerRoster.map((player) => (
+                  <div key={player.userId} className="flex items-center justify-between px-4 py-2">
+                    <span
+                      className={`text-sm truncate ${player.isDead ? 'line-through opacity-50' : ''}`}
+                      style={player.usernameColor ? { color: player.usernameColor } : undefined}
+                    >
+                      {player.username}
+                    </span>
+                    <span className="text-xs tabular-nums text-muted-foreground shrink-0 ml-2">{player.score.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-      {/* Platform Legend */}
-      {displayMode === 'mort_subite' ? (
-        <div className="flex justify-center gap-6 text-xs text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: MORT_SUBITE_PLATFORM_COLOR }}></div>
-            <span>Mort subite: plateformes rouges, disparition instantanée</span>
-          </div>
-        </div>
-      ) : (
-        <div className="flex justify-center gap-6 text-xs text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: colors.platformNormal }}></div>
-            <span>Normal</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: colors.platformMoving }}></div>
-            <span>Mobile</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: colors.platformConveyor }}></div>
-            <span>Tapis</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-2 rounded-full" style={{ backgroundColor: colors.platformBounce }}></div>
-            <span>Trampoline</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-2 rounded-sm" style={{ backgroundColor: colors.platformDisappear }}></div>
-            <span>Fragile</span>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

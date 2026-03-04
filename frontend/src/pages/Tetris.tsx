@@ -3,6 +3,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
 import { RotateCcw, Trophy, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 
 interface LeaderboardEntry {
   id: string;
@@ -125,101 +128,112 @@ export default function Tetris() {
   };
 
   return (
-    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-semibold">Tetris</h2>
-          <p className="text-sm text-muted-foreground">Version tetr.js avec mode Sprint simple.</p>
-        </div>
-        <div className="text-right text-sm text-muted-foreground tabular-nums">
-          <div className="text-3xl font-light text-foreground">{highScore.toLocaleString()}</div>
-          <div>Record personnel</div>
-        </div>
+    <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-start px-4 pb-6 lg:px-6 lg:pb-8">
+
+      {/* ── Left column ── */}
+      <div className="flex flex-col gap-3">
+        <Card>
+          <CardHeader className="px-4 py-3">
+            <CardTitle className="text-sm font-medium">Statistiques</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 space-y-4">
+            <div>
+              <p className="text-3xl font-light tabular-nums">{highScore.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Record personnel</p>
+            </div>
+            {lastScore !== null && (
+              <>
+                <Separator />
+                <div>
+                  <p className="text-xl font-medium tabular-nums">{lastScore.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Dernier score</p>
+                </div>
+              </>
+            )}
+            {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
+            {rewards && (rewards.money > 0 || rewards.aura > 0) && (
+              <p className="text-sm text-muted-foreground">
+                {rewards.money > 0 && `+$${rewards.money}`}
+                {rewards.money > 0 && rewards.aura > 0 && ' · '}
+                {rewards.aura > 0 && `+${rewards.aura} aura`}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="px-4 py-3">
+            <CardTitle className="text-sm font-medium">Mode</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <p className="text-sm text-muted-foreground">Sprint — tetr.js</p>
+          </CardContent>
+        </Card>
+
+        <Button
+          variant="outline"
+          onClick={restartSession}
+          className="flex items-center gap-2 w-full"
+        >
+          <RotateCcw className="w-4 h-4" />
+          Recharger
+        </Button>
       </div>
 
-      <div className="flex justify-center gap-6 items-start flex-nowrap overflow-x-auto pb-2">
-        <div className="space-y-3">
-          <div className="flex gap-2 justify-end">
-            <Button variant="ghost"
-              onClick={restartSession}
-              className="flex items-center gap-2 px-4 py-2 border border-border/50 rounded-md hover:bg-muted transition-colors text-sm"
-            >
-              <RotateCcw className="w-4 h-4" />
-              Recharger
-            </Button>
-            </div>
+      {/* ── Center column — iframe ── */}
+      <iframe
+        key={sessionKey}
+        src={`/tetrjs/index.html?k=${sessionKey}`}
+        title="Tetris"
+        className="border border-border/30 rounded-lg bg-black block"
+        style={{ width: GAME_WIDTH, height: GAME_HEIGHT }}
+      />
 
-          <iframe
-            key={sessionKey}
-            src={`/tetrjs/index.html?k=${sessionKey}`}
-            title="Tetris"
-            className="border border-border/30 rounded-lg bg-black"
-            style={{ width: GAME_WIDTH, height: GAME_HEIGHT }}
-          />
-
-          {(lastScore !== null || rewards || isNewHighScore) && (
-            <div className="border border-border/30 rounded-lg bg-card p-4 text-sm space-y-1">
-              {lastScore !== null && <div>Dernier score: <span className="font-mono">{lastScore.toLocaleString()}</span></div>}
-              {isNewHighScore && <div className="text-foreground">Nouveau record personnel.</div>}
-              {rewards && (rewards.money > 0 || rewards.aura > 0) && (
-                <div className="text-muted-foreground">
-                  {rewards.money > 0 && `+$${rewards.money}`}
-                  {rewards.money > 0 && rewards.aura > 0 && ' · '}
-                  {rewards.aura > 0 && `+${rewards.aura} aura`}
+      {/* ── Right column — leaderboard ── */}
+      <Card>
+        <CardHeader className="px-4 py-3">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Trophy className="h-4 w-4 text-muted-foreground" />
+            Classement
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {leaderboard.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm text-muted-foreground">Aucun score enregistré</p>
+          ) : (
+            <div className="divide-y divide-border/20" style={{ maxHeight: GAME_HEIGHT - 56, overflowY: 'auto' }}>
+              {leaderboard.map((entry, index) => (
+                <div
+                  key={entry.id}
+                  className={cn('flex items-center gap-3 px-4 py-2.5 group', entry.user.id === user?.id && 'bg-muted/30')}
+                >
+                  <span className={cn('w-5 text-center text-xs tabular-nums shrink-0',
+                    index === 0 ? 'text-yellow-500 font-bold' :
+                    index === 1 ? 'text-muted-foreground' :
+                    index === 2 ? 'text-amber-600 font-bold' : 'text-muted-foreground'
+                  )}>
+                    {index + 1}
+                  </span>
+                  <span className="flex-1 truncate text-sm">{entry.user.username}</span>
+                  <span className="font-mono text-sm tabular-nums text-muted-foreground shrink-0">{entry.highScore.toLocaleString()}</span>
+                  {user?.isAdmin && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteScore(entry.user.id, entry.user.username)}
+                      className="opacity-0 group-hover:opacity-100 h-6 w-6 text-destructive hover:bg-destructive/10 shrink-0"
+                      title="Supprimer ce score"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
                 </div>
-              )}
+              ))}
             </div>
           )}
-        </div>
+        </CardContent>
+      </Card>
 
-        <div className="w-72 border border-border/30 rounded-lg bg-card overflow-hidden" style={{ height: GAME_HEIGHT }}>
-          <div className="p-4 border-b border-border/30 bg-muted/30">
-            <div className="flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-yellow-500" />
-              <h3 className="font-semibold">Classement</h3>
-            </div>
-          </div>
-          <div className="overflow-y-auto" style={{ height: GAME_HEIGHT - 72 }}>
-            {leaderboard.length === 0 ? (
-              <div className="p-4 text-center text-muted-foreground text-sm">Aucun score enregistre</div>
-            ) : (
-              <div className="divide-y divide-border/20">
-                {leaderboard.map((entry, index) => (
-                  <div
-                    key={entry.id}
-                    className={`flex items-center gap-3 px-4 py-2.5 group ${entry.user.id === user?.id ? 'bg-primary/10' : ''}`}
-                  >
-                    <span
-                      className={`w-6 text-center font-mono text-sm ${
-                        index === 0
-                          ? 'text-yellow-500 font-bold'
-                          : index === 1
-                            ? 'text-gray-400 font-bold'
-                            : index === 2
-                              ? 'text-amber-600 font-bold'
-                              : 'text-muted-foreground'
-                      }`}
-                    >
-                      {index + 1}
-                    </span>
-                    <span className="flex-1 truncate text-sm">{entry.user.username}</span>
-                    <span className="font-mono text-sm tabular-nums text-muted-foreground">{entry.highScore.toLocaleString()}</span>
-                    {user?.isAdmin && (
-                      <Button variant="ghost"
-                        onClick={() => handleDeleteScore(entry.user.id, entry.user.username)}
-                        className="opacity-0 group-hover:opacity-100 p-1 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-all"
-                        title="Supprimer ce score"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
