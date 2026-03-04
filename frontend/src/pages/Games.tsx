@@ -4,12 +4,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageShell } from '@/components/layout/page-shell';
+import { useFeatures } from '@/contexts/FeaturesContext';
 
 type GamesTab = 'singleplayer' | 'multiplayer';
 
 const games = [
   {
     id: 'bomb-party',
+    pageKey: 'game-bomb-party',
     name: 'Bomb Party',
     description: 'Trouve des mots contenant les lettres avant que la bombe explose.',
     type: 'Party',
@@ -18,6 +20,7 @@ const games = [
   },
   {
     id: 'poker',
+    pageKey: 'game-poker',
     name: 'Poker',
     description: "Hold'em minimaliste en party, blindes fixes et rounds rapides.",
     type: 'Party',
@@ -26,6 +29,7 @@ const games = [
   },
   {
     id: 'petit-bac',
+    pageKey: 'game-petit-bac',
     name: 'Petit Bac',
     description: 'Remplis les categories avec la bonne lettre avant la fin du temps.',
     type: 'Party',
@@ -34,6 +38,7 @@ const games = [
   },
   {
     id: 'bataille-navale',
+    pageKey: 'game-bataille-navale',
     name: 'Bataille Navale',
     description: 'Place tes bateaux et coule ceux de ton adversaire.',
     type: 'Duel',
@@ -42,6 +47,7 @@ const games = [
   },
   {
     id: 'doodle-jump',
+    pageKey: 'game-doodle-jump',
     name: 'Doodle Jump',
     description: 'Saute le plus haut possible pour gagner des recompenses.',
     type: 'Score',
@@ -49,6 +55,7 @@ const games = [
   },
   {
     id: 'game-2048',
+    pageKey: 'game-2048',
     name: '2048',
     description: 'Fusionne les tuiles pour atteindre 2048 et gagner des recompenses.',
     type: 'Score',
@@ -56,6 +63,7 @@ const games = [
   },
   {
     id: 'flappy-bird',
+    pageKey: 'game-flappy-bird',
     name: 'Flappy Bird',
     description: 'Evite les tuyaux et survole le plus loin possible pour gagner des recompenses.',
     type: 'Score',
@@ -63,6 +71,7 @@ const games = [
   },
   {
     id: 'casino',
+    pageKey: 'game-casino',
     name: 'Casino',
     description: 'Choisis entre machine a sous et roulette animee.',
     type: 'Chance',
@@ -70,6 +79,7 @@ const games = [
   },
   {
     id: 'aura-coin',
+    pageKey: 'game-aura-coin',
     name: 'Aura Coin',
     description: 'Trade la cryptomonnaie virtuelle. Achete bas, vends haut.',
     type: 'Trading',
@@ -77,6 +87,7 @@ const games = [
   },
   {
     id: 'solitaire',
+    pageKey: 'game-solitaire',
     name: 'Solitaire',
     description: 'Le classique jeu de cartes. Empile les cartes pour gagner.',
     type: 'Score',
@@ -84,6 +95,7 @@ const games = [
   },
   {
     id: 'racer',
+    pageKey: 'game-racer',
     name: 'Racer',
     description: 'Course pseudo-3D style Outrun. Evite les voitures et finis le tour le plus vite possible.',
     type: 'Score',
@@ -91,6 +103,7 @@ const games = [
   },
   {
     id: 'tetris',
+    pageKey: 'game-tetris',
     name: 'Tetris',
     description: 'Le classique jeu de puzzle. Empile les pieces et complete des lignes pour gagner des points.',
     type: 'Score',
@@ -98,6 +111,7 @@ const games = [
   },
   {
     id: 'goyave-empire',
+    pageKey: 'game-goyave-empire',
     name: 'Goyave Empire',
     description: "Construis un empire de goyaves. Récolte, améliore et encaisse des récompenses.",
     type: 'Idle',
@@ -119,9 +133,12 @@ const tabConfig: Array<{ id: GamesTab; label: string }> = [
 
 export default function Games() {
   const [activeTab, setActiveTab] = useState<GamesTab>('singleplayer');
+  const { maintenanceStatus } = useFeatures();
+  const disabledPages = maintenanceStatus.disabledPages;
 
-  const multiplayerGames = useMemo(() => games.filter((game) => game.requiresParty), []);
-  const soloGames = useMemo(() => games.filter((game) => !game.requiresParty), []);
+  const visibleGames = useMemo(() => games.filter((game) => !disabledPages.includes(game.pageKey)), [disabledPages]);
+  const multiplayerGames = useMemo(() => visibleGames.filter((game) => game.requiresParty), [visibleGames]);
+  const soloGames = useMemo(() => visibleGames.filter((game) => !game.requiresParty), [visibleGames]);
 
   const getGameLink = (gameId: string) => {
     if (gameId === 'bomb-party') {
