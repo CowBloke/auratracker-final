@@ -21,6 +21,7 @@ export const BLOCKABLE_PAGES: BlockablePage[] = [
   { key: 'game-solitaire', path: '/games/solitaire', label: 'Solitaire', category: 'Jeux' },
   { key: 'game-racer', path: '/games/racer', label: 'Racer', category: 'Jeux' },
   { key: 'game-tetris', path: '/games/tetris', label: 'Tetris', category: 'Jeux' },
+  { key: 'game-goyave-empire', path: '/games/goyave-empire', label: 'Goyave Empire', category: 'Jeux' },
   { key: 'game-polymarket', path: '/games/polymarket', label: 'Polymarket (Jeux)', category: 'Jeux' },
   { key: 'leaderboards', path: '/leaderboards', label: 'Classements', category: 'Communauté' },
   { key: 'leaderboards-numbers', path: '/leaderboards/nombres', label: 'Classement Nombres', category: 'Communauté' },
@@ -32,6 +33,7 @@ export const BLOCKABLE_PAGES: BlockablePage[] = [
   { key: 'pass', path: '/pass', label: 'Pass', category: 'Général' },
   { key: 'quests', path: '/quests', label: 'Quêtes', category: 'Général' },
   { key: 'rules', path: '/rules', label: 'Règlement', category: 'Général' },
+  { key: 'inbox', path: '/inbox', label: 'Messagerie', category: 'Général' },
   { key: 'settings', path: '/settings', label: 'Paramètres utilisateur', category: 'Profil' },
 ];
 

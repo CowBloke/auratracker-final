@@ -440,6 +440,8 @@ export default function Admin() {
   const [blockedPages, setBlockedPages] = useState<string[]>([]);
   const [blockedMessage, setBlockedMessage] = useState('');
   const [savingBlocks, setSavingBlocks] = useState(false);
+  const [fakeOnlineEnabled, setFakeOnlineEnabled] = useState(true);
+  const [savingFakeOnline, setSavingFakeOnline] = useState(false);
   const [announcementMessage, setAnnouncementMessage] = useState('');
   const [savingAnnouncement, setSavingAnnouncement] = useState(false);
   const [updatePopups, setUpdatePopups] = useState<AdminUpdatePopup[]>([]);
@@ -866,6 +868,8 @@ export default function Admin() {
         setBlockedPages([]);
       }
       
+      setFakeOnlineEnabled(res.data.settings.fake_online_enabled !== 'false');
+
       // Déterminer si la maintenance est activée : priorité au flag dédié, fallback legacy pages
       const enabledFromFlag = res.data.settings.maintenance_enabled === 'true';
       let enabledFromPages = false;
@@ -962,6 +966,19 @@ export default function Admin() {
       showMessage('error', 'Erreur lors de la sauvegarde du blocage');
     } finally {
       setSavingBlocks(false);
+    }
+  };
+
+  const saveFakeOnline = async (value: boolean) => {
+    try {
+      setSavingFakeOnline(true);
+      await adminApi.updateSettings({ fake_online_enabled: value ? 'true' : 'false' });
+      setFakeOnlineEnabled(value);
+      showMessage('success', value ? 'Faux online activé' : 'Faux online désactivé');
+    } catch {
+      showMessage('error', 'Erreur lors de la sauvegarde');
+    } finally {
+      setSavingFakeOnline(false);
     }
   };
 
@@ -2255,6 +2272,27 @@ export default function Admin() {
         </TabsContent>
 
         <TabsContent value="settings" className={SPACING.SECTION_SPACING}>
+          <Card>
+            <CardHeader>
+              <CardDescription>Système de présence</CardDescription>
+            </CardHeader>
+            <CardContent className={SPACING.CARD_SPACING}>
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <h3 className="font-medium">Utilisateurs en ligne fictifs</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Complète automatiquement la liste des connectés avec des utilisateurs hors-ligne pour maintenir un minimum de 10 % affichés.
+                  </p>
+                </div>
+                <Switch
+                  checked={fakeOnlineEnabled}
+                  disabled={savingFakeOnline}
+                  onCheckedChange={saveFakeOnline}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardDescription>Actions sensibles</CardDescription>
