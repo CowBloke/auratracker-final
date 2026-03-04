@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { adminApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, Badge, UserBadge, AdminUpdatePopup } from '../services/api';
+import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,7 +12,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw } from 'lucide-react';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, ToggleLeft } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import {
   AlertDialog,
@@ -321,6 +322,7 @@ const defaultUpdatePopupForm: UpdatePopupFormData = {
 
 export default function Admin() {
   const { user } = useAuth();
+  const { refreshFeatures } = useFeatures();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -339,7 +341,7 @@ export default function Admin() {
   const [mutingUser, setMutingUser] = useState<string | null>(null);
   const [clearingChat, setClearingChat] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'users' | 'logs' | 'bans' | 'content' | 'communication' | 'bugs' | 'blocks' | 'settings' | 'activity'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'logs' | 'bans' | 'content' | 'communication' | 'bugs' | 'features' | 'settings' | 'activity'>('users');
 
   // Activity tab state
   type OnlineHistoryPoint = { timestamp: string; count: number; max: number };
@@ -952,8 +954,9 @@ export default function Admin() {
         blocked_pages: JSON.stringify(uniquePages),
         blocked_message: blockedMessage.trim(),
       });
-      showMessage('success', 'Blocage des pages mis à jour');
+      showMessage('success', 'Feature switches mis à jour');
       fetchSettings();
+      refreshFeatures();
     } catch (error) {
       console.error('Failed to save page blocks:', error);
       showMessage('error', 'Erreur lors de la sauvegarde du blocage');
@@ -1523,9 +1526,9 @@ export default function Admin() {
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="blocks" className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4" />
-            Blocage
+          <TabsTrigger value="features" className="flex items-center gap-2">
+            <ToggleLeft className="h-4 w-4" />
+            Fonctionnalités
           </TabsTrigger>
           <TabsTrigger value="settings" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
@@ -3221,10 +3224,10 @@ export default function Admin() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="blocks" className={SPACING.SECTION_SPACING}>
+        <TabsContent value="features" className={SPACING.SECTION_SPACING}>
           <Card>
             <CardHeader>
-              <CardDescription>Blocage de pages</CardDescription>
+              <CardDescription>Feature Switches — activez ou désactivez chaque page du site. Une page désactivée disparaît de la navigation et est inaccessible par URL.</CardDescription>
             </CardHeader>
             <CardContent className={SPACING.SECTION_SPACING}>
 
@@ -3235,7 +3238,7 @@ export default function Admin() {
           ) : (
             <div className="space-y-6">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Message affiché sur la page bloquée</label>
+                <label className="text-sm font-medium">Message affiché si la page est accédée directement</label>
                 <Textarea
                   value={blockedMessage}
                   onChange={(e) => setBlockedMessage(e.target.value)}
@@ -3249,9 +3252,9 @@ export default function Admin() {
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-medium">Pages à bloquer</h3>
+                  <h3 className="text-lg font-medium">Fonctionnalités</h3>
                   <span className="text-xs text-muted-foreground">
-                    {blockedPages.length} sélectionnée{blockedPages.length > 1 ? 's' : ''}
+                    {blockedPages.length} désactivée{blockedPages.length > 1 ? 's' : ''}
                   </span>
                 </div>
 
@@ -3270,7 +3273,7 @@ export default function Admin() {
                       <div className="flex items-center justify-between">
                         <div className="text-sm font-semibold">{category}</div>
                         <span className="text-xs text-muted-foreground">
-                          {pages.filter(p => blockedPages.includes(p.key)).length}/{pages.length}
+                          {pages.filter(p => !blockedPages.includes(p.key)).length}/{pages.length} actives
                         </span>
                       </div>
                       <div className="space-y-3">
@@ -3280,11 +3283,11 @@ export default function Admin() {
                             className="flex items-center justify-between"
                           >
                             <div>
-                              <div className="text-sm font-medium">{page.label}</div>
+                              <div className={cn("text-sm font-medium", blockedPages.includes(page.key) && "text-muted-foreground line-through")}>{page.label}</div>
                               <div className="text-xs text-muted-foreground">{page.path}</div>
                             </div>
                             <Switch
-                              checked={blockedPages.includes(page.key)}
+                              checked={!blockedPages.includes(page.key)}
                               onCheckedChange={() => toggleBlockedPage(page.key)}
                             />
                           </div>
@@ -3305,7 +3308,7 @@ export default function Admin() {
                   ) : (
                     <Save className="h-4 w-4 mr-2" />
                   )}
-                  Sauvegarder le blocage
+                  Sauvegarder
                 </Button>
               </div>
             </div>
