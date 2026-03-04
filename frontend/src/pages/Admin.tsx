@@ -4101,24 +4101,31 @@ export default function Admin() {
                       </ResponsiveContainer>
                     </div>
 
-                    {/* User list side panel */}
+                    {/* User list side panel — always visible */}
                     {(() => {
                       const displayPoint = lockedPoint ?? hoveredPoint;
-                      if (!displayPoint) return null;
-                      const users = displayPoint.usernames ?? [];
+                      const users = displayPoint?.usernames ?? [];
                       return (
                         <div className="w-44 shrink-0 border border-border/40 rounded-lg bg-muted/10 flex flex-col" style={{ height: 300 }}>
                           <div className="px-3 py-2 border-b border-border/40 shrink-0">
-                            <p className="text-xs font-medium tabular-nums">{displayPoint.max} joueur{displayPoint.max !== 1 ? 's' : ''}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {new Date(displayPoint.timestamp).toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}
-                            </p>
-                            {lockedPoint && (
-                              <p className="text-xs text-muted-foreground/60 mt-1">Clique à nouveau pour déverrouiller</p>
+                            {displayPoint ? (
+                              <>
+                                <p className="text-xs font-medium tabular-nums">{displayPoint.max} joueur{displayPoint.max !== 1 ? 's' : ''}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {new Date(displayPoint.timestamp).toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}
+                                </p>
+                                {lockedPoint && (
+                                  <p className="text-xs text-muted-foreground/60 mt-1">Clique à nouveau pour déverrouiller</p>
+                                )}
+                              </>
+                            ) : (
+                              <p className="text-xs text-muted-foreground/60">Survolez un point</p>
                             )}
                           </div>
                           <div className="overflow-y-auto flex-1 p-1.5">
-                            {users.length === 0 ? (
+                            {!displayPoint ? (
+                              <p className="text-xs text-muted-foreground/40 text-center py-4">—</p>
+                            ) : users.length === 0 ? (
                               <p className="text-xs text-muted-foreground/60 text-center py-4">Aucun joueur enregistré</p>
                             ) : (
                               <ul className="space-y-0.5">
