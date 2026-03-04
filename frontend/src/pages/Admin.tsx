@@ -356,6 +356,10 @@ export default function Admin() {
   const [snapshotting, setSnapshotting] = useState(false);
   const [hoveredPoint, setHoveredPoint] = useState<OnlineHistoryPoint | null>(null);
   const [lockedPoint, setLockedPoint] = useState<OnlineHistoryPoint | null>(null);
+  const [activityZoomDomain, setActivityZoomDomain] = useState<[number, number] | null>(null);
+  const activityZoomDomainRef = useRef<[number, number] | null>(null);
+  const activityFullDomainRef = useRef<[number, number]>([0, 0]);
+  const activityChartRef = useRef<HTMLDivElement>(null);
   const [inventoryDialogOpen, setInventoryDialogOpen] = useState(false);
   const [inventoryUser, setInventoryUser] = useState<AdminUser | null>(null);
   const [inventoryItems, setInventoryItems] = useState<AdminInventoryItem[]>([]);
@@ -672,6 +676,42 @@ export default function Admin() {
     }
   }, [badgeUserId]);
 
+  // Scroll-wheel horizontal zoom for the activity chart
+  useEffect(() => {
+    const el = activityChartRef.current;
+    if (!el) return;
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const [fullStart, fullEnd] = activityFullDomainRef.current;
+      if (fullEnd === fullStart) return;
+      const [currentStart, currentEnd] = activityZoomDomainRef.current ?? [fullStart, fullEnd];
+      const currentRange = currentEnd - currentStart;
+      // Left offset = left margin (8px removed by -8) + YAxis width (24) + right margin (4)
+      const leftOffset = 20;
+      const rightOffset = 4;
+      const rect = el.getBoundingClientRect();
+      const chartWidth = rect.width - leftOffset - rightOffset;
+      const mouseX = e.clientX - rect.left - leftOffset;
+      const fraction = Math.max(0, Math.min(1, mouseX / chartWidth));
+      const mouseTs = currentStart + fraction * currentRange;
+      const zoomFactor = e.deltaY > 0 ? 1.25 : 1 / 1.25;
+      const fullRange = fullEnd - fullStart;
+      const newRange = Math.min(currentRange * zoomFactor, fullRange);
+      let newStart = mouseTs - fraction * newRange;
+      let newEnd = mouseTs + (1 - fraction) * newRange;
+      // Clamp to full domain
+      if (newStart < fullStart) { newEnd += fullStart - newStart; newStart = fullStart; }
+      if (newEnd > fullEnd) { newStart -= newEnd - fullEnd; newEnd = fullEnd; }
+      newStart = Math.max(fullStart, newStart);
+      newEnd = Math.min(fullEnd, newEnd);
+      const next: [number, number] = [newStart, newEnd];
+      activityZoomDomainRef.current = next;
+      setActivityZoomDomain([...next]);
+    };
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, []);
+
 
   const fetchUsers = async () => {
     try {
@@ -771,6 +811,8 @@ export default function Admin() {
       setOnlineStats(statsRes.data);
       setLockedPoint(null);
       setHoveredPoint(null);
+      setActivityZoomDomain(null);
+      activityZoomDomainRef.current = null;
     } catch {
       // ignore
     } finally {
@@ -4048,7 +4090,7 @@ export default function Admin() {
                         // All periods use a numeric time axis for proportional spacing
                         const chartData = activityHistory.data.map(pt => ({ ...pt, ts: new Date(pt.timestamp).getTime() }));
 
-                        // Compute domain boundaries
+                        // Compute full domain boundaries for this period
                         const now = new Date();
                         const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
                         let domainStart: number, domainEnd: number;
@@ -4073,30 +4115,64 @@ export default function Admin() {
                           domainEnd = Math.max(...times);
                         }
 
-                        // Compute tick positions and vertical separator lines
-                        let xAxisTicks: number[];
-                        let separatorLines: number[];
-                        if (isHourlyView) {
-                          // Label every 3h, line at every hour
-                          xAxisTicks = Array.from({ length: 8 }, (_, i) => domainStart + i * 3 * MS_HOUR);
-                          separatorLines = Array.from({ length: 25 }, (_, i) => domainStart + i * MS_HOUR);
-                        } else {
-                          // Line at every day boundary; label every N days depending on range
-                          const rangeDays = Math.round((domainEnd - domainStart) / MS_DAY);
-                          const labelEvery = rangeDays <= 8 ? 1 : rangeDays <= 16 ? 2 : 5;
-                          const numDays = rangeDays + 1;
-                          separatorLines = Array.from({ length: numDays }, (_, i) => domainStart + i * MS_DAY);
-                          xAxisTicks = separatorLines.filter((_, i) => i % labelEvery === 0);
-                        }
+                        // Keep full domain in ref so the wheel handler can read it
+                        activityFullDomainRef.current = [domainStart, domainEnd];
+
+                        // Apply zoom if active
+                        const [viewStart, viewEnd] = activityZoomDomain ?? [domainStart, domainEnd];
+                        const viewRange = viewEnd - viewStart;
+
+                        // Adaptive ticks and separator lines based on visible range
+                        const getTicksAndLines = (start: number, end: number, range: number) => {
+                          const alignedStart = (interval: number) => Math.ceil(start / interval) * interval;
+                          const generate = (interval: number, from: number, to: number) => {
+                            const out: number[] = [];
+                            for (let t = from; t <= to; t += interval) out.push(t);
+                            return out;
+                          };
+                          if (range <= 3 * MS_HOUR) {
+                            const lines = generate(30 * 60000, alignedStart(30 * 60000), end);
+                            return { ticks: lines, lines };
+                          } else if (range <= 8 * MS_HOUR) {
+                            const lines = generate(MS_HOUR, alignedStart(MS_HOUR), end);
+                            return { ticks: lines, lines };
+                          } else if (range <= 18 * MS_HOUR) {
+                            const lines = generate(MS_HOUR, alignedStart(MS_HOUR), end);
+                            const ticks = generate(2 * MS_HOUR, alignedStart(2 * MS_HOUR), end);
+                            return { ticks, lines };
+                          } else if (range <= MS_DAY * 1.5) {
+                            const lines = generate(MS_HOUR, alignedStart(MS_HOUR), end);
+                            const ticks = generate(3 * MS_HOUR, alignedStart(3 * MS_HOUR), end);
+                            return { ticks, lines };
+                          } else if (range <= 4 * MS_DAY) {
+                            const lines = generate(MS_DAY, alignedStart(MS_DAY), end);
+                            const ticks = generate(MS_DAY, alignedStart(MS_DAY), end);
+                            return { ticks, lines };
+                          } else if (range <= 10 * MS_DAY) {
+                            const lines = generate(MS_DAY, alignedStart(MS_DAY), end);
+                            const ticks = generate(2 * MS_DAY, alignedStart(2 * MS_DAY), end);
+                            return { ticks, lines };
+                          } else {
+                            const lines = generate(MS_DAY, alignedStart(MS_DAY), end);
+                            const ticks = generate(5 * MS_DAY, alignedStart(5 * MS_DAY), end);
+                            return { ticks, lines };
+                          }
+                        };
+
+                        const { ticks: xAxisTicks, lines: separatorLines } = getTicksAndLines(viewStart, viewEnd, viewRange);
 
                         const tickFormatter = (ts: number) => {
                           const d = new Date(ts);
-                          if (activityPeriod === 'day' || activityPeriod === 'specific') return `${d.getHours()}h`;
-                          if (activityPeriod === 'week') return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' });
+                          if (viewRange <= MS_DAY * 1.5) {
+                            const h = d.getHours(), m = d.getMinutes();
+                            return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, '0')}`;
+                          }
+                          if (viewRange <= 8 * MS_DAY) return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' });
                           return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
                         };
 
                         return (
+                          <div ref={activityChartRef}>
                           <ResponsiveContainer width="100%" height={300}>
                             <AreaChart
                               data={chartData}
@@ -4130,7 +4206,7 @@ export default function Admin() {
                               <XAxis
                                 dataKey="ts"
                                 type="number"
-                                domain={[domainStart, domainEnd]}
+                                domain={[viewStart, viewEnd]}
                                 ticks={xAxisTicks}
                                 tickFormatter={tickFormatter}
                                 tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
@@ -4199,6 +4275,7 @@ export default function Admin() {
                               />
                             </AreaChart>
                           </ResponsiveContainer>
+                          </div>
                         );
                       })()}
                     </div>
