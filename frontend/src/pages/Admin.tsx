@@ -686,8 +686,8 @@ export default function Admin() {
       if (fullEnd === fullStart) return;
       const [currentStart, currentEnd] = activityZoomDomainRef.current ?? [fullStart, fullEnd];
       const currentRange = currentEnd - currentStart;
-      // Left offset = left margin (8px removed by -8) + YAxis width (24) + right margin (4)
-      const leftOffset = 20;
+      // Left offset = margin.left (-8) + YAxis width (24)
+      const leftOffset = 16;
       const rightOffset = 4;
       const rect = el.getBoundingClientRect();
       const chartWidth = rect.width - leftOffset - rightOffset;
@@ -4271,6 +4271,7 @@ export default function Admin() {
                                 fill="url(#activityGradient)"
                                 dot={false}
                                 activeDot={{ r: 4, fill: 'hsl(var(--foreground))', strokeWidth: 0 }}
+                                isAnimationActive={false}
                               />
                             </AreaChart>
                           </ResponsiveContainer>
