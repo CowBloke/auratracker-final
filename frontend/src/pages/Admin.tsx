@@ -4042,14 +4042,64 @@ export default function Admin() {
                     <div className="flex-1 min-w-0">
                       {(() => {
                         const isHourlyView = activityPeriod === 'day' || activityPeriod === 'specific';
-                        const onHourData = activityHistory.data.filter(pt => new Date(pt.timestamp).getMinutes() === 0);
-                        const xTicks = isHourlyView && onHourData.length >= 2
-                          ? onHourData.map(pt => pt.timestamp)
-                          : undefined;
+                        const MS_HOUR = 3600000;
+                        const MS_DAY = 86400000;
+
+                        // All periods use a numeric time axis for proportional spacing
+                        const chartData = activityHistory.data.map(pt => ({ ...pt, ts: new Date(pt.timestamp).getTime() }));
+
+                        // Compute domain boundaries
+                        const now = new Date();
+                        const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+                        let domainStart: number, domainEnd: number;
+                        if (activityPeriod === 'specific' && activitySpecificDay) {
+                          domainStart = new Date(activitySpecificDay + 'T00:00:00').getTime();
+                          domainEnd = domainStart + MS_DAY;
+                        } else if (activityPeriod === 'day') {
+                          domainStart = todayMidnight;
+                          domainEnd = todayMidnight + MS_DAY;
+                        } else if (activityPeriod === 'week') {
+                          domainStart = todayMidnight - 7 * MS_DAY;
+                          domainEnd = todayMidnight + MS_DAY;
+                        } else if (activityPeriod === 'month') {
+                          domainStart = todayMidnight - 30 * MS_DAY;
+                          domainEnd = todayMidnight + MS_DAY;
+                        } else if (activityPeriod === 'custom' && activityCustomStart && activityCustomEnd) {
+                          domainStart = new Date(activityCustomStart + 'T00:00:00').getTime();
+                          domainEnd = new Date(activityCustomEnd + 'T00:00:00').getTime() + MS_DAY;
+                        } else {
+                          const times = chartData.map(pt => pt.ts);
+                          domainStart = Math.min(...times);
+                          domainEnd = Math.max(...times);
+                        }
+
+                        // Compute tick positions and vertical separator lines
+                        let xAxisTicks: number[];
+                        let separatorLines: number[];
+                        if (isHourlyView) {
+                          // Label every 3h, line at every hour
+                          xAxisTicks = Array.from({ length: 8 }, (_, i) => domainStart + i * 3 * MS_HOUR);
+                          separatorLines = Array.from({ length: 25 }, (_, i) => domainStart + i * MS_HOUR);
+                        } else {
+                          // Line at every day boundary; label every N days depending on range
+                          const rangeDays = Math.round((domainEnd - domainStart) / MS_DAY);
+                          const labelEvery = rangeDays <= 8 ? 1 : rangeDays <= 16 ? 2 : 5;
+                          const numDays = rangeDays + 1;
+                          separatorLines = Array.from({ length: numDays }, (_, i) => domainStart + i * MS_DAY);
+                          xAxisTicks = separatorLines.filter((_, i) => i % labelEvery === 0);
+                        }
+
+                        const tickFormatter = (ts: number) => {
+                          const d = new Date(ts);
+                          if (activityPeriod === 'day' || activityPeriod === 'specific') return `${d.getHours()}h`;
+                          if (activityPeriod === 'week') return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' });
+                          return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+                        };
+
                         return (
                           <ResponsiveContainer width="100%" height={300}>
                             <AreaChart
-                              data={activityHistory.data}
+                              data={chartData}
                               margin={{ top: 6, right: 4, left: -8, bottom: 0 }}
                               onMouseMove={(chartData) => {
                                 if (lockedPoint) return;
@@ -4076,20 +4126,17 @@ export default function Admin() {
                                   <stop offset="100%" stopColor="hsl(var(--foreground))" stopOpacity={0} />
                                 </linearGradient>
                               </defs>
-                              <CartesianGrid vertical={isHourlyView} strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                              <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border))" />
                               <XAxis
-                                dataKey="timestamp"
-                                ticks={xTicks}
-                                tickFormatter={ts => {
-                                  const d = new Date(ts);
-                                  if (activityPeriod === 'day' || activityPeriod === 'specific') return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-                                  if (activityPeriod === 'week') return d.toLocaleDateString('fr-FR', { weekday: 'short' }) + ' ' + d.getHours() + 'h';
-                                  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
-                                }}
+                                dataKey="ts"
+                                type="number"
+                                domain={[domainStart, domainEnd]}
+                                ticks={xAxisTicks}
+                                tickFormatter={tickFormatter}
                                 tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
                                 axisLine={false}
                                 tickLine={false}
-                                interval={xTicks ? 1 : 'preserveStartEnd'}
+                                interval={0}
                               />
                               <YAxis
                                 allowDecimals={false}
@@ -4108,7 +4155,7 @@ export default function Admin() {
                                   padding: '8px 12px',
                                 }}
                                 labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: 6, fontSize: 11 }}
-                                labelFormatter={ts => new Date(ts as string).toLocaleString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                labelFormatter={ts => new Date(ts as number).toLocaleString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                 formatter={(value: number) => [
                                   <span style={{ fontWeight: 600 }}>{value}</span>,
                                   'Joueurs'
@@ -4123,9 +4170,17 @@ export default function Admin() {
                                   label={{ value: `↑ ${activityHistory.peak}`, fill: 'hsl(var(--muted-foreground))', fontSize: 10, position: 'insideTopRight', dy: -4 }}
                                 />
                               )}
+                              {separatorLines.map(ts => (
+                                <ReferenceLine
+                                  key={`sep-${ts}`}
+                                  x={ts}
+                                  stroke="hsl(var(--border))"
+                                  strokeWidth={1.5}
+                                />
+                              ))}
                               {lockedPoint && (
                                 <ReferenceDot
-                                  x={lockedPoint.timestamp}
+                                  x={new Date(lockedPoint.timestamp).getTime()}
                                   y={lockedPoint.max}
                                   r={6}
                                   fill="hsl(var(--foreground))"
