@@ -5,6 +5,8 @@ import { useSocket } from '../contexts/SocketContext';
 import { ArrowLeft, Play, Heart, Crown, Users } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { PageHeader, PageShell } from '@/components/layout/page-shell';
 import { cn } from '@/lib/utils';
 import { UsernameDisplay } from '@/components/ui/username-display';
 
@@ -133,64 +135,81 @@ export default function BombParty() {
   // Not in a party - show message
   if (!currentParty) {
     return (
-      <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
-        <Link
-          to="/games"
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Jeux
-        </Link>
-
-        <div className="text-center py-20 space-y-6">
-          <div>
+      <PageShell>
+        <PageHeader
+          title="Bomb Party"
+          description="Trouve des mots contenant les lettres avant que la bombe explose."
+          actions={(
+            <Button asChild variant="outline" size="sm">
+              <Link to="/games" className="inline-flex items-center gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Jeux
+              </Link>
+            </Button>
+          )}
+        />
+        <Card>
+          <CardContent className="py-14 text-center space-y-6">
             <p className="text-sm text-muted-foreground">
               Rejoins ou cree une party pour jouer a Bomb Party
             </p>
-          </div>
-          <Link
-            to="/party"
-            className="inline-flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-          >
-            <Users className="h-4 w-4" />
-            Aller aux parties
-          </Link>
-        </div>
-      </div>
+            <Button asChild>
+              <Link to="/party" className="inline-flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Aller aux parties
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </PageShell>
     );
   }
 
   // Lobby state (no game active)
   if (!bombPartyGame) {
     return (
-      <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-16">
+      <PageShell>
+        <PageHeader
+          title="Bomb Party"
+          description={`Party: ${currentParty.name || 'Sans nom'}`}
+          actions={(
+            <Button asChild variant="outline" size="sm">
+              <Link to="/games" className="inline-flex items-center gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Jeux
+              </Link>
+            </Button>
+          )}
+        />
         {/* Players in party */}
-        <section className="space-y-4">
-          <h2 className="text-sm text-muted-foreground  ">
-            Joueurs dans la party ({partyMembers.length})
-          </h2>
-          <div className="space-y-0">
-            {partyMembers.map((member) => (
-              <div
-                key={member.userId}
-                className={cn(
-                  "flex items-center justify-between py-4 border-b border-border/30 last:border-0",
-                  member.userId === user?.id && "bg-muted/30 -mx-4 px-4"
-                )}
-              >
-                <span className="font-medium">
-                  <UsernameDisplay username={member.username} usernameColor={member.usernameColor} />
-                  {member.isLeader && (
-                    <Crown className="inline-block ml-2 h-4 w-4 text-yellow-500" />
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <h2 className="text-sm text-muted-foreground">
+              Joueurs dans la party ({partyMembers.length})
+            </h2>
+            <div className="space-y-0">
+              {partyMembers.map((member) => (
+                <div
+                  key={member.userId}
+                  className={cn(
+                    "flex items-center justify-between py-4 border-b border-border/30 last:border-0",
+                    member.userId === user?.id && "bg-muted/30 -mx-6 px-6"
                   )}
-                  {member.userId === user?.id && (
-                    <span className="ml-2 text-xs text-muted-foreground">(toi)</span>
-                  )}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
+                >
+                  <span className="font-medium">
+                    <UsernameDisplay username={member.username} usernameColor={member.usernameColor} />
+                    {member.isLeader && (
+                      <Crown className="inline-block ml-2 h-4 w-4 text-yellow-500" />
+                    )}
+                    {member.userId === user?.id && (
+                      <span className="ml-2 text-xs text-muted-foreground">(toi)</span>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Start button (leader only) */}
         {isLeader ? (
@@ -290,7 +309,7 @@ export default function BombParty() {
         </Dialog>
 
 
-    </div>
+      </PageShell>
     );
   }
 
@@ -299,18 +318,32 @@ export default function BombParty() {
 
   // Game active
   return (
-    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
-      <div className="flex items-center justify-end">
-        <Button variant="ghost"
-          onClick={leaveBombParty}
-          className="px-4 py-2 text-sm border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
-        >
-          Quitter
-        </Button>
-      </div>
+    <PageShell>
+      <PageHeader
+        title="Bomb Party"
+        description={`Party: ${currentParty.name || 'Sans nom'}`}
+        actions={(
+          <>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/games" className="inline-flex items-center gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Jeux
+              </Link>
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={leaveBombParty}
+            >
+              Quitter
+            </Button>
+          </>
+        )}
+      />
 
       {/* Players */}
-      <section className="space-y-2">
+      <Card>
+        <CardContent className="p-6">
         <div className="flex flex-wrap gap-4 justify-center">
           {bombPartyGame?.players.map((player, index) => (
             <div
@@ -346,10 +379,12 @@ export default function BombParty() {
             </div>
           ))}
         </div>
-      </section>
+        </CardContent>
+      </Card>
 
       {/* Game Area */}
-      <section className="space-y-6 py-8">
+      <Card>
+        <CardContent className="p-6 space-y-6">
         {/* Timer bar */}
         <div className="w-full max-w-lg mx-auto h-2 bg-border/30 overflow-hidden rounded-full">
           <div
@@ -410,11 +445,13 @@ export default function BombParty() {
             ) : null}
           </div>
         )}
-      </section>
+        </CardContent>
+      </Card>
 
       {/* Used words */}
       {bombPartyGame && bombPartyGame.usedWords.length > 0 && (
-        <section className="space-y-2">
+        <Card>
+          <CardContent className="p-6 space-y-2">
           <h3 className="text-sm text-muted-foreground  ">
             Mots utilises ({bombPartyGame.usedWords.length})
           </h3>
@@ -428,9 +465,10 @@ export default function BombParty() {
               </span>
             ))}
           </div>
-        </section>
+          </CardContent>
+        </Card>
       )}
 
-    </div>
+    </PageShell>
   );
 }

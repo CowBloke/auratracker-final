@@ -6,6 +6,8 @@ import { ArrowLeft, Users, Play, Send, LogOut, Trophy } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import { PageHeader, PageShell } from '@/components/layout/page-shell';
 import { cn } from '@/lib/utils';
 import { UsernameDisplay } from '@/components/ui/username-display';
 
@@ -186,48 +188,60 @@ export default function PetitBac() {
 
   if (!currentParty) {
     return (
-      <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
-        <Link
-          to="/games"
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Jeux
-        </Link>
-
-        <div className="text-center py-20 space-y-6">
-          <div>
+      <PageShell>
+        <PageHeader
+          title="Petit Bac"
+          description="Remplis les catégories avec la bonne lettre avant la fin du chrono."
+          actions={(
+            <Button asChild variant="outline" size="sm">
+              <Link to="/games" className="inline-flex items-center gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Jeux
+              </Link>
+            </Button>
+          )}
+        />
+        <Card>
+          <CardContent className="py-14 text-center space-y-6">
             <p className="text-sm text-muted-foreground">
               Rejoins ou cree une party pour jouer au Petit Bac
             </p>
-          </div>
-          <Link
-            to="/party"
-            className="inline-flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-          >
-            <Users className="h-4 w-4" />
-            Aller aux parties
-          </Link>
-        </div>
-      </div>
+            <Button asChild>
+              <Link to="/party" className="inline-flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Aller aux parties
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </PageShell>
     );
   }
 
   if (!petitBacGame) {
     return (
-      <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
-        <Link
-          to="/games"
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Jeux
-        </Link>
+      <PageShell>
+        <PageHeader
+          title="Petit Bac"
+          description={`Party: ${currentParty.name || 'Sans nom'}`}
+          actions={(
+            <>
+              <Button asChild variant="outline" size="sm">
+                <Link to="/games" className="inline-flex items-center gap-2">
+                  <ArrowLeft className="h-4 w-4" />
+                  Jeux
+                </Link>
+              </Button>
+              <Button variant="outline" size="sm" onClick={leavePetitBac} className="gap-2">
+                <LogOut className="h-4 w-4" />
+                Quitter
+              </Button>
+            </>
+          )}
+        />
 
-        <div className="grid gap-6">
-          <div className="text-sm text-muted-foreground">
-            Party: <span className="text-foreground">{currentParty.name || 'Sans nom'}</span>
-          </div>
+        <Card>
+          <CardContent className="p-6 grid gap-6">
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2">
@@ -270,35 +284,38 @@ export default function PetitBac() {
                 En attente du leader pour lancer.
               </div>
             )}
-            <Button variant="outline" onClick={leavePetitBac} className="gap-2">
-              <LogOut className="h-4 w-4" />
-              Quitter
-            </Button>
           </div>
-        </div>
+          </CardContent>
+        </Card>
 
       {playAgainModals}
-    </div>
+    </PageShell>
     );
   }
 
   return (
-    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
-      <div className="flex items-center justify-between">
-        <Link
-          to="/games"
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Jeux
-        </Link>
-        <Button variant="outline" onClick={leavePetitBac} className="gap-2">
-          <LogOut className="h-4 w-4" />
-          Quitter
-        </Button>
-      </div>
+    <PageShell>
+      <PageHeader
+        title="Petit Bac"
+        description={`Party: ${currentParty.name || 'Sans nom'}`}
+        actions={(
+          <>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/games" className="inline-flex items-center gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Jeux
+              </Link>
+            </Button>
+            <Button variant="outline" size="sm" onClick={leavePetitBac} className="gap-2">
+              <LogOut className="h-4 w-4" />
+              Quitter
+            </Button>
+          </>
+        )}
+      />
 
-      <div className="grid gap-6">
+      <Card>
+        <CardContent className="p-6 grid gap-6">
         <div className="flex flex-wrap items-center gap-6">
           <div className="text-xs   text-muted-foreground">
             Manche {petitBacGame.round}/{petitBacGame.maxRounds}
@@ -388,9 +405,10 @@ export default function PetitBac() {
             </div>
           </div>
         )}
-      </div>
+        </CardContent>
+      </Card>
 
       {playAgainModals}
-    </div>
+    </PageShell>
   );
 }

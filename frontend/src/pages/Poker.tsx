@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
+import { Card as UICard, CardContent } from '@/components/ui/card';
+import { PageHeader, PageShell } from '@/components/layout/page-shell';
 import { cn } from '@/lib/utils';
 import { UsernameDisplay } from '@/components/ui/username-display';
 
@@ -183,30 +185,33 @@ export default function Poker() {
 
   if (!currentParty) {
     return (
-      <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
-        <Link
-          to="/games"
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Jeux
-        </Link>
-
-        <div className="text-center py-20 space-y-6">
-          <div>
+      <PageShell>
+        <PageHeader
+          title="Poker"
+          description="Hold'em minimaliste en party, blindes fixes et rounds rapides."
+          actions={(
+            <Button asChild variant="outline" size="sm">
+              <Link to="/games" className="inline-flex items-center gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Jeux
+              </Link>
+            </Button>
+          )}
+        />
+        <UICard>
+          <CardContent className="py-14 text-center space-y-6">
             <p className="text-sm text-muted-foreground">
               Crée ou rejoins une party pour lancer une table de poker.
             </p>
-          </div>
-          <Link
-            to="/party"
-            className="inline-flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-          >
-            <Users className="h-4 w-4" />
-            Aller aux parties
-          </Link>
-        </div>
-      </div>
+            <Button asChild>
+              <Link to="/party" className="inline-flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Aller aux parties
+              </Link>
+            </Button>
+          </CardContent>
+        </UICard>
+      </PageShell>
     );
   }
 
@@ -233,10 +238,29 @@ export default function Poker() {
   }, [showPlayAgainPrompt, pokerPlayAgainPrompt]);
 
   return (
-    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-10">
+    <PageShell className="space-y-10">
+      <PageHeader
+        title="Poker"
+        description={`Party: ${currentParty.name || 'Sans nom'}`}
+        actions={(
+          <>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/games" className="inline-flex items-center gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Jeux
+              </Link>
+            </Button>
+            <Button variant="outline" size="sm" className="gap-2" onClick={leavePoker}>
+              <LogOut className="h-4 w-4" />
+              Quitter
+            </Button>
+          </>
+        )}
+      />
       {lobby ? (
         <div className="space-y-12">
-          <section className="space-y-2">
+          <UICard>
+            <CardContent className="p-6 space-y-2">
             <h2 className="text-sm text-muted-foreground  ">
               Joueurs dans la party ({partyMembers.length})
             </h2>
@@ -256,11 +280,13 @@ export default function Poker() {
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          </section>
+                ))}
+              </div>
+            </CardContent>
+          </UICard>
 
-          <section className="rounded border border-border/60 p-4 space-y-6">
+          <UICard>
+            <CardContent className="p-6 space-y-6">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Paramètres rapides</p>
@@ -298,11 +324,13 @@ export default function Poker() {
             {!isLeader && (
               <p className="text-sm text-muted-foreground">En attente que le leader démarre la partie.</p>
             )}
-          </section>
+            </CardContent>
+          </UICard>
         </div>
       ) : (
         <div className="space-y-8">
-          <section className="rounded border border-border/60 p-4 space-y-4">
+          <UICard>
+            <CardContent className="p-6 space-y-4">
             <div className="flex flex-wrap items-start justify-between gap-4 text-sm text-muted-foreground">
               <div className="flex flex-wrap items-center gap-4">
                 <span className="px-2 py-1 rounded border border-border">
@@ -343,14 +371,18 @@ export default function Poker() {
                 </div>
               </div>
             )}
-          </section>
+            </CardContent>
+          </UICard>
 
-          <section className="space-y-3">
+          <UICard>
+            <CardContent className="p-6 space-y-3">
             {renderPlayers()}
-          </section>
+            </CardContent>
+          </UICard>
 
           {me && !me.isEliminated && (
-            <section className="rounded border border-border/60 p-4 space-y-4">
+            <UICard>
+              <CardContent className="p-6 space-y-4">
               <div className="flex flex-wrap items-center gap-3 justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">Vos cartes</span>
@@ -411,7 +443,8 @@ export default function Poker() {
                   All-in
                 </Button>
               </div>
-            </section>
+              </CardContent>
+            </UICard>
           )}
         </div>
       )}
@@ -494,6 +527,6 @@ export default function Poker() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   );
 }

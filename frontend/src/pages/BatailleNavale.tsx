@@ -5,6 +5,8 @@ import { useSocket } from '../contexts/SocketContext';
 import { ArrowLeft, Play, LogOut, Trophy } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { PageHeader, PageShell } from '@/components/layout/page-shell';
 import { cn } from '@/lib/utils';
 import { UsernameDisplay } from '@/components/ui/username-display';
 
@@ -390,37 +392,51 @@ export default function BatailleNavale() {
   // Not in a party
   if (!currentParty) {
     return (
-      <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
-        <Link
-          to="/games"
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Jeux
-        </Link>
-
-        <div className="text-center py-20 space-y-6">
-          <div>
+      <PageShell>
+        <PageHeader
+          title="Bataille Navale"
+          description="Place tes bateaux et coule ceux de ton adversaire."
+          actions={(
+            <Button asChild variant="outline" size="sm">
+              <Link to="/games" className="inline-flex items-center gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Jeux
+              </Link>
+            </Button>
+          )}
+        />
+        <Card>
+          <CardContent className="py-14 text-center space-y-6">
             <p className="text-sm text-muted-foreground">
               Rejoins ou crée un duel pour jouer à la Bataille Navale
             </p>
-          </div>
-          <Link
-            to="/party"
-            className="inline-flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-          >
-            Aller aux duels
-          </Link>
-        </div>
-      </div>
+            <Button asChild>
+              <Link to="/party">Aller aux duels</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </PageShell>
     );
   }
 
   // Lobby (no game active)
   if (!gameState) {
     return (
-      <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-16">
-        <section className="space-y-4">
+      <PageShell>
+        <PageHeader
+          title="Bataille Navale"
+          description={`Party: ${currentParty.name || 'Sans nom'}`}
+          actions={(
+            <Button asChild variant="outline" size="sm">
+              <Link to="/games" className="inline-flex items-center gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Jeux
+              </Link>
+            </Button>
+          )}
+        />
+        <Card>
+          <CardContent className="p-6 space-y-4">
           <h2 className="text-sm text-muted-foreground  ">
             Joueurs dans le duel ({partyMembers.length}/2)
           </h2>
@@ -445,7 +461,8 @@ export default function BatailleNavale() {
               </div>
             ))}
           </div>
-        </section>
+          </CardContent>
+        </Card>
 
         {partyMembers.length < 2 && (
           <p className="text-center text-muted-foreground text-sm">
@@ -471,22 +488,31 @@ export default function BatailleNavale() {
           </div>
         )}
       {postGameModals}
-    </div>
+    </PageShell>
     );
   }
 
   // Game active
   return (
-    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
-      <div className="flex items-center justify-between">
-        <Button variant="ghost"
-          onClick={handleLeave}
-          className="px-4 py-2 text-sm border border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
-        >
-          <LogOut className="h-4 w-4 inline mr-2" />
-          Quitter
-        </Button>
-      </div>
+    <PageShell>
+      <PageHeader
+        title="Bataille Navale"
+        description={`Party: ${currentParty.name || 'Sans nom'}`}
+        actions={(
+          <>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/games" className="inline-flex items-center gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Jeux
+              </Link>
+            </Button>
+            <Button variant="destructive" size="sm" onClick={handleLeave}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Quitter
+            </Button>
+          </>
+        )}
+      />
 
       {error && (
         <div className="text-center text-red-500 text-sm animate-pulse">
@@ -495,7 +521,9 @@ export default function BatailleNavale() {
       )}
 
       {/* Players info */}
-      <div className="flex justify-center gap-8">
+      <Card>
+        <CardContent className="p-6">
+      <div className="flex justify-center gap-8 flex-wrap">
         {gameState.players.map((player) => {
           const isMe = player.userId === user?.id;
           const isCurrentTurn = gameState.currentPlayerId === player.userId;
@@ -517,10 +545,13 @@ export default function BatailleNavale() {
           );
         })}
       </div>
+        </CardContent>
+      </Card>
 
       {/* Placement phase */}
       {gameState.phase === 'placement' && (
-        <div className="space-y-6">
+        <Card>
+          <CardContent className="p-6 space-y-6">
           <div className="text-center">
             <p className="text-sm text-muted-foreground mb-4">
               Place tes bateaux sur la grille
@@ -601,12 +632,14 @@ export default function BatailleNavale() {
               )}
             </div>
           </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Playing phase */}
       {gameState.phase === 'playing' && (
-        <div className="space-y-8">
+        <Card>
+          <CardContent className="p-6 space-y-8">
           <div className="text-center">
             {isMyTurn ? (
               <p className="text-lg font-medium text-yellow-500">
@@ -662,10 +695,11 @@ export default function BatailleNavale() {
               </div>
             </div>
           </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {postGameModals}
-    </div>
+    </PageShell>
   );
 }
