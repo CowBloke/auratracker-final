@@ -4,6 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { gamesApi } from '@/services/api';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 
 type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades';
 
@@ -193,9 +195,6 @@ export default function Solitaire() {
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [cardWidth, setCardWidth] = useState(96);
-  const [viewportWidth, setViewportWidth] = useState(() =>
-    typeof window === 'undefined' ? 1920 : window.innerWidth
-  );
 
   const score = useMemo(() => computeScore(moves, seconds), [moves, seconds]);
   const completedCards = useMemo(
@@ -274,23 +273,6 @@ export default function Solitaire() {
       submitResult(true, score);
     }
   }, [completedCards, isWon, score]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    const updateViewportWidth = () => setViewportWidth(window.innerWidth);
-    updateViewportWidth();
-
-    window.addEventListener('resize', updateViewportWidth);
-    window.visualViewport?.addEventListener('resize', updateViewportWidth);
-
-    return () => {
-      window.removeEventListener('resize', updateViewportWidth);
-      window.visualViewport?.removeEventListener('resize', updateViewportWidth);
-    };
-  }, []);
 
   useEffect(() => {
     const node = boardRef.current;
@@ -520,48 +502,83 @@ export default function Solitaire() {
   const stackOffsetFaceUp = Math.max(12, Math.round(cardWidth * 0.27));
   const stackOffsetFaceDown = Math.max(8, Math.round(cardWidth * 0.1));
   const pilePadding = Math.max(2, Math.round(cardWidth * 0.04));
-  const hideLeaderboardForSpace = viewportWidth < 1450;
 
   return (
-    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-950/85 p-3 text-emerald-50 shadow-xl">
-        <div className="flex flex-wrap gap-4 text-sm">
-          <span>Score: <strong>{score}</strong></span>
-          <span>Moves: <strong>{moves}</strong></span>
-          <span>Time: <strong>{formatTime(seconds)}</strong></span>
-          <span>Best: <strong>{highScore}</strong></span>
-        </div>
-        <Button variant="ghost"
+    <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr_320px] gap-4 items-start px-4 pb-6 lg:px-6 lg:pb-8">
+      <div className="flex flex-col gap-3">
+        <Card>
+          <CardHeader className="px-4 py-3">
+            <CardTitle className="text-sm font-medium">Statistiques</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 space-y-4">
+            <div>
+              <p className="text-3xl font-light tabular-nums">{score.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Score actuel</p>
+            </div>
+            <Separator />
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Coups: <span className="font-medium text-foreground tabular-nums">{moves.toLocaleString()}</span></p>
+              <p className="text-sm text-muted-foreground">Temps: <span className="font-medium text-foreground tabular-nums">{formatTime(seconds)}</span></p>
+              <p className="text-sm text-muted-foreground">Record: <span className="font-medium text-foreground tabular-nums">{highScore.toLocaleString()}</span></p>
+            </div>
+            {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
+            {rewards && (rewards.money > 0 || rewards.aura > 0) && (
+              <p className="text-sm text-muted-foreground">
+                {rewards.money > 0 && `+$${rewards.money}`}
+                {rewards.money > 0 && rewards.aura > 0 && ' · '}
+                {rewards.aura > 0 && `+${rewards.aura} aura`}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="px-4 py-3">
+            <CardTitle className="text-sm font-medium">Progression</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <p className="text-sm text-muted-foreground">
+              Cartes posées: <span className="font-medium text-foreground tabular-nums">{completedCards}/52</span>
+            </p>
+          </CardContent>
+        </Card>
+
+        <Button
+          variant="outline"
           type="button"
           onClick={startNewGame}
-          className="inline-flex items-center gap-2 rounded-lg border border-emerald-300/40 bg-emerald-800/60 px-3 py-2 text-sm font-medium transition hover:bg-emerald-700"
+          className="inline-flex items-center gap-2"
         >
           <RotateCcw className="h-4 w-4" />
-          New Game
+          Nouvelle partie
         </Button>
       </div>
 
-      <div className={cn('grid grid-cols-1 gap-4', !hideLeaderboardForSpace && 'xl:grid-cols-[1fr_280px]')}>
-        <section className="rounded-2xl border border-emerald-400/20 bg-[radial-gradient(circle_at_20%_0%,rgba(110,231,183,0.25),rgba(6,78,59,0.95)_52%)] p-3 md:p-4">
-          <div
-            ref={boardRef}
-            style={
-              {
-                '--card-w': `${cardWidth}px`,
-                '--pile-gap': `${boardGap}px`,
-                '--stack-faceup': `${stackOffsetFaceUp}px`,
-                '--stack-facedown': `${stackOffsetFaceDown}px`,
-                '--pile-pad': `${pilePadding}px`,
-                '--pile-col-w': `${cardWidth + pilePadding * 2}px`,
-              } as CSSProperties
-            }
-          >
+      <Card>
+        <CardHeader className="px-4 py-3">
+          <CardTitle className="text-sm font-medium">Solitaire</CardTitle>
+        </CardHeader>
+        <CardContent className="p-3 md:p-4">
+          <div className="overflow-x-auto">
+            <div
+              ref={boardRef}
+              style={
+                {
+                  '--card-w': `${cardWidth}px`,
+                  '--pile-gap': `${boardGap}px`,
+                  '--stack-faceup': `${stackOffsetFaceUp}px`,
+                  '--stack-facedown': `${stackOffsetFaceDown}px`,
+                  '--pile-pad': `${pilePadding}px`,
+                  '--pile-col-w': `${cardWidth + pilePadding * 2}px`,
+                } as CSSProperties
+              }
+            >
           <div className="mb-4 grid grid-cols-4 gap-[var(--pile-gap)]">
-            <div className="rounded-xl border border-cyan-300/40 bg-cyan-950/55 p-2">
-              <div className="mb-1 text-xs font-semibold   text-cyan-200">Draw Pile</div>
+            <div className="rounded-xl border border-border/40 bg-muted/25 p-2">
+              <div className="mb-1 text-xs font-semibold text-muted-foreground">Pioche</div>
               <div
                 onClick={drawFromStock}
-                className="inline-block rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-300"
+                className="inline-block rounded-xl focus:outline-none focus:ring-2 focus:ring-ring"
                 role="button"
                 tabIndex={0}
                 onKeyDown={(event) => {
@@ -574,16 +591,16 @@ export default function Solitaire() {
                 {game.stock.length > 0 ? (
                   <SolitaireCard card={{ ...game.stock[game.stock.length - 1], faceUp: false }} draggable={false} />
                 ) : (
-                  <div className="flex h-[calc(var(--card-w)*1.4)] w-[var(--card-w)] items-center justify-center rounded-xl border-2 border-dashed border-cyan-300/60 bg-cyan-900/20 text-xs text-cyan-100">
-                    Reset
+                  <div className="flex h-[calc(var(--card-w)*1.4)] w-[var(--card-w)] items-center justify-center rounded-xl border-2 border-dashed border-border/60 bg-muted/10 text-xs text-muted-foreground">
+                    Retourner
                   </div>
                 )}
               </div>
-              <div className="mt-1 text-xs text-cyan-100/85">{game.stock.length} cards</div>
+              <div className="mt-1 text-xs text-muted-foreground">{game.stock.length} cartes</div>
             </div>
 
-            <div className="rounded-xl border border-cyan-300/40 bg-cyan-950/55 p-2">
-              <div className="mb-1 text-xs font-semibold   text-cyan-200">Waste</div>
+            <div className="rounded-xl border border-border/40 bg-muted/25 p-2">
+              <div className="mb-1 text-xs font-semibold text-muted-foreground">Défausse</div>
               <div>
                 {game.waste.length > 0 ? (
                   <SolitaireCard
@@ -594,15 +611,15 @@ export default function Solitaire() {
                     onDoubleClick={() => tryAutoMoveToFoundation({ type: 'waste' })}
                   />
                 ) : (
-                  <div className="flex h-[calc(var(--card-w)*1.4)] w-[var(--card-w)] items-center justify-center rounded-xl border-2 border-dashed border-cyan-300/50 bg-cyan-900/20 text-xs text-cyan-100">
-                    Empty
+                  <div className="flex h-[calc(var(--card-w)*1.4)] w-[var(--card-w)] items-center justify-center rounded-xl border-2 border-dashed border-border/60 bg-muted/10 text-xs text-muted-foreground">
+                    Vide
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="col-span-2 rounded-xl border border-amber-300/40 bg-amber-950/45 p-2">
-              <div className="mb-1 text-xs font-semibold   text-amber-100">Ace Foundations</div>
+            <div className="col-span-2 rounded-xl border border-border/40 bg-muted/25 p-2">
+              <div className="mb-1 text-xs font-semibold text-muted-foreground">Fondations</div>
               <div
                 className="grid justify-center gap-[var(--pile-gap)]"
                 style={{ gridTemplateColumns: 'repeat(4, var(--pile-col-w))' }}
@@ -627,7 +644,7 @@ export default function Solitaire() {
                       }}
                       className={cn(
                         'flex justify-center rounded-xl p-[var(--pile-pad)] transition',
-                        canDrop ? 'ring-2 ring-amber-300/90' : 'ring-1 ring-amber-100/20'
+                        canDrop ? 'ring-2 ring-primary/70' : 'ring-1 ring-border/30'
                       )}
                     >
                       {top ? (
@@ -638,9 +655,9 @@ export default function Solitaire() {
                           onDragEnd={() => setDragSource(null)}
                         />
                       ) : (
-                        <div className="flex h-[calc(var(--card-w)*1.4)] w-[var(--card-w)] flex-col items-center justify-center rounded-xl border-2 border-dashed border-amber-300/60 bg-amber-900/25">
+                        <div className="flex h-[calc(var(--card-w)*1.4)] w-[var(--card-w)] flex-col items-center justify-center rounded-xl border-2 border-dashed border-border/60 bg-muted/10">
                           <span className={cn('text-2xl', getCardColorClass(suit))}>{SUIT_SYMBOL[suit]}</span>
-                          <span className="text-[10px] font-semibold   text-amber-100">Ace</span>
+                          <span className="text-[10px] font-semibold text-muted-foreground">As</span>
                         </div>
                       )}
                     </div>
@@ -671,12 +688,12 @@ export default function Solitaire() {
                     applyMove({ type: 'tableau', pileIndex });
                   }}
                   className={cn(
-                    'relative min-h-[calc(var(--card-w)*3.9)] rounded-xl border border-emerald-100/15 p-[var(--pile-pad)] transition',
-                    canDrop && 'ring-2 ring-emerald-200/80'
+                    'relative min-h-[calc(var(--card-w)*3.9)] rounded-xl border border-border/40 p-[var(--pile-pad)] transition',
+                    canDrop && 'ring-2 ring-primary/70'
                   )}
                 >
                   {pile.length === 0 ? (
-                    <div className="flex h-[calc(var(--card-w)*1.4)] w-[var(--card-w)] items-center justify-center rounded-xl border-2 border-dashed border-emerald-200/35 bg-emerald-900/25 text-xs font-semibold text-emerald-100">
+                    <div className="flex h-[calc(var(--card-w)*1.4)] w-[var(--card-w)] items-center justify-center rounded-xl border-2 border-dashed border-border/60 bg-muted/10 text-xs font-semibold text-muted-foreground">
                       K
                     </div>
                   ) : (
@@ -717,52 +734,67 @@ export default function Solitaire() {
               );
             })}
           </div>
+            </div>
           </div>
-
           {isWon && (
-            <div className="mt-4 rounded-xl border border-emerald-200/40 bg-emerald-500/20 p-4 text-center text-emerald-50">
-              <div className="text-lg font-semibold">You won this hand.</div>
-              <div className="mt-1 text-sm">Final score: {score}</div>
-              {isNewHighScore && <div className="mt-1 text-sm font-semibold">New high score</div>}
+            <div className="mt-4 rounded-xl border border-primary/30 bg-primary/10 p-4 text-center">
+              <div className="text-lg font-semibold">Partie gagnée</div>
+              <div className="mt-1 text-sm text-muted-foreground">Score final: {score.toLocaleString()}</div>
+              {isNewHighScore && <div className="mt-1 text-sm">Nouveau record !</div>}
               {rewards && (rewards.money > 0 || rewards.aura > 0) && (
-                <div className="mt-1 text-sm text-emerald-100/90">
+                <div className="mt-1 text-sm text-muted-foreground">
                   {rewards.money > 0 && `+$${rewards.money}`}
-                  {rewards.money > 0 && rewards.aura > 0 && ' | '}
+                  {rewards.money > 0 && rewards.aura > 0 && ' · '}
                   {rewards.aura > 0 && `+${rewards.aura} aura`}
                 </div>
               )}
             </div>
           )}
-        </section>
+        </CardContent>
+      </Card>
 
-        {!hideLeaderboardForSpace && (
-        <aside className="rounded-2xl border bg-card shadow-sm">
-          <div className="flex items-center gap-2 border-b p-3">
-            <Trophy className="h-4 w-4 text-yellow-500" />
-            <h3 className="text-sm font-semibold">Solitaire Leaderboard</h3>
-          </div>
-          <div className="max-h-[70vh] overflow-y-auto">
-            {leaderboard.length === 0 ? (
-              <div className="p-3 text-sm text-muted-foreground">No scores yet.</div>
-            ) : (
-              leaderboard.map((entry, index) => (
+      <Card>
+        <CardHeader className="px-4 py-3">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Trophy className="h-4 w-4 text-muted-foreground" />
+            Classement
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {leaderboard.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm text-muted-foreground">Aucun score enregistré</p>
+          ) : (
+            <div className="divide-y divide-border/20 max-h-[720px] overflow-y-auto">
+              {leaderboard.map((entry, index) => (
                 <div
                   key={entry.id}
-                  className={cn(
-                    'flex items-center gap-2 border-b border-border/20 px-3 py-2 text-sm',
-                    entry.user.id === user?.id && 'bg-primary/10'
-                  )}
+                  className={cn('flex items-center gap-3 px-4 py-2.5', entry.user.id === user?.id && 'bg-muted/30')}
                 >
-                  <span className="w-5 text-center font-mono text-muted-foreground">{index + 1}</span>
-                  <span className="flex-1 truncate">{entry.user.username}</span>
-                  <span className="font-mono tabular-nums text-muted-foreground">{entry.highScore}</span>
+                  <span
+                    className={cn(
+                      'w-5 text-center text-xs tabular-nums shrink-0',
+                      index === 0
+                        ? 'text-yellow-500 font-bold'
+                        : index === 1
+                          ? 'text-muted-foreground'
+                          : index === 2
+                            ? 'text-amber-600 font-bold'
+                            : 'text-muted-foreground'
+                    )}
+                  >
+                    {index + 1}
+                  </span>
+                  <span className="flex-1 truncate text-sm">{entry.user.username}</span>
+                  <span className="font-mono text-sm tabular-nums text-muted-foreground shrink-0">
+                    {entry.highScore.toLocaleString()}
+                  </span>
                 </div>
-              ))
-            )}
-          </div>
-        </aside>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
     </div>
   );
 }
