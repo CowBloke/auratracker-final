@@ -10,9 +10,16 @@ const MOCK_IMAGE = {
   lena: '/images/mock/avatar-lena.svg',
   milo: '/images/mock/avatar-milo.svg',
   salma: '/images/mock/avatar-salma.svg',
-  clan: '/images/mock/clan-nebula.svg',
-  market: '/images/mock/polymarket-orbit.svg',
-  update: '/images/mock/update-quests.svg',
+  clan: '/images/mock/jared-rice-qzgmZKsyVsQ-unsplash.jpg',
+  market: '/images/mock/nir-himi-gSIjbABf9sc-unsplash.jpg',
+  update: '/images/mock/matthew-mosbauer-7DV_dT3JuLs-unsplash.jpg',
+  cardA: '/images/mock/bennie-bates-rvV5zQEZBUU-unsplash.jpg',
+  cardB: '/images/mock/erik-fabian-t-ylGRIbyVY-unsplash.jpg',
+  cardC: '/images/mock/nir-himi-nd0x9zVw-hQ-unsplash.jpg',
+  cardD: '/images/mock/nir-himi-_jmXZHtCi4U-unsplash.jpg',
+  cardE: '/images/mock/nir-himi-A5BmPxqRlfc-unsplash.jpg',
+  cardF: '/images/mock/nir-himi-1WfegtbvNK8-unsplash.jpg',
+  cardG: '/images/mock/micke-lindstrom-w4OQcCFYdXc-unsplash.jpg',
 };
 
 const startOfDay = (date = new Date()) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -396,7 +403,7 @@ async function main() {
       description: 'Single-use boost that adds a clean aura bonus.',
       type: 'CONSUMABLE',
       price: 450,
-      imageUrl: '/images/games/auracoin.png',
+      imageUrl: MOCK_IMAGE.cardA,
       effect: JSON.stringify({ bonusAura: 30 }),
     },
     {
@@ -404,7 +411,7 @@ async function main() {
       description: 'Pocket money drop for quest resets and quick buys.',
       type: 'CONSUMABLE',
       price: 520,
-      imageUrl: '/images/games/casino.png',
+      imageUrl: MOCK_IMAGE.cardB,
       effect: JSON.stringify({ bonusMoney: 500 }),
     },
     {
@@ -412,7 +419,7 @@ async function main() {
       description: 'Consumable cosmetic to change your username color.',
       type: 'COSMETIC',
       price: 900,
-      imageUrl: '/images/mock/update-quests.svg',
+      imageUrl: MOCK_IMAGE.cardC,
       effect: JSON.stringify({ type: 'USERNAME_COLOR' }),
     },
     {
@@ -420,7 +427,7 @@ async function main() {
       description: 'Consumable cosmetic to set a profile picture.',
       type: 'COSMETIC',
       price: 1100,
-      imageUrl: '/images/mock/avatar-lena.svg',
+      imageUrl: MOCK_IMAGE.cardD,
       effect: JSON.stringify({ type: 'PROFILE_PICTURE' }),
     },
     {
@@ -428,7 +435,7 @@ async function main() {
       description: 'Upgrade token reserved for future party capacity perks.',
       type: 'UPGRADE',
       price: 1800,
-      imageUrl: '/images/games/bombparty.png',
+      imageUrl: MOCK_IMAGE.cardE,
       effect: JSON.stringify({ partySizeBonus: 1 }),
     },
     {
@@ -436,7 +443,7 @@ async function main() {
       description: 'Gift-only crate that can be sent to another user.',
       type: 'GIFT',
       price: 700,
-      imageUrl: '/images/games/market.png',
+      imageUrl: MOCK_IMAGE.cardF,
       effect: JSON.stringify({ rarity: 'rare' }),
     },
     {
@@ -444,7 +451,7 @@ async function main() {
       description: 'Decorative gift item for inbox tests and resale flows.',
       type: 'GIFT',
       price: 950,
-      imageUrl: '/images/mock/polymarket-orbit.svg',
+      imageUrl: MOCK_IMAGE.cardG,
       effect: JSON.stringify({ rarity: 'epic' }),
     },
   ];
@@ -898,7 +905,7 @@ async function main() {
     data: {
       title: 'Daily racer world record falls under 67 seconds',
       description: 'Community bet tied to the seeded daily racer leaderboard.',
-      imageUrl: '/images/games/racer.png',
+      imageUrl: MOCK_IMAGE.cardB,
       eventDate: hoursAgo(5),
       yesOdds: 2.4,
       noOdds: 1.6,
