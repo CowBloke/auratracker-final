@@ -769,4 +769,34 @@ router.delete('/:gameType/stats/:userId', authMiddleware, async (req: AuthReques
   }
 });
 
+// Goyave Empire: load save state from DB
+router.get('/goyave_empire/save', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+    const save = await prisma.goyaveSave.findUnique({ where: { userId: req.user.id } });
+    res.json({ saveData: save?.saveData || null });
+  } catch (error) {
+    console.error('Load goyave save error:', error);
+    res.status(500).json({ error: 'Failed to load save' });
+  }
+});
+
+// Goyave Empire: persist save state to DB
+router.post('/goyave_empire/save', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+    const { saveData } = req.body;
+    if (typeof saveData !== 'string') return res.status(400).json({ error: 'saveData must be a string' });
+    await prisma.goyaveSave.upsert({
+      where: { userId: req.user.id },
+      update: { saveData },
+      create: { userId: req.user.id, saveData },
+    });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Save goyave state error:', error);
+    res.status(500).json({ error: 'Failed to save state' });
+  }
+});
+
 export default router;

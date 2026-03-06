@@ -16,6 +16,7 @@ import { UsernameDisplay } from '@/components/ui/username-display';
 interface ProfileUser {
   id: string;
   username: string;
+  firstName?: string | null;
   aura: number;
   money: number;
   auraCoinBalance: number;
@@ -189,6 +190,7 @@ export default function Profile() {
         <div className="flex-1 min-w-0">
           <UsernameDisplay
             username={profileUser.username}
+            firstName={profileUser.firstName}
             usernameColor={profileUser.usernameColor}
             className={cn(TYPOGRAPHY.H1, "md:text-7xl")}
             labelClassName="text-sm md:text-base text-muted-foreground"

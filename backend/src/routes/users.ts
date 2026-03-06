@@ -12,6 +12,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
       select: {
         id: true,
         username: true,
+        firstName: true,
         aura: true,
         money: true,
         auraCoinBalance: true,
@@ -130,6 +131,7 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
         select: {
           id: true,
           username: true,
+          firstName: true,
           aura: true,
           money: true,
           auraCoinBalance: true,

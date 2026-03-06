@@ -161,6 +161,11 @@ export const gamesApi = {
   // Admin: Delete a user's game stats
   deleteStats: (gameType: string, userId: string) =>
     api.delete(`/games/${gameType}/stats/${userId}`),
+  // Goyave Empire: DB-backed save state
+  loadGoyaveSave: () =>
+    api.get<{ saveData: string | null }>('/games/goyave_empire/save'),
+  saveGoyaveState: (saveData: string) =>
+    api.post('/games/goyave_empire/save', { saveData }),
 };
 
 export interface DailyRacerLeaderboardEntry {

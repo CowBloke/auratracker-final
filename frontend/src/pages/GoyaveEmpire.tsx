@@ -10,6 +10,7 @@ const SAVE_KEY = 'goyave_empire_save';
 const TICK_INTERVAL_MS = 200;
 const OFFLINE_THRESHOLD_MS = 30_000;
 const COST_SCALE = 1.15;
+const DB_SAVE_INTERVAL_MS = 60_000; // Save to DB every 60 seconds
 
 // ---- Types ----
 type UpgradeTarget = 'click' | 'tree' | 'picker' | 'garden' | 'orchard' | 'factory' | 'plantation' | 'lab' | 'rocket' | 'dimension';
@@ -201,28 +202,59 @@ export default function GoyaveEmpire() {
   const saveRef = useRef<SaveState>(save);
   saveRef.current = save;
 
-  // Offline earnings on mount
-  useEffect(() => {
-    const loaded = loadSave();
-    const now = Date.now();
-    const elapsed = (now - loaded.lastTick) / 1000;
-
-    if (elapsed > OFFLINE_THRESHOLD_MS / 1000) {
-      const gps = totalGps(loaded.buildings, loaded.upgrades);
-      const earned = gps * elapsed;
-      if (earned >= 1) {
-        const updated: SaveState = { ...loaded, guavas: loaded.guavas + earned, totalGuavas: loaded.totalGuavas + earned, lastTick: now };
-        setSave(updated);
-        persistSave(updated);
-        setOfflineGuavas(earned);
-        return;
-      }
+  const saveToDb = useCallback(async (state: SaveState) => {
+    try {
+      await gamesApi.saveGoyaveState(JSON.stringify(state));
+    } catch {
+      // Non-fatal: localStorage is the fallback
     }
-    const updated = { ...loaded, lastTick: now };
-    setSave(updated);
-    persistSave(updated);
+  }, []);
+
+  // Load from DB on mount, fallback to localStorage
+  useEffect(() => {
+    const init = async () => {
+      let loaded = loadSave();
+      try {
+        const res = await gamesApi.loadGoyaveSave();
+        if (res.data.saveData) {
+          const dbSave = JSON.parse(res.data.saveData) as SaveState;
+          const def = defaultSave();
+          loaded = { ...def, ...dbSave, buildings: { ...def.buildings, ...(dbSave.buildings ?? {}) } };
+          persistSave(loaded);
+        }
+      } catch {
+        // Fallback to localStorage already loaded above
+      }
+
+      const now = Date.now();
+      const elapsed = (now - loaded.lastTick) / 1000;
+      if (elapsed > OFFLINE_THRESHOLD_MS / 1000) {
+        const gps = totalGps(loaded.buildings, loaded.upgrades);
+        const earned = gps * elapsed;
+        if (earned >= 1) {
+          const updated: SaveState = { ...loaded, guavas: loaded.guavas + earned, totalGuavas: loaded.totalGuavas + earned, lastTick: now };
+          setSave(updated);
+          persistSave(updated);
+          setOfflineGuavas(earned);
+          return;
+        }
+      }
+      const updated = { ...loaded, lastTick: now };
+      setSave(updated);
+      persistSave(updated);
+    };
+
+    init();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Periodic DB save every 60 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      saveToDb(saveRef.current);
+    }, DB_SAVE_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [saveToDb]);
 
   // Game tick
   useEffect(() => {
@@ -296,12 +328,13 @@ export default function GoyaveEmpire() {
       const freshSave: SaveState = { ...defaultSave(), cashOutScore: Math.max(score, saveRef.current.cashOutScore), lastTick: Date.now() };
       setSave(freshSave);
       persistSave(freshSave);
+      saveToDb(freshSave);
     } catch (err) {
       console.error('Cash out failed:', err);
     } finally {
       setIsCashingOut(false);
     }
-  }, [user, isCashingOut, fetchLeaderboard, refreshUser]);
+  }, [user, isCashingOut, fetchLeaderboard, refreshUser, saveToDb]);
 
   const handleDeleteScore = async (userId: string, username: string) => {
     if (!confirm(`Supprimer le score de ${username} ?`)) return;

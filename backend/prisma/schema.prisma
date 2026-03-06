@@ -70,6 +70,7 @@ model User {
   // Notifications
   notifications       Notification[]
   dailyRacerRuns      DailyRacerRun[]
+  goyaveSave          GoyaveSave?
 
   @@index([aura])
   @@index([money])
@@ -163,6 +164,15 @@ model GameStats {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, gameType])
+}
+
+model GoyaveSave {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  saveData  String   // JSON blob of SaveState
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model DailyRacerRun {

@@ -23,6 +23,7 @@ import { UsernameDisplay } from '@/components/ui/username-display';
 interface SearchUser {
   id: string;
   username: string;
+  firstName?: string | null;
   usernameColor?: string | null;
   profilePicture?: string | null;
   bio?: string | null;
@@ -101,20 +102,20 @@ export default function Header() {
                 Rechercher un joueur
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-full sm:max-w-md">
+            <SheetContent side="right" className="flex w-full flex-col sm:max-w-md">
               <SheetHeader>
                 <SheetTitle>Rechercher un joueur</SheetTitle>
               </SheetHeader>
-              <div className="mt-6 space-y-4">
+              <div className="flex min-h-0 flex-1 flex-col gap-4 pt-6">
                 <Input
                   type="text"
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
                   placeholder="Pseudo, ID..."
                   autoFocus
-                  className="h-12 border-border/50"
+                  className="h-12 shrink-0 border-border/50"
                 />
-                <ScrollArea className="max-h-[60vh]">
+                <ScrollArea className="flex-1">
                   <div className="space-y-0 pr-4">
                   {isLoadingUsers ? (
                     <p className="text-sm text-muted-foreground py-4">Chargement des joueurs...</p>
@@ -142,6 +143,7 @@ export default function Header() {
                         <div className="min-w-0 flex-1">
                           <UsernameDisplay
                             username={u.username}
+                            firstName={u.firstName}
                             usernameColor={u.usernameColor}
                             className="block"
                             usernameClassName="text-sm font-medium"

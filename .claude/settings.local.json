@@ -18,7 +18,8 @@
       "Bash(xargs grep -l \"gamesApi\\\\|games\\\\/\")",
       "mcp__ide__getDiagnostics",
       "Bash(npx vite:*)",
-      "Bash(grep -rn \"OnlineHistoryPoint\" \"c:\\\\Users\\\\cowbl\\\\source\\\\repos\\\\CRust\\\\auratracker-final\\\\frontend\\\\src\"\" --include=\"*.ts\" --include=\"*.tsx \")"
+      "Bash(grep -rn \"OnlineHistoryPoint\" \"c:\\\\Users\\\\cowbl\\\\source\\\\repos\\\\CRust\\\\auratracker-final\\\\frontend\\\\src\"\" --include=\"*.ts\" --include=\"*.tsx \")",
+      "Bash(npx prisma:*)"
     ]
   }
 }

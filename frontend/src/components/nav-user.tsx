@@ -40,6 +40,7 @@ export function NavUser({
 }: {
   user: {
     name: string
+    firstName?: string | null
     email: string
     avatar: string
     usernameColor?: string | null
@@ -80,6 +81,7 @@ export function NavUser({
               <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                 <UsernameDisplay
                   username={user.name}
+                  firstName={user.firstName}
                   usernameColor={user.usernameColor}
                   usernameClassName="font-semibold"
                 />
