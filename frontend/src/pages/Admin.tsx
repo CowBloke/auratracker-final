@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { adminApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, Badge, UserBadge, AdminUpdatePopup } from '../services/api';
+import { adminApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup } from '../services/api';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -117,9 +117,7 @@ const ACTION_LABELS: Record<string, string> = {
   inventory_remove: 'Inventaire retiré',
   chat_clear: 'Chat vidé',
   stats_delete: 'Stats supprimées',
-  badge_create: 'Badge créé',
-  badge_assign: 'Badge attribué',
-  badge_remove: 'Badge retiré',
+
   update_popup_create: 'Popup update créée',
   update_popup_update: 'Popup update modifiée',
   update_popup_delete: 'Popup update supprimée',
@@ -155,8 +153,7 @@ const METADATA_LABELS: Record<string, string> = {
   content: 'Contenu',
   status: 'Statut',
   votes: 'Votes',
-  badgeId: 'Badge',
-  badgeName: 'Badge',
+
 };
 
 const GAME_TYPE_LABELS: Record<string, string> = {
@@ -341,7 +338,7 @@ export default function Admin() {
   const [mutingUser, setMutingUser] = useState<string | null>(null);
   const [clearingChat, setClearingChat] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'inbox' | 'users' | 'logs' | 'bans' | 'content' | 'badges' | 'communication' | 'settings' | 'activity'>('inbox');
+  const [activeTab, setActiveTab] = useState<'inbox' | 'users' | 'logs' | 'bans' | 'content' | 'communication' | 'settings' | 'activity'>('inbox');
   const [commSubTab, setCommSubTab] = useState<'announcement' | 'login' | 'updates' | 'maintenance'>('announcement');
 
   // Activity tab state
@@ -380,18 +377,6 @@ export default function Admin() {
   const [itemForm, setItemForm] = useState<ItemFormData>(defaultItemForm);
   const [savingItem, setSavingItem] = useState(false);
   const [deletingItem, setDeletingItem] = useState<string | null>(null);
-
-  // Badge management state
-  const [badges, setBadges] = useState<Badge[]>([]);
-  const [loadingBadges, setLoadingBadges] = useState(false);
-  const [creatingBadge, setCreatingBadge] = useState(false);
-  const [badgeForm, setBadgeForm] = useState({ name: '', color: '#f59e0b' });
-  const [badgeUserId, setBadgeUserId] = useState('');
-  const [badgeAssignId, setBadgeAssignId] = useState('');
-  const [userBadges, setUserBadges] = useState<UserBadge[]>([]);
-  const [loadingUserBadges, setLoadingUserBadges] = useState(false);
-  const [assigningBadge, setAssigningBadge] = useState(false);
-  const [removingBadgeId, setRemovingBadgeId] = useState<string | null>(null);
 
   // Bug reports state
   const [bugReports, setBugReports] = useState<BugReport[]>([]);
@@ -661,7 +646,6 @@ export default function Admin() {
   useEffect(() => {
     fetchUsers();
     fetchItems();
-    fetchBadges();
     fetchBugReports();
     fetchPendingUsers();
     fetchBans();
@@ -671,14 +655,6 @@ export default function Admin() {
     fetchUpdatePopups();
     fetchActivity('day');
   }, []);
-
-  useEffect(() => {
-    if (badgeUserId) {
-      fetchUserBadges(badgeUserId);
-    } else {
-      setUserBadges([]);
-    }
-  }, [badgeUserId]);
 
   // Scroll-wheel horizontal zoom for the activity chart
   useEffect(() => {
@@ -743,18 +719,6 @@ export default function Admin() {
     }
   };
 
-  const fetchBadges = async () => {
-    try {
-      setLoadingBadges(true);
-      const res = await adminApi.getBadges();
-      setBadges(res.data.badges);
-    } catch (error) {
-      console.error('Failed to fetch badges:', error);
-      showMessage('error', 'Erreur lors du chargement des badges');
-    } finally {
-      setLoadingBadges(false);
-    }
-  };
 
   const fetchBugReports = async () => {
     try {
@@ -1467,70 +1431,6 @@ export default function Admin() {
     }
   };
 
-  const createBadge = async () => {
-    const name = badgeForm.name.trim();
-    if (!name) {
-      showMessage('error', 'Nom du badge requis');
-      return;
-    }
-    try {
-      setCreatingBadge(true);
-      const res = await adminApi.createBadge({ name, color: badgeForm.color });
-      setBadges((prev) => [res.data.badge, ...prev]);
-      setBadgeForm({ name: '', color: badgeForm.color });
-      showMessage('success', 'Badge créé');
-    } catch (error: any) {
-      showMessage('error', error.response?.data?.error || 'Erreur');
-    } finally {
-      setCreatingBadge(false);
-    }
-  };
-
-  const fetchUserBadges = async (userId: string) => {
-    try {
-      setLoadingUserBadges(true);
-      const res = await adminApi.getUserBadges(userId);
-      setUserBadges(res.data.badges);
-    } catch (error) {
-      console.error('Failed to fetch user badges:', error);
-      showMessage('error', 'Erreur lors du chargement des badges utilisateur');
-    } finally {
-      setLoadingUserBadges(false);
-    }
-  };
-
-  const assignBadgeToUser = async () => {
-    if (!badgeUserId || !badgeAssignId) return;
-    try {
-      setAssigningBadge(true);
-      const res = await adminApi.addUserBadge(badgeUserId, { badgeId: badgeAssignId });
-      if (res.data.userBadge && !res.data.alreadyAssigned) {
-        setUserBadges((prev) => [res.data.userBadge, ...prev]);
-        showMessage('success', 'Badge attribué');
-      } else {
-        showMessage('error', 'Badge déjà attribué');
-      }
-    } catch (error: any) {
-      showMessage('error', error.response?.data?.error || 'Erreur');
-    } finally {
-      setAssigningBadge(false);
-    }
-  };
-
-  const removeBadgeFromUser = async (badgeId: string) => {
-    if (!badgeUserId) return;
-    try {
-      setRemovingBadgeId(badgeId);
-      await adminApi.removeUserBadge(badgeUserId, badgeId);
-      setUserBadges((prev) => prev.filter((userBadge) => userBadge.badge.id !== badgeId));
-      showMessage('success', 'Badge retiré');
-    } catch (error: any) {
-      showMessage('error', error.response?.data?.error || 'Erreur');
-    } finally {
-      setRemovingBadgeId(null);
-    }
-  };
-
   return (
     <PageShell>
       <div className={SPACING.PAGE_CONTENT}>
@@ -1587,10 +1487,6 @@ export default function Admin() {
           <TabsTrigger value="content" className="flex items-center gap-2">
             <Package className="h-4 w-4" />
             Objets
-          </TabsTrigger>
-          <TabsTrigger value="badges" className="flex items-center gap-2">
-            <Trophy className="h-4 w-4" />
-            Badges
           </TabsTrigger>
           <TabsTrigger value="communication" className="flex items-center gap-2">
             <MessageCircle className="h-4 w-4" />
@@ -2218,171 +2114,6 @@ export default function Admin() {
               })()}
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="badges" className={SPACING.SECTION_SPACING}>
-          <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardDescription>Créer un badge</CardDescription>
-                  <span className="text-xs text-muted-foreground">
-                    {badges.length} existants
-                  </span>
-                </div>
-              </CardHeader>
-              <CardContent className={SPACING.CARD_SPACING}>
-                <div className="space-y-3">
-                <Input
-                  value={badgeForm.name}
-                  onChange={(e) => setBadgeForm((prev) => ({ ...prev, name: e.target.value }))}
-                  placeholder="Nom du badge"
-                />
-                <div className="flex items-center gap-3">
-                  <Input
-                    type="color"
-                    value={badgeForm.color}
-                    onChange={(e) => setBadgeForm((prev) => ({ ...prev, color: e.target.value }))}
-                    className="h-10 w-16 rounded border bg-transparent p-1"
-                    aria-label="Couleur du badge"
-                  />
-                  <Input
-                    value={badgeForm.color}
-                    onChange={(e) => setBadgeForm((prev) => ({ ...prev, color: e.target.value }))}
-                    placeholder="#F59E0B"
-                  />
-                  <Button onClick={createBadge} disabled={creatingBadge}>
-                    {creatingBadge ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                    <span className="ml-2">Ajouter</span>
-                  </Button>
-                </div>
-                {badgeForm.name && (
-                  <span
-                    className="inline-flex text-xs   px-2.5 py-1 rounded-full border"
-                    style={{ color: badgeForm.color, borderColor: badgeForm.color }}
-                  >
-                    {badgeForm.name}
-                  </span>
-                )}
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-xs text-muted-foreground  ">
-                  Badges disponibles
-                </h3>
-                {loadingBadges ? (
-                  <div className="flex justify-center py-6">
-                    <div className="w-1 h-6 bg-foreground/20 animate-pulse" />
-                  </div>
-                ) : badges.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Aucun badge cree.</p>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {badges.map((badge) => (
-                      <span
-                        key={badge.id}
-                        className="text-xs   px-2.5 py-1 rounded-full border"
-                        style={{ color: badge.color, borderColor: badge.color }}
-                      >
-                        {badge.name}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardDescription>Attribuer un badge</CardDescription>
-                  <span className="text-xs text-muted-foreground">
-                    {users.length} utilisateurs
-                  </span>
-                </div>
-              </CardHeader>
-              <CardContent className={SPACING.CARD_SPACING}>
-                <div className="space-y-3">
-                  <Select value={badgeUserId} onValueChange={(value) => {
-                    setBadgeUserId(value);
-                    setBadgeAssignId('');
-                  }}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choisir un utilisateur" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {users.map((u) => (
-                        <SelectItem key={u.id} value={u.id}>
-                          {u.username}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="flex items-center gap-3">
-                    <Select value={badgeAssignId} onValueChange={setBadgeAssignId} disabled={!badgeUserId || badges.length === 0}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choisir un badge" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {badges.map((badge) => (
-                          <SelectItem key={badge.id} value={badge.id}>
-                            {badge.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      onClick={assignBadgeToUser}
-                      disabled={!badgeUserId || !badgeAssignId || assigningBadge}
-                    >
-                      {assigningBadge ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                      <span className="ml-2">Attribuer</span>
-                    </Button>
-                  </div>
-                </div>
-                <div className="space-y-2 mt-4">
-                  <h3 className="text-xs text-muted-foreground  ">
-                    Badges de l'utilisateur
-                  </h3>
-                  {!badgeUserId ? (
-                    <p className="text-sm text-muted-foreground">Sélectionne un utilisateur.</p>
-                  ) : loadingUserBadges ? (
-                    <div className="flex justify-center py-6">
-                      <div className="w-1 h-6 bg-foreground/20 animate-pulse" />
-                    </div>
-                  ) : userBadges.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Aucun badge attribué.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {userBadges.map((userBadge) => (
-                        <div key={userBadge.id} className="flex items-center justify-between border border-border/30 px-3 py-2">
-                          <span
-                            className="text-xs   px-2.5 py-1 rounded-full border"
-                            style={{ color: userBadge.badge.color, borderColor: userBadge.badge.color }}
-                          >
-                            {userBadge.badge.name}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeBadgeFromUser(userBadge.badge.id)}
-                            disabled={removingBadgeId === userBadge.badge.id}
-                          >
-                            {removingBadgeId === userBadge.badge.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <X className="h-4 w-4" />
-                            )}
-                            <span className="ml-2">Retirer</span>
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </TabsContent>
 
         <TabsContent value="settings" className={SPACING.SECTION_SPACING}>

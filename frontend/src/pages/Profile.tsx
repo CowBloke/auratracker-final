@@ -6,8 +6,6 @@ import { Edit2, Save, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
@@ -24,14 +22,6 @@ interface ProfileUser {
   profilePicture?: string | null;
   bio?: string | null;
   createdAt: string;
-  badges: Array<{
-    id: string;
-    name: string;
-    description?: string | null;
-    color: string;
-    assignedAt: string;
-    userBadgeId: string;
-  }>;
   auraCoinStats?: {
     transactionCount: number;
     totalMoney: number;
@@ -195,29 +185,6 @@ export default function Profile() {
             className={cn(TYPOGRAPHY.H1, "md:text-7xl")}
             labelClassName="text-sm md:text-base text-muted-foreground"
           />
-            {profileUser.badges?.length > 0 && (
-              <TooltipProvider>
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {profileUser.badges.map((badge) => (
-                    <Tooltip key={badge.userBadgeId || badge.id}>
-                      <TooltipTrigger asChild>
-                        <Badge
-                          className="text-white border-transparent"
-                          style={{ backgroundColor: badge.color }}
-                        >
-                          {badge.name}
-                        </Badge>
-                      </TooltipTrigger>
-                      {badge.description ? (
-                        <TooltipContent>
-                          <p>{badge.description}</p>
-                        </TooltipContent>
-                      ) : null}
-                    </Tooltip>
-                  ))}
-                </div>
-              </TooltipProvider>
-            )}
             <p className={cn(TYPOGRAPHY.SMALL, "mt-2")}>
               Membre depuis {new Date(profileUser.createdAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
             </p>

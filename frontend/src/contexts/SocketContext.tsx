@@ -16,12 +16,6 @@ interface ChatMessage {
   pinnedAt?: string | null;
   isTopMoney?: boolean;
   isTopAura?: boolean;
-  badges?: Array<{
-    id: string;
-    name: string;
-    description?: string | null;
-    color: string;
-  }>;
   reactions: Array<{ emoji: string; count: number }>;
   replyTo?: {
     id: string;

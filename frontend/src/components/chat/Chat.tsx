@@ -11,7 +11,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/compon
 import { cn } from '@/lib/utils';
 import { getPageMeta } from './presence';
 import { resolveImageUrl } from '@/lib/images';
-import { BadgeWithTooltip } from '@/components/ui/badge-tooltip';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { UsernameDisplay } from '@/components/ui/username-display';
 
@@ -180,19 +179,6 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                         >
                           <UsernameDisplay username={msg.username} usernameColor={msg.usernameColor} />
                         </Button>
-                        {msg.badges && msg.badges.length > 0 && (
-                          <div className="flex items-center gap-1">
-                            {msg.badges.map((badge) => (
-                              <BadgeWithTooltip
-                                key={badge.id}
-                                name={badge.name}
-                                description={badge.description}
-                                color={badge.color}
-                                className="text-[8px] px-1.5 py-0.5"
-                              />
-                            ))}
-                          </div>
-                        )}
                         {(msg.isTopMoney || msg.isTopAura) && (
                           <div className="flex items-center gap-1">
                             {msg.isTopMoney && (

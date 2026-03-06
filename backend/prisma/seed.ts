@@ -81,8 +81,6 @@ async function clearMockData(mockUsernames: string[], existingTables: Set<string
   await prisma.partyMember.deleteMany();
   await prisma.party.deleteMany();
   await prisma.transfer.deleteMany();
-  await prisma.userBadge.deleteMany();
-  await prisma.badge.deleteMany();
   await prisma.userItem.deleteMany();
   await prisma.item.deleteMany();
   await prisma.log.deleteMany();
@@ -459,35 +457,6 @@ async function main() {
   await prisma.item.createMany({ data: items });
   const seededItems = await prisma.item.findMany();
   const itemByName = new Map(seededItems.map((item) => [item.name, item]));
-
-  const badges = [
-    { name: 'MVP', color: '#F59E0B', description: 'Top performer in multiple leaderboards.' },
-    { name: 'Trader', color: '#10B981', description: 'Active Aura Coin and Polymarket player.' },
-    { name: 'Builder', color: '#38BDF8', description: 'Creates clans, suggestions, and events.' },
-  ];
-  await prisma.badge.createMany({ data: badges });
-  const seededBadges = await prisma.badge.findMany();
-  const badgeByName = new Map(seededBadges.map((badge) => [badge.name, badge]));
-
-  await prisma.userBadge.createMany({
-    data: [
-      {
-        userId: userByName.get('milo')!.id,
-        badgeId: badgeByName.get('MVP')!.id,
-        isSelected: true,
-      },
-      {
-        userId: userByName.get('salma')!.id,
-        badgeId: badgeByName.get('Trader')!.id,
-        isSelected: true,
-      },
-      {
-        userId: userByName.get('zoe')!.id,
-        badgeId: badgeByName.get('Builder')!.id,
-        isSelected: true,
-      },
-    ],
-  });
 
   await prisma.userItem.createMany({
     data: [

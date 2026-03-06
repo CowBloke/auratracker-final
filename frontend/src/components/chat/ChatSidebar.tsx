@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../../contexts/SocketContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { Send, X, MoreHorizontal, Pin, PinOff, Award, Reply } from 'lucide-react';
+import { Send, X, MoreHorizontal, Pin, PinOff, Reply } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -20,8 +20,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useChatSidebar } from './ChatSidebarWrapper';
 import { resolveImageUrl } from '@/lib/images';
-import { BadgeSelectionModal } from '@/components/badges/BadgeSelectionModal';
-import { BadgeWithTooltip } from '@/components/ui/badge-tooltip';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { UsernameDisplay } from '@/components/ui/username-display';
 
@@ -75,7 +73,6 @@ export default function ChatSidebar() {
   const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);
   const [mentionState, setMentionState] = useState<MentionState | null>(null);
   const [mentionIndex, setMentionIndex] = useState(0);
-  const [badgeModalOpen, setBadgeModalOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<TimeoutRef>(null);
@@ -297,24 +294,9 @@ export default function ChatSidebar() {
               </span>
             )}
           </div>
-          <Button
-            type="button"
-            onClick={() => setBadgeModalOpen(true)}
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground"
-            title="Gérer tes badges"
-          >
-            <Award className="h-4 w-4" />
-          </Button>
         </div>
       </SidebarHeader>
 
-      <BadgeSelectionModal
-        open={badgeModalOpen}
-        onOpenChange={setBadgeModalOpen}
-      />
-      
       <SidebarContent className="flex flex-col">
         <div className="flex-1 flex flex-col min-h-0">
           <ScrollArea className="flex-1 px-3">
@@ -383,19 +365,6 @@ export default function ChatSidebar() {
                         >
                           <UsernameDisplay username={msg.username} usernameColor={msg.usernameColor} />
                         </Button>
-                        {msg.badges && msg.badges.length > 0 && (
-                          <div className="flex items-center gap-1">
-                            {msg.badges.map((badge) => (
-                              <BadgeWithTooltip
-                                key={badge.id}
-                                name={badge.name}
-                                description={badge.description}
-                                color={badge.color}
-                                className="text-[8px] px-1.5 py-0.5"
-                              />
-                            ))}
-                          </div>
-                        )}
                         {(msg.isTopMoney || msg.isTopAura) && (
                           <div className="flex items-center gap-1">
                             {msg.isTopMoney && (

@@ -50,7 +50,6 @@ model User {
   bombPartyStats        BombPartyStats?
   bansReceived          Ban[]                  @relation("BannedUser")
   bansIssued            Ban[]                  @relation("BanIssuer")
-  userBadges            UserBadge[]
   ownedClans            Clan[]                 @relation("ClanOwner")
   clanMemberships       ClanMember[]
   clanJoinRequests      ClanJoinRequest[]
@@ -74,32 +73,6 @@ model User {
 
   @@index([aura])
   @@index([money])
-}
-
-// Badge System
-model Badge {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  color       String
-  createdAt   DateTime @default(now())
-
-  users UserBadge[]
-}
-
-model UserBadge {
-  id         String   @id @default(uuid())
-  userId     String
-  badgeId    String
-  assignedAt DateTime @default(now())
-  isSelected Boolean  @default(false)
-
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  badge Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, badgeId])
-  @@index([userId])
-  @@index([badgeId])
 }
 
 // Item Model
@@ -738,7 +711,7 @@ model UserUpdatePopupView {
 // Notification types (extensible via the `type` string field):
 //   AURA_RECEIVED, MONEY_RECEIVED, GIFT_RECEIVED, ITEM_RECEIVED,
 //   CLAN_INVITE, CLAN_JOIN_REQUEST, CLAN_JOIN_ACCEPTED, CLAN_JOIN_REJECTED,
-//   BADGE_EARNED, QUEST_COMPLETED, POLYMARKET_WIN, POLYMARKET_LOSS,
+//   QUEST_COMPLETED, POLYMARKET_WIN, POLYMARKET_LOSS,
 //   PARTY_INVITE, SYSTEM, ADMIN
 model Notification {
   id        String   @id @default(uuid())

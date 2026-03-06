@@ -434,19 +434,6 @@ export interface AdminUser {
   updatedAt: string;
 }
 
-export interface Badge {
-  id: string;
-  name: string;
-  color: string;
-  createdAt: string;
-}
-
-export interface UserBadge {
-  id: string;
-  assignedAt: string;
-  badge: Badge;
-}
-
 export interface AdminUpdatePopup {
   id: string;
   title: string;
@@ -632,15 +619,6 @@ export const adminApi = {
   updateUser: (id: string, data: { username?: string; firstName?: string | null; aura?: number; money?: number; auraCoinBalance?: number; dailyAuraLimit?: number; password?: string; isChatMuted?: boolean }) =>
     api.put<{ user: AdminUser }>(`/admin/users/${id}`, data),
   deleteUser: (id: string) => api.delete<{ success: boolean; message: string }>(`/admin/users/${id}`),
-  getBadges: () => api.get<{ badges: Badge[] }>('/admin/badges'),
-  createBadge: (data: { name: string; color: string }) =>
-    api.post<{ badge: Badge }>('/admin/badges', data),
-  getUserBadges: (id: string) =>
-    api.get<{ badges: UserBadge[] }>(`/admin/users/${id}/badges`),
-  addUserBadge: (id: string, data: { badgeId: string }) =>
-    api.post<{ userBadge: UserBadge; alreadyAssigned?: boolean }>(`/admin/users/${id}/badges`, data),
-  removeUserBadge: (id: string, badgeId: string) =>
-    api.delete<{ success: boolean }>(`/admin/users/${id}/badges/${badgeId}`),
   getUserInventory: (id: string) =>
     api.get<{ items: AdminInventoryItem[] }>(`/admin/users/${id}/inventory`),
   addUserInventoryItem: (id: string, data: { itemId: string; quantity?: number }) =>
