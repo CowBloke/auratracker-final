@@ -199,6 +199,28 @@
     100% { transform: scale(4); opacity: 0; }
   }
 
+  /* Poker animations */
+  @keyframes poker-deal {
+    from { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+    to   { opacity: 1; transform: translate(0, 0) scale(1); }
+  }
+  @keyframes poker-reveal {
+    0%   { transform: rotateY(90deg) scale(0.9); opacity: 0.5; }
+    100% { transform: rotateY(0deg)  scale(1);   opacity: 1; }
+  }
+  @keyframes poker-pulse-turn {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 200, 0, 0.6); }
+    50%       { box-shadow: 0 0 0 10px rgba(255, 200, 0, 0); }
+  }
+  @keyframes poker-chip-in {
+    from { opacity: 0; transform: translateY(-8px) scale(0.7); }
+    to   { opacity: 1; transform: translateY(0)    scale(1); }
+  }
+  .poker-deal    { animation: poker-deal    0.38s cubic-bezier(.22,.61,.36,1) forwards; }
+  .poker-reveal  { animation: poker-reveal  0.42s cubic-bezier(.22,.61,.36,1) forwards; }
+  .poker-pulse   { animation: poker-pulse-turn 1.6s ease-in-out infinite; }
+  .poker-chip-in { animation: poker-chip-in 0.3s ease-out forwards; }
+
   .text-gradient {
     @apply bg-clip-text text-transparent bg-gradient-to-r;
   }

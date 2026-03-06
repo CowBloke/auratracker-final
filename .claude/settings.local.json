@@ -16,7 +16,8 @@
       "Bash(node_modules/.bin/tsc --noEmit)",
       "Bash(powershell -Command \"\\(Get-Content ''c:\\\\Users\\\\cowbl\\\\source\\\\repos\\\\CRust\\\\auratracker-final\\\\frontend\\\\src\\\\pages\\\\Suggestions.tsx'' -Raw\\) -replace [char]0x2018, [char]0x27 -replace [char]0x2019, [char]0x27 | Set-Content ''c:\\\\Users\\\\cowbl\\\\source\\\\repos\\\\CRust\\\\auratracker-final\\\\frontend\\\\src\\\\pages\\\\Suggestions.tsx'' -NoNewline\")",
       "Bash(xargs grep -l \"gamesApi\\\\|games\\\\/\")",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(npx vite:*)"
     ]
   }
 }

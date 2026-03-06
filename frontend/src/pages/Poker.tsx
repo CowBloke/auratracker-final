@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocket } from '@/contexts/SocketContext';
-import { ArrowLeft, Clock, Coins, LogOut, Play, Users } from 'lucide-react';
+import { ArrowLeft, Clock, LogOut, Play, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -14,36 +14,659 @@ import { UsernameDisplay } from '@/components/ui/username-display';
 
 const ACTION_TIME_LIMIT = 25000;
 
-const suitSymbol: Record<string, string> = { h: '♥', d: '♦', c: '♣', s: '♠' };
+// ─── Suit config ─────────────────────────────────────────────────────────────
+const SUIT_SYMBOL: Record<string, string> = { h: '♥', d: '♦', c: '♣', s: '♠' };
+const SUIT_COLOR: Record<string, string> = { h: '#e03030', d: '#e03030', c: '#111', s: '#111' };
 
-const Card = ({ card, muted = false }: { card: string; muted?: boolean }) => {
+// ─── Card sizes ───────────────────────────────────────────────────────────────
+const CARD_SIZE = {
+  sm: { w: 32, h: 48, rank: 9,  suit: 8,  center: 16 },
+  md: { w: 42, h: 62, rank: 12, suit: 10, center: 22 },
+  lg: { w: 58, h: 84, rank: 15, suit: 12, center: 30 },
+};
+
+// ─── PlayingCard ──────────────────────────────────────────────────────────────
+function PlayingCard({
+  card,
+  muted = false,
+  size = 'md',
+  animClass,
+  delay = 0,
+}: {
+  card: string;
+  muted?: boolean;
+  size?: 'sm' | 'md' | 'lg';
+  animClass?: string;
+  delay?: number;
+}) {
+  const s = CARD_SIZE[size];
+
+  const base: React.CSSProperties = {
+    width: s.w,
+    height: s.h,
+    borderRadius: 6,
+    flexShrink: 0,
+    animationDelay: delay ? `${delay}ms` : undefined,
+  };
+
   if (!card) {
-    return <div className="h-16 w-12 rounded border border-dashed border-muted-foreground/40" />;
+    return (
+      <div
+        style={{
+          ...base,
+          border: '2px dashed rgba(255,255,255,0.18)',
+          background: 'transparent',
+        }}
+      />
+    );
   }
+
+  if (card === '??') {
+    return (
+      <div
+        className={animClass}
+        style={{
+          ...base,
+          background: 'linear-gradient(145deg, #1e2d6e 0%, #0d1b4a 100%)',
+          border: '2px solid rgba(255,255,255,0.15)',
+          boxShadow: '0 3px 10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)',
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        {/* cross-hatch pattern */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 3,
+            borderRadius: 4,
+            border: '1px solid rgba(255,255,255,0.1)',
+            backgroundImage:
+              'repeating-linear-gradient(45deg,rgba(255,255,255,0.05) 0,rgba(255,255,255,0.05) 1px,transparent 1px,transparent 9px)',
+          }}
+        />
+      </div>
+    );
+  }
+
   const rank = card[0];
   const suit = card[1];
-  const isHidden = card === '??';
-  const isRed = suit === 'h' || suit === 'd';
+  const color = SUIT_COLOR[suit] ?? '#111';
 
   return (
     <div
-      className={cn(
-        'h-16 w-12 rounded border border-border bg-card px-2 py-2 text-sm flex flex-col justify-between',
-        muted && 'opacity-50',
-      )}
+      className={animClass}
+      style={{
+        ...base,
+        background: '#fff',
+        border: '1px solid #ccc',
+        boxShadow: '0 3px 10px rgba(0,0,0,0.4)',
+        padding: 3,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        opacity: muted ? 0.3 : 1,
+      }}
     >
-      {isHidden ? (
-        <div className="flex-1 bg-muted/60 rounded" />
-      ) : (
-        <>
-          <span className={cn('font-semibold', isRed && 'text-red-500')}>{rank}</span>
-          <span className={cn('text-xs', isRed && 'text-red-500')}>{suitSymbol[suit] || '?'}</span>
-        </>
+      {/* top-left */}
+      <div style={{ color, lineHeight: 1 }}>
+        <div style={{ fontSize: s.rank, fontWeight: 800 }}>{rank}</div>
+        <div style={{ fontSize: s.suit, marginTop: -2 }}>{SUIT_SYMBOL[suit]}</div>
+      </div>
+      {/* center suit */}
+      <div style={{ textAlign: 'center', fontSize: s.center, color }}>{SUIT_SYMBOL[suit]}</div>
+      {/* bottom-right rotated */}
+      <div style={{ color, lineHeight: 1, transform: 'rotate(180deg)', alignSelf: 'flex-end' }}>
+        <div style={{ fontSize: s.rank, fontWeight: 800 }}>{rank}</div>
+        <div style={{ fontSize: s.suit, marginTop: -2 }}>{SUIT_SYMBOL[suit]}</div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Chip colours ─────────────────────────────────────────────────────────────
+const CHIP_TIERS = [
+  { min: 1000, bg: '#f0c040', ring: '#b89000' },
+  { min: 500,  bg: '#a855f7', ring: '#7e22ce' },
+  { min: 100,  bg: '#374151', ring: '#111827' },
+  { min: 25,   bg: '#16a34a', ring: '#14532d' },
+  { min: 10,   bg: '#2563eb', ring: '#1e3a8a' },
+  { min: 5,    bg: '#dc2626', ring: '#7f1d1d' },
+  { min: 1,    bg: '#9ca3af', ring: '#6b7280' },
+];
+
+function chipColor(amount: number) {
+  return CHIP_TIERS.find((t) => amount >= t.min) ?? CHIP_TIERS[CHIP_TIERS.length - 1];
+}
+
+function ChipStack({ amount, label, className: cn_ }: { amount: number; label?: string; className?: string }) {
+  if (amount <= 0) return null;
+  const c = chipColor(amount);
+  const layers = Math.min(4, 1 + Math.floor(Math.log10(amount + 1)));
+  return (
+    <div className={cn_} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+      <div style={{ position: 'relative', width: 18, height: 18 + layers * 3 }}>
+        {Array.from({ length: layers }).map((_, i) => (
+          <div
+            key={i}
+            style={{
+              position: 'absolute',
+              width: 18,
+              height: 18,
+              borderRadius: '50%',
+              background: c.bg,
+              border: `2px solid ${c.ring}`,
+              bottom: i * 3,
+              boxShadow: '0 1px 4px rgba(0,0,0,0.5)',
+            }}
+          >
+            {i === layers - 1 && (
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 3,
+                  borderRadius: '50%',
+                  border: `1px solid rgba(255,255,255,0.3)`,
+                }}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+      <span
+        style={{
+          color: '#fff',
+          fontSize: 11,
+          fontWeight: 700,
+          textShadow: '0 1px 3px rgba(0,0,0,0.9)',
+          lineHeight: 1,
+        }}
+      >
+        {label ?? amount}
+      </span>
+    </div>
+  );
+}
+
+// ─── Role token (D / SB / BB) ─────────────────────────────────────────────────
+function RoleToken({ label, bg }: { label: string; bg: string }) {
+  return (
+    <div
+      style={{
+        width: 17,
+        height: 17,
+        borderRadius: '50%',
+        background: bg,
+        color: '#fff',
+        fontSize: 7,
+        fontWeight: 800,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        border: '1px solid rgba(255,255,255,0.35)',
+        flexShrink: 0,
+        boxShadow: '0 1px 4px rgba(0,0,0,0.5)',
+      }}
+    >
+      {label}
+    </div>
+  );
+}
+
+// ─── Seat positions (ellipse formula) ─────────────────────────────────────────
+// seatIndex 0 = me = bottom centre (angle 90° in screen coords)
+// Clockwise = decreasing angle
+function seatPos(seatIndex: number, total: number) {
+  const cx = 50, cy = 50, rx = 43, ry = 37;
+  const deg = 90 - seatIndex * (360 / total);
+  const rad = (deg * Math.PI) / 180;
+  return { left: `${cx + rx * Math.cos(rad)}%`, top: `${cy + ry * Math.sin(rad)}%` };
+}
+
+// ─── Turn timer ring (SVG) ────────────────────────────────────────────────────
+function TurnTimerRing({ progress }: { progress: number }) {
+  const r = 28, stroke = 3, c = 2 * Math.PI * r;
+  return (
+    <svg
+      width={r * 2 + stroke * 2}
+      height={r * 2 + stroke * 2}
+      style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%) rotate(-90deg)', pointerEvents: 'none' }}
+    >
+      <circle cx={r + stroke} cy={r + stroke} r={r} fill="none" stroke="rgba(255,200,0,0.15)" strokeWidth={stroke} />
+      <circle
+        cx={r + stroke}
+        cy={r + stroke}
+        r={r}
+        fill="none"
+        stroke="rgba(255,200,0,0.9)"
+        strokeWidth={stroke}
+        strokeDasharray={c}
+        strokeDashoffset={c * (1 - progress / 100)}
+        strokeLinecap="round"
+        style={{ transition: 'stroke-dashoffset 0.12s linear' }}
+      />
+    </svg>
+  );
+}
+
+// ─── PlayerSeat ───────────────────────────────────────────────────────────────
+interface SeatPlayer {
+  userId: string;
+  username: string;
+  usernameColor?: string | null;
+  hand: string[];
+  chips: number;
+  bet: number;
+  hasFolded: boolean;
+  isAllIn: boolean;
+  lastAction?: string;
+  isEliminated?: boolean;
+}
+
+function PlayerSeat({
+  player,
+  isDealer,
+  isSB,
+  isBB,
+  isTurn,
+  isMe,
+  showHand,
+  newlyRevealedIndexes,
+  newHand,
+  turnProgress,
+}: {
+  player: SeatPlayer;
+  isDealer: boolean;
+  isSB: boolean;
+  isBB: boolean;
+  isTurn: boolean;
+  isMe: boolean;
+  showHand: boolean;
+  newlyRevealedIndexes: Set<number>;
+  newHand: boolean;
+  turnProgress: number;
+}) {
+  const cards: string[] = showHand ? (player.hand ?? ['??', '??']) : ['??', '??'];
+
+  const borderColor = isTurn
+    ? 'rgba(255,200,0,0.9)'
+    : isMe
+    ? 'rgba(120,200,255,0.5)'
+    : player.hasFolded
+    ? 'rgba(255,255,255,0.1)'
+    : 'rgba(255,255,255,0.2)';
+
+  const plateBg = isTurn
+    ? 'rgba(60,50,0,0.85)'
+    : isMe
+    ? 'rgba(0,40,80,0.85)'
+    : 'rgba(0,0,0,0.72)';
+
+  const lastActionColor =
+    player.lastAction === 'fold'
+      ? '#f87171'
+      : player.lastAction === 'raise' || player.lastAction === 'bet'
+      ? '#fbbf24'
+      : '#86efac';
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 4,
+        transform: 'translate(-50%, -50%)',
+        opacity: player.isEliminated ? 0.35 : 1,
+        pointerEvents: player.isEliminated ? 'none' : undefined,
+      }}
+    >
+      {/* Cards above the nameplate for opponent seats */}
+      {!isMe && (
+        <div style={{ display: 'flex', gap: 3 }}>
+          {cards.map((c, i) => (
+            <PlayingCard
+              key={`${c}-${i}`}
+              card={c}
+              size="sm"
+              muted={player.hasFolded}
+              animClass={
+                newlyRevealedIndexes.has(i)
+                  ? 'poker-reveal'
+                  : newHand
+                  ? 'poker-deal'
+                  : undefined
+              }
+              delay={newHand ? i * 120 : 0}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Name plate */}
+      <div
+        className={isTurn ? 'poker-pulse' : undefined}
+        style={{
+          background: plateBg,
+          backdropFilter: 'blur(6px)',
+          border: `2px solid ${borderColor}`,
+          borderRadius: 9,
+          padding: '5px 9px',
+          minWidth: 82,
+          textAlign: 'center',
+          position: 'relative',
+          boxShadow: isTurn
+            ? '0 0 16px rgba(255,200,0,0.4)'
+            : '0 2px 8px rgba(0,0,0,0.5)',
+        }}
+      >
+        {isTurn && isMe && (
+          <TurnTimerRing progress={turnProgress} />
+        )}
+
+        {/* Role tokens row */}
+        {(isDealer || isSB || isBB) && (
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 3, marginBottom: 3 }}>
+            {isDealer && <RoleToken label="D" bg="#1a56db" />}
+            {isSB && <RoleToken label="SB" bg="#9f1239" />}
+            {isBB && <RoleToken label="BB" bg="#065f46" />}
+          </div>
+        )}
+
+        <UsernameDisplay
+          username={player.username}
+          usernameColor={player.usernameColor}
+          showLabel={false}
+          className="text-[11px] font-semibold justify-center"
+        />
+
+        {/* Chips */}
+        <div style={{ marginTop: 4, display: 'flex', justifyContent: 'center' }}>
+          <ChipStack amount={player.chips} />
+        </div>
+
+        {/* Bet */}
+        {player.bet > 0 && (
+          <div style={{ fontSize: 9, color: 'rgba(255,220,100,0.85)', marginTop: 2 }}>
+            Mise: {player.bet}
+          </div>
+        )}
+
+        {/* Last action */}
+        {player.lastAction && !player.isAllIn && (
+          <div
+            style={{
+              fontSize: 9,
+              color: lastActionColor,
+              marginTop: 2,
+              fontStyle: 'italic',
+            }}
+          >
+            {player.lastAction}
+          </div>
+        )}
+        {player.isAllIn && (
+          <div style={{ fontSize: 9, color: '#fbbf24', fontWeight: 800, marginTop: 2 }}>
+            ALL-IN
+          </div>
+        )}
+      </div>
+
+      {/* Cards below nameplate for my seat */}
+      {isMe && (
+        <div style={{ display: 'flex', gap: 3 }}>
+          {cards.map((c, i) => (
+            <PlayingCard
+              key={`${c}-${i}`}
+              card={c}
+              size="sm"
+              muted={player.hasFolded}
+              animClass={newHand ? 'poker-deal' : undefined}
+              delay={newHand ? i * 120 : 0}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
-};
+}
 
+// ─── Poker table view ─────────────────────────────────────────────────────────
+interface PokerGame {
+  players: SeatPlayer[];
+  communityCards: string[];
+  pot: number;
+  stage: string;
+  dealerId: string;
+  smallBlindId: string;
+  bigBlindId: string;
+  currentPlayerId: string;
+  handNumber: number;
+  maxHands: number;
+  smallBlind: number;
+  bigBlind: number;
+  startingStack: number;
+  highestBet: number;
+  minRaiseTo: number;
+  callAmount: number;
+  availableActions: string[];
+  turnEndsAt?: number;
+  lastHandResult?: { winners: { username: string }[]; pot: number } | null;
+  yourHand?: string[];
+}
+
+function PokerTableView({
+  game,
+  myUserId,
+  turnProgress,
+}: {
+  game: PokerGame;
+  myUserId: string;
+  turnProgress: number;
+}) {
+  const prevCommunityRef = useRef<string[]>([]);
+  const prevHandNumberRef = useRef<number>(game.handNumber);
+
+  const [revealedComm, setRevealedComm] = useState<Set<number>>(new Set());
+  const [newHand, setNewHand] = useState(false);
+
+  // Detect new hand → trigger deal animation
+  useEffect(() => {
+    if (game.handNumber !== prevHandNumberRef.current) {
+      prevHandNumberRef.current = game.handNumber;
+      setNewHand(true);
+      const t = setTimeout(() => setNewHand(false), 1000);
+      return () => clearTimeout(t);
+    }
+  }, [game.handNumber]);
+
+  // Detect newly revealed community cards
+  useEffect(() => {
+    const prev = prevCommunityRef.current;
+    const curr = game.communityCards;
+    const revealed = new Set<number>();
+    curr.forEach((c, i) => {
+      if (c && c !== '??' && (!prev[i] || prev[i] === '??')) revealed.add(i);
+    });
+    if (revealed.size) {
+      setRevealedComm(revealed);
+      const t = setTimeout(() => setRevealedComm(new Set()), 700);
+      prevCommunityRef.current = [...curr];
+      return () => clearTimeout(t);
+    }
+    prevCommunityRef.current = [...curr];
+  }, [game.communityCards.join(',')]);
+
+  // Reorder players: me first, then clockwise
+  const myIdx = game.players.findIndex((p) => p.userId === myUserId);
+  const ordered =
+    myIdx <= 0
+      ? [...game.players]
+      : [...game.players.slice(myIdx), ...game.players.slice(0, myIdx)];
+
+  const stageLabel: Record<string, string> = {
+    preflop: 'Préflop',
+    flop: 'Flop',
+    turn: 'Turn',
+    river: 'River',
+    showdown: 'Showdown',
+  };
+
+  return (
+    <div style={{ position: 'relative', width: '100%', paddingBottom: '58%', userSelect: 'none' }}>
+      {/* ── Table outer rail ── */}
+      <div
+        style={{
+          position: 'absolute',
+          left: '7%',
+          top: '8%',
+          width: '86%',
+          height: '84%',
+          borderRadius: '50%',
+          background: '#3d2010',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.7)',
+        }}
+      />
+      {/* ── Table inner rail ── */}
+      <div
+        style={{
+          position: 'absolute',
+          left: '8%',
+          top: '9.5%',
+          width: '84%',
+          height: '81%',
+          borderRadius: '50%',
+          background: '#5c3317',
+        }}
+      />
+      {/* ── Felt ── */}
+      <div
+        style={{
+          position: 'absolute',
+          left: '10%',
+          top: '12%',
+          width: '80%',
+          height: '76%',
+          borderRadius: '50%',
+          background:
+            'radial-gradient(ellipse at 40% 35%, #2d7a54 0%, #1e5c3c 45%, #133d28 80%, #0a2518 100%)',
+          boxShadow: 'inset 0 0 50px rgba(0,0,0,0.45)',
+        }}
+      >
+        {/* ── Center content ── */}
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -56%)',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 6,
+          }}
+        >
+          {/* Stage label */}
+          <div
+            style={{
+              color: 'rgba(255,255,255,0.4)',
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+            }}
+          >
+            {stageLabel[game.stage] ?? game.stage}
+          </div>
+
+          {/* Community cards */}
+          <div style={{ display: 'flex', gap: 5, justifyContent: 'center' }}>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <PlayingCard
+                key={i}
+                card={game.communityCards[i] ?? ''}
+                size="md"
+                animClass={
+                  revealedComm.has(i)
+                    ? 'poker-reveal'
+                    : undefined
+                }
+                delay={revealedComm.has(i) ? i * 80 : 0}
+              />
+            ))}
+          </div>
+
+          {/* Pot */}
+          {game.pot > 0 && (
+            <div
+              className="poker-chip-in"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'rgba(0,0,0,0.45)',
+                borderRadius: 20,
+                padding: '4px 10px',
+              }}
+            >
+              <ChipStack amount={game.pot} label={`Pot: ${game.pot}`} />
+            </div>
+          )}
+
+          {/* Last hand result */}
+          {game.lastHandResult && (
+            <div
+              style={{
+                fontSize: 10,
+                color: 'rgba(255,220,100,0.9)',
+                background: 'rgba(0,0,0,0.5)',
+                borderRadius: 6,
+                padding: '3px 8px',
+                maxWidth: 200,
+                textAlign: 'center',
+              }}
+            >
+              {game.lastHandResult.winners.map((w) => w.username).join(', ')} +{game.lastHandResult.pot}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Player seats ── */}
+      {ordered.map((player, si) => {
+        const pos = seatPos(si, ordered.length);
+        const isMe = player.userId === myUserId;
+        const showHand = game.stage === 'showdown' || isMe;
+        // Detect newly revealed hole cards at showdown
+        const revealedHoleIdxs = new Set<number>();
+        if (game.stage === 'showdown' && !isMe) {
+          (player.hand ?? []).forEach((c, i) => {
+            if (c && c !== '??') revealedHoleIdxs.add(i);
+          });
+        }
+        return (
+          <div key={player.userId} style={{ position: 'absolute', left: pos.left, top: pos.top }}>
+            <PlayerSeat
+              player={player}
+              isDealer={game.dealerId === player.userId}
+              isSB={game.smallBlindId === player.userId}
+              isBB={game.bigBlindId === player.userId}
+              isTurn={game.currentPlayerId === player.userId}
+              isMe={isMe}
+              showHand={showHand}
+              newlyRevealedIndexes={revealedHoleIdxs}
+              newHand={newHand}
+              turnProgress={isMe && game.currentPlayerId === player.userId ? turnProgress : 100}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Main Poker page ──────────────────────────────────────────────────────────
 export default function Poker() {
   const { user } = useAuth();
   const {
@@ -66,17 +689,20 @@ export default function Poker() {
   const [hasQuitPlayAgain, setHasQuitPlayAgain] = useState(false);
   const [playAgainProgress, setPlayAgainProgress] = useState(100);
 
-  const me = useMemo(() => pokerGame?.players.find((p) => p.userId === user?.id), [pokerGame, user?.id]);
+  const me = useMemo(
+    () => pokerGame?.players.find((p) => p.userId === user?.id),
+    [pokerGame, user?.id],
+  );
   const isLeader = useMemo(
     () => partyMembers.some((m) => m.userId === user?.id && m.isLeader),
     [partyMembers, user?.id],
   );
   const isMyTurn = pokerGame?.currentPlayerId === user?.id;
-  const canAct = isMyTurn && ((pokerGame?.availableActions?.length ?? 0) > 0);
-
+  const canAct = isMyTurn && (pokerGame?.availableActions?.length ?? 0) > 0;
   const maxBet = me ? me.bet + me.chips : 0;
   const callAmount = pokerGame?.callAmount ?? 0;
-  const minRaiseTarget = pokerGame ? Math.min(maxBet || 0, pokerGame.minRaiseTo) : 0;
+  const minRaiseTarget = pokerGame ? Math.min(maxBet, pokerGame.minRaiseTo) : 0;
+
   const stageLabel: Record<string, string> = {
     preflop: 'Préflop',
     flop: 'Flop',
@@ -85,106 +711,55 @@ export default function Poker() {
     showdown: 'Showdown',
   };
 
+  // Turn countdown
   useEffect(() => {
-    if (!pokerGame?.turnEndsAt) {
-      setTurnProgress(100);
-      return;
-    }
-    const interval = setInterval(() => {
-      const remaining = (pokerGame.turnEndsAt ?? Date.now()) - Date.now();
-      setTurnProgress(Math.max(0, Math.min(100, (remaining / ACTION_TIME_LIMIT) * 100)));
+    if (!pokerGame?.turnEndsAt) { setTurnProgress(100); return; }
+    const iv = setInterval(() => {
+      const rem = (pokerGame.turnEndsAt ?? Date.now()) - Date.now();
+      setTurnProgress(Math.max(0, Math.min(100, (rem / ACTION_TIME_LIMIT) * 100)));
     }, 120);
-    return () => clearInterval(interval);
+    return () => clearInterval(iv);
   }, [pokerGame?.turnEndsAt]);
 
+  // Reset play-again state
   useEffect(() => {
-    if (pokerPlayAgainPrompt) {
-      setHasQuitPlayAgain(false);
-    }
+    if (pokerPlayAgainPrompt) setHasQuitPlayAgain(false);
   }, [pokerPlayAgainPrompt?.partyId, pokerPlayAgainPrompt?.startTime]);
 
+  // Raise target default
   useEffect(() => {
     if (!pokerGame || !me) return;
     const suggested = Math.max(0, Math.min(me.bet + me.chips, pokerGame.minRaiseTo || 0));
     setRaiseTarget(suggested || me.bet + me.chips);
   }, [pokerGame?.handNumber, pokerGame?.currentPlayerId, pokerGame?.minRaiseTo, me?.bet, me?.chips]);
 
+  // Play-again countdown
+  const myPlayAgainResponse = pokerPlayAgainPrompt?.responses.find((r) => r.userId === user?.id);
+  const hasQuit = hasQuitPlayAgain || (!!myPlayAgainResponse && !myPlayAgainResponse.playAgain);
+  const showPlayAgainPrompt = !!pokerPlayAgainPrompt && !hasQuit;
+
+  useEffect(() => {
+    if (!showPlayAgainPrompt || !pokerPlayAgainPrompt) { setPlayAgainProgress(100); return; }
+    const iv = setInterval(() => {
+      const elapsed = Date.now() - pokerPlayAgainPrompt.startTime;
+      setPlayAgainProgress(Math.max(0, 100 - (elapsed / pokerPlayAgainPrompt.timeLimit) * 100));
+    }, 120);
+    return () => clearInterval(iv);
+  }, [showPlayAgainPrompt, pokerPlayAgainPrompt]);
+
   const handleCallOrCheck = () => {
     if (!pokerGame) return;
-    if (callAmount > 0) {
-      actInPoker('call');
-    } else {
-      actInPoker('check');
-    }
+    actInPoker(callAmount > 0 ? 'call' : 'check');
   };
-
   const handleRaise = () => {
     if (!pokerGame) return;
     actInPoker(pokerGame.highestBet === 0 ? 'bet' : 'raise', raiseTarget);
   };
 
-  const handleAllIn = () => {
-    actInPoker('all-in');
-  };
-
-  const renderPlayers = () => {
-    if (!pokerGame) return null;
-    return pokerGame.players.map((player) => {
-      const isDealer = pokerGame.dealerId === player.userId;
-      const isSmallBlind = pokerGame.smallBlindId === player.userId;
-      const isBigBlind = pokerGame.bigBlindId === player.userId;
-      const isTurn = pokerGame.currentPlayerId === player.userId;
-      const isMe = player.userId === user?.id;
-      const showHand =
-        pokerGame.stage === 'showdown' || isMe ? player.hand : ['??', '??'];
-
-      return (
-        <div
-          key={player.userId}
-          className={cn(
-            'flex items-center justify-between rounded border border-border/60 px-3 py-3',
-            isTurn && 'border-foreground',
-            player.hasFolded && 'opacity-50',
-          )}
-        >
-          <div className="flex items-center gap-3">
-            <div className="h-2 w-2 rounded-full bg-foreground/60" />
-            <div>
-              <UsernameDisplay username={player.username} usernameColor={player.usernameColor} className="text-sm font-medium" />
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                {isDealer && <span>D</span>}
-                {isSmallBlind && <span>SB</span>}
-                {isBigBlind && <span>BB</span>}
-                {player.lastAction && <span className=" ">{player.lastAction}</span>}
-                {player.isAllIn && <span className="text-red-500">All-in</span>}
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            {showHand && (
-              <div className="flex gap-1">
-                {showHand.map((c, idx) => (
-                  <Card key={idx} card={c} muted={player.hasFolded} />
-                ))}
-              </div>
-            )}
-            <div className="text-right">
-              <div className="text-sm font-semibold flex items-center gap-1 justify-end">
-                <Coins className="h-4 w-4 text-muted-foreground" />
-                {player.chips}
-              </div>
-              {player.bet > 0 && (
-                <p className="text-xs text-muted-foreground">Mise: {player.bet}</p>
-              )}
-            </div>
-          </div>
-        </div>
-      );
-    });
-  };
-
+  // ── No party ──
   if (!currentParty) {
     return (
+<<<<<<< Updated upstream
       <PageShell>
         <PageHeader
           title="Poker"
@@ -212,32 +787,42 @@ export default function Poker() {
           </CardContent>
         </UICard>
       </PageShell>
+=======
+      <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
+        <Link
+          to="/games"
+          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Jeux
+        </Link>
+        <div className="text-center py-20 space-y-6">
+          <p className="text-sm text-muted-foreground">
+            Crée ou rejoins une party pour lancer une table de poker.
+          </p>
+          <Link
+            to="/party"
+            className="inline-flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+          >
+            <Users className="h-4 w-4" />
+            Aller aux parties
+          </Link>
+        </div>
+      </div>
+>>>>>>> Stashed changes
     );
   }
 
-  const myHand = pokerGame?.yourHand?.length ? pokerGame.yourHand : me?.hand || [];
-  const canRaise = !!canAct && pokerGame?.availableActions.includes(pokerGame.highestBet === 0 ? 'bet' : 'raise');
+  const myHand = pokerGame?.yourHand?.length ? pokerGame.yourHand : me?.hand ?? [];
+  const canRaise =
+    !!canAct &&
+    pokerGame?.availableActions.includes(pokerGame.highestBet === 0 ? 'bet' : 'raise');
   const canCall = !!canAct && pokerGame?.availableActions.includes('call');
   const canCheck = !!canAct && pokerGame?.availableActions.includes('check');
-
   const lobby = !pokerGame;
-  const myPlayAgainResponse = pokerPlayAgainPrompt?.responses.find((r) => r.userId === user?.id);
-  const hasQuit = hasQuitPlayAgain || (!!myPlayAgainResponse && !myPlayAgainResponse.playAgain);
-  const showPlayAgainPrompt = !!pokerPlayAgainPrompt && !hasQuit;
-
-  useEffect(() => {
-    if (!showPlayAgainPrompt || !pokerPlayAgainPrompt) {
-      setPlayAgainProgress(100);
-      return;
-    }
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - pokerPlayAgainPrompt.startTime;
-      setPlayAgainProgress(Math.max(0, 100 - (elapsed / pokerPlayAgainPrompt.timeLimit) * 100));
-    }, 120);
-    return () => clearInterval(interval);
-  }, [showPlayAgainPrompt, pokerPlayAgainPrompt]);
 
   return (
+<<<<<<< Updated upstream
     <PageShell className="space-y-10">
       <PageHeader
         title="Poker"
@@ -262,9 +847,26 @@ export default function Poker() {
           <UICard>
             <CardContent className="p-6 space-y-2">
             <h2 className="text-sm text-muted-foreground  ">
+=======
+    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-6">
+      {/* Back link */}
+      <Link
+        to="/games"
+        className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Jeux
+      </Link>
+
+      {/* ── Lobby ── */}
+      {lobby ? (
+        <div className="space-y-10">
+          <section className="space-y-2">
+            <h2 className="text-sm text-muted-foreground">
+>>>>>>> Stashed changes
               Joueurs dans la party ({partyMembers.length})
             </h2>
-            <div className="space-y-0">
+            <div>
               {partyMembers.map((member) => (
                 <div
                   key={member.userId}
@@ -273,9 +875,14 @@ export default function Poker() {
                   <div className="flex items-center gap-3">
                     <span className="h-2 w-2 rounded-full bg-foreground/50" />
                     <div>
-                      <UsernameDisplay username={member.username} usernameColor={member.usernameColor} className="font-medium" />
+                      <UsernameDisplay
+                        username={member.username}
+                        usernameColor={member.usernameColor}
+                        showLabel={false}
+                        className="font-medium"
+                      />
                       {member.isLeader && (
-                        <p className="text-xs text-muted-foreground  ">Leader</p>
+                        <p className="text-xs text-muted-foreground">Leader</p>
                       )}
                     </div>
                   </div>
@@ -301,7 +908,7 @@ export default function Poker() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <label className="space-y-2">
-                <span className="text-xs   text-muted-foreground">Stack de départ</span>
+                <span className="text-xs text-muted-foreground">Stack de départ</span>
                 <Input
                   type="number"
                   min={200}
@@ -311,7 +918,7 @@ export default function Poker() {
                 />
               </label>
               <label className="space-y-2">
-                <span className="text-xs   text-muted-foreground">Big blind</span>
+                <span className="text-xs text-muted-foreground">Big blind</span>
                 <Input
                   type="number"
                   min={10}
@@ -322,12 +929,15 @@ export default function Poker() {
               </label>
             </div>
             {!isLeader && (
-              <p className="text-sm text-muted-foreground">En attente que le leader démarre la partie.</p>
+              <p className="text-sm text-muted-foreground">
+                En attente que le leader démarre la partie.
+              </p>
             )}
             </CardContent>
           </UICard>
         </div>
       ) : (
+<<<<<<< Updated upstream
         <div className="space-y-8">
           <UICard>
             <CardContent className="p-6 space-y-4">
@@ -335,23 +945,30 @@ export default function Poker() {
               <div className="flex flex-wrap items-center gap-4">
                 <span className="px-2 py-1 rounded border border-border">
                   {stageLabel[pokerGame.stage] || pokerGame.stage}
+=======
+        /* ── Game ── */
+        <div className="space-y-4">
+          {/* Info bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="px-2 py-0.5 rounded border border-border font-medium">
+                {stageLabel[pokerGame.stage] ?? pokerGame.stage}
+              </span>
+              <span>
+                Blindes <strong className="text-foreground">{pokerGame.smallBlind}/{pokerGame.bigBlind}</strong>
+              </span>
+              <span>
+                Manche <strong className="text-foreground">{pokerGame.handNumber}</strong>/{pokerGame.maxHands}
+              </span>
+              {isMyTurn && (
+                <span className="flex items-center gap-1 text-amber-500 font-semibold">
+                  <Clock className="h-3 w-3" />
+                  {Math.max(0, Math.round((turnProgress / 100) * ACTION_TIME_LIMIT / 1000))}s
+>>>>>>> Stashed changes
                 </span>
-                <span>Pot : <strong className="text-foreground">{pokerGame.pot}</strong></span>
-                <span>Blindes : {pokerGame.smallBlind}/{pokerGame.bigBlind}</span>
-                <span>Manche {pokerGame.handNumber}/{pokerGame.maxHands}</span>
-                <span>Stack départ {pokerGame.startingStack}</span>
-                {isMyTurn && (
-                  <span className="flex items-center gap-2 text-foreground">
-                    <Clock className="h-4 w-4" />
-                    {Math.max(0, Math.round((turnProgress / 100) * ACTION_TIME_LIMIT / 1000))}s
-                  </span>
-                )}
-              </div>
-              <Button variant="ghost" size="sm" className="gap-2" onClick={leavePoker}>
-                <LogOut className="h-4 w-4" />
-                Quitter la table
-              </Button>
+              )}
             </div>
+<<<<<<< Updated upstream
             <div className="flex items-center gap-2 justify-center">
               {Array.from({ length: 5 }).map((_, idx) => (
                 <Card
@@ -379,8 +996,24 @@ export default function Poker() {
             {renderPlayers()}
             </CardContent>
           </UICard>
+=======
+            <Button variant="ghost" size="sm" className="gap-2 text-xs" onClick={leavePoker}>
+              <LogOut className="h-3 w-3" />
+              Quitter
+            </Button>
+          </div>
 
+          {/* ── Poker table ── */}
+          <PokerTableView
+            game={pokerGame as unknown as PokerGame}
+            myUserId={user?.id ?? ''}
+            turnProgress={turnProgress}
+          />
+>>>>>>> Stashed changes
+
+          {/* ── My action panel ── */}
           {me && !me.isEliminated && (
+<<<<<<< Updated upstream
             <UICard>
               <CardContent className="p-6 space-y-4">
               <div className="flex flex-wrap items-center gap-3 justify-between">
@@ -389,15 +1022,45 @@ export default function Poker() {
                   <div className="flex gap-1">
                     {(myHand || []).map((card, idx) => (
                       <Card key={idx} card={card} muted={me.hasFolded} />
+=======
+            <div
+              className="rounded-xl border border-border/60 p-4 space-y-4"
+              style={{
+                background: 'linear-gradient(135deg, rgba(0,0,0,0.03) 0%, rgba(0,0,0,0.01) 100%)',
+              }}
+            >
+              {/* My hand + stack */}
+              <div className="flex items-end justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="text-xs text-muted-foreground">Vos cartes</div>
+                  <div className="flex gap-2">
+                    {(myHand ?? []).map((card, i) => (
+                      <PlayingCard key={i} card={card} size="lg" muted={me.hasFolded} />
+>>>>>>> Stashed changes
                     ))}
                   </div>
                 </div>
-                <div className="text-right text-sm text-muted-foreground">
-                  <div>Stack: <span className="text-foreground font-semibold">{me.chips}</span></div>
-                  <div>Engagé: {me.bet}</div>
+                <div className="text-right text-sm space-y-1">
+                  <div className="flex items-center justify-end gap-2">
+                    <ChipStack amount={me.chips} />
+                  </div>
+                  {me.bet > 0 && (
+                    <div className="text-xs text-muted-foreground">Engagé: {me.bet}</div>
+                  )}
                 </div>
               </div>
 
+              {/* Turn progress bar */}
+              {isMyTurn && (
+                <div className="h-1 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full bg-amber-400 transition-all"
+                    style={{ width: `${turnProgress}%` }}
+                  />
+                </div>
+              )}
+
+              {/* Action buttons */}
               <div className="flex flex-wrap items-center gap-3">
                 <Button
                   variant="outline"
@@ -408,48 +1071,55 @@ export default function Poker() {
                   <LogOut className="h-4 w-4" />
                   Se coucher
                 </Button>
+
                 <Button
                   variant="secondary"
                   onClick={handleCallOrCheck}
                   disabled={!canAct || (!canCall && !canCheck)}
+                  className={cn(canAct && (canCall || canCheck) && 'ring-2 ring-green-500/50')}
                 >
                   {callAmount > 0 ? `Suivre (${callAmount})` : 'Check'}
                 </Button>
-                <div className="flex-1 min-w-[220px] space-y-2">
+
+                <div className="flex-1 min-w-[200px] space-y-1">
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span>{pokerGame.highestBet === 0 ? 'Miser' : 'Relancer'} à</span>
-                    <span className="text-foreground font-semibold">{Math.round(raiseTarget)}</span>
+                    <span className="font-semibold text-foreground">{Math.round(raiseTarget)}</span>
                   </div>
                   <Slider
                     value={[Math.min(raiseTarget, maxBet)]}
-                    min={Math.min(minRaiseTarget || 0, maxBet)}
-                    max={Math.max(minRaiseTarget || 0, maxBet)}
+                    min={Math.min(minRaiseTarget ?? 0, maxBet)}
+                    max={Math.max(minRaiseTarget ?? 0, maxBet)}
                     step={5}
-                    onValueChange={(value) => setRaiseTarget(value[0])}
+                    onValueChange={(v) => setRaiseTarget(v[0])}
                     disabled={!canRaise || maxBet <= 0}
                   />
                 </div>
-                <Button
-                  onClick={handleRaise}
-                  disabled={!canRaise || maxBet <= 0}
-                >
+
+                <Button onClick={handleRaise} disabled={!canRaise || maxBet <= 0}>
                   {pokerGame.highestBet === 0 ? 'Miser' : 'Relancer'}
                 </Button>
+
                 <Button
                   variant="outline"
-                  onClick={handleAllIn}
+                  onClick={() => actInPoker('all-in')}
                   disabled={!canAct || me.chips <= 0}
+                  className="text-amber-500 border-amber-500/40 hover:bg-amber-500/10"
                 >
                   All-in
                 </Button>
               </div>
+<<<<<<< Updated upstream
               </CardContent>
             </UICard>
+=======
+            </div>
+>>>>>>> Stashed changes
           )}
         </div>
       )}
 
-      {/* Play again prompt */}
+      {/* ── Play again prompt ── */}
       {pokerPlayAgainPrompt && (
         <Dialog open={showPlayAgainPrompt} onOpenChange={() => {}}>
           <DialogContent className="sm:max-w-md">
@@ -458,17 +1128,24 @@ export default function Poker() {
             </DialogHeader>
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Stack {pokerPlayAgainPrompt.startStack} - blindes {pokerPlayAgainPrompt.bigBlind / 2}/{pokerPlayAgainPrompt.bigBlind}
+                Stack {pokerPlayAgainPrompt.startStack} — blindes{' '}
+                {pokerPlayAgainPrompt.bigBlind / 2}/{pokerPlayAgainPrompt.bigBlind}
               </p>
               <div className="space-y-2">
                 {pokerPlayAgainPrompt.players.map((player) => {
-                  const response = pokerPlayAgainPrompt.responses.find((r) => r.userId === player.userId);
+                  const resp = pokerPlayAgainPrompt.responses.find(
+                    (r) => r.userId === player.userId,
+                  );
                   return (
                     <div key={player.userId} className="flex items-center justify-between text-sm">
-                      <UsernameDisplay username={player.username} usernameColor={player.usernameColor} />
-                      {response ? (
-                        <span className={cn('text-xs ', response.playAgain ? 'text-green-500' : 'text-red-500')}>
-                          {response.playAgain ? 'OK' : 'Quitte'}
+                      <UsernameDisplay
+                        username={player.username}
+                        usernameColor={player.usernameColor}
+                        showLabel={false}
+                      />
+                      {resp ? (
+                        <span className={cn('text-xs', resp.playAgain ? 'text-green-500' : 'text-red-500')}>
+                          {resp.playAgain ? 'OK' : 'Quitte'}
                         </span>
                       ) : (
                         <span className="text-xs text-muted-foreground">En attente</span>
@@ -478,7 +1155,10 @@ export default function Poker() {
                 })}
               </div>
               <div className="h-1 rounded bg-muted">
-                <div className="h-full bg-foreground transition-all" style={{ width: `${playAgainProgress}%` }} />
+                <div
+                  className="h-full bg-foreground transition-all"
+                  style={{ width: `${playAgainProgress}%` }}
+                />
               </div>
               <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2">
                 <Button
@@ -490,16 +1170,14 @@ export default function Poker() {
                 >
                   Quitter
                 </Button>
-                <Button onClick={() => respondToPokerPlayAgainPrompt(true)}>
-                  Relancer
-                </Button>
+                <Button onClick={() => respondToPokerPlayAgainPrompt(true)}>Relancer</Button>
               </DialogFooter>
             </div>
           </DialogContent>
         </Dialog>
       )}
 
-      {/* Game over */}
+      {/* ── Game over ── */}
       <Dialog open={!!pokerGameOver}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -508,12 +1186,12 @@ export default function Poker() {
           {pokerGameOver && (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Vainqueur : {pokerGameOver.winnerUsername || 'aucun'}
+                Vainqueur : {pokerGameOver.winnerUsername ?? 'aucun'}
               </p>
               <div className="space-y-2">
-                {pokerGameOver.standings.map((s) => (
+                {pokerGameOver.standings.map((s: { userId: string; username: string; chips: number }) => (
                   <div key={s.userId} className="flex items-center justify-between text-sm">
-                    <UsernameDisplay username={s.username} />
+                    <UsernameDisplay username={s.username} showLabel={false} />
                     <span className="font-semibold">{s.chips}</span>
                   </div>
                 ))}
