@@ -12,7 +12,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, ToggleLeft, Inbox, Archive } from 'lucide-react';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, Inbox, Archive } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, ReferenceDot } from 'recharts';
 import {
   AlertDialog,
@@ -341,7 +341,8 @@ export default function Admin() {
   const [mutingUser, setMutingUser] = useState<string | null>(null);
   const [clearingChat, setClearingChat] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'inbox' | 'users' | 'logs' | 'bans' | 'content' | 'communication' | 'features' | 'settings' | 'activity'>('inbox');
+  const [activeTab, setActiveTab] = useState<'inbox' | 'users' | 'logs' | 'bans' | 'content' | 'badges' | 'communication' | 'settings' | 'activity'>('inbox');
+  const [commSubTab, setCommSubTab] = useState<'announcement' | 'login' | 'updates' | 'maintenance'>('announcement');
 
   // Activity tab state
   type OnlineHistoryPoint = { timestamp: string; count: number; max: number; usernames: { userId: string; username: string }[] };
@@ -1554,7 +1555,7 @@ export default function Admin() {
           <TabsList className="flex flex-wrap h-auto p-1">
           <TabsTrigger value="inbox" className="flex items-center gap-2">
             <Inbox className="h-4 w-4" />
-            Boîte de réception
+            Inbox
             {(pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length) > 0 && (
               <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[11px] font-semibold leading-none">
                 {pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length}
@@ -1585,19 +1586,19 @@ export default function Admin() {
           </TabsTrigger>
           <TabsTrigger value="content" className="flex items-center gap-2">
             <Package className="h-4 w-4" />
-            Boutique
+            Objets
+          </TabsTrigger>
+          <TabsTrigger value="badges" className="flex items-center gap-2">
+            <Trophy className="h-4 w-4" />
+            Badges
           </TabsTrigger>
           <TabsTrigger value="communication" className="flex items-center gap-2">
             <MessageCircle className="h-4 w-4" />
             Communication
           </TabsTrigger>
-          <TabsTrigger value="features" className="flex items-center gap-2">
-            <ToggleLeft className="h-4 w-4" />
-            Fonctionnalités
-          </TabsTrigger>
           <TabsTrigger value="settings" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
-            Parametres
+            Paramètres
           </TabsTrigger>
           <TabsTrigger value="activity" className="flex items-center gap-2" onClick={() => fetchActivity(activityPeriod)}>
             <Activity className="h-4 w-4" />
@@ -2126,12 +2127,8 @@ export default function Admin() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardDescription>Gestion des objets de la boutique</CardDescription>
-                <Button
-                  onClick={openCreateItemDialog}
-                  className="h-9"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nouvel objet
+                <Button size="sm" variant="outline" onClick={openCreateItemDialog} className="h-8 w-8 p-0">
+                  <Plus className="h-4 w-4" />
                 </Button>
               </div>
             </CardHeader>
@@ -2141,115 +2138,89 @@ export default function Admin() {
                   <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
                 </div>
               ) : items.length === 0 ? (
-                <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
-                  Aucun objet créé
-                </p>
-              ) : (
-                <div className="divide-y divide-border/30">
-                  {items.map((item) => {
-                    const { type: effectType } = parseEffect(item.effect);
-                    const effectLabel = EFFECT_TYPES.find(e => e.value === effectType)?.label || effectType;
-                    
-                    return (
-                      <div
-                        key={item.id}
-                        className="py-4"
-                      >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4 min-w-0 flex-1">
-                        {item.imageUrl ? (
-                          <img 
-                            src={resolveImageUrl(item.imageUrl)} 
-                            alt={item.name}
-                            className="w-10 h-10 object-cover rounded"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 bg-muted/30 flex items-center justify-center rounded">
-                            <Package className="w-5 h-5 text-muted-foreground" />
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium truncate">{item.name}</span>
-                            <span className="text-xs text-muted-foreground  ">
-                              {item.type}
-                            </span>
-                          </div>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {item.description}
-                          </p>
-                          {item.type !== 'GIFT' && (
-                          <p className="text-xs text-muted-foreground/60">
-                            Effet: {effectLabel}
-                          </p>
-                          )}
+                <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>Aucun objet créé</p>
+              ) : (() => {
+                const ORDER = ['CONSUMABLE', 'COSMETIC', 'UPGRADE', 'GIFT'] as const;
+                const grouped = items.reduce<Record<string, typeof items>>((acc, item) => {
+                  acc[item.type] = acc[item.type] || [];
+                  acc[item.type].push(item);
+                  return acc;
+                }, {});
+                return (
+                  <div className="space-y-6">
+                    {ORDER.filter(t => grouped[t]?.length).map(type => (
+                      <div key={type}>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
+                          {ITEM_TYPE_LABELS[type] || type}
+                        </p>
+                        <div className="divide-y divide-border/30">
+                          {grouped[type].map((item) => {
+                            const { type: effectType } = parseEffect(item.effect);
+                            const effectLabel = EFFECT_TYPES.find(e => e.value === effectType)?.label || effectType;
+                            return (
+                              <div key={item.id} className="py-3 flex items-center justify-between">
+                                <div className="flex items-center gap-4 min-w-0 flex-1">
+                                  {item.imageUrl ? (
+                                    <img src={resolveImageUrl(item.imageUrl)} alt={item.name} className="w-10 h-10 object-cover rounded shrink-0" />
+                                  ) : (
+                                    <div className="w-10 h-10 bg-muted/30 flex items-center justify-center rounded shrink-0">
+                                      <Package className="w-5 h-5 text-muted-foreground" />
+                                    </div>
+                                  )}
+                                  <div className="min-w-0 flex-1">
+                                    <span className="font-medium truncate block">{item.name}</span>
+                                    <p className="text-xs text-muted-foreground truncate">{item.description}</p>
+                                    {item.type !== 'GIFT' && (
+                                      <p className="text-xs text-muted-foreground/60">Effet: {effectLabel}</p>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-4 shrink-0">
+                                  <span className="text-sm text-muted-foreground tabular-nums">${item.price}</span>
+                                  <div className="flex items-center gap-2">
+                                    <Button size="sm" variant="outline" onClick={() => openEditItemDialog(item)} className="h-8 border-border/50">
+                                      <Edit2 className="h-4 w-4" />
+                                    </Button>
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button size="sm" variant="outline" className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10" disabled={deletingItem === item.id}>
+                                          {deletingItem === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle className="flex items-center gap-2">
+                                            <AlertTriangle className="h-5 w-5 text-destructive" />
+                                            Supprimer {item.name} ?
+                                          </AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            L'objet sera supprimé de la boutique. Les utilisateurs qui le possèdent le garderont.
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                          <AlertDialogAction onClick={() => deleteItem(item.id)} className="bg-destructive hover:bg-destructive/90">
+                                            Supprimer
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
-                      
-                      <div className="flex items-center gap-6">
-                        <div className="text-right text-sm text-muted-foreground">
-                          <p className="tabular-nums">${item.price}</p>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => openEditItemDialog(item)}
-                            className="h-8 border-border/50"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10"
-                                disabled={deletingItem === item.id}
-                              >
-                                {deletingItem === item.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Trash2 className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle className="flex items-center gap-2">
-                                  <AlertTriangle className="h-5 w-5 text-destructive" />
-                                  Supprimer {item.name} ?
-                                </AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  L'objet sera supprimé de la boutique. Les utilisateurs qui le possèdent le garderont.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => deleteItem(item.id)}
-                                  className="bg-destructive hover:bg-destructive/90"
-                                >
-                                  Supprimer
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </div>
-                    </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                    ))}
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="content" className={SPACING.SECTION_SPACING}>
+        <TabsContent value="badges" className={SPACING.SECTION_SPACING}>
           <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             <Card>
               <CardHeader>
@@ -2492,6 +2463,96 @@ export default function Admin() {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardDescription>Fonctionnalités — activez ou désactivez chaque page du site. Une page désactivée disparaît de la navigation et est inaccessible par URL.</CardDescription>
+            </CardHeader>
+            <CardContent className={SPACING.SECTION_SPACING}>
+              {loadingSettings ? (
+                <div className="flex justify-center py-12">
+                  <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Message affiché si la page est accédée directement</label>
+                    <Textarea
+                      value={blockedMessage}
+                      onChange={(e) => setBlockedMessage(e.target.value)}
+                      placeholder="Ex: Cette page est momentanément désactivée."
+                      className="min-h-[100px]"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Laisser vide pour utiliser le message par défaut.
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-medium">Fonctionnalités</h3>
+                      <span className="text-xs text-muted-foreground">
+                        {blockedPages.length} désactivée{blockedPages.length > 1 ? 's' : ''}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {Object.entries(
+                        BLOCKABLE_PAGES.reduce<Record<string, typeof BLOCKABLE_PAGES>>((acc, page) => {
+                          acc[page.category] = acc[page.category] || [];
+                          acc[page.category].push(page);
+                          return acc;
+                        }, {} as Record<string, typeof BLOCKABLE_PAGES>)
+                      ).map(([category, pages]) => (
+                        <div
+                          key={category}
+                          className="p-4 border border-border/30 rounded-lg bg-muted/10 space-y-3"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="text-sm font-semibold">{category}</div>
+                            <span className="text-xs text-muted-foreground">
+                              {pages.filter(p => !blockedPages.includes(p.key)).length}/{pages.length} actives
+                            </span>
+                          </div>
+                          <div className="space-y-3">
+                            {pages.map((page) => (
+                              <div
+                                key={page.key}
+                                className="flex items-center justify-between"
+                              >
+                                <div>
+                                  <div className={cn("text-sm font-medium", blockedPages.includes(page.key) && "text-muted-foreground line-through")}>{page.label}</div>
+                                  <div className="text-xs text-muted-foreground">{page.path}</div>
+                                </div>
+                                <Switch
+                                  checked={!blockedPages.includes(page.key)}
+                                  onCheckedChange={() => toggleBlockedPage(page.key)}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={saveBlockedPages}
+                      disabled={savingBlocks}
+                    >
+                      {savingBlocks ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Save className="h-4 w-4 mr-2" />
+                      )}
+                      Sauvegarder
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -2948,448 +3009,344 @@ export default function Admin() {
         </TabsContent>
 
         <TabsContent value="communication" className={SPACING.SECTION_SPACING}>
-          <Card>
-            <CardHeader>
-              <CardDescription>Annonce top bar</CardDescription>
+          <Card className="overflow-hidden">
+            <CardHeader className="border-b border-border/30 pb-3">
+              <CardDescription>Communication</CardDescription>
             </CardHeader>
-            <CardContent className={SPACING.CARD_SPACING}>
-
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Ce message s'affiche pour tous les utilisateurs dans la barre du haut, à côté du bouton de sidebar.
-            </p>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium">Message</label>
-                <span className={cn(
-                  'text-xs',
-                  announcementMessage.length >= ANNOUNCEMENT_MAX_LENGTH ? 'text-amber-400' : 'text-muted-foreground'
-                )}>
-                  {announcementMessage.length}/{ANNOUNCEMENT_MAX_LENGTH}
-                </span>
-              </div>
-              <Textarea
-                value={announcementMessage}
-                onChange={(e) => setAnnouncementMessage(e.target.value)}
-                placeholder="Ex: Maintenance prévue ce soir à 23h."
-                className="min-h-[90px]"
-                maxLength={ANNOUNCEMENT_MAX_LENGTH}
-              />
-              <p className="text-xs text-muted-foreground">
-                Laissez vide pour masquer l'annonce.
-              </p>
-            </div>
-
-            <div className="flex justify-end">
-              <Button
-                onClick={saveAnnouncement}
-                disabled={savingAnnouncement}
-              >
-                {savingAnnouncement ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <Save className="h-4 w-4 mr-2" />
-                )}
-                Sauvegarder l'annonce
-              </Button>
-            </div>
-          </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="communication" className={SPACING.SECTION_SPACING}>
-          <Card>
-            <CardHeader>
-              <CardDescription>Message page de connexion</CardDescription>
-            </CardHeader>
-            <CardContent className={SPACING.CARD_SPACING}>
-              <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Ce message s'affiche à gauche du formulaire de connexion, visible par tous les visiteurs.
-                </p>
-                <Textarea
-                  value={loginMessage}
-                  onChange={(e) => setLoginMessage(e.target.value)}
-                  placeholder="Ex: Bienvenue ! Le serveur est ouvert."
-                  className="min-h-[90px]"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Laissez vide pour masquer le message.
-                </p>
-                <div className="flex justify-end">
-                  <Button onClick={saveLoginMessage} disabled={savingLoginMessage}>
-                    {savingLoginMessage ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <Save className="h-4 w-4 mr-2" />
+            <div className="flex min-h-[400px]">
+              {/* Left sidebar */}
+              <div className="w-48 shrink-0 border-r border-border/40 p-1.5 space-y-0.5">
+                {([
+                  { key: 'announcement' as const, label: 'Annonce', Icon: MessageCircle },
+                  { key: 'login' as const, label: 'Connexion', Icon: LogIn },
+                  { key: 'updates' as const, label: 'Updates', Icon: Sparkles },
+                  { key: 'maintenance' as const, label: 'Maintenance', Icon: AlertTriangle },
+                ]).map((item) => (
+                  <button
+                    key={item.key}
+                    onClick={() => setCommSubTab(item.key)}
+                    className={cn(
+                      'w-full flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors text-left',
+                      commSubTab === item.key
+                        ? 'bg-accent text-accent-foreground font-medium'
+                        : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
                     )}
-                    Sauvegarder
-                  </Button>
-                </div>
+                  >
+                    <item.Icon className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                  </button>
+                ))}
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="communication" className={SPACING.SECTION_SPACING}>
-          <Card>
-            <CardHeader>
-              <CardDescription>Popups de mise a jour visibles a la connexion</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-                <div className="space-y-4 p-4 rounded-lg border bg-muted/20 h-full">
-                  <div className="flex items-center justify-between">
-                    <h3 className={TYPOGRAPHY.H3}>
-                      {editingUpdatePopupId ? 'Modifier une update' : 'Nouvelle update'}
-                    </h3>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={handleSuggestUpdateSummary} disabled={suggestingUpdateSummary}>
-                        {suggestingUpdateSummary ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Sparkles className="h-4 w-4 mr-1" />}
-                        Auto-résumé
+              {/* Content */}
+              <div className="flex-1 min-w-0 p-4">
+                {commSubTab === 'announcement' && (
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Ce message s'affiche pour tous les utilisateurs dans la barre du haut, à côté du bouton de sidebar.
+                    </p>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium">Message</label>
+                        <span className={cn(
+                          'text-xs',
+                          announcementMessage.length >= ANNOUNCEMENT_MAX_LENGTH ? 'text-amber-400' : 'text-muted-foreground'
+                        )}>
+                          {announcementMessage.length}/{ANNOUNCEMENT_MAX_LENGTH}
+                        </span>
+                      </div>
+                      <Textarea
+                        value={announcementMessage}
+                        onChange={(e) => setAnnouncementMessage(e.target.value)}
+                        placeholder="Ex: Maintenance prévue ce soir à 23h."
+                        className="min-h-[90px]"
+                        maxLength={ANNOUNCEMENT_MAX_LENGTH}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Laissez vide pour masquer l'annonce.
+                      </p>
+                    </div>
+                    <div className="flex justify-end">
+                      <Button onClick={saveAnnouncement} disabled={savingAnnouncement}>
+                        {savingAnnouncement ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <Save className="h-4 w-4 mr-2" />
+                        )}
+                        Sauvegarder l'annonce
                       </Button>
-                      {editingUpdatePopupId && (
-                        <Button variant="ghost" size="sm" onClick={resetUpdatePopupForm}>
-                          <X className="h-4 w-4 mr-1" />
-                          Annuler
+                    </div>
+                  </div>
+                )}
+
+                {commSubTab === 'login' && (
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Ce message s'affiche à gauche du formulaire de connexion, visible par tous les visiteurs.
+                    </p>
+                    <Textarea
+                      value={loginMessage}
+                      onChange={(e) => setLoginMessage(e.target.value)}
+                      placeholder="Ex: Bienvenue ! Le serveur est ouvert."
+                      className="min-h-[90px]"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Laissez vide pour masquer le message.
+                    </p>
+                    <div className="flex justify-end">
+                      <Button onClick={saveLoginMessage} disabled={savingLoginMessage}>
+                        {savingLoginMessage ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <Save className="h-4 w-4 mr-2" />
+                        )}
+                        Sauvegarder
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {commSubTab === 'updates' && (
+                  <div className="space-y-6">
+                    {/* Preview */}
+                    <div className="space-y-2 p-4 rounded-lg border bg-background/30">
+                      <div className="flex items-center gap-2">
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">Aperçu joueur</span>
+                      </div>
+                      <div className="rounded-lg border bg-muted/20 p-4 space-y-4">
+                          <div>
+                            <h4 className="text-lg font-semibold">{updatePopupForm.title || 'Titre de la mise a jour'}</h4>
+                            <p className="text-xs text-muted-foreground">
+                              {updatePopupForm.releaseDate ? new Date(updatePopupForm.releaseDate).toLocaleString('fr-FR') : 'Date non définie'}
+                            </p>
+                          </div>
+                          {updatePopupForm.summary && (
+                            <p className="text-sm font-medium">{updatePopupForm.summary}</p>
+                          )}
+                          {updatePopupForm.imageUrl && (
+                            <img
+                              src={resolveImageUrl(updatePopupForm.imageUrl)}
+                              alt="preview"
+                              className="w-full max-h-56 rounded-md border object-cover"
+                              onError={(event) => {
+                                (event.target as HTMLImageElement).style.display = 'none';
+                              }}
+                            />
+                          )}
+                          <div className="rounded-md border bg-background/60 p-3">
+                            <p className="text-sm whitespace-pre-wrap">{updatePopupForm.message || 'Le contenu de la popup s affichera ici.'}</p>
+                          </div>
+                        </div>
+                      </div>
+                    {/* Form */}
+                    <div className="space-y-4 p-4 rounded-lg border bg-muted/20">
+                      <div className="flex items-center justify-between">
+                        <h3 className={TYPOGRAPHY.H3}>
+                          {editingUpdatePopupId ? 'Modifier une update' : 'Nouvelle update'}
+                        </h3>
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm" onClick={handleSuggestUpdateSummary} disabled={suggestingUpdateSummary}>
+                            {suggestingUpdateSummary ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Sparkles className="h-4 w-4 mr-1" />}
+                            Auto-résumé
+                          </Button>
+                          {editingUpdatePopupId && (
+                            <Button variant="ghost" size="sm" onClick={resetUpdatePopupForm}>
+                              <X className="h-4 w-4 mr-1" />
+                              Annuler
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Titre *</label>
+                        <Input
+                          value={updatePopupForm.title}
+                          onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, title: e.target.value }))}
+                          placeholder="Ex: Mise a jour 1.8.0"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Sous-titre</label>
+                        <Input
+                          value={updatePopupForm.summary}
+                          onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, summary: e.target.value }))}
+                          placeholder="Ex: Nouvelles features, équilibrage et fixes"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Message *</label>
+                        <Textarea
+                          value={updatePopupForm.message}
+                          onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, message: e.target.value }))}
+                          rows={10}
+                          placeholder={'Ex: • Nouveau mode de jeu\n• Ajustement des récompenses\n• Corrections de bugs'}
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Date de publication</label>
+                          <Input
+                            type="datetime-local"
+                            value={updatePopupForm.releaseDate}
+                            onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, releaseDate: e.target.value }))}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Visibilité</label>
+                          <div className="h-10 px-3 rounded-md border flex items-center justify-between bg-background/50">
+                            <span className="text-sm text-muted-foreground">{updatePopupForm.isPublished ? 'Publiée' : 'Brouillon'}</span>
+                            <Switch
+                              checked={updatePopupForm.isPublished}
+                              onCheckedChange={(checked) => setUpdatePopupForm((prev) => ({ ...prev, isPublished: checked }))}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Image</label>
+                        <ImagePicker
+                          value={updatePopupForm.imageUrl}
+                          onChange={(url) => setUpdatePopupForm((prev) => ({ ...prev, imageUrl: url }))}
+                          uploadFn={uploadUpdatePopupImageFile}
+                          placeholder="/uploads/update-popups/... ou https://..."
+                        />
+                      </div>
+                      <div className="flex justify-end">
+                        <Button onClick={handleSaveUpdatePopup} disabled={savingUpdatePopup}>
+                          {savingUpdatePopup ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                          {editingUpdatePopupId ? 'Mettre à jour' : 'Créer'}
                         </Button>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className={TYPOGRAPHY.H3}>Historique des updates</h3>
+                        <span className="text-xs text-muted-foreground">{updatePopups.length} entrées</span>
+                      </div>
+                      {loadingUpdatePopups ? (
+                        <div className="flex justify-center py-8">
+                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : updatePopups.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">Aucune popup créée.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {updatePopups.map((popup) => (
+                            <div key={popup.id} className="rounded-lg border p-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                              <div className="min-w-0 space-y-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-medium">{popup.title}</span>
+                                  <span className={cn('text-xs px-2 py-0.5 rounded-full', popup.isPublished ? 'bg-green-500/20 text-green-400' : 'bg-muted text-muted-foreground')}>
+                                    {popup.isPublished ? 'Publiée' : 'Brouillon'}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {new Date(popup.releaseDate).toLocaleString('fr-FR')}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  Vu {popup._count.views} fois • Créée par {popup.createdBy.username}
+                                </p>
+                                {popup.summary && <p className="text-sm text-muted-foreground truncate">{popup.summary}</p>}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Switch
+                                  checked={popup.isPublished}
+                                  disabled={updatingUpdatePopupId === popup.id}
+                                  onCheckedChange={(checked) => handleToggleUpdatePopupPublished(popup, checked)}
+                                />
+                                <Button size="sm" variant="outline" onClick={() => handleEditUpdatePopup(popup)}>
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button size="sm" variant="outline" className="text-destructive border-destructive/30">
+                                      {deletingUpdatePopup === popup.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Supprimer cette update ?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Cette action est irréversible. La popup ne sera plus affichée aux joueurs.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => handleDeleteUpdatePopup(popup.id)}>Supprimer</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       )}
                     </div>
                   </div>
+                )}
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Titre *</label>
-                    <Input
-                      value={updatePopupForm.title}
-                      onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, title: e.target.value }))}
-                      placeholder="Ex: Mise a jour 1.8.0"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Sous-titre</label>
-                    <Input
-                      value={updatePopupForm.summary}
-                      onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, summary: e.target.value }))}
-                      placeholder="Ex: Nouvelles features, équilibrage et fixes"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Message *</label>
-                    <Textarea
-                      value={updatePopupForm.message}
-                      onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, message: e.target.value }))}
-                      rows={10}
-                      placeholder={'Ex: • Nouveau mode de jeu\n• Ajustement des récompenses\n• Corrections de bugs'}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Date de publication</label>
-                      <Input
-                        type="datetime-local"
-                        value={updatePopupForm.releaseDate}
-                        onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, releaseDate: e.target.value }))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Visibilité</label>
-                      <div className="h-10 px-3 rounded-md border flex items-center justify-between bg-background/50">
-                        <span className="text-sm text-muted-foreground">{updatePopupForm.isPublished ? 'Publiée' : 'Brouillon'}</span>
-                        <Switch
-                          checked={updatePopupForm.isPublished}
-                          onCheckedChange={(checked) => setUpdatePopupForm((prev) => ({ ...prev, isPublished: checked }))}
-                        />
+                {commSubTab === 'maintenance' && (
+                  <div className="space-y-4">
+                    {loadingSettings ? (
+                      <div className="flex justify-center py-12">
+                        <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
                       </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Image</label>
-                    <ImagePicker
-                      value={updatePopupForm.imageUrl}
-                      onChange={(url) => setUpdatePopupForm((prev) => ({ ...prev, imageUrl: url }))}
-                      uploadFn={uploadUpdatePopupImageFile}
-                      placeholder="/uploads/update-popups/... ou https://..."
-                    />
-                  </div>
-
-                  <div className="flex justify-end">
-                    <Button onClick={handleSaveUpdatePopup} disabled={savingUpdatePopup}>
-                      {savingUpdatePopup ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                      {editingUpdatePopupId ? 'Mettre à jour' : 'Créer'}
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="space-y-4 p-4 rounded-lg border bg-background/30 h-full flex flex-col">
-                  <div className="flex items-center gap-2">
-                    <Eye className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">Aperçu joueur</span>
-                  </div>
-                  <div className="rounded-lg border bg-muted/20 p-4 space-y-4 flex-1">
-                    <div>
-                      <h4 className="text-lg font-semibold">{updatePopupForm.title || 'Titre de la mise a jour'}</h4>
-                      <p className="text-xs text-muted-foreground">
-                        {updatePopupForm.releaseDate ? new Date(updatePopupForm.releaseDate).toLocaleString('fr-FR') : 'Date non définie'}
-                      </p>
-                    </div>
-                    {updatePopupForm.summary && (
-                      <p className="text-sm font-medium">{updatePopupForm.summary}</p>
-                    )}
-                    {updatePopupForm.imageUrl && (
-                      <img
-                        src={resolveImageUrl(updatePopupForm.imageUrl)}
-                        alt="preview"
-                        className="w-full max-h-56 rounded-md border object-cover"
-                        onError={(event) => {
-                          (event.target as HTMLImageElement).style.display = 'none';
-                        }}
-                      />
-                    )}
-                    <div className="rounded-md border bg-background/60 p-3">
-                      <p className="text-sm whitespace-pre-wrap">{updatePopupForm.message || 'Le contenu de la popup s affichera ici.'}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className={TYPOGRAPHY.H3}>Historique des updates</h3>
-                  <span className="text-xs text-muted-foreground">{updatePopups.length} entrées</span>
-                </div>
-
-                {loadingUpdatePopups ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  </div>
-                ) : updatePopups.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Aucune popup créée.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {updatePopups.map((popup) => (
-                      <div key={popup.id} className="rounded-lg border p-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                        <div className="min-w-0 space-y-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-medium">{popup.title}</span>
-                            <span className={cn('text-xs px-2 py-0.5 rounded-full', popup.isPublished ? 'bg-green-500/20 text-green-400' : 'bg-muted text-muted-foreground')}>
-                              {popup.isPublished ? 'Publiée' : 'Brouillon'}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(popup.releaseDate).toLocaleString('fr-FR')}
-                            </span>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            Vu {popup._count.views} fois • Créée par {popup.createdBy.username}
-                          </p>
-                          {popup.summary && <p className="text-sm text-muted-foreground truncate">{popup.summary}</p>}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            checked={popup.isPublished}
-                            disabled={updatingUpdatePopupId === popup.id}
-                            onCheckedChange={(checked) => handleToggleUpdatePopupPublished(popup, checked)}
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Raison</label>
+                          <Textarea
+                            value={maintenanceMessage}
+                            onChange={(e) => setMaintenanceMessage(e.target.value)}
+                            placeholder="Ex: Mise à jour technique en cours."
+                            className="min-h-[120px]"
                           />
-                          <Button size="sm" variant="outline" onClick={() => handleEditUpdatePopup(popup)}>
-                            <Edit2 className="h-4 w-4" />
+                          <p className="text-xs text-muted-foreground">
+                            Ce texte s'affichera sur la page de maintenance.
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Date et heure de fin de maintenance (optionnel)</label>
+                          <Input
+                            type="datetime-local"
+                            value={maintenanceEndDate}
+                            onChange={(e) => setMaintenanceEndDate(e.target.value)}
+                            className="max-w-md"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Si définie, un compte à rebours s'affichera sur la page de maintenance. Laissez vide pour ne pas afficher de compte à rebours.
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <label className="text-sm font-medium">Activer la maintenance globale</label>
+                              <p className="text-xs text-muted-foreground">
+                                Quand activée, toutes les pages affichent la maintenance sauf /admin, /login et /register.
+                              </p>
+                            </div>
+                            <Switch
+                              checked={maintenanceEnabled}
+                              onCheckedChange={setMaintenanceEnabled}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-end">
+                          <Button onClick={saveMaintenance} disabled={savingMaintenance}>
+                            {savingMaintenance ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : (
+                              <Save className="h-4 w-4 mr-2" />
+                            )}
+                            Sauvegarder la maintenance
                           </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button size="sm" variant="outline" className="text-destructive border-destructive/30">
-                                {deletingUpdatePopup === popup.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Supprimer cette update ?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Cette action est irréversible. La popup ne sera plus affichée aux joueurs.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteUpdatePopup(popup.id)}>Supprimer</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
                         </div>
                       </div>
-                    ))}
+                    )}
                   </div>
                 )}
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="communication" className={SPACING.SECTION_SPACING}>
-          <Card>
-            <CardHeader>
-              <CardDescription>Maintenance</CardDescription>
-            </CardHeader>
-            <CardContent className={SPACING.CARD_SPACING}>
-
-          {loadingSettings ? (
-            <div className="flex justify-center py-12">
-              <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
             </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Raison</label>
-                <Textarea
-                  value={maintenanceMessage}
-                  onChange={(e) => setMaintenanceMessage(e.target.value)}
-                  placeholder="Ex: Mise à jour technique en cours."
-                  className="min-h-[120px]"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Ce texte s'affichera sur la page de maintenance.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Date et heure de fin de maintenance (optionnel)</label>
-                <Input
-                  type="datetime-local"
-                  value={maintenanceEndDate}
-                  onChange={(e) => setMaintenanceEndDate(e.target.value)}
-                  className="max-w-md"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Si définie, un compte à rebours s'affichera sur la page de maintenance. Laissez vide pour ne pas afficher de compte à rebours.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <label className="text-sm font-medium">Activer la maintenance globale</label>
-                    <p className="text-xs text-muted-foreground">
-                      Quand activée, toutes les pages affichent la maintenance sauf /admin, /login et /register.
-                    </p>
-                  </div>
-                  <Switch
-                    checked={maintenanceEnabled}
-                    onCheckedChange={setMaintenanceEnabled}
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <Button
-                  onClick={saveMaintenance}
-                  disabled={savingMaintenance}
-                >
-                  {savingMaintenance ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Save className="h-4 w-4 mr-2" />
-                  )}
-                  Sauvegarder la maintenance
-                </Button>
-              </div>
-            </div>
-          )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="features" className={SPACING.SECTION_SPACING}>
-          <Card>
-            <CardHeader>
-              <CardDescription>Feature Switches — activez ou désactivez chaque page du site. Une page désactivée disparaît de la navigation et est inaccessible par URL.</CardDescription>
-            </CardHeader>
-            <CardContent className={SPACING.SECTION_SPACING}>
-
-          {loadingSettings ? (
-            <div className="flex justify-center py-12">
-              <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
-            </div>
-          ) : (
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Message affiché si la page est accédée directement</label>
-                <Textarea
-                  value={blockedMessage}
-                  onChange={(e) => setBlockedMessage(e.target.value)}
-                  placeholder="Ex: Cette page est momentanément désactivée."
-                  className="min-h-[100px]"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Laisser vide pour utiliser le message par défaut.
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-medium">Fonctionnalités</h3>
-                  <span className="text-xs text-muted-foreground">
-                    {blockedPages.length} désactivée{blockedPages.length > 1 ? 's' : ''}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {Object.entries(
-                    BLOCKABLE_PAGES.reduce<Record<string, typeof BLOCKABLE_PAGES>>((acc, page) => {
-                      acc[page.category] = acc[page.category] || [];
-                      acc[page.category].push(page);
-                      return acc;
-                    }, {} as Record<string, typeof BLOCKABLE_PAGES>)
-                  ).map(([category, pages]) => (
-                    <div
-                      key={category}
-                      className="p-4 border border-border/30 rounded-lg bg-muted/10 space-y-3"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm font-semibold">{category}</div>
-                        <span className="text-xs text-muted-foreground">
-                          {pages.filter(p => !blockedPages.includes(p.key)).length}/{pages.length} actives
-                        </span>
-                      </div>
-                      <div className="space-y-3">
-                        {pages.map((page) => (
-                          <div
-                            key={page.key}
-                            className="flex items-center justify-between"
-                          >
-                            <div>
-                              <div className={cn("text-sm font-medium", blockedPages.includes(page.key) && "text-muted-foreground line-through")}>{page.label}</div>
-                              <div className="text-xs text-muted-foreground">{page.path}</div>
-                            </div>
-                            <Switch
-                              checked={!blockedPages.includes(page.key)}
-                              onCheckedChange={() => toggleBlockedPage(page.key)}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <Button
-                  onClick={saveBlockedPages}
-                  disabled={savingBlocks}
-                >
-                  {savingBlocks ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Save className="h-4 w-4 mr-2" />
-                  )}
-                  Sauvegarder
-                </Button>
-              </div>
-            </div>
-          )}
-            </CardContent>
           </Card>
         </TabsContent>
 
