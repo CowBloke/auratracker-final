@@ -12,6 +12,40 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+/**
+ * Takes raw tweakcn CSS and returns only the :root / .dark variable blocks,
+ * stripped of @layer wrappers so they are unlayered and win the cascade.
+ */
+function unwrapLayers(css: string): string {
+  // Remove @tailwind directives
+  let src = css.replace(/@tailwind\s+\w+;\s*/g, '');
+  let output = '';
+  let i = 0;
+  while (i < src.length) {
+    // Match @layer <name> {
+    const ahead = src.slice(i);
+    const layerMatch = ahead.match(/^@layer\s+\w+\s*\{/);
+    if (layerMatch) {
+      i += layerMatch[0].length;
+      // Extract inner content by tracking brace depth
+      let depth = 1;
+      const innerStart = i;
+      while (i < src.length && depth > 0) {
+        if (src[i] === '{') depth++;
+        else if (src[i] === '}') depth--;
+        i++;
+      }
+      const inner = src.slice(innerStart, i - 1);
+      // Drop @apply lines (not valid in browser)
+      output += inner.replace(/[^\n]*@apply[^\n]*/g, '');
+    } else {
+      output += src[i];
+      i++;
+    }
+  }
+  return output;
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window !== 'undefined') {
@@ -50,12 +84,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     fetch(`/themes/${colorScheme}.css`)
       .then((r) => r.text())
       .then((css) => {
-        const stripped = css
-          .replace(/@tailwind\s+\w+;\s*/g, '')
-          .replace(/\s*@apply[^;]+;/g, '');
         const style = document.createElement('style');
         style.id = STYLE_ID;
-        style.textContent = stripped;
+        style.textContent = unwrapLayers(css);
         document.head.appendChild(style);
         localStorage.setItem('colorScheme', colorScheme);
       })
