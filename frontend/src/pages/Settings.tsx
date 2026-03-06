@@ -1,9 +1,7 @@
-import { Sun, Moon } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Sun, Moon } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { PageShell } from '@/components/layout/page-shell';
 
@@ -12,186 +10,154 @@ interface ColorSchemeEntry {
   label: string;
 }
 
-const themeOptions = [
-  {
-    id: 'light',
-    label: 'Clair',
-    description: 'Interface lumineuse pour la journee.',
-    icon: Sun,
-  },
-  {
-    id: 'dark',
-    label: 'Sombre',
-    description: 'Moins agressif pour les yeux la nuit.',
-    icon: Moon,
-  },
-] as const;
+interface SchemePreview {
+  bg: string;
+  primary: string;
+}
 
-const accentOptions = [
-  {
-    id: 'neutral',
-    label: 'Neutre',
-    preview: 'linear-gradient(135deg, #111827, #9ca3af)',
-  },
-  {
-    id: 'aura',
-    label: 'Aura',
-    preview: 'linear-gradient(135deg, #a855f7, #d946ef)',
-  },
-  {
-    id: 'cyan',
-    label: 'Cyan',
-    preview: 'linear-gradient(135deg, #22d3ee, #67e8f9)',
-  },
-  {
-    id: 'pink',
-    label: 'Rose',
-    preview: 'linear-gradient(135deg, #f472b6, #f9a8d4)',
-  },
-  {
-    id: 'orange',
-    label: 'Orange',
-    preview: 'linear-gradient(135deg, #fb923c, #fdba74)',
-  },
-  {
-    id: 'green',
-    label: 'Vert',
-    preview: 'linear-gradient(135deg, #4ade80, #86efac)',
-  },
-] as const;
+function extractVar(css: string, varName: string): string | null {
+  const match = css.match(new RegExp(`${varName}:\\s*([^;\\n]+);`));
+  return match ? match[1].trim() : null;
+}
 
 export default function Settings() {
-  const { theme, setTheme, accent, setAccent, colorScheme, setColorScheme } = useTheme();
-  const [colorSchemes, setColorSchemes] = useState<ColorSchemeEntry[]>([{ id: 'default', label: 'Default' }]);
+  const { theme, setTheme, colorScheme, setColorScheme } = useTheme();
+  const [colorSchemes, setColorSchemes] = useState<ColorSchemeEntry[]>([
+    { id: 'default', label: 'Default' },
+  ]);
+  const [previews, setPreviews] = useState<Record<string, SchemePreview>>({});
 
   useEffect(() => {
     fetch('/themes/manifest.json')
       .then((r) => r.json())
-      .then((data: ColorSchemeEntry[]) => setColorSchemes(data))
+      .then((data: ColorSchemeEntry[]) => {
+        setColorSchemes(data);
+        data.forEach(async (scheme) => {
+          if (scheme.id === 'default') return;
+          try {
+            const css = await fetch(`/themes/${scheme.id}.css`).then((r) => r.text());
+            const bg = extractVar(css, '--background');
+            const primary = extractVar(css, '--primary');
+            if (bg && primary) {
+              setPreviews((prev) => ({
+                ...prev,
+                [scheme.id]: {
+                  bg: `hsl(${bg})`,
+                  primary: `hsl(${primary})`,
+                },
+              }));
+            }
+          } catch {
+            // ignore fetch errors for individual themes
+          }
+        });
+      })
       .catch(() => {});
   }, []);
 
   return (
     <PageShell>
-      <Card>
-        <CardHeader>
-          <CardDescription>Thème</CardDescription>
-          <CardTitle className={TYPOGRAPHY.H5}>
-            Choisis l'ambiance qui te convient le mieux.
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-2 md:grid-cols-2">
-            {themeOptions.map((option) => {
-              const Icon = option.icon;
-              const isActive = theme === option.id;
+      <Tabs
+        orientation="vertical"
+        defaultValue="personnalisation"
+        className="flex gap-8"
+      >
+        <TabsList className="flex h-auto w-44 shrink-0 flex-col items-stretch justify-start gap-0.5 rounded-lg border border-border/40 bg-muted/20 p-1.5">
+          <TabsTrigger
+            value="personnalisation"
+            className="justify-start px-3 py-2 text-sm"
+          >
+            Personnalisation
+          </TabsTrigger>
+        </TabsList>
 
-              return (
-                <Button
-                  key={option.id}
+        <TabsContent value="personnalisation" className="mt-0 flex-1 space-y-8">
+          {/* Light / Dark */}
+          <section className="space-y-3">
+            <div>
+              <p className="text-xs text-muted-foreground">Thème</p>
+              <h3 className="text-sm font-medium">Choisis l'ambiance qui te convient.</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-2 max-w-sm">
+              {(
+                [
+                  { id: 'light', label: 'Clair', icon: Sun },
+                  { id: 'dark', label: 'Sombre', icon: Moon },
+                ] as const
+              ).map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
                   type="button"
-                  variant={isActive ? "default" : "outline"}
-                  onClick={() => setTheme(option.id)}
-                  aria-pressed={isActive}
+                  onClick={() => setTheme(id)}
                   className={cn(
-                    "flex items-start gap-4 px-4 py-4 text-left h-auto",
-                    isActive
-                      ? "border-foreground"
-                      : "border-border/30"
+                    'flex items-center gap-3 rounded-lg border px-4 py-3 text-sm transition-colors',
+                    theme === id
+                      ? 'border-foreground bg-foreground/5 font-medium text-foreground'
+                      : 'border-border/40 text-muted-foreground hover:border-border hover:text-foreground'
                   )}
                 >
-                  <span
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Color scheme */}
+          <section className="space-y-3">
+            <div>
+              <p className="text-xs text-muted-foreground">Palette de couleurs</p>
+              <h3 className="text-sm font-medium">Choisis un thème tweakcn.</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+              {colorSchemes.map((scheme) => {
+                const isActive = colorScheme === scheme.id;
+                const preview = scheme.id !== 'default' ? previews[scheme.id] : null;
+                return (
+                  <button
+                    key={scheme.id}
+                    type="button"
+                    onClick={() => setColorScheme(scheme.id)}
                     className={cn(
-                      "flex h-10 w-10 items-center justify-center border shrink-0",
-                      isActive ? "border-foreground" : "border-border/30 text-muted-foreground"
+                      'flex flex-col gap-2.5 rounded-lg border p-3 text-left transition-colors',
+                      isActive
+                        ? 'border-foreground ring-1 ring-foreground'
+                        : 'border-border/40 hover:border-border'
                     )}
                   >
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <span className="space-y-1">
-                    <span className={cn("block", TYPOGRAPHY.BODY, "font-medium")}>{option.label}</span>
-                    <span className={cn("block", TYPOGRAPHY.SMALL)}>{option.description}</span>
-                  </span>
-                </Button>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardDescription>Couleur d'accent</CardDescription>
-          <CardTitle className={TYPOGRAPHY.H5}>
-            Change la couleur principale de l'interface.
-          </CardTitle>
-        </CardHeader>
-        <CardContent className={SPACING.CARD_SPACING}>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {accentOptions.map((option) => {
-              const isActive = accent === option.id;
-              return (
-                <Button
-                  key={option.id}
-                  type="button"
-                  variant={isActive ? "default" : "outline"}
-                  onClick={() => setAccent(option.id)}
-                  aria-pressed={isActive}
-                  className={cn(
-                    "flex items-center gap-4 px-4 py-3 text-left h-auto",
-                    isActive
-                      ? "border-foreground"
-                      : "border-border/30"
-                  )}
-                >
-                  <span
-                    className="h-10 w-10 border border-border/30 shrink-0"
-                    style={{ background: option.preview }}
-                  />
-                  <span className={cn(TYPOGRAPHY.SMALL, "font-medium")}>{option.label}</span>
-                </Button>
-              );
-            })}
-          </div>
-          <p className={TYPOGRAPHY.XS}>
-            Tes choix sont sauvegardés sur cet appareil.
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardDescription>Palette de couleurs</CardDescription>
-          <CardTitle className={TYPOGRAPHY.H5}>
-            Choisis un thème tweakcn.
-          </CardTitle>
-        </CardHeader>
-        <CardContent className={SPACING.CARD_SPACING}>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {colorSchemes.map((scheme) => {
-              const isActive = colorScheme === scheme.id;
-              return (
-                <Button
-                  key={scheme.id}
-                  type="button"
-                  variant={isActive ? 'default' : 'outline'}
-                  onClick={() => setColorScheme(scheme.id)}
-                  aria-pressed={isActive}
-                  className={cn(
-                    'h-auto px-4 py-3 text-left',
-                    isActive ? 'border-foreground' : 'border-border/30'
-                  )}
-                >
-                  <span className={cn(TYPOGRAPHY.SMALL, 'font-medium')}>{scheme.label}</span>
-                </Button>
-              );
-            })}
-          </div>
-          <p className={TYPOGRAPHY.XS}>
-            Ajoute des fichiers CSS depuis tweakcn dans <code>public/themes/</code> et liste-les dans <code>manifest.json</code>.
-          </p>
-        </CardContent>
-      </Card>
+                    {/* color swatches */}
+                    <div className="flex gap-1">
+                      {preview ? (
+                        <>
+                          <span
+                            className="h-6 w-6 rounded-md border border-black/10"
+                            style={{ background: preview.bg }}
+                          />
+                          <span
+                            className="h-6 w-6 rounded-md border border-black/10"
+                            style={{ background: preview.primary }}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <span className="h-6 w-6 rounded-md border border-black/10 bg-background" />
+                          <span className="h-6 w-6 rounded-md border border-black/10 bg-primary" />
+                        </>
+                      )}
+                    </div>
+                    <span className="text-xs font-medium leading-tight">{scheme.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Dépose un fichier CSS tweakcn dans{' '}
+              <code className="font-mono">public/themes/</code> et ajoute une entrée dans{' '}
+              <code className="font-mono">manifest.json</code>.
+            </p>
+          </section>
+        </TabsContent>
+      </Tabs>
     </PageShell>
   );
 }
