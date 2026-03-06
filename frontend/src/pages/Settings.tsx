@@ -10,14 +10,27 @@ interface ColorSchemeEntry {
   label: string;
 }
 
-interface SchemePreview {
-  bg: string;
-  primary: string;
-}
-
-function extractVar(css: string, varName: string): string | null {
-  const match = css.match(new RegExp(`${varName}:\\s*([^;\\n]+);`));
-  return match ? match[1].trim() : null;
+/** Parse all CSS custom properties from the first :root { } block in the CSS text. */
+function parseRootVars(css: string): Record<string, string> {
+  const vars: Record<string, string> = {};
+  const rootStart = css.indexOf(':root');
+  if (rootStart === -1) return vars;
+  const braceOpen = css.indexOf('{', rootStart);
+  if (braceOpen === -1) return vars;
+  let depth = 1;
+  let i = braceOpen + 1;
+  while (i < css.length && depth > 0) {
+    if (css[i] === '{') depth++;
+    else if (css[i] === '}') depth--;
+    i++;
+  }
+  const inner = css.slice(braceOpen + 1, i - 1);
+  const re = /--([\w-]+)\s*:\s*([^;]+);/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(inner)) !== null) {
+    vars[`--${m[1]}`] = m[2].trim();
+  }
+  return vars;
 }
 
 export default function Settings() {
@@ -25,7 +38,7 @@ export default function Settings() {
   const [colorSchemes, setColorSchemes] = useState<ColorSchemeEntry[]>([
     { id: 'default', label: 'Default' },
   ]);
-  const [previews, setPreviews] = useState<Record<string, SchemePreview>>({});
+  const [themeVars, setThemeVars] = useState<Record<string, Record<string, string>>>({});
 
   useEffect(() => {
     fetch('/themes/manifest.json')
@@ -36,19 +49,12 @@ export default function Settings() {
           if (scheme.id === 'default') return;
           try {
             const css = await fetch(`/themes/${scheme.id}.css`).then((r) => r.text());
-            const bg = extractVar(css, '--background');
-            const primary = extractVar(css, '--primary');
-            if (bg && primary) {
-              setPreviews((prev) => ({
-                ...prev,
-                [scheme.id]: {
-                  bg: `hsl(${bg})`,
-                  primary: `hsl(${primary})`,
-                },
-              }));
+            const vars = parseRootVars(css);
+            if (Object.keys(vars).length > 0) {
+              setThemeVars((prev) => ({ ...prev, [scheme.id]: vars }));
             }
           } catch {
-            // ignore fetch errors for individual themes
+            // ignore
           }
         });
       })
@@ -112,40 +118,112 @@ export default function Settings() {
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
               {colorSchemes.map((scheme) => {
                 const isActive = colorScheme === scheme.id;
-                const preview = scheme.id !== 'default' ? previews[scheme.id] : null;
+                const vars = scheme.id !== 'default' ? themeVars[scheme.id] : undefined;
+                const loaded = scheme.id === 'default' || vars !== undefined;
+
                 return (
                   <button
                     key={scheme.id}
                     type="button"
                     onClick={() => setColorScheme(scheme.id)}
-                    className={cn(
-                      'flex flex-col gap-2.5 rounded-lg border p-3 text-left transition-colors',
-                      isActive
-                        ? 'border-foreground ring-1 ring-foreground'
-                        : 'border-border/40 hover:border-border'
-                    )}
+                    // Spread all CSS vars so every hsl(var(--x)) inside resolves to this theme
+                    style={
+                      vars
+                        ? ({
+                            ...vars,
+                            backgroundColor: 'hsl(var(--card))',
+                            color: 'hsl(var(--card-foreground))',
+                            borderRadius: 'var(--radius)',
+                            fontFamily: 'var(--font-sans)',
+                            border: isActive
+                              ? '2px solid hsl(var(--primary))'
+                              : '1px solid hsl(var(--border))',
+                            outline: 'none',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            overflow: 'hidden',
+                            padding: '0',
+                            opacity: loaded ? 1 : 0,
+                            transition: 'opacity 0.15s, border-color 0.15s',
+                            boxShadow: isActive
+                              ? '0 0 0 1px hsl(var(--primary))'
+                              : undefined,
+                          } as React.CSSProperties)
+                        : {
+                            // Default theme: uses live document vars (no override)
+                            overflow: 'hidden',
+                            padding: '0',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            border: isActive
+                              ? '2px solid hsl(var(--primary))'
+                              : '1px solid hsl(var(--border))',
+                            borderRadius: 'var(--radius)',
+                            backgroundColor: 'hsl(var(--card))',
+                            color: 'hsl(var(--card-foreground))',
+                            fontFamily: 'var(--font-sans)',
+                            boxShadow: isActive
+                              ? '0 0 0 1px hsl(var(--primary))'
+                              : undefined,
+                          } as React.CSSProperties
+                    }
                   >
-                    {/* color swatches */}
-                    <div className="flex gap-1">
-                      {preview ? (
-                        <>
-                          <span
-                            className="h-6 w-6 rounded-md border border-black/10"
-                            style={{ background: preview.bg }}
-                          />
-                          <span
-                            className="h-6 w-6 rounded-md border border-black/10"
-                            style={{ background: preview.primary }}
-                          />
-                        </>
-                      ) : (
-                        <>
-                          <span className="h-6 w-6 rounded-md border border-black/10 bg-background" />
-                          <span className="h-6 w-6 rounded-md border border-black/10 bg-primary" />
-                        </>
-                      )}
+                    {/* Primary color bar */}
+                    <div
+                      style={{
+                        height: '5px',
+                        backgroundColor: 'hsl(var(--primary))',
+                      }}
+                    />
+                    {/* Content */}
+                    <div style={{ padding: '10px 12px 12px' }}>
+                      {/* Mini UI mock */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: '4px',
+                          marginBottom: '8px',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: '8px',
+                            width: '32px',
+                            borderRadius: '9999px',
+                            backgroundColor: 'hsl(var(--primary))',
+                          }}
+                        />
+                        <div
+                          style={{
+                            height: '8px',
+                            flex: 1,
+                            borderRadius: '9999px',
+                            backgroundColor: 'hsl(var(--muted))',
+                          }}
+                        />
+                      </div>
+                      <div
+                        style={{
+                          height: '6px',
+                          width: '70%',
+                          borderRadius: '9999px',
+                          backgroundColor: 'hsl(var(--muted))',
+                          marginBottom: '10px',
+                        }}
+                      />
+                      {/* Label */}
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          display: 'block',
+                          color: 'hsl(var(--card-foreground))',
+                        }}
+                      >
+                        {scheme.label}
+                      </span>
                     </div>
-                    <span className="text-xs font-medium leading-tight">{scheme.label}</span>
                   </button>
                 );
               })}
