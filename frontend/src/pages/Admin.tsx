@@ -397,6 +397,7 @@ export default function Admin() {
   const [loadingBugs, setLoadingBugs] = useState(false);
   const [updatingBug, setUpdatingBug] = useState<string | null>(null);
   const [deletingBug, setDeletingBug] = useState<string | null>(null);
+  const [expandedInboxItem, setExpandedInboxItem] = useState<string | null>(null);
 
   // Pending users state
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
@@ -1624,266 +1625,224 @@ export default function Admin() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardDescription>Demandes d'inscription en attente</CardDescription>
+                <CardDescription>Tous les messages entrants</CardDescription>
                 <div className={cn("flex items-center gap-2", TYPOGRAPHY.SMALL)}>
-                  <UserPlus className="h-4 w-4" />
-                  <span>{pendingUsers.length} en attente</span>
+                  <Inbox className="h-4 w-4" />
+                  <span>
+                    {pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length} en attente
+                  </span>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-
-              {loadingPending ? (
+              {(loadingPending || loadingBugs) ? (
                 <div className="flex justify-center py-12">
                   <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
                 </div>
-              ) : pendingUsers.length === 0 ? (
-                <div className="text-center py-12 space-y-2">
-                  <UserPlus className="h-8 w-8 mx-auto text-muted-foreground/50" />
-                  <p className={TYPOGRAPHY.MUTED}>
-                    Aucune demande en attente
-                  </p>
-                </div>
-              ) : (
-                <div className="divide-y divide-border/30">
-                  {pendingUsers.map((u) => (
-                    <div
-                      key={u.id}
-                      className="py-4"
-                    >
-                  <div className="flex items-center justify-between">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium">{u.username}</span>
-                        <span className="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-400">
-                          En attente
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {u.email}
-                      </p>
-                      <p className="text-xs text-muted-foreground/80 mt-0.5">
-                        Prénom: {u.firstName ? u.firstName : 'Non défini'}
-                      </p>
-                      <div className="mt-2 rounded-md border border-border/40 bg-muted/20 px-3 py-2">
-                        <p className="text-[11px] font-medium text-muted-foreground/70">
-                          Message de motivation
-                        </p>
-                        <p className="mt-1 text-sm whitespace-pre-wrap break-words text-foreground/90">
-                          {u.motivationMessage?.trim() ? u.motivationMessage : 'Non renseigné'}
-                        </p>
-                      </div>
-                      <p className="text-xs text-muted-foreground/60 mt-0.5">
-                        Demandé le {new Date(u.createdAt).toLocaleDateString('fr-FR', { 
-                          day: 'numeric', 
-                          month: 'short', 
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </p>
+              ) : (() => {
+                const inboxItems = [
+                  ...pendingUsers.map(u => ({ id: `reg-${u.id}`, type: 'registration' as const, date: new Date(u.createdAt), data: u })),
+                  ...bugReports.map(b => ({ id: `bug-${b.id}`, type: 'bug' as const, date: new Date(b.createdAt), data: b })),
+                ].sort((a, b) => b.date.getTime() - a.date.getTime());
+
+                if (inboxItems.length === 0) {
+                  return (
+                    <div className="text-center py-12 space-y-2">
+                      <Inbox className="h-8 w-8 mx-auto text-muted-foreground/50" />
+                      <p className={TYPOGRAPHY.MUTED}>Boîte de réception vide</p>
                     </div>
-                    
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => approveUser(u.id)}
-                        disabled={approvingUser === u.id}
-                        className="h-8 border-green-500/50 text-green-500 hover:bg-green-500/10"
-                      >
-                        {approvingUser === u.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <>
-                            <Check className="h-4 w-4 mr-1" />
-                            Approuver
-                          </>
-                        )}
-                      </Button>
-                      
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10"
-                            disabled={rejectingUser === u.id}
-                          >
-                            {rejectingUser === u.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <>
-                                <UserX className="h-4 w-4 mr-1" />
-                                Rejeter
-                              </>
+                  );
+                }
+
+                return (
+                  <div className="divide-y divide-border/30">
+                    {inboxItems.map((item) => {
+                      const isExpanded = expandedInboxItem === item.id;
+                      const toggle = () => setExpandedInboxItem(isExpanded ? null : item.id);
+
+                      if (item.type === 'registration') {
+                        const u = item.data;
+                        return (
+                          <div key={item.id} className="py-3">
+                            <button
+                              onClick={toggle}
+                              className="w-full flex items-center justify-between gap-3 text-left hover:opacity-80 transition-opacity"
+                            >
+                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                                <span className="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 shrink-0">
+                                  Inscription
+                                </span>
+                                <span className="font-medium truncate">{u.username}</span>
+                                <span className="text-xs text-muted-foreground/60 shrink-0">
+                                  {item.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                              <ChevronDown className={cn("h-4 w-4 text-muted-foreground shrink-0 transition-transform", isExpanded && "rotate-180")} />
+                            </button>
+                            {isExpanded && (
+                              <div className="mt-3 space-y-3 pl-1">
+                                <div className="space-y-1">
+                                  <p className="text-xs text-muted-foreground">{u.email}</p>
+                                  <p className="text-xs text-muted-foreground/80">Prénom : {u.firstName || 'Non défini'}</p>
+                                </div>
+                                <div className="rounded-md border border-border/40 bg-muted/20 px-3 py-2">
+                                  <p className="text-[11px] font-medium text-muted-foreground/70">Message de motivation</p>
+                                  <p className="mt-1 text-sm whitespace-pre-wrap break-words text-foreground/90">
+                                    {u.motivationMessage?.trim() ? u.motivationMessage : 'Non renseigné'}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => approveUser(u.id)}
+                                    disabled={approvingUser === u.id}
+                                    className="h-8 border-green-500/50 text-green-500 hover:bg-green-500/10"
+                                  >
+                                    {approvingUser === u.id ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <><Check className="h-4 w-4 mr-1" />Approuver</>
+                                    )}
+                                  </Button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10"
+                                        disabled={rejectingUser === u.id}
+                                      >
+                                        {rejectingUser === u.id ? (
+                                          <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                          <><UserX className="h-4 w-4 mr-1" />Rejeter</>
+                                        )}
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle className="flex items-center gap-2">
+                                          <AlertTriangle className="h-5 w-5 text-destructive" />
+                                          Rejeter la demande de {u.username} ?
+                                        </AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          L'utilisateur devra créer un nouveau compte s'il souhaite réessayer.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          onClick={() => rejectUser(u.id)}
+                                          className="bg-destructive hover:bg-destructive/90"
+                                        >
+                                          Rejeter
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
+                              </div>
                             )}
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle className="flex items-center gap-2">
-                              <AlertTriangle className="h-5 w-5 text-destructive" />
-                              Rejeter la demande de {u.username} ?
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              L'utilisateur devra créer un nouveau compte s'il souhaite réessayer.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Annuler</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => rejectUser(u.id)}
-                              className="bg-destructive hover:bg-destructive/90"
-                            >
-                              Rejeter
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                          </div>
+                        );
+                      }
 
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardDescription>Rapports de bugs des utilisateurs</CardDescription>
-                <div className={cn("flex items-center gap-2", TYPOGRAPHY.SMALL)}>
-                  <Bug className="h-4 w-4" />
-                  <span>{bugReports.filter(b => b.status === 'PENDING').length} en attente</span>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {loadingBugs ? (
-                <div className="flex justify-center py-12">
-                  <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
-                </div>
-              ) : bugReports.length === 0 ? (
-                <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
-                  Aucun rapport de bug
-                </p>
-              ) : (
-                <div className="divide-y divide-border/30">
-                  {bugReports.map((bug) => (
-                    <div
-                      key={bug.id}
-                      className={cn(
-                        "py-4",
-                        bug.status === 'DONE' && "opacity-60"
-                      )}
-                    >
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={cn(
-                            "font-medium",
-                            bug.status === 'DONE' && "line-through"
-                          )}>
-                            {bug.title}
-                          </span>
-                          <span className={cn(
-                            "text-xs px-2 py-0.5 rounded",
-                            bug.status === 'PENDING'
-                              ? "bg-amber-500/20 text-amber-400"
-                              : "bg-green-500/20 text-green-400"
-                          )}>
-                            {bug.status === 'PENDING' ? 'En attente' : 'Résolu'}
-                          </span>
+                      // bug
+                      const bug = item.data;
+                      return (
+                        <div key={item.id} className={cn("py-3", bug.status === 'DONE' && "opacity-60")}>
+                          <button
+                            onClick={toggle}
+                            className="w-full flex items-center justify-between gap-3 text-left hover:opacity-80 transition-opacity"
+                          >
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                              <span className={cn(
+                                "text-xs px-2 py-0.5 rounded shrink-0",
+                                bug.status === 'PENDING' ? "bg-amber-500/20 text-amber-400" : "bg-green-500/20 text-green-400"
+                              )}>
+                                Bug
+                              </span>
+                              <span className={cn("font-medium truncate", bug.status === 'DONE' && "line-through")}>
+                                {bug.title}
+                              </span>
+                              <span className="text-xs text-muted-foreground/60 shrink-0">
+                                {bug.user.username} • {item.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <ChevronDown className={cn("h-4 w-4 text-muted-foreground shrink-0 transition-transform", isExpanded && "rotate-180")} />
+                          </button>
+                          {isExpanded && (
+                            <div className="mt-3 space-y-3 pl-1">
+                              <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted/20 p-3 rounded">
+                                {bug.description}
+                              </p>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => toggleBugStatus(bug)}
+                                  disabled={updatingBug === bug.id}
+                                  className={cn(
+                                    "h-8",
+                                    bug.status === 'DONE'
+                                      ? "border-amber-500/50 text-amber-500 hover:bg-amber-500/10"
+                                      : "border-green-500/50 text-green-500 hover:bg-green-500/10"
+                                  )}
+                                >
+                                  {updatingBug === bug.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : bug.status === 'DONE' ? (
+                                    <><X className="h-4 w-4 mr-1" />Rouvrir</>
+                                  ) : (
+                                    <><Check className="h-4 w-4 mr-1" />Résolu</>
+                                  )}
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10"
+                                      disabled={deletingBug === bug.id}
+                                    >
+                                      {deletingBug === bug.id ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <Trash2 className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle className="flex items-center gap-2">
+                                        <AlertTriangle className="h-5 w-5 text-destructive" />
+                                        Supprimer ce rapport ?
+                                      </AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Le rapport de bug sera définitivement supprimé.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => deleteBug(bug.id)}
+                                        className="bg-destructive hover:bg-destructive/90"
+                                      >
+                                        Supprimer
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Par <span className="text-foreground">{bug.user.username}</span> • {new Date(bug.createdAt).toLocaleDateString('fr-FR', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => toggleBugStatus(bug)}
-                          disabled={updatingBug === bug.id}
-                          className={cn(
-                            "h-8",
-                            bug.status === 'DONE'
-                              ? "border-amber-500/50 text-amber-500 hover:bg-amber-500/10"
-                              : "border-green-500/50 text-green-500 hover:bg-green-500/10"
-                          )}
-                        >
-                          {updatingBug === bug.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : bug.status === 'DONE' ? (
-                            <>
-                              <X className="h-4 w-4 mr-1" />
-                              Rouvrir
-                            </>
-                          ) : (
-                            <>
-                              <Check className="h-4 w-4 mr-1" />
-                              Résolu
-                            </>
-                          )}
-                        </Button>
-
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10"
-                              disabled={deletingBug === bug.id}
-                            >
-                              {deletingBug === bug.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle className="flex items-center gap-2">
-                                <AlertTriangle className="h-5 w-5 text-destructive" />
-                                Supprimer ce rapport ?
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Le rapport de bug sera définitivement supprimé.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Annuler</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => deleteBug(bug.id)}
-                                className="bg-destructive hover:bg-destructive/90"
-                              >
-                                Supprimer
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </div>
-
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted/20 p-3 rounded">
-                      {bug.description}
-                    </p>
-                    </div>
+                      );
+                    })}
                   </div>
-                  ))}
-                </div>
-              )}
+                );
+              })()}
             </CardContent>
           </Card>
         </TabsContent>
