@@ -12,7 +12,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, ToggleLeft } from 'lucide-react';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, ToggleLeft, Inbox } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, ReferenceDot } from 'recharts';
 import {
   AlertDialog,
@@ -341,7 +341,7 @@ export default function Admin() {
   const [mutingUser, setMutingUser] = useState<string | null>(null);
   const [clearingChat, setClearingChat] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'users' | 'logs' | 'bans' | 'content' | 'communication' | 'bugs' | 'features' | 'settings' | 'activity'>('users');
+  const [activeTab, setActiveTab] = useState<'inbox' | 'users' | 'logs' | 'bans' | 'content' | 'communication' | 'features' | 'settings' | 'activity'>('inbox');
 
   // Activity tab state
   type OnlineHistoryPoint = { timestamp: string; count: number; max: number; usernames: { userId: string; username: string }[] };
@@ -1564,14 +1564,18 @@ export default function Admin() {
           className={SPACING.SECTION_SPACING}
         >
           <TabsList className="flex flex-wrap h-auto p-1">
+          <TabsTrigger value="inbox" className="flex items-center gap-2">
+            <Inbox className="h-4 w-4" />
+            Boîte de réception
+            {(pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length) > 0 && (
+              <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[11px] font-semibold leading-none">
+                {pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length}
+              </span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Utilisateurs
-            {pendingUsers.length > 0 && (
-              <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[11px] font-semibold leading-none">
-                {pendingUsers.length}
-              </span>
-            )}
           </TabsTrigger>
           <TabsTrigger value="logs" className="flex items-center gap-2">
             <ScrollText className="h-4 w-4" />
@@ -1599,15 +1603,6 @@ export default function Admin() {
             <MessageCircle className="h-4 w-4" />
             Communication
           </TabsTrigger>
-          <TabsTrigger value="bugs" className="flex items-center gap-2">
-            <Bug className="h-4 w-4" />
-            Bugs
-            {bugReports.filter(b => b.status === 'PENDING').length > 0 && (
-              <span className={TYPOGRAPHY.XS}>
-                {bugReports.filter(b => b.status === 'PENDING').length}
-              </span>
-            )}
-          </TabsTrigger>
           <TabsTrigger value="features" className="flex items-center gap-2">
             <ToggleLeft className="h-4 w-4" />
             Fonctionnalités
@@ -1625,7 +1620,7 @@ export default function Admin() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="users" className={SPACING.SECTION_SPACING}>
+        <TabsContent value="inbox" className={SPACING.SECTION_SPACING}>
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -1749,6 +1744,143 @@ export default function Admin() {
                     </div>
                   </div>
                     </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardDescription>Rapports de bugs des utilisateurs</CardDescription>
+                <div className={cn("flex items-center gap-2", TYPOGRAPHY.SMALL)}>
+                  <Bug className="h-4 w-4" />
+                  <span>{bugReports.filter(b => b.status === 'PENDING').length} en attente</span>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingBugs ? (
+                <div className="flex justify-center py-12">
+                  <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+                </div>
+              ) : bugReports.length === 0 ? (
+                <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
+                  Aucun rapport de bug
+                </p>
+              ) : (
+                <div className="divide-y divide-border/30">
+                  {bugReports.map((bug) => (
+                    <div
+                      key={bug.id}
+                      className={cn(
+                        "py-4",
+                        bug.status === 'DONE' && "opacity-60"
+                      )}
+                    >
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={cn(
+                            "font-medium",
+                            bug.status === 'DONE' && "line-through"
+                          )}>
+                            {bug.title}
+                          </span>
+                          <span className={cn(
+                            "text-xs px-2 py-0.5 rounded",
+                            bug.status === 'PENDING'
+                              ? "bg-amber-500/20 text-amber-400"
+                              : "bg-green-500/20 text-green-400"
+                          )}>
+                            {bug.status === 'PENDING' ? 'En attente' : 'Résolu'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Par <span className="text-foreground">{bug.user.username}</span> • {new Date(bug.createdAt).toLocaleDateString('fr-FR', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => toggleBugStatus(bug)}
+                          disabled={updatingBug === bug.id}
+                          className={cn(
+                            "h-8",
+                            bug.status === 'DONE'
+                              ? "border-amber-500/50 text-amber-500 hover:bg-amber-500/10"
+                              : "border-green-500/50 text-green-500 hover:bg-green-500/10"
+                          )}
+                        >
+                          {updatingBug === bug.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : bug.status === 'DONE' ? (
+                            <>
+                              <X className="h-4 w-4 mr-1" />
+                              Rouvrir
+                            </>
+                          ) : (
+                            <>
+                              <Check className="h-4 w-4 mr-1" />
+                              Résolu
+                            </>
+                          )}
+                        </Button>
+
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10"
+                              disabled={deletingBug === bug.id}
+                            >
+                              {deletingBug === bug.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle className="flex items-center gap-2">
+                                <AlertTriangle className="h-5 w-5 text-destructive" />
+                                Supprimer ce rapport ?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Le rapport de bug sera définitivement supprimé.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Annuler</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deleteBug(bug.id)}
+                                className="bg-destructive hover:bg-destructive/90"
+                              >
+                                Supprimer
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </div>
+
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted/20 p-3 rounded">
+                      {bug.description}
+                    </p>
+                    </div>
+                  </div>
                   ))}
                 </div>
               )}
@@ -2414,145 +2546,6 @@ export default function Admin() {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="bugs" className={SPACING.SECTION_SPACING}>
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardDescription>Rapports de bugs des utilisateurs</CardDescription>
-                <div className={cn("flex items-center gap-2", TYPOGRAPHY.SMALL)}>
-                  <Bug className="h-4 w-4" />
-                  <span>{bugReports.filter(b => b.status === 'PENDING').length} en attente</span>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {loadingBugs ? (
-                <div className="flex justify-center py-12">
-                  <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
-                </div>
-              ) : bugReports.length === 0 ? (
-                <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
-                  Aucun rapport de bug
-                </p>
-              ) : (
-                <div className="divide-y divide-border/30">
-                  {bugReports.map((bug) => (
-                    <div
-                      key={bug.id}
-                      className={cn(
-                        "py-4",
-                        bug.status === 'DONE' && "opacity-60"
-                      )}
-                    >
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={cn(
-                            "font-medium",
-                            bug.status === 'DONE' && "line-through"
-                          )}>
-                            {bug.title}
-                          </span>
-                          <span className={cn(
-                            "text-xs px-2 py-0.5 rounded",
-                            bug.status === 'PENDING' 
-                              ? "bg-amber-500/20 text-amber-400" 
-                              : "bg-green-500/20 text-green-400"
-                          )}>
-                            {bug.status === 'PENDING' ? 'En attente' : 'Résolu'}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Par <span className="text-foreground">{bug.user.username}</span> • {new Date(bug.createdAt).toLocaleDateString('fr-FR', { 
-                            day: 'numeric', 
-                            month: 'short', 
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </p>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => toggleBugStatus(bug)}
-                          disabled={updatingBug === bug.id}
-                          className={cn(
-                            "h-8",
-                            bug.status === 'DONE' 
-                              ? "border-amber-500/50 text-amber-500 hover:bg-amber-500/10"
-                              : "border-green-500/50 text-green-500 hover:bg-green-500/10"
-                          )}
-                        >
-                          {updatingBug === bug.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : bug.status === 'DONE' ? (
-                            <>
-                              <X className="h-4 w-4 mr-1" />
-                              Rouvrir
-                            </>
-                          ) : (
-                            <>
-                              <Check className="h-4 w-4 mr-1" />
-                              Résolu
-                            </>
-                          )}
-                        </Button>
-                        
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10"
-                              disabled={deletingBug === bug.id}
-                            >
-                              {deletingBug === bug.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle className="flex items-center gap-2">
-                                <AlertTriangle className="h-5 w-5 text-destructive" />
-                                Supprimer ce rapport ?
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Le rapport de bug sera définitivement supprimé.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Annuler</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => deleteBug(bug.id)}
-                                className="bg-destructive hover:bg-destructive/90"
-                              >
-                                Supprimer
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </div>
-                    
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted/20 p-3 rounded">
-                      {bug.description}
-                    </p>
-                    </div>
-                  </div>
-                  ))}
-                </div>
-              )}
             </CardContent>
           </Card>
         </TabsContent>
