@@ -2071,8 +2071,10 @@ router.get('/online-history', authMiddleware, requireAdmin, async (req: AuthRequ
         start = new Date(startDate);
         end = new Date(endDate);
         break;
-      default: // 'day'
-        start = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      default: { // 'day' — start from today's midnight (local time)
+        const d = new Date();
+        start = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      }
     }
 
     const snapshots = await prisma.onlineSnapshot.findMany({

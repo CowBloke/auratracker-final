@@ -686,12 +686,13 @@ export default function Admin() {
       if (fullEnd === fullStart) return;
       const [currentStart, currentEnd] = activityZoomDomainRef.current ?? [fullStart, fullEnd];
       const currentRange = currentEnd - currentStart;
-      // Left offset = margin.left (-8) + YAxis width (24)
-      const leftOffset = 16;
       const rightOffset = 4;
       const rect = el.getBoundingClientRect();
-      const chartWidth = rect.width - leftOffset - rightOffset;
-      const mouseX = e.clientX - rect.left - leftOffset;
+      // Dynamically read the plot area left boundary from the rendered YAxis element
+      const yAxisEl = el.querySelector('.recharts-yAxis');
+      const plotAreaLeft = yAxisEl ? yAxisEl.getBoundingClientRect().right - rect.left : 16;
+      const chartWidth = rect.width - plotAreaLeft - rightOffset;
+      const mouseX = e.clientX - rect.left - plotAreaLeft;
       const fraction = Math.max(0, Math.min(1, mouseX / chartWidth));
       const mouseTs = currentStart + fraction * currentRange;
       const zoomFactor = e.deltaY > 0 ? 1.25 : 1 / 1.25;
@@ -4264,7 +4265,7 @@ export default function Admin() {
                                 />
                               )}
                               <Area
-                                type="monotone"
+                                type="stepAfter"
                                 dataKey="max"
                                 stroke="url(#strokeGradient)"
                                 strokeWidth={2.5}
