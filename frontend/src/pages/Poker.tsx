@@ -74,7 +74,6 @@ function PlayingCard({
           overflow: 'hidden',
         }}
       >
-        {/* cross-hatch pattern */}
         <div
           style={{
             position: 'absolute',
@@ -108,14 +107,11 @@ function PlayingCard({
         opacity: muted ? 0.3 : 1,
       }}
     >
-      {/* top-left */}
       <div style={{ color, lineHeight: 1 }}>
         <div style={{ fontSize: s.rank, fontWeight: 800 }}>{rank}</div>
         <div style={{ fontSize: s.suit, marginTop: -2 }}>{SUIT_SYMBOL[suit]}</div>
       </div>
-      {/* center suit */}
       <div style={{ textAlign: 'center', fontSize: s.center, color }}>{SUIT_SYMBOL[suit]}</div>
-      {/* bottom-right rotated */}
       <div style={{ color, lineHeight: 1, transform: 'rotate(180deg)', alignSelf: 'flex-end' }}>
         <div style={{ fontSize: s.rank, fontWeight: 800 }}>{rank}</div>
         <div style={{ fontSize: s.suit, marginTop: -2 }}>{SUIT_SYMBOL[suit]}</div>
@@ -214,8 +210,6 @@ function RoleToken({ label, bg }: { label: string; bg: string }) {
 }
 
 // ─── Seat positions (ellipse formula) ─────────────────────────────────────────
-// seatIndex 0 = me = bottom centre (angle 90° in screen coords)
-// Clockwise = decreasing angle
 function seatPos(seatIndex: number, total: number) {
   const cx = 50, cy = 50, rx = 43, ry = 37;
   const deg = 90 - seatIndex * (360 / total);
@@ -321,7 +315,6 @@ function PlayerSeat({
         pointerEvents: player.isEliminated ? 'none' : undefined,
       }}
     >
-      {/* Cards above the nameplate for opponent seats */}
       {!isMe && (
         <div style={{ display: 'flex', gap: 3 }}>
           {cards.map((c, i) => (
@@ -343,7 +336,6 @@ function PlayerSeat({
         </div>
       )}
 
-      {/* Name plate */}
       <div
         className={isTurn ? 'poker-pulse' : undefined}
         style={{
@@ -355,16 +347,11 @@ function PlayerSeat({
           minWidth: 82,
           textAlign: 'center',
           position: 'relative',
-          boxShadow: isTurn
-            ? '0 0 16px rgba(255,200,0,0.4)'
-            : '0 2px 8px rgba(0,0,0,0.5)',
+          boxShadow: isTurn ? '0 0 16px rgba(255,200,0,0.4)' : '0 2px 8px rgba(0,0,0,0.5)',
         }}
       >
-        {isTurn && isMe && (
-          <TurnTimerRing progress={turnProgress} />
-        )}
+        {isTurn && isMe && <TurnTimerRing progress={turnProgress} />}
 
-        {/* Role tokens row */}
         {(isDealer || isSB || isBB) && (
           <div style={{ display: 'flex', justifyContent: 'center', gap: 3, marginBottom: 3 }}>
             {isDealer && <RoleToken label="D" bg="#1a56db" />}
@@ -380,28 +367,18 @@ function PlayerSeat({
           className="text-[11px] font-semibold justify-center"
         />
 
-        {/* Chips */}
         <div style={{ marginTop: 4, display: 'flex', justifyContent: 'center' }}>
           <ChipStack amount={player.chips} />
         </div>
 
-        {/* Bet */}
         {player.bet > 0 && (
           <div style={{ fontSize: 9, color: 'rgba(255,220,100,0.85)', marginTop: 2 }}>
             Mise: {player.bet}
           </div>
         )}
 
-        {/* Last action */}
         {player.lastAction && !player.isAllIn && (
-          <div
-            style={{
-              fontSize: 9,
-              color: lastActionColor,
-              marginTop: 2,
-              fontStyle: 'italic',
-            }}
-          >
+          <div style={{ fontSize: 9, color: lastActionColor, marginTop: 2, fontStyle: 'italic' }}>
             {player.lastAction}
           </div>
         )}
@@ -412,7 +389,6 @@ function PlayerSeat({
         )}
       </div>
 
-      {/* Cards below nameplate for my seat */}
       {isMe && (
         <div style={{ display: 'flex', gap: 3 }}>
           {cards.map((c, i) => (
@@ -470,7 +446,6 @@ function PokerTableView({
   const [revealedComm, setRevealedComm] = useState<Set<number>>(new Set());
   const [newHand, setNewHand] = useState(false);
 
-  // Detect new hand → trigger deal animation
   useEffect(() => {
     if (game.handNumber !== prevHandNumberRef.current) {
       prevHandNumberRef.current = game.handNumber;
@@ -480,7 +455,6 @@ function PokerTableView({
     }
   }, [game.handNumber]);
 
-  // Detect newly revealed community cards
   useEffect(() => {
     const prev = prevCommunityRef.current;
     const curr = game.communityCards;
@@ -497,7 +471,6 @@ function PokerTableView({
     prevCommunityRef.current = [...curr];
   }, [game.communityCards.join(',')]);
 
-  // Reorder players: me first, then clockwise
   const myIdx = game.players.findIndex((p) => p.userId === myUserId);
   const ordered =
     myIdx <= 0
@@ -505,145 +478,73 @@ function PokerTableView({
       : [...game.players.slice(myIdx), ...game.players.slice(0, myIdx)];
 
   const stageLabel: Record<string, string> = {
-    preflop: 'Préflop',
-    flop: 'Flop',
-    turn: 'Turn',
-    river: 'River',
-    showdown: 'Showdown',
+    preflop: 'Préflop', flop: 'Flop', turn: 'Turn', river: 'River', showdown: 'Showdown',
   };
 
   return (
     <div style={{ position: 'relative', width: '100%', paddingBottom: '58%', userSelect: 'none' }}>
-      {/* ── Table outer rail ── */}
+      {/* outer rail */}
+      <div style={{ position: 'absolute', left: '7%', top: '8%', width: '86%', height: '84%', borderRadius: '50%', background: '#3d2010', boxShadow: '0 8px 40px rgba(0,0,0,0.7)' }} />
+      {/* inner rail */}
+      <div style={{ position: 'absolute', left: '8%', top: '9.5%', width: '84%', height: '81%', borderRadius: '50%', background: '#5c3317' }} />
+      {/* felt */}
       <div
         style={{
-          position: 'absolute',
-          left: '7%',
-          top: '8%',
-          width: '86%',
-          height: '84%',
+          position: 'absolute', left: '10%', top: '12%', width: '80%', height: '76%',
           borderRadius: '50%',
-          background: '#3d2010',
-          boxShadow: '0 8px 40px rgba(0,0,0,0.7)',
-        }}
-      />
-      {/* ── Table inner rail ── */}
-      <div
-        style={{
-          position: 'absolute',
-          left: '8%',
-          top: '9.5%',
-          width: '84%',
-          height: '81%',
-          borderRadius: '50%',
-          background: '#5c3317',
-        }}
-      />
-      {/* ── Felt ── */}
-      <div
-        style={{
-          position: 'absolute',
-          left: '10%',
-          top: '12%',
-          width: '80%',
-          height: '76%',
-          borderRadius: '50%',
-          background:
-            'radial-gradient(ellipse at 40% 35%, #2d7a54 0%, #1e5c3c 45%, #133d28 80%, #0a2518 100%)',
+          background: 'radial-gradient(ellipse at 40% 35%, #2d7a54 0%, #1e5c3c 45%, #133d28 80%, #0a2518 100%)',
           boxShadow: 'inset 0 0 50px rgba(0,0,0,0.45)',
         }}
       >
-        {/* ── Center content ── */}
+        {/* center: stage / community cards / pot */}
         <div
           style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
+            position: 'absolute', top: '50%', left: '50%',
             transform: 'translate(-50%, -56%)',
-            textAlign: 'center',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 6,
+            textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
           }}
         >
-          {/* Stage label */}
-          <div
-            style={{
-              color: 'rgba(255,255,255,0.4)',
-              fontSize: 11,
-              fontWeight: 600,
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-            }}
-          >
+          <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             {stageLabel[game.stage] ?? game.stage}
           </div>
 
-          {/* Community cards */}
           <div style={{ display: 'flex', gap: 5, justifyContent: 'center' }}>
             {Array.from({ length: 5 }).map((_, i) => (
               <PlayingCard
                 key={i}
                 card={game.communityCards[i] ?? ''}
                 size="md"
-                animClass={
-                  revealedComm.has(i)
-                    ? 'poker-reveal'
-                    : undefined
-                }
+                animClass={revealedComm.has(i) ? 'poker-reveal' : undefined}
                 delay={revealedComm.has(i) ? i * 80 : 0}
               />
             ))}
           </div>
 
-          {/* Pot */}
           {game.pot > 0 && (
             <div
               className="poker-chip-in"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                background: 'rgba(0,0,0,0.45)',
-                borderRadius: 20,
-                padding: '4px 10px',
-              }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(0,0,0,0.45)', borderRadius: 20, padding: '4px 10px' }}
             >
               <ChipStack amount={game.pot} label={`Pot: ${game.pot}`} />
             </div>
           )}
 
-          {/* Last hand result */}
           {game.lastHandResult && (
-            <div
-              style={{
-                fontSize: 10,
-                color: 'rgba(255,220,100,0.9)',
-                background: 'rgba(0,0,0,0.5)',
-                borderRadius: 6,
-                padding: '3px 8px',
-                maxWidth: 200,
-                textAlign: 'center',
-              }}
-            >
+            <div style={{ fontSize: 10, color: 'rgba(255,220,100,0.9)', background: 'rgba(0,0,0,0.5)', borderRadius: 6, padding: '3px 8px', maxWidth: 200, textAlign: 'center' }}>
               {game.lastHandResult.winners.map((w) => w.username).join(', ')} +{game.lastHandResult.pot}
             </div>
           )}
         </div>
       </div>
 
-      {/* ── Player seats ── */}
+      {/* player seats */}
       {ordered.map((player, si) => {
         const pos = seatPos(si, ordered.length);
         const isMe = player.userId === myUserId;
         const showHand = game.stage === 'showdown' || isMe;
-        // Detect newly revealed hole cards at showdown
         const revealedHoleIdxs = new Set<number>();
         if (game.stage === 'showdown' && !isMe) {
-          (player.hand ?? []).forEach((c, i) => {
-            if (c && c !== '??') revealedHoleIdxs.add(i);
-          });
+          (player.hand ?? []).forEach((c, i) => { if (c && c !== '??') revealedHoleIdxs.add(i); });
         }
         return (
           <div key={player.userId} style={{ position: 'absolute', left: pos.left, top: pos.top }}>
@@ -704,14 +605,9 @@ export default function Poker() {
   const minRaiseTarget = pokerGame ? Math.min(maxBet, pokerGame.minRaiseTo) : 0;
 
   const stageLabel: Record<string, string> = {
-    preflop: 'Préflop',
-    flop: 'Flop',
-    turn: 'Turn',
-    river: 'River',
-    showdown: 'Showdown',
+    preflop: 'Préflop', flop: 'Flop', turn: 'Turn', river: 'River', showdown: 'Showdown',
   };
 
-  // Turn countdown
   useEffect(() => {
     if (!pokerGame?.turnEndsAt) { setTurnProgress(100); return; }
     const iv = setInterval(() => {
@@ -721,19 +617,16 @@ export default function Poker() {
     return () => clearInterval(iv);
   }, [pokerGame?.turnEndsAt]);
 
-  // Reset play-again state
   useEffect(() => {
     if (pokerPlayAgainPrompt) setHasQuitPlayAgain(false);
   }, [pokerPlayAgainPrompt?.partyId, pokerPlayAgainPrompt?.startTime]);
 
-  // Raise target default
   useEffect(() => {
     if (!pokerGame || !me) return;
     const suggested = Math.max(0, Math.min(me.bet + me.chips, pokerGame.minRaiseTo || 0));
     setRaiseTarget(suggested || me.bet + me.chips);
   }, [pokerGame?.handNumber, pokerGame?.currentPlayerId, pokerGame?.minRaiseTo, me?.bet, me?.chips]);
 
-  // Play-again countdown
   const myPlayAgainResponse = pokerPlayAgainPrompt?.responses.find((r) => r.userId === user?.id);
   const hasQuit = hasQuitPlayAgain || (!!myPlayAgainResponse && !myPlayAgainResponse.playAgain);
   const showPlayAgainPrompt = !!pokerPlayAgainPrompt && !hasQuit;
@@ -759,7 +652,6 @@ export default function Poker() {
   // ── No party ──
   if (!currentParty) {
     return (
-<<<<<<< Updated upstream
       <PageShell>
         <PageHeader
           title="Poker"
@@ -787,29 +679,6 @@ export default function Poker() {
           </CardContent>
         </UICard>
       </PageShell>
-=======
-      <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
-        <Link
-          to="/games"
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Jeux
-        </Link>
-        <div className="text-center py-20 space-y-6">
-          <p className="text-sm text-muted-foreground">
-            Crée ou rejoins une party pour lancer une table de poker.
-          </p>
-          <Link
-            to="/party"
-            className="inline-flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-          >
-            <Users className="h-4 w-4" />
-            Aller aux parties
-          </Link>
-        </div>
-      </div>
->>>>>>> Stashed changes
     );
   }
 
@@ -822,8 +691,7 @@ export default function Poker() {
   const lobby = !pokerGame;
 
   return (
-<<<<<<< Updated upstream
-    <PageShell className="space-y-10">
+    <PageShell className="space-y-6">
       <PageHeader
         title="Poker"
         description={`Party: ${currentParty.name || 'Sans nom'}`}
@@ -842,51 +710,36 @@ export default function Poker() {
           </>
         )}
       />
+
       {lobby ? (
-        <div className="space-y-12">
+        /* ── Lobby ── */
+        <div className="space-y-6">
           <UICard>
             <CardContent className="p-6 space-y-2">
-            <h2 className="text-sm text-muted-foreground  ">
-=======
-    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-6">
-      {/* Back link */}
-      <Link
-        to="/games"
-        className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Jeux
-      </Link>
-
-      {/* ── Lobby ── */}
-      {lobby ? (
-        <div className="space-y-10">
-          <section className="space-y-2">
-            <h2 className="text-sm text-muted-foreground">
->>>>>>> Stashed changes
-              Joueurs dans la party ({partyMembers.length})
-            </h2>
-            <div>
-              {partyMembers.map((member) => (
-                <div
-                  key={member.userId}
-                  className="flex items-center justify-between py-3 border-b last:border-0"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="h-2 w-2 rounded-full bg-foreground/50" />
-                    <div>
-                      <UsernameDisplay
-                        username={member.username}
-                        usernameColor={member.usernameColor}
-                        showLabel={false}
-                        className="font-medium"
-                      />
-                      {member.isLeader && (
-                        <p className="text-xs text-muted-foreground">Leader</p>
-                      )}
+              <h2 className="text-sm text-muted-foreground">
+                Joueurs dans la party ({partyMembers.length})
+              </h2>
+              <div>
+                {partyMembers.map((member) => (
+                  <div
+                    key={member.userId}
+                    className="flex items-center justify-between py-3 border-b last:border-0"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="h-2 w-2 rounded-full bg-foreground/50" />
+                      <div>
+                        <UsernameDisplay
+                          username={member.username}
+                          usernameColor={member.usernameColor}
+                          showLabel={false}
+                          className="font-medium"
+                        />
+                        {member.isLeader && (
+                          <p className="text-xs text-muted-foreground">Leader</p>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
                 ))}
               </div>
             </CardContent>
@@ -894,113 +747,68 @@ export default function Poker() {
 
           <UICard>
             <CardContent className="p-6 space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Paramètres rapides</p>
-                <h3 className="text-xl font-semibold">Démarrer une table</h3>
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Paramètres rapides</p>
+                  <h3 className="text-xl font-semibold">Démarrer une table</h3>
+                </div>
+                {isLeader && (
+                  <Button onClick={() => startPoker(startStack, bigBlind)} className="gap-2">
+                    <Play className="h-4 w-4" />
+                    Lancer
+                  </Button>
+                )}
               </div>
-              {isLeader && (
-                <Button onClick={() => startPoker(startStack, bigBlind)} className="gap-2">
-                  <Play className="h-4 w-4" />
-                  Lancer
-                </Button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label className="space-y-2">
+                  <span className="text-xs text-muted-foreground">Stack de départ</span>
+                  <Input
+                    type="number"
+                    min={200}
+                    max={2000}
+                    value={startStack}
+                    onChange={(e) => setStartStack(parseInt(e.target.value || '0', 10))}
+                  />
+                </label>
+                <label className="space-y-2">
+                  <span className="text-xs text-muted-foreground">Big blind</span>
+                  <Input
+                    type="number"
+                    min={10}
+                    max={startStack / 2}
+                    value={bigBlind}
+                    onChange={(e) => setBigBlind(parseInt(e.target.value || '0', 10))}
+                  />
+                </label>
+              </div>
+              {!isLeader && (
+                <p className="text-sm text-muted-foreground">
+                  En attente que le leader démarre la partie.
+                </p>
               )}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <label className="space-y-2">
-                <span className="text-xs text-muted-foreground">Stack de départ</span>
-                <Input
-                  type="number"
-                  min={200}
-                  max={2000}
-                  value={startStack}
-                  onChange={(e) => setStartStack(parseInt(e.target.value || '0', 10))}
-                />
-              </label>
-              <label className="space-y-2">
-                <span className="text-xs text-muted-foreground">Big blind</span>
-                <Input
-                  type="number"
-                  min={10}
-                  max={startStack / 2}
-                  value={bigBlind}
-                  onChange={(e) => setBigBlind(parseInt(e.target.value || '0', 10))}
-                />
-              </label>
-            </div>
-            {!isLeader && (
-              <p className="text-sm text-muted-foreground">
-                En attente que le leader démarre la partie.
-              </p>
-            )}
             </CardContent>
           </UICard>
         </div>
       ) : (
-<<<<<<< Updated upstream
-        <div className="space-y-8">
-          <UICard>
-            <CardContent className="p-6 space-y-4">
-            <div className="flex flex-wrap items-start justify-between gap-4 text-sm text-muted-foreground">
-              <div className="flex flex-wrap items-center gap-4">
-                <span className="px-2 py-1 rounded border border-border">
-                  {stageLabel[pokerGame.stage] || pokerGame.stage}
-=======
         /* ── Game ── */
         <div className="space-y-4">
           {/* Info bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="px-2 py-0.5 rounded border border-border font-medium">
-                {stageLabel[pokerGame.stage] ?? pokerGame.stage}
+          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            <span className="px-2 py-0.5 rounded border border-border font-medium">
+              {stageLabel[pokerGame.stage] ?? pokerGame.stage}
+            </span>
+            <span>
+              Blindes <strong className="text-foreground">{pokerGame.smallBlind}/{pokerGame.bigBlind}</strong>
+            </span>
+            <span>
+              Manche <strong className="text-foreground">{pokerGame.handNumber}</strong>/{pokerGame.maxHands}
+            </span>
+            {isMyTurn && (
+              <span className="flex items-center gap-1 text-amber-500 font-semibold">
+                <Clock className="h-3 w-3" />
+                {Math.max(0, Math.round((turnProgress / 100) * ACTION_TIME_LIMIT / 1000))}s
               </span>
-              <span>
-                Blindes <strong className="text-foreground">{pokerGame.smallBlind}/{pokerGame.bigBlind}</strong>
-              </span>
-              <span>
-                Manche <strong className="text-foreground">{pokerGame.handNumber}</strong>/{pokerGame.maxHands}
-              </span>
-              {isMyTurn && (
-                <span className="flex items-center gap-1 text-amber-500 font-semibold">
-                  <Clock className="h-3 w-3" />
-                  {Math.max(0, Math.round((turnProgress / 100) * ACTION_TIME_LIMIT / 1000))}s
->>>>>>> Stashed changes
-                </span>
-              )}
-            </div>
-<<<<<<< Updated upstream
-            <div className="flex items-center gap-2 justify-center">
-              {Array.from({ length: 5 }).map((_, idx) => (
-                <Card
-                  key={idx}
-                  card={pokerGame.communityCards[idx] || ''}
-                  muted={!pokerGame.communityCards[idx]}
-                />
-              ))}
-            </div>
-            {pokerGame.lastHandResult && (
-              <div className="rounded bg-muted/40 p-3 text-sm flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="  text-xs text-muted-foreground">Main précédente</span>
-                  <span className="font-medium">
-                    {pokerGame.lastHandResult.winners.map((w) => w.username).join(', ')} remportent {pokerGame.lastHandResult.pot}
-                  </span>
-                </div>
-              </div>
             )}
-            </CardContent>
-          </UICard>
-
-          <UICard>
-            <CardContent className="p-6 space-y-3">
-            {renderPlayers()}
-            </CardContent>
-          </UICard>
-=======
-            <Button variant="ghost" size="sm" className="gap-2 text-xs" onClick={leavePoker}>
-              <LogOut className="h-3 w-3" />
-              Quitter
-            </Button>
           </div>
 
           {/* ── Poker table ── */}
@@ -1009,112 +817,89 @@ export default function Poker() {
             myUserId={user?.id ?? ''}
             turnProgress={turnProgress}
           />
->>>>>>> Stashed changes
 
           {/* ── My action panel ── */}
           {me && !me.isEliminated && (
-<<<<<<< Updated upstream
             <UICard>
               <CardContent className="p-6 space-y-4">
-              <div className="flex flex-wrap items-center gap-3 justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Vos cartes</span>
-                  <div className="flex gap-1">
-                    {(myHand || []).map((card, idx) => (
-                      <Card key={idx} card={card} muted={me.hasFolded} />
-=======
-            <div
-              className="rounded-xl border border-border/60 p-4 space-y-4"
-              style={{
-                background: 'linear-gradient(135deg, rgba(0,0,0,0.03) 0%, rgba(0,0,0,0.01) 100%)',
-              }}
-            >
-              {/* My hand + stack */}
-              <div className="flex items-end justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="text-xs text-muted-foreground">Vos cartes</div>
-                  <div className="flex gap-2">
-                    {(myHand ?? []).map((card, i) => (
-                      <PlayingCard key={i} card={card} size="lg" muted={me.hasFolded} />
->>>>>>> Stashed changes
-                    ))}
+                <div className="flex items-end justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="text-xs text-muted-foreground">Vos cartes</div>
+                    <div className="flex gap-2">
+                      {(myHand ?? []).map((card, i) => (
+                        <PlayingCard key={i} card={card} size="lg" muted={me.hasFolded} />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="text-right text-sm space-y-1">
+                    <div className="flex items-center justify-end gap-2">
+                      <ChipStack amount={me.chips} />
+                    </div>
+                    {me.bet > 0 && (
+                      <div className="text-xs text-muted-foreground">Engagé: {me.bet}</div>
+                    )}
                   </div>
                 </div>
-                <div className="text-right text-sm space-y-1">
-                  <div className="flex items-center justify-end gap-2">
-                    <ChipStack amount={me.chips} />
+
+                {isMyTurn && (
+                  <div className="h-1 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full bg-amber-400 transition-all"
+                      style={{ width: `${turnProgress}%` }}
+                    />
                   </div>
-                  {me.bet > 0 && (
-                    <div className="text-xs text-muted-foreground">Engagé: {me.bet}</div>
-                  )}
-                </div>
-              </div>
+                )}
 
-              {/* Turn progress bar */}
-              {isMyTurn && (
-                <div className="h-1 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className="h-full bg-amber-400 transition-all"
-                    style={{ width: `${turnProgress}%` }}
-                  />
-                </div>
-              )}
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => actInPoker('fold')}
+                    disabled={!canAct}
+                    className="gap-2"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Se coucher
+                  </Button>
 
-              {/* Action buttons */}
-              <div className="flex flex-wrap items-center gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => actInPoker('fold')}
-                  disabled={!canAct}
-                  className="gap-2"
-                >
-                  <LogOut className="h-4 w-4" />
-                  Se coucher
-                </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={handleCallOrCheck}
+                    disabled={!canAct || (!canCall && !canCheck)}
+                    className={cn(canAct && (canCall || canCheck) && 'ring-2 ring-green-500/50')}
+                  >
+                    {callAmount > 0 ? `Suivre (${callAmount})` : 'Check'}
+                  </Button>
 
-                <Button
-                  variant="secondary"
-                  onClick={handleCallOrCheck}
-                  disabled={!canAct || (!canCall && !canCheck)}
-                  className={cn(canAct && (canCall || canCheck) && 'ring-2 ring-green-500/50')}
-                >
-                  {callAmount > 0 ? `Suivre (${callAmount})` : 'Check'}
-                </Button>
-
-                <div className="flex-1 min-w-[200px] space-y-1">
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{pokerGame.highestBet === 0 ? 'Miser' : 'Relancer'} à</span>
-                    <span className="font-semibold text-foreground">{Math.round(raiseTarget)}</span>
+                  <div className="flex-1 min-w-[200px] space-y-1">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{pokerGame.highestBet === 0 ? 'Miser' : 'Relancer'} à</span>
+                      <span className="font-semibold text-foreground">{Math.round(raiseTarget)}</span>
+                    </div>
+                    <Slider
+                      value={[Math.min(raiseTarget, maxBet)]}
+                      min={Math.min(minRaiseTarget ?? 0, maxBet)}
+                      max={Math.max(minRaiseTarget ?? 0, maxBet)}
+                      step={5}
+                      onValueChange={(v) => setRaiseTarget(v[0])}
+                      disabled={!canRaise || maxBet <= 0}
+                    />
                   </div>
-                  <Slider
-                    value={[Math.min(raiseTarget, maxBet)]}
-                    min={Math.min(minRaiseTarget ?? 0, maxBet)}
-                    max={Math.max(minRaiseTarget ?? 0, maxBet)}
-                    step={5}
-                    onValueChange={(v) => setRaiseTarget(v[0])}
-                    disabled={!canRaise || maxBet <= 0}
-                  />
+
+                  <Button onClick={handleRaise} disabled={!canRaise || maxBet <= 0}>
+                    {pokerGame.highestBet === 0 ? 'Miser' : 'Relancer'}
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => actInPoker('all-in')}
+                    disabled={!canAct || me.chips <= 0}
+                    className="text-amber-500 border-amber-500/40 hover:bg-amber-500/10"
+                  >
+                    All-in
+                  </Button>
                 </div>
-
-                <Button onClick={handleRaise} disabled={!canRaise || maxBet <= 0}>
-                  {pokerGame.highestBet === 0 ? 'Miser' : 'Relancer'}
-                </Button>
-
-                <Button
-                  variant="outline"
-                  onClick={() => actInPoker('all-in')}
-                  disabled={!canAct || me.chips <= 0}
-                  className="text-amber-500 border-amber-500/40 hover:bg-amber-500/10"
-                >
-                  All-in
-                </Button>
-              </div>
-<<<<<<< Updated upstream
               </CardContent>
             </UICard>
-=======
-            </div>
->>>>>>> Stashed changes
           )}
         </div>
       )}
