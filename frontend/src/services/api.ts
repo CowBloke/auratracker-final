@@ -788,6 +788,7 @@ export const maintenanceApi = {
     endDate: string | null;
     blockedPages?: string[];
     blockedMessage?: string;
+    loginMessage?: string;
   }>('/maintenance'),
 };
 

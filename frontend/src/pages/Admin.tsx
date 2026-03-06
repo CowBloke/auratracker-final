@@ -451,6 +451,8 @@ export default function Admin() {
   const [savingFakeOnline, setSavingFakeOnline] = useState(false);
   const [announcementMessage, setAnnouncementMessage] = useState('');
   const [savingAnnouncement, setSavingAnnouncement] = useState(false);
+  const [loginMessage, setLoginMessage] = useState('');
+  const [savingLoginMessage, setSavingLoginMessage] = useState(false);
   const [updatePopups, setUpdatePopups] = useState<AdminUpdatePopup[]>([]);
   const [loadingUpdatePopups, setLoadingUpdatePopups] = useState(false);
   const [savingUpdatePopup, setSavingUpdatePopup] = useState(false);
@@ -899,6 +901,7 @@ export default function Admin() {
       setAnnouncementMessage(res.data.settings.topbar_announcement || '');
       setMaintenanceMessage(res.data.settings.maintenance_message || '');
       setBlockedMessage(res.data.settings.blocked_message || '');
+      setLoginMessage(res.data.settings.login_message || '');
 
       if (res.data.settings.blocked_pages) {
         try {
@@ -1050,6 +1053,20 @@ export default function Admin() {
     }
   };
 
+
+  const saveLoginMessage = async () => {
+    try {
+      setSavingLoginMessage(true);
+      await adminApi.updateSetting('login_message', loginMessage.trim());
+      setLoginMessage(loginMessage.trim());
+      showMessage('success', 'Message de connexion sauvegardé');
+    } catch (error) {
+      console.error('Failed to save login message:', error);
+      showMessage('error', 'Erreur lors de la sauvegarde du message');
+    } finally {
+      setSavingLoginMessage(false);
+    }
+  };
 
   const openBanDialog = (userId: string) => {
     setBanUserId(userId);
@@ -3039,6 +3056,40 @@ export default function Admin() {
               </Button>
             </div>
           </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="communication" className={SPACING.SECTION_SPACING}>
+          <Card>
+            <CardHeader>
+              <CardDescription>Message page de connexion</CardDescription>
+            </CardHeader>
+            <CardContent className={SPACING.CARD_SPACING}>
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Ce message s'affiche à gauche du formulaire de connexion, visible par tous les visiteurs.
+                </p>
+                <Textarea
+                  value={loginMessage}
+                  onChange={(e) => setLoginMessage(e.target.value)}
+                  placeholder="Ex: Bienvenue ! Le serveur est ouvert."
+                  className="min-h-[90px]"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Laissez vide pour masquer le message.
+                </p>
+                <div className="flex justify-end">
+                  <Button onClick={saveLoginMessage} disabled={savingLoginMessage}>
+                    {savingLoginMessage ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Save className="h-4 w-4 mr-2" />
+                    )}
+                    Sauvegarder
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

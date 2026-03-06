@@ -14,7 +14,8 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
-    "db:seed-bombparty": "tsx prisma/seed-bombparty.ts"
+    "db:seed-bombparty": "tsx prisma/seed-bombparty.ts",
+    "db:seed-basic": "tsx prisma/seed-basic.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

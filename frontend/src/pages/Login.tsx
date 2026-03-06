@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -18,6 +18,7 @@ import {
 import { TYPOGRAPHY } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { CenteredShell } from '@/components/layout/centered-shell';
+import { maintenanceApi } from '@/services/api';
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Pseudo requis'),
@@ -31,6 +32,13 @@ export default function Login() {
   const { login } = useAuth();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loginMessage, setLoginMessage] = useState('');
+
+  useEffect(() => {
+    maintenanceApi.getStatus().then((res) => {
+      setLoginMessage(res.data.loginMessage ?? '');
+    }).catch(() => {});
+  }, []);
   
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -53,74 +61,91 @@ export default function Login() {
     }
   };
 
+  const loginForm = (
+    <Card>
+      <CardHeader className="space-y-2 text-center">
+        <CardTitle className={TYPOGRAPHY.H1}>AuraTracker</CardTitle>
+        <CardDescription>Connexion</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {error && (
+          <p className={cn(TYPOGRAPHY.SMALL, "text-destructive text-center")}>{error}</p>
+        )}
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="username"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <Input
+                      type="text"
+                      placeholder="Pseudo"
+                      className="h-12 border-border/50 text-center"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage className="text-center" />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <Input
+                      type="password"
+                      placeholder="Mot de passe"
+                      className="h-12 border-border/50 text-center"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage className="text-center" />
+                </FormItem>
+              )}
+            />
+
+            <Button
+              type="submit"
+              disabled={loading}
+              className="h-12 w-full"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Connexion'}
+            </Button>
+          </form>
+        </Form>
+
+        <p className={cn(TYPOGRAPHY.SMALL, "text-center text-muted-foreground")}>
+          Pas de compte ?{' '}
+          <Link to="/register" className="text-foreground hover:underline">
+            Créer un compte
+          </Link>
+        </p>
+      </CardContent>
+    </Card>
+  );
+
+  if (loginMessage) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4 gap-8">
+        <div className="max-w-sm w-full text-muted-foreground whitespace-pre-wrap text-sm leading-relaxed">
+          {loginMessage}
+        </div>
+        <div className="max-w-sm w-full">
+          {loginForm}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <CenteredShell widthClassName="max-w-sm">
-      <Card>
-        <CardHeader className="space-y-2 text-center">
-          <CardTitle className={TYPOGRAPHY.H1}>AuraTracker</CardTitle>
-          <CardDescription>Connexion</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {error && (
-            <p className={cn(TYPOGRAPHY.SMALL, "text-destructive text-center")}>{error}</p>
-          )}
-
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="username"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <Input
-                        type="text"
-                        placeholder="Pseudo"
-                        className="h-12 border-border/50 text-center"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage className="text-center" />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        placeholder="Mot de passe"
-                        className="h-12 border-border/50 text-center"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage className="text-center" />
-                  </FormItem>
-                )}
-              />
-
-              <Button
-                type="submit"
-                disabled={loading}
-                className="h-12 w-full"
-              >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Connexion'}
-              </Button>
-            </form>
-          </Form>
-
-          <p className={cn(TYPOGRAPHY.SMALL, "text-center text-muted-foreground")}>
-            Pas de compte ?{' '}
-            <Link to="/register" className="text-foreground hover:underline">
-              Créer un compte
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
+      {loginForm}
     </CenteredShell>
   );
 }

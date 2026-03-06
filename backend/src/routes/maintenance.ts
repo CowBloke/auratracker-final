@@ -8,6 +8,7 @@ const MAINTENANCE_PAGES_KEY = 'maintenance_pages';
 const MAINTENANCE_END_DATE_KEY = 'maintenance_end_date';
 const BLOCKED_PAGES_KEY = 'blocked_pages';
 const BLOCKED_MESSAGE_KEY = 'blocked_message';
+const LOGIN_MESSAGE_KEY = 'login_message';
 
 router.get('/', async (_req, res) => {
   try {
@@ -18,6 +19,7 @@ router.get('/', async (_req, res) => {
       endDateSetting,
       blockedPagesSetting,
       blockedMessageSetting,
+      loginMessageSetting,
     ] = await Promise.all([
       prisma.gameSettings.findUnique({ where: { key: MAINTENANCE_ENABLED_KEY } }),
       prisma.gameSettings.findUnique({ where: { key: MAINTENANCE_MESSAGE_KEY } }),
@@ -25,6 +27,7 @@ router.get('/', async (_req, res) => {
       prisma.gameSettings.findUnique({ where: { key: MAINTENANCE_END_DATE_KEY } }),
       prisma.gameSettings.findUnique({ where: { key: BLOCKED_PAGES_KEY } }),
       prisma.gameSettings.findUnique({ where: { key: BLOCKED_MESSAGE_KEY } }),
+      prisma.gameSettings.findUnique({ where: { key: LOGIN_MESSAGE_KEY } }),
     ]);
 
     const message = messageSetting?.value ?? '';
@@ -72,6 +75,7 @@ router.get('/', async (_req, res) => {
       endDate,
       blockedPages,
       blockedMessage: blockedMessageSetting?.value ?? '',
+      loginMessage: loginMessageSetting?.value ?? '',
     });
   } catch (error) {
     console.error('Get maintenance status error:', error);
