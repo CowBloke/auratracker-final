@@ -1061,6 +1061,8 @@ export interface Notification {
   icon: string | null;
   isRead: boolean;
   readAt: string | null;
+  isArchived: boolean;
+  archivedAt: string | null;
   createdAt: string;
 }
 
@@ -1073,13 +1075,13 @@ export interface NotificationsResponse {
 }
 
 export const notificationsApi = {
-  getAll: (params?: { page?: number; limit?: number; unreadOnly?: boolean }) =>
+  getAll: (params?: { page?: number; limit?: number; unreadOnly?: boolean; archived?: boolean }) =>
     api.get<NotificationsResponse>('/notifications', { params }),
   getUnreadCount: () => api.get<{ count: number }>('/notifications/unread/count'),
   markRead: (id: string) => api.post<{ notification: Notification }>(`/notifications/${id}/read`),
   markAllRead: () => api.post<{ success: boolean }>('/notifications/read-all'),
-  delete: (id: string) => api.delete<{ success: boolean }>(`/notifications/${id}`),
-  deleteAllRead: () => api.delete<{ success: boolean }>('/notifications'),
+  archive: (id: string) => api.post<{ notification: Notification }>(`/notifications/${id}/archive`),
+  archiveAllRead: () => api.post<{ success: boolean }>('/notifications/archive-all-read'),
   /** Admin only */
   broadcast: (data: { title: string; body: string; link?: string; icon?: string }) =>
     api.post<{ success: boolean; sent: number }>('/notifications/broadcast', data),

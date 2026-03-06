@@ -12,7 +12,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Check, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, ToggleLeft, Inbox } from 'lucide-react';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, ToggleLeft, Inbox, Archive } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, ReferenceDot } from 'recharts';
 import {
   AlertDialog,
@@ -396,8 +396,8 @@ export default function Admin() {
   const [bugReports, setBugReports] = useState<BugReport[]>([]);
   const [loadingBugs, setLoadingBugs] = useState(false);
   const [updatingBug, setUpdatingBug] = useState<string | null>(null);
-  const [deletingBug, setDeletingBug] = useState<string | null>(null);
   const [expandedInboxItem, setExpandedInboxItem] = useState<string | null>(null);
+  const [inboxFilter, setInboxFilter] = useState<'all' | 'registrations' | 'bugs' | 'archived'>('all');
 
   // Pending users state
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
@@ -1158,19 +1158,6 @@ export default function Admin() {
     }
   };
 
-  const deleteBug = async (id: string) => {
-    setDeletingBug(id);
-    try {
-      await adminApi.deleteBugReport(id);
-      setBugReports(prev => prev.filter(b => b.id !== id));
-      showMessage('success', 'Rapport de bug supprimé');
-    } catch (error: any) {
-      showMessage('error', error.response?.data?.error || 'Erreur');
-    } finally {
-      setDeletingBug(null);
-    }
-  };
-
   const showMessage = (type: 'success' | 'error', text: string) => {
     setMessage({ type, text });
     setTimeout(() => setMessage(null), 3000);
@@ -1622,229 +1609,229 @@ export default function Admin() {
         </TabsList>
 
         <TabsContent value="inbox" className={SPACING.SECTION_SPACING}>
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardDescription>Tous les messages entrants</CardDescription>
-                <div className={cn("flex items-center gap-2", TYPOGRAPHY.SMALL)}>
-                  <Inbox className="h-4 w-4" />
-                  <span>
-                    {pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length} en attente
-                  </span>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {(loadingPending || loadingBugs) ? (
-                <div className="flex justify-center py-12">
-                  <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
-                </div>
-              ) : (() => {
-                const inboxItems = [
-                  ...pendingUsers.map(u => ({ id: `reg-${u.id}`, type: 'registration' as const, date: new Date(u.createdAt), data: u })),
-                  ...bugReports.map(b => ({ id: `bug-${b.id}`, type: 'bug' as const, date: new Date(b.createdAt), data: b })),
-                ].sort((a, b) => b.date.getTime() - a.date.getTime());
+          {(() => {
+            // Build items for each filter
+            const pendingBugs = bugReports.filter(b => b.status === 'PENDING');
+            const archivedBugs = bugReports.filter(b => b.status === 'DONE');
 
-                if (inboxItems.length === 0) {
-                  return (
-                    <div className="text-center py-12 space-y-2">
-                      <Inbox className="h-8 w-8 mx-auto text-muted-foreground/50" />
-                      <p className={TYPOGRAPHY.MUTED}>Boîte de réception vide</p>
+            const registrationItems = pendingUsers.map(u => ({
+              id: `reg-${u.id}`, type: 'registration' as const, date: new Date(u.createdAt), data: u,
+            }));
+            const bugItems = pendingBugs.map(b => ({
+              id: `bug-${b.id}`, type: 'bug' as const, date: new Date(b.createdAt), data: b,
+            }));
+            const archivedItems = archivedBugs.map(b => ({
+              id: `bug-${b.id}`, type: 'bug' as const, date: new Date(b.createdAt), data: b,
+            }));
+
+            const activeItems = inboxFilter === 'registrations' ? registrationItems
+              : inboxFilter === 'bugs' ? bugItems
+              : inboxFilter === 'archived' ? archivedItems
+              : [...registrationItems, ...bugItems].sort((a, b) => b.date.getTime() - a.date.getTime());
+
+            const ADMIN_CATS = [
+              { key: 'all' as const,          label: 'Tout',        Icon: Inbox,    count: pendingUsers.length + pendingBugs.length },
+              { key: 'registrations' as const, label: 'Inscriptions', Icon: UserPlus, count: pendingUsers.length },
+              { key: 'bugs' as const,          label: 'Bugs',        Icon: Bug,      count: pendingBugs.length },
+              { key: 'archived' as const,      label: 'Archivé',     Icon: Archive,  count: 0 },
+            ];
+
+            return (
+              <Card className="overflow-hidden">
+                <CardHeader className="border-b border-border/30 pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardDescription>Boîte de réception</CardDescription>
+                    <div className={cn("flex items-center gap-2", TYPOGRAPHY.SMALL)}>
+                      <Inbox className="h-4 w-4" />
+                      <span>{pendingUsers.length + pendingBugs.length} en attente</span>
                     </div>
-                  );
-                }
-
-                return (
-                  <div className="divide-y divide-border/30">
-                    {inboxItems.map((item) => {
-                      const isExpanded = expandedInboxItem === item.id;
-                      const toggle = () => setExpandedInboxItem(isExpanded ? null : item.id);
-
-                      if (item.type === 'registration') {
-                        const u = item.data;
-                        return (
-                          <div key={item.id} className="py-3">
-                            <button
-                              onClick={toggle}
-                              className="w-full flex items-center justify-between gap-3 text-left hover:opacity-80 transition-opacity"
-                            >
-                              <div className="flex items-center gap-3 min-w-0 flex-1">
-                                <span className="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 shrink-0">
-                                  Inscription
-                                </span>
-                                <span className="font-medium truncate">{u.username}</span>
-                                <span className="text-xs text-muted-foreground/60 shrink-0">
-                                  {item.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                              </div>
-                              <ChevronDown className={cn("h-4 w-4 text-muted-foreground shrink-0 transition-transform", isExpanded && "rotate-180")} />
-                            </button>
-                            {isExpanded && (
-                              <div className="mt-3 space-y-3 pl-1">
-                                <div className="space-y-1">
-                                  <p className="text-xs text-muted-foreground">{u.email}</p>
-                                  <p className="text-xs text-muted-foreground/80">Prénom : {u.firstName || 'Non défini'}</p>
-                                </div>
-                                <div className="rounded-md border border-border/40 bg-muted/20 px-3 py-2">
-                                  <p className="text-[11px] font-medium text-muted-foreground/70">Message de motivation</p>
-                                  <p className="mt-1 text-sm whitespace-pre-wrap break-words text-foreground/90">
-                                    {u.motivationMessage?.trim() ? u.motivationMessage : 'Non renseigné'}
-                                  </p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => approveUser(u.id)}
-                                    disabled={approvingUser === u.id}
-                                    className="h-8 border-green-500/50 text-green-500 hover:bg-green-500/10"
-                                  >
-                                    {approvingUser === u.id ? (
-                                      <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                      <><Check className="h-4 w-4 mr-1" />Approuver</>
-                                    )}
-                                  </Button>
-                                  <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10"
-                                        disabled={rejectingUser === u.id}
-                                      >
-                                        {rejectingUser === u.id ? (
-                                          <Loader2 className="h-4 w-4 animate-spin" />
-                                        ) : (
-                                          <><UserX className="h-4 w-4 mr-1" />Rejeter</>
-                                        )}
-                                      </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                      <AlertDialogHeader>
-                                        <AlertDialogTitle className="flex items-center gap-2">
-                                          <AlertTriangle className="h-5 w-5 text-destructive" />
-                                          Rejeter la demande de {u.username} ?
-                                        </AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                          L'utilisateur devra créer un nouveau compte s'il souhaite réessayer.
-                                        </AlertDialogDescription>
-                                      </AlertDialogHeader>
-                                      <AlertDialogFooter>
-                                        <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                        <AlertDialogAction
-                                          onClick={() => rejectUser(u.id)}
-                                          className="bg-destructive hover:bg-destructive/90"
-                                        >
-                                          Rejeter
-                                        </AlertDialogAction>
-                                      </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                  </AlertDialog>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      }
-
-                      // bug
-                      const bug = item.data;
-                      return (
-                        <div key={item.id} className={cn("py-3", bug.status === 'DONE' && "opacity-60")}>
-                          <button
-                            onClick={toggle}
-                            className="w-full flex items-center justify-between gap-3 text-left hover:opacity-80 transition-opacity"
-                          >
-                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                              <span className={cn(
-                                "text-xs px-2 py-0.5 rounded shrink-0",
-                                bug.status === 'PENDING' ? "bg-amber-500/20 text-amber-400" : "bg-green-500/20 text-green-400"
-                              )}>
-                                Bug
-                              </span>
-                              <span className={cn("font-medium truncate", bug.status === 'DONE' && "line-through")}>
-                                {bug.title}
-                              </span>
-                              <span className="text-xs text-muted-foreground/60 shrink-0">
-                                {bug.user.username} • {item.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            </div>
-                            <ChevronDown className={cn("h-4 w-4 text-muted-foreground shrink-0 transition-transform", isExpanded && "rotate-180")} />
-                          </button>
-                          {isExpanded && (
-                            <div className="mt-3 space-y-3 pl-1">
-                              <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted/20 p-3 rounded">
-                                {bug.description}
-                              </p>
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => toggleBugStatus(bug)}
-                                  disabled={updatingBug === bug.id}
-                                  className={cn(
-                                    "h-8",
-                                    bug.status === 'DONE'
-                                      ? "border-amber-500/50 text-amber-500 hover:bg-amber-500/10"
-                                      : "border-green-500/50 text-green-500 hover:bg-green-500/10"
-                                  )}
-                                >
-                                  {updatingBug === bug.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : bug.status === 'DONE' ? (
-                                    <><X className="h-4 w-4 mr-1" />Rouvrir</>
-                                  ) : (
-                                    <><Check className="h-4 w-4 mr-1" />Résolu</>
-                                  )}
-                                </Button>
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10"
-                                      disabled={deletingBug === bug.id}
-                                    >
-                                      {deletingBug === bug.id ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                      ) : (
-                                        <Trash2 className="h-4 w-4" />
-                                      )}
-                                    </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle className="flex items-center gap-2">
-                                        <AlertTriangle className="h-5 w-5 text-destructive" />
-                                        Supprimer ce rapport ?
-                                      </AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Le rapport de bug sera définitivement supprimé.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                      <AlertDialogAction
-                                        onClick={() => deleteBug(bug.id)}
-                                        className="bg-destructive hover:bg-destructive/90"
-                                      >
-                                        Supprimer
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
                   </div>
-                );
-              })()}
-            </CardContent>
-          </Card>
+                </CardHeader>
+
+                <div className="flex min-h-[300px]">
+                  {/* Left sidebar */}
+                  <div className="w-40 shrink-0 border-r border-border/40 p-1.5 space-y-0.5">
+                    {ADMIN_CATS.map((cat) => (
+                      <button
+                        key={cat.key}
+                        onClick={() => { setInboxFilter(cat.key); setExpandedInboxItem(null); }}
+                        className={cn(
+                          'w-full flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors text-left',
+                          inboxFilter === cat.key
+                            ? 'bg-accent text-accent-foreground font-medium'
+                            : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+                        )}
+                      >
+                        <cat.Icon className="h-3.5 w-3.5 shrink-0" />
+                        <span className="flex-1 truncate">{cat.label}</span>
+                        {cat.count > 0 && (
+                          <span className="text-[10px] font-semibold bg-primary/15 text-primary rounded px-1 shrink-0">
+                            {cat.count}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    {(loadingPending || loadingBugs) ? (
+                      <div className="flex justify-center py-12">
+                        <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+                      </div>
+                    ) : activeItems.length === 0 ? (
+                      <div className="text-center py-12 space-y-2">
+                        {inboxFilter === 'archived'
+                          ? <Archive className="h-8 w-8 mx-auto text-muted-foreground/50" />
+                          : <Inbox className="h-8 w-8 mx-auto text-muted-foreground/50" />}
+                        <p className={TYPOGRAPHY.MUTED}>
+                          {inboxFilter === 'archived' ? 'Aucun bug archivé' : 'Boîte de réception vide'}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-border/30">
+                        {activeItems.map((item) => {
+                          const isExpanded = expandedInboxItem === item.id;
+                          const toggle = () => setExpandedInboxItem(isExpanded ? null : item.id);
+
+                          if (item.type === 'registration') {
+                            const u = item.data;
+                            return (
+                              <div key={item.id} className="px-4 py-3">
+                                <button
+                                  onClick={toggle}
+                                  className="w-full flex items-center justify-between gap-3 text-left hover:opacity-80 transition-opacity"
+                                >
+                                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    <span className="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 shrink-0">
+                                      Inscription
+                                    </span>
+                                    <span className="font-medium truncate">{u.username}</span>
+                                    <span className="text-xs text-muted-foreground/60 shrink-0">
+                                      {item.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                  </div>
+                                  <ChevronDown className={cn("h-4 w-4 text-muted-foreground shrink-0 transition-transform", isExpanded && "rotate-180")} />
+                                </button>
+                                {isExpanded && (
+                                  <div className="mt-3 space-y-3 pl-1">
+                                    <div className="space-y-1">
+                                      <p className="text-xs text-muted-foreground">{u.email}</p>
+                                      <p className="text-xs text-muted-foreground/80">Prénom : {u.firstName || 'Non défini'}</p>
+                                    </div>
+                                    <div className="rounded-md border border-border/40 bg-muted/20 px-3 py-2">
+                                      <p className="text-[11px] font-medium text-muted-foreground/70">Message de motivation</p>
+                                      <p className="mt-1 text-sm whitespace-pre-wrap break-words text-foreground/90">
+                                        {u.motivationMessage?.trim() ? u.motivationMessage : 'Non renseigné'}
+                                      </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Button
+                                        size="sm" variant="outline"
+                                        onClick={() => approveUser(u.id)}
+                                        disabled={approvingUser === u.id}
+                                        className="h-8 border-green-500/50 text-green-500 hover:bg-green-500/10"
+                                      >
+                                        {approvingUser === u.id
+                                          ? <Loader2 className="h-4 w-4 animate-spin" />
+                                          : <><Check className="h-4 w-4 mr-1" />Approuver</>}
+                                      </Button>
+                                      <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                          <Button
+                                            size="sm" variant="outline"
+                                            className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10"
+                                            disabled={rejectingUser === u.id}
+                                          >
+                                            {rejectingUser === u.id
+                                              ? <Loader2 className="h-4 w-4 animate-spin" />
+                                              : <><UserX className="h-4 w-4 mr-1" />Rejeter</>}
+                                          </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                          <AlertDialogHeader>
+                                            <AlertDialogTitle className="flex items-center gap-2">
+                                              <AlertTriangle className="h-5 w-5 text-destructive" />
+                                              Rejeter la demande de {u.username} ?
+                                            </AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                              L'utilisateur devra créer un nouveau compte s'il souhaite réessayer.
+                                            </AlertDialogDescription>
+                                          </AlertDialogHeader>
+                                          <AlertDialogFooter>
+                                            <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => rejectUser(u.id)} className="bg-destructive hover:bg-destructive/90">
+                                              Rejeter
+                                            </AlertDialogAction>
+                                          </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                      </AlertDialog>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          }
+
+                          // bug row
+                          const bug = item.data;
+                          const isArchived = bug.status === 'DONE';
+                          return (
+                            <div key={item.id} className="px-4 py-3">
+                              <button
+                                onClick={toggle}
+                                className="w-full flex items-center justify-between gap-3 text-left hover:opacity-80 transition-opacity"
+                              >
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                  <span className={cn(
+                                    "text-xs px-2 py-0.5 rounded shrink-0",
+                                    isArchived ? "bg-green-500/20 text-green-400" : "bg-amber-500/20 text-amber-400"
+                                  )}>
+                                    Bug
+                                  </span>
+                                  <span className={cn("font-medium truncate", isArchived && "opacity-60")}>
+                                    {bug.title}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground/60 shrink-0">
+                                    {bug.user.username} • {item.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </div>
+                                <ChevronDown className={cn("h-4 w-4 text-muted-foreground shrink-0 transition-transform", isExpanded && "rotate-180")} />
+                              </button>
+                              {isExpanded && (
+                                <div className="mt-3 space-y-3 pl-1">
+                                  <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted/20 p-3 rounded">
+                                    {bug.description}
+                                  </p>
+                                  <Button
+                                    size="sm" variant="outline"
+                                    onClick={() => toggleBugStatus(bug)}
+                                    disabled={updatingBug === bug.id}
+                                    className={cn(
+                                      "h-8",
+                                      isArchived
+                                        ? "border-amber-500/50 text-amber-500 hover:bg-amber-500/10"
+                                        : "border-green-500/50 text-green-500 hover:bg-green-500/10"
+                                    )}
+                                  >
+                                    {updatingBug === bug.id
+                                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                                      : isArchived
+                                        ? <><X className="h-4 w-4 mr-1" />Rouvrir</>
+                                        : <><Check className="h-4 w-4 mr-1" />Résolu</>}
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            );
+          })()}
         </TabsContent>
 
         <TabsContent value="users" className={SPACING.SECTION_SPACING}>

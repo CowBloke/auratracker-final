@@ -5,14 +5,19 @@ import { notificationsApi, type Notification } from '@/services/api';
 
 interface NotificationContextValue {
   notifications: Notification[];
+  archivedNotifications: Notification[];
   unreadCount: number;
   loading: boolean;
+  loadingArchived: boolean;
   hasMore: boolean;
-  fetchNotifications: (opts?: { reset?: boolean; unreadOnly?: boolean }) => Promise<void>;
+  hasMoreArchived: boolean;
+  fetchNotifications: (opts?: { reset?: boolean }) => Promise<void>;
+  fetchArchived: (opts?: { reset?: boolean }) => Promise<void>;
   markRead: (id: string) => Promise<void>;
   markAllRead: () => Promise<void>;
-  deleteNotification: (id: string) => Promise<void>;
-  deleteAllRead: () => Promise<void>;
+  archiveNotification: (id: string) => Promise<void>;
+  unarchiveNotification: (id: string) => Promise<void>;
+  archiveAllRead: () => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextValue | null>(null);
@@ -20,46 +25,62 @@ const NotificationContext = createContext<NotificationContextValue | null>(null)
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [archivedNotifications, setArchivedNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [loadingArchived, setLoadingArchived] = useState(false);
   const [page, setPage] = useState(1);
+  const [archivedPage, setArchivedPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [hasMoreArchived, setHasMoreArchived] = useState(true);
   const socketRef = useRef<ReturnType<typeof import('../services/socket').initSocket> | null>(null);
 
-  // ── Fetch unread count (lightweight, runs on mount / after actions) ──────────
   const refreshCount = useCallback(async () => {
     if (!user) return;
     try {
       const res = await notificationsApi.getUnreadCount();
       setUnreadCount(res.data.count);
-    } catch {
-      // silent
-    }
+    } catch { /* silent */ }
   }, [user]);
 
-  // ── Fetch paginated notifications ─────────────────────────────────────────────
   const fetchNotifications = useCallback(
-    async (opts: { reset?: boolean; unreadOnly?: boolean } = {}) => {
+    async (opts: { reset?: boolean } = {}) => {
       if (!user) return;
       const { reset = false } = opts;
       const nextPage = reset ? 1 : page;
       setLoading(true);
       try {
-        const res = await notificationsApi.getAll({ page: nextPage, limit: 20 });
+        const res = await notificationsApi.getAll({ page: nextPage, limit: 20, archived: false });
         const { notifications: fetched, totalPages } = res.data;
         setNotifications((prev) => (reset ? fetched : [...prev, ...fetched]));
         setPage(nextPage + 1);
         setHasMore(nextPage < totalPages);
-      } catch {
-        // silent
-      } finally {
+      } catch { /* silent */ } finally {
         setLoading(false);
       }
     },
     [user, page]
   );
 
-  // ── Initial load ──────────────────────────────────────────────────────────────
+  const fetchArchived = useCallback(
+    async (opts: { reset?: boolean } = {}) => {
+      if (!user) return;
+      const { reset = false } = opts;
+      const nextPage = reset ? 1 : archivedPage;
+      setLoadingArchived(true);
+      try {
+        const res = await notificationsApi.getAll({ page: nextPage, limit: 20, archived: true });
+        const { notifications: fetched, totalPages } = res.data;
+        setArchivedNotifications((prev) => (reset ? fetched : [...prev, ...fetched]));
+        setArchivedPage(nextPage + 1);
+        setHasMoreArchived(nextPage < totalPages);
+      } catch { /* silent */ } finally {
+        setLoadingArchived(false);
+      }
+    },
+    [user, archivedPage]
+  );
+
   useEffect(() => {
     if (!user) return;
     refreshCount();
@@ -67,11 +88,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  // ── Listen to socket events ───────────────────────────────────────────────────
   useEffect(() => {
     if (!user) return;
-
-    // Dynamically import socket service to avoid circular deps
     import('../services/socket').then(({ initSocket }) => {
       const token = localStorage.getItem('token');
       if (!token) return;
@@ -81,11 +99,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       socket.on('notification:new', (n: Notification) => {
         setNotifications((prev) => [n, ...prev]);
         setUnreadCount((c) => c + 1);
-        // Show a toast for real-time notifications
-        toast(n.title, {
-          description: n.body,
-          duration: 5000,
-        });
+        toast(n.title, { description: n.body, duration: 5000 });
       });
 
       socket.on('notification:broadcast', (data: { title: string; body: string }) => {
@@ -104,17 +118,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  // ── Actions ───────────────────────────────────────────────────────────────────
   const markRead = useCallback(async (id: string) => {
     try {
       await notificationsApi.markRead(id);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, isRead: true, readAt: new Date().toISOString() } : n))
-      );
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true, readAt: new Date().toISOString() } : n)));
       setUnreadCount((c) => Math.max(0, c - 1));
-    } catch {
-      // silent
-    }
+    } catch { /* silent */ }
   }, []);
 
   const markAllRead = useCallback(async () => {
@@ -122,43 +131,49 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       await notificationsApi.markAllRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true, readAt: new Date().toISOString() })));
       setUnreadCount(0);
-    } catch {
-      // silent
-    }
+    } catch { /* silent */ }
   }, []);
 
-  const deleteNotification = useCallback(async (id: string) => {
+  const archiveNotification = useCallback(async (id: string) => {
     const n = notifications.find((x) => x.id === id);
     try {
-      await notificationsApi.delete(id);
+      await notificationsApi.archive(id);
       setNotifications((prev) => prev.filter((x) => x.id !== id));
       if (n && !n.isRead) setUnreadCount((c) => Math.max(0, c - 1));
-    } catch {
-      // silent
-    }
+    } catch { /* silent */ }
   }, [notifications]);
 
-  const deleteAllRead = useCallback(async () => {
+  const unarchiveNotification = useCallback(async (id: string) => {
     try {
-      await notificationsApi.deleteAllRead();
+      await notificationsApi.archive(id); // toggles
+      setArchivedNotifications((prev) => prev.filter((x) => x.id !== id));
+    } catch { /* silent */ }
+  }, []);
+
+  const archiveAllRead = useCallback(async () => {
+    try {
+      await notificationsApi.archiveAllRead();
       setNotifications((prev) => prev.filter((n) => !n.isRead));
-    } catch {
-      // silent
-    }
+    } catch { /* silent */ }
   }, []);
 
   return (
     <NotificationContext.Provider
       value={{
         notifications,
+        archivedNotifications,
         unreadCount,
         loading,
+        loadingArchived,
         hasMore,
+        hasMoreArchived,
         fetchNotifications,
+        fetchArchived,
         markRead,
         markAllRead,
-        deleteNotification,
-        deleteAllRead,
+        archiveNotification,
+        unarchiveNotification,
+        archiveAllRead,
       }}
     >
       {children}

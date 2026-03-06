@@ -749,13 +749,16 @@ model Notification {
   data      String?  // JSON string for flexible extra payload (amounts, senderIds, etc.)
   link      String?  // Optional front-end route to navigate to on click
   icon      String?  // Optional icon key (maps to a Lucide icon name on frontend)
-  isRead    Boolean  @default(false)
-  readAt    DateTime?
-  createdAt DateTime @default(now())
+  isRead     Boolean   @default(false)
+  readAt     DateTime?
+  isArchived Boolean   @default(false)
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isRead])
+  @@index([userId, isArchived])
   @@index([userId, createdAt])
   @@index([createdAt])
 }

@@ -17,7 +17,7 @@ import {
   TrendingDown,
   Sword,
   Info,
-  X,
+  Archive,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -77,12 +77,12 @@ function NotificationIcon({ type }: { type: string }) {
 function NotificationRow({
   notification,
   onRead,
-  onDelete,
+  onArchive,
   onClose,
 }: {
   notification: Notification;
   onRead: (id: string) => void;
-  onDelete: (id: string) => void;
+  onArchive: (id: string) => void;
   onClose: () => void;
 }) {
   const navigate = useNavigate();
@@ -122,16 +122,16 @@ function NotificationRow({
         <p className="mt-1 text-[10px] text-muted-foreground/60">{ago}</p>
       </div>
 
-      {/* Delete button — visible on hover */}
+      {/* Archive button — visible on hover */}
       <button
         onClick={(e) => {
           e.stopPropagation();
-          onDelete(notification.id);
+          onArchive(notification.id);
         }}
-        className="absolute right-2 top-2 hidden rounded p-0.5 text-muted-foreground/40 hover:text-destructive group-hover:flex"
-        title="Supprimer"
+        className="absolute right-2 top-2 hidden rounded p-0.5 text-muted-foreground/40 hover:text-foreground group-hover:flex"
+        title="Archiver"
       >
-        <X className="h-3 w-3" />
+        <Archive className="h-3 w-3" />
       </button>
     </div>
   );
@@ -140,7 +140,7 @@ function NotificationRow({
 export function InboxDropdown() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const { notifications, unreadCount, loading, markRead, markAllRead, deleteNotification } = useNotifications();
+  const { notifications, unreadCount, loading, markRead, markAllRead, archiveNotification } = useNotifications();
 
   // Close when clicking outside
   useEffect(() => {
@@ -221,7 +221,7 @@ export function InboxDropdown() {
                     key={n.id}
                     notification={n}
                     onRead={markRead}
-                    onDelete={deleteNotification}
+                    onArchive={archiveNotification}
                     onClose={() => setOpen(false)}
                   />
                 ))}
