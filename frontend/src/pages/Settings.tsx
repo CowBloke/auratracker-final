@@ -1,10 +1,16 @@
 import { Sun, Moon } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { PageShell } from '@/components/layout/page-shell';
+
+interface ColorSchemeEntry {
+  id: string;
+  label: string;
+}
 
 const themeOptions = [
   {
@@ -55,7 +61,15 @@ const accentOptions = [
 ] as const;
 
 export default function Settings() {
-  const { theme, setTheme, accent, setAccent } = useTheme();
+  const { theme, setTheme, accent, setAccent, colorScheme, setColorScheme } = useTheme();
+  const [colorSchemes, setColorSchemes] = useState<ColorSchemeEntry[]>([{ id: 'default', label: 'Default' }]);
+
+  useEffect(() => {
+    fetch('/themes/manifest.json')
+      .then((r) => r.json())
+      .then((data: ColorSchemeEntry[]) => setColorSchemes(data))
+      .catch(() => {});
+  }, []);
 
   return (
     <PageShell>
@@ -141,6 +155,40 @@ export default function Settings() {
           </div>
           <p className={TYPOGRAPHY.XS}>
             Tes choix sont sauvegardés sur cet appareil.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardDescription>Palette de couleurs</CardDescription>
+          <CardTitle className={TYPOGRAPHY.H5}>
+            Choisis un thème tweakcn.
+          </CardTitle>
+        </CardHeader>
+        <CardContent className={SPACING.CARD_SPACING}>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {colorSchemes.map((scheme) => {
+              const isActive = colorScheme === scheme.id;
+              return (
+                <Button
+                  key={scheme.id}
+                  type="button"
+                  variant={isActive ? 'default' : 'outline'}
+                  onClick={() => setColorScheme(scheme.id)}
+                  aria-pressed={isActive}
+                  className={cn(
+                    'h-auto px-4 py-3 text-left',
+                    isActive ? 'border-foreground' : 'border-border/30'
+                  )}
+                >
+                  <span className={cn(TYPOGRAPHY.SMALL, 'font-medium')}>{scheme.label}</span>
+                </Button>
+              );
+            })}
+          </div>
+          <p className={TYPOGRAPHY.XS}>
+            Ajoute des fichiers CSS depuis tweakcn dans <code>public/themes/</code> et liste-les dans <code>manifest.json</code>.
           </p>
         </CardContent>
       </Card>

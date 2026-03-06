@@ -6,8 +6,10 @@ type Accent = 'neutral' | 'aura' | 'cyan' | 'pink' | 'orange' | 'green';
 interface ThemeContextType {
   theme: Theme;
   accent: Accent;
+  colorScheme: string;
   setTheme: (theme: Theme) => void;
   setAccent: (accent: Accent) => void;
+  setColorScheme: (id: string) => void;
   toggleTheme: () => void;
 }
 
@@ -30,6 +32,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
     return 'neutral';
   });
+  const [colorScheme, setColorScheme] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('colorScheme') || 'default';
+    }
+    return 'default';
+  });
 
   useEffect(() => {
     const root = document.documentElement;
@@ -51,12 +59,32 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('accent', accent);
   }, [accent]);
 
+  useEffect(() => {
+    const LINK_ID = 'tweakcn-theme-link';
+    let link = document.getElementById(LINK_ID) as HTMLLinkElement | null;
+
+    if (colorScheme === 'default') {
+      link?.remove();
+      localStorage.setItem('colorScheme', 'default');
+      return;
+    }
+
+    if (!link) {
+      link = document.createElement('link');
+      link.id = LINK_ID;
+      link.rel = 'stylesheet';
+      document.head.appendChild(link);
+    }
+    link.href = `/themes/${colorScheme}.css`;
+    localStorage.setItem('colorScheme', colorScheme);
+  }, [colorScheme]);
+
   const toggleTheme = () => {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, accent, setTheme, setAccent, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, accent, colorScheme, setTheme, setAccent, setColorScheme, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   );
