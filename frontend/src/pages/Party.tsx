@@ -170,6 +170,7 @@ export default function Party() {
       setShowPokerDialog(true);
     } else if (gameId === 'puissance-quatre') {
       startP4();
+      navigate('/games/puissance-quatre');
     } else {
       navigate(getGameLink(gameId));
     }
