@@ -22,6 +22,7 @@ export const BLOCKABLE_PAGES: BlockablePage[] = [
   { key: 'game-racer', path: '/games/racer', label: 'Racer', category: 'Jeux' },
   { key: 'game-tetris', path: '/games/tetris', label: 'Tetris', category: 'Jeux' },
   { key: 'game-goyave-empire', path: '/games/goyave-empire', label: 'Goyave Empire', category: 'Jeux' },
+  { key: 'game-puissance-quatre', path: '/games/puissance-quatre', label: 'Puissance 4', category: 'Jeux' },
   { key: 'game-polymarket', path: '/games/polymarket', label: 'Polymarket (Jeux)', category: 'Jeux' },
   { key: 'leaderboards', path: '/leaderboards', label: 'Classements', category: 'Communauté' },
   { key: 'leaderboards-numbers', path: '/leaderboards/nombres', label: 'Classement Nombres', category: 'Communauté' },

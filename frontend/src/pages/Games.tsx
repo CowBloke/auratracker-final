@@ -118,6 +118,15 @@ const games = [
     image: '/images/games/goyaveempire.png',
     emoji: '🍈',
   },
+  {
+    id: 'puissance-quatre',
+    pageKey: 'game-puissance-quatre',
+    name: 'Puissance 4',
+    description: 'Aligne 4 jetons avant ton adversaire dans ce duel classique.',
+    type: 'Duel',
+    requiresParty: true,
+    image: '/images/games/puissance4.png',
+  },
 ];
 
 const tabConfig: Array<{ id: GamesTab; label: string }> = [
@@ -167,6 +176,9 @@ export default function Games() {
     }
     if (gameId === 'tetris') {
       return '/games/tetris';
+    }
+    if (gameId === 'puissance-quatre') {
+      return '/games/puissance-quatre';
     }
     return `/games/${gameId}`;
   };
