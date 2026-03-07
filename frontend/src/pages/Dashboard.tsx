@@ -19,14 +19,18 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
-import { Gift, GiftStatus, UserDailyQuest, auraCoinApi, giftsApi, leaderboardsApi, marketplaceApi, questsApi } from '../services/api';
-import { GripVertical } from 'lucide-react';
+import { Gift, GiftStatus, UserDailyQuest, DailyQuest, auraCoinApi, giftsApi, leaderboardsApi, marketplaceApi, questsApi, passApi, bombPartyApi, polymarketApi } from '../services/api';
+import { GripVertical, Zap, DollarSign, Trophy, Users, Gift as GiftIcon, Package, TrendingUp, TrendingDown, CheckCircle2, Star, Flame, Gamepad2, Hash, BarChart3, Coins, Shield, Newspaper, User as UserIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
+import { AreaChart, Area, XAxis, YAxis } from 'recharts';
 import GiftDialog from '@/components/gifts/GiftDialog';
+import { toast } from 'sonner';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 
@@ -61,7 +65,7 @@ interface AuraLeaderboardEntry {
 const shortcutStorageKey = 'auratracker:dashboard-shortcuts';
 const dashboardLayoutStorageKey = 'auratracker:dashboard-layout';
 const dashboardVisibleWidgetsStorageKey = 'auratracker:dashboard-visible-widgets';
-const maxShortcutWidgets = 4;
+const maxShortcutWidgets = 8;
 
 const welcomeTemplates = [
   'Bienvenue, {username}',
@@ -104,15 +108,19 @@ const gameShortcuts: GameShortcut[] = [
   { id: 'tetris', label: 'Tetris', path: '/games/tetris', description: 'Puzzle classique et addictif.', image: '/images/games/tetris.png' },
 ];
 
-const defaultShortcuts = ['doodle-jump', 'flappy-bird', 'bomb-party', '2048'];
+const defaultShortcuts = ['doodle-jump', 'flappy-bird', 'bomb-party', '2048', 'poker', 'solitaire', 'tetris', 'racer'];
 const quickActions = [
-  { label: 'Créer party', path: '/party' },
-  { label: 'Voir quêtes', path: '/quests' },
-  { label: 'Ouvrir shop', path: '/games/market' },
-  { label: 'Classements', path: '/leaderboards' },
+  { label: 'Créer party', path: '/party', icon: Users, color: 'text-violet-500', bg: 'bg-violet-500/15' },
+  { label: 'Voir quêtes', path: '/quests', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/15' },
+  { label: 'Ouvrir shop', path: '/games/market', icon: Package, color: 'text-blue-500', bg: 'bg-blue-500/15' },
+  { label: 'Classements', path: '/leaderboards', icon: Trophy, color: 'text-amber-500', bg: 'bg-amber-500/15' },
+  { label: 'Actualités', path: '/news', icon: Newspaper, color: 'text-sky-500', bg: 'bg-sky-500/15' },
+  { label: 'Clans', path: '/clans', icon: Shield, color: 'text-teal-500', bg: 'bg-teal-500/15' },
+  { label: 'Mon profil', path: '/profile', icon: UserIcon, color: 'text-rose-500', bg: 'bg-rose-500/15' },
+  { label: 'Polymarket', path: '/games/polymarket', icon: BarChart3, color: 'text-indigo-500', bg: 'bg-indigo-500/15' },
 ];
 
-const defaultDashboardLayout: DashboardWidgetId[] = ['quick-actions', 'shortcuts', 'quests', 'auracoin', 'aura-leaders', 'inventory', 'live', 'stats', 'gifts'];
+const defaultDashboardLayout: DashboardWidgetId[] = ['shortcuts', 'live', 'quick-actions', 'stats', 'quests', 'auracoin', 'aura-leaders', 'inventory', 'gifts'];
 const dashboardWidgetLabels: Record<DashboardWidgetId, { title: string; description: string }> = {
   'quick-actions': { title: 'Actions rapides', description: 'Liens utiles du dashboard.' },
   shortcuts: { title: 'Raccourcis jeux', description: 'Acces rapide a tes jeux favoris.' },
@@ -127,6 +135,84 @@ const dashboardWidgetLabels: Record<DashboardWidgetId, { title: string; descript
 
 const isDashboardWidgetId = (value: string): value is DashboardWidgetId =>
   ['shortcuts', 'live', 'stats', 'gifts', 'auracoin', 'quests', 'quick-actions', 'inventory', 'aura-leaders'].includes(value);
+
+interface ExtraStatConfig {
+  id: string;
+  label: string;
+  icon: React.FC<{ className?: string }>;
+  color: string;
+  bg: string;
+  fetch: (userId: string) => Promise<string | number>;
+}
+
+const EXTRA_STAT_POOL: ExtraStatConfig[] = [
+  {
+    id: 'pass-streak',
+    label: 'Streak pass',
+    icon: Flame,
+    color: 'text-orange-500',
+    bg: 'bg-orange-500/15',
+    fetch: async () => {
+      const res = await passApi.getStatus();
+      return `${res.data.streak}j`;
+    },
+  },
+  {
+    id: 'bomb-wins',
+    label: 'Victoires BP',
+    icon: Gamepad2,
+    color: 'text-red-500',
+    bg: 'bg-red-500/15',
+    fetch: async (userId) => {
+      const res = await bombPartyApi.getStats(userId);
+      return res.data.wins;
+    },
+  },
+  {
+    id: 'bomb-words',
+    label: 'Mots tapés',
+    icon: Hash,
+    color: 'text-sky-500',
+    bg: 'bg-sky-500/15',
+    fetch: async (userId) => {
+      const res = await bombPartyApi.getStats(userId);
+      return Number(res.data.wordsTyped).toLocaleString('fr-FR');
+    },
+  },
+  {
+    id: 'poly-bets',
+    label: 'Paris placés',
+    icon: BarChart3,
+    color: 'text-violet-500',
+    bg: 'bg-violet-500/15',
+    fetch: async () => {
+      const res = await polymarketApi.getBets();
+      return res.data.bets.length;
+    },
+  },
+  {
+    id: 'auracoin-balance',
+    label: 'Balance AC',
+    icon: Coins,
+    color: 'text-primary',
+    bg: 'bg-primary/15',
+    fetch: async () => {
+      const res = await auraCoinApi.getPrice(1);
+      return res.data.userBalance.auraCoin.toFixed(4);
+    },
+  },
+];
+
+function pickRandomStats(count: number): ExtraStatConfig[] {
+  const shuffled = [...EXTRA_STAT_POOL].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
+}
+
+interface ExtraStatValue {
+  config: ExtraStatConfig;
+  value: string | number | null;
+}
+
 
 function SortableDashboardWidget({
   widgetId,
@@ -263,10 +349,15 @@ export default function Dashboard() {
   const [now, setNow] = useState(Date.now());
   const [auraCoinPrice, setAuraCoinPrice] = useState<number | null>(null);
   const [auraCoinPreviousPrice, setAuraCoinPreviousPrice] = useState<number | null>(null);
+  const [auraCoinHistory, setAuraCoinHistory] = useState<{ price: number; time: string }[]>([]);
   const [questWidgets, setQuestWidgets] = useState<UserDailyQuest[]>([]);
-  const [availableQuestCount, setAvailableQuestCount] = useState(0);
+  const [availableDailyQuests, setAvailableDailyQuests] = useState<DailyQuest[]>([]);
+  const [widgetQuestSelection, setWidgetQuestSelection] = useState<string[]>([]);
+  const [widgetQuestSelecting, setWidgetQuestSelecting] = useState(false);
   const [inventoryItems, setInventoryItems] = useState<DashboardInventoryItem[]>([]);
   const [auraLeaders, setAuraLeaders] = useState<AuraLeaderboardEntry[]>([]);
+  const [extraStats, setExtraStats] = useState<ExtraStatValue[]>([]);
+  const [selectedStatPool] = useState<ExtraStatConfig[]>(() => pickRandomStats(2));
 
   const shortcutMap = useMemo(() => new Map(gameShortcuts.map((item) => [item.id, item])), []);
   const orderedShortcuts = useMemo(
@@ -346,7 +437,7 @@ export default function Dashboard() {
           giftsApi.getInbox(),
           giftsApi.getReceived(),
           giftsApi.getStatus(),
-          auraCoinApi.getPrice(2),
+          auraCoinApi.getPrice(4),
           questsApi.getMyQuests(),
           questsApi.getDaily(),
           user?.id ? marketplaceApi.getInventory(user.id) : Promise.resolve({ data: { items: [] as DashboardInventoryItem[] } }),
@@ -369,6 +460,12 @@ export default function Dashboard() {
           const { currentPrice, history } = auraCoinRes.value.data;
           setAuraCoinPrice(currentPrice);
           setAuraCoinPreviousPrice(history[1]?.price ?? history[0]?.price ?? currentPrice);
+          setAuraCoinHistory(
+            history.map((h) => ({
+              price: h.price,
+              time: new Date(h.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+            }))
+          );
         }
 
         if (myQuestsRes.status === 'fulfilled') {
@@ -376,7 +473,8 @@ export default function Dashboard() {
         }
 
         if (dailyQuestsRes.status === 'fulfilled') {
-          setAvailableQuestCount(dailyQuestsRes.value.data.quests?.length || 0);
+          const quests = dailyQuestsRes.value.data.quests || [];
+          setAvailableDailyQuests(quests);
         }
 
         if (inventoryRes.status === 'fulfilled') {
@@ -385,6 +483,19 @@ export default function Dashboard() {
 
         if (auraLeadersRes.status === 'fulfilled') {
           setAuraLeaders((auraLeadersRes.value.data.rankings || []) as AuraLeaderboardEntry[]);
+        }
+
+        // Fetch randomly selected extra stats
+        if (selectedStatPool.length > 0 && user?.id) {
+          const extraResults = await Promise.allSettled(
+            selectedStatPool.map((s) => s.fetch(user.id))
+          );
+          setExtraStats(
+            selectedStatPool.map((config, i) => ({
+              config,
+              value: extraResults[i].status === 'fulfilled' ? (extraResults[i] as PromiseFulfilledResult<string | number>).value : '--',
+            }))
+          );
         }
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
@@ -526,6 +637,21 @@ export default function Dashboard() {
   const openGiftDialog = (tab: 'inbox' | 'send' | 'received') => {
     setGiftDialogInitialTab(tab);
     setGiftDialogOpen(true);
+  };
+
+  const handleWidgetQuestConfirm = async () => {
+    if (widgetQuestSelection.length !== 3) return;
+    setWidgetQuestSelecting(true);
+    try {
+      const res = await questsApi.select(widgetQuestSelection);
+      setQuestWidgets(res.data.userQuests || []);
+      setWidgetQuestSelection([]);
+      toast.success('Quêtes sélectionnées !');
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || 'Erreur lors de la sélection');
+    } finally {
+      setWidgetQuestSelecting(false);
+    }
   };
 
   const handleDashboardDragEnd = (event: DragEndEvent) => {
@@ -700,17 +826,21 @@ export default function Dashboard() {
                         <CardTitle className={TYPOGRAPHY.H3}>Actions rapides</CardTitle>
                       </CardHeader>
                       <CardContent className="min-h-0 flex-1 p-6">
-                        <div className="grid grid-cols-4 gap-3">
+                        <div className="grid grid-cols-4 gap-2">
                           {quickActions.map((action) => {
+                            const Icon = action.icon;
                             return (
                               <Button
                                 key={action.path}
                                 asChild
                                 variant="outline"
-                                className="aspect-square h-auto w-full items-center justify-center rounded-xl p-4 text-center"
+                                className="aspect-square h-auto w-full flex-col items-center justify-center gap-2 rounded-xl p-3 text-center hover:border-border"
                               >
                                 <Link to={action.path}>
-                                  <span className="text-sm font-medium">{action.label}</span>
+                                  <div className={cn("flex h-9 w-9 items-center justify-center rounded-lg", action.bg)}>
+                                    <Icon className={cn("h-4.5 w-4.5", action.color)} />
+                                  </div>
+                                  <span className="text-xs font-medium leading-tight">{action.label}</span>
                                 </Link>
                               </Button>
                             );
@@ -735,7 +865,7 @@ export default function Dashboard() {
                               <DialogHeader>
                                 <DialogTitle className={TYPOGRAPHY.H5}>Widgets de raccourcis</DialogTitle>
                                 <DialogDescription>
-                                  Active les jeux à afficher dans le widget. Maximum {maxShortcutWidgets} jeux.
+                                  Active les jeux à afficher dans le widget. Maximum {maxShortcutWidgets} jeux (2 rangées de 4).
                                 </DialogDescription>
                               </DialogHeader>
                               <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>
@@ -809,17 +939,33 @@ export default function Dashboard() {
                   {widgetId === 'quests' && (
                     <Card className="flex h-full flex-col overflow-hidden">
                       <CardHeader>
-                        <CardTitle className={TYPOGRAPHY.H3}>Quêtes du jour</CardTitle>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/15">
+                              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                            </div>
+                            <CardTitle className={TYPOGRAPHY.H3}>Quêtes du jour</CardTitle>
+                          </div>
+                          {completedQuestCount > 0 && (
+                            <Badge className="bg-emerald-500 text-white hover:bg-emerald-500/90">
+                              {completedQuestCount} à réclamer
+                            </Badge>
+                          )}
+                        </div>
                       </CardHeader>
-                      <CardContent className="min-h-0 flex-1 overflow-y-auto space-y-4">
+                      <CardContent className="min-h-0 flex-1 overflow-y-auto space-y-3">
                         {questWidgets.length > 0 ? (
                           <>
-                            <div className="flex items-center justify-between rounded-lg border border-border/60 px-4 py-3 text-sm">
-                              <span>{questWidgets.length} actives</span>
-                              <span className="tabular-nums text-muted-foreground">{completedQuestCount} à réclamer</span>
+                            <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/30 px-4 py-3 text-sm">
+                              <span className="text-muted-foreground">{questWidgets.length} actives</span>
+                              {completedQuestCount > 0 ? (
+                                <span className="tabular-nums font-medium text-emerald-600">{completedQuestCount} à réclamer</span>
+                              ) : (
+                                <span className="tabular-nums text-muted-foreground">0 à réclamer</span>
+                              )}
                             </div>
 
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                               {questWidgets.slice(0, 3).map((quest) => {
                                 const progress = quest.progress?.currentValue || 0;
                                 const target = quest.quest.targetValue;
@@ -835,24 +981,61 @@ export default function Dashboard() {
                                 );
                               })}
                             </div>
+
+                            <Button asChild variant="outline" className="w-full">
+                              <Link to="/quests">Ouvrir les quêtes</Link>
+                            </Button>
+                          </>
+                        ) : availableDailyQuests.length > 0 ? (
+                          <>
+                            <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>
+                              Choisis 3 quêtes · {widgetQuestSelection.length}/3 sélectionnées
+                            </p>
+                            <div className="grid grid-cols-3 gap-2">
+                              {availableDailyQuests.slice(0, 9).map((quest) => {
+                                const isSelected = widgetQuestSelection.includes(quest.id);
+                                const limitReached = !isSelected && widgetQuestSelection.length >= 3;
+                                return (
+                                  <button
+                                    key={quest.id}
+                                    type="button"
+                                    disabled={limitReached}
+                                    onClick={() =>
+                                      setWidgetQuestSelection((prev) =>
+                                        prev.includes(quest.id)
+                                          ? prev.filter((id) => id !== quest.id)
+                                          : prev.length >= 3 ? prev : [...prev, quest.id]
+                                      )
+                                    }
+                                    className={cn(
+                                      "flex flex-col items-start gap-1 rounded-lg border p-2 text-left text-xs transition",
+                                      isSelected
+                                        ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                                        : "border-border/60 hover:bg-accent/50",
+                                      limitReached && "opacity-40 cursor-not-allowed"
+                                    )}
+                                  >
+                                    <span className="font-medium leading-tight line-clamp-2">{quest.title}</span>
+                                    <span className="text-muted-foreground">+{quest.auraReward} aura</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            <Button
+                              className="w-full"
+                              disabled={widgetQuestSelection.length !== 3 || widgetQuestSelecting}
+                              onClick={handleWidgetQuestConfirm}
+                            >
+                              {widgetQuestSelecting ? 'Sélection...' : `Valider (${widgetQuestSelection.length}/3)`}
+                            </Button>
                           </>
                         ) : (
                           <div className="flex h-full flex-col justify-between gap-4">
-                            <div className="space-y-3">
-                              <p className={TYPOGRAPHY.SMALL}>Aucune quête active pour le moment.</p>
-                              <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground")}>
-                                {availableQuestCount > 0 ? `${availableQuestCount} quêtes journalières disponibles.` : 'Les quêtes du jour ne sont pas encore chargées.'}
-                              </p>
-                            </div>
+                            <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground")}>Les quêtes du jour ne sont pas encore disponibles.</p>
                             <Button asChild>
-                              <Link to="/quests">Choisir mes quêtes</Link>
+                              <Link to="/quests">Voir les quêtes</Link>
                             </Button>
                           </div>
-                        )}
-                        {questWidgets.length > 0 && (
-                          <Button asChild variant="outline" className="w-full">
-                            <Link to="/quests">Ouvrir les quêtes</Link>
-                          </Button>
                         )}
                       </CardContent>
                     </Card>
@@ -861,7 +1044,21 @@ export default function Dashboard() {
                   {widgetId === 'live' && (
                     <Card className="flex h-full flex-col overflow-hidden">
                       <CardHeader>
-                        <CardTitle className={TYPOGRAPHY.H3}>Activité des parties</CardTitle>
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/15">
+                            <Users className="h-4 w-4 text-violet-500" />
+                          </div>
+                          <CardTitle className={TYPOGRAPHY.H3}>Activité des parties</CardTitle>
+                          {publicParties.length > 0 && (
+                            <span className="ml-auto flex items-center gap-1.5 text-xs font-medium text-emerald-600">
+                              <span className="relative flex h-2 w-2">
+                                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
+                                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                              </span>
+                              Live
+                            </span>
+                          )}
+                        </div>
                       </CardHeader>
                       <CardContent className="min-h-0 flex-1 overflow-y-auto">
                         {publicParties.length === 0 ? (
@@ -912,77 +1109,182 @@ export default function Dashboard() {
 
                   {widgetId === 'stats' && (
                     <Card className="flex h-full flex-col overflow-hidden">
-                      <CardHeader>
+                      <CardHeader className="pb-2 pt-4 px-4">
                         <CardTitle className={TYPOGRAPHY.H3}>Stats</CardTitle>
                       </CardHeader>
-                      <CardContent className="min-h-0 flex-1 overflow-y-auto p-6 md:p-8">
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6">
-                          <Card className="border-border/60">
-                            <CardContent className="p-4 space-y-2">
-                              <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>
-                                {user?.aura.toLocaleString()}
-                              </p>
-                              <p className={TYPOGRAPHY.SMALL}>aura</p>
+                      <CardContent className="min-h-0 flex-1 p-3 pt-0">
+                        <div className="grid h-full grid-cols-2 gap-2">
+                          <Card className="border-primary/20 bg-primary/5">
+                            <CardContent className="flex h-full flex-col justify-between p-3">
+                              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/15">
+                                <Zap className="h-3.5 w-3.5 text-primary" />
+                              </div>
+                              <div>
+                                <p className="text-2xl font-semibold tabular-nums text-primary leading-tight">
+                                  {user?.aura.toLocaleString()}
+                                </p>
+                                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>aura</p>
+                              </div>
                             </CardContent>
                           </Card>
-                          <Card className="border-border/60">
-                            <CardContent className="p-4 space-y-2">
-                              <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>
-                                ${user?.money.toLocaleString()}
-                              </p>
-                              <p className={TYPOGRAPHY.SMALL}>argent</p>
+                          <Card className="border-emerald-500/20 bg-emerald-500/5">
+                            <CardContent className="flex h-full flex-col justify-between p-3">
+                              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/15">
+                                <DollarSign className="h-3.5 w-3.5 text-emerald-600" />
+                              </div>
+                              <div>
+                                <p className="text-2xl font-semibold tabular-nums text-emerald-600 leading-tight">
+                                  ${user?.money.toLocaleString()}
+                                </p>
+                                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>argent</p>
+                              </div>
                             </CardContent>
                           </Card>
+                          {extraStats.map(({ config, value }) => {
+                            const Icon = config.icon;
+                            return (
+                              <Card key={config.id} className="border-border/60">
+                                <CardContent className="flex h-full flex-col justify-between p-3">
+                                  <div className={cn("flex h-7 w-7 items-center justify-center rounded-lg", config.bg)}>
+                                    <Icon className={cn("h-3.5 w-3.5", config.color)} />
+                                  </div>
+                                  <div>
+                                    <p className={cn("text-2xl font-semibold tabular-nums leading-tight", value === '--' && "text-muted-foreground")}>
+                                      {value ?? '--'}
+                                    </p>
+                                    <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>{config.label}</p>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
                         </div>
                       </CardContent>
                     </Card>
                   )}
 
-                  {widgetId === 'auracoin' && (
-                    <Card className="flex h-full flex-col overflow-hidden">
-                      <CardHeader>
-                        <CardTitle className={TYPOGRAPHY.H3}>Aura Coin</CardTitle>
-                      </CardHeader>
-                      <CardContent className="flex min-h-0 flex-1 flex-col justify-between p-6 md:p-8">
-                        <div className="space-y-3">
-                          <p className={cn(TYPOGRAPHY.H1, "tabular-nums md:text-5xl")}>
+                  {widgetId === 'auracoin' && (() => {
+                    const isUp = (auraCoinDelta ?? 0) >= 0;
+                    const auraCoinChartConfig = {
+                      price: {
+                        label: 'Prix',
+                        color: isUp ? 'hsl(var(--chart-1))' : 'hsl(var(--destructive))',
+                      },
+                    } satisfies ChartConfig;
+                    return (
+                      <Card className="flex h-full flex-col overflow-hidden">
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15">
+                                <Star className="h-4 w-4 text-primary" />
+                              </div>
+                              <CardTitle className={TYPOGRAPHY.H3}>Aura Coin</CardTitle>
+                            </div>
+                            <div
+                              className={cn(
+                                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+                                auraCoinDelta === null
+                                  ? "bg-muted text-muted-foreground"
+                                  : isUp
+                                    ? "bg-emerald-500/10 text-emerald-600"
+                                    : "bg-red-500/10 text-red-600"
+                              )}
+                            >
+                              {auraCoinDelta !== null && (
+                                isUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />
+                              )}
+                              <span className="tabular-nums">
+                                {auraCoinDelta === null ? 'N/A' : `${isUp ? '+' : ''}${auraCoinDelta.toFixed(2)}%`}
+                              </span>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="flex min-h-0 flex-1 flex-col justify-between px-6 pb-6 pt-0">
+                          <p className={cn(TYPOGRAPHY.H1, "tabular-nums text-primary md:text-5xl")}>
                             {auraCoinPrice === null ? '--' : `$${auraCoinPrice.toFixed(2)}`}
                           </p>
-                          <div
-                            className={cn(
-                              "inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium",
-                              auraCoinDelta === null
-                                ? "bg-muted text-muted-foreground"
-                                : auraCoinDelta >= 0
-                                  ? "bg-emerald-500/10 text-emerald-600"
-                                  : "bg-red-500/10 text-red-600"
-                            )}
-                          >
-                            <span className="tabular-nums">
-                              {auraCoinDelta === null ? 'Variation indisponible' : `${auraCoinDelta >= 0 ? '+' : ''}${auraCoinDelta.toFixed(2)}%`}
-                            </span>
-                          </div>
-                        </div>
 
-                        <Button asChild variant="outline" className="mt-6 w-full">
-                          <Link to="/games/aura-coin">Ouvrir Aura Coin</Link>
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  )}
+                          {auraCoinHistory.length >= 2 ? (
+                            <ChartContainer config={auraCoinChartConfig} className="!aspect-auto h-24 w-full">
+                              <AreaChart data={auraCoinHistory} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+                                <defs>
+                                  <linearGradient id="acGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="var(--color-price)" stopOpacity={0.25} />
+                                    <stop offset="95%" stopColor="var(--color-price)" stopOpacity={0} />
+                                  </linearGradient>
+                                </defs>
+                                <XAxis dataKey="time" hide />
+                                <YAxis domain={['auto', 'auto']} hide />
+                                <ChartTooltip
+                                  content={
+                                    <ChartTooltipContent
+                                      formatter={(v) => [`$${Number(v).toFixed(2)}`, 'Prix']}
+                                      labelFormatter={(l) => l}
+                                    />
+                                  }
+                                />
+                                <Area
+                                  type="monotone"
+                                  dataKey="price"
+                                  stroke="var(--color-price)"
+                                  fill="url(#acGrad)"
+                                  strokeWidth={2}
+                                  dot={false}
+                                  isAnimationActive={false}
+                                />
+                              </AreaChart>
+                            </ChartContainer>
+                          ) : (
+                            <div className="h-24" />
+                          )}
+
+                          <Button asChild variant="outline" className="w-full">
+                            <Link to="/games/aura-coin">Ouvrir Aura Coin</Link>
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    );
+                  })()}
 
                   {widgetId === 'aura-leaders' && (
                     <Card className="flex h-full flex-col overflow-hidden">
                       <CardHeader>
-                        <CardTitle className={TYPOGRAPHY.H3}>Top Aura</CardTitle>
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/15">
+                            <Trophy className="h-4 w-4 text-amber-500" />
+                          </div>
+                          <CardTitle className={TYPOGRAPHY.H3}>Top Aura</CardTitle>
+                        </div>
                       </CardHeader>
                       <CardContent className="flex min-h-0 flex-1 flex-col">
                         {auraLeaders.length > 0 ? (
                           <div className="space-y-2">
                             {auraLeaders.slice(0, 5).map((entry) => (
-                              <div key={entry.userId} className="flex items-center justify-between rounded-lg border border-border/60 px-4 py-3">
-                                <p className="text-sm font-medium truncate">#{entry.rank} {entry.username}</p>
-                                <span className="text-sm font-medium tabular-nums">{Number(entry.value).toLocaleString('fr-FR')}</span>
+                              <div
+                                key={entry.userId}
+                                className={cn(
+                                  "flex items-center justify-between rounded-lg border px-4 py-3",
+                                  entry.rank === 1 && "border-amber-500/30 bg-amber-500/5",
+                                  entry.rank === 2 && "border-zinc-400/30 bg-zinc-400/5",
+                                  entry.rank === 3 && "border-orange-600/30 bg-orange-600/5",
+                                  entry.rank > 3 && "border-border/60"
+                                )}
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <span className={cn(
+                                    "shrink-0 w-5 text-sm font-bold tabular-nums",
+                                    entry.rank === 1 && "text-amber-500",
+                                    entry.rank === 2 && "text-zinc-400",
+                                    entry.rank === 3 && "text-orange-600",
+                                    entry.rank > 3 && "text-muted-foreground"
+                                  )}>{entry.rank}</span>
+                                  <p
+                                    className="text-sm font-medium truncate"
+                                    style={entry.usernameColor ? { color: entry.usernameColor } : undefined}
+                                  >{entry.username}</p>
+                                </div>
+                                <span className="shrink-0 text-sm font-medium tabular-nums">{Number(entry.value).toLocaleString('fr-FR')}</span>
                               </div>
                             ))}
                           </div>
@@ -999,8 +1301,15 @@ export default function Dashboard() {
                     <Card className="flex h-full flex-col overflow-hidden">
                       <CardHeader>
                         <div className="flex items-center justify-between gap-3">
-                          <CardTitle className={TYPOGRAPHY.H3}>Inventaire</CardTitle>
-                          <span className="text-sm text-muted-foreground tabular-nums">{totalInventoryCount}</span>
+                          <div className="flex items-center gap-2">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/15">
+                              <Package className="h-4 w-4 text-blue-500" />
+                            </div>
+                            <CardTitle className={TYPOGRAPHY.H3}>Inventaire</CardTitle>
+                          </div>
+                          {totalInventoryCount > 0 && (
+                            <Badge variant="secondary" className="tabular-nums">{totalInventoryCount}</Badge>
+                          )}
                         </div>
                       </CardHeader>
                       <CardContent className="min-h-0 flex-1 overflow-y-auto space-y-4">
@@ -1016,11 +1325,19 @@ export default function Dashboard() {
                                 key={item.id}
                                 className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-3"
                               >
-                                <div className="min-w-0">
-                                  <p className="text-sm font-medium truncate">{item.item.name}</p>
-                                  <p className="text-xs text-muted-foreground">{item.item.type.toLowerCase()}</p>
+                                <div className="flex min-w-0 items-center gap-2">
+                                  <p className="min-w-0 text-sm font-medium truncate">{item.item.name}</p>
+                                  <Badge variant="outline" className={cn(
+                                    "shrink-0 text-xs capitalize",
+                                    item.item.type === 'CONSUMABLE' && "border-blue-500/40 text-blue-600",
+                                    item.item.type === 'COSMETIC' && "border-violet-500/40 text-violet-600",
+                                    item.item.type === 'UPGRADE' && "border-emerald-500/40 text-emerald-600",
+                                    item.item.type === 'GIFT' && "border-rose-500/40 text-rose-600"
+                                  )}>
+                                    {item.item.type.toLowerCase()}
+                                  </Badge>
                                 </div>
-                                <span className="text-sm font-medium tabular-nums">x{item.quantity}</span>
+                                <span className="shrink-0 text-sm font-medium tabular-nums">x{item.quantity}</span>
                               </div>
                             ))}
                           </div>
@@ -1039,7 +1356,17 @@ export default function Dashboard() {
                     <Card className="flex h-full flex-col overflow-hidden">
                       <CardHeader>
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <CardTitle className={TYPOGRAPHY.H3}>Cadeaux</CardTitle>
+                          <div className="flex items-center gap-2">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/15">
+                              <GiftIcon className="h-4 w-4 text-rose-500" />
+                            </div>
+                            <CardTitle className={TYPOGRAPHY.H3}>Cadeaux</CardTitle>
+                            {inboxGifts.length > 0 && (
+                              <Badge className="bg-rose-500 text-white hover:bg-rose-500/90 tabular-nums">
+                                {inboxGifts.length}
+                              </Badge>
+                            )}
+                          </div>
                           <div className="flex items-center gap-2">
                             <Button size="sm" onClick={() => openGiftDialog('send')}>
                               Envoyer
@@ -1049,8 +1376,11 @@ export default function Dashboard() {
                       </CardHeader>
                       <CardContent className="min-h-0 flex-1 overflow-y-auto space-y-4">
                         <div className="grid gap-3 sm:grid-cols-2">
-                          <div className="rounded-lg border border-border/60 px-4 py-3">
-                            <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>{inboxGifts.length}</p>
+                          <div className={cn(
+                            "rounded-lg border px-4 py-3",
+                            inboxGifts.length > 0 ? "border-rose-500/30 bg-rose-500/5" : "border-border/60"
+                          )}>
+                            <p className={cn(TYPOGRAPHY.H2, "tabular-nums", inboxGifts.length > 0 && "text-rose-600")}>{inboxGifts.length}</p>
                             <p className={TYPOGRAPHY.SMALL}>en attente</p>
                           </div>
                           <div className="rounded-lg border border-border/60 px-4 py-3">
