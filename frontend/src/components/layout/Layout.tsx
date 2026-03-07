@@ -7,6 +7,7 @@ import BombPartyJoinPrompt from '../game/BombPartyJoinPrompt';
 import BombPartyPlayAgainPrompt from '../game/BombPartyPlayAgainPrompt';
 import PokerJoinPrompt from '../game/PokerJoinPrompt';
 import PetitBacJoinPrompt from '../game/PetitBacJoinPrompt';
+import P4JoinPrompt from '../game/P4JoinPrompt';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { useSocket } from '@/contexts/SocketContext';
 import { AppSidebar } from '@/components/app-sidebar';
@@ -67,6 +68,7 @@ export default function Layout() {
         <BombPartyPlayAgainPrompt />
         <PokerJoinPrompt />
         <PetitBacJoinPrompt />
+        <P4JoinPrompt />
         <UpdatePopupModal />
       </div>
     </ChatSidebarProvider>

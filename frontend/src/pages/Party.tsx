@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import { usersApi } from '../services/api';
-import { Plus, LogOut, UserPlus, X, RefreshCw, Trash2, User } from 'lucide-react';
+import { Plus, LogOut, UserPlus, X, RefreshCw, Trash2, User, Play } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -29,19 +29,23 @@ const multiplayerGames = [
     name: 'Bomb Party',
     description: 'Trouve des mots contenant les lettres avant que la bombe explose.',
     type: 'Party',
+    image: '/images/games/bombparty.png',
   },
   {
     id: 'petit-bac',
     name: 'Petit Bac',
     description: 'Remplis les categories avec la bonne lettre avant la fin du temps.',
     type: 'Party',
+    image: '/images/games/petitbac.png',
   },
   {
     id: 'poker',
     name: 'Poker',
     description: 'Joue une table entre amis, blindes et stack personnalisables.',
     type: 'Party',
-  },];
+    image: '/images/games/poker.png',
+  },
+];
 
 const duelGames = [
   {
@@ -49,27 +53,31 @@ const duelGames = [
     name: 'Bataille Navale',
     description: 'Place tes bateaux et coule ceux de ton adversaire.',
     type: 'Duel',
+    image: '/images/games/bataillenavale.png',
+  },
+  {
+    id: 'puissance-quatre',
+    name: 'Puissance 4',
+    description: 'Aligne 4 jetons avant ton adversaire.',
+    type: 'Duel',
+    image: '/images/games/puissance4.png',
   },
 ];
 
 const getGameLink = (gameId: string) => {
-  if (gameId === 'bomb-party') {
-    return '/games/bomb-party';
-  }
-  if (gameId === 'petit-bac') {
-    return '/games/petit-bac';
-  }
-  if (gameId === 'poker') {
-    return '/games/poker';
-  }
-  if (gameId === 'bataille-navale') {
-    return '/games/bataille-navale';
-  }
+  if (gameId === 'bomb-party') return '/games/bomb-party';
+  if (gameId === 'petit-bac') return '/games/petit-bac';
+  if (gameId === 'poker') return '/games/poker';
+  if (gameId === 'bataille-navale') return '/games/bataille-navale';
+  if (gameId === 'puissance-quatre') return '/games/puissance-quatre';
   return `/games/${gameId}`;
 };
 
+const DEFAULT_PETIT_BAC_CATEGORIES = ['Prenom', 'Ville', 'Pays', 'Animal', 'Objet', 'Metier'];
+
 export default function Party() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const {
     currentParty,
     partyMembers,
@@ -92,6 +100,10 @@ export default function Party() {
     partySelectedGame,
     suggestPartyGame,
     selectPartyGame,
+    startBombParty,
+    startPetitBac,
+    startPoker,
+    startP4,
   } = useSocket();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -102,8 +114,25 @@ export default function Party() {
   const [partyType, setPartyType] = useState<'party' | 'duel' | ''>('');
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
+  // Start game dialogs
+  const [showBpDialog, setShowBpDialog] = useState(false);
+  const [showPbDialog, setShowPbDialog] = useState(false);
+  const [showPokerDialog, setShowPokerDialog] = useState(false);
+
+  // BombParty settings
+  const [bpLives, setBpLives] = useState(3);
+  const [bpDifficulty, setBpDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
+
+  // PetitBac settings
+  const [pbRounds, setPbRounds] = useState(5);
+  const [pbDuration, setPbDuration] = useState(60);
+
+  // Poker settings
+  const [pokerStack, setPokerStack] = useState(1000);
+  const [pokerBlind, setPokerBlind] = useState(20);
+
   useEffect(() => {
-    syncParty(); // Sync party state to resolve any ghost states
+    syncParty();
     fetchPublicParties();
     fetchAllUsers();
   }, []);
@@ -132,6 +161,35 @@ export default function Party() {
     setShowInviteModal(false);
   };
 
+  const handleLaunchSelected = (gameId: string) => {
+    if (gameId === 'bomb-party') {
+      setShowBpDialog(true);
+    } else if (gameId === 'petit-bac') {
+      setShowPbDialog(true);
+    } else if (gameId === 'poker') {
+      setShowPokerDialog(true);
+    } else if (gameId === 'puissance-quatre') {
+      startP4();
+    } else {
+      navigate(getGameLink(gameId));
+    }
+  };
+
+  const handleStartBombParty = () => {
+    startBombParty(bpLives, bpDifficulty);
+    setShowBpDialog(false);
+  };
+
+  const handleStartPetitBac = () => {
+    startPetitBac(pbRounds, pbDuration * 1000, DEFAULT_PETIT_BAC_CATEGORIES);
+    setShowPbDialog(false);
+  };
+
+  const handleStartPoker = () => {
+    startPoker(pokerStack, pokerBlind);
+    setShowPokerDialog(false);
+  };
+
   const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
   const availableUsersToInvite = allUsers.filter(
     (u) =>
@@ -139,6 +197,9 @@ export default function Party() {
       !partyMembers.find((m) => m.userId === u.id)
   );
   const selectedGameId = partySelectedGame?.gameId;
+
+  const allGames = [...multiplayerGames, ...duelGames];
+
   return (
     <>
       <PageShell>
@@ -276,25 +337,40 @@ export default function Party() {
                 <Card>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <p className={TYPOGRAPHY.SMALL}>{partySelectedGame.gameName}</p>
+                      <div className="flex items-center gap-3">
+                        {(() => {
+                          const gameInfo = allGames.find((g) => g.id === partySelectedGame.gameId);
+                          return gameInfo ? (
+                            <img
+                              src={gameInfo.image}
+                              alt={gameInfo.name}
+                              className="h-10 w-10 rounded-md object-cover shrink-0"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                            />
+                          ) : null;
+                        })()}
+                        <div>
+                          <p className={TYPOGRAPHY.SMALL}>{partySelectedGame.gameName}</p>
                           <p className={TYPOGRAPHY.XS}>
                             selectionne par{' '}
-                          <UsernameDisplay
-                            username={partySelectedGame.selectedByName}
-                            usernameColor={partySelectedGame.selectedByColor}
-                          />
+                            <UsernameDisplay
+                              username={partySelectedGame.selectedByName}
+                              usernameColor={partySelectedGame.selectedByColor}
+                            />
                           </p>
+                        </div>
                       </div>
-                      <Button
-                        asChild
-                        variant="outline"
-                        size="sm"
-                      >
-                        <Link to={getGameLink(partySelectedGame.gameId)}>
-                          Ouvrir
-                        </Link>
-                      </Button>
+                      {isLeader && (
+                        <Button
+                          onClick={() => handleLaunchSelected(partySelectedGame.gameId)}
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0"
+                        >
+                          <Play className="h-3.5 w-3.5 mr-1.5" />
+                          Lancer
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -327,26 +403,37 @@ export default function Party() {
                           {game.description}
                         </p>
                       </div>
-                      <Button
+                      <button
                         onClick={() =>
-                          isLeader
+                          !isDisabled && (isLeader
                             ? selectPartyGame(game.id, game.name)
-                            : suggestPartyGame(game.id, game.name)
+                            : suggestPartyGame(game.id, game.name))
                         }
                         disabled={isDisabled}
-                        variant="outline"
-                        size="sm"
+                        title={isLeader
+                          ? isSelected ? 'Selectionne' : 'Choisir'
+                          : isSelected ? 'Selectionne' : hasSuggested ? 'Suggere' : 'Suggerer'}
+                        className={cn(
+                          'relative h-12 w-12 shrink-0 rounded-md overflow-hidden border-2 transition-all',
+                          isSelected
+                            ? 'border-foreground opacity-100 ring-2 ring-foreground/30'
+                            : isDisabled
+                              ? 'border-border/30 opacity-40 cursor-not-allowed'
+                              : 'border-border/50 opacity-80 hover:opacity-100 hover:border-foreground/60 cursor-pointer'
+                        )}
                       >
-                        {isLeader
-                          ? isSelected
-                            ? 'Selectionne'
-                            : 'Choisir'
-                          : isSelected
-                            ? 'Selectionne'
-                            : hasSuggested
-                              ? 'Suggere'
-                              : 'Suggerer'}
-                      </Button>
+                        <img
+                          src={game.image}
+                          alt={game.name}
+                          className="h-full w-full object-cover"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                        {isSelected && (
+                          <div className="absolute inset-0 bg-foreground/20 flex items-center justify-center">
+                            <div className="h-3 w-3 rounded-full bg-foreground" />
+                          </div>
+                        )}
+                      </button>
                     </div>
                   );
                 })}
@@ -360,35 +447,57 @@ export default function Party() {
                   <p className={TYPOGRAPHY.SMALL}>Aucune suggestion</p>
                 ) : (
                   <div className="space-y-0">
-                    {partyGameSuggestions.map((suggestion) => (
-                      <div
-                        key={suggestion.id}
-                        className="flex items-center justify-between py-2 border-b border-border/30 last:border-0"
-                      >
-                        <div className={TYPOGRAPHY.SMALL}>
-                          <span className="font-medium">{suggestion.gameName}</span>
-                          <span className="text-muted-foreground"> · par </span>
-                          <UsernameDisplay
-                            username={suggestion.suggestedByName}
-                            usernameColor={suggestion.suggestedByColor}
-                          />
-                        </div>
-                        {isLeader && suggestion.gameId !== selectedGameId && (
-                          <Button
-                            onClick={() => selectPartyGame(suggestion.gameId, suggestion.gameName)}
-                            variant="outline"
-                            size="sm"
-                            className="text-xs"
+                    {partyGameSuggestions.map((suggestion) => {
+                      const gameInfo = allGames.find((g) => g.id === suggestion.gameId);
+                      return (
+                        <div
+                          key={suggestion.id}
+                          className="flex items-center justify-between py-2 border-b border-border/30 last:border-0"
                         >
-                          Choisir
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+                          <div className="flex items-center gap-3">
+                            {gameInfo && (
+                              <img
+                                src={gameInfo.image}
+                                alt={gameInfo.name}
+                                className="h-8 w-8 rounded-sm object-cover shrink-0"
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                              />
+                            )}
+                            <div className={TYPOGRAPHY.SMALL}>
+                              <span className="font-medium">{suggestion.gameName}</span>
+                              <span className="text-muted-foreground"> · par </span>
+                              <UsernameDisplay
+                                username={suggestion.suggestedByName}
+                                usernameColor={suggestion.suggestedByColor}
+                              />
+                            </div>
+                          </div>
+                          {isLeader && suggestion.gameId !== selectedGameId && (
+                            <button
+                              onClick={() => selectPartyGame(suggestion.gameId, suggestion.gameName)}
+                              title="Choisir"
+                              className={cn(
+                                'relative h-10 w-10 shrink-0 rounded-md overflow-hidden border-2 transition-all',
+                                'border-border/50 opacity-80 hover:opacity-100 hover:border-foreground/60 cursor-pointer'
+                              )}
+                            >
+                              {gameInfo && (
+                                <img
+                                  src={gameInfo.image}
+                                  alt={gameInfo.name}
+                                  className="h-full w-full object-cover"
+                                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                />
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
 
             {isLeader && partyJoinRequests.length > 0 && (
               <div className={SPACING.CARD_SPACING}>
@@ -632,6 +741,174 @@ export default function Party() {
               className="w-full border-border/30"
             >
               Fermer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bomb Party start dialog */}
+      <Dialog open={showBpDialog} onOpenChange={setShowBpDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-normal">Bomb Party — Options</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-sm text-muted-foreground">Vies</label>
+              <div className="flex gap-2">
+                {[2, 3, 4, 5].map((l) => (
+                  <Button variant="ghost"
+                    key={l}
+                    onClick={() => setBpLives(l)}
+                    className={cn(
+                      'flex-1 py-3 border transition-colors',
+                      bpLives === l
+                        ? 'border-foreground bg-foreground text-background'
+                        : 'border-border/50 text-muted-foreground hover:border-foreground hover:text-foreground'
+                    )}
+                  >
+                    {l}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm text-muted-foreground">Difficulte</label>
+              <div className="flex gap-2">
+                {(['easy', 'medium', 'hard'] as const).map((d) => (
+                  <Button variant="ghost"
+                    key={d}
+                    onClick={() => setBpDifficulty(d)}
+                    className={cn(
+                      'flex-1 py-3 border transition-colors',
+                      bpDifficulty === d
+                        ? 'border-foreground bg-foreground text-background'
+                        : 'border-border/50 text-muted-foreground hover:border-foreground hover:text-foreground'
+                    )}
+                  >
+                    {d === 'easy' ? 'Facile' : d === 'medium' ? 'Moyen' : 'Difficile'}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowBpDialog(false)}>Annuler</Button>
+            <Button onClick={handleStartBombParty} variant="outline" className="border-foreground">
+              <Play className="h-4 w-4 mr-2" />
+              Lancer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Petit Bac start dialog */}
+      <Dialog open={showPbDialog} onOpenChange={setShowPbDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-normal">Petit Bac — Options</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm text-muted-foreground">Manches</label>
+              <div className="flex gap-2">
+                {[3, 5, 7, 10].map((r) => (
+                  <Button variant="ghost"
+                    key={r}
+                    onClick={() => setPbRounds(r)}
+                    className={cn(
+                      'flex-1 py-3 border transition-colors',
+                      pbRounds === r
+                        ? 'border-foreground bg-foreground text-background'
+                        : 'border-border/50 text-muted-foreground hover:border-foreground hover:text-foreground'
+                    )}
+                  >
+                    {r}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm text-muted-foreground">Durée (secondes)</label>
+              <div className="flex gap-2">
+                {[30, 45, 60, 90].map((d) => (
+                  <Button variant="ghost"
+                    key={d}
+                    onClick={() => setPbDuration(d)}
+                    className={cn(
+                      'flex-1 py-3 border transition-colors',
+                      pbDuration === d
+                        ? 'border-foreground bg-foreground text-background'
+                        : 'border-border/50 text-muted-foreground hover:border-foreground hover:text-foreground'
+                    )}
+                  >
+                    {d}s
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowPbDialog(false)}>Annuler</Button>
+            <Button onClick={handleStartPetitBac} variant="outline" className="border-foreground">
+              <Play className="h-4 w-4 mr-2" />
+              Lancer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Poker start dialog */}
+      <Dialog open={showPokerDialog} onOpenChange={setShowPokerDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-normal">Poker — Options</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm text-muted-foreground">Stack de départ</label>
+              <div className="flex gap-2">
+                {[500, 1000, 2000, 5000].map((s) => (
+                  <Button variant="ghost"
+                    key={s}
+                    onClick={() => setPokerStack(s)}
+                    className={cn(
+                      'flex-1 py-3 border transition-colors',
+                      pokerStack === s
+                        ? 'border-foreground bg-foreground text-background'
+                        : 'border-border/50 text-muted-foreground hover:border-foreground hover:text-foreground'
+                    )}
+                  >
+                    {s}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm text-muted-foreground">Big blind</label>
+              <div className="flex gap-2">
+                {[10, 20, 50, 100].map((b) => (
+                  <Button variant="ghost"
+                    key={b}
+                    onClick={() => setPokerBlind(b)}
+                    className={cn(
+                      'flex-1 py-3 border transition-colors',
+                      pokerBlind === b
+                        ? 'border-foreground bg-foreground text-background'
+                        : 'border-border/50 text-muted-foreground hover:border-foreground hover:text-foreground'
+                    )}
+                  >
+                    {b}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowPokerDialog(false)}>Annuler</Button>
+            <Button onClick={handleStartPoker} variant="outline" className="border-foreground">
+              <Play className="h-4 w-4 mr-2" />
+              Lancer
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -28,6 +28,16 @@ interface P4Game {
   isActive: boolean;
 }
 
+interface PendingJoinPrompt {
+  partyId: string;
+  leaderId: string;
+  responses: Map<string, boolean>;
+  memberIds: string[];
+  members: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+  timer: NodeJS.Timeout | null;
+  startTime: number;
+}
+
 interface PendingPlayAgainPrompt {
   partyId: string;
   responses: Map<string, boolean>;
@@ -37,7 +47,9 @@ interface PendingPlayAgainPrompt {
 
 const activeGames = new Map<string, P4Game>();
 const playerSockets = new Map<string, string>();
+const pendingJoinPrompts = new Map<string, PendingJoinPrompt>();
 const pendingPlayAgainPrompts = new Map<string, PendingPlayAgainPrompt>();
+const JOIN_PROMPT_TIMEOUT = 10000;
 const PLAY_AGAIN_TIMEOUT = 20000;
 
 function createBoard(): Board {
@@ -256,6 +268,53 @@ async function resolvePlayAgainPrompt(partyId: string, io: Server) {
   emitState(game, io);
 }
 
+async function resolveJoinPrompt(partyId: string, io: Server) {
+  const prompt = pendingJoinPrompts.get(partyId);
+  if (!prompt) return;
+  if (prompt.timer) clearTimeout(prompt.timer);
+  pendingJoinPrompts.delete(partyId);
+
+  const acceptedIds = Array.from(prompt.responses.entries())
+    .filter(([, v]) => v)
+    .map(([uid]) => uid);
+
+  if (acceptedIds.length < 2) {
+    io.to(`party:${partyId}`).emit('p4:join-cancelled', {});
+    return;
+  }
+
+  const members = await prisma.partyMember.findMany({
+    where: { partyId, userId: { in: acceptedIds } },
+    include: { user: { select: { id: true, username: true, usernameColor: true } } },
+    orderBy: { joinedAt: 'asc' },
+  });
+
+  if (members.length !== 2) {
+    io.to(`party:${partyId}`).emit('p4:join-cancelled', {});
+    return;
+  }
+
+  const game: P4Game = {
+    partyId,
+    players: members.map((m, i) => ({
+      userId: m.user.id,
+      username: m.user.username,
+      usernameColor: m.user.usernameColor,
+      playerIndex: i as 0 | 1,
+    })),
+    board: createBoard(),
+    currentPlayerIndex: Math.floor(Math.random() * 2) as 0 | 1,
+    phase: 'playing',
+    winnerId: null,
+    winCells: null,
+    lastMove: null,
+    isActive: true,
+  };
+
+  activeGames.set(partyId, game);
+  emitState(game, io);
+}
+
 export const setupPuissanceQuatreHandlers = (socket: Socket, io: Server) => {
   socket.on('p4:register', () => {
     const userId = socket.data.userId as string | undefined;
@@ -269,14 +328,27 @@ export const setupPuissanceQuatreHandlers = (socket: Socket, io: Server) => {
       if (game) {
         socket.emit('p4:state', serializeState(game));
       }
-      const prompt = pendingPlayAgainPrompts.get(partyId);
-      if (prompt) {
-        const responses = Array.from(prompt.responses.entries()).map(([uid, v]) => ({ userId: uid, playAgain: v }));
+      const joinPrompt = pendingJoinPrompts.get(partyId);
+      if (joinPrompt) {
+        const responses = Array.from(joinPrompt.responses.entries()).map(([uid, v]) => ({ userId: uid, accepted: v }));
+        socket.emit('p4:join-prompt', {
+          partyId: joinPrompt.partyId,
+          leaderId: joinPrompt.leaderId,
+          timeLimit: JOIN_PROMPT_TIMEOUT,
+          startTime: joinPrompt.startTime,
+          members: joinPrompt.members,
+          responses,
+        });
+      }
+
+      const playAgainPrompt = pendingPlayAgainPrompts.get(partyId);
+      if (playAgainPrompt) {
+        const responses = Array.from(playAgainPrompt.responses.entries()).map(([uid, v]) => ({ userId: uid, playAgain: v }));
         socket.emit('p4:play-again-prompt', {
-          partyId: prompt.partyId,
+          partyId: playAgainPrompt.partyId,
           timeLimit: PLAY_AGAIN_TIMEOUT,
           startTime: Date.now(),
-          players: prompt.players,
+          players: playAgainPrompt.players,
           responses,
         });
       }
@@ -291,7 +363,13 @@ export const setupPuissanceQuatreHandlers = (socket: Socket, io: Server) => {
     try {
       const membership = await prisma.partyMember.findUnique({
         where: { userId },
-        include: { party: { include: { members: true } } },
+        include: {
+          party: {
+            include: {
+              members: { include: { user: { select: { id: true, username: true, usernameColor: true } } } },
+            },
+          },
+        },
       });
 
       if (!membership || membership.partyId !== partyId) {
@@ -310,35 +388,65 @@ export const setupPuissanceQuatreHandlers = (socket: Socket, io: Server) => {
         socket.emit('p4:error', { message: 'Une partie est déjà en cours.' });
         return;
       }
+      if (pendingJoinPrompts.has(partyId)) {
+        socket.emit('p4:error', { message: 'Une demande de rejoindre est déjà en cours.' });
+        return;
+      }
 
-      const members = await prisma.partyMember.findMany({
-        where: { partyId },
-        include: { user: { select: { id: true, username: true, usernameColor: true } } },
-        orderBy: { joinedAt: 'asc' },
-      });
+      const partyMembersData = membership.party.members;
+      const memberIds = partyMembersData.map(m => m.user.id);
+      const membersInfo = partyMembersData.map(m => ({
+        userId: m.user.id,
+        username: m.user.username,
+        usernameColor: m.user.usernameColor,
+      }));
 
-      const game: P4Game = {
+      const prompt: PendingJoinPrompt = {
         partyId,
-        players: members.map((m, i) => ({
-          userId: m.user.id,
-          username: m.user.username,
-          usernameColor: m.user.usernameColor,
-          playerIndex: i as 0 | 1,
-        })),
-        board: createBoard(),
-        currentPlayerIndex: Math.floor(Math.random() * 2) as 0 | 1,
-        phase: 'playing',
-        winnerId: null,
-        winCells: null,
-        lastMove: null,
-        isActive: true,
+        leaderId: userId,
+        responses: new Map(),
+        memberIds,
+        members: membersInfo,
+        timer: null,
+        startTime: Date.now(),
       };
 
-      activeGames.set(partyId, game);
-      emitState(game, io);
+      // Leader auto-accepts
+      prompt.responses.set(userId, true);
+      pendingJoinPrompts.set(partyId, prompt);
+      prompt.timer = setTimeout(() => resolveJoinPrompt(partyId, io), JOIN_PROMPT_TIMEOUT);
+
+      io.to(`party:${partyId}`).emit('p4:join-prompt', {
+        partyId,
+        leaderId: userId,
+        timeLimit: JOIN_PROMPT_TIMEOUT,
+        startTime: prompt.startTime,
+        members: membersInfo,
+        responses: [{ userId, accepted: true }],
+      });
     } catch (error) {
       console.error('p4:start error:', error);
       socket.emit('p4:error', { message: 'Impossible de lancer la partie.' });
+    }
+  });
+
+  socket.on('p4:join-response', async (data: { partyId: string; accepted: boolean }) => {
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const prompt = pendingJoinPrompts.get(data.partyId);
+    if (!prompt) return;
+    if (!prompt.memberIds.includes(userId)) return;
+
+    prompt.responses.set(userId, data.accepted);
+
+    const responses = Array.from(prompt.responses.entries()).map(([uid, v]) => ({ userId: uid, accepted: v }));
+    io.to(`party:${data.partyId}`).emit('p4:join-response-update', {
+      partyId: data.partyId,
+      responses,
+    });
+
+    if (prompt.responses.size === prompt.memberIds.length) {
+      await resolveJoinPrompt(data.partyId, io);
     }
   });
 

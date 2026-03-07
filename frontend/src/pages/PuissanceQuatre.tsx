@@ -442,7 +442,7 @@ export default function PuissanceQuatre() {
 
         {/* Board */}
         <div
-          className="relative rounded-2xl bg-blue-600 dark:bg-blue-800 shadow-xl"
+          className="relative rounded-2xl bg-accent shadow-xl"
           style={{
             width: BOARD_WIDTH,
             height: BOARD_HEIGHT,
@@ -469,7 +469,7 @@ export default function PuissanceQuatre() {
                   key={`${row}-${col}`}
                   className={cn(
                     'rounded-full transition-colors duration-100',
-                    displayCell === 0 && 'bg-white/10 dark:bg-black/30',
+                    displayCell === 0 && 'bg-foreground/10',
                     colorClass,
                     !winHere && displayCell === 0 && canClick && hoverCol === col && myInfo?.playerIndex === 0 && 'bg-red-500/25',
                     !winHere && displayCell === 0 && canClick && hoverCol === col && myInfo?.playerIndex === 1 && 'bg-yellow-400/25',

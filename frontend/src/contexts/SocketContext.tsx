@@ -365,6 +365,22 @@ interface PetitBacPlayAgainPrompt {
   leaveCount: number;
 }
 
+interface P4JoinPrompt {
+  partyId: string;
+  leaderId: string;
+  timeLimit: number;
+  startTime: number;
+  members: Array<{
+    userId: string;
+    username: string;
+    usernameColor?: string | null;
+  }>;
+  responses: Array<{
+    userId: string;
+    accepted: boolean;
+  }>;
+}
+
 interface SocketContextType {
   socket: Socket | null;
   connected: boolean;
@@ -441,7 +457,12 @@ interface SocketContextType {
   submitPetitBac: (answers: Record<string, string>) => void;
   leavePetitBac: () => void;
   respondToPetitBacPlayAgainPrompt: (playAgain: boolean) => void;
-  clearPetitBacGameOver: () => void;}
+  clearPetitBacGameOver: () => void;
+  // Puissance 4
+  p4JoinPrompt: P4JoinPrompt | null;
+  startP4: () => void;
+  respondToP4JoinPrompt: (accepted: boolean) => void;
+}
 
 const SocketContext = createContext<SocketContextType | null>(null);
 
@@ -491,6 +512,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [petitBacGameOver, setPetitBacGameOver] = useState<PetitBacGameOver | null>(null);
   const [petitBacJoinPrompt, setPetitBacJoinPrompt] = useState<PetitBacJoinPrompt | null>(null);
   const [petitBacPlayAgainPrompt, setPetitBacPlayAgainPrompt] = useState<PetitBacPlayAgainPrompt | null>(null);
+
+  // Puissance 4 state
+  const [p4JoinPrompt, setP4JoinPrompt] = useState<P4JoinPrompt | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -1116,6 +1140,33 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setPetitBacPlayAgainPrompt(null);
       });
 
+      // Puissance 4 join prompt events
+      s.on('p4:join-prompt', (data: {
+        partyId: string;
+        leaderId: string;
+        timeLimit: number;
+        startTime: number;
+        members: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+        responses: Array<{ userId: string; accepted: boolean }>;
+      }) => {
+        setP4JoinPrompt({ ...data });
+      });
+
+      s.on('p4:join-response-update', (data: {
+        partyId: string;
+        responses: Array<{ userId: string; accepted: boolean }>;
+      }) => {
+        setP4JoinPrompt((prev) => (prev ? { ...prev, responses: data.responses } : null));
+      });
+
+      s.on('p4:join-cancelled', () => {
+        setP4JoinPrompt(null);
+      });
+
+      s.on('p4:state', () => {
+        setP4JoinPrompt(null);
+      });
+
       return () => {
         disconnectSocket();
         s.removeAllListeners();
@@ -1380,6 +1431,21 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const clearPetitBacGameOver = () => {
     setPetitBacGameOver(null);
   };
+
+  // Puissance 4 actions
+  const startP4 = () => {
+    if (socket && currentParty) {
+      socket.emit('p4:start', { partyId: currentParty.id });
+    }
+  };
+
+  const respondToP4JoinPrompt = (accepted: boolean) => {
+    if (socket && p4JoinPrompt) {
+      socket.emit('p4:join-response', { partyId: p4JoinPrompt.partyId, accepted });
+      if (!accepted) setP4JoinPrompt(null);
+    }
+  };
+
   return (
     <SocketContext.Provider
       value={{
@@ -1453,6 +1519,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         leavePetitBac,
         respondToPetitBacPlayAgainPrompt,
         clearPetitBacGameOver,
+        p4JoinPrompt,
+        startP4,
+        respondToP4JoinPrompt,
       }}
     >
       {children}
