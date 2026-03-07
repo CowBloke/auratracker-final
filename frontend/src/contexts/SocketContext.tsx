@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Socket } from 'socket.io-client';
 import { initSocket, connectSocket, disconnectSocket, chatEvents, partyEvents, gameEvents, bombPartyEvents, pokerEvents, petitBacEvents } from '../services/socket';
@@ -381,6 +381,45 @@ interface P4JoinPrompt {
   }>;
 }
 
+interface P4PlayAgainPrompt {
+  partyId: string;
+  timeLimit: number;
+  startTime: number;
+  players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+  responses: Array<{ userId: string; playAgain: boolean }>;
+}
+
+interface BattleshipPlayAgainPrompt {
+  partyId: string;
+  timeLimit: number;
+  startTime: number;
+  players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+  responses: Array<{ userId: string; playAgain: boolean }>;
+}
+
+interface ActiveJoinPrompt {
+  gameType: string;
+  title: string;
+  settingsText?: string;
+  navigateTo: string;
+  partyId: string;
+  leaderId: string;
+  members: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+  responses: Array<{ userId: string; accepted: boolean }>;
+  timeLimit: number;
+  startTime: number;
+}
+
+interface ActiveReplayPrompt {
+  gameType: string;
+  settingsText?: string;
+  partyId: string;
+  players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+  responses: Array<{ userId: string; playAgain: boolean }>;
+  timeLimit: number;
+  startTime: number;
+}
+
 interface SocketContextType {
   socket: Socket | null;
   connected: boolean;
@@ -462,6 +501,16 @@ interface SocketContextType {
   p4JoinPrompt: P4JoinPrompt | null;
   startP4: () => void;
   respondToP4JoinPrompt: (accepted: boolean) => void;
+  p4PlayAgainPrompt: P4PlayAgainPrompt | null;
+  respondToP4PlayAgainPrompt: (playAgain: boolean) => void;
+  // Battleship
+  battleshipPlayAgainPrompt: BattleshipPlayAgainPrompt | null;
+  respondToBattleshipPlayAgainPrompt: (playAgain: boolean) => void;
+  // Unified prompts
+  activeJoinPrompt: ActiveJoinPrompt | null;
+  activeReplayPrompt: ActiveReplayPrompt | null;
+  respondToGameJoinPrompt: (accepted: boolean) => void;
+  respondToGameReplayPrompt: (playAgain: boolean) => void;
 }
 
 const SocketContext = createContext<SocketContextType | null>(null);
@@ -515,6 +564,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
   // Puissance 4 state
   const [p4JoinPrompt, setP4JoinPrompt] = useState<P4JoinPrompt | null>(null);
+  const [p4PlayAgainPrompt, setP4PlayAgainPrompt] = useState<P4PlayAgainPrompt | null>(null);
+
+  // Battleship state
+  const [battleshipPlayAgainPrompt, setBattleshipPlayAgainPrompt] = useState<BattleshipPlayAgainPrompt | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -1165,6 +1218,66 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
       s.on('p4:state', () => {
         setP4JoinPrompt(null);
+        setP4PlayAgainPrompt(null);
+      });
+
+      s.on('p4:play-again-prompt', (data: {
+        partyId: string;
+        timeLimit: number;
+        startTime?: number;
+        players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+        responses?: Array<{ userId: string; playAgain: boolean }>;
+      }) => {
+        setP4PlayAgainPrompt({
+          partyId: data.partyId,
+          timeLimit: data.timeLimit,
+          startTime: data.startTime ?? Date.now(),
+          players: data.players,
+          responses: data.responses || [],
+        });
+      });
+
+      s.on('p4:play-again-response-update', (data: {
+        partyId: string;
+        responses: Array<{ userId: string; playAgain: boolean }>;
+      }) => {
+        setP4PlayAgainPrompt((prev) => prev ? { ...prev, responses: data.responses } : null);
+      });
+
+      s.on('p4:play-again-cancelled', () => {
+        setP4PlayAgainPrompt(null);
+      });
+
+      // Battleship play-again events
+      s.on('battleship:play-again-prompt', (data: {
+        partyId: string;
+        timeLimit: number;
+        startTime?: number;
+        players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+        responses?: Array<{ userId: string; playAgain: boolean }>;
+      }) => {
+        setBattleshipPlayAgainPrompt({
+          partyId: data.partyId,
+          timeLimit: data.timeLimit,
+          startTime: data.startTime ?? Date.now(),
+          players: data.players,
+          responses: data.responses || [],
+        });
+      });
+
+      s.on('battleship:play-again-response-update', (data: {
+        partyId: string;
+        responses: Array<{ userId: string; playAgain: boolean }>;
+      }) => {
+        setBattleshipPlayAgainPrompt((prev) => prev ? { ...prev, responses: data.responses } : null);
+      });
+
+      s.on('battleship:play-again-cancelled', () => {
+        setBattleshipPlayAgainPrompt(null);
+      });
+
+      s.on('battleship:state', () => {
+        setBattleshipPlayAgainPrompt(null);
       });
 
       return () => {
@@ -1446,6 +1559,177 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const respondToP4PlayAgainPrompt = (playAgain: boolean) => {
+    if (socket && p4PlayAgainPrompt) {
+      socket.emit('p4:play-again-response', { partyId: p4PlayAgainPrompt.partyId, playAgain });
+    }
+  };
+
+  const respondToBattleshipPlayAgainPrompt = (playAgain: boolean) => {
+    if (socket && battleshipPlayAgainPrompt && user) {
+      socket.emit('battleship:play-again-response', {
+        userId: user.id,
+        partyId: battleshipPlayAgainPrompt.partyId,
+        playAgain,
+      });
+    }
+  };
+
+  const respondToGameJoinPrompt = (accepted: boolean) => {
+    if (!user) return;
+    if (bombPartyJoinPrompt) {
+      bombPartyEvents.respondToJoin(bombPartyJoinPrompt.partyId, user.id, accepted);
+    } else if (pokerJoinPrompt) {
+      pokerEvents.respondToJoin(pokerJoinPrompt.partyId, user.id, accepted);
+    } else if (petitBacJoinPrompt) {
+      petitBacEvents.respondToJoin(petitBacJoinPrompt.partyId, user.id, accepted);
+    } else if (p4JoinPrompt && socket) {
+      socket.emit('p4:join-response', { partyId: p4JoinPrompt.partyId, accepted });
+      if (!accepted) setP4JoinPrompt(null);
+    }
+  };
+
+  const respondToGameReplayPrompt = (playAgain: boolean) => {
+    if (!user) return;
+    if (bombPartyPlayAgainPrompt) {
+      bombPartyEvents.respondToPlayAgain(bombPartyPlayAgainPrompt.partyId, user.id, playAgain);
+    } else if (pokerPlayAgainPrompt) {
+      pokerEvents.respondToPlayAgain(pokerPlayAgainPrompt.partyId, user.id, playAgain);
+    } else if (petitBacPlayAgainPrompt) {
+      petitBacEvents.respondToPlayAgain(petitBacPlayAgainPrompt.partyId, user.id, playAgain);
+    } else if (p4PlayAgainPrompt && socket) {
+      socket.emit('p4:play-again-response', { partyId: p4PlayAgainPrompt.partyId, playAgain });
+    } else if (battleshipPlayAgainPrompt && socket) {
+      socket.emit('battleship:play-again-response', {
+        userId: user.id,
+        partyId: battleshipPlayAgainPrompt.partyId,
+        playAgain,
+      });
+    }
+  };
+
+  const activeJoinPrompt = useMemo((): ActiveJoinPrompt | null => {
+    if (bombPartyJoinPrompt) {
+      const diff = bombPartyJoinPrompt.difficulty === 'easy' ? 'Facile'
+        : bombPartyJoinPrompt.difficulty === 'medium' ? 'Moyen' : 'Difficile';
+      return {
+        gameType: 'bombparty',
+        title: 'Rejoindre Bomb Party ?',
+        settingsText: `${bombPartyJoinPrompt.lives} vies · Difficulté ${diff}`,
+        navigateTo: '/games/bomb-party',
+        partyId: bombPartyJoinPrompt.partyId,
+        leaderId: bombPartyJoinPrompt.leaderId,
+        members: bombPartyJoinPrompt.members,
+        responses: bombPartyJoinPrompt.responses,
+        timeLimit: bombPartyJoinPrompt.timeLimit,
+        startTime: bombPartyJoinPrompt.startTime,
+      };
+    }
+    if (pokerJoinPrompt) {
+      return {
+        gameType: 'poker',
+        title: 'Rejoindre Poker ?',
+        settingsText: `Stack ${pokerJoinPrompt.startStack} · Blindes ${pokerJoinPrompt.bigBlind / 2}/${pokerJoinPrompt.bigBlind}`,
+        navigateTo: '/games/poker',
+        partyId: pokerJoinPrompt.partyId,
+        leaderId: pokerJoinPrompt.leaderId,
+        members: pokerJoinPrompt.members,
+        responses: pokerJoinPrompt.responses,
+        timeLimit: pokerJoinPrompt.timeLimit,
+        startTime: pokerJoinPrompt.startTime,
+      };
+    }
+    if (petitBacJoinPrompt) {
+      return {
+        gameType: 'petitbac',
+        title: 'Rejoindre Petit Bac ?',
+        settingsText: `${petitBacJoinPrompt.rounds} manches · ${Math.round(petitBacJoinPrompt.roundDuration / 1000)}s · ${petitBacJoinPrompt.categories.join(' · ')}`,
+        navigateTo: '/games/petit-bac',
+        partyId: petitBacJoinPrompt.partyId,
+        leaderId: petitBacJoinPrompt.leaderId,
+        members: petitBacJoinPrompt.members,
+        responses: petitBacJoinPrompt.responses,
+        timeLimit: petitBacJoinPrompt.timeLimit,
+        startTime: petitBacJoinPrompt.startTime,
+      };
+    }
+    if (p4JoinPrompt) {
+      return {
+        gameType: 'p4',
+        title: 'Rejoindre Puissance 4 ?',
+        navigateTo: '/games/puissance-quatre',
+        partyId: p4JoinPrompt.partyId,
+        leaderId: p4JoinPrompt.leaderId,
+        members: p4JoinPrompt.members,
+        responses: p4JoinPrompt.responses,
+        timeLimit: p4JoinPrompt.timeLimit,
+        startTime: p4JoinPrompt.startTime,
+      };
+    }
+    return null;
+  }, [bombPartyJoinPrompt, pokerJoinPrompt, petitBacJoinPrompt, p4JoinPrompt]);
+
+  const activeReplayPrompt = useMemo((): ActiveReplayPrompt | null => {
+    if (bombPartyPlayAgainPrompt) {
+      const diff = bombPartyPlayAgainPrompt.difficulty === 'easy' ? 'Facile'
+        : bombPartyPlayAgainPrompt.difficulty === 'medium' ? 'Moyen' : 'Difficile';
+      return {
+        gameType: 'bombparty',
+        settingsText: `${bombPartyPlayAgainPrompt.lives} vies · Difficulté ${diff}`,
+        partyId: bombPartyPlayAgainPrompt.partyId,
+        players: bombPartyPlayAgainPrompt.players,
+        responses: bombPartyPlayAgainPrompt.responses,
+        timeLimit: bombPartyPlayAgainPrompt.timeLimit,
+        startTime: bombPartyPlayAgainPrompt.startTime,
+      };
+    }
+    if (pokerPlayAgainPrompt) {
+      return {
+        gameType: 'poker',
+        settingsText: `Stack ${pokerPlayAgainPrompt.startStack} · Blindes ${pokerPlayAgainPrompt.bigBlind / 2}/${pokerPlayAgainPrompt.bigBlind}`,
+        partyId: pokerPlayAgainPrompt.partyId,
+        players: pokerPlayAgainPrompt.players,
+        responses: pokerPlayAgainPrompt.responses,
+        timeLimit: pokerPlayAgainPrompt.timeLimit,
+        startTime: pokerPlayAgainPrompt.startTime,
+      };
+    }
+    if (petitBacPlayAgainPrompt) {
+      return {
+        gameType: 'petitbac',
+        settingsText: `${petitBacPlayAgainPrompt.rounds} manches · ${Math.round(petitBacPlayAgainPrompt.roundDuration / 1000)}s`,
+        partyId: petitBacPlayAgainPrompt.partyId,
+        players: petitBacPlayAgainPrompt.players,
+        responses: petitBacPlayAgainPrompt.responses,
+        timeLimit: petitBacPlayAgainPrompt.timeLimit,
+        startTime: petitBacPlayAgainPrompt.startTime,
+      };
+    }
+    if (p4PlayAgainPrompt) {
+      return {
+        gameType: 'p4',
+        settingsText: 'Puissance 4',
+        partyId: p4PlayAgainPrompt.partyId,
+        players: p4PlayAgainPrompt.players,
+        responses: p4PlayAgainPrompt.responses,
+        timeLimit: p4PlayAgainPrompt.timeLimit,
+        startTime: p4PlayAgainPrompt.startTime,
+      };
+    }
+    if (battleshipPlayAgainPrompt) {
+      return {
+        gameType: 'battleship',
+        settingsText: 'Bataille Navale',
+        partyId: battleshipPlayAgainPrompt.partyId,
+        players: battleshipPlayAgainPrompt.players,
+        responses: battleshipPlayAgainPrompt.responses,
+        timeLimit: battleshipPlayAgainPrompt.timeLimit,
+        startTime: battleshipPlayAgainPrompt.startTime,
+      };
+    }
+    return null;
+  }, [bombPartyPlayAgainPrompt, pokerPlayAgainPrompt, petitBacPlayAgainPrompt, p4PlayAgainPrompt, battleshipPlayAgainPrompt]);
+
   return (
     <SocketContext.Provider
       value={{
@@ -1522,6 +1806,14 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         p4JoinPrompt,
         startP4,
         respondToP4JoinPrompt,
+        p4PlayAgainPrompt,
+        respondToP4PlayAgainPrompt,
+        battleshipPlayAgainPrompt,
+        respondToBattleshipPlayAgainPrompt,
+        activeJoinPrompt,
+        activeReplayPrompt,
+        respondToGameJoinPrompt,
+        respondToGameReplayPrompt,
       }}
     >
       {children}

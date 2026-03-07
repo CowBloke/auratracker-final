@@ -7,7 +7,6 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader, PageShell } from '@/components/layout/page-shell';
-import { cn } from '@/lib/utils';
 import { UsernameDisplay } from '@/components/ui/username-display';
 
 // ─── Constants ─────────────────────────────────────────────────────────────
@@ -50,14 +49,6 @@ interface GameOverData {
   };
 }
 
-interface PlayAgainPrompt {
-  partyId: string;
-  timeLimit: number;
-  startTime: number;
-  players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
-  responses: Array<{ userId: string; playAgain: boolean }>;
-}
-
 // ─── Component ──────────────────────────────────────────────────────────────
 export default function PuissanceQuatre() {
   const { user, refreshUser } = useAuth();
@@ -65,9 +56,6 @@ export default function PuissanceQuatre() {
 
   const [gameState, setGameState] = useState<P4State | null>(null);
   const [gameOver, setGameOver] = useState<GameOverData | null>(null);
-  const [playAgainPrompt, setPlayAgainPrompt] = useState<PlayAgainPrompt | null>(null);
-  const [hasQuitPlayAgain, setHasQuitPlayAgain] = useState(false);
-  const [playAgainProgress, setPlayAgainProgress] = useState(100);
   const [hoverCol, setHoverCol] = useState<number | null>(null);
   const [droppingCell, setDroppingCell] = useState<{ row: number; col: number; playerIndex: 0 | 1 } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -79,22 +67,6 @@ export default function PuissanceQuatre() {
   const myInfo = gameState?.players.find((p) => p.userId === user?.id);
   const opponent = gameState?.players.find((p) => p.userId !== user?.id);
   const isMyTurn = gameState?.currentPlayerId === user?.id && gameState?.phase === 'playing';
-  const myPlayAgainResponse = playAgainPrompt?.responses.find((r) => r.userId === user?.id);
-  const hasQuit = hasQuitPlayAgain || (!!myPlayAgainResponse && !myPlayAgainResponse.playAgain);
-  const showPlayAgainPrompt = !!playAgainPrompt && !hasQuit;
-
-  // Play again progress bar
-  useEffect(() => {
-    if (!showPlayAgainPrompt || !playAgainPrompt) {
-      setPlayAgainProgress(100);
-      return;
-    }
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - playAgainPrompt.startTime;
-      setPlayAgainProgress(Math.max(0, 100 - (elapsed / playAgainPrompt.timeLimit) * 100));
-    }, 120);
-    return () => clearInterval(interval);
-  }, [showPlayAgainPrompt, playAgainPrompt]);
 
   // Animate last move
   useEffect(() => {
@@ -138,33 +110,17 @@ export default function PuissanceQuatre() {
       setGameState(null);
     };
 
-    const onPlayAgainPrompt = (data: PlayAgainPrompt) => {
-      setPlayAgainPrompt({ ...data, startTime: data.startTime ?? Date.now() });
-      setHasQuitPlayAgain(false);
-    };
-
-    const onPlayAgainUpdate = (data: { partyId: string; responses: Array<{ userId: string; playAgain: boolean }> }) => {
-      setPlayAgainPrompt((prev) => prev ? { ...prev, responses: data.responses } : null);
-    };
-
-    const onPlayAgainCancelled = () => setPlayAgainPrompt(null);
     const onError = (data: { message: string }) => setError(data.message);
 
     socket.on('p4:state', onState);
     socket.on('p4:game-over', onGameOver);
     socket.on('p4:left', onLeft);
-    socket.on('p4:play-again-prompt', onPlayAgainPrompt);
-    socket.on('p4:play-again-response-update', onPlayAgainUpdate);
-    socket.on('p4:play-again-cancelled', onPlayAgainCancelled);
     socket.on('p4:error', onError);
 
     return () => {
       socket.off('p4:state', onState);
       socket.off('p4:game-over', onGameOver);
       socket.off('p4:left', onLeft);
-      socket.off('p4:play-again-prompt', onPlayAgainPrompt);
-      socket.off('p4:play-again-response-update', onPlayAgainUpdate);
-      socket.off('p4:play-again-cancelled', onPlayAgainCancelled);
       socket.off('p4:error', onError);
     };
   }, [socket, user, refreshUser]);
@@ -184,12 +140,6 @@ export default function PuissanceQuatre() {
     if (!socket || !currentParty) return;
     socket.emit('p4:leave', { partyId: currentParty.id });
     setGameState(null);
-  };
-
-  const handlePlayAgain = (playAgain: boolean) => {
-    if (!socket || !currentParty) return;
-    socket.emit('p4:play-again-response', { partyId: currentParty.id, playAgain });
-    if (!playAgain) setHasQuitPlayAgain(true);
   };
 
   const isWinCell = (row: number, col: number) =>
@@ -315,15 +265,11 @@ export default function PuissanceQuatre() {
           </div>
         )}
 
-        {/* Play again / game-over modals still shown in lobby */}
+        {/* Game-over modal */}
         <PostGameModals
           gameOver={gameOver}
           setGameOver={setGameOver}
           gameState={gameState}
-          playAgainPrompt={playAgainPrompt}
-          showPlayAgainPrompt={showPlayAgainPrompt}
-          playAgainProgress={playAgainProgress}
-          handlePlayAgain={handlePlayAgain}
         />
       </PageShell>
     );
@@ -507,73 +453,23 @@ export default function PuissanceQuatre() {
         gameOver={gameOver}
         setGameOver={setGameOver}
         gameState={gameState}
-        playAgainPrompt={playAgainPrompt}
-        showPlayAgainPrompt={showPlayAgainPrompt}
-        playAgainProgress={playAgainProgress}
-        handlePlayAgain={handlePlayAgain}
       />
     </PageShell>
   );
 }
 
-// ─── Post-game modals (reused in lobby + game) ──────────────────────────────
+// ─── Post-game modals ───────────────────────────────────────────────────────
 function PostGameModals({
   gameOver,
   setGameOver,
   gameState,
-  playAgainPrompt,
-  showPlayAgainPrompt,
-  playAgainProgress,
-  handlePlayAgain,
 }: {
   gameOver: GameOverData | null;
   setGameOver: (v: GameOverData | null) => void;
   gameState: P4State | null;
-  playAgainPrompt: PlayAgainPrompt | null;
-  showPlayAgainPrompt: boolean;
-  playAgainProgress: number;
-  handlePlayAgain: (v: boolean) => void;
 }) {
   return (
     <>
-      {/* Play again */}
-      {playAgainPrompt && (
-        <Dialog open={showPlayAgainPrompt} onOpenChange={() => {}}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Relancer une partie ?</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">Duel 2 joueurs</p>
-              <div className="space-y-2">
-                {playAgainPrompt.players.map((player) => {
-                  const response = playAgainPrompt.responses.find((r) => r.userId === player.userId);
-                  return (
-                    <div key={player.userId} className="flex items-center justify-between text-sm">
-                      <UsernameDisplay username={player.username} usernameColor={player.usernameColor} />
-                      {response ? (
-                        <span className={cn('text-xs', response.playAgain ? 'text-green-500' : 'text-red-500')}>
-                          {response.playAgain ? 'OK' : 'Quitte'}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">En attente</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="h-1 rounded bg-muted">
-                <div className="h-full bg-foreground transition-all" style={{ width: `${playAgainProgress}%` }} />
-              </div>
-              <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2">
-                <Button variant="outline" onClick={() => handlePlayAgain(false)}>Quitter</Button>
-                <Button onClick={() => handlePlayAgain(true)}>Relancer</Button>
-              </DialogFooter>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
-
       {/* Game over */}
       <Dialog open={!!gameOver} onOpenChange={() => setGameOver(null)}>
         <DialogContent className="sm:max-w-md">

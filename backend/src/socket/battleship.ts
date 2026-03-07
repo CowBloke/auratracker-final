@@ -31,6 +31,7 @@ interface PendingPlayAgainPrompt {
   responses: Map<string, boolean>;
   players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
   timer: NodeJS.Timeout | null;
+  startTime: number;
 }
 
 const pendingPlayAgainPrompts = new Map<string, PendingPlayAgainPrompt>();
@@ -279,6 +280,7 @@ async function endGame(game: BattleshipGame, io: Server, winnerId: string) {
       usernameColor: p.usernameColor,
     })),
     timer: null,
+    startTime: Date.now(),
   };
 
   pendingPlayAgainPrompts.set(game.partyId, playAgainPrompt);
@@ -290,7 +292,7 @@ async function endGame(game: BattleshipGame, io: Server, winnerId: string) {
   io.to(`party:${game.partyId}`).emit('battleship:play-again-prompt', {
     partyId: game.partyId,
     timeLimit: PLAY_AGAIN_TIMEOUT,
-    startTime: Date.now(),
+    startTime: playAgainPrompt.startTime,
     players: playAgainPrompt.players,
     responses: [],
   });
@@ -627,7 +629,7 @@ export function sendPendingBattleshipPlayAgainPrompt(socket: Socket, partyId: st
   socket.emit('battleship:play-again-prompt', {
     partyId: prompt.partyId,
     timeLimit: PLAY_AGAIN_TIMEOUT,
-    startTime: Date.now(),
+    startTime: prompt.startTime,
     players: prompt.players,
     responses,
     playAgainCount,

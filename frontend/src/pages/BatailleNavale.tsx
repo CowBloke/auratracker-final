@@ -28,16 +28,6 @@ interface BattleshipState {
   players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
 }
 
-interface BattleshipPlayAgainPrompt {
-  partyId: string;
-  timeLimit: number;
-  startTime: number;
-  players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
-  responses: Array<{ userId: string; playAgain: boolean }>;
-  playAgainCount?: number;
-  leaveCount?: number;
-}
-
 export default function BatailleNavale() {
   const { user, refreshUser } = useAuth();
   const {
@@ -55,10 +45,6 @@ export default function BatailleNavale() {
     winnerUsername: string;
     rewards: { winner: { aura: number; money: number }; loser: { aura: number; money: number } };
   } | null>(null);
-  const [playAgainPrompt, setPlayAgainPrompt] = useState<BattleshipPlayAgainPrompt | null>(null);
-  const [hasQuitPlayAgain, setHasQuitPlayAgain] = useState(false);
-  const [playAgainProgress, setPlayAgainProgress] = useState(100);
-
   const handleCloseGameOver = () => {
     setGameOver(null);
   };
@@ -66,85 +52,9 @@ export default function BatailleNavale() {
   const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
   const isMyTurn = gameState?.currentPlayerId === user?.id;
   const opponent = gameState?.players.find((p) => p.userId !== user?.id);
-  const myPlayAgainResponse = playAgainPrompt?.responses.find((r) => r.userId === user?.id);
-  const hasQuit = hasQuitPlayAgain || (!!myPlayAgainResponse && !myPlayAgainResponse.playAgain);
-  const showPlayAgainPrompt = !!playAgainPrompt && !hasQuit;
-
-  useEffect(() => {
-    if (!showPlayAgainPrompt || !playAgainPrompt) {
-      setPlayAgainProgress(100);
-      return;
-    }
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - playAgainPrompt.startTime;
-      setPlayAgainProgress(Math.max(0, 100 - (elapsed / playAgainPrompt.timeLimit) * 100));
-    }, 120);
-    return () => clearInterval(interval);
-  }, [showPlayAgainPrompt, playAgainPrompt]);
 
   const postGameModals = (
     <>
-      {playAgainPrompt && (
-        <Dialog open={showPlayAgainPrompt} onOpenChange={() => {}}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Relancer une partie ?</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">Duel 2 joueurs</p>
-              <div className="space-y-2">
-                {playAgainPrompt.players.map((player) => {
-                  const response = playAgainPrompt.responses.find((r) => r.userId === player.userId);
-                  return (
-                    <div key={player.userId} className="flex items-center justify-between text-sm">
-                      <UsernameDisplay username={player.username} usernameColor={player.usernameColor} />
-                      {response ? (
-                        <span className={cn('text-xs ', response.playAgain ? 'text-green-500' : 'text-red-500')}>
-                          {response.playAgain ? 'OK' : 'Quitte'}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">En attente</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="h-1 rounded bg-muted">
-                <div className="h-full bg-foreground transition-all" style={{ width: `${playAgainProgress}%` }} />
-              </div>
-              <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    if (!socket || !user || !currentParty) return;
-                    socket.emit('battleship:play-again-response', {
-                      userId: user.id,
-                      partyId: currentParty.id,
-                      playAgain: false,
-                    });
-                    setHasQuitPlayAgain(true);
-                  }}
-                >
-                  Quitter
-                </Button>
-                <Button
-                  onClick={() => {
-                    if (!socket || !user || !currentParty) return;
-                    socket.emit('battleship:play-again-response', {
-                      userId: user.id,
-                      partyId: currentParty.id,
-                      playAgain: true,
-                    });
-                  }}
-                >
-                  Relancer
-                </Button>
-              </DialogFooter>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
-
       <Dialog open={!!gameOver} onOpenChange={handleCloseGameOver}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -220,10 +130,6 @@ export default function BatailleNavale() {
     const handleState = (state: BattleshipState) => {
       setGameState(state);
       setError(null);
-      if (state.phase === 'placement' && !state.winnerId) {
-        setPlayAgainPrompt(null);
-        setHasQuitPlayAgain(false);
-      }
     };
 
     const handleError = (data: { message: string }) => {
@@ -243,55 +149,10 @@ export default function BatailleNavale() {
       // State will be updated via battleship:state
     };
 
-    const handlePlayAgainPrompt = (data: {
-      partyId: string;
-      timeLimit: number;
-      startTime?: number;
-      players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
-      responses?: Array<{ userId: string; playAgain: boolean }>;
-      playAgainCount?: number;
-      leaveCount?: number;
-    }) => {
-      const responses = data.responses || [];
-      setPlayAgainPrompt({
-        ...data,
-        startTime: data.startTime ?? Date.now(),
-        responses,
-        playAgainCount: data.playAgainCount ?? responses.filter((r) => r.playAgain).length,
-        leaveCount: data.leaveCount ?? responses.filter((r) => !r.playAgain).length,
-      });
-      setHasQuitPlayAgain(false);
-    };
-
-    const handlePlayAgainResponseUpdate = (data: {
-      partyId: string;
-      responses: Array<{ userId: string; playAgain: boolean }>;
-      playAgainCount: number;
-      leaveCount: number;
-    }) => {
-      setPlayAgainPrompt((prev) =>
-        prev
-          ? {
-              ...prev,
-              responses: data.responses,
-              playAgainCount: data.playAgainCount,
-              leaveCount: data.leaveCount,
-            }
-          : null
-      );
-    };
-
-    const handlePlayAgainCancelled = () => {
-      setPlayAgainPrompt(null);
-    };
-
     socket.on('battleship:state', handleState);
     socket.on('battleship:error', handleError);
     socket.on('battleship:game-over', handleGameOver);
     socket.on('battleship:shot-result', handleShotResult);
-    socket.on('battleship:play-again-prompt', handlePlayAgainPrompt);
-    socket.on('battleship:play-again-response-update', handlePlayAgainResponseUpdate);
-    socket.on('battleship:play-again-cancelled', handlePlayAgainCancelled);
 
     socket.emit('battleship:register', { userId: user.id });
 
@@ -300,9 +161,6 @@ export default function BatailleNavale() {
       socket.off('battleship:error', handleError);
       socket.off('battleship:game-over', handleGameOver);
       socket.off('battleship:shot-result', handleShotResult);
-      socket.off('battleship:play-again-prompt', handlePlayAgainPrompt);
-      socket.off('battleship:play-again-response-update', handlePlayAgainResponseUpdate);
-      socket.off('battleship:play-again-cancelled', handlePlayAgainCancelled);
     };
   }, [socket, user, refreshUser]);
 

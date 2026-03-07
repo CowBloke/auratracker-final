@@ -43,6 +43,7 @@ interface PendingPlayAgainPrompt {
   responses: Map<string, boolean>;
   players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
   timer: NodeJS.Timeout | null;
+  startTime: number;
 }
 
 const activeGames = new Map<string, P4Game>();
@@ -207,13 +208,14 @@ async function endGame(game: P4Game, io: Server, winnerId: string | null) {
     responses: new Map(),
     players: game.players.map((p) => ({ userId: p.userId, username: p.username, usernameColor: p.usernameColor })),
     timer: null,
+    startTime: Date.now(),
   };
   pendingPlayAgainPrompts.set(game.partyId, prompt);
   prompt.timer = setTimeout(() => resolvePlayAgainPrompt(game.partyId, io), PLAY_AGAIN_TIMEOUT);
   io.to(`party:${game.partyId}`).emit('p4:play-again-prompt', {
     partyId: game.partyId,
     timeLimit: PLAY_AGAIN_TIMEOUT,
-    startTime: Date.now(),
+    startTime: prompt.startTime,
     players: prompt.players,
     responses: [],
   });
@@ -347,7 +349,7 @@ export const setupPuissanceQuatreHandlers = (socket: Socket, io: Server) => {
         socket.emit('p4:play-again-prompt', {
           partyId: playAgainPrompt.partyId,
           timeLimit: PLAY_AGAIN_TIMEOUT,
-          startTime: Date.now(),
+          startTime: playAgainPrompt.startTime,
           players: playAgainPrompt.players,
           responses,
         });
@@ -554,7 +556,7 @@ export function sendPendingP4PlayAgainPrompt(socket: Socket, partyId: string, us
   socket.emit('p4:play-again-prompt', {
     partyId: prompt.partyId,
     timeLimit: PLAY_AGAIN_TIMEOUT,
-    startTime: Date.now(),
+    startTime: prompt.startTime,
     players: prompt.players,
     responses,
     playAgainCount: responses.filter((r) => r.playAgain).length,

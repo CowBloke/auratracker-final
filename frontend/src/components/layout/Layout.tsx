@@ -3,13 +3,11 @@ import { useEffect, type CSSProperties } from 'react';
 import { ChatSidebarProvider, ChatSidebarWrapper, useChatSidebar } from '../chat/ChatSidebarWrapper';
 import ChatBubble from '../chat/ChatBubble';
 import UpdatePopupModal from './UpdatePopupModal';
-import BombPartyJoinPrompt from '../game/BombPartyJoinPrompt';
-import BombPartyPlayAgainPrompt from '../game/BombPartyPlayAgainPrompt';
-import PokerJoinPrompt from '../game/PokerJoinPrompt';
-import PetitBacJoinPrompt from '../game/PetitBacJoinPrompt';
-import P4JoinPrompt from '../game/P4JoinPrompt';
+import GameJoinPrompt from '../game/GameJoinPrompt';
+import GameReplayPrompt from '../game/GameReplayPrompt';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { useSocket } from '@/contexts/SocketContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SiteHeader } from '@/components/site-header';
 import { CONTAINER } from '@/lib/design-system';
@@ -29,7 +27,8 @@ function ChatBubbleContainer() {
 }
 
 export default function Layout() {
-  const { connected, setCurrentPage } = useSocket();
+  const { connected, setCurrentPage, activeJoinPrompt, activeReplayPrompt, respondToGameJoinPrompt, respondToGameReplayPrompt } = useSocket();
+  const { user } = useAuth();
   const location = useLocation();
 
   useEffect(() => {
@@ -64,11 +63,38 @@ export default function Layout() {
         </SidebarProvider>
         <ChatSidebarWrapper />
         <ChatBubbleContainer />
-        <BombPartyJoinPrompt />
-        <BombPartyPlayAgainPrompt />
-        <PokerJoinPrompt />
-        <PetitBacJoinPrompt />
-        <P4JoinPrompt />
+
+        {activeJoinPrompt && user && (
+          <GameJoinPrompt
+            key={activeJoinPrompt.startTime}
+            title={activeJoinPrompt.title}
+            settingsText={activeJoinPrompt.settingsText}
+            navigateTo={activeJoinPrompt.navigateTo}
+            leaderId={activeJoinPrompt.leaderId}
+            members={activeJoinPrompt.members}
+            responses={activeJoinPrompt.responses}
+            timeLimit={activeJoinPrompt.timeLimit}
+            startTime={activeJoinPrompt.startTime}
+            currentUserId={user.id}
+            onAccept={() => respondToGameJoinPrompt(true)}
+            onDecline={() => respondToGameJoinPrompt(false)}
+          />
+        )}
+
+        {activeReplayPrompt && user && (
+          <GameReplayPrompt
+            key={activeReplayPrompt.startTime}
+            settingsText={activeReplayPrompt.settingsText}
+            players={activeReplayPrompt.players}
+            responses={activeReplayPrompt.responses}
+            timeLimit={activeReplayPrompt.timeLimit}
+            startTime={activeReplayPrompt.startTime}
+            currentUserId={user.id}
+            onPlayAgain={() => respondToGameReplayPrompt(true)}
+            onLeave={() => respondToGameReplayPrompt(false)}
+          />
+        )}
+
         <UpdatePopupModal />
       </div>
     </ChatSidebarProvider>

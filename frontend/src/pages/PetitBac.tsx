@@ -21,11 +21,9 @@ export default function PetitBac() {
     petitBacGame,
     petitBacRoundResult,
     petitBacGameOver,
-    petitBacPlayAgainPrompt,
     startPetitBac,
     submitPetitBac,
     leavePetitBac,
-    respondToPetitBacPlayAgainPrompt,
     clearPetitBacGameOver,
   } = useSocket();
 
@@ -37,8 +35,6 @@ export default function PetitBac() {
   const [categoriesInput, setCategoriesInput] = useState(DEFAULT_CATEGORIES.join(', '));
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [timeLeft, setTimeLeft] = useState(0);
-  const [hasQuitPlayAgain, setHasQuitPlayAgain] = useState(false);
-  const [playAgainProgress, setPlayAgainProgress] = useState(100);
 
   const categories = useMemo(() => {
     return categoriesInput
@@ -68,12 +64,6 @@ export default function PetitBac() {
     setAnswers(nextAnswers);
   }, [petitBacGame?.roundStartTime, petitBacGame?.categories, petitBacGame?.phase]);
 
-  useEffect(() => {
-    if (petitBacPlayAgainPrompt) {
-      setHasQuitPlayAgain(false);
-    }
-  }, [petitBacPlayAgainPrompt?.partyId, petitBacPlayAgainPrompt?.startTime]);
-
   const handleStart = () => {
     const safeRounds = Math.min(Math.max(rounds, 1), 10);
     const safeDuration = Math.min(Math.max(roundDuration, 15), 120);
@@ -85,73 +75,8 @@ export default function PetitBac() {
     submitPetitBac(answers);
   };
 
-  const myPlayAgainResponse = petitBacPlayAgainPrompt?.responses.find((r) => r.userId === user?.id);
-  const hasQuit = hasQuitPlayAgain || (!!myPlayAgainResponse && !myPlayAgainResponse.playAgain);
-  const showPlayAgainPrompt = !!petitBacPlayAgainPrompt && !hasQuit;
-
-  useEffect(() => {
-    if (!showPlayAgainPrompt || !petitBacPlayAgainPrompt) {
-      setPlayAgainProgress(100);
-      return;
-    }
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - petitBacPlayAgainPrompt.startTime;
-      setPlayAgainProgress(Math.max(0, 100 - (elapsed / petitBacPlayAgainPrompt.timeLimit) * 100));
-    }, 120);
-    return () => clearInterval(interval);
-  }, [showPlayAgainPrompt, petitBacPlayAgainPrompt]);
-
   const playAgainModals = (
     <>
-      {petitBacPlayAgainPrompt && (
-        <Dialog open={showPlayAgainPrompt} onOpenChange={() => {}}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Relancer une partie ?</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Manches {petitBacPlayAgainPrompt.rounds} - temps {Math.round(petitBacPlayAgainPrompt.roundDuration / 1000)}s - {petitBacPlayAgainPrompt.categories.length} categories
-              </p>
-              <div className="space-y-2">
-                {petitBacPlayAgainPrompt.players.map((player) => {
-                  const response = petitBacPlayAgainPrompt.responses.find((r) => r.userId === player.userId);
-                  return (
-                    <div key={player.userId} className="flex items-center justify-between text-sm">
-                      <UsernameDisplay username={player.username} usernameColor={player.usernameColor} />
-                      {response ? (
-                        <span className={cn('text-xs ', response.playAgain ? 'text-green-500' : 'text-red-500')}>
-                          {response.playAgain ? 'OK' : 'Quitte'}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">En attente</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="h-1 rounded bg-muted">
-                <div className="h-full bg-foreground transition-all" style={{ width: `${playAgainProgress}%` }} />
-              </div>
-              <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    respondToPetitBacPlayAgainPrompt(false);
-                    setHasQuitPlayAgain(true);
-                  }}
-                >
-                  Quitter
-                </Button>
-                <Button onClick={() => respondToPetitBacPlayAgainPrompt(true)}>
-                  Relancer
-                </Button>
-              </DialogFooter>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
-
       <Dialog open={!!petitBacGameOver} onOpenChange={clearPetitBacGameOver}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
