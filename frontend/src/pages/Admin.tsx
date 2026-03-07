@@ -390,6 +390,9 @@ export default function Admin() {
   const [loadingPending, setLoadingPending] = useState(false);
   const [approvingUser, setApprovingUser] = useState<string | null>(null);
   const [rejectingUser, setRejectingUser] = useState<string | null>(null);
+  const [archivedRegistrations, setArchivedRegistrations] = useState<(PendingUser & { registrationStatus: 'APPROVED' | 'REJECTED' })[]>(() => {
+    try { return JSON.parse(localStorage.getItem('admin_archived_registrations') || '[]'); } catch { return []; }
+  });
 
   // Ban appeals state
   const [banAppeals, setBanAppeals] = useState<BanAppeal[]>([]);
@@ -1121,7 +1124,17 @@ export default function Admin() {
     setApprovingUser(id);
     try {
       await adminApi.approveUser(id);
-      setPendingUsers(prev => prev.filter(u => u.id !== id));
+      setPendingUsers(prev => {
+        const user = prev.find(u => u.id === id);
+        if (user) {
+          setArchivedRegistrations(arch => {
+            const updated = [{ ...user, registrationStatus: 'APPROVED' as const }, ...arch.filter(a => a.id !== id)];
+            localStorage.setItem('admin_archived_registrations', JSON.stringify(updated));
+            return updated;
+          });
+        }
+        return prev.filter(u => u.id !== id);
+      });
       showMessage('success', 'Utilisateur approuvé');
       // Refresh users list to include newly approved user
       fetchUsers();
@@ -1135,8 +1148,16 @@ export default function Admin() {
   const rejectUser = async (id: string) => {
     setRejectingUser(id);
     try {
+      const user = pendingUsers.find(u => u.id === id);
       await adminApi.rejectUser(id);
       setPendingUsers(prev => prev.filter(u => u.id !== id));
+      if (user) {
+        setArchivedRegistrations(arch => {
+          const updated = [{ ...user, registrationStatus: 'REJECTED' as const }, ...arch.filter(a => a.id !== id)];
+          localStorage.setItem('admin_archived_registrations', JSON.stringify(updated));
+          return updated;
+        });
+      }
       showMessage('success', 'Demande rejetée');
     } catch (error: any) {
       showMessage('error', error.response?.data?.error || 'Erreur');
@@ -1583,7 +1604,12 @@ export default function Admin() {
             const pendingAppealItems = allAppealItems.filter(i => (i.data as BanAppeal).status === 'PENDING');
             const pendingNameChangeItems = allNameChangeItems.filter(i => (i.data as NameChangeRequest).status === 'PENDING');
 
+            const archivedRegistrationItems = archivedRegistrations.map(u => ({
+              id: `reg-${u.id}`, type: 'registration' as const, date: new Date(u.createdAt), data: u,
+            }));
+
             const archivedItems = [
+              ...archivedRegistrationItems,
               ...allBugItems.filter(i => (i.data as BugReport).status === 'DONE'),
               ...allAppealItems.filter(i => (i.data as BanAppeal).status !== 'PENDING'),
               ...allNameChangeItems.filter(i => (i.data as NameChangeRequest).status !== 'PENDING'),
@@ -1600,7 +1626,7 @@ export default function Admin() {
                   .sort((a, b) => b.date.getTime() - a.date.getTime());
 
             // Find selected item across all items
-            const allItemsPool = [...registrationItems, ...allBugItems, ...allAppealItems, ...allNameChangeItems];
+            const allItemsPool = [...registrationItems, ...archivedRegistrationItems, ...allBugItems, ...allAppealItems, ...allNameChangeItems];
             const selectedItem = selectedInboxItem ? allItemsPool.find(i => i.id === selectedInboxItem) ?? null : null;
 
             const ADMIN_CATS = [
@@ -1609,7 +1635,7 @@ export default function Admin() {
               { key: 'bugs' as const,          label: 'Bugs',         Icon: Bug,      count: pendingBugItems.length },
               { key: 'appeals' as const,       label: 'Appels de ban', Icon: Gavel,   count: pendingAppealItems.length },
               { key: 'namechanges' as const,   label: 'Pseudos',      Icon: UserCog,  count: pendingNameChangeItems.length },
-              { key: 'archived' as const,      label: 'Archivé',      Icon: Archive,  count: 0 },
+              { key: 'archived' as const,      label: 'Archivé',      Icon: Archive,  count: archivedItems.length },
             ];
 
             return (
@@ -1676,12 +1702,12 @@ export default function Admin() {
                           let borderAccent = '';
 
                           if (item.type === 'registration') {
-                            const u = item.data as PendingUser;
+                            const u = item.data as PendingUser & { registrationStatus?: 'APPROVED' | 'REJECTED' };
                             title = u.username;
                             subtitle = u.email;
-                            badgeLabel = 'Inscription';
-                            badgeColor = 'bg-blue-500/20 text-blue-400';
-                            borderAccent = 'border-l-blue-500';
+                            badgeLabel = u.registrationStatus === 'APPROVED' ? 'Approuvé' : u.registrationStatus === 'REJECTED' ? 'Rejeté' : 'Inscription';
+                            badgeColor = u.registrationStatus === 'APPROVED' ? 'bg-green-500/20 text-green-400' : u.registrationStatus === 'REJECTED' ? 'bg-zinc-500/20 text-zinc-400' : 'bg-blue-500/20 text-blue-400';
+                            borderAccent = u.registrationStatus === 'APPROVED' ? 'border-l-green-500' : u.registrationStatus === 'REJECTED' ? 'border-l-zinc-500' : 'border-l-blue-500';
                           } else if (item.type === 'bug') {
                             const b = item.data as BugReport;
                             title = b.title;
@@ -1744,12 +1770,18 @@ export default function Admin() {
                       </div>
                     ) : selectedItem.type === 'registration' ? (
                       (() => {
-                        const u = selectedItem.data as PendingUser;
+                        const u = selectedItem.data as PendingUser & { registrationStatus?: 'APPROVED' | 'REJECTED' };
                         return (
                           <div className="p-6 space-y-5">
                             <div>
                               <div className="flex items-center gap-2 mb-2">
-                                <span className="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-400">Inscription</span>
+                                {u.registrationStatus === 'APPROVED' ? (
+                                  <span className="text-xs px-2 py-0.5 rounded bg-green-500/20 text-green-400">Approuvé</span>
+                                ) : u.registrationStatus === 'REJECTED' ? (
+                                  <span className="text-xs px-2 py-0.5 rounded bg-zinc-500/20 text-zinc-400">Rejeté</span>
+                                ) : (
+                                  <span className="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-400">Inscription</span>
+                                )}
                                 <span className="text-xs text-muted-foreground/60">
                                   {selectedItem.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                 </span>
@@ -1764,33 +1796,35 @@ export default function Admin() {
                                 {u.motivationMessage?.trim() || 'Non renseigné'}
                               </p>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Button size="sm" variant="outline" onClick={() => approveUser(u.id)} disabled={approvingUser === u.id} className="h-8 border-green-500/50 text-green-500 hover:bg-green-500/10">
-                                {approvingUser === u.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4 mr-1" />Approuver</>}
-                              </Button>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button size="sm" variant="outline" disabled={rejectingUser === u.id} className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10">
-                                    {rejectingUser === u.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><UserX className="h-4 w-4 mr-1" />Rejeter</>}
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle className="flex items-center gap-2">
-                                      <AlertTriangle className="h-5 w-5 text-destructive" />
-                                      Rejeter la demande de {u.username} ?
-                                    </AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      L'utilisateur devra créer un nouveau compte s'il souhaite réessayer.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => rejectUser(u.id)} className="bg-destructive hover:bg-destructive/90">Rejeter</AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
+                            {!u.registrationStatus && (
+                              <div className="flex items-center gap-2">
+                                <Button size="sm" variant="outline" onClick={() => approveUser(u.id)} disabled={approvingUser === u.id} className="h-8 border-green-500/50 text-green-500 hover:bg-green-500/10">
+                                  {approvingUser === u.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4 mr-1" />Approuver</>}
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button size="sm" variant="outline" disabled={rejectingUser === u.id} className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10">
+                                      {rejectingUser === u.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><UserX className="h-4 w-4 mr-1" />Rejeter</>}
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle className="flex items-center gap-2">
+                                        <AlertTriangle className="h-5 w-5 text-destructive" />
+                                        Rejeter la demande de {u.username} ?
+                                      </AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        L'utilisateur devra créer un nouveau compte s'il souhaite réessayer.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => rejectUser(u.id)} className="bg-destructive hover:bg-destructive/90">Rejeter</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            )}
                           </div>
                         );
                       })()
