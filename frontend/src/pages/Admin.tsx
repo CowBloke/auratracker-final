@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { adminApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup } from '../services/api';
+import { adminApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest } from '../services/api';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, Inbox, Archive } from 'lucide-react';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, Inbox, Archive, UserCog } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, ReferenceDot } from 'recharts';
 import {
   AlertDialog,
@@ -382,14 +382,24 @@ export default function Admin() {
   const [bugReports, setBugReports] = useState<BugReport[]>([]);
   const [loadingBugs, setLoadingBugs] = useState(false);
   const [updatingBug, setUpdatingBug] = useState<string | null>(null);
-  const [expandedInboxItem, setExpandedInboxItem] = useState<string | null>(null);
-  const [inboxFilter, setInboxFilter] = useState<'all' | 'registrations' | 'bugs' | 'archived'>('all');
+  const [selectedInboxItem, setSelectedInboxItem] = useState<string | null>(null);
+  const [inboxFilter, setInboxFilter] = useState<'all' | 'registrations' | 'bugs' | 'appeals' | 'namechanges' | 'archived'>('all');
 
   // Pending users state
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
   const [loadingPending, setLoadingPending] = useState(false);
   const [approvingUser, setApprovingUser] = useState<string | null>(null);
   const [rejectingUser, setRejectingUser] = useState<string | null>(null);
+
+  // Ban appeals state
+  const [banAppeals, setBanAppeals] = useState<BanAppeal[]>([]);
+  const [loadingAppeals, setLoadingAppeals] = useState(false);
+  const [reviewingAppeal, setReviewingAppeal] = useState<string | null>(null);
+
+  // Name change requests state
+  const [nameChangeRequests, setNameChangeRequests] = useState<NameChangeRequest[]>([]);
+  const [loadingNameChanges, setLoadingNameChanges] = useState(false);
+  const [reviewingNameChange, setReviewingNameChange] = useState<string | null>(null);
 
   // Ban management state
   const [bans, setBans] = useState<Ban[]>([]);
@@ -649,6 +659,8 @@ export default function Admin() {
     fetchBugReports();
     fetchPendingUsers();
     fetchBans();
+    fetchBanAppeals();
+    fetchNameChangeRequests();
     fetchLogs();
     fetchLogStats();
     fetchSettings();
@@ -743,6 +755,30 @@ export default function Admin() {
       showMessage('error', 'Erreur lors du chargement des demandes');
     } finally {
       setLoadingPending(false);
+    }
+  };
+
+  const fetchBanAppeals = async () => {
+    try {
+      setLoadingAppeals(true);
+      const res = await adminApi.getBanAppeals();
+      setBanAppeals(res.data.banAppeals);
+    } catch (error) {
+      console.error('Failed to fetch ban appeals:', error);
+    } finally {
+      setLoadingAppeals(false);
+    }
+  };
+
+  const fetchNameChangeRequests = async () => {
+    try {
+      setLoadingNameChanges(true);
+      const res = await adminApi.getNameChangeRequests();
+      setNameChangeRequests(res.data.nameChangeRequests);
+    } catch (error) {
+      console.error('Failed to fetch name change requests:', error);
+    } finally {
+      setLoadingNameChanges(false);
     }
   };
 
@@ -1123,6 +1159,39 @@ export default function Admin() {
     }
   };
 
+  const reviewBanAppeal = async (id: string, action: 'approve' | 'reject') => {
+    setReviewingAppeal(id);
+    try {
+      const res = await adminApi.reviewBanAppeal(id, { action });
+      setBanAppeals(prev => prev.map(a => a.id === id ? res.data.banAppeal : a));
+      if (action === 'approve') {
+        fetchBans();
+        fetchUsers();
+      }
+      setSelectedInboxItem(null);
+      showMessage('success', action === 'approve' ? 'Appel accepté, bannissement levé' : 'Appel rejeté');
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur');
+    } finally {
+      setReviewingAppeal(null);
+    }
+  };
+
+  const reviewNameChangeRequest = async (id: string, action: 'approve' | 'reject') => {
+    setReviewingNameChange(id);
+    try {
+      const res = await adminApi.reviewNameChangeRequest(id, { action });
+      setNameChangeRequests(prev => prev.map(n => n.id === id ? res.data.nameChangeRequest : n));
+      if (action === 'approve') fetchUsers();
+      setSelectedInboxItem(null);
+      showMessage('success', action === 'approve' ? 'Pseudo changé avec succès' : 'Demande rejetée');
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur');
+    } finally {
+      setReviewingNameChange(null);
+    }
+  };
+
   const showMessage = (type: 'success' | 'error', text: string) => {
     setMessage({ type, text });
     setTimeout(() => setMessage(null), 3000);
@@ -1432,20 +1501,9 @@ export default function Admin() {
   };
 
   return (
+    <>
     <PageShell>
       <div className={SPACING.PAGE_CONTENT}>
-        {/* Message */}
-        {message && (
-          <Card className={cn(
-          "border",
-          message.type === 'success' ? 'border-green-500/30 bg-green-500/10 text-green-400' : 'border-destructive/30 bg-destructive/10 text-destructive'
-        )}>
-          <CardContent className="px-4 py-3">
-            {message.text}
-          </CardContent>
-          </Card>
-        )}
-
         {/* Tabs */}
         <Tabs
           value={activeTab}
@@ -1456,9 +1514,9 @@ export default function Admin() {
           <TabsTrigger value="inbox" className="flex items-center gap-2">
             <Inbox className="h-4 w-4" />
             Inbox
-            {(pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length) > 0 && (
+            {(pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length + banAppeals.filter(a => a.status === 'PENDING').length + nameChangeRequests.filter(n => n.status === 'PENDING').length) > 0 && (
               <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[11px] font-semibold leading-none">
-                {pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length}
+                {pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length + banAppeals.filter(a => a.status === 'PENDING').length + nameChangeRequests.filter(n => n.status === 'PENDING').length}
               </span>
             )}
           </TabsTrigger>
@@ -1507,51 +1565,72 @@ export default function Admin() {
 
         <TabsContent value="inbox" className={SPACING.SECTION_SPACING}>
           {(() => {
-            // Build items for each filter
-            const pendingBugs = bugReports.filter(b => b.status === 'PENDING');
-            const archivedBugs = bugReports.filter(b => b.status === 'DONE');
-
+            // Build typed item lists
             const registrationItems = pendingUsers.map(u => ({
               id: `reg-${u.id}`, type: 'registration' as const, date: new Date(u.createdAt), data: u,
             }));
-            const bugItems = pendingBugs.map(b => ({
+            const allBugItems = bugReports.map(b => ({
               id: `bug-${b.id}`, type: 'bug' as const, date: new Date(b.createdAt), data: b,
             }));
-            const archivedItems = archivedBugs.map(b => ({
-              id: `bug-${b.id}`, type: 'bug' as const, date: new Date(b.createdAt), data: b,
+            const allAppealItems = banAppeals.map(a => ({
+              id: `appeal-${a.id}`, type: 'appeal' as const, date: new Date(a.createdAt), data: a,
             }));
+            const allNameChangeItems = nameChangeRequests.map(n => ({
+              id: `nc-${n.id}`, type: 'namechange' as const, date: new Date(n.createdAt), data: n,
+            }));
+
+            const pendingBugItems = allBugItems.filter(i => (i.data as BugReport).status === 'PENDING');
+            const pendingAppealItems = allAppealItems.filter(i => (i.data as BanAppeal).status === 'PENDING');
+            const pendingNameChangeItems = allNameChangeItems.filter(i => (i.data as NameChangeRequest).status === 'PENDING');
+
+            const archivedItems = [
+              ...allBugItems.filter(i => (i.data as BugReport).status === 'DONE'),
+              ...allAppealItems.filter(i => (i.data as BanAppeal).status !== 'PENDING'),
+              ...allNameChangeItems.filter(i => (i.data as NameChangeRequest).status !== 'PENDING'),
+            ].sort((a, b) => b.date.getTime() - a.date.getTime());
+
+            const allPending = pendingUsers.length + pendingBugItems.length + pendingAppealItems.length + pendingNameChangeItems.length;
 
             const activeItems = inboxFilter === 'registrations' ? registrationItems
-              : inboxFilter === 'bugs' ? bugItems
+              : inboxFilter === 'bugs' ? pendingBugItems
+              : inboxFilter === 'appeals' ? pendingAppealItems
+              : inboxFilter === 'namechanges' ? pendingNameChangeItems
               : inboxFilter === 'archived' ? archivedItems
-              : [...registrationItems, ...bugItems].sort((a, b) => b.date.getTime() - a.date.getTime());
+              : [...registrationItems, ...pendingBugItems, ...pendingAppealItems, ...pendingNameChangeItems]
+                  .sort((a, b) => b.date.getTime() - a.date.getTime());
+
+            // Find selected item across all items
+            const allItemsPool = [...registrationItems, ...allBugItems, ...allAppealItems, ...allNameChangeItems];
+            const selectedItem = selectedInboxItem ? allItemsPool.find(i => i.id === selectedInboxItem) ?? null : null;
 
             const ADMIN_CATS = [
-              { key: 'all' as const,          label: 'Tout',        Icon: Inbox,    count: pendingUsers.length + pendingBugs.length },
+              { key: 'all' as const,         label: 'Tout',           Icon: Inbox,    count: allPending },
               { key: 'registrations' as const, label: 'Inscriptions', Icon: UserPlus, count: pendingUsers.length },
-              { key: 'bugs' as const,          label: 'Bugs',        Icon: Bug,      count: pendingBugs.length },
-              { key: 'archived' as const,      label: 'Archivé',     Icon: Archive,  count: 0 },
+              { key: 'bugs' as const,          label: 'Bugs',         Icon: Bug,      count: pendingBugItems.length },
+              { key: 'appeals' as const,       label: 'Appels de ban', Icon: Gavel,   count: pendingAppealItems.length },
+              { key: 'namechanges' as const,   label: 'Pseudos',      Icon: UserCog,  count: pendingNameChangeItems.length },
+              { key: 'archived' as const,      label: 'Archivé',      Icon: Archive,  count: 0 },
             ];
 
             return (
               <Card className="overflow-hidden">
-                <CardHeader className="border-b border-border/30 pb-3">
+                <CardHeader className="border-b border-border/30 pb-3 shrink-0">
                   <div className="flex items-center justify-between">
                     <CardDescription>Boîte de réception</CardDescription>
                     <div className={cn("flex items-center gap-2", TYPOGRAPHY.SMALL)}>
                       <Inbox className="h-4 w-4" />
-                      <span>{pendingUsers.length + pendingBugs.length} en attente</span>
+                      <span>{allPending} en attente</span>
                     </div>
                   </div>
                 </CardHeader>
 
-                <div className="flex min-h-[300px]">
+                <div className="flex" style={{ height: 'calc(100vh - 280px)', minHeight: '400px' }}>
                   {/* Left sidebar */}
-                  <div className="w-40 shrink-0 border-r border-border/40 p-1.5 space-y-0.5">
+                  <div className="w-44 shrink-0 border-r border-border/40 p-1.5 space-y-0.5 overflow-y-auto custom-scroll">
                     {ADMIN_CATS.map((cat) => (
                       <button
                         key={cat.key}
-                        onClick={() => { setInboxFilter(cat.key); setExpandedInboxItem(null); }}
+                        onClick={() => { setInboxFilter(cat.key); setSelectedInboxItem(null); }}
                         className={cn(
                           'w-full flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors text-left',
                           inboxFilter === cat.key
@@ -1570,9 +1649,9 @@ export default function Admin() {
                     ))}
                   </div>
 
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    {(loadingPending || loadingBugs) ? (
+                  {/* Center: item list */}
+                  <div className="w-72 shrink-0 border-r border-border/40 overflow-y-auto custom-scroll">
+                    {(loadingPending || loadingBugs || loadingAppeals || loadingNameChanges) ? (
                       <div className="flex justify-center py-12">
                         <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
                       </div>
@@ -1582,147 +1661,266 @@ export default function Admin() {
                           ? <Archive className="h-8 w-8 mx-auto text-muted-foreground/50" />
                           : <Inbox className="h-8 w-8 mx-auto text-muted-foreground/50" />}
                         <p className={TYPOGRAPHY.MUTED}>
-                          {inboxFilter === 'archived' ? 'Aucun bug archivé' : 'Boîte de réception vide'}
+                          {inboxFilter === 'archived' ? 'Aucun élément archivé' : 'Boîte de réception vide'}
                         </p>
                       </div>
                     ) : (
-                      <div className="divide-y divide-border/30">
+                      <div>
                         {activeItems.map((item) => {
-                          const isExpanded = expandedInboxItem === item.id;
-                          const toggle = () => setExpandedInboxItem(isExpanded ? null : item.id);
+                          const isSelected = selectedInboxItem === item.id;
+
+                          let title = '';
+                          let subtitle = '';
+                          let badgeLabel = '';
+                          let badgeColor = '';
+                          let borderAccent = '';
 
                           if (item.type === 'registration') {
-                            const u = item.data;
-                            return (
-                              <div key={item.id} className="px-4 py-3">
-                                <button
-                                  onClick={toggle}
-                                  className="w-full flex items-center justify-between gap-3 text-left hover:opacity-80 transition-opacity"
-                                >
-                                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                                    <span className="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 shrink-0">
-                                      Inscription
-                                    </span>
-                                    <span className="font-medium truncate">{u.username}</span>
-                                    <span className="text-xs text-muted-foreground/60 shrink-0">
-                                      {item.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                                    </span>
-                                  </div>
-                                  <ChevronDown className={cn("h-4 w-4 text-muted-foreground shrink-0 transition-transform", isExpanded && "rotate-180")} />
-                                </button>
-                                {isExpanded && (
-                                  <div className="mt-3 space-y-3 pl-1">
-                                    <div className="space-y-1">
-                                      <p className="text-xs text-muted-foreground">{u.email}</p>
-                                      <p className="text-xs text-muted-foreground/80">Prénom : {u.firstName || 'Non défini'}</p>
-                                    </div>
-                                    <div className="rounded-md border border-border/40 bg-muted/20 px-3 py-2">
-                                      <p className="text-[11px] font-medium text-muted-foreground/70">Message de motivation</p>
-                                      <p className="mt-1 text-sm whitespace-pre-wrap break-words text-foreground/90">
-                                        {u.motivationMessage?.trim() ? u.motivationMessage : 'Non renseigné'}
-                                      </p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <Button
-                                        size="sm" variant="outline"
-                                        onClick={() => approveUser(u.id)}
-                                        disabled={approvingUser === u.id}
-                                        className="h-8 border-green-500/50 text-green-500 hover:bg-green-500/10"
-                                      >
-                                        {approvingUser === u.id
-                                          ? <Loader2 className="h-4 w-4 animate-spin" />
-                                          : <><Check className="h-4 w-4 mr-1" />Approuver</>}
-                                      </Button>
-                                      <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                          <Button
-                                            size="sm" variant="outline"
-                                            className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10"
-                                            disabled={rejectingUser === u.id}
-                                          >
-                                            {rejectingUser === u.id
-                                              ? <Loader2 className="h-4 w-4 animate-spin" />
-                                              : <><UserX className="h-4 w-4 mr-1" />Rejeter</>}
-                                          </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                          <AlertDialogHeader>
-                                            <AlertDialogTitle className="flex items-center gap-2">
-                                              <AlertTriangle className="h-5 w-5 text-destructive" />
-                                              Rejeter la demande de {u.username} ?
-                                            </AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                              L'utilisateur devra créer un nouveau compte s'il souhaite réessayer.
-                                            </AlertDialogDescription>
-                                          </AlertDialogHeader>
-                                          <AlertDialogFooter>
-                                            <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => rejectUser(u.id)} className="bg-destructive hover:bg-destructive/90">
-                                              Rejeter
-                                            </AlertDialogAction>
-                                          </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                      </AlertDialog>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            );
+                            const u = item.data as PendingUser;
+                            title = u.username;
+                            subtitle = u.email;
+                            badgeLabel = 'Inscription';
+                            badgeColor = 'bg-blue-500/20 text-blue-400';
+                            borderAccent = 'border-l-blue-500';
+                          } else if (item.type === 'bug') {
+                            const b = item.data as BugReport;
+                            title = b.title;
+                            subtitle = b.user.username;
+                            const done = b.status === 'DONE';
+                            badgeLabel = done ? 'Résolu' : 'Bug';
+                            badgeColor = done ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400';
+                            borderAccent = done ? 'border-l-green-500' : 'border-l-amber-500';
+                          } else if (item.type === 'appeal') {
+                            const a = item.data as BanAppeal;
+                            title = a.user.username;
+                            subtitle = a.ban.reason;
+                            badgeLabel = a.status === 'PENDING' ? 'Appel' : a.status === 'APPROVED' ? 'Accepté' : 'Rejeté';
+                            badgeColor = a.status === 'PENDING' ? 'bg-red-500/20 text-red-400' : a.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' : 'bg-zinc-500/20 text-zinc-400';
+                            borderAccent = 'border-l-red-500';
+                          } else {
+                            const n = item.data as NameChangeRequest;
+                            title = n.requestedUsername;
+                            subtitle = `de ${n.currentUsername}`;
+                            badgeLabel = n.status === 'PENDING' ? 'Pseudo' : n.status === 'APPROVED' ? 'Accepté' : 'Rejeté';
+                            badgeColor = n.status === 'PENDING' ? 'bg-purple-500/20 text-purple-400' : n.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' : 'bg-zinc-500/20 text-zinc-400';
+                            borderAccent = 'border-l-purple-500';
                           }
 
-                          // bug row
-                          const bug = item.data;
-                          const isArchived = bug.status === 'DONE';
                           return (
-                            <div key={item.id} className="px-4 py-3">
-                              <button
-                                onClick={toggle}
-                                className="w-full flex items-center justify-between gap-3 text-left hover:opacity-80 transition-opacity"
-                              >
-                                <div className="flex items-center gap-3 min-w-0 flex-1">
-                                  <span className={cn(
-                                    "text-xs px-2 py-0.5 rounded shrink-0",
-                                    isArchived ? "bg-green-500/20 text-green-400" : "bg-amber-500/20 text-amber-400"
-                                  )}>
-                                    Bug
-                                  </span>
-                                  <span className={cn("font-medium truncate", isArchived && "opacity-60")}>
-                                    {bug.title}
-                                  </span>
-                                  <span className="text-xs text-muted-foreground/60 shrink-0">
-                                    {bug.user.username} • {item.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                                  </span>
-                                </div>
-                                <ChevronDown className={cn("h-4 w-4 text-muted-foreground shrink-0 transition-transform", isExpanded && "rotate-180")} />
-                              </button>
-                              {isExpanded && (
-                                <div className="mt-3 space-y-3 pl-1">
-                                  <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted/20 p-3 rounded">
-                                    {bug.description}
-                                  </p>
-                                  <Button
-                                    size="sm" variant="outline"
-                                    onClick={() => toggleBugStatus(bug)}
-                                    disabled={updatingBug === bug.id}
-                                    className={cn(
-                                      "h-8",
-                                      isArchived
-                                        ? "border-amber-500/50 text-amber-500 hover:bg-amber-500/10"
-                                        : "border-green-500/50 text-green-500 hover:bg-green-500/10"
-                                    )}
-                                  >
-                                    {updatingBug === bug.id
-                                      ? <Loader2 className="h-4 w-4 animate-spin" />
-                                      : isArchived
-                                        ? <><X className="h-4 w-4 mr-1" />Rouvrir</>
-                                        : <><Check className="h-4 w-4 mr-1" />Résolu</>}
-                                  </Button>
-                                </div>
+                            <button
+                              key={item.id}
+                              onClick={() => setSelectedInboxItem(isSelected ? null : item.id)}
+                              className={cn(
+                                'w-full text-left border-l-2 border-b border-b-border/20 transition-colors',
+                                borderAccent,
+                                isSelected ? 'bg-accent/70' : 'hover:bg-accent/30'
                               )}
-                            </div>
+                            >
+                              <div className="px-3 py-3">
+                                <div className="flex items-center justify-between gap-2 mb-1.5">
+                                  <span className={cn('text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0', badgeColor)}>
+                                    {badgeLabel}
+                                  </span>
+                                  <span className="text-[10px] text-muted-foreground/60 shrink-0">
+                                    {item.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                                  </span>
+                                </div>
+                                <p className="text-sm font-medium truncate leading-tight">{title}</p>
+                                <p className="text-xs text-muted-foreground/70 truncate mt-0.5">{subtitle}</p>
+                              </div>
+                            </button>
                           );
                         })}
                       </div>
+                    )}
+                  </div>
+
+                  {/* Right: detail panel */}
+                  <div className="flex-1 min-w-0 overflow-y-auto custom-scroll">
+                    {!selectedItem ? (
+                      <div className="flex flex-col items-center justify-center h-full space-y-2 text-center px-8">
+                        <Inbox className="h-10 w-10 text-muted-foreground/20" />
+                        <p className="text-sm text-muted-foreground/50">Sélectionne un élément</p>
+                      </div>
+                    ) : selectedItem.type === 'registration' ? (
+                      (() => {
+                        const u = selectedItem.data as PendingUser;
+                        return (
+                          <div className="p-6 space-y-5">
+                            <div>
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-400">Inscription</span>
+                                <span className="text-xs text-muted-foreground/60">
+                                  {selectedItem.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                              <h3 className="text-lg font-semibold">{u.username}</h3>
+                              <p className="text-sm text-muted-foreground">{u.email}</p>
+                              {u.firstName && <p className="text-sm text-muted-foreground">Prénom : {u.firstName}</p>}
+                            </div>
+                            <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
+                              <p className="text-xs font-medium text-muted-foreground/70 mb-2">Message de motivation</p>
+                              <p className="text-sm whitespace-pre-wrap break-words">
+                                {u.motivationMessage?.trim() || 'Non renseigné'}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button size="sm" variant="outline" onClick={() => approveUser(u.id)} disabled={approvingUser === u.id} className="h-8 border-green-500/50 text-green-500 hover:bg-green-500/10">
+                                {approvingUser === u.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4 mr-1" />Approuver</>}
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button size="sm" variant="outline" disabled={rejectingUser === u.id} className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10">
+                                    {rejectingUser === u.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><UserX className="h-4 w-4 mr-1" />Rejeter</>}
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle className="flex items-center gap-2">
+                                      <AlertTriangle className="h-5 w-5 text-destructive" />
+                                      Rejeter la demande de {u.username} ?
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      L'utilisateur devra créer un nouveau compte s'il souhaite réessayer.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => rejectUser(u.id)} className="bg-destructive hover:bg-destructive/90">Rejeter</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </div>
+                        );
+                      })()
+                    ) : selectedItem.type === 'bug' ? (
+                      (() => {
+                        const bug = selectedItem.data as BugReport;
+                        const isArchived = bug.status === 'DONE';
+                        return (
+                          <div className="p-6 space-y-5">
+                            <div>
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className={cn('text-xs px-2 py-0.5 rounded', isArchived ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400')}>
+                                  {isArchived ? 'Résolu' : 'Bug'}
+                                </span>
+                                <span className="text-xs text-muted-foreground/60">
+                                  {selectedItem.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                              <h3 className={cn('text-lg font-semibold', isArchived && 'opacity-60')}>{bug.title}</h3>
+                              <p className="text-sm text-muted-foreground">Par {bug.user.username}</p>
+                            </div>
+                            <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
+                              <p className="text-sm whitespace-pre-wrap break-words">{bug.description}</p>
+                            </div>
+                            <Button size="sm" variant="outline" onClick={() => toggleBugStatus(bug)} disabled={updatingBug === bug.id}
+                              className={cn('h-8', isArchived ? 'border-amber-500/50 text-amber-500 hover:bg-amber-500/10' : 'border-green-500/50 text-green-500 hover:bg-green-500/10')}>
+                              {updatingBug === bug.id ? <Loader2 className="h-4 w-4 animate-spin" /> : isArchived ? <><X className="h-4 w-4 mr-1" />Rouvrir</> : <><Check className="h-4 w-4 mr-1" />Résolu</>}
+                            </Button>
+                          </div>
+                        );
+                      })()
+                    ) : selectedItem.type === 'appeal' ? (
+                      (() => {
+                        const appeal = selectedItem.data as BanAppeal;
+                        const isPending = appeal.status === 'PENDING';
+                        return (
+                          <div className="p-6 space-y-5">
+                            <div>
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className={cn('text-xs px-2 py-0.5 rounded',
+                                  appeal.status === 'PENDING' ? 'bg-red-500/20 text-red-400' :
+                                  appeal.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' :
+                                  'bg-zinc-500/20 text-zinc-400')}>
+                                  {appeal.status === 'PENDING' ? 'Appel en attente' : appeal.status === 'APPROVED' ? 'Accepté' : 'Rejeté'}
+                                </span>
+                                <span className="text-xs text-muted-foreground/60">
+                                  {selectedItem.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                              <h3 className="text-lg font-semibold">{appeal.user.username}</h3>
+                              <p className="text-sm text-muted-foreground">{appeal.user.email}</p>
+                            </div>
+                            <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4">
+                              <p className="text-xs font-medium text-muted-foreground/70 mb-1.5">Motif du bannissement</p>
+                              <p className="text-sm font-medium">{appeal.ban.reason}</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {appeal.ban.type === 'PERMANENT' ? 'Permanent' : appeal.ban.expiresAt ? `Expire le ${new Date(appeal.ban.expiresAt).toLocaleDateString('fr-FR')}` : 'Temporaire'}
+                              </p>
+                            </div>
+                            <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
+                              <p className="text-xs font-medium text-muted-foreground/70 mb-2">Message de l'utilisateur</p>
+                              <p className="text-sm whitespace-pre-wrap break-words">{appeal.message}</p>
+                            </div>
+                            {isPending && (
+                              <div className="flex items-center gap-2">
+                                <Button size="sm" variant="outline" onClick={() => reviewBanAppeal(appeal.id, 'approve')} disabled={reviewingAppeal === appeal.id} className="h-8 border-green-500/50 text-green-500 hover:bg-green-500/10">
+                                  {reviewingAppeal === appeal.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4 mr-1" />Lever le ban</>}
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => reviewBanAppeal(appeal.id, 'reject')} disabled={reviewingAppeal === appeal.id} className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10">
+                                  {reviewingAppeal === appeal.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><X className="h-4 w-4 mr-1" />Rejeter</>}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()
+                    ) : (
+                      (() => {
+                        const req = selectedItem.data as NameChangeRequest;
+                        const isPending = req.status === 'PENDING';
+                        return (
+                          <div className="p-6 space-y-5">
+                            <div>
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className={cn('text-xs px-2 py-0.5 rounded',
+                                  req.status === 'PENDING' ? 'bg-purple-500/20 text-purple-400' :
+                                  req.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' :
+                                  'bg-zinc-500/20 text-zinc-400')}>
+                                  {req.status === 'PENDING' ? 'Changement de pseudo' : req.status === 'APPROVED' ? 'Accepté' : 'Rejeté'}
+                                </span>
+                                <span className="text-xs text-muted-foreground/60">
+                                  {selectedItem.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                              <h3 className="text-lg font-semibold">{req.user.username}</h3>
+                              <p className="text-sm text-muted-foreground">{req.user.email}</p>
+                            </div>
+                            <div className="rounded-lg border border-purple-500/20 bg-purple-500/5 p-4">
+                              <p className="text-xs font-medium text-muted-foreground/70 mb-3">Changement demandé</p>
+                              <div className="flex items-center gap-4">
+                                <div>
+                                  <p className="text-[11px] text-muted-foreground/60 mb-0.5">Actuel</p>
+                                  <p className="text-sm font-medium">{req.currentUsername}</p>
+                                </div>
+                                <span className="text-muted-foreground/50 text-lg">→</span>
+                                <div>
+                                  <p className="text-[11px] text-muted-foreground/60 mb-0.5">Demandé</p>
+                                  <p className="text-sm font-semibold text-purple-400">{req.requestedUsername}</p>
+                                </div>
+                              </div>
+                            </div>
+                            {req.reason && (
+                              <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
+                                <p className="text-xs font-medium text-muted-foreground/70 mb-2">Raison</p>
+                                <p className="text-sm whitespace-pre-wrap break-words">{req.reason}</p>
+                              </div>
+                            )}
+                            {isPending && (
+                              <div className="flex items-center gap-2">
+                                <Button size="sm" variant="outline" onClick={() => reviewNameChangeRequest(req.id, 'approve')} disabled={reviewingNameChange === req.id} className="h-8 border-green-500/50 text-green-500 hover:bg-green-500/10">
+                                  {reviewingNameChange === req.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4 mr-1" />Approuver</>}
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => reviewNameChangeRequest(req.id, 'reject')} disabled={reviewingNameChange === req.id} className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10">
+                                  {reviewingNameChange === req.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><X className="h-4 w-4 mr-1" />Rejeter</>}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()
                     )}
                   </div>
                 </div>
@@ -4019,5 +4217,22 @@ export default function Admin() {
         </Tabs>
       </div>
     </PageShell>
+
+    {/* Toast notification — outside PageShell to avoid space-y layout shift */}
+    {message && (
+      <div className={cn(
+        'fixed bottom-5 right-5 z-50 flex items-center gap-2.5 rounded-lg border px-4 py-3 text-sm shadow-lg',
+        'animate-in fade-in slide-in-from-bottom-2 duration-200',
+        message.type === 'success'
+          ? 'border-green-500/30 bg-green-500/10 text-green-400'
+          : 'border-destructive/30 bg-destructive/10 text-destructive'
+      )}>
+        {message.type === 'success'
+          ? <Check className="h-4 w-4 shrink-0" />
+          : <AlertTriangle className="h-4 w-4 shrink-0" />}
+        {message.text}
+      </div>
+    )}
+    </>
   );
 }

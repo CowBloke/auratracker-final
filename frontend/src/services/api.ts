@@ -35,6 +35,8 @@ api.interceptors.response.use(
         type: banData.ban?.type ?? null,
         expiresAt: banData.ban?.expiresAt ?? null,
         message: banData.error,
+        banId: banData.ban?.id ?? null,
+        userId: banData.userId ?? null,
       });
       localStorage.removeItem('token');
       window.location.href = '/banned';
@@ -68,6 +70,8 @@ export const usersApi = {
   markUpdatePopupViewed: (id: string) => api.post<{ success: boolean }>(`/users/update-popups/${id}/viewed`),
   getById: (id: string) => api.get(`/users/${id}`),
   update: (id: string, data: { username?: string; bio?: string }) => api.put(`/users/${id}`, data),
+  requestNameChange: (data: { requestedUsername: string; reason?: string }) =>
+    api.post<{ request: NameChangeRequest }>('/users/name-change-request', data),
 };
 
 export interface UserUpdatePopup {
@@ -756,6 +760,14 @@ export const adminApi = {
     peak7d: number;
     peak30d: number;
   }>('/admin/online-stats'),
+  // Ban appeals
+  getBanAppeals: () => api.get<{ banAppeals: BanAppeal[] }>('/admin/ban-appeals'),
+  reviewBanAppeal: (id: string, data: { action: 'approve' | 'reject' }) =>
+    api.put<{ banAppeal: BanAppeal }>(`/admin/ban-appeals/${id}`, data),
+  // Name change requests
+  getNameChangeRequests: () => api.get<{ nameChangeRequests: NameChangeRequest[] }>('/admin/name-change-requests'),
+  reviewNameChangeRequest: (id: string, data: { action: 'approve' | 'reject' }) =>
+    api.put<{ nameChangeRequest: NameChangeRequest }>(`/admin/name-change-requests/${id}`, data),
 };
 
 export const maintenanceApi = {
@@ -774,6 +786,40 @@ export const maintenanceApi = {
 export const bugReportApi = {
   create: (data: { title: string; description: string }) =>
     api.post<{ bugReport: BugReport }>('/admin/bugs', data),
+};
+
+// Ban Appeal Interface
+export interface BanAppeal {
+  id: string;
+  userId: string;
+  banId: string;
+  message: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  createdAt: string;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  user: { id: string; username: string; email: string };
+  ban: { id: string; reason: string; type: string; expiresAt: string | null };
+}
+
+// Name Change Request Interface
+export interface NameChangeRequest {
+  id: string;
+  userId: string;
+  currentUsername: string;
+  requestedUsername: string;
+  reason: string | null;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  createdAt: string;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  user: { id: string; username: string; email: string };
+}
+
+// Public API (no auth required)
+export const publicApi = {
+  submitBanAppeal: (data: { banId: string; userId: string; message: string }) =>
+    api.post<{ appeal: BanAppeal }>('/admin/ban-appeals', data),
 };
 
 // Bomb Party API

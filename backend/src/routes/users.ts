@@ -231,4 +231,56 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
   }
 });
 
+// POST /users/name-change-request – request a username change (authenticated)
+router.post('/name-change-request', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { requestedUsername, reason } = req.body;
+
+    if (!requestedUsername || typeof requestedUsername !== 'string') {
+      return res.status(400).json({ error: 'requestedUsername is required' });
+    }
+
+    const trimmed = requestedUsername.trim();
+    if (trimmed.length < 3 || trimmed.length > 20) {
+      return res.status(400).json({ error: 'Le pseudo doit faire entre 3 et 20 caractères' });
+    }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(trimmed)) {
+      return res.status(400).json({ error: 'Le pseudo ne peut contenir que des lettres, chiffres et underscores' });
+    }
+
+    const userId = req.user!.id;
+
+    // Check if username is already taken
+    const existing = await prisma.user.findFirst({ where: { username: trimmed, NOT: { id: userId } } });
+    if (existing) {
+      return res.status(400).json({ error: 'Ce pseudo est déjà pris' });
+    }
+
+    // Block if there's already a pending request from this user
+    const pending = await prisma.nameChangeRequest.findFirst({
+      where: { userId, status: 'PENDING' },
+    });
+    if (pending) {
+      return res.status(400).json({ error: 'Vous avez déjà une demande en attente' });
+    }
+
+    const currentUser = await prisma.user.findUnique({ where: { id: userId }, select: { username: true } });
+
+    const request = await prisma.nameChangeRequest.create({
+      data: {
+        userId,
+        currentUsername: currentUser!.username,
+        requestedUsername: trimmed,
+        reason: reason?.trim() || null,
+      },
+    });
+
+    res.status(201).json({ request });
+  } catch (error) {
+    console.error('Name change request error:', error);
+    res.status(500).json({ error: 'Failed to submit name change request' });
+  }
+});
+
 export default router;

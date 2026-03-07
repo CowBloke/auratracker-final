@@ -50,6 +50,8 @@ model User {
   bombPartyStats        BombPartyStats?
   bansReceived          Ban[]                  @relation("BannedUser")
   bansIssued            Ban[]                  @relation("BanIssuer")
+  banAppeals            BanAppeal[]
+  nameChangeRequests    NameChangeRequest[]
   ownedClans            Clan[]                 @relation("ClanOwner")
   clanMemberships       ClanMember[]
   clanJoinRequests      ClanJoinRequest[]
@@ -456,12 +458,51 @@ model Ban {
   createdAt DateTime  @default(now())
   isActive  Boolean   @default(true)
 
-  user  User @relation("BannedUser", fields: [userId], references: [id], onDelete: Cascade)
-  admin User @relation("BanIssuer", fields: [bannedBy], references: [id], onDelete: Cascade)
+  user    User        @relation("BannedUser", fields: [userId], references: [id], onDelete: Cascade)
+  admin   User        @relation("BanIssuer", fields: [bannedBy], references: [id], onDelete: Cascade)
+  appeals BanAppeal[]
 
   @@index([userId])
   @@index([isActive])
   @@index([expiresAt])
+}
+
+// Ban Appeal
+model BanAppeal {
+  id         String    @id @default(uuid())
+  userId     String
+  banId      String
+  message    String
+  status     String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt  DateTime  @default(now())
+  reviewedAt DateTime?
+  reviewedBy String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ban  Ban  @relation(fields: [banId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// Name Change Request
+model NameChangeRequest {
+  id                String    @id @default(uuid())
+  userId            String
+  currentUsername   String
+  requestedUsername String
+  reason            String?
+  status            String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt         DateTime  @default(now())
+  reviewedAt        DateTime?
+  reviewedBy        String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([userId])
+  @@index([createdAt])
 }
 
 // Activity Log

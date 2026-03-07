@@ -1974,6 +1974,188 @@ router.get('/online-history', authMiddleware, requireAdmin, async (req: AuthRequ
 
 // GET /api/admin/online-stats
 // Returns overall record, current count, and 24h/7d/30d averages
+// ========== BAN APPEALS ==========
+
+// Submit a ban appeal (public – no auth needed, verified by banId ownership)
+router.post('/ban-appeals', async (req: AuthRequest, res: Response) => {
+  try {
+    const { banId, userId, message } = req.body;
+
+    if (!banId || !userId || !message) {
+      return res.status(400).json({ error: 'banId, userId and message are required' });
+    }
+
+    if (typeof message !== 'string' || message.trim().length < 10) {
+      return res.status(400).json({ error: 'Le message doit faire au moins 10 caractères' });
+    }
+
+    if (message.length > 1000) {
+      return res.status(400).json({ error: 'Le message ne peut pas dépasser 1000 caractères' });
+    }
+
+    // Verify the ban belongs to this user
+    const ban = await prisma.ban.findFirst({
+      where: { id: banId, userId },
+    });
+
+    if (!ban) {
+      return res.status(404).json({ error: 'Ban introuvable' });
+    }
+
+    // One appeal per ban
+    const existingAppeal = await prisma.banAppeal.findFirst({
+      where: { banId, userId },
+    });
+
+    if (existingAppeal) {
+      return res.status(400).json({ error: 'Vous avez déjà soumis un appel pour ce bannissement' });
+    }
+
+    const appeal = await prisma.banAppeal.create({
+      data: { userId, banId, message: message.trim() },
+    });
+
+    res.status(201).json({ appeal });
+  } catch (error) {
+    console.error('Submit ban appeal error:', error);
+    res.status(500).json({ error: 'Failed to submit ban appeal' });
+  }
+});
+
+// Get all ban appeals (admin only)
+router.get('/ban-appeals', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const banAppeals = await prisma.banAppeal.findMany({
+      include: {
+        user: { select: { id: true, username: true, email: true } },
+        ban: { select: { id: true, reason: true, type: true, expiresAt: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ banAppeals });
+  } catch (error) {
+    console.error('Get ban appeals error:', error);
+    res.status(500).json({ error: 'Failed to get ban appeals' });
+  }
+});
+
+// Review a ban appeal (admin only)
+router.put('/ban-appeals/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { action } = req.body;
+
+    if (!['approve', 'reject'].includes(action)) {
+      return res.status(400).json({ error: 'action must be approve or reject' });
+    }
+
+    const appeal = await prisma.banAppeal.findUnique({
+      where: { id },
+      include: { user: { select: { id: true, username: true } }, ban: true },
+    });
+
+    if (!appeal) return res.status(404).json({ error: 'Appeal not found' });
+    if (appeal.status !== 'PENDING') return res.status(400).json({ error: 'Appeal already reviewed' });
+
+    const newStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
+
+    const updated = await prisma.banAppeal.update({
+      where: { id },
+      data: { status: newStatus, reviewedAt: new Date(), reviewedBy: req.user!.id },
+      include: {
+        user: { select: { id: true, username: true, email: true } },
+        ban: { select: { id: true, reason: true, type: true, expiresAt: true } },
+      },
+    });
+
+    if (action === 'approve') {
+      await prisma.ban.updateMany({
+        where: { userId: appeal.userId, isActive: true },
+        data: { isActive: false },
+      });
+      logBan('ban_remove', req.user!.id, undefined, appeal.userId, appeal.user.username, { via: 'appeal', appealId: id });
+    } else {
+      logAdmin('appeal_reject', req.user!.id, undefined, appeal.userId, appeal.user.username, { appealId: id });
+    }
+
+    res.json({ banAppeal: updated });
+  } catch (error) {
+    console.error('Review ban appeal error:', error);
+    res.status(500).json({ error: 'Failed to review ban appeal' });
+  }
+});
+
+// ========== NAME CHANGE REQUESTS ==========
+
+// Get all name change requests (admin only)
+router.get('/name-change-requests', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const nameChangeRequests = await prisma.nameChangeRequest.findMany({
+      include: {
+        user: { select: { id: true, username: true, email: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ nameChangeRequests });
+  } catch (error) {
+    console.error('Get name change requests error:', error);
+    res.status(500).json({ error: 'Failed to get name change requests' });
+  }
+});
+
+// Review a name change request (admin only)
+router.put('/name-change-requests/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { action } = req.body;
+
+    if (!['approve', 'reject'].includes(action)) {
+      return res.status(400).json({ error: 'action must be approve or reject' });
+    }
+
+    const request = await prisma.nameChangeRequest.findUnique({
+      where: { id },
+      include: { user: { select: { id: true, username: true } } },
+    });
+
+    if (!request) return res.status(404).json({ error: 'Request not found' });
+    if (request.status !== 'PENDING') return res.status(400).json({ error: 'Request already reviewed' });
+
+    const newStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
+
+    const updated = await prisma.nameChangeRequest.update({
+      where: { id },
+      data: { status: newStatus, reviewedAt: new Date(), reviewedBy: req.user!.id },
+      include: { user: { select: { id: true, username: true, email: true } } },
+    });
+
+    if (action === 'approve') {
+      // Check if username is still available
+      const taken = await prisma.user.findFirst({
+        where: { username: request.requestedUsername, NOT: { id: request.userId } },
+      });
+      if (taken) {
+        // Revert status to PENDING with a note – or just reject
+        await prisma.nameChangeRequest.update({ where: { id }, data: { status: 'REJECTED' } });
+        return res.status(400).json({ error: 'Ce pseudo est déjà pris, demande rejetée automatiquement' });
+      }
+      await prisma.user.update({
+        where: { id: request.userId },
+        data: { username: request.requestedUsername },
+      });
+      logAdmin('username_change', req.user!.id, undefined, request.userId, request.user.username, {
+        from: request.currentUsername,
+        to: request.requestedUsername,
+      });
+    }
+
+    res.json({ nameChangeRequest: updated });
+  } catch (error) {
+    console.error('Review name change request error:', error);
+    res.status(500).json({ error: 'Failed to review name change request' });
+  }
+});
+
 router.get('/online-stats', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const now = new Date();

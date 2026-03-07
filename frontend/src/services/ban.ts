@@ -5,6 +5,8 @@ export interface BanInfo {
   type: BanType | null;
   expiresAt: string | null;
   message?: string;
+  banId?: string | null;
+  userId?: string | null;
 }
 
 const BAN_STORAGE_KEY = 'banInfo';

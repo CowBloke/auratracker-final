@@ -134,7 +134,9 @@ router.post('/login', validate(loginSchema), async (req, res) => {
           ? `Votre compte a été banni définitivement. Raison: ${activeBan.reason}`
           : `Votre compte est banni jusqu'au ${activeBan.expiresAt?.toISOString()}. Raison: ${activeBan.reason}`,
         banned: true,
+        userId: user.id,
         ban: {
+          id: activeBan.id,
           reason: activeBan.reason,
           type: activeBan.type,
           expiresAt: activeBan.expiresAt ? activeBan.expiresAt.toISOString() : null,
