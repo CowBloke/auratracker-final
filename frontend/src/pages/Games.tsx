@@ -7,6 +7,7 @@ import { PageShell } from '@/components/layout/page-shell';
 import { useFeatures } from '@/contexts/FeaturesContext';
 
 type GamesTab = 'singleplayer' | 'multiplayer';
+type MultiplayerTab = 'duel' | 'party';
 
 const games = [
   {
@@ -175,12 +176,21 @@ const tabConfig: Array<{ id: GamesTab; label: string }> = [
 
 export default function Games() {
   const [activeTab, setActiveTab] = useState<GamesTab>('singleplayer');
+  const [activeMultiplayerTab, setActiveMultiplayerTab] = useState<MultiplayerTab>('party');
   const { maintenanceStatus } = useFeatures();
   const disabledPages = maintenanceStatus.disabledPages;
 
   const visibleGames = useMemo(() => games.filter((game) => !disabledPages.includes(game.pageKey)), [disabledPages]);
   const multiplayerGames = useMemo(() => visibleGames.filter((game) => game.requiresParty), [visibleGames]);
   const soloGames = useMemo(() => visibleGames.filter((game) => !game.requiresParty), [visibleGames]);
+  const duelGames = useMemo(
+    () => multiplayerGames.filter((game) => game.type === 'Duel'),
+    [multiplayerGames],
+  );
+  const partyGames = useMemo(
+    () => multiplayerGames.filter((game) => game.type === 'Party'),
+    [multiplayerGames],
+  );
 
   const getGameLink = (gameId: string) => {
     if (gameId === 'bomb-party') {
@@ -228,7 +238,11 @@ export default function Games() {
     return `/games/${gameId}`;
   };
 
-  const gamesToRender = activeTab === 'multiplayer' ? multiplayerGames : soloGames;
+  const gamesToRender = activeTab === 'singleplayer'
+    ? soloGames
+    : activeMultiplayerTab === 'duel'
+      ? duelGames
+      : partyGames;
 
   return (
     <PageShell>
@@ -242,6 +256,18 @@ export default function Games() {
         </TabsList>
 
         <TabsContent value={activeTab} className={SPACING.CARD_SPACING}>
+          {activeTab === 'multiplayer' && (
+            <Tabs
+              value={activeMultiplayerTab}
+              onValueChange={(value) => setActiveMultiplayerTab(value as MultiplayerTab)}
+            >
+              <TabsList className="h-auto flex-wrap">
+                <TabsTrigger value="party">Party</TabsTrigger>
+                <TabsTrigger value="duel">Duel</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
+
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
             {gamesToRender.map((game) => (
               <Link

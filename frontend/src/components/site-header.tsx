@@ -53,6 +53,7 @@ export function SiteHeader() {
     currentParty,
     partyMembers,
     publicParties,
+    createParty,
     leaveParty,
     deleteParty,
     joinParty,
@@ -249,7 +250,21 @@ export function SiteHeader() {
                     );
                   })
                 ) : (
-                  <DropdownMenuItem disabled>Aucune party en cours</DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem disabled>Aucune party en cours</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onSelect={(event) => {
+                        event.preventDefault();
+                        createParty(undefined, true, 8);
+                        navigate('/party');
+                      }}
+                      className="gap-2"
+                    >
+                      <UserPlus className="h-4 w-4" />
+                      Créer une party
+                    </DropdownMenuItem>
+                  </>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>

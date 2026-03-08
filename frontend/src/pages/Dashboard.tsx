@@ -40,6 +40,15 @@ interface GameShortcut {
   image?: string;
 }
 
+interface QuickAction {
+  id: string;
+  label: string;
+  path: string;
+  icon: React.FC<{ className?: string }>;
+  color: string;
+  bg: string;
+}
+
 type DashboardWidgetId = 'shortcuts' | 'live' | 'gifts' | 'auracoin' | 'quick-actions' | 'inventory';
 
 interface DashboardInventoryItem {
@@ -53,9 +62,11 @@ interface DashboardInventoryItem {
 }
 
 const shortcutStorageKey = 'auratracker:dashboard-shortcuts';
+const quickActionStorageKey = 'auratracker:dashboard-quick-actions';
 const dashboardLayoutStorageKey = 'auratracker:dashboard-layout';
 const dashboardVisibleWidgetsStorageKey = 'auratracker:dashboard-visible-widgets';
-const maxShortcutWidgets = 12;
+const maxShortcutWidgets = 4;
+const maxQuickActions = 4;
 
 const welcomeTemplates = [
   'Bienvenue, {username}',
@@ -99,7 +110,7 @@ const gameShortcuts: GameShortcut[] = [
   { id: 'knife-hit', label: 'Knife Hit', path: '/games/knife-hit', description: 'Timing sec et précision.', image: '/images/games/knifehit.png' },
 ];
 
-const defaultShortcuts = [
+const legacyDefaultShortcuts = [
   'doodle-jump',
   'flappy-bird',
   'bomb-party',
@@ -113,21 +124,23 @@ const defaultShortcuts = [
   'bataille-navale',
   'knife-hit',
 ];
+const defaultShortcuts = legacyDefaultShortcuts.slice(0, maxShortcutWidgets);
 const defaultShortcutSet = new Set(defaultShortcuts);
-const quickActions = [
-  { label: 'Créer party', path: '/party', icon: Users, color: 'text-violet-500', bg: 'bg-violet-500/15' },
-  { label: 'Voir quêtes', path: '/quests', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/15' },
-  { label: 'Ouvrir shop', path: '/market', icon: Package, color: 'text-blue-500', bg: 'bg-blue-500/15' },
-  { label: 'Classements', path: '/leaderboards', icon: Trophy, color: 'text-amber-500', bg: 'bg-amber-500/15' },
-  { label: 'Clans', path: '/clans', icon: Shield, color: 'text-teal-500', bg: 'bg-teal-500/15' },
-  { label: 'Mon profil', path: '/profile', icon: UserIcon, color: 'text-rose-500', bg: 'bg-rose-500/15' },
-  { label: 'Polymarket', path: '/polymarket', icon: BarChart3, color: 'text-indigo-500', bg: 'bg-indigo-500/15' },
-  { label: 'Tous les jeux', path: '/games', icon: Gamepad2, color: 'text-orange-500', bg: 'bg-orange-500/15' },
-  { label: 'Inventaire', path: '/inventory', icon: Package, color: 'text-cyan-500', bg: 'bg-cyan-500/15' },
-  { label: 'Inbox', path: '/inbox', icon: GiftIcon, color: 'text-pink-500', bg: 'bg-pink-500/15' },
-  { label: 'Pass', path: '/pass', icon: Star, color: 'text-yellow-500', bg: 'bg-yellow-500/15' },
-  { label: 'Réglages', path: '/settings', icon: Coins, color: 'text-zinc-500', bg: 'bg-zinc-500/15' },
+const quickActions: QuickAction[] = [
+  { id: 'create-party', label: 'Créer party', path: '/party', icon: Users, color: 'text-violet-500', bg: 'bg-violet-500/15' },
+  { id: 'quests', label: 'Voir quêtes', path: '/quests', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/15' },
+  { id: 'shop', label: 'Ouvrir shop', path: '/market', icon: Package, color: 'text-blue-500', bg: 'bg-blue-500/15' },
+  { id: 'leaderboards', label: 'Classements', path: '/leaderboards', icon: Trophy, color: 'text-amber-500', bg: 'bg-amber-500/15' },
+  { id: 'clans', label: 'Clans', path: '/clans', icon: Shield, color: 'text-teal-500', bg: 'bg-teal-500/15' },
+  { id: 'profile', label: 'Mon profil', path: '/profile', icon: UserIcon, color: 'text-rose-500', bg: 'bg-rose-500/15' },
+  { id: 'polymarket', label: 'Polymarket', path: '/polymarket', icon: BarChart3, color: 'text-indigo-500', bg: 'bg-indigo-500/15' },
+  { id: 'games', label: 'Tous les jeux', path: '/games', icon: Gamepad2, color: 'text-orange-500', bg: 'bg-orange-500/15' },
+  { id: 'inventory', label: 'Inventaire', path: '/inventory', icon: Package, color: 'text-cyan-500', bg: 'bg-cyan-500/15' },
+  { id: 'inbox', label: 'Inbox', path: '/inbox', icon: GiftIcon, color: 'text-pink-500', bg: 'bg-pink-500/15' },
+  { id: 'pass', label: 'Pass', path: '/pass', icon: Star, color: 'text-yellow-500', bg: 'bg-yellow-500/15' },
+  { id: 'settings', label: 'Réglages', path: '/settings', icon: Coins, color: 'text-zinc-500', bg: 'bg-zinc-500/15' },
 ];
+const defaultQuickActionIds = ['create-party', 'quests', 'games', 'inbox'];
 
 const defaultDashboardLayout: DashboardWidgetId[] = ['shortcuts', 'live', 'quick-actions', 'auracoin', 'inventory', 'gifts'];
 const dashboardWidgetLabels: Record<DashboardWidgetId, { title: string; description: string }> = {
@@ -193,7 +206,7 @@ function SortableDashboardWidget({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group relative min-h-0 h-[300px] md:h-[340px] xl:h-[356px]",
+        "group relative min-h-0 h-[280px] md:h-[320px] xl:h-[340px]",
         isDragging && "z-20"
       )}
     >
@@ -228,7 +241,7 @@ function ShortcutTile({ shortcut }: { shortcut: GameShortcut }) {
       aria-label={shortcut.label}
       title={shortcut.label}
       className={cn(
-        "group relative block aspect-square overflow-hidden rounded-xl border border-border/50 bg-muted/20 transition hover:border-foreground/20 hover:bg-muted/40",
+        "group relative block h-full min-h-[96px] overflow-hidden rounded-xl border border-border/50 bg-muted/20 transition hover:border-foreground/20 hover:bg-muted/40",
         !shortcut.image && "flex items-center justify-center"
       )}
     >
@@ -293,6 +306,9 @@ export default function Dashboard() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [shortcutsLoaded, setShortcutsLoaded] = useState(false);
   const [shortcutWidgets, setShortcutWidgets] = useState<string[]>(defaultShortcuts);
+  const [quickActionsOpen, setQuickActionsOpen] = useState(false);
+  const [quickActionsLoaded, setQuickActionsLoaded] = useState(false);
+  const [selectedQuickActions, setSelectedQuickActions] = useState<string[]>(defaultQuickActionIds);
   const [dashboardLayout, setDashboardLayout] = useState<DashboardWidgetId[]>(defaultDashboardLayout);
   const [dashboardLayoutLoaded, setDashboardLayoutLoaded] = useState(false);
   const [visibleWidgets, setVisibleWidgets] = useState<DashboardWidgetId[]>(defaultDashboardLayout);
@@ -305,9 +321,14 @@ export default function Dashboard() {
   const [inventoryItems, setInventoryItems] = useState<DashboardInventoryItem[]>([]);
 
   const shortcutMap = useMemo(() => new Map(gameShortcuts.map((item) => [item.id, item])), []);
+  const quickActionMap = useMemo(() => new Map(quickActions.map((item) => [item.id, item])), []);
   const orderedShortcuts = useMemo(
     () => shortcutWidgets.slice(0, maxShortcutWidgets).map((id) => shortcutMap.get(id)).filter(Boolean) as GameShortcut[],
     [shortcutMap, shortcutWidgets]
+  );
+  const orderedQuickActions = useMemo(
+    () => selectedQuickActions.slice(0, maxQuickActions).map((id) => quickActionMap.get(id)).filter(Boolean) as QuickAction[],
+    [quickActionMap, selectedQuickActions]
   );
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -472,7 +493,7 @@ export default function Dashboard() {
 
             setShortcutWidgets(
               shouldFillLegacyDefaults
-                ? [...new Set([...filtered, ...defaultShortcuts])].slice(0, maxShortcutWidgets)
+                ? [...new Set([...filtered, ...legacyDefaultShortcuts])].slice(0, maxShortcutWidgets)
                 : filtered
             );
           }
@@ -484,6 +505,25 @@ export default function Dashboard() {
       setShortcutsLoaded(true);
     }
   }, [shortcutMap]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(quickActionStorageKey);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          const filtered = parsed.filter((id: string) => quickActionMap.has(id)).slice(0, maxQuickActions);
+          if (filtered.length > 0) {
+            setSelectedQuickActions(filtered);
+          }
+        }
+      }
+    } catch {
+      // Ignore localStorage parse failures.
+    } finally {
+      setQuickActionsLoaded(true);
+    }
+  }, [quickActionMap]);
 
   useEffect(() => {
     try {
@@ -525,6 +565,15 @@ export default function Dashboard() {
       // Ignore localStorage write failures.
     }
   }, [shortcutsLoaded, shortcutWidgets]);
+
+  useEffect(() => {
+    if (!quickActionsLoaded) return;
+    try {
+      localStorage.setItem(quickActionStorageKey, JSON.stringify(selectedQuickActions));
+    } catch {
+      // Ignore localStorage write failures.
+    }
+  }, [quickActionsLoaded, selectedQuickActions]);
 
   useEffect(() => {
     if (!dashboardLayoutLoaded) return;
@@ -727,29 +776,90 @@ export default function Dashboard() {
                   {widgetId === 'quick-actions' && (
                     <Card className={dashboardWidgetCardClass}>
                       <CardHeader className={dashboardWidgetHeaderClass}>
-                        <DashboardWidgetTitle
-                          title="Actions rapides"
-                          icon={Zap}
-                          iconClassName="text-amber-500"
-                          iconWrapperClassName="bg-amber-500/15"
-                        />
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <DashboardWidgetTitle
+                            title="Actions rapides"
+                            icon={Zap}
+                            iconClassName="text-amber-500"
+                            iconWrapperClassName="bg-amber-500/15"
+                          />
+                          <Dialog open={quickActionsOpen} onOpenChange={setQuickActionsOpen}>
+                            <Button variant="outline" size="sm" className={dashboardGhostButtonClass} onClick={() => setQuickActionsOpen(true)}>
+                              Modifier
+                            </Button>
+                            <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+                              <DialogHeader>
+                                <DialogTitle className={TYPOGRAPHY.H5}>Actions rapides</DialogTitle>
+                                <DialogDescription>
+                                  Active les liens à afficher dans le widget. Maximum {maxQuickActions} actions.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>
+                                {selectedQuickActions.length}/{maxQuickActions} selectionnees
+                              </p>
+                              <div className="space-y-3">
+                                {quickActions.map((action) => {
+                                  const checked = selectedQuickActions.includes(action.id);
+                                  const limitReached = !checked && selectedQuickActions.length >= maxQuickActions;
+                                  return (
+                                    <label
+                                      key={action.id}
+                                      className={cn(
+                                        "flex items-start gap-3 rounded-xl border px-3 py-3 transition",
+                                        checked ? "border-foreground/30 bg-muted/40" : "border-border/50",
+                                        limitReached && "opacity-50"
+                                      )}
+                                    >
+                                      <Checkbox
+                                        checked={checked}
+                                        disabled={limitReached}
+                                        onCheckedChange={() => {
+                                          setSelectedQuickActions((prev) =>
+                                            prev.includes(action.id)
+                                              ? prev.filter((id) => id !== action.id)
+                                              : prev.length >= maxQuickActions
+                                                ? prev
+                                                : [...prev, action.id]
+                                          );
+                                        }}
+                                        className="mt-1"
+                                      />
+                                      <div className="min-w-0">
+                                        <p className="font-medium">{action.label}</p>
+                                      </div>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                              <DialogFooter className="gap-2 sm:gap-0">
+                                <Button
+                                  variant="ghost"
+                                  onClick={() => setSelectedQuickActions(defaultQuickActionIds)}
+                                >
+                                  Réinitialiser
+                                </Button>
+                                <Button onClick={() => setQuickActionsOpen(false)}>Terminer</Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
                       </CardHeader>
                       <CardContent className={dashboardWidgetContentClass}>
-                        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                          {quickActions.map((action) => {
+                        <div className="grid h-full grid-cols-2 grid-rows-2 gap-3">
+                          {orderedQuickActions.map((action) => {
                             const Icon = action.icon;
                             return (
                               <Button
-                                key={action.path}
+                                key={action.id}
                                 asChild
                                 variant="outline"
-                                className="aspect-square h-auto w-full flex-col items-start justify-between rounded-xl border-border/50 bg-muted/20 p-3 text-left shadow-none hover:bg-muted/40"
+                                className="h-full min-h-[96px] w-full flex-col items-start justify-between rounded-2xl border-border/50 bg-muted/20 p-4 text-left shadow-none hover:bg-muted/40"
                               >
                                 <Link to={action.path}>
-                                  <div className="flex h-8 w-8 items-center justify-center rounded-full border border-border/50">
-                                    <Icon className="h-4 w-4 text-foreground" />
+                                  <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border/50">
+                                    <Icon className="h-5 w-5 text-foreground" />
                                   </div>
-                                  <span className="text-xs font-medium leading-tight">{action.label}</span>
+                                  <span className="text-sm font-medium leading-tight">{action.label}</span>
                                 </Link>
                               </Button>
                             );
@@ -777,7 +887,7 @@ export default function Dashboard() {
                               <DialogHeader>
                                 <DialogTitle className={TYPOGRAPHY.H5}>Widgets de raccourcis</DialogTitle>
                                 <DialogDescription>
-                                  Active les jeux à afficher dans le widget. Maximum {maxShortcutWidgets} jeux (3 rangées de 4).
+                                  Active les jeux à afficher dans le widget. Maximum {maxShortcutWidgets} jeux.
                                 </DialogDescription>
                               </DialogHeader>
                               <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>
@@ -830,8 +940,8 @@ export default function Dashboard() {
                           </Dialog>
                         </div>
                       </CardHeader>
-                      <CardContent className={cn(dashboardWidgetContentClass, "overflow-y-auto")}>
-                        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                      <CardContent className={dashboardWidgetContentClass}>
+                        <div className="grid h-full grid-cols-2 grid-rows-2 gap-3">
                           {orderedShortcuts.length > 0 ? (
                             orderedShortcuts.map((shortcut) => (
                               <ShortcutTile key={shortcut.id} shortcut={shortcut} />
