@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Crown, LogOut, Play, Swords, Trophy } from 'lucide-react';
+import { Chess } from 'chess.js';
+import type { Square } from 'chess.js';
+import { Chessboard } from 'react-chessboard';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { PageHeader, PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/page-shell';
 import { cn } from '@/lib/utils';
 import { UsernameDisplay } from '@/components/ui/username-display';
 
@@ -70,21 +73,6 @@ interface GameOverData {
   };
 }
 
-const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] as const;
-const PROMOTION_OPTIONS: PromotionPiece[] = ['q', 'r', 'b', 'n'];
-
-const PIECE_ICONS: Record<ChessColor, Record<PieceType, string>> = {
-  w: { k: '♔', q: '♕', r: '♖', b: '♗', n: '♘', p: '♙' },
-  b: { k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' },
-};
-
-const PROMOTION_LABELS: Record<PromotionPiece, string> = {
-  q: 'Dame',
-  r: 'Tour',
-  b: 'Fou',
-  n: 'Cavalier',
-};
-
 const RESULT_LABELS: Record<ChessResult, string> = {
   checkmate: 'Échec et mat',
   stalemate: 'Pat',
@@ -94,68 +82,68 @@ const RESULT_LABELS: Record<ChessResult, string> = {
   resignation: 'Abandon',
 };
 
-function getSquare(row: number, col: number) {
-  return `${FILES[col]}${8 - row}`;
-}
-
-function isPromotionMove(piece: ChessPiece | null, targetSquare: string) {
-  if (!piece || piece.type !== 'p') return false;
-  const targetRank = Number(targetSquare[1]);
-  return (piece.color === 'w' && targetRank === 8) || (piece.color === 'b' && targetRank === 1);
-}
+const PROMO_MAP: Record<string, PromotionPiece> = {
+  wQ: 'q', bQ: 'q', wR: 'r', bR: 'r', wB: 'b', bB: 'b', wN: 'n', bN: 'n',
+};
 
 export default function Echecs() {
   const { user, refreshUser } = useAuth();
   const { currentParty, partyMembers, socket } = useSocket();
 
+  const boardContainerRef = useRef<HTMLDivElement>(null);
+  const [boardWidth, setBoardWidth] = useState(480);
   const [gameState, setGameState] = useState<ChessState | null>(null);
   const [gameOver, setGameOver] = useState<GameOverData | null>(null);
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pendingPromotionMove, setPendingPromotionMove] = useState<{
-    from: string;
-    to: string;
-  } | null>(null);
+  const [pendingPromotion, setPendingPromotion] = useState<{ from: string; to: string } | null>(null);
 
-  const isLeader = partyMembers.find((member) => member.userId === user?.id)?.isLeader;
-  const myPlayer = gameState?.players.find((player) => player.userId === user?.id) ?? null;
-  const opponent = gameState?.players.find((player) => player.userId !== user?.id) ?? null;
+  const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
+  const myPlayer = gameState?.players.find((p) => p.userId === user?.id) ?? null;
+  const opponent = gameState?.players.find((p) => p.userId !== user?.id) ?? null;
   const isMyTurn = gameState?.phase === 'playing' && gameState.turn === myPlayer?.color;
-  const legalMoves = gameState?.legalMoves ?? {};
 
+  // chess.js instance for piece queries (memoized from FEN)
+  const chess = useMemo(() => {
+    if (!gameState?.fen) return null;
+    try { return new Chess(gameState.fen); } catch { return null; }
+  }, [gameState?.fen]);
+
+  // Responsive board: fill container width up to viewport height
+  useEffect(() => {
+    const el = boardContainerRef.current;
+    if (!el) return;
+    const update = () => {
+      const w = el.offsetWidth;
+      const h = window.innerHeight - 150;
+      setBoardWidth(Math.min(w, h, 720));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    window.addEventListener('resize', update);
+    return () => { ro.disconnect(); window.removeEventListener('resize', update); };
+  }, [gameState != null]); // re-attach when game starts (layout changes)
+
+  // Socket events
   useEffect(() => {
     if (!socket || !user) return;
-
     socket.emit('chess:register');
 
     const onState = (state: ChessState) => {
       setGameState(state);
-      setSelectedSquare((current) => (current && state.legalMoves[current] ? current : null));
-      setPendingPromotionMove(null);
+      setSelectedSquare(null);
+      setPendingPromotion(null);
       setError(null);
     };
-
-    const onGameOver = (data: GameOverData) => {
-      setGameOver(data);
-      refreshUser();
-    };
-
-    const onLeft = () => {
-      setGameState(null);
-      setSelectedSquare(null);
-      setPendingPromotionMove(null);
-    };
-
-    const onError = (data: { message: string }) => {
-      setError(data.message);
-      setPendingPromotionMove(null);
-    };
+    const onGameOver = (data: GameOverData) => { setGameOver(data); refreshUser(); };
+    const onLeft = () => { setGameState(null); setSelectedSquare(null); setPendingPromotion(null); };
+    const onError = (data: { message: string }) => { setError(data.message); setPendingPromotion(null); };
 
     socket.on('chess:state', onState);
     socket.on('chess:game-over', onGameOver);
     socket.on('chess:left', onLeft);
     socket.on('chess:error', onError);
-
     return () => {
       socket.off('chess:state', onState);
       socket.off('chess:game-over', onGameOver);
@@ -164,50 +152,99 @@ export default function Echecs() {
     };
   }, [socket, user, refreshUser]);
 
-  const boardRows = useMemo(() => {
-    if (!gameState?.board) return [];
-    const rows = gameState.board.map((row) => [...row]);
-    if (myPlayer?.color === 'b') {
-      return rows.reverse().map((row) => row.reverse());
-    }
-    return rows;
-  }, [gameState?.board, myPlayer?.color]);
+  const sendMove = useCallback((from: string, to: string, promotion?: PromotionPiece) => {
+    if (!socket || !currentParty) return;
+    socket.emit('chess:move', { partyId: currentParty.id, from, to, promotion });
+    setSelectedSquare(null);
+  }, [socket, currentParty]);
 
-  const availableTargets = selectedSquare ? legalMoves[selectedSquare] ?? [] : [];
+  // Drag & drop handler
+  const onPieceDrop = useCallback((source: string, target: string, piece: string): boolean => {
+    if (!gameState || !myPlayer || !isMyTurn) return false;
+    if (!gameState.legalMoves[source]?.includes(target)) return false;
+    // Promotion: show dialog, snap back piece until chosen
+    const isPromo = (piece === 'wP' && target[1] === '8') || (piece === 'bP' && target[1] === '1');
+    if (isPromo) {
+      setPendingPromotion({ from: source, to: target });
+      return false;
+    }
+    sendMove(source, target);
+    return true;
+  }, [gameState, myPlayer, isMyTurn, sendMove]);
+
+  // Click-to-move handler
+  const onSquareClick = useCallback((square: string) => {
+    if (!gameState || !myPlayer || !isMyTurn) return;
+
+    if (selectedSquare && gameState.legalMoves[selectedSquare]?.includes(square)) {
+      const piece = chess?.get(selectedSquare as Square);
+      const isPromo = piece?.type === 'p' &&
+        ((piece.color === 'w' && square[1] === '8') || (piece.color === 'b' && square[1] === '1'));
+      if (isPromo) {
+        setPendingPromotion({ from: selectedSquare, to: square });
+        setSelectedSquare(null);
+        return;
+      }
+      sendMove(selectedSquare, square);
+      setSelectedSquare(null);
+      return;
+    }
+
+    const piece = chess?.get(square as Square);
+    if (piece && piece.color === myPlayer.color && gameState.legalMoves[square]?.length) {
+      setSelectedSquare(square);
+    } else {
+      setSelectedSquare(null);
+    }
+  }, [gameState, myPlayer, isMyTurn, selectedSquare, chess, sendMove]);
+
+  // Promotion piece selected from built-in dialog
+  const onPromotionPieceSelect = useCallback((piece?: string): boolean => {
+    if (!pendingPromotion || !piece) return false;
+    sendMove(pendingPromotion.from, pendingPromotion.to, PROMO_MAP[piece] ?? 'q');
+    setPendingPromotion(null);
+    return true;
+  }, [pendingPromotion, sendMove]);
+
+  // Square highlight styles
+  const customSquareStyles = useMemo((): Record<string, Record<string, string | number>> => {
+    const styles: Record<string, Record<string, string | number>> = {};
+
+    if (gameState?.lastMove) {
+      styles[gameState.lastMove.from] = { backgroundColor: 'rgba(155, 199, 0, 0.41)' };
+      styles[gameState.lastMove.to] = { backgroundColor: 'rgba(155, 199, 0, 0.41)' };
+    }
+
+    if (selectedSquare) {
+      styles[selectedSquare] = { backgroundColor: 'rgba(20, 85, 255, 0.35)' };
+      for (const sq of (gameState?.legalMoves[selectedSquare] ?? [])) {
+        const hasPiece = !!chess?.get(sq as Square);
+        styles[sq] = hasPiece
+          ? { boxShadow: 'inset 0 0 0 4px rgba(20, 85, 255, 0.5)' }
+          : { background: 'radial-gradient(circle, rgba(0,0,0,0.22) 36%, transparent 36%)' };
+      }
+    }
+
+    if (gameState?.inCheck && gameState.phase === 'playing' && chess) {
+      // Highlight king in check
+      const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+      for (let rank = 1; rank <= 8; rank++) {
+        for (const file of files) {
+          const sq = `${file}${rank}` as Square;
+          const p = chess.get(sq);
+          if (p?.type === 'k' && p.color === gameState.turn) {
+            styles[sq] = { backgroundColor: 'rgba(220, 38, 38, 0.55)' };
+          }
+        }
+      }
+    }
+
+    return styles;
+  }, [selectedSquare, gameState, chess]);
 
   const handleStart = () => {
     if (!socket || !currentParty) return;
     socket.emit('chess:start', { partyId: currentParty.id });
-  };
-
-  const sendMove = (from: string, to: string, promotion?: PromotionPiece) => {
-    if (!socket || !currentParty) return;
-    socket.emit('chess:move', { partyId: currentParty.id, from, to, promotion });
-    setSelectedSquare(null);
-  };
-
-  const handleSquareClick = (square: string, piece: ChessPiece | null) => {
-    if (!gameState || !myPlayer || !isMyTurn) return;
-
-    if (selectedSquare && availableTargets.includes(square)) {
-      const fromRow = myPlayer.color === 'b' ? 8 - Number(selectedSquare[1]) : 8 - Number(selectedSquare[1]);
-      const fromCol = FILES.indexOf(selectedSquare[0] as (typeof FILES)[number]);
-      const sourcePiece = gameState.board[fromRow]?.[fromCol] ?? null;
-
-      if (isPromotionMove(sourcePiece, square)) {
-        setPendingPromotionMove({ from: selectedSquare, to: square });
-      } else {
-        sendMove(selectedSquare, square);
-      }
-      return;
-    }
-
-    if (piece && piece.color === myPlayer.color && legalMoves[square]?.length) {
-      setSelectedSquare(square);
-      return;
-    }
-
-    setSelectedSquare(null);
   };
 
   const handleResign = () => {
@@ -215,65 +252,47 @@ export default function Echecs() {
     socket.emit('chess:resign', { partyId: currentParty.id });
   };
 
-  const closeGameOver = () => {
-    setGameOver(null);
-  };
-
   const statusText = (() => {
     if (!gameState) return null;
-    if (gameState.phase === 'finished' && gameState.result) {
-      return RESULT_LABELS[gameState.result];
-    }
-    if (isMyTurn && gameState.inCheck) return 'À toi de jouer, tu es en échec.';
+    if (gameState.phase === 'finished' && gameState.result) return RESULT_LABELS[gameState.result];
+    if (isMyTurn && gameState.inCheck) return 'À toi — tu es en échec !';
     if (isMyTurn) return 'À toi de jouer.';
-    if (gameState.inCheck) return `${opponent?.username ?? 'L’adversaire'} est en échec.`;
+    if (gameState.inCheck) return `${opponent?.username ?? "L'adversaire"} est en échec.`;
     return `Tour des ${gameState.turn === 'w' ? 'blancs' : 'noirs'}.`;
   })();
 
+  // ── No party ──────────────────────────────────────────────────────────────
   if (!currentParty) {
     return (
       <PageShell>
-        <PageHeader
-          title="Échecs"
-          description="Duel complet avec toutes les règles standard."
-          actions={
-            <Button asChild variant="outline" size="sm">
-              <Link to="/games" className="inline-flex items-center gap-2">
-                <ArrowLeft className="h-4 w-4" />
-                Jeux
-              </Link>
-            </Button>
-          }
-        />
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link to="/games" className="inline-flex items-center gap-1.5">
+              <ArrowLeft className="h-4 w-4" />Jeux
+            </Link>
+          </Button>
+        </div>
         <Card>
           <CardContent className="space-y-6 py-14 text-center">
-            <p className="text-sm text-muted-foreground">
-              Rejoins ou crée un duel pour jouer aux échecs
-            </p>
-            <Button asChild>
-              <Link to="/party">Aller aux duels</Link>
-            </Button>
+            <p className="text-sm text-muted-foreground">Rejoins ou crée un duel pour jouer aux échecs</p>
+            <Button asChild><Link to="/party">Aller aux duels</Link></Button>
           </CardContent>
         </Card>
       </PageShell>
     );
   }
 
+  // ── Lobby ─────────────────────────────────────────────────────────────────
   if (!gameState) {
     return (
       <PageShell>
-        <PageHeader
-          title="Échecs"
-          description={`Duel : ${currentParty.name || 'Sans nom'}`}
-          actions={
-            <Button asChild variant="outline" size="sm">
-              <Link to="/games" className="inline-flex items-center gap-2">
-                <ArrowLeft className="h-4 w-4" />
-                Jeux
-              </Link>
-            </Button>
-          }
-        />
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link to="/games" className="inline-flex items-center gap-1.5">
+              <ArrowLeft className="h-4 w-4" />Jeux
+            </Link>
+          </Button>
+        </div>
         <Card>
           <CardContent className="space-y-4 p-6">
             <h2 className="text-sm text-muted-foreground">
@@ -298,13 +317,9 @@ export default function Echecs() {
             </div>
           </CardContent>
         </Card>
-
         {partyMembers.length < 2 && (
-          <p className="text-center text-sm text-muted-foreground">
-            Il faut 2 joueurs pour commencer
-          </p>
+          <p className="text-center text-sm text-muted-foreground">Il faut 2 joueurs pour commencer</p>
         )}
-
         {isLeader && partyMembers.length === 2 && (
           <div className="flex justify-center">
             <Button
@@ -317,169 +332,128 @@ export default function Echecs() {
             </Button>
           </div>
         )}
-
         {error && <p className="text-center text-sm text-red-500">{error}</p>}
       </PageShell>
     );
   }
 
+  // ── Active game ───────────────────────────────────────────────────────────
   return (
-    <PageShell>
-      <PageHeader
-        title="Échecs"
-        description={statusText ?? 'Duel en cours'}
-        actions={
-          <div className="flex gap-2">
-            <Button asChild variant="outline" size="sm">
-              <Link to="/games" className="inline-flex items-center gap-2">
-                <ArrowLeft className="h-4 w-4" />
-                Jeux
-              </Link>
+    <PageShell size="wide">
+      <div className="flex flex-col gap-4">
+        {/* Compact toolbar — no title, just action buttons + status */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button asChild variant="outline" size="sm">
+            <Link to="/games" className="inline-flex items-center gap-1.5">
+              <ArrowLeft className="h-4 w-4" />Jeux
+            </Link>
+          </Button>
+          {gameState.phase === 'playing' && (
+            <Button variant="outline" size="sm" onClick={handleResign}>
+              <LogOut className="h-4 w-4 mr-1" />Abandonner
             </Button>
-            {gameState.phase === 'playing' && (
-              <Button variant="outline" size="sm" onClick={handleResign}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Abandonner
-              </Button>
-            )}
+          )}
+          {statusText && (
+            <span className="text-sm text-muted-foreground ml-1">{statusText}</span>
+          )}
+        </div>
+
+        {/* Board + sidebar */}
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
+          {/* Board container: fills available width, capped by viewport height */}
+          <div ref={boardContainerRef} className="w-full flex justify-center lg:justify-start">
+            <Chessboard
+              boardWidth={boardWidth}
+              position={gameState.fen}
+              boardOrientation={myPlayer?.color === 'b' ? 'black' : 'white'}
+              onPieceDrop={onPieceDrop as any}
+              onSquareClick={onSquareClick as any}
+              customSquareStyles={customSquareStyles as any}
+              isDraggablePiece={({ piece }: { piece: string }) => {
+                if (!isMyTurn || !myPlayer) return false;
+                return piece[0] === myPlayer.color;
+              }}
+              animationDuration={180}
+              showPromotionDialog={!!pendingPromotion}
+              promotionToSquare={(pendingPromotion?.to ?? null) as any}
+              onPromotionPieceSelect={onPromotionPieceSelect as any}
+              promotionDialogVariant="modal"
+              customBoardStyle={{
+                borderRadius: '8px',
+                boxShadow: '0 4px 28px rgba(0,0,0,0.22)',
+              }}
+              customDarkSquareStyle={{ backgroundColor: '#b58863' }}
+              customLightSquareStyle={{ backgroundColor: '#f0d9b5' }}
+              areArrowsAllowed={false}
+            />
           </div>
-        }
-      />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <Card>
-          <CardContent className="space-y-4 p-4 sm:p-6">
-            <div className="grid grid-cols-8 overflow-hidden rounded-xl border border-border/50">
-              {boardRows.map((row, visualRow) =>
-                row.map((piece, visualCol) => {
-                  const rowIndex = myPlayer?.color === 'b' ? 7 - visualRow : visualRow;
-                  const colIndex = myPlayer?.color === 'b' ? 7 - visualCol : visualCol;
-                  const square = getSquare(rowIndex, colIndex);
-                  const isDark = (visualRow + visualCol) % 2 === 1;
-                  const isSelected = selectedSquare === square;
-                  const isLegalTarget = availableTargets.includes(square);
-                  const isLastMove =
-                    gameState.lastMove?.from === square || gameState.lastMove?.to === square;
-
+          {/* Sidebar */}
+          <div className="space-y-4">
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                {gameState.players.map((player) => {
+                  const isCurrent = gameState.turn === player.color && gameState.phase === 'playing';
                   return (
-                    <button
-                      key={square}
-                      type="button"
-                      onClick={() => handleSquareClick(square, piece)}
+                    <div
+                      key={player.userId}
                       className={cn(
-                        'relative aspect-square min-h-10 transition-colors sm:min-h-14',
-                        isDark ? 'bg-amber-900/80 text-amber-50' : 'bg-amber-100 text-slate-900',
-                        isSelected && 'ring-4 ring-sky-400/70 ring-inset',
-                        isLastMove && 'shadow-[inset_0_0_0_999px_rgba(250,204,21,0.18)]',
-                        isMyTurn && 'hover:brightness-105'
+                        'rounded-lg border p-3 transition-colors',
+                        isCurrent ? 'border-foreground bg-muted/40' : 'border-border/40'
                       )}
                     >
-                      <span className="pointer-events-none absolute left-1 top-1 text-[10px] opacity-60 sm:text-xs">
-                        {square}
-                      </span>
-                      {isLegalTarget && (
-                        <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                          <span className="h-3 w-3 rounded-full bg-emerald-400/80 sm:h-4 sm:w-4" />
-                        </span>
-                      )}
-                      {piece && (
-                        <span className="pointer-events-none text-3xl sm:text-5xl">
-                          {PIECE_ICONS[piece.color][piece.type]}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })
-              )}
-            </div>
-
-            {error && <p className="text-sm text-red-500">{error}</p>}
-          </CardContent>
-        </Card>
-
-        <div className="space-y-6">
-          <Card>
-            <CardContent className="space-y-4 p-5">
-              {gameState.players.map((player) => {
-                const isCurrent = gameState.turn === player.color && gameState.phase === 'playing';
-                return (
-                  <div
-                    key={player.userId}
-                    className={cn(
-                      'rounded-lg border p-4',
-                      isCurrent ? 'border-foreground bg-muted/40' : 'border-border/40'
-                    )}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <div className="font-medium">
-                          <UsernameDisplay username={player.username} usernameColor={player.usernameColor} />
-                          {player.userId === user?.id && <span className="ml-2 text-xs text-muted-foreground">(toi)</span>}
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <div className="font-medium flex items-center gap-1 flex-wrap">
+                            <UsernameDisplay username={player.username} usernameColor={player.usernameColor} />
+                            {player.userId === user?.id && (
+                              <span className="text-xs text-muted-foreground">(toi)</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {player.color === 'w' ? 'Blancs' : 'Noirs'}
+                          </p>
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          {player.color === 'w' ? 'Blancs' : 'Noirs'}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        {player.color === 'w' ? <Crown className="h-4 w-4" /> : <Swords className="h-4 w-4" />}
-                        {isCurrent ? 'Au tour' : 'En attente'}
+                        <div className="flex flex-col items-end gap-1 text-xs text-muted-foreground">
+                          {player.color === 'w' ? <Crown className="h-4 w-4" /> : <Swords className="h-4 w-4" />}
+                          <span>{isCurrent ? 'Au tour' : 'En attente'}</span>
+                        </div>
                       </div>
                     </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4 space-y-2">
+                <h2 className="text-sm text-muted-foreground">Dernier coup</h2>
+                {gameState.lastMove ? (
+                  <div className="space-y-0.5">
+                    <p className="text-lg font-medium">{gameState.lastMove.san}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {gameState.lastMove.from} → {gameState.lastMove.to}
+                    </p>
                   </div>
-                );
-              })}
-            </CardContent>
-          </Card>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Partie non commencée.</p>
+                )}
+                {myPlayer && (
+                  <div className="rounded-lg border border-border/40 px-3 py-2 text-sm text-muted-foreground">
+                    Tu joues les {myPlayer.color === 'w' ? 'blancs' : 'noirs'}.
+                    {gameState.inCheck && gameState.phase === 'playing' && ' Un roi est en échec.'}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardContent className="space-y-3 p-5">
-              <h2 className="text-sm text-muted-foreground">Dernier coup</h2>
-              {gameState.lastMove ? (
-                <div className="space-y-1">
-                  <p className="text-lg font-medium">{gameState.lastMove.san}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {gameState.lastMove.from} → {gameState.lastMove.to}
-                  </p>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">La partie n’a pas encore commencé.</p>
-              )}
-
-              <div className="rounded-lg border border-border/40 p-3 text-sm text-muted-foreground">
-                {myPlayer ? `Tu joues les ${myPlayer.color === 'w' ? 'blancs' : 'noirs'}.` : null}
-                {gameState.inCheck && gameState.phase === 'playing' ? ' Un roi est en échec.' : null}
-              </div>
-            </CardContent>
-          </Card>
+            {error && <p className="text-sm text-red-500">{error}</p>}
+          </div>
         </div>
       </div>
 
-      <Dialog open={!!pendingPromotionMove} onOpenChange={() => setPendingPromotionMove(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Choisir la promotion</DialogTitle>
-          </DialogHeader>
-          <div className="grid grid-cols-2 gap-3 py-4">
-            {PROMOTION_OPTIONS.map((piece) => (
-              <Button
-                key={piece}
-                variant="outline"
-                onClick={() => {
-                  if (!pendingPromotionMove) return;
-                  sendMove(pendingPromotionMove.from, pendingPromotionMove.to, piece);
-                  setPendingPromotionMove(null);
-                }}
-                className="justify-between"
-              >
-                <span>{PROMOTION_LABELS[piece]}</span>
-                <span className="text-xl">{PIECE_ICONS[myPlayer?.color ?? 'w'][piece]}</span>
-              </Button>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!gameOver} onOpenChange={closeGameOver}>
+      {/* Game over dialog */}
+      <Dialog open={!!gameOver} onOpenChange={() => setGameOver(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 font-normal">
@@ -496,7 +470,6 @@ export default function Echecs() {
                 <p className="text-xl font-light">Match nul</p>
               )}
             </div>
-
             {gameOver?.isDraw ? (
               <div className="rounded border border-border/40 px-3 py-4 text-center">
                 <span className="text-purple-400">+{gameOver.rewards.draw?.aura} aura </span>
@@ -506,9 +479,9 @@ export default function Echecs() {
             ) : (
               <div className="space-y-2">
                 <div className="flex items-center justify-between rounded border border-yellow-500/50 bg-yellow-500/5 px-3 py-3">
-                  {gameOver?.winnerUsername ? (
+                  {gameOver?.winnerUsername && (
                     <UsernameDisplay username={gameOver.winnerUsername} className="font-medium" />
-                  ) : null}
+                  )}
                   <div className="text-sm">
                     <span className="text-purple-400">+{gameOver?.rewards.winner?.aura} aura </span>
                     <span className="text-green-400">+{gameOver?.rewards.winner?.money}$</span>
@@ -528,7 +501,7 @@ export default function Echecs() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={closeGameOver} className="w-full border-foreground">
+            <Button variant="outline" onClick={() => setGameOver(null)} className="w-full border-foreground">
               Fermer
             </Button>
           </DialogFooter>

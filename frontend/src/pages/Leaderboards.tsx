@@ -8,6 +8,7 @@ import { TYPOGRAPHY } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { PageShell } from '@/components/layout/page-shell';
 import { UsernameDisplay } from '@/components/ui/username-display';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Ranking {
   rank: number;
@@ -239,7 +240,8 @@ export default function Leaderboards() {
     <PageShell>
       <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)] h-[calc(100svh-var(--header-height)-4rem)]">
           {/* Sidebar */}
-          <Card className="h-full overflow-y-auto">
+          <Card className="h-full overflow-hidden">
+            <ScrollArea className="h-full">
             <CardContent className="p-2">
               {/* Nombres — special entry */}
               <button
@@ -312,10 +314,12 @@ export default function Leaderboards() {
                 </div>
               </div>
             </CardContent>
+            </ScrollArea>
           </Card>
 
           {/* Main content */}
-          <div className="h-full overflow-y-auto space-y-4">
+          <ScrollArea className="h-full">
+          <div className="space-y-4">
             <h2 className={TYPOGRAPHY.H3}>{activeTitle}</h2>
 
             {activeView === 'nombres' ? (
@@ -402,6 +406,7 @@ export default function Leaderboards() {
               </>
             )}
           </div>
+          </ScrollArea>
       </div>
     </PageShell>
   );
