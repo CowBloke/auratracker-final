@@ -8,6 +8,25 @@ import { createNotification } from '../utils/notifications.js';
 
 const router = Router();
 
+const DEFAULT_SHOP_CATEGORIES = [
+  { id: 'COSMETIC', label: 'Cosmétiques' },
+  { id: 'CONSUMABLE', label: 'Consommables' },
+  { id: 'UPGRADE', label: 'Améliorations' },
+  { id: 'GIFT', label: 'Cadeaux' },
+];
+
+// Get shop categories (public)
+router.get('/categories', authMiddleware, async (_req: AuthRequest, res: Response) => {
+  try {
+    const setting = await prisma.gameSettings.findUnique({ where: { key: 'shop_categories' } });
+    const categories = setting ? JSON.parse(setting.value) : DEFAULT_SHOP_CATEGORIES;
+    res.json({ categories });
+  } catch (error) {
+    console.error('Get categories error:', error);
+    res.status(500).json({ error: 'Failed to get categories' });
+  }
+});
+
 // Get all items
 router.get('/items', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {

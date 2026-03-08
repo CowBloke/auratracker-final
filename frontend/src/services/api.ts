@@ -125,8 +125,14 @@ export const passApi = {
   claim: () => api.post<PassClaimResponse>('/pass/claim'),
 };
 
+export interface ShopCategory {
+  id: string;
+  label: string;
+}
+
 // Marketplace API
 export const marketplaceApi = {
+  getCategories: () => api.get<{ categories: ShopCategory[] }>('/marketplace/categories'),
   getItems: (params?: { type?: string; page?: number; limit?: number }) =>
     api.get('/marketplace/items', { params }),
   purchase: (data: { itemId: string; quantity?: number }) =>
@@ -853,6 +859,10 @@ export const adminApi = {
     effect?: string;
   }) => api.put<{ item: ShopItem }>(`/admin/items/${id}`, data),
   deleteItem: (id: string) => api.delete<{ success: boolean }>(`/admin/items/${id}`),
+  // Shop categories management
+  getShopCategories: () => api.get<{ categories: ShopCategory[] }>('/admin/shop-categories'),
+  updateShopCategories: (categories: ShopCategory[]) =>
+    api.put<{ categories: ShopCategory[] }>('/admin/shop-categories', { categories }),
   // Bug reports management
   getBugReports: () => api.get<{ bugReports: BugReport[] }>('/admin/bugs'),
   updateBugReport: (id: string, data: { status: 'PENDING' | 'DONE' }) =>

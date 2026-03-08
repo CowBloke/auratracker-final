@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { adminApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan } from '../services/api';
+import { adminApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan } from '../services/api';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,6 +45,7 @@ const EFFECT_TYPES = [
   { value: 'PROFILE_PICTURE', label: 'Photo de profil', description: 'Permet de téléverser une photo affichée dans le chat' },
   { value: 'BONUS_AURA', label: 'Bonus Aura', description: 'Donne un bonus d\'aura à l\'utilisation' },
   { value: 'BONUS_MONEY', label: 'Bonus Argent', description: 'Donne un bonus d\'argent à l\'utilisation' },
+  { value: 'DOODLE_JUMP_SKIN', label: 'Skin Doodle Jump', description: 'Débloque un skin personnalisé dans Doodle Jump (sélectionner une image pour le skin)' },
 ];
 
 const ITEM_TYPE_LABELS: Record<string, string> = {
@@ -287,13 +288,14 @@ const GAME_TYPES = [
 interface ItemFormData {
   name: string;
   description: string;
-  type: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE' | 'GIFT';
+  type: string;
   price: number;
   imageUrl: string;
   effectType: string;
   effectValue: string;
   bonusAura?: number;
   bonusMoney?: number;
+  skinImageUrl?: string;
 }
 
 const defaultItemForm: ItemFormData = {
@@ -306,6 +308,7 @@ const defaultItemForm: ItemFormData = {
   effectValue: '',
   bonusAura: 0,
   bonusMoney: 0,
+  skinImageUrl: '',
 };
 
 interface UpdatePopupFormData {
@@ -402,6 +405,18 @@ export default function Admin() {
   const [itemForm, setItemForm] = useState<ItemFormData>(defaultItemForm);
   const [savingItem, setSavingItem] = useState(false);
   const [deletingItem, setDeletingItem] = useState<string | null>(null);
+
+  // Shop categories state
+  const [shopCategories, setShopCategories] = useState<ShopCategory[]>([
+    { id: 'COSMETIC', label: 'Cosmétiques' },
+    { id: 'CONSUMABLE', label: 'Consommables' },
+    { id: 'UPGRADE', label: 'Améliorations' },
+    { id: 'GIFT', label: 'Cadeaux' },
+  ]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+  const [savingCategories, setSavingCategories] = useState(false);
+  const [newCategoryId, setNewCategoryId] = useState('');
+  const [newCategoryLabel, setNewCategoryLabel] = useState('');
 
   // Bug reports state
   const [bugReports, setBugReports] = useState<BugReport[]>([]);
@@ -685,6 +700,7 @@ export default function Admin() {
     fetchUsers();
     fetchClans();
     fetchItems();
+    fetchShopCategories();
     fetchBugReports();
     fetchPendingUsers();
     fetchBans();
@@ -758,6 +774,52 @@ export default function Admin() {
     } finally {
       setLoadingItems(false);
     }
+  };
+
+  const fetchShopCategories = async () => {
+    try {
+      setLoadingCategories(true);
+      const res = await adminApi.getShopCategories();
+      setShopCategories(res.data.categories);
+    } catch (error) {
+      console.error('Failed to fetch shop categories:', error);
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
+
+  const saveShopCategories = async (cats: ShopCategory[]) => {
+    try {
+      setSavingCategories(true);
+      const res = await adminApi.updateShopCategories(cats);
+      setShopCategories(res.data.categories);
+      showMessage('success', 'Catégories sauvegardées');
+    } catch (error) {
+      showMessage('error', 'Erreur lors de la sauvegarde des catégories');
+    } finally {
+      setSavingCategories(false);
+    }
+  };
+
+  const addShopCategory = () => {
+    const id = newCategoryId.trim().toUpperCase().replace(/\s+/g, '_');
+    const label = newCategoryLabel.trim();
+    if (!id || !label) return;
+    if (shopCategories.find((c) => c.id === id)) {
+      showMessage('error', 'Une catégorie avec cet identifiant existe déjà');
+      return;
+    }
+    const updated = [...shopCategories, { id, label }];
+    setShopCategories(updated);
+    setNewCategoryId('');
+    setNewCategoryLabel('');
+    saveShopCategories(updated);
+  };
+
+  const removeShopCategory = (id: string) => {
+    const updated = shopCategories.filter((c) => c.id !== id);
+    setShopCategories(updated);
+    saveShopCategories(updated);
   };
 
   const fetchClans = async () => {
@@ -1338,7 +1400,7 @@ export default function Admin() {
   };
 
   // Parse effect string to get type and value
-  const parseEffect = (effectStr: string | null): { type: string; value: string; bonusAura?: number; bonusMoney?: number } => {
+  const parseEffect = (effectStr: string | null): { type: string; value: string; bonusAura?: number; bonusMoney?: number; skinImageUrl?: string } => {
     if (!effectStr) return { type: 'USERNAME_COLOR', value: '' };
     try {
       const effect = JSON.parse(effectStr);
@@ -1346,12 +1408,13 @@ export default function Admin() {
       let effectType = effect.type || 'USERNAME_COLOR';
       if (effect.bonusAura !== undefined) effectType = 'BONUS_AURA';
       if (effect.bonusMoney !== undefined) effectType = 'BONUS_MONEY';
-      
-      return { 
-        type: effectType, 
-        value: effect.value || '', 
+
+      return {
+        type: effectType,
+        value: effect.value || '',
         bonusAura: effect.bonusAura,
         bonusMoney: effect.bonusMoney,
+        skinImageUrl: effect.skinImageUrl || '',
       };
     } catch {
       return { type: 'USERNAME_COLOR', value: '' };
@@ -1368,7 +1431,7 @@ export default function Admin() {
   // Open dialog for editing item
   const openEditItemDialog = (item: ShopItem) => {
     setEditingItem(item);
-    const { type: effectType, value: effectValue, bonusAura, bonusMoney } = parseEffect(item.effect);
+    const { type: effectType, value: effectValue, bonusAura, bonusMoney, skinImageUrl } = parseEffect(item.effect);
     setItemForm({
       name: item.name,
       description: item.description,
@@ -1379,6 +1442,7 @@ export default function Admin() {
       effectValue,
       bonusAura: bonusAura || 0,
       bonusMoney: bonusMoney || 0,
+      skinImageUrl: skinImageUrl || '',
     });
     setItemDialogOpen(true);
   };
@@ -1392,16 +1456,16 @@ export default function Admin() {
 
     setSavingItem(true);
     try {
-      // Build effect JSON based on effect type (not applicable for GIFT items)
+      // Build effect JSON based on effect type
       let effect: string | undefined;
-      if (itemForm.type !== 'GIFT') {
-        if (itemForm.effectType === 'BONUS_AURA') {
-          effect = JSON.stringify({ bonusAura: itemForm.bonusAura || 0 });
-        } else if (itemForm.effectType === 'BONUS_MONEY') {
-          effect = JSON.stringify({ bonusMoney: itemForm.bonusMoney || 0 });
-        } else {
-          effect = JSON.stringify({ type: itemForm.effectType, value: itemForm.effectValue });
-        }
+      if (itemForm.effectType === 'BONUS_AURA') {
+        effect = JSON.stringify({ bonusAura: itemForm.bonusAura || 0 });
+      } else if (itemForm.effectType === 'BONUS_MONEY') {
+        effect = JSON.stringify({ bonusMoney: itemForm.bonusMoney || 0 });
+      } else if (itemForm.effectType === 'DOODLE_JUMP_SKIN') {
+        effect = JSON.stringify({ type: 'DOODLE_JUMP_SKIN', skinImageUrl: itemForm.skinImageUrl || '' });
+      } else {
+        effect = JSON.stringify({ type: itemForm.effectType, value: itemForm.effectValue });
       }
 
       const uploadedUrl = itemForm.imageUrl.trim() || undefined;
@@ -2595,10 +2659,70 @@ export default function Admin() {
         </TabsContent>
 
         <TabsContent value="content" className={SPACING.SECTION_SPACING}>
+          {/* Categories management */}
+          <Card>
+            <CardHeader>
+              <CardDescription>Catégories de la boutique</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {loadingCategories ? (
+                <div className="flex justify-center py-6">
+                  <div className="w-1 h-6 bg-foreground/20 animate-pulse" />
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {shopCategories.map((cat) => (
+                      <div key={cat.id} className="flex items-center gap-1 rounded-md border border-border/50 px-2 py-1 text-sm">
+                        <span className="font-mono text-xs text-muted-foreground">{cat.id}</span>
+                        <span className="mx-1 text-muted-foreground/40">|</span>
+                        <span>{cat.label}</span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => removeShopCategory(cat.id)}
+                          disabled={savingCategories}
+                          className="h-5 w-5 p-0 ml-1 text-muted-foreground hover:text-destructive"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      value={newCategoryId}
+                      onChange={(e) => setNewCategoryId(e.target.value)}
+                      placeholder="ID (ex: DOODLE_SKIN)"
+                      className="bg-transparent flex-1"
+                    />
+                    <Input
+                      value={newCategoryLabel}
+                      onChange={(e) => setNewCategoryLabel(e.target.value)}
+                      placeholder="Libellé (ex: Skins Doodle)"
+                      className="bg-transparent flex-1"
+                      onKeyDown={(e) => e.key === 'Enter' && addShopCategory()}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={addShopCategory}
+                      disabled={savingCategories || !newCategoryId.trim() || !newCategoryLabel.trim()}
+                      className="h-9 px-3"
+                    >
+                      {savingCategories ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Items list */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardDescription>Gestion des objets de la boutique</CardDescription>
+                <CardDescription>Objets de la boutique</CardDescription>
                 <Button size="sm" variant="outline" onClick={openCreateItemDialog} className="h-8 w-8 p-0">
                   <Plus className="h-4 w-4" />
                 </Button>
@@ -2612,18 +2736,19 @@ export default function Admin() {
               ) : items.length === 0 ? (
                 <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>Aucun objet créé</p>
               ) : (() => {
-                const ORDER = ['CONSUMABLE', 'COSMETIC', 'UPGRADE', 'GIFT'] as const;
                 const grouped = items.reduce<Record<string, typeof items>>((acc, item) => {
                   acc[item.type] = acc[item.type] || [];
                   acc[item.type].push(item);
                   return acc;
                 }, {});
+                const allTypes = [...shopCategories.map(c => c.id), ...Object.keys(grouped).filter(t => !shopCategories.find(c => c.id === t))];
+                const getCategoryLabel = (typeId: string) => shopCategories.find(c => c.id === typeId)?.label || typeId;
                 return (
                   <div className="space-y-6">
-                    {ORDER.filter(t => grouped[t]?.length).map(type => (
+                    {allTypes.filter(t => grouped[t]?.length).map(type => (
                       <div key={type}>
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
-                          {ITEM_TYPE_LABELS[type] || type}
+                          {getCategoryLabel(type)}
                         </p>
                         <div className="divide-y divide-border/30">
                           {grouped[type].map((item) => {
@@ -2642,9 +2767,7 @@ export default function Admin() {
                                   <div className="min-w-0 flex-1">
                                     <span className="font-medium truncate block">{item.name}</span>
                                     <p className="text-xs text-muted-foreground truncate">{item.description}</p>
-                                    {item.type !== 'GIFT' && (
-                                      <p className="text-xs text-muted-foreground/60">Effet: {effectLabel}</p>
-                                    )}
+                                    <p className="text-xs text-muted-foreground/60">Effet: {effectLabel}</p>
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-4 shrink-0">
@@ -3960,7 +4083,7 @@ export default function Admin() {
 
       {/* Item Create/Edit Dialog */}
       <Dialog open={itemDialogOpen} onOpenChange={setItemDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
               {editingItem ? 'Modifier l\'objet' : 'Créer un objet'}
@@ -3970,51 +4093,36 @@ export default function Admin() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm text-muted-foreground">Nom</label>
-              <Input
-                value={itemForm.name}
-                onChange={(e) => setItemForm(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="Nom de l'objet"
-                className="bg-transparent"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm text-muted-foreground">Description</label>
-              <Textarea
-                value={itemForm.description}
-                onChange={(e) => setItemForm(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Description de l'objet"
-                className="bg-transparent resize-none"
-                rows={3}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm text-muted-foreground">Type</label>
+          <div className="py-2 space-y-4">
+            {/* Row 1: Name + Category + Price */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-1 space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Nom</label>
+                <Input
+                  value={itemForm.name}
+                  onChange={(e) => setItemForm(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Nom de l'objet"
+                  className="bg-transparent"
+                />
+              </div>
+              <div className="col-span-1 space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Catégorie</label>
                 <Select
                   value={itemForm.type}
-                  onValueChange={(value: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE' | 'GIFT') =>
-                    setItemForm(prev => ({ ...prev, type: value }))
-                  }
+                  onValueChange={(value) => setItemForm(prev => ({ ...prev, type: value }))}
                 >
                   <SelectTrigger className="bg-transparent">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="COSMETIC">Cosmétique</SelectItem>
-                    <SelectItem value="CONSUMABLE">Consommable</SelectItem>
-                    <SelectItem value="UPGRADE">Amélioration</SelectItem>
-                    <SelectItem value="GIFT">Cadeau</SelectItem>
+                    {shopCategories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>{cat.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-
-              <div className="space-y-2">
-                <label className="text-sm text-muted-foreground">Prix ($)</label>
+              <div className="col-span-1 space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Prix ($)</label>
                 <Input
                   type="number"
                   value={itemForm.price}
@@ -4025,111 +4133,119 @@ export default function Admin() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm text-muted-foreground">Image (optionnel)</label>
-              <ImagePicker
-                value={itemForm.imageUrl}
-                onChange={(url) => setItemForm(prev => ({ ...prev, imageUrl: url }))}
-                uploadFn={uploadItemImageFile}
+            {/* Row 2: Description */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Description</label>
+              <Textarea
+                value={itemForm.description}
+                onChange={(e) => setItemForm(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Description de l'objet"
+                className="bg-transparent resize-none"
+                rows={2}
               />
             </div>
 
-            {itemForm.type !== 'GIFT' && (<>
-            <div className="space-y-2">
-              <label className="text-sm text-muted-foreground">Effet</label>
-              <Select
-                value={itemForm.effectType}
-                onValueChange={(value) => {
-                  setItemForm(prev => {
-                    // Reset values when changing effect type
-                    const resetValues: Partial<ItemFormData> = {
-                      effectType: value,
-                      effectValue: '',
-                      bonusAura: 0,
-                      bonusMoney: 0,
-                    };
-                    return { ...prev, ...resetValues };
-                  });
-                }}
-              >
-                <SelectTrigger className="bg-transparent">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {EFFECT_TYPES.map((effect) => (
-                    <SelectItem key={effect.value} value={effect.value}>
-                      {effect.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                {EFFECT_TYPES.find(e => e.value === itemForm.effectType)?.description}
-              </p>
+            {/* Row 3: Image + Effect */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Image boutique (optionnel)</label>
+                <ImagePicker
+                  value={itemForm.imageUrl}
+                  onChange={(url) => setItemForm(prev => ({ ...prev, imageUrl: url }))}
+                  uploadFn={uploadItemImageFile}
+                />
+              </div>
+
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Type d'effet</label>
+                  <Select
+                    value={itemForm.effectType}
+                    onValueChange={(value) => {
+                      setItemForm(prev => ({
+                        ...prev,
+                        effectType: value,
+                        effectValue: '',
+                        bonusAura: 0,
+                        bonusMoney: 0,
+                        skinImageUrl: '',
+                      }));
+                    }}
+                  >
+                    <SelectTrigger className="bg-transparent">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EFFECT_TYPES.map((effect) => (
+                        <SelectItem key={effect.value} value={effect.value}>
+                          {effect.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {EFFECT_TYPES.find(e => e.value === itemForm.effectType)?.description}
+                  </p>
+                </div>
+
+                {itemForm.effectType === 'BONUS_AURA' && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Valeur Bonus Aura</label>
+                    <Input
+                      type="number"
+                      value={itemForm.bonusAura || 0}
+                      onChange={(e) => setItemForm(prev => ({ ...prev, bonusAura: parseInt(e.target.value) || 0 }))}
+                      className="bg-transparent"
+                      min="0"
+                    />
+                  </div>
+                )}
+
+                {itemForm.effectType === 'BONUS_MONEY' && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Valeur Bonus Argent</label>
+                    <Input
+                      type="number"
+                      value={itemForm.bonusMoney || 0}
+                      onChange={(e) => setItemForm(prev => ({ ...prev, bonusMoney: parseInt(e.target.value) || 0 }))}
+                      className="bg-transparent"
+                      min="0"
+                    />
+                  </div>
+                )}
+
+                {itemForm.effectType === 'DOODLE_JUMP_SKIN' && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Image du skin</label>
+                    <ImagePicker
+                      value={itemForm.skinImageUrl || ''}
+                      onChange={(url) => setItemForm(prev => ({ ...prev, skinImageUrl: url }))}
+                      uploadFn={uploadItemImageFile}
+                    />
+                    <p className="text-xs text-muted-foreground">Cette image sera utilisée comme sprite du personnage dans Doodle Jump.</p>
+                  </div>
+                )}
+
+                {itemForm.effectType !== 'BONUS_AURA' && itemForm.effectType !== 'BONUS_MONEY' && itemForm.effectType !== 'DOODLE_JUMP_SKIN' && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Valeur de l'effet</label>
+                    <Input
+                      value={itemForm.effectValue}
+                      onChange={(e) => setItemForm(prev => ({ ...prev, effectValue: e.target.value }))}
+                      placeholder="Valeur de l'effet"
+                      className="bg-transparent"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
-
-            {/* Bonus Aura field - only show for BONUS_AURA effect type */}
-            {itemForm.effectType === 'BONUS_AURA' && (
-              <div className="space-y-2">
-                <label className="text-sm text-muted-foreground">Valeur Bonus Aura</label>
-                <Input
-                  type="number"
-                  value={itemForm.bonusAura || 0}
-                  onChange={(e) => setItemForm(prev => ({ ...prev, bonusAura: parseInt(e.target.value) || 0 }))}
-                  placeholder="0"
-                  className="bg-transparent"
-                  min="0"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Montant d'aura donné à l'utilisation de l'objet
-                </p>
-              </div>
-            )}
-
-            {/* Bonus Money field - only show for BONUS_MONEY effect type */}
-            {itemForm.effectType === 'BONUS_MONEY' && (
-              <div className="space-y-2">
-                <label className="text-sm text-muted-foreground">Valeur Bonus Argent</label>
-                <Input
-                  type="number"
-                  value={itemForm.bonusMoney || 0}
-                  onChange={(e) => setItemForm(prev => ({ ...prev, bonusMoney: parseInt(e.target.value) || 0 }))}
-                  placeholder="0"
-                  className="bg-transparent"
-                  min="0"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Montant d'argent donné à l'utilisation de l'objet
-                </p>
-              </div>
-            )}
-
-            {/* Effect value field - only show for other effect types */}
-            {itemForm.effectType !== 'BONUS_AURA' && itemForm.effectType !== 'BONUS_MONEY' && (
-              <div className="space-y-2">
-                <label className="text-sm text-muted-foreground">Valeur de l'effet</label>
-                <Input
-                  value={itemForm.effectValue}
-                  onChange={(e) => setItemForm(prev => ({ ...prev, effectValue: e.target.value }))}
-                  placeholder="Valeur de l'effet"
-                  className="bg-transparent"
-                />
-              </div>
-            )}
-            </>)}
           </div>
 
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setItemDialogOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setItemDialogOpen(false)}>
               Annuler
             </Button>
-            <Button
-              onClick={saveItem}
-              disabled={savingItem}
-            >
+            <Button onClick={saveItem} disabled={savingItem}>
               {savingItem ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (

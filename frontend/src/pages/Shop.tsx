@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
-import { marketplaceApi, giftsApi, usersApi, ShopItem } from '../services/api';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { marketplaceApi, giftsApi, usersApi, ShopItem, ShopCategory } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,63 +13,97 @@ import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { Coins, Loader2, Package, Gift, Send } from 'lucide-react';
 
-type ShopFilter = 'ALL' | 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE' | 'GIFT';
-
-const FILTERS: Array<{ value: ShopFilter; label: string }> = [
-  { value: 'ALL', label: 'Tous' },
-  { value: 'COSMETIC', label: 'Cosmétiques' },
-  { value: 'CONSUMABLE', label: 'Consommables' },
-  { value: 'UPGRADE', label: 'Améliorations' },
-  { value: 'GIFT', label: 'Cadeaux' },
+const DEFAULT_CATEGORIES: ShopCategory[] = [
+  { id: 'COSMETIC', label: 'Cosmétiques' },
+  { id: 'CONSUMABLE', label: 'Consommables' },
+  { id: 'UPGRADE', label: 'Améliorations' },
+  { id: 'GIFT', label: 'Cadeaux' },
 ];
-
-const SECTION_ORDER: Array<ShopItem['type']> = ['COSMETIC', 'CONSUMABLE', 'UPGRADE', 'GIFT'];
-
-const SECTION_LABELS: Record<ShopItem['type'], string> = {
-  COSMETIC: 'Cosmétiques',
-  CONSUMABLE: 'Consommables',
-  UPGRADE: 'Améliorations',
-  GIFT: 'Cadeaux',
-};
-
-const TYPE_LABELS: Record<ShopItem['type'], string> = {
-  CONSUMABLE: 'Consommable',
-  COSMETIC: 'Cosmétique',
-  UPGRADE: 'Amélioration',
-  GIFT: 'Cadeau',
-};
 
 const getEffectLabel = (effect: string | null) => {
   if (!effect) return null;
-
   try {
     const parsed = JSON.parse(effect) as {
       type?: string;
       bonusAura?: number;
       bonusMoney?: number;
     };
-
-    if (typeof parsed.bonusAura === 'number') {
-      return `+${parsed.bonusAura} aura`;
-    }
-
-    if (typeof parsed.bonusMoney === 'number') {
-      return `+$${parsed.bonusMoney}`;
-    }
-
-    if (parsed.type === 'USERNAME_COLOR') {
-      return 'Couleur de pseudo';
-    }
-
-    if (parsed.type === 'PROFILE_PICTURE') {
-      return 'Photo de profil';
-    }
+    if (typeof parsed.bonusAura === 'number') return `+${parsed.bonusAura} aura`;
+    if (typeof parsed.bonusMoney === 'number') return `+$${parsed.bonusMoney}`;
+    if (parsed.type === 'USERNAME_COLOR') return 'Couleur de pseudo';
+    if (parsed.type === 'PROFILE_PICTURE') return 'Photo de profil';
+    if (parsed.type === 'DOODLE_JUMP_SKIN') return 'Skin Doodle Jump';
   } catch {
     return null;
   }
-
   return null;
 };
+
+function DoodleJumpSkinPreview({ skinImageUrl }: { skinImageUrl: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const W = canvas.width;
+    const H = canvas.height;
+
+    // Background
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, W, H);
+
+    // Draw platforms
+    const platforms = [
+      { x: 20, y: H - 30, w: 80 },
+      { x: 110, y: H - 80, w: 80 },
+      { x: 30, y: H - 140, w: 80 },
+      { x: 120, y: H - 200, w: 80 },
+    ];
+    ctx.fillStyle = '#22c55e';
+    ctx.shadowColor = '#22c55e';
+    ctx.shadowBlur = 4;
+    for (const p of platforms) {
+      const r = 4;
+      ctx.beginPath();
+      ctx.moveTo(p.x + r, p.y);
+      ctx.lineTo(p.x + p.w - r, p.y);
+      ctx.arcTo(p.x + p.w, p.y, p.x + p.w, p.y + 10, r);
+      ctx.lineTo(p.x + p.w, p.y + 10);
+      ctx.arcTo(p.x + p.w, p.y + 10, p.x, p.y + 10, r);
+      ctx.lineTo(p.x + r, p.y + 10);
+      ctx.arcTo(p.x, p.y + 10, p.x, p.y, r);
+      ctx.arcTo(p.x, p.y, p.x + p.w, p.y, r);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+
+    // Draw skin image on top of the second platform
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const plat = platforms[1];
+      const size = 36;
+      const cx = plat.x + plat.w / 2 - size / 2;
+      const cy = plat.y - size - 2;
+      ctx.drawImage(img, cx, cy, size, size);
+    };
+    img.src = resolveImageUrl(skinImageUrl);
+  }, [skinImageUrl]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={230}
+      height={176}
+      className="h-44 w-full object-cover"
+      style={{ display: 'block' }}
+    />
+  );
+}
 
 function ShopCard({
   item,
@@ -88,22 +122,40 @@ function ShopCard({
   const effectLabel = isGift ? `${item.price} aura pour le destinataire` : getEffectLabel(item.effect);
   const canAfford = (user?.money ?? 0) >= item.price;
 
+  let skinImageUrl: string | null = null;
+  try {
+    if (item.effect) {
+      const parsed = JSON.parse(item.effect);
+      if (parsed.type === 'DOODLE_JUMP_SKIN' && parsed.skinImageUrl) {
+        skinImageUrl = parsed.skinImageUrl as string;
+      }
+    }
+  } catch { /* empty */ }
+
+  const renderImage = () => {
+    if (skinImageUrl) {
+      return <DoodleJumpSkinPreview skinImageUrl={skinImageUrl} />;
+    }
+    if (item.imageUrl) {
+      return <img src={resolveImageUrl(item.imageUrl)} alt={item.name} className="h-44 w-full object-cover" />;
+    }
+    return (
+      <div className="flex h-44 w-full items-center justify-center bg-muted/20">
+        {isGift ? <Gift className="h-10 w-10 text-muted-foreground" /> : <Package className="h-10 w-10 text-muted-foreground" />}
+      </div>
+    );
+  };
+
   return (
     <Card className="overflow-hidden">
       <CardContent className="p-0">
-        {item.imageUrl ? (
-          <img src={resolveImageUrl(item.imageUrl)} alt={item.name} className="h-44 w-full object-cover" />
-        ) : (
-          <div className="flex h-44 w-full items-center justify-center bg-muted/20">
-            {isGift ? <Gift className="h-10 w-10 text-muted-foreground" /> : <Package className="h-10 w-10 text-muted-foreground" />}
-          </div>
-        )}
+        {renderImage()}
         <div className="space-y-4 p-5">
           <div className="space-y-2">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <h3 className={TYPOGRAPHY.H5}>{item.name}</h3>
-                <p className="text-xs text-muted-foreground">{TYPE_LABELS[item.type]}</p>
+                <p className="text-xs text-muted-foreground">{item.type}</p>
               </div>
               <div className="rounded-md border border-border/40 px-2 py-1 text-sm font-medium tabular-nums">
                 ${item.price}
@@ -136,8 +188,9 @@ function ShopCard({
 
 export default function Shop() {
   const { user, updateBalance } = useAuth();
-  const [filter, setFilter] = useState<ShopFilter>('ALL');
+  const [filter, setFilter] = useState<string>('ALL');
   const [items, setItems] = useState<ShopItem[]>([]);
+  const [categories, setCategories] = useState<ShopCategory[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
   const [buyingItemId, setBuyingItemId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -151,11 +204,17 @@ export default function Shop() {
   const [loadingUsers, setLoadingUsers] = useState(false);
 
   useEffect(() => {
-    const fetchItems = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await marketplaceApi.getItems({ limit: 100 });
-        setItems(response.data.items || []);
+        const [itemsRes, categoriesRes] = await Promise.all([
+          marketplaceApi.getItems({ limit: 100 }),
+          marketplaceApi.getCategories(),
+        ]);
+        setItems(itemsRes.data.items || []);
+        if (categoriesRes.data.categories?.length) {
+          setCategories(categoriesRes.data.categories);
+        }
       } catch (error) {
         console.error('Failed to fetch shop items:', error);
         setMessage({ type: 'error', text: 'Impossible de charger la boutique.' });
@@ -164,8 +223,13 @@ export default function Shop() {
       }
     };
 
-    fetchItems();
+    fetchData();
   }, []);
+
+  const filters = useMemo(() => [
+    { value: 'ALL', label: 'Tous' },
+    ...categories.map((c) => ({ value: c.id, label: c.label })),
+  ], [categories]);
 
   const fetchUsers = useCallback(async () => {
     setLoadingUsers(true);
@@ -189,14 +253,14 @@ export default function Shop() {
   ), [availableItems, filter]);
 
   const sections = useMemo(() => (
-    SECTION_ORDER
-      .map((type) => ({
-        type,
-        label: SECTION_LABELS[type],
-        items: availableItems.filter((item) => item.type === type),
+    categories
+      .map((cat) => ({
+        id: cat.id,
+        label: cat.label,
+        items: availableItems.filter((item) => item.type === cat.id),
       }))
       .filter((s) => s.items.length > 0)
-  ), [availableItems]);
+  ), [availableItems, categories]);
 
   const handlePurchase = async (item: ShopItem) => {
     if (!user || buyingItemId) return;
@@ -206,7 +270,22 @@ export default function Shop() {
       setMessage(null);
       const response = await marketplaceApi.purchase({ itemId: item.id, quantity: 1 });
       updateBalance(response.data.newBalance.aura, response.data.newBalance.money);
-      setMessage({ type: 'success', text: `${item.name} ajoute a ton inventaire.` });
+
+      // Check if it's a doodle jump skin
+      let isDoodleSkin = false;
+      try {
+        if (item.effect) {
+          const parsed = JSON.parse(item.effect);
+          if (parsed.type === 'DOODLE_JUMP_SKIN') isDoodleSkin = true;
+        }
+      } catch { /* empty */ }
+
+      setMessage({
+        type: 'success',
+        text: isDoodleSkin
+          ? `Skin "${item.name}" débloqué ! Disponible dans Doodle Jump.`
+          : `${item.name} ajouté à ton inventaire.`,
+      });
     } catch (error: any) {
       setMessage({
         type: 'error',
@@ -263,9 +342,9 @@ export default function Shop() {
 
         <div className={SPACING.SECTION_SPACING}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <Tabs value={filter} onValueChange={(value) => setFilter(value as ShopFilter)}>
+            <Tabs value={filter} onValueChange={setFilter}>
               <TabsList className="h-auto flex-wrap">
-                {FILTERS.map((entry) => (
+                {filters.map((entry) => (
                   <TabsTrigger key={entry.value} value={entry.value}>
                     {entry.label}
                   </TabsTrigger>
@@ -291,7 +370,7 @@ export default function Shop() {
           ) : filter === 'ALL' ? (
             <div className="space-y-8">
               {sections.map((section) => (
-                <div key={section.type} className="space-y-4">
+                <div key={section.id} className="space-y-4">
                   <p className="text-xs font-medium text-muted-foreground/60">{section.label}</p>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {section.items.map((item) => <ShopCard key={item.id} item={item} user={user} buyingItemId={buyingItemId} onPurchase={handlePurchase} onSend={openSendDialog} />)}

@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSocket } from '../contexts/SocketContext';
-import { gamesApi } from '../services/api';
+import { gamesApi, marketplaceApi } from '../services/api';
+import { resolveImageUrl } from '@/lib/images';
 import { Play, RotateCcw, Trophy, X, Eye, EyeOff, Users, Maximize2, Minimize2 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -30,7 +31,6 @@ const CHARACTER_HEIGHT = 40;
 const PLATFORM_WIDTH = 80;
 const PLATFORM_HEIGHT = 15;
 const PLATFORM_COUNT = 7;
-const PLAYER_IMAGE_SRC = '/assets/doodle-player.png';
 
 // Timing
 const DISAPPEARING_PLATFORM_FADE_TIME = 1000;
@@ -39,27 +39,32 @@ const BROKEN_PLATFORM_FADE_TIME = 500;
 // ============================================
 // SKINS
 // ============================================
-export type SkinId = 'default' | 'red' | 'blue' | 'green' | 'yellow' | 'purple' | 'orange' | 'pink';
+export type SkinId = string; // 'default' or an item ID for purchased skins
 
-export interface Skin {
+export interface DoodleSkin {
   id: SkinId;
+  name: string;
+  imageUrl: string; // URL to the image sprite
+}
+
+export const DEFAULT_SKIN: DoodleSkin = {
+  id: 'default',
+  name: 'Guava',
+  imageUrl: '/assets/doodle-player.png',
+};
+
+const SKIN_STORAGE_KEY = 'doodle-jump-skin';
+
+// Legacy - keep for multiplayer remote player fallback only (not used for local skins)
+export interface Skin {
+  id: string;
   name: string;
   color: string;
   eyeColor: string;
 }
-
 export const SKINS: Skin[] = [
-  { id: 'default', name: 'Classique', color: '#111827', eyeColor: '#ffffff' },
-  { id: 'red', name: 'Rouge', color: '#ef4444', eyeColor: '#ffffff' },
-  { id: 'blue', name: 'Bleu', color: '#3b82f6', eyeColor: '#ffffff' },
-  { id: 'green', name: 'Vert', color: '#22c55e', eyeColor: '#ffffff' },
-  { id: 'yellow', name: 'Jaune', color: '#eab308', eyeColor: '#000000' },
-  { id: 'purple', name: 'Violet', color: '#a855f7', eyeColor: '#ffffff' },
-  { id: 'orange', name: 'Orange', color: '#f97316', eyeColor: '#ffffff' },
-  { id: 'pink', name: 'Rose', color: '#ec4899', eyeColor: '#ffffff' },
+  { id: 'default', name: 'Guava', color: '#111827', eyeColor: '#ffffff' },
 ];
-
-const SKIN_STORAGE_KEY = 'doodle-jump-skin';
 const MORT_SUBITE_PLATFORM_COLOR = '#dc2626';
 
 // ============================================
@@ -224,11 +229,12 @@ export default function DoodleJump() {
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [playerImageLoaded, setPlayerImageLoaded] = useState(false);
   const [selectedSkin, setSelectedSkin] = useState<SkinId>(() => {
     const saved = localStorage.getItem(SKIN_STORAGE_KEY);
     return (saved as SkinId) || 'default';
   });
+  const [purchasedSkins, setPurchasedSkins] = useState<DoodleSkin[]>([]);
+  const skinImagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
   const [isMortSubite, setIsMortSubite] = useState(false);
   const [isMultiplayer, setIsMultiplayer] = useState(false);
   const [spectatorCount, setSpectatorCount] = useState(0);
@@ -243,15 +249,46 @@ export default function DoodleJump() {
 
   useEffect(() => {
     const img = new Image();
-    img.src = PLAYER_IMAGE_SRC;
-    img.onload = () => setPlayerImageLoaded(true);
-    img.onerror = () => setPlayerImageLoaded(false);
+    img.src = DEFAULT_SKIN.imageUrl;
     playerImageRef.current = img;
+    skinImagesRef.current.set('default', img);
 
     return () => {
       playerImageRef.current = null;
     };
   }, []);
+
+  // Load purchased skins from inventory
+  useEffect(() => {
+    if (!user?.id) return;
+    marketplaceApi.getInventory(user.id).then((res) => {
+      const inventoryItems = (res.data as { items?: { id: string; item: { name: string; effect: string | null; imageUrl: string | null } }[] }).items || [];
+      const skins: DoodleSkin[] = [];
+      for (const entry of inventoryItems) {
+        try {
+          if (!entry.item.effect) continue;
+          const effect = JSON.parse(entry.item.effect);
+          if (effect.type === 'DOODLE_JUMP_SKIN' && effect.skinImageUrl) {
+            const skin: DoodleSkin = {
+              id: entry.id,
+              name: entry.item.name,
+              imageUrl: effect.skinImageUrl as string,
+            };
+            skins.push(skin);
+            // Preload image
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.src = resolveImageUrl(skin.imageUrl);
+            skinImagesRef.current.set(skin.id, img);
+          }
+        } catch { /* skip */ }
+      }
+      setPurchasedSkins(skins);
+    }).catch(() => { /* ignore */ });
+  }, [user?.id]);
+
+  // All available skins = default + purchased
+  const allSkins = useMemo<DoodleSkin[]>(() => [DEFAULT_SKIN, ...purchasedSkins], [purchasedSkins]);
 
   // Save skin selection to localStorage
   useEffect(() => {
@@ -636,26 +673,21 @@ export default function DoodleJump() {
     }
 
     const playerScreenY = CANVAS_HEIGHT - positionRef.current.y - CHARACTER_HEIGHT;
-    const skin = SKINS.find((s) => s.id === skinId) || SKINS[0];
+    const skinImg = skinImagesRef.current.get(skinId);
 
-    if (playerImageLoaded && playerImageRef.current && skinId === 'default') {
+    if (skinImg && skinImg.complete && skinImg.naturalWidth > 0) {
       ctx.save();
       if (facingLeftRef.current) {
         ctx.translate(positionRef.current.x + CHARACTER_WIDTH, playerScreenY);
         ctx.scale(-1, 1);
-        ctx.drawImage(playerImageRef.current, 0, 0, CHARACTER_WIDTH, CHARACTER_HEIGHT);
+        ctx.drawImage(skinImg, 0, 0, CHARACTER_WIDTH, CHARACTER_HEIGHT);
       } else {
-        ctx.drawImage(
-          playerImageRef.current,
-          positionRef.current.x,
-          playerScreenY,
-          CHARACTER_WIDTH,
-          CHARACTER_HEIGHT
-        );
+        ctx.drawImage(skinImg, positionRef.current.x, playerScreenY, CHARACTER_WIDTH, CHARACTER_HEIGHT);
       }
       ctx.restore();
     } else {
-      ctx.fillStyle = skin.color;
+      // Fallback: draw a simple circle
+      ctx.fillStyle = '#111827';
       ctx.beginPath();
       ctx.arc(
         positionRef.current.x + CHARACTER_WIDTH / 2,
@@ -664,13 +696,6 @@ export default function DoodleJump() {
         0,
         Math.PI * 2
       );
-      ctx.fill();
-
-      ctx.fillStyle = skin.eyeColor;
-      const eyeOffsetX = facingLeftRef.current ? -4 : 4;
-      ctx.beginPath();
-      ctx.arc(positionRef.current.x + CHARACTER_WIDTH / 2 - 6 + eyeOffsetX, playerScreenY + CHARACTER_HEIGHT / 2 - 5, 4, 0, Math.PI * 2);
-      ctx.arc(positionRef.current.x + CHARACTER_WIDTH / 2 + 6 + eyeOffsetX, playerScreenY + CHARACTER_HEIGHT / 2 - 5, 4, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -727,7 +752,7 @@ export default function DoodleJump() {
       ctx.fill();
       ctx.globalAlpha = 1;
     }
-  }, [colors, playerImageLoaded, user]);
+  }, [colors, user]);
 
   // ============================================
   // GAME LOOP (physics from old implementation)
@@ -1358,7 +1383,7 @@ export default function DoodleJump() {
           </CardHeader>
           <CardContent className="px-4 pb-4">
             <div className={`grid grid-cols-4 gap-1.5 ${isPlaying ? 'opacity-40 pointer-events-none' : ''}`}>
-              {SKINS.map((skin) => (
+              {allSkins.map((skin) => (
                 <button
                   key={skin.id}
                   type="button"
@@ -1370,10 +1395,12 @@ export default function DoodleJump() {
                   }`}
                   title={skin.name}
                 >
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: skin.color }}>
-                    <div
-                      className="w-1.5 h-1.5 rounded-full"
-                      style={{ backgroundColor: skin.eyeColor, boxShadow: `-4px 0 0 0 ${skin.eyeColor}, 4px 0 0 0 ${skin.eyeColor}` }}
+                  <div className="w-8 h-8 rounded overflow-hidden flex items-center justify-center bg-muted/30">
+                    <img
+                      src={resolveImageUrl(skin.imageUrl)}
+                      alt={skin.name}
+                      className="w-full h-full object-contain"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
                   </div>
                   <span className="text-[9px] text-muted-foreground truncate w-full text-center leading-tight">{skin.name}</span>

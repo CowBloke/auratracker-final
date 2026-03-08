@@ -83,7 +83,18 @@ export default function Inventory() {
     try {
       setLoading(true);
       const response = await marketplaceApi.getInventory(user!.id);
-      setItems(response.data.items);
+      // Filter out Doodle Jump skins — they appear in Doodle Jump's skin selector instead
+      const allItems = (response.data.items || []) as UserItem[];
+      const filtered = allItems.filter((userItem) => {
+        try {
+          if (!userItem.item.effect) return true;
+          const effect = JSON.parse(userItem.item.effect);
+          return effect.type !== 'DOODLE_JUMP_SKIN';
+        } catch {
+          return true;
+        }
+      });
+      setItems(filtered);
     } catch (error) {
       console.error('Failed to fetch inventory:', error);
     } finally {

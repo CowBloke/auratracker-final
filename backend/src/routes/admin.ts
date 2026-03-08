@@ -241,6 +241,44 @@ router.delete('/items/:id', authMiddleware, requireAdmin, async (req: AuthReques
   }
 });
 
+// ========== SHOP CATEGORIES MANAGEMENT ==========
+
+const DEFAULT_SHOP_CATEGORIES = [
+  { id: 'COSMETIC', label: 'Cosmétiques' },
+  { id: 'CONSUMABLE', label: 'Consommables' },
+  { id: 'UPGRADE', label: 'Améliorations' },
+  { id: 'GIFT', label: 'Cadeaux' },
+];
+
+router.get('/shop-categories', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    const setting = await prisma.gameSettings.findUnique({ where: { key: 'shop_categories' } });
+    const categories = setting ? JSON.parse(setting.value) : DEFAULT_SHOP_CATEGORIES;
+    res.json({ categories });
+  } catch (error) {
+    console.error('Admin get shop categories error:', error);
+    res.status(500).json({ error: 'Failed to get shop categories' });
+  }
+});
+
+router.put('/shop-categories', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { categories } = req.body;
+    if (!Array.isArray(categories)) {
+      return res.status(400).json({ error: 'Categories must be an array' });
+    }
+    await prisma.gameSettings.upsert({
+      where: { key: 'shop_categories' },
+      create: { key: 'shop_categories', value: JSON.stringify(categories) },
+      update: { value: JSON.stringify(categories) },
+    });
+    res.json({ categories });
+  } catch (error) {
+    console.error('Admin update shop categories error:', error);
+    res.status(500).json({ error: 'Failed to update shop categories' });
+  }
+});
+
 // ========== CLANS MANAGEMENT ==========
 
 router.get('/clans', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response) => {
