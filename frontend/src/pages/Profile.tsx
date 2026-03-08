@@ -10,6 +10,7 @@ import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
 import { UsernameDisplay } from '@/components/ui/username-display';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ProfileUser {
   id: string;
@@ -152,6 +153,8 @@ export default function Profile() {
   const totalMoneyValue = auraCoinValue !== null
     ? profileUser.money + auraCoinValue
     : null;
+  const isTopMoney = (rankings?.money?.rank ?? Number.POSITIVE_INFINITY) <= 5;
+  const isTopAura = (rankings?.aura?.rank ?? Number.POSITIVE_INFINITY) <= 5;
 
   return (
     <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
@@ -185,6 +188,48 @@ export default function Profile() {
             className={cn(TYPOGRAPHY.H1, "md:text-7xl")}
             labelClassName="text-sm md:text-base text-muted-foreground"
           />
+          {(isTopMoney || isTopAura) && (
+            <div className="mt-3 flex items-center gap-1">
+              {isTopMoney && (
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex min-w-7 items-center justify-center rounded-full border border-border/60 px-2 py-1 text-[10px] font-semibold text-muted-foreground cursor-help">
+                        ARG
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <div className="space-y-1">
+                        <p className="font-medium">Top 5 Argent</p>
+                        <p className="text-xs text-muted-foreground">
+                          Ce joueur fait partie des 5 joueurs avec le plus d'argent
+                        </p>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+              {isTopAura && (
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex min-w-7 items-center justify-center rounded-full border border-border/60 px-2 py-1 text-[10px] font-semibold text-muted-foreground cursor-help">
+                        AUR
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <div className="space-y-1">
+                        <p className="font-medium">Top 5 Aura</p>
+                        <p className="text-xs text-muted-foreground">
+                          Ce joueur fait partie des 5 joueurs avec le plus d'aura
+                        </p>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
+          )}
             <p className={cn(TYPOGRAPHY.SMALL, "mt-2")}>
               Membre depuis {new Date(profileUser.createdAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
             </p>

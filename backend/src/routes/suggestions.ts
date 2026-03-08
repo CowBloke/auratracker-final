@@ -3,6 +3,7 @@ import { prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { logSuggestion } from '../utils/logger.js';
 import { isAllowedImageUrl } from '../utils/uploads.js';
+import { createNotification } from '../utils/notifications.js';
 
 const router = Router();
 
@@ -162,6 +163,27 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
       title: suggestion.title,
     });
 
+    const admins = await prisma.user.findMany({
+      where: { isAdmin: true, isApproved: true },
+      select: { id: true },
+    });
+
+    await Promise.allSettled(admins.map((admin) =>
+      createNotification({
+        userId: admin.id,
+        type: 'SYSTEM',
+        title: 'Nouvelle suggestion',
+        body: `${suggestion.user.username} a propose "${suggestion.title}".`,
+        data: {
+          suggestionId: suggestion.id,
+          title: suggestion.title,
+          authorId: suggestion.user.id,
+        },
+        link: '/suggestions',
+        icon: 'lightbulb',
+      })
+    ));
+
     res.status(201).json({
       suggestion: {
         ...suggestion,
@@ -230,6 +252,26 @@ router.post('/:id/comments', authMiddleware, async (req: AuthRequest, res: Respo
       suggestionId: id,
       commentId: comment.id,
     });
+
+    const suggestionAuthor = await prisma.suggestion.findUnique({
+      where: { id },
+      select: { userId: true, title: true },
+    });
+
+    if (suggestionAuthor && suggestionAuthor.userId !== req.user!.id) {
+      createNotification({
+        userId: suggestionAuthor.userId,
+        type: 'SYSTEM',
+        title: 'Nouveau commentaire',
+        body: `${comment.user.username} a commente ta suggestion "${suggestionAuthor.title}".`,
+        data: {
+          suggestionId: id,
+          commentId: comment.id,
+        },
+        link: '/suggestions',
+        icon: 'message-square',
+      }).catch(() => {});
+    }
 
     res.status(201).json({ comment });
   } catch (error) {
@@ -310,6 +352,22 @@ router.post('/:id/vote', authMiddleware, async (req: AuthRequest, res: Response)
       suggestionId: id,
       vote: value === 1 ? 'upvote' : value === -1 ? 'downvote' : 'removed',
     });
+
+    if (suggestion.userId !== req.user!.id && value !== 0) {
+      createNotification({
+        userId: suggestion.userId,
+        type: 'SYSTEM',
+        title: value === 1 ? 'Nouvel upvote' : 'Nouveau downvote',
+        body: `${voter?.username || 'Un utilisateur'} a ${value === 1 ? 'approuve' : 'desapprouve'} ta suggestion "${suggestion.title}".`,
+        data: {
+          suggestionId: id,
+          voterId: req.user!.id,
+          value,
+        },
+        link: '/suggestions',
+        icon: value === 1 ? 'thumbs-up' : 'thumbs-down',
+      }).catch(() => {});
+    }
 
     res.json({
       upvotes,
@@ -430,6 +488,27 @@ router.post('/:id/rating', authMiddleware, async (req: AuthRequest, res: Respons
       suggestionId: id,
       rating,
     });
+
+    const ratedSuggestion = await prisma.suggestion.findUnique({
+      where: { id },
+      select: { userId: true, title: true },
+    });
+
+    if (ratedSuggestion && ratedSuggestion.userId !== req.user!.id) {
+      createNotification({
+        userId: ratedSuggestion.userId,
+        type: 'SYSTEM',
+        title: 'Nouvelle note',
+        body: `${req.user!.username} a note ta suggestion "${ratedSuggestion.title}" avec ${rating}/10.`,
+        data: {
+          suggestionId: id,
+          rating,
+          raterId: req.user!.id,
+        },
+        link: '/suggestions',
+        icon: 'star',
+      }).catch(() => {});
+    }
 
     res.json({
       averageRating,

@@ -403,14 +403,166 @@ export interface ClanDetail extends ClanSummary {
     isLeader: boolean;
     hasPendingRequest: boolean;
   };
+  warHub: ClanWarHub;
+}
+
+export interface ClanWarActionType {
+  type: 'RAID' | 'SIEGE' | 'SABOTAGE';
+  label: string;
+  description: string;
+  staminaCost: number;
+  minPoints: number;
+  maxPoints: number;
+  structureDamage: number;
+}
+
+export interface ClanWarDefenseType {
+  type: 'FORTRESS' | 'ARMORY' | 'BANNER';
+  label: string;
+  description: string;
+  baseDurability: number;
+  durabilityPerLevel: number;
+  maxLevel: number;
+}
+
+export interface ClanWarDefenseState {
+  type: ClanWarDefenseType['type'];
+  label: string;
+  description: string;
+  level: number;
+  durability: number;
+  maxDurability: number;
+  isActive: boolean;
+  contributions: number;
+}
+
+export interface ClanWarAttackLog {
+  id: string;
+  attackType: ClanWarActionType['type'];
+  attackLabel: string;
+  user: {
+    id: string;
+    username: string;
+    usernameColor: string | null;
+    profilePicture: string | null;
+  };
+  attackingClan: {
+    id: string;
+    name: string;
+  };
+  targetClan: {
+    id: string;
+    name: string;
+  };
+  staminaCost: number;
+  basePoints: number;
+  bonusPoints: number;
+  defenseMitigation: number;
+  structureDamage: number;
+  finalPoints: number;
+  createdAt: string;
+}
+
+export interface ClanWarFortificationLog {
+  id: string;
+  user: {
+    id: string;
+    username: string;
+    usernameColor: string | null;
+    profilePicture: string | null;
+  };
+  clanId: string;
+  defenseType: ClanWarDefenseType['type'];
+  defenseLabel: string;
+  levelAdded: number;
+  durabilityAdded: number;
+  createdAt: string;
+}
+
+export interface ClanWarState {
+  id: string;
+  status: 'PREPARING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+  startsAt: string;
+  endsAt: string;
+  completedAt: string | null;
+  targetScore: number;
+  attackerScore: number;
+  defenderScore: number;
+  scoreGap: number;
+  viewerSide: 'ATTACKER' | 'DEFENDER' | 'SPECTATOR';
+  viewerScore: number;
+  opponentScore: number;
+  attackerClan: ClanSummary;
+  defenderClan: ClanSummary;
+  winnerClan: {
+    id: string;
+    name: string;
+    imageUrl: string | null;
+  } | null;
+  winnerUser: {
+    id: string;
+    username: string;
+    usernameColor: string | null;
+    profilePicture: string | null;
+  } | null;
+  rewardTable: {
+    winner: {
+      money: number;
+      aura: number;
+    };
+    loser: {
+      money: number;
+      aura: number;
+    };
+  };
+  defenses: {
+    attacker: ClanWarDefenseState[];
+    defender: ClanWarDefenseState[];
+  };
+  viewerActions: {
+    staminaCap: number;
+    staminaUsed: number;
+    staminaRemaining: number;
+    fortificationsCap: number;
+    fortificationsUsed: number;
+    fortificationsRemaining: number;
+  };
+  recentAttacks: ClanWarAttackLog[];
+  recentFortifications: ClanWarFortificationLog[];
+}
+
+export interface ClanWarHub {
+  currentWar: ClanWarState | null;
+  history: ClanWarState[];
+  eligibleOpponents: ClanSummary[];
+  cooldownEndsAt: string | null;
+  canDeclareWar: boolean;
+  minimumMembersRequired: number;
+  attackTypes: ClanWarActionType[];
+  defenseTypes: ClanWarDefenseType[];
+}
+
+export interface ClansListResponse {
+  clans: ClanSummary[];
+  meta: {
+    viewerClanId: string | null;
+    viewerIsClanLeader: boolean;
+    activeWars: ClanWarState[];
+  };
 }
 
 export const clansApi = {
-  list: () => api.get<{ clans: ClanSummary[] }>('/clans'),
+  list: () => api.get<ClansListResponse>('/clans'),
   getById: (id: string) => api.get<{ clan: ClanDetail }>(`/clans/${id}`),
   create: (data: { name: string; description?: string; imageUrl?: string; isPublic?: boolean }) =>
     api.post<{ clan: ClanSummary }>('/clans', data),
   join: (id: string) => api.post<{ status: 'joined' | 'requested'; requestId?: string }>(`/clans/${id}/join`),
+  declareWar: (clanId: string, targetClanId: string) =>
+    api.post<{ war: ClanWarState }>(`/clans/${clanId}/war/declare`, { targetClanId }),
+  fortifyWar: (clanId: string, defenseType: ClanWarDefenseType['type']) =>
+    api.post<{ war: ClanWarState | null }>(`/clans/${clanId}/war/fortify`, { defenseType }),
+  attackWar: (clanId: string, attackType: ClanWarActionType['type']) =>
+    api.post<{ war: ClanWarState | null; completed: boolean }>(`/clans/${clanId}/war/attack`, { attackType }),
   leave: (id: string) => api.delete(`/clans/${id}/leave`),
   acceptRequest: (clanId: string, requestId: string) =>
     api.post(`/clans/${clanId}/requests/${requestId}/accept`),
@@ -455,6 +607,45 @@ export interface AdminUpdatePopup {
   _count: {
     views: number;
   };
+}
+
+export interface AdminClanMember {
+  id: string;
+  userId: string;
+  isLeader: boolean;
+  joinedAt: string;
+  user: {
+    id: string;
+    username: string;
+    usernameColor: string | null;
+    profilePicture: string | null;
+    aura: number | string;
+  };
+}
+
+export interface AdminClan {
+  id: string;
+  name: string;
+  description: string | null;
+  imageUrl: string | null;
+  isPublic: boolean;
+  maxMembers: number;
+  createdAt: string;
+  updatedAt: string;
+  owner: {
+    id: string;
+    username: string;
+    usernameColor: string | null;
+    profilePicture: string | null;
+    aura: number | string;
+  };
+  members: AdminClanMember[];
+  activeWar: {
+    id: string;
+    status: 'PREPARING' | 'ACTIVE';
+    startsAt: string;
+    endsAt: string;
+  } | null;
 }
 
 
@@ -620,6 +811,12 @@ const runRareAction = (data: AdminRareAction) => api.post('/admin/rare', data);
 export const adminApi = {
   runRareAction,
   getUsers: () => api.get<{ users: AdminUser[] }>('/admin/users'),
+  getClans: () => api.get<{ clans: AdminClan[] }>('/admin/clans'),
+  updateClan: (id: string, data: { name?: string; description?: string; imageUrl?: string; isPublic?: boolean; maxMembers?: number }) =>
+    api.put<{ clan: AdminClan }>(`/admin/clans/${id}`, data),
+  transferClanLeadership: (id: string, targetUserId: string) =>
+    api.post<{ success: boolean }>(`/admin/clans/${id}/transfer-leadership`, { targetUserId }),
+  deleteClan: (id: string) => api.delete<{ success: boolean }>(`/admin/clans/${id}`),
   updateUser: (id: string, data: { username?: string; firstName?: string | null; aura?: number; money?: number; auraCoinBalance?: number; dailyAuraLimit?: number; password?: string; isChatMuted?: boolean }) =>
     api.put<{ user: AdminUser }>(`/admin/users/${id}`, data),
   deleteUser: (id: string) => api.delete<{ success: boolean; message: string }>(`/admin/users/${id}`),

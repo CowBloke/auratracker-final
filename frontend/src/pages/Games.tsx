@@ -54,6 +54,14 @@ const games = [
     image: '/images/games/doodlejump.png',
   },
   {
+    id: 'logic-lab',
+    pageKey: 'game-logic-lab',
+    name: 'Logic Lab',
+    description: 'Suites logiques, intrus, anagrammes, analogies et mini-sudoku dans une session scoree.',
+    type: 'Logique',
+    emoji: '🧠',
+  },
+  {
     id: 'game-2048',
     pageKey: 'game-2048',
     name: '2048',
@@ -110,6 +118,30 @@ const games = [
     image: '/images/games/tetris.png',
   },
   {
+    id: 'knife-hit',
+    pageKey: 'game-knife-hit',
+    name: 'Knife Hit',
+    description: 'Lance au bon moment, evite les lames en place et grimpe de niveau en niveau.',
+    type: 'Arcade',
+    image: '/images/games/knifehit.svg',
+  },
+  {
+    id: 'helix-jump',
+    pageKey: 'game-helix-jump',
+    name: 'Helix Jump',
+    description: 'Fais tourner la tour, plonge dans les ouvertures et evite les plateformes rouges.',
+    type: 'Arcade',
+    emoji: '🌀',
+  },
+  {
+    id: 'subway-rush',
+    pageKey: 'game-subway-rush',
+    name: 'Subway Rush',
+    description: 'Runner endless en 3 voies. Saute, glisse et esquive les trains.',
+    type: 'Arcade',
+    emoji: '🚇',
+  },
+  {
     id: 'goyave-empire',
     pageKey: 'game-goyave-empire',
     name: 'Goyave Empire',
@@ -126,6 +158,15 @@ const games = [
     type: 'Duel',
     requiresParty: true,
     image: '/images/games/puissance4.png',
+  },
+  {
+    id: 'echecs',
+    pageKey: 'game-echecs',
+    name: 'Échecs',
+    description: 'Duel complet avec roque, prise en passant, promotion et mat.',
+    type: 'Duel',
+    requiresParty: true,
+    image: '/images/games/chess.svg',
   },
 ];
 
@@ -168,6 +209,9 @@ export default function Games() {
     if (gameId === 'flappy-bird') {
       return '/games/flappy-bird';
     }
+    if (gameId === 'logic-lab') {
+      return '/games/logic-lab';
+    }
     if (gameId === 'solitaire') {
       return '/games/solitaire';
     }
@@ -177,8 +221,20 @@ export default function Games() {
     if (gameId === 'tetris') {
       return '/games/tetris';
     }
+    if (gameId === 'knife-hit') {
+      return '/games/knife-hit';
+    }
+    if (gameId === 'helix-jump') {
+      return '/games/helix-jump';
+    }
+    if (gameId === 'subway-rush') {
+      return '/games/subway-rush';
+    }
     if (gameId === 'puissance-quatre') {
       return '/games/puissance-quatre';
+    }
+    if (gameId === 'echecs') {
+      return '/games/echecs';
     }
     return `/games/${gameId}`;
   };
@@ -210,13 +266,15 @@ export default function Games() {
                       {game.emoji}
                     </div>
                   )}
-                  <img
-                    src={game.image}
-                    alt={game.name}
-                    className="absolute inset-0 h-full w-full object-cover"
-                    loading="lazy"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                  />
+                  {game.image && (
+                    <img
+                      src={game.image}
+                      alt={game.name}
+                      className="absolute inset-0 h-full w-full object-cover"
+                      loading="lazy"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
                   <CardContent className="relative z-10 flex h-full flex-col justify-end p-5 text-white">
                     <p className="text-xs font-medium   text-white/70">{game.type}</p>

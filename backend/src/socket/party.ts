@@ -4,8 +4,10 @@ import { sendActiveGameState, sendPendingBombPartyPlayAgainPrompt } from './bomb
 import { sendActivePokerState, sendPendingPokerPlayAgainPrompt } from './poker.js';
 import { sendPendingPetitBacPlayAgainPrompt, sendActivePetitBacGameState } from './petitbac.js';
 import { sendActiveBattleshipState, sendPendingBattleshipPlayAgainPrompt } from './battleship.js';
+import { sendActiveChessState, sendPendingChessPlayAgainPrompt } from './chess.js';
 import { logParty } from '../utils/logger.js';
 import { checkQuestProgress } from '../routes/quests.js';
+import { createNotification } from '../utils/notifications.js';
 
 interface PartyInvite {
   partyId: string;
@@ -189,6 +191,8 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
         sendPendingPetitBacPlayAgainPrompt(socket, membership.partyId, userId);
         sendActiveBattleshipState(socket, membership.partyId, userId);
         sendPendingBattleshipPlayAgainPrompt(socket, membership.partyId, userId);
+        sendActiveChessState(socket, membership.partyId, userId);
+        sendPendingChessPlayAgainPrompt(socket, membership.partyId, userId);
 
         // Update party activity
         await prisma.party.update({
@@ -962,6 +966,23 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
         });
       }
 
+      createNotification({
+        userId: targetUserId,
+        type: 'PARTY_INVITE',
+        title: 'Invitation de groupe',
+        body: membership.party.name
+          ? `${membership.user.username} t'invite dans le groupe ${membership.party.name}.`
+          : `${membership.user.username} t'invite dans son groupe.`,
+        data: {
+          partyId: membership.partyId,
+          partyName: membership.party.name,
+          inviterId: userId,
+          inviterUsername: membership.user.username,
+        },
+        link: '/party',
+        icon: 'users',
+      }).catch(() => {});
+
       socket.emit('party:invite-sent', { targetUserId });
     } catch (error) {
       console.error('Invite error:', error);
@@ -1016,6 +1037,19 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
           targetSocket.emit('party:kicked');
         }
       }
+
+      createNotification({
+        userId: targetUserId,
+        type: 'SYSTEM',
+        title: 'Retire du groupe',
+        body: 'Tu as ete retire de ton groupe par le leader.',
+        data: {
+          partyId: membership.partyId,
+          removedByUserId: userId,
+        },
+        link: '/party',
+        icon: 'user-minus',
+      }).catch(() => {});
 
       // Notify others
       io.to(`party:${membership.partyId}`).emit('party:member-left', {

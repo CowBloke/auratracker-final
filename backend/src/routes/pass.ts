@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
+import { createNotification } from '../utils/notifications.js';
 
 const router = Router();
 
@@ -169,6 +170,21 @@ router.post('/claim', authMiddleware, async (req: AuthRequest, res: Response) =>
 
     const claimDay = newStreak;
     const nextReward = getRewardForDay(claimDay + 1);
+
+    createNotification({
+      userId: req.user.id,
+      type: 'SYSTEM',
+      title: 'Pass quotidien reclame',
+      body: `Tu as recu $${reward} pour le jour ${claimDay} de ta serie.`,
+      data: {
+        reward,
+        streak: newStreak,
+        claimDay,
+        nextReward,
+      },
+      link: '/pass',
+      icon: 'calendar-check',
+    }).catch(() => {});
 
     res.json({
       success: true,

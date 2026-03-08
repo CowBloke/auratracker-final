@@ -100,6 +100,40 @@ const GAME_REWARDS = {
       { minScore: 800000, moneyMultiplier: 0.002, auraBonus: 20 },
     ],
   },
+  knife_hit: {
+    minScoreForReward: 5,
+    scoreTiers: [
+      { minScore: 0, moneyReward: 0, auraBonus: 0 },
+      { minScore: 5, moneyReward: 15, auraBonus: 1 },
+      { minScore: 15, moneyReward: 40, auraBonus: 4 },
+      { minScore: 30, moneyReward: 90, auraBonus: 8 },
+      { minScore: 50, moneyReward: 170, auraBonus: 14 },
+      { minScore: 80, moneyReward: 320, auraBonus: 24 },
+    ],
+  },
+  helix_jump: {
+    minScoreForReward: 6,
+    scoreTiers: [
+      { minScore: 0, moneyReward: 0, auraBonus: 0 },
+      { minScore: 6, moneyReward: 20, auraBonus: 1 },
+      { minScore: 15, moneyReward: 55, auraBonus: 4 },
+      { minScore: 30, moneyReward: 110, auraBonus: 8 },
+      { minScore: 60, moneyReward: 220, auraBonus: 14 },
+      { minScore: 100, moneyReward: 360, auraBonus: 20 },
+    ],
+  },
+  subway_rush: {
+    minScoreForReward: 150,
+    scoreTiers: [
+      { minScore: 0, moneyReward: 0, auraBonus: 0 },
+      { minScore: 150, moneyReward: 18, auraBonus: 1 },
+      { minScore: 350, moneyReward: 45, auraBonus: 3 },
+      { minScore: 700, moneyReward: 95, auraBonus: 7 },
+      { minScore: 1200, moneyReward: 170, auraBonus: 12 },
+      { minScore: 2000, moneyReward: 280, auraBonus: 18 },
+      { minScore: 3200, moneyReward: 430, auraBonus: 28 },
+    ],
+  },
   goyave_empire: {
     minScoreForReward: 100,
     // Fixed rewards per tier (score = total guavas harvested before cash out)
@@ -113,6 +147,17 @@ const GAME_REWARDS = {
     ],
     highScoreBonusMin: 5,
     highScoreBonusMax: 25,
+  },
+  logic_lab: {
+    minScoreForReward: 200,
+    scoreTiers: [
+      { minScore: 0, moneyReward: 0, auraBonus: 0 },
+      { minScore: 200, moneyReward: 20, auraBonus: 1 },
+      { minScore: 350, moneyReward: 45, auraBonus: 4 },
+      { minScore: 550, moneyReward: 80, auraBonus: 8 },
+      { minScore: 750, moneyReward: 140, auraBonus: 14 },
+      { minScore: 900, moneyReward: 220, auraBonus: 22 },
+    ],
   },
 };
 
@@ -342,6 +387,104 @@ function calculateTetrisRewards(score: number, isNewHighScore: boolean): { money
   return { money: moneyReward, aura: auraReward };
 }
 
+function calculateKnifeHitRewards(score: number, isNewHighScore: boolean): { money: number; aura: number } {
+  const config = GAME_REWARDS.knife_hit;
+
+  if (score < config.minScoreForReward) {
+    return { money: 0, aura: 0 };
+  }
+
+  let selectedTier = config.scoreTiers[0];
+  for (let i = config.scoreTiers.length - 1; i >= 0; i--) {
+    if (score >= config.scoreTiers[i].minScore) {
+      selectedTier = config.scoreTiers[i];
+      break;
+    }
+  }
+
+  let auraReward = selectedTier.auraBonus;
+  if (isNewHighScore) {
+    auraReward += Math.min(Math.floor(score / 20), 8);
+  }
+
+  return { money: selectedTier.moneyReward, aura: auraReward };
+}
+
+function calculateHelixJumpRewards(score: number, isNewHighScore: boolean): { money: number; aura: number } {
+  const config = GAME_REWARDS.helix_jump;
+
+  if (score < config.minScoreForReward) {
+    return { money: 0, aura: 0 };
+  }
+
+  let selectedTier = config.scoreTiers[0];
+  for (let i = config.scoreTiers.length - 1; i >= 0; i--) {
+    if (score >= config.scoreTiers[i].minScore) {
+      selectedTier = config.scoreTiers[i];
+      break;
+    }
+  }
+
+  let auraReward = selectedTier.auraBonus;
+  if (isNewHighScore) {
+    auraReward += Math.min(Math.floor(score / 25), 10);
+  }
+
+  return { money: selectedTier.moneyReward, aura: auraReward };
+}
+
+function calculateSubwayRushRewards(score: number, isNewHighScore: boolean): { money: number; aura: number } {
+  const config = GAME_REWARDS.subway_rush;
+
+  if (score < config.minScoreForReward) {
+    return { money: 0, aura: 0 };
+  }
+
+  let selectedTier = config.scoreTiers[0];
+  for (let i = config.scoreTiers.length - 1; i >= 0; i--) {
+    if (score >= config.scoreTiers[i].minScore) {
+      selectedTier = config.scoreTiers[i];
+      break;
+    }
+  }
+
+  let moneyReward = selectedTier.moneyReward;
+  let auraReward = selectedTier.auraBonus;
+
+  if (isNewHighScore) {
+    moneyReward += Math.min(Math.floor(score / 600) * 10, 80);
+    auraReward += Math.min(Math.floor(score / 900) * 2, 12);
+  }
+
+  return { money: moneyReward, aura: auraReward };
+}
+
+function calculateLogicLabRewards(score: number, isNewHighScore: boolean): { money: number; aura: number } {
+  const config = GAME_REWARDS.logic_lab;
+
+  if (score < config.minScoreForReward) {
+    return { money: 0, aura: 0 };
+  }
+
+  let selectedTier = config.scoreTiers[0];
+  for (let i = config.scoreTiers.length - 1; i >= 0; i--) {
+    if (score >= config.scoreTiers[i].minScore) {
+      selectedTier = config.scoreTiers[i];
+      break;
+    }
+  }
+
+  let moneyReward = selectedTier.moneyReward;
+  let auraReward = selectedTier.auraBonus;
+
+  if (isNewHighScore) {
+    moneyReward += Math.min(Math.floor(score / 200) * 5, 40);
+    auraReward += Math.min(Math.floor(score / 250), 6);
+  }
+
+  return { money: moneyReward, aura: auraReward };
+}
+
 
 router.get('/daily/racer', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
@@ -545,8 +688,24 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       const rewards = calculateTetrisRewards(score, isNewHighScore);
       moneyReward = rewards.money;
       auraReward = rewards.aura;
+    } else if (gameType === 'knife_hit') {
+      const rewards = calculateKnifeHitRewards(score, isNewHighScore);
+      moneyReward = rewards.money;
+      auraReward = rewards.aura;
+    } else if (gameType === 'helix_jump') {
+      const rewards = calculateHelixJumpRewards(score, isNewHighScore);
+      moneyReward = rewards.money;
+      auraReward = rewards.aura;
+    } else if (gameType === 'subway_rush') {
+      const rewards = calculateSubwayRushRewards(score, isNewHighScore);
+      moneyReward = rewards.money;
+      auraReward = rewards.aura;
     } else if (gameType === 'goyave_empire') {
       const rewards = calculateGoyaveEmpireRewards(score, isNewHighScore);
+      moneyReward = rewards.money;
+      auraReward = rewards.aura;
+    } else if (gameType === 'logic_lab') {
+      const rewards = calculateLogicLabRewards(score, isNewHighScore);
       moneyReward = rewards.money;
       auraReward = rewards.aura;
     } else if (gameType === 'casino' && bet) {
@@ -672,12 +831,32 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       }
     } else if (gameType === 'tetris') {
       await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
+    } else if (gameType === 'knife_hit') {
+      await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
+      if (won) {
+        await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
+      }
+    } else if (gameType === 'helix_jump') {
+      await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
+      if (won) {
+        await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
+      }
+    } else if (gameType === 'subway_rush') {
+      await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
+      if (won) {
+        await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
+      }
     } else if (gameType === 'casino') {
       await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
       if (won) {
         await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
       }
     } else if (gameType === 'goyave_empire') {
+      await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
+      if (won) {
+        await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
+      }
+    } else if (gameType === 'logic_lab') {
       await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
       if (won) {
         await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);

@@ -1,5 +1,6 @@
 import { Socket, Server } from 'socket.io';
 import { onlineUsers } from './chat.js';
+import { createNotification } from '../utils/notifications.js';
 
 interface GameInvite {
   gameType: string;
@@ -216,6 +217,7 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
     if (!userId) return;
     const inviterUsername = socket.data.username as string | undefined;
     const { targetUserId, gameType } = data;
+    const senderName = inviterUsername ?? "Quelqu'un";
     
     // Store invite
     const invites = gameInvites.get(targetUserId) || [];
@@ -235,6 +237,20 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
         inviterUsername: inviterUsername ?? 'Unknown',
       });
     }
+
+    createNotification({
+      userId: targetUserId,
+      type: 'SYSTEM',
+      title: 'Invitation de jeu',
+      body: `${senderName} t'invite a jouer a ${gameType}.`,
+      data: {
+        gameType,
+        inviterId: userId,
+        inviterUsername: inviterUsername ?? 'Unknown',
+      },
+      link: '/games',
+      icon: 'gamepad-2',
+    }).catch(() => {});
     
     socket.emit('game:invite-sent', { targetUserId, gameType });
   });
@@ -248,6 +264,7 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
     const userId = socket.data.userId as string | undefined;
     if (!userId) return;
     const { inviterId, gameType } = data;
+    const responderName = (socket.data.username as string | undefined) ?? 'Un joueur';
     
     // Clear invite
     const invites = gameInvites.get(userId) || [];
@@ -264,6 +281,19 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
         gameType,
       });
     }
+
+    createNotification({
+      userId: inviterId,
+      type: 'SYSTEM',
+      title: 'Invitation acceptee',
+      body: `${responderName} a accepte ton invitation pour ${gameType}.`,
+      data: {
+        userId,
+        gameType,
+      },
+      link: '/games',
+      icon: 'swords',
+    }).catch(() => {});
     
     // Create game room
     const gameRoomId = `game:${gameType}:${Date.now()}`;
@@ -293,6 +323,7 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
     const userId = socket.data.userId as string | undefined;
     if (!userId) return;
     const { inviterId, gameType } = data;
+    const responderName = (socket.data.username as string | undefined) ?? 'Un joueur';
     
     // Clear invite
     const invites = gameInvites.get(userId) || [];
@@ -309,6 +340,19 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
         gameType,
       });
     }
+
+    createNotification({
+      userId: inviterId,
+      type: 'SYSTEM',
+      title: 'Invitation refusee',
+      body: `${responderName} a refuse ton invitation pour ${gameType}.`,
+      data: {
+        userId,
+        gameType,
+      },
+      link: '/games',
+      icon: 'circle-x',
+    }).catch(() => {});
   });
   
   // Game update (for real-time multiplayer)

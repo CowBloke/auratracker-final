@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Bell,
   CheckCheck,
+  Crown,
   Star,
   Gift,
   Package,
@@ -17,6 +18,19 @@ import {
   Archive,
   Inbox,
   Eye,
+  ShoppingBag,
+  Coins,
+  Gamepad2,
+  MessageSquare,
+  ThumbsUp,
+  ThumbsDown,
+  Trophy,
+  Shield,
+  ShieldCheck,
+  ShieldX,
+  BadgeCheck,
+  BadgeX,
+  UserMinus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -34,10 +48,13 @@ const TYPE_ICON: Record<string, React.FC<{ className?: string }>> = {
   MONEY_RECEIVED:     ({ className }) => <DollarSign className={className} />,
   GIFT_RECEIVED:      ({ className }) => <Gift className={className} />,
   ITEM_RECEIVED:      ({ className }) => <Package className={className} />,
-  CLAN_INVITE:        ({ className }) => <Users className={className} />,
   CLAN_JOIN_REQUEST:  ({ className }) => <Users className={className} />,
   CLAN_JOIN_ACCEPTED: ({ className }) => <Users className={className} />,
   CLAN_JOIN_REJECTED: ({ className }) => <Users className={className} />,
+  CLAN_WAR_DECLARED:  ({ className }) => <Sword className={className} />,
+  CLAN_WAR_COMPLETED: ({ className }) => <Shield className={className} />,
+  CLAN_WAR_WON:       ({ className }) => <Trophy className={className} />,
+  CLAN_WAR_LOST:      ({ className }) => <ShieldX className={className} />,
   QUEST_COMPLETED:    ({ className }) => <Zap className={className} />,
   POLYMARKET_WIN:     ({ className }) => <TrendingUp className={className} />,
   POLYMARKET_LOSS:    ({ className }) => <TrendingDown className={className} />,
@@ -46,8 +63,40 @@ const TYPE_ICON: Record<string, React.FC<{ className?: string }>> = {
   SYSTEM:             ({ className }) => <Info className={className} />,
 };
 
+const ICON_NAME_MAP: Record<string, React.FC<{ className?: string }>> = {
+  star: ({ className }) => <Star className={className} />,
+  gift: ({ className }) => <Gift className={className} />,
+  package: ({ className }) => <Package className={className} />,
+  users: ({ className }) => <Users className={className} />,
+  check: ({ className }) => <Zap className={className} />,
+  megaphone: ({ className }) => <Megaphone className={className} />,
+  'dollar-sign': ({ className }) => <DollarSign className={className} />,
+  'shopping-bag': ({ className }) => <ShoppingBag className={className} />,
+  coins: ({ className }) => <Coins className={className} />,
+  'gamepad-2': ({ className }) => <Gamepad2 className={className} />,
+  crown: ({ className }) => <Crown className={className} />,
+  'message-square': ({ className }) => <MessageSquare className={className} />,
+  'thumbs-up': ({ className }) => <ThumbsUp className={className} />,
+  'thumbs-down': ({ className }) => <ThumbsDown className={className} />,
+  trophy: ({ className }) => <Trophy className={className} />,
+  shield: ({ className }) => <Shield className={className} />,
+  'shield-check': ({ className }) => <ShieldCheck className={className} />,
+  'shield-x': ({ className }) => <ShieldX className={className} />,
+  'triangle-alert': ({ className }) => <Info className={className} />,
+  'badge-check': ({ className }) => <BadgeCheck className={className} />,
+  'badge-x': ({ className }) => <BadgeX className={className} />,
+  'chart-no-axes-column': ({ className }) => <TrendingUp className={className} />,
+  'chart-candlestick': ({ className }) => <TrendingUp className={className} />,
+  'chart-no-axes-column-increasing': ({ className }) => <TrendingUp className={className} />,
+  'trending-up': ({ className }) => <TrendingUp className={className} />,
+  'trending-down': ({ className }) => <TrendingDown className={className} />,
+  swords: ({ className }) => <Sword className={className} />,
+  'user-minus': ({ className }) => <UserMinus className={className} />,
+  'user-round-pen': ({ className }) => <Users className={className} />,
+};
+
 // ── Sidebar categories ──────────────────────────────────────────────────────
-const CLAN_TYPES = ['CLAN_INVITE', 'CLAN_JOIN_REQUEST', 'CLAN_JOIN_ACCEPTED', 'CLAN_JOIN_REJECTED'];
+const CLAN_TYPES = ['CLAN_JOIN_REQUEST', 'CLAN_JOIN_ACCEPTED', 'CLAN_JOIN_REJECTED', 'CLAN_WAR_DECLARED', 'CLAN_WAR_COMPLETED', 'CLAN_WAR_WON', 'CLAN_WAR_LOST'];
 const POLY_TYPES = ['POLYMARKET_WIN', 'POLYMARKET_LOSS'];
 const SYS_TYPES  = ['ADMIN', 'SYSTEM'];
 
@@ -69,6 +118,13 @@ function filterNotifications(notifications: Notification[], id: CategoryId): Not
   const cat = CATEGORIES.find((c) => c.id === id);
   if (!cat || id === 'all') return notifications;
   if (id === 'unread') return notifications.filter((n) => !n.isRead);
+  if (id === 'polymarket') {
+    return notifications.filter((n) =>
+      POLY_TYPES.includes(n.type)
+      || n.link === '/games/polymarket'
+      || (n.icon !== null && ['chart-no-axes-column', 'chart-candlestick', 'chart-no-axes-column-increasing', 'trending-up', 'trending-down', 'badge-check', 'badge-x'].includes(n.icon))
+    );
+  }
   if (cat.types) return notifications.filter((n) => (cat.types as readonly string[]).includes(n.type));
   return notifications;
 }
@@ -90,7 +146,11 @@ function NotificationRow({
   isArchiveView: boolean;
 }) {
   const navigate = useNavigate();
-  const IconComp = TYPE_ICON[n.type] ?? (({ className }) => <Bell className={className} />);
+  const IconComp = (
+    (n.icon && ICON_NAME_MAP[n.icon])
+    || TYPE_ICON[n.type]
+    || (({ className }) => <Bell className={className} />)
+  );
 
   const date = new Date(n.createdAt);
   const isToday = Date.now() - date.getTime() < 24 * 60 * 60 * 1000;

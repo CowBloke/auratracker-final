@@ -62,6 +62,13 @@ const duelGames = [
     type: 'Duel',
     image: '/images/games/puissance4.png',
   },
+  {
+    id: 'echecs',
+    name: 'Échecs',
+    description: 'Joue une partie complète avec toutes les règles standard.',
+    type: 'Duel',
+    image: '/images/games/chess.svg',
+  },
 ];
 
 const getGameLink = (gameId: string) => {
@@ -70,6 +77,7 @@ const getGameLink = (gameId: string) => {
   if (gameId === 'poker') return '/games/poker';
   if (gameId === 'bataille-navale') return '/games/bataille-navale';
   if (gameId === 'puissance-quatre') return '/games/puissance-quatre';
+  if (gameId === 'echecs') return '/games/echecs';
   return `/games/${gameId}`;
 };
 

@@ -11,6 +11,7 @@ import { isAllowedImageUrl } from '../utils/uploads.js';
 import { listBombPartyLanguageFiles } from '../utils/bombpartyDictionary.js';
 import { recalculateBombPartyPrompts } from '../utils/bombpartyPrompts.js';
 import { getOnlineCount, getOnlineUsers } from '../socket/chat.js';
+import { createNotification } from '../utils/notifications.js';
 
 const router = Router();
 const ANNOUNCEMENT_KEY = 'topbar_announcement';
@@ -19,6 +20,7 @@ const UPDATE_POPUP_UPLOAD_DIR = path.resolve('uploads', 'update-popups');
 const ITEM_UPLOAD_DIR = path.resolve('uploads', 'items');
 const MAX_UPDATE_POPUP_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 const MAX_ITEM_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+const ADMIN_CLAN_MAX_MEMBERS_LIMIT = 12;
 
 const ensureUpdatePopupUploadDir = () => {
   if (!fs.existsSync(UPDATE_POPUP_UPLOAD_DIR)) {
@@ -48,6 +50,14 @@ const requireAdmin = (req: AuthRequest, res: Response, next: Function) => {
   }
   next();
 };
+
+const adminClanMemberUserSelect = {
+  id: true,
+  username: true,
+  usernameColor: true,
+  profilePicture: true,
+  aura: true,
+} as const;
 
 // ========== PENDING USERS MANAGEMENT ==========
 
@@ -92,6 +102,18 @@ router.post('/users/:id/approve', authMiddleware, requireAdmin, async (req: Auth
     
     // Log approval
     logAdmin('user_approve', req.user!.id, undefined, id, user.username, { email: user.email });
+
+    createNotification({
+      userId: id,
+      type: 'SYSTEM',
+      title: 'Compte approuve',
+      body: 'Ton compte a ete approuve. Tu peux maintenant te connecter.',
+      data: {
+        approvedAt: new Date().toISOString(),
+      },
+      link: '/login',
+      icon: 'badge-check',
+    }).catch(() => {});
 
     res.json({ success: true, user, message: 'Utilisateur approuvé' });
   } catch (error) {
@@ -216,6 +238,274 @@ router.delete('/items/:id', authMiddleware, requireAdmin, async (req: AuthReques
   } catch (error) {
     console.error('Admin delete item error:', error);
     res.status(500).json({ error: 'Failed to delete item' });
+  }
+});
+
+// ========== CLANS MANAGEMENT ==========
+
+router.get('/clans', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    const clans = await prisma.clan.findMany({
+      include: {
+        owner: {
+          select: adminClanMemberUserSelect,
+        },
+        members: {
+          include: {
+            user: {
+              select: adminClanMemberUserSelect,
+            },
+          },
+          orderBy: [
+            { isLeader: 'desc' },
+            { joinedAt: 'asc' },
+          ],
+        },
+        attackerWars: {
+          where: { status: { in: ['PREPARING', 'ACTIVE'] } },
+          select: { id: true, status: true, startsAt: true, endsAt: true },
+          take: 1,
+          orderBy: { createdAt: 'desc' },
+        },
+        defenderWars: {
+          where: { status: { in: ['PREPARING', 'ACTIVE'] } },
+          select: { id: true, status: true, startsAt: true, endsAt: true },
+          take: 1,
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json({
+      clans: clans.map((clan) => ({
+        id: clan.id,
+        name: clan.name,
+        description: clan.description,
+        imageUrl: clan.imageUrl,
+        isPublic: clan.isPublic,
+        maxMembers: clan.maxMembers,
+        createdAt: clan.createdAt,
+        updatedAt: clan.updatedAt,
+        owner: clan.owner,
+        members: clan.members.map((member) => ({
+          id: member.id,
+          userId: member.userId,
+          isLeader: member.isLeader,
+          joinedAt: member.joinedAt,
+          user: member.user,
+        })),
+        activeWar: clan.attackerWars[0] ?? clan.defenderWars[0] ?? null,
+      })),
+    });
+  } catch (error) {
+    console.error('Admin get clans error:', error);
+    res.status(500).json({ error: 'Failed to get clans' });
+  }
+});
+
+router.put('/clans/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const rawName = typeof req.body.name === 'string' ? req.body.name.trim() : undefined;
+    const rawDescription = typeof req.body.description === 'string' ? req.body.description.trim() : undefined;
+    const rawImageUrl = typeof req.body.imageUrl === 'string' ? req.body.imageUrl.trim() : undefined;
+    const isPublic = typeof req.body.isPublic === 'boolean' ? req.body.isPublic : undefined;
+    const maxMembers = req.body.maxMembers !== undefined ? Number(req.body.maxMembers) : undefined;
+
+    const clan = await prisma.clan.findUnique({
+      where: { id },
+      include: {
+        members: {
+          select: { id: true },
+        },
+      },
+    });
+
+    if (!clan) {
+      return res.status(404).json({ error: 'Clan not found' });
+    }
+
+    if (rawName !== undefined && (rawName.length < 3 || rawName.length > 32)) {
+      return res.status(400).json({ error: 'Nom de clan invalide (3-32 caracteres).' });
+    }
+
+    if (rawDescription !== undefined && rawDescription.length > 300) {
+      return res.status(400).json({ error: 'Description trop longue (max 300 caracteres).' });
+    }
+
+    if (rawImageUrl && !isAllowedImageUrl(rawImageUrl)) {
+      return res.status(400).json({ error: 'Image must be uploaded or a valid URL' });
+    }
+
+    if (maxMembers !== undefined) {
+      if (!Number.isInteger(maxMembers) || maxMembers < clan.members.length || maxMembers > ADMIN_CLAN_MAX_MEMBERS_LIMIT) {
+        return res.status(400).json({
+          error: `maxMembers doit etre un entier entre ${clan.members.length} et ${ADMIN_CLAN_MAX_MEMBERS_LIMIT}.`,
+        });
+      }
+    }
+
+    const updatedClan = await prisma.clan.update({
+      where: { id },
+      data: {
+        ...(rawName !== undefined ? { name: rawName } : {}),
+        ...(rawDescription !== undefined ? { description: rawDescription || null } : {}),
+        ...(rawImageUrl !== undefined ? { imageUrl: rawImageUrl || null } : {}),
+        ...(isPublic !== undefined ? { isPublic } : {}),
+        ...(maxMembers !== undefined ? { maxMembers } : {}),
+      },
+      include: {
+        owner: { select: adminClanMemberUserSelect },
+        members: {
+          include: {
+            user: { select: adminClanMemberUserSelect },
+          },
+          orderBy: [
+            { isLeader: 'desc' },
+            { joinedAt: 'asc' },
+          ],
+        },
+      },
+    });
+
+    logAdmin('clan_update', req.user!.id, undefined, id, updatedClan.name, {
+      maxMembers: updatedClan.maxMembers,
+      isPublic: updatedClan.isPublic,
+    });
+
+    res.json({
+      clan: {
+        id: updatedClan.id,
+        name: updatedClan.name,
+        description: updatedClan.description,
+        imageUrl: updatedClan.imageUrl,
+        isPublic: updatedClan.isPublic,
+        maxMembers: updatedClan.maxMembers,
+        createdAt: updatedClan.createdAt,
+        updatedAt: updatedClan.updatedAt,
+        owner: updatedClan.owner,
+        members: updatedClan.members.map((member) => ({
+          id: member.id,
+          userId: member.userId,
+          isLeader: member.isLeader,
+          joinedAt: member.joinedAt,
+          user: member.user,
+        })),
+      },
+    });
+  } catch (error) {
+    console.error('Admin update clan error:', error);
+    res.status(500).json({ error: 'Failed to update clan' });
+  }
+});
+
+router.post('/clans/:id/transfer-leadership', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const targetUserId = typeof req.body.targetUserId === 'string' ? req.body.targetUserId : '';
+
+    if (!targetUserId) {
+      return res.status(400).json({ error: 'targetUserId is required' });
+    }
+
+    const clan = await prisma.clan.findUnique({
+      where: { id },
+      include: {
+        owner: { select: { id: true, username: true } },
+        members: {
+          include: {
+            user: { select: adminClanMemberUserSelect },
+          },
+        },
+      },
+    });
+
+    if (!clan) {
+      return res.status(404).json({ error: 'Clan not found' });
+    }
+
+    const targetMember = clan.members.find((member) => member.userId === targetUserId);
+    if (!targetMember) {
+      return res.status(400).json({ error: 'Le nouveau chef doit deja etre membre du clan.' });
+    }
+
+    if (clan.ownerId === targetUserId) {
+      return res.status(400).json({ error: 'Ce joueur est deja chef du clan.' });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.clanMember.updateMany({
+        where: { clanId: id, isLeader: true },
+        data: { isLeader: false },
+      });
+
+      await tx.clanMember.update({
+        where: {
+          clanId_userId: {
+            clanId: id,
+            userId: targetUserId,
+          },
+        },
+        data: { isLeader: true },
+      });
+
+      await tx.clan.update({
+        where: { id },
+        data: { ownerId: targetUserId },
+      });
+    });
+
+    logAdmin('clan_transfer_leadership', req.user!.id, undefined, id, clan.name, {
+      previousLeaderId: clan.owner.id,
+      previousLeaderUsername: clan.owner.username,
+      newLeaderId: targetMember.user.id,
+      newLeaderUsername: targetMember.user.username,
+    });
+
+    createNotification({
+      userId: targetUserId,
+      type: 'SYSTEM',
+      title: 'Nouveau chef de clan',
+      body: `Un administrateur vous a nomme chef du clan ${clan.name}.`,
+      data: { clanId: clan.id, clanName: clan.name },
+      link: '/clans',
+      icon: 'crown',
+    }).catch(() => {});
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Admin transfer clan leadership error:', error);
+    res.status(500).json({ error: 'Failed to transfer clan leadership' });
+  }
+});
+
+router.delete('/clans/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const clan = await prisma.clan.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    if (!clan) {
+      return res.status(404).json({ error: 'Clan not found' });
+    }
+
+    await prisma.clan.delete({
+      where: { id },
+    });
+
+    logAdmin('clan_delete', req.user!.id, undefined, clan.id, clan.name);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Admin delete clan error:', error);
+    res.status(500).json({ error: 'Failed to delete clan' });
   }
 });
 
@@ -468,6 +758,20 @@ router.post('/users/:id/inventory', authMiddleware, requireAdmin, async (req: Au
       itemName: userItem.item.name,
       quantity: parseInt(quantity),
     });
+
+    createNotification({
+      userId: id,
+      type: 'ITEM_RECEIVED',
+      title: 'Objet ajoute a ton inventaire',
+      body: `${userItem.item.name} x${parseInt(quantity)} a ete ajoute a ton inventaire.`,
+      data: {
+        itemId,
+        itemName: userItem.item.name,
+        quantity: parseInt(quantity),
+      },
+      link: '/inventory',
+      icon: 'package',
+    }).catch(() => {});
 
     res.status(201).json({ item: userItem });
   } catch (error) {
@@ -1188,6 +1492,18 @@ router.delete('/bans/:userId', authMiddleware, requireAdmin, async (req: AuthReq
     logBan('ban_remove', req.user!.id, undefined, userId, unbannedUser?.username || undefined, {
       bansRemoved: result.count,
     });
+
+    createNotification({
+      userId,
+      type: 'SYSTEM',
+      title: 'Compte debanni',
+      body: 'Ton bannissement a ete leve. Tu peux de nouveau utiliser le site.',
+      data: {
+        bansRemoved: result.count,
+      },
+      link: '/login',
+      icon: 'shield-check',
+    }).catch(() => {});
 
     res.json({ success: true, message: 'User has been unbanned' });
   } catch (error) {
@@ -2015,6 +2331,27 @@ router.post('/ban-appeals', async (req: AuthRequest, res: Response) => {
       data: { userId, banId, message: message.trim() },
     });
 
+    const admins = await prisma.user.findMany({
+      where: { isAdmin: true, isApproved: true },
+      select: { id: true },
+    });
+
+    await Promise.allSettled(admins.map((admin) =>
+      createNotification({
+        userId: admin.id,
+        type: 'SYSTEM',
+        title: 'Nouvel appel de ban',
+        body: `Un utilisateur a soumis un appel de bannissement.`,
+        data: {
+          appealId: appeal.id,
+          banId,
+          userId,
+        },
+        link: '/admin',
+        icon: 'shield-alert',
+      })
+    ));
+
     res.status(201).json({ appeal });
   } catch (error) {
     console.error('Submit ban appeal error:', error);
@@ -2077,6 +2414,22 @@ router.put('/ban-appeals/:id', authMiddleware, requireAdmin, async (req: AuthReq
     } else {
       logAdmin('appeal_reject', req.user!.id, undefined, appeal.userId, appeal.user.username, { appealId: id });
     }
+
+    createNotification({
+      userId: appeal.userId,
+      type: 'SYSTEM',
+      title: action === 'approve' ? 'Appel accepte' : 'Appel refuse',
+      body: action === 'approve'
+        ? 'Ton appel a ete accepte et ton bannissement a ete leve.'
+        : 'Ton appel a ete refuse par l administration.',
+      data: {
+        appealId: id,
+        action,
+        banId: appeal.banId,
+      },
+      link: action === 'approve' ? '/login' : '/banned',
+      icon: action === 'approve' ? 'shield-check' : 'shield-x',
+    }).catch(() => {});
 
     res.json({ banAppeal: updated });
   } catch (error) {
@@ -2148,6 +2501,23 @@ router.put('/name-change-requests/:id', authMiddleware, requireAdmin, async (req
         to: request.requestedUsername,
       });
     }
+
+    createNotification({
+      userId: request.userId,
+      type: 'SYSTEM',
+      title: action === 'approve' ? 'Changement de pseudo accepte' : 'Changement de pseudo refuse',
+      body: action === 'approve'
+        ? `Ton pseudo est maintenant ${request.requestedUsername}.`
+        : `Ta demande pour ${request.requestedUsername} a ete refusee.`,
+      data: {
+        requestId: request.id,
+        action,
+        currentUsername: request.currentUsername,
+        requestedUsername: request.requestedUsername,
+      },
+      link: '/settings',
+      icon: 'user-round-pen',
+    }).catch(() => {});
 
     res.json({ nameChangeRequest: updated });
   } catch (error) {

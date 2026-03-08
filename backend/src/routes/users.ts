@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
+import { createNotification } from '../utils/notifications.js';
 
 const router = Router();
 const ANNOUNCEMENT_KEY = 'topbar_announcement';
@@ -275,6 +276,28 @@ router.post('/name-change-request', authMiddleware, async (req: AuthRequest, res
         reason: reason?.trim() || null,
       },
     });
+
+    const admins = await prisma.user.findMany({
+      where: { isAdmin: true, isApproved: true },
+      select: { id: true },
+    });
+
+    await Promise.allSettled(admins.map((admin) =>
+      createNotification({
+        userId: admin.id,
+        type: 'SYSTEM',
+        title: 'Nouvelle demande de pseudo',
+        body: `${currentUser!.username} demande le pseudo ${trimmed}.`,
+        data: {
+          requestId: request.id,
+          userId,
+          currentUsername: currentUser!.username,
+          requestedUsername: trimmed,
+        },
+        link: '/admin',
+        icon: 'user-round-pen',
+      })
+    ));
 
     res.status(201).json({ request });
   } catch (error) {

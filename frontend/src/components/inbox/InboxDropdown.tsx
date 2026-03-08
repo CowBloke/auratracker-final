@@ -5,6 +5,7 @@ import {
   CheckCheck,
   ExternalLink,
   Inbox,
+  Crown,
   Star,
   Gift,
   Package,
@@ -17,6 +18,19 @@ import {
   Sword,
   Info,
   Archive,
+  ShoppingBag,
+  Coins,
+  Gamepad2,
+  MessageSquare,
+  ThumbsUp,
+  ThumbsDown,
+  Trophy,
+  Shield,
+  ShieldCheck,
+  ShieldX,
+  BadgeCheck,
+  BadgeX,
+  UserMinus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -32,10 +46,13 @@ const TYPE_ICON: Record<string, React.FC<{ className?: string }>> = {
   MONEY_RECEIVED: ({ className }) => <DollarSign className={className} />,
   GIFT_RECEIVED: ({ className }) => <Gift className={className} />,
   ITEM_RECEIVED: ({ className }) => <Package className={className} />,
-  CLAN_INVITE: ({ className }) => <Users className={className} />,
   CLAN_JOIN_REQUEST: ({ className }) => <Users className={className} />,
   CLAN_JOIN_ACCEPTED: ({ className }) => <Users className={className} />,
   CLAN_JOIN_REJECTED: ({ className }) => <Users className={className} />,
+  CLAN_WAR_DECLARED: ({ className }) => <Sword className={className} />,
+  CLAN_WAR_COMPLETED: ({ className }) => <Shield className={className} />,
+  CLAN_WAR_WON: ({ className }) => <Trophy className={className} />,
+  CLAN_WAR_LOST: ({ className }) => <ShieldX className={className} />,
   QUEST_COMPLETED: ({ className }) => <Zap className={className} />,
   POLYMARKET_WIN: ({ className }) => <TrendingUp className={className} />,
   POLYMARKET_LOSS: ({ className }) => <TrendingDown className={className} />,
@@ -44,32 +61,37 @@ const TYPE_ICON: Record<string, React.FC<{ className?: string }>> = {
   SYSTEM: ({ className }) => <Info className={className} />,
 };
 
-const TYPE_COLOR: Record<string, string> = {
-  AURA_RECEIVED: 'text-muted-foreground',
-  MONEY_RECEIVED: 'text-muted-foreground',
-  GIFT_RECEIVED: 'text-muted-foreground',
-  ITEM_RECEIVED: 'text-muted-foreground',
-  CLAN_INVITE: 'text-muted-foreground',
-  CLAN_JOIN_REQUEST: 'text-muted-foreground',
-  CLAN_JOIN_ACCEPTED: 'text-muted-foreground',
-  CLAN_JOIN_REJECTED: 'text-muted-foreground',
-  QUEST_COMPLETED: 'text-muted-foreground',
-  POLYMARKET_WIN: 'text-muted-foreground',
-  POLYMARKET_LOSS: 'text-muted-foreground',
-  PARTY_INVITE: 'text-muted-foreground',
-  ADMIN: 'text-muted-foreground',
-  SYSTEM: 'text-muted-foreground',
+const ICON_NAME_MAP: Record<string, React.FC<{ className?: string }>> = {
+  star: ({ className }) => <Star className={className} />,
+  gift: ({ className }) => <Gift className={className} />,
+  package: ({ className }) => <Package className={className} />,
+  users: ({ className }) => <Users className={className} />,
+  check: ({ className }) => <Zap className={className} />,
+  megaphone: ({ className }) => <Megaphone className={className} />,
+  'dollar-sign': ({ className }) => <DollarSign className={className} />,
+  'shopping-bag': ({ className }) => <ShoppingBag className={className} />,
+  coins: ({ className }) => <Coins className={className} />,
+  'gamepad-2': ({ className }) => <Gamepad2 className={className} />,
+  crown: ({ className }) => <Crown className={className} />,
+  'message-square': ({ className }) => <MessageSquare className={className} />,
+  'thumbs-up': ({ className }) => <ThumbsUp className={className} />,
+  'thumbs-down': ({ className }) => <ThumbsDown className={className} />,
+  trophy: ({ className }) => <Trophy className={className} />,
+  shield: ({ className }) => <Shield className={className} />,
+  'shield-check': ({ className }) => <ShieldCheck className={className} />,
+  'shield-x': ({ className }) => <ShieldX className={className} />,
+  'triangle-alert': ({ className }) => <Info className={className} />,
+  'badge-check': ({ className }) => <BadgeCheck className={className} />,
+  'badge-x': ({ className }) => <BadgeX className={className} />,
+  'chart-no-axes-column': ({ className }) => <TrendingUp className={className} />,
+  'chart-candlestick': ({ className }) => <TrendingUp className={className} />,
+  'chart-no-axes-column-increasing': ({ className }) => <TrendingUp className={className} />,
+  'trending-up': ({ className }) => <TrendingUp className={className} />,
+  'trending-down': ({ className }) => <TrendingDown className={className} />,
+  swords: ({ className }) => <Sword className={className} />,
+  'user-minus': ({ className }) => <UserMinus className={className} />,
+  'user-round-pen': ({ className }) => <Users className={className} />,
 };
-
-function NotificationIcon({ type }: { type: string }) {
-  const IconComp = TYPE_ICON[type] ?? (({ className }) => <Bell className={className} />);
-  const color = TYPE_COLOR[type] ?? 'text-muted-foreground';
-  return (
-    <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted', color)}>
-      <IconComp className="h-4 w-4" />
-    </div>
-  );
-}
 
 function NotificationRow({
   notification,
@@ -84,6 +106,7 @@ function NotificationRow({
 }) {
   const navigate = useNavigate();
   const ago = formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true, locale: fr });
+  const ResolvedIcon = (notification.icon && ICON_NAME_MAP[notification.icon]) || TYPE_ICON[notification.type] || (({ className }) => <Bell className={className} />);
 
   const handleClick = () => {
     if (!notification.isRead) onRead(notification.id);
@@ -102,7 +125,9 @@ function NotificationRow({
       )}
       onClick={handleClick}
     >
-      <NotificationIcon type={notification.type} />
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        <ResolvedIcon className="h-4 w-4" />
+      </div>
 
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">

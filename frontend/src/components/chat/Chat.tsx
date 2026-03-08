@@ -234,7 +234,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/70 hover:text-foreground"
+                                className="h-6 w-6 opacity-0 transition-opacity text-muted-foreground/70 group-hover:opacity-100 hover:text-foreground"
                                 title="Réagir"
                               >
                                 <MoreHorizontal className="h-3.5 w-3.5" />

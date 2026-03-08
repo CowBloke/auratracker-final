@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { auraCoinApi, AuraCoinLeaderboardEntry, gamesApi, leaderboardsApi, clansApi, usersApi } from '../services/api';
-import { X, Zap, DollarSign, TrendingUp, Gem, ArrowUp, Skull, Layers, Wind, Diamond, Timer, LayoutGrid, Sparkles, TrendingDown, Flame, Gamepad2, Hash } from 'lucide-react';
+import { X, Zap, DollarSign, TrendingUp, Gem, ArrowUp, Skull, Layers, Wind, Diamond, Timer, LayoutGrid, Sparkles, TrendingDown, Flame, Gamepad2, Hash, Target, Orbit, TramFront } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TYPOGRAPHY } from '@/lib/design-system';
@@ -23,7 +23,7 @@ interface Ranking {
 type StatItem = { label: string; value: string; hint?: string };
 type StatSection = { title: string; items: StatItem[] };
 
-type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'doodle_jump_mort_subite' | 'game_2048' | 'flappy_bird' | 'solitaire' | 'racer' | 'tetris' | 'casino' | 'casino_losses' | 'games_played' | 'bombparty';
+type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'doodle_jump_mort_subite' | 'game_2048' | 'flappy_bird' | 'solitaire' | 'racer' | 'tetris' | 'knife_hit' | 'helix_jump' | 'subway_rush' | 'casino' | 'casino_losses' | 'games_played' | 'bombparty';
 type View = Category | 'nombres';
 
 const categories: { id: Category; name: string; valueLabel: string; icon: typeof Zap }[] = [
@@ -38,6 +38,9 @@ const categories: { id: Category; name: string; valueLabel: string; icon: typeof
   { id: 'solitaire', name: 'Solitaire', valueLabel: 'score', icon: Diamond },
   { id: 'racer', name: 'Racer', valueLabel: 'temps', icon: Timer },
   { id: 'tetris', name: 'Tetris', valueLabel: 'score', icon: LayoutGrid },
+  { id: 'knife_hit', name: 'Knife Hit', valueLabel: 'score', icon: Target },
+  { id: 'helix_jump', name: 'Helix Jump', valueLabel: 'score', icon: Orbit },
+  { id: 'subway_rush', name: 'Subway Rush', valueLabel: 'score', icon: TramFront },
   { id: 'casino', name: 'Gains Casino (partie unique)', valueLabel: '$', icon: Sparkles },
   { id: 'casino_losses', name: 'Pertes Casino (totales)', valueLabel: '$', icon: TrendingDown },
   { id: 'bombparty', name: 'Bomb Party', valueLabel: 'victoires', icon: Flame },
@@ -45,7 +48,7 @@ const categories: { id: Category; name: string; valueLabel: string; icon: typeof
 ];
 
 const economyCategories: Category[] = ['aura', 'money', 'total_money', 'auracoin'];
-const gameCategories: Category[] = ['doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird', 'solitaire', 'racer', 'tetris', 'casino', 'casino_losses', 'bombparty', 'games_played'];
+const gameCategories: Category[] = ['doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird', 'solitaire', 'racer', 'tetris', 'knife_hit', 'helix_jump', 'subway_rush', 'casino', 'casino_losses', 'bombparty', 'games_played'];
 const deletableGameCategories: Partial<Record<Category, string>> = {
   doodle_jump: 'doodle_jump',
   doodle_jump_mort_subite: 'doodle_jump_mort_subite',
@@ -54,10 +57,13 @@ const deletableGameCategories: Partial<Record<Category, string>> = {
   solitaire: 'solitaire',
   racer: 'racer',
   tetris: 'tetris',
+  knife_hit: 'knife_hit',
+  helix_jump: 'helix_jump',
+  subway_rush: 'subway_rush',
   casino: 'casino',
 };
 
-const gamesCatalog = ['Doodle Jump', '2048', 'Flappy Bird', 'Casino', 'Bomb Party', 'Poker', 'Petit Bac', 'Bataille Navale', 'Solitaire', 'Racer', 'Tetris', 'Polymarket'];
+const gamesCatalog = ['Doodle Jump', '2048', 'Flappy Bird', 'Casino', 'Bomb Party', 'Poker', 'Petit Bac', 'Bataille Navale', 'Solitaire', 'Racer', 'Tetris', 'Knife Hit', 'Helix Jump', 'Subway Rush', 'Polymarket'];
 
 const formatNumber = (value: number, digits = 0) =>
   value.toLocaleString('fr-FR', { minimumFractionDigits: digits, maximumFractionDigits: digits });

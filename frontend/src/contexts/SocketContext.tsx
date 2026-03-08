@@ -397,6 +397,23 @@ interface BattleshipPlayAgainPrompt {
   responses: Array<{ userId: string; playAgain: boolean }>;
 }
 
+interface ChessJoinPrompt {
+  partyId: string;
+  leaderId: string;
+  timeLimit: number;
+  startTime: number;
+  members: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+  responses: Array<{ userId: string; accepted: boolean }>;
+}
+
+interface ChessPlayAgainPrompt {
+  partyId: string;
+  timeLimit: number;
+  startTime: number;
+  players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+  responses: Array<{ userId: string; playAgain: boolean }>;
+}
+
 interface ActiveJoinPrompt {
   gameType: string;
   title: string;
@@ -506,6 +523,11 @@ interface SocketContextType {
   // Battleship
   battleshipPlayAgainPrompt: BattleshipPlayAgainPrompt | null;
   respondToBattleshipPlayAgainPrompt: (playAgain: boolean) => void;
+  // Chess
+  chessJoinPrompt: ChessJoinPrompt | null;
+  respondToChessJoinPrompt: (accepted: boolean) => void;
+  chessPlayAgainPrompt: ChessPlayAgainPrompt | null;
+  respondToChessPlayAgainPrompt: (playAgain: boolean) => void;
   // Unified prompts
   activeJoinPrompt: ActiveJoinPrompt | null;
   activeReplayPrompt: ActiveReplayPrompt | null;
@@ -568,6 +590,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
   // Battleship state
   const [battleshipPlayAgainPrompt, setBattleshipPlayAgainPrompt] = useState<BattleshipPlayAgainPrompt | null>(null);
+
+  // Chess state
+  const [chessJoinPrompt, setChessJoinPrompt] = useState<ChessJoinPrompt | null>(null);
+  const [chessPlayAgainPrompt, setChessPlayAgainPrompt] = useState<ChessPlayAgainPrompt | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -1280,6 +1306,41 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setBattleshipPlayAgainPrompt(null);
       });
 
+      s.on('chess:join-prompt', (data: ChessJoinPrompt) => {
+        setChessJoinPrompt(data);
+      });
+
+      s.on('chess:join-response-update', (data: {
+        partyId: string;
+        responses: Array<{ userId: string; accepted: boolean }>;
+      }) => {
+        setChessJoinPrompt((prev) => (prev ? { ...prev, responses: data.responses } : null));
+      });
+
+      s.on('chess:join-cancelled', () => {
+        setChessJoinPrompt(null);
+      });
+
+      s.on('chess:state', () => {
+        setChessJoinPrompt(null);
+        setChessPlayAgainPrompt(null);
+      });
+
+      s.on('chess:play-again-prompt', (data: ChessPlayAgainPrompt) => {
+        setChessPlayAgainPrompt(data);
+      });
+
+      s.on('chess:play-again-response-update', (data: {
+        partyId: string;
+        responses: Array<{ userId: string; playAgain: boolean }>;
+      }) => {
+        setChessPlayAgainPrompt((prev) => (prev ? { ...prev, responses: data.responses } : null));
+      });
+
+      s.on('chess:play-again-cancelled', () => {
+        setChessPlayAgainPrompt(null);
+      });
+
       return () => {
         disconnectSocket();
         s.removeAllListeners();
@@ -1575,6 +1636,19 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const respondToChessJoinPrompt = (accepted: boolean) => {
+    if (socket && chessJoinPrompt) {
+      socket.emit('chess:join-response', { partyId: chessJoinPrompt.partyId, accepted });
+      if (!accepted) setChessJoinPrompt(null);
+    }
+  };
+
+  const respondToChessPlayAgainPrompt = (playAgain: boolean) => {
+    if (socket && chessPlayAgainPrompt) {
+      socket.emit('chess:play-again-response', { partyId: chessPlayAgainPrompt.partyId, playAgain });
+    }
+  };
+
   const respondToGameJoinPrompt = (accepted: boolean) => {
     if (!user) return;
     if (bombPartyJoinPrompt) {
@@ -1586,6 +1660,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     } else if (p4JoinPrompt && socket) {
       socket.emit('p4:join-response', { partyId: p4JoinPrompt.partyId, accepted });
       if (!accepted) setP4JoinPrompt(null);
+    } else if (chessJoinPrompt && socket) {
+      socket.emit('chess:join-response', { partyId: chessJoinPrompt.partyId, accepted });
+      if (!accepted) setChessJoinPrompt(null);
     }
   };
 
@@ -1603,6 +1680,11 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       socket.emit('battleship:play-again-response', {
         userId: user.id,
         partyId: battleshipPlayAgainPrompt.partyId,
+        playAgain,
+      });
+    } else if (chessPlayAgainPrompt && socket) {
+      socket.emit('chess:play-again-response', {
+        partyId: chessPlayAgainPrompt.partyId,
         playAgain,
       });
     }
@@ -1666,8 +1748,21 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         startTime: p4JoinPrompt.startTime,
       };
     }
+    if (chessJoinPrompt) {
+      return {
+        gameType: 'chess',
+        title: 'Rejoindre Échecs ?',
+        navigateTo: '/games/echecs',
+        partyId: chessJoinPrompt.partyId,
+        leaderId: chessJoinPrompt.leaderId,
+        members: chessJoinPrompt.members,
+        responses: chessJoinPrompt.responses,
+        timeLimit: chessJoinPrompt.timeLimit,
+        startTime: chessJoinPrompt.startTime,
+      };
+    }
     return null;
-  }, [bombPartyJoinPrompt, pokerJoinPrompt, petitBacJoinPrompt, p4JoinPrompt]);
+  }, [bombPartyJoinPrompt, pokerJoinPrompt, petitBacJoinPrompt, p4JoinPrompt, chessJoinPrompt]);
 
   const activeReplayPrompt = useMemo((): ActiveReplayPrompt | null => {
     if (bombPartyPlayAgainPrompt) {
@@ -1727,8 +1822,19 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         startTime: battleshipPlayAgainPrompt.startTime,
       };
     }
+    if (chessPlayAgainPrompt) {
+      return {
+        gameType: 'chess',
+        settingsText: 'Échecs',
+        partyId: chessPlayAgainPrompt.partyId,
+        players: chessPlayAgainPrompt.players,
+        responses: chessPlayAgainPrompt.responses,
+        timeLimit: chessPlayAgainPrompt.timeLimit,
+        startTime: chessPlayAgainPrompt.startTime,
+      };
+    }
     return null;
-  }, [bombPartyPlayAgainPrompt, pokerPlayAgainPrompt, petitBacPlayAgainPrompt, p4PlayAgainPrompt, battleshipPlayAgainPrompt]);
+  }, [bombPartyPlayAgainPrompt, pokerPlayAgainPrompt, petitBacPlayAgainPrompt, p4PlayAgainPrompt, battleshipPlayAgainPrompt, chessPlayAgainPrompt]);
 
   return (
     <SocketContext.Provider
@@ -1810,6 +1916,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         respondToP4PlayAgainPrompt,
         battleshipPlayAgainPrompt,
         respondToBattleshipPlayAgainPrompt,
+        chessJoinPrompt,
+        respondToChessJoinPrompt,
+        chessPlayAgainPrompt,
+        respondToChessPlayAgainPrompt,
         activeJoinPrompt,
         activeReplayPrompt,
         respondToGameJoinPrompt,
@@ -1828,5 +1938,4 @@ export function useSocket() {
   }
   return context;
 }
-
 

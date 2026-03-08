@@ -4,6 +4,7 @@ import { authMiddleware, adminMiddleware, AuthRequest } from '../middleware/auth
 import { validate, createItemSchema, purchaseSchema, useItemSchema } from '../middleware/validation.js';
 import { logMarketplace } from '../utils/logger.js';
 import { isAllowedImageUrl } from '../utils/uploads.js';
+import { createNotification } from '../utils/notifications.js';
 
 const router = Router();
 
@@ -106,6 +107,21 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
       quantity,
       totalPrice,
     });
+
+    createNotification({
+      userId: req.user.id,
+      type: 'SYSTEM',
+      title: 'Achat confirme',
+      body: `Tu as achete ${item.name} x${quantity} pour $${totalPrice}.`,
+      data: {
+        itemId,
+        itemName: item.name,
+        quantity,
+        totalPrice,
+      },
+      link: '/inventory',
+      icon: 'shopping-bag',
+    }).catch(() => {});
 
     res.json({
       success: true,

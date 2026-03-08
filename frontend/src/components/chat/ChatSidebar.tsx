@@ -15,13 +15,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useChatSidebar } from './ChatSidebarWrapper';
 import { resolveImageUrl } from '@/lib/images';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { UsernameDisplay } from '@/components/ui/username-display';
+import { Textarea } from '@/components/ui/textarea';
 
 type TimeoutRef = ReturnType<typeof setTimeout> | null;
 type ReplyTarget = {
@@ -73,7 +73,7 @@ export default function ChatSidebar() {
   const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);
   const [mentionState, setMentionState] = useState<MentionState | null>(null);
   const [mentionIndex, setMentionIndex] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<TimeoutRef>(null);
   const mentionMap = new Map<string, MentionableUser>();
@@ -118,6 +118,13 @@ export default function ChatSidebar() {
   useEffect(() => {
     setMentionIndex(0);
   }, [mentionState?.query]);
+
+  useEffect(() => {
+    const textarea = inputRef.current;
+    if (!textarea) return;
+    textarea.style.height = '0px';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 160)}px`;
+  }, [input]);
 
   const getMentionState = (value: string, cursor: number | null): MentionState | null => {
     if (cursor === null) return null;
@@ -218,8 +225,7 @@ export default function ChatSidebar() {
     return parts;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const sendCurrentMessage = () => {
     if (input.trim()) {
       sendMessage(input.trim(), replyTarget?.id ?? null);
       setInput('');
@@ -232,7 +238,12 @@ export default function ChatSidebar() {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    sendCurrentMessage();
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
     setTyping(true);
     updateMentionState(e.target.value, e.target.selectionStart);
@@ -246,30 +257,39 @@ export default function ChatSidebar() {
     }, 2000);
   };
 
-  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!showMentionList) return;
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setMentionIndex((prev) => (prev + 1) % mentionCandidates.length);
-      return;
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (showMentionList) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setMentionIndex((prev) => (prev + 1) % mentionCandidates.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setMentionIndex((prev) => (prev - 1 + mentionCandidates.length) % mentionCandidates.length);
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        applyMention(mentionCandidates[mentionIndex].username);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setMentionState(null);
+        return;
+      }
     }
-    if (e.key === 'ArrowUp') {
+
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      setMentionIndex((prev) => (prev - 1 + mentionCandidates.length) % mentionCandidates.length);
-      return;
-    }
-    if (e.key === 'Enter' || e.key === 'Tab') {
-      e.preventDefault();
-      applyMention(mentionCandidates[mentionIndex].username);
-      return;
-    }
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      setMentionState(null);
+      if (input.trim()) {
+        sendCurrentMessage();
+      }
     }
   };
 
-  const handleInputCursorChange = (e: React.SyntheticEvent<HTMLInputElement>) => {
+  const handleInputCursorChange = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
     const target = e.currentTarget;
     updateMentionState(target.value, target.selectionStart);
   };
@@ -340,7 +360,7 @@ export default function ChatSidebar() {
                             usernameColor={msg.replyTo.usernameColor}
                             className="block font-medium"
                           />
-                          <span className="block break-words whitespace-normal">{getSnippet(msg.replyTo.message)}</span>
+                          <span className="block whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{getSnippet(msg.replyTo.message)}</span>
                         </div>
                       )}
                       <div className="flex items-center gap-2 mb-1">
@@ -420,7 +440,7 @@ export default function ChatSidebar() {
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/70 hover:text-foreground"
+                                className="h-6 w-6 opacity-0 transition-opacity text-muted-foreground/70 group-hover:opacity-100 hover:text-foreground"
                                 title="Réagir"
                               >
                                 <MoreHorizontal className="h-3.5 w-3.5" />
@@ -479,7 +499,7 @@ export default function ChatSidebar() {
                       </div>
                       {invite ? (
                         <div className="space-y-2">
-                          <p className="text-sm break-words">{renderMessageContent(invite.label)}</p>
+                          <p className="text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{renderMessageContent(invite.label)}</p>
                           <Button
                             type="button"
                             onClick={() => {
@@ -498,7 +518,7 @@ export default function ChatSidebar() {
                           </Button>
                         </div>
                       ) : (
-                        <p className="text-sm break-words">{renderMessageContent(msg.message)}</p>
+                        <p className="text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{renderMessageContent(msg.message)}</p>
                       )}
                       {msg.reactions.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1">
@@ -536,7 +556,7 @@ export default function ChatSidebar() {
                     usernameColor={replyTarget.usernameColor}
                     className="block font-medium text-foreground/80"
                   />
-                  <span className="block break-words whitespace-normal text-muted-foreground">{getSnippet(replyTarget.message)}</span>
+                  <span className="block whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-muted-foreground">{getSnippet(replyTarget.message)}</span>
                 </div>
                 <Button
                   type="button"
@@ -551,16 +571,16 @@ export default function ChatSidebar() {
             )}
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <Input
+                <Textarea
                   ref={inputRef}
-                  type="text"
                   value={input}
                   onChange={handleInputChange}
                   onKeyDown={handleInputKeyDown}
                   onKeyUp={handleInputCursorChange}
                   onClick={handleInputCursorChange}
                   placeholder="Message..."
-                  className="h-9 text-sm bg-transparent border-border/50"
+                  rows={1}
+                  className="min-h-9 max-h-40 resize-none overflow-y-auto text-sm bg-transparent border-border/50 py-2"
                 />
                 {showMentionList && (
                   <div className="absolute bottom-full z-50 mb-2 w-full rounded-md border border-border/60 bg-background/95 shadow-lg">

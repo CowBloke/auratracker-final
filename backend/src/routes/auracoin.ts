@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { logAuraCoin } from '../utils/logger.js';
+import { createNotification } from '../utils/notifications.js';
 
 const router = Router();
 
@@ -185,6 +186,22 @@ router.post('/buy', authMiddleware, async (req: AuthRequest, res: Response) => {
       priceAtPurchase: tradePrice,
     });
 
+    createNotification({
+      userId: req.user.id,
+      type: 'SYSTEM',
+      title: 'Achat AuraCoin',
+      body: `Tu as achete ${coinsReceived.toFixed(4)} AuraCoin pour $${moneyAmount}.`,
+      data: {
+        type: 'BUY',
+        moneySpent: moneyAmount,
+        coinsReceived,
+        fee,
+        price: tradePrice,
+      },
+      link: '/games/aura-coin',
+      icon: 'coins',
+    }).catch(() => {});
+
     res.json({
       success: true,
       transaction: {
@@ -277,6 +294,22 @@ router.post('/sell', authMiddleware, async (req: AuthRequest, res: Response) => 
       fee,
       priceAtSale: tradePrice,
     });
+
+    createNotification({
+      userId: req.user.id,
+      type: 'SYSTEM',
+      title: 'Vente AuraCoin',
+      body: `Tu as vendu ${coinAmount.toFixed(4)} AuraCoin pour $${netAmount}.`,
+      data: {
+        type: 'SELL',
+        coinsSold: coinAmount,
+        moneyReceived: netAmount,
+        fee,
+        price: tradePrice,
+      },
+      link: '/games/aura-coin',
+      icon: 'coins',
+    }).catch(() => {});
 
     res.json({
       success: true,
@@ -428,6 +461,22 @@ const checkLiquidations = async () => {
           userId: position.userId,
           positionId: position.id,
         });
+
+        createNotification({
+          userId: position.userId,
+          type: 'SYSTEM',
+          title: 'Position liquidée',
+          body: `Ta position ${position.type} x${position.leverage} a ete liquidee.`,
+          data: {
+            positionId: position.id,
+            type: position.type,
+            leverage: position.leverage,
+            exitPrice: currentPrice,
+            pnl,
+          },
+          link: '/games/aura-coin',
+          icon: 'triangle-alert',
+        }).catch(() => {});
       }
     }
   } catch (error) {
@@ -496,6 +545,22 @@ router.post('/position/open', authMiddleware, async (req: AuthRequest, res: Resp
       money: position[0].money,
       aura: position[0].aura,
     });
+
+    createNotification({
+      userId: req.user.id,
+      type: 'SYSTEM',
+      title: 'Position ouverte',
+      body: `Position ${type} x${leverage} ouverte avec une marge de $${marginAmount}.`,
+      data: {
+        positionId: position[1].id,
+        type,
+        leverage,
+        marginAmount,
+        entryPrice: currentPrice,
+      },
+      link: '/games/aura-coin',
+      icon: 'chart-candlestick',
+    }).catch(() => {});
 
     res.json({
       success: true,
@@ -573,6 +638,21 @@ router.post('/position/close/:positionId', authMiddleware, async (req: AuthReque
       money: updatedUser.money,
       aura: updatedUser.aura,
     });
+
+    createNotification({
+      userId: req.user.id,
+      type: 'SYSTEM',
+      title: 'Position fermee',
+      body: `Position fermee avec un P&L de $${pnl}.`,
+      data: {
+        positionId: updatedPosition.id,
+        pnl,
+        exitPrice: currentPrice,
+        totalReturn,
+      },
+      link: '/games/aura-coin',
+      icon: 'chart-no-axes-column',
+    }).catch(() => {});
 
     res.json({
       success: true,

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader, PageShell } from '@/components/layout/page-shell';
 import { UsernameDisplay } from '@/components/ui/username-display';
+import { cn } from '@/lib/utils';
 
 // ─── Constants ─────────────────────────────────────────────────────────────
 const ROWS = 6;
@@ -95,10 +96,6 @@ export default function PuissanceQuatre() {
     const onState = (state: P4State) => {
       setGameState(state);
       setError(null);
-      if (state.phase === 'playing' && !state.winnerId) {
-        setPlayAgainPrompt(null);
-        setHasQuitPlayAgain(false);
-      }
     };
 
     const onGameOver = (data: GameOverData) => {

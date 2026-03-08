@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { adminApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest } from '../services/api';
+import { adminApi, AdminUser, ShopItem, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan } from '../services/api';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, Inbox, Archive, UserCog } from 'lucide-react';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, Inbox, Archive, UserCog, Crown, Swords } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, ReferenceDot } from 'recharts';
 import {
   AlertDialog,
@@ -121,6 +121,9 @@ const ACTION_LABELS: Record<string, string> = {
   update_popup_create: 'Popup update créée',
   update_popup_update: 'Popup update modifiée',
   update_popup_delete: 'Popup update supprimée',
+  clan_update: 'Clan modifié',
+  clan_transfer_leadership: 'Chef de clan modifié',
+  clan_delete: 'Clan supprimé',
   // Ban
   ban_create: 'Bannissement créé',
   ban_remove: 'Bannissement levé',
@@ -164,6 +167,9 @@ const GAME_TYPE_LABELS: Record<string, string> = {
   solitaire: 'Solitaire',
   racer: 'Racer',
   tetris: 'Tetris',
+  knife_hit: 'Knife Hit',
+  helix_jump: 'Helix Jump',
+  subway_rush: 'Subway Rush',
   casino: 'Casino',
   bombparty: 'Bomb Party',
   petit_bac: 'Petit Bac',
@@ -268,6 +274,9 @@ const GAME_TYPES = [
   { value: 'solitaire', label: 'Solitaire' },
   { value: 'racer', label: 'Racer' },
   { value: 'tetris', label: 'Tetris' },
+  { value: 'knife_hit', label: 'Knife Hit' },
+  { value: 'helix_jump', label: 'Helix Jump' },
+  { value: 'subway_rush', label: 'Subway Rush' },
   { value: 'casino', label: 'Casino' },
   { value: 'bombparty', label: 'Bomb Party' },
   { value: 'petit_bac', label: 'Petit Bac' },
@@ -338,7 +347,7 @@ export default function Admin() {
   const [mutingUser, setMutingUser] = useState<string | null>(null);
   const [clearingChat, setClearingChat] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'inbox' | 'users' | 'logs' | 'bans' | 'content' | 'communication' | 'settings' | 'activity'>('inbox');
+  const [activeTab, setActiveTab] = useState<'inbox' | 'users' | 'clubs' | 'logs' | 'bans' | 'content' | 'communication' | 'settings' | 'activity'>('inbox');
   const [commSubTab, setCommSubTab] = useState<'announcement' | 'login' | 'updates' | 'maintenance'>('announcement');
 
   // Activity tab state
@@ -368,6 +377,22 @@ export default function Admin() {
   const [addingInventoryItem, setAddingInventoryItem] = useState(false);
   const [updatingInventoryItem, setUpdatingInventoryItem] = useState<string | null>(null);
   const [removingInventoryItem, setRemovingInventoryItem] = useState<string | null>(null);
+
+  // Clans state
+  const [clans, setClans] = useState<AdminClan[]>([]);
+  const [loadingClans, setLoadingClans] = useState(false);
+  const [editingClanId, setEditingClanId] = useState<string | null>(null);
+  const [clanSearchQuery, setClanSearchQuery] = useState('');
+  const [clanForm, setClanForm] = useState<{ name: string; description: string; imageUrl: string; maxMembers: number; isPublic: boolean }>({
+    name: '',
+    description: '',
+    imageUrl: '',
+    maxMembers: 5,
+    isPublic: true,
+  });
+  const [savingClan, setSavingClan] = useState(false);
+  const [deletingClan, setDeletingClan] = useState<string | null>(null);
+  const [transferringClanLeader, setTransferringClanLeader] = useState<string | null>(null);
 
   // Items state
   const [items, setItems] = useState<ShopItem[]>([]);
@@ -658,6 +683,7 @@ export default function Admin() {
 
   useEffect(() => {
     fetchUsers();
+    fetchClans();
     fetchItems();
     fetchBugReports();
     fetchPendingUsers();
@@ -731,6 +757,19 @@ export default function Admin() {
       showMessage('error', 'Erreur lors du chargement des objets');
     } finally {
       setLoadingItems(false);
+    }
+  };
+
+  const fetchClans = async () => {
+    try {
+      setLoadingClans(true);
+      const res = await adminApi.getClans();
+      setClans(res.data.clans);
+    } catch (error) {
+      console.error('Failed to fetch clans:', error);
+      showMessage('error', 'Erreur lors du chargement des clans');
+    } finally {
+      setLoadingClans(false);
     }
   };
 
@@ -1218,6 +1257,86 @@ export default function Admin() {
     setTimeout(() => setMessage(null), 3000);
   };
 
+  const startEditingClan = (clan: AdminClan) => {
+    setEditingClanId(clan.id);
+    setClanForm({
+      name: clan.name,
+      description: clan.description || '',
+      imageUrl: clan.imageUrl || '',
+      maxMembers: clan.maxMembers,
+      isPublic: clan.isPublic,
+    });
+    setActiveTab('clubs');
+  };
+
+  const cancelEditingClan = () => {
+    setEditingClanId(null);
+    setClanForm({
+      name: '',
+      description: '',
+      imageUrl: '',
+      maxMembers: 5,
+      isPublic: true,
+    });
+  };
+
+  const saveClan = async (id: string) => {
+    if (!clanForm.name.trim()) {
+      showMessage('error', 'Le nom du clan est requis');
+      return;
+    }
+
+    setSavingClan(true);
+    try {
+      const res = await adminApi.updateClan(id, {
+        name: clanForm.name.trim(),
+        description: clanForm.description.trim(),
+        imageUrl: clanForm.imageUrl.trim(),
+        maxMembers: clanForm.maxMembers,
+        isPublic: clanForm.isPublic,
+      });
+      setClans((prev) => prev.map((clan) => (clan.id === id ? res.data.clan : clan)));
+      cancelEditingClan();
+      showMessage('success', 'Clan mis à jour');
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur');
+    } finally {
+      setSavingClan(false);
+    }
+  };
+
+  const transferClanLeadership = async (clanId: string, targetUserId: string) => {
+    setTransferringClanLeader(`${clanId}:${targetUserId}`);
+    try {
+      await adminApi.transferClanLeadership(clanId, targetUserId);
+      await fetchClans();
+      if (editingClanId === clanId) {
+        setEditingClanId(null);
+      }
+      showMessage('success', 'Chef du clan mis à jour');
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur');
+    } finally {
+      setTransferringClanLeader(null);
+    }
+  };
+
+  const deleteClan = async (id: string) => {
+    setDeletingClan(id);
+    try {
+      await adminApi.deleteClan(id);
+      setClans((prev) => prev.filter((clan) => clan.id !== id));
+      if (editingClanId === id) {
+        cancelEditingClan();
+      }
+      showMessage('success', 'Clan supprimé');
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur');
+    } finally {
+      setDeletingClan(null);
+    }
+  };
+
   // Parse effect string to get type and value
   const parseEffect = (effectStr: string | null): { type: string; value: string; bonusAura?: number; bonusMoney?: number } => {
     if (!effectStr) return { type: 'USERNAME_COLOR', value: '' };
@@ -1521,6 +1640,16 @@ export default function Admin() {
     }
   };
 
+  const filteredClans = clans.filter((clan) => {
+    const query = clanSearchQuery.trim().toLowerCase();
+    if (!query) return true;
+    return (
+      clan.name.toLowerCase().includes(query) ||
+      clan.owner.username.toLowerCase().includes(query) ||
+      clan.members.some((member) => member.user.username.toLowerCase().includes(query))
+    );
+  });
+
   return (
     <>
     <PageShell>
@@ -1544,6 +1673,10 @@ export default function Admin() {
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Utilisateurs
+          </TabsTrigger>
+          <TabsTrigger value="clubs" className="flex items-center gap-2">
+            <Crown className="h-4 w-4" />
+            Clubs
           </TabsTrigger>
           <TabsTrigger value="logs" className="flex items-center gap-2">
             <ScrollText className="h-4 w-4" />
@@ -2248,6 +2381,217 @@ export default function Admin() {
               })()}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="clubs" className={SPACING.SECTION_SPACING}>
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <CardDescription>Gestion des clans</CardDescription>
+                    <p className="text-sm text-muted-foreground">{filteredClans.length} clan(s) affiché(s)</p>
+                  </div>
+                  <div className="relative w-full lg:w-80">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={clanSearchQuery}
+                      onChange={(e) => setClanSearchQuery(e.target.value)}
+                      placeholder="Rechercher un clan, chef ou membre"
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {loadingClans ? (
+                  <div className="py-10 text-center text-muted-foreground">
+                    <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+                  </div>
+                ) : filteredClans.length === 0 ? (
+                  <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+                    Aucun clan trouvé.
+                  </div>
+                ) : (
+                  filteredClans.map((clan) => (
+                    <div key={clan.id} className="rounded-xl border border-border/50 p-4">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="text-base font-medium">{clan.name}</h3>
+                            <span className={cn(
+                              'rounded-full px-2 py-0.5 text-xs',
+                              clan.isPublic ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400'
+                            )}>
+                              {clan.isPublic ? 'Public' : 'Privé'}
+                            </span>
+                            {clan.activeWar && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-2 py-0.5 text-xs text-rose-400">
+                                <Swords className="h-3 w-3" />
+                                {clan.activeWar.status === 'ACTIVE' ? 'En guerre' : 'Préparation'}
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                            {clan.description || 'Aucune description.'}
+                          </p>
+                          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                            <span>Chef: {clan.owner.username}</span>
+                            <span>Membres: {clan.members.length}/{clan.maxMembers}</span>
+                            <span>Créé le {new Date(clan.createdAt).toLocaleDateString('fr-FR')}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" variant="outline" onClick={() => startEditingClan(clan)}>
+                            <Edit2 className="mr-2 h-4 w-4" />
+                            Gérer
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-destructive/50 text-destructive hover:bg-destructive/10"
+                                disabled={deletingClan === clan.id}
+                              >
+                                {deletingClan === clan.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Supprimer {clan.name} ?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Cette action supprime le clan, ses membres et ses guerres liées.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteClan(clan.id)} className="bg-destructive hover:bg-destructive/90">
+                                  Supprimer
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardDescription>{editingClanId ? 'Édition du clan' : 'Sélectionne un clan à gérer'}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {!editingClanId ? (
+                  <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+                    Choisis un clan dans la liste pour modifier ses paramètres ou changer son chef.
+                  </div>
+                ) : (
+                  (() => {
+                    const clan = clans.find((entry) => entry.id === editingClanId);
+                    if (!clan) {
+                      return <div className="text-sm text-muted-foreground">Clan introuvable.</div>;
+                    }
+
+                    return (
+                      <div className="space-y-5">
+                        <div className="space-y-2">
+                          <label className="text-xs text-muted-foreground">Nom</label>
+                          <Input value={clanForm.name} onChange={(e) => setClanForm((prev) => ({ ...prev, name: e.target.value }))} />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs text-muted-foreground">Description</label>
+                          <Textarea
+                            value={clanForm.description}
+                            onChange={(e) => setClanForm((prev) => ({ ...prev, description: e.target.value }))}
+                            rows={4}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs text-muted-foreground">Image</label>
+                          <ImagePicker
+                            value={clanForm.imageUrl}
+                            onChange={(url) => setClanForm((prev) => ({ ...prev, imageUrl: url }))}
+                            uploadFn={uploadItemImageFile}
+                            hidePreview
+                          />
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <label className="text-xs text-muted-foreground">Capacité max</label>
+                            <Input
+                              type="number"
+                              min={clan.members.length}
+                              max={12}
+                              value={clanForm.maxMembers}
+                              onChange={(e) => setClanForm((prev) => ({ ...prev, maxMembers: parseInt(e.target.value) || clan.members.length }))}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between rounded-lg border p-3">
+                            <div>
+                              <div className="text-sm font-medium">Clan public</div>
+                              <div className="text-xs text-muted-foreground">Entrée directe ou sur candidature</div>
+                            </div>
+                            <Switch
+                              checked={clanForm.isPublic}
+                              onCheckedChange={(checked) => setClanForm((prev) => ({ ...prev, isPublic: checked }))}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <Button onClick={() => saveClan(clan.id)} disabled={savingClan}>
+                            {savingClan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                            Sauvegarder
+                          </Button>
+                          <Button variant="outline" onClick={cancelEditingClan}>Annuler</Button>
+                        </div>
+
+                        <div className="space-y-3 border-t border-border/40 pt-5">
+                          <div className="flex items-center gap-2">
+                            <Crown className="h-4 w-4 text-amber-500" />
+                            <h3 className="font-medium">Changer le chef</h3>
+                          </div>
+                          <div className="space-y-2">
+                            {clan.members.map((member) => (
+                              <div key={member.id} className="flex items-center justify-between rounded-lg border border-border/50 p-3">
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium">{member.user.username}</span>
+                                    {member.isLeader && <span className="text-xs text-amber-500">chef actuel</span>}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {Number(member.user.aura).toLocaleString('fr-FR')} aura • membre depuis {new Date(member.joinedAt).toLocaleDateString('fr-FR')}
+                                  </div>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant={member.isLeader ? 'secondary' : 'outline'}
+                                  disabled={member.isLeader || transferringClanLeader === `${clan.id}:${member.userId}`}
+                                  onClick={() => transferClanLeadership(clan.id, member.userId)}
+                                >
+                                  {transferringClanLeader === `${clan.id}:${member.userId}` ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Crown className="mr-2 h-4 w-4" />
+                                  )}
+                                  Nommer chef
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="content" className={SPACING.SECTION_SPACING}>

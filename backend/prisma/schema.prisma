@@ -55,6 +55,9 @@ model User {
   ownedClans            Clan[]                 @relation("ClanOwner")
   clanMemberships       ClanMember[]
   clanJoinRequests      ClanJoinRequest[]
+  declaredClanWars      ClanWar[]               @relation("ClanWarDeclaredBy")
+  clanWarAttacks        ClanWarAttack[]
+  clanWarFortifications ClanWarFortification[]
   polymarketSuggestions PolymarketSuggestion[]
   polymarketBets        PolymarketBet[]
   createdUpdatePopups   UpdatePopup[]           @relation("UpdatePopupCreator")
@@ -72,6 +75,7 @@ model User {
   notifications       Notification[]
   dailyRacerRuns      DailyRacerRun[]
   goyaveSave          GoyaveSave?
+  clanWarsWon         ClanWar[]                 @relation("ClanWarWinner")
 
   @@index([aura])
   @@index([money])
@@ -205,6 +209,13 @@ model Clan {
   owner        User              @relation("ClanOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   members      ClanMember[]
   joinRequests ClanJoinRequest[]
+  attackerWars ClanWar[]         @relation("ClanWarAttacker")
+  defenderWars ClanWar[]         @relation("ClanWarDefender")
+  wonWars      ClanWar[]         @relation("ClanWarWinnerClan")
+  warDefenses  ClanWarDefense[]
+  warAttacks   ClanWarAttack[]   @relation("ClanWarAttackSource")
+  warTargets   ClanWarAttack[]   @relation("ClanWarAttackTarget")
+  fortifications ClanWarFortification[]
 
   @@index([isPublic])
   @@index([createdAt])
@@ -237,6 +248,106 @@ model ClanJoinRequest {
   @@unique([clanId, userId])
   @@index([clanId])
   @@index([userId])
+}
+
+model ClanWar {
+  id                String   @id @default(uuid())
+  attackerClanId    String
+  defenderClanId    String
+  declaredByUserId  String
+  winnerClanId      String?
+  winnerUserId      String?
+  status            String   @default("PREPARING")
+  startsAt          DateTime
+  endsAt            DateTime
+  completedAt       DateTime?
+  attackerScore     Int      @default(0)
+  defenderScore     Int      @default(0)
+  targetScore       Int      @default(180)
+  winnerRewardMoney Int      @default(1200)
+  loserRewardMoney  Int      @default(300)
+  winnerRewardAura  Int      @default(45)
+  loserRewardAura   Int      @default(10)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  attackerClan Clan   @relation("ClanWarAttacker", fields: [attackerClanId], references: [id], onDelete: Cascade)
+  defenderClan Clan   @relation("ClanWarDefender", fields: [defenderClanId], references: [id], onDelete: Cascade)
+  declaredBy   User   @relation("ClanWarDeclaredBy", fields: [declaredByUserId], references: [id], onDelete: Cascade)
+  winnerClan   Clan?  @relation("ClanWarWinnerClan", fields: [winnerClanId], references: [id], onDelete: SetNull)
+  winnerUser   User?  @relation("ClanWarWinner", fields: [winnerUserId], references: [id], onDelete: SetNull)
+  defenses     ClanWarDefense[]
+  attacks      ClanWarAttack[]
+  fortifications ClanWarFortification[]
+
+  @@index([attackerClanId, status])
+  @@index([defenderClanId, status])
+  @@index([status, startsAt])
+  @@index([status, endsAt])
+  @@index([winnerClanId])
+}
+
+model ClanWarDefense {
+  id          String   @id @default(uuid())
+  warId       String
+  clanId      String
+  type        String
+  level       Int      @default(1)
+  durability  Int      @default(60)
+  maxDurability Int    @default(60)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  war   ClanWar @relation(fields: [warId], references: [id], onDelete: Cascade)
+  clan  Clan    @relation(fields: [clanId], references: [id], onDelete: Cascade)
+  fortifications ClanWarFortification[]
+
+  @@unique([warId, clanId, type])
+  @@index([warId, clanId])
+}
+
+model ClanWarAttack {
+  id                String   @id @default(uuid())
+  warId             String
+  userId            String
+  clanId            String
+  targetClanId      String
+  attackType        String
+  staminaCost       Int      @default(1)
+  basePoints        Int
+  bonusPoints       Int      @default(0)
+  defenseMitigation Int      @default(0)
+  structureDamage   Int      @default(0)
+  finalPoints       Int
+  createdAt         DateTime @default(now())
+
+  war           ClanWar @relation(fields: [warId], references: [id], onDelete: Cascade)
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attackingClan Clan    @relation("ClanWarAttackSource", fields: [clanId], references: [id], onDelete: Cascade)
+  targetClan    Clan    @relation("ClanWarAttackTarget", fields: [targetClanId], references: [id], onDelete: Cascade)
+
+  @@index([warId, clanId, createdAt])
+  @@index([warId, userId, createdAt])
+  @@index([warId, targetClanId, createdAt])
+}
+
+model ClanWarFortification {
+  id              String   @id @default(uuid())
+  warId           String
+  defenseId       String
+  clanId          String
+  userId          String
+  levelAdded      Int      @default(0)
+  durabilityAdded Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  war     ClanWar         @relation(fields: [warId], references: [id], onDelete: Cascade)
+  defense ClanWarDefense  @relation(fields: [defenseId], references: [id], onDelete: Cascade)
+  clan    Clan            @relation(fields: [clanId], references: [id], onDelete: Cascade)
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([warId, clanId, userId])
+  @@index([defenseId])
 }
 
 // Chat Messages

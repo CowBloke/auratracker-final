@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { logEconomy } from '../utils/logger.js';
+import { createNotification } from '../utils/notifications.js';
 
 const router = Router();
 
@@ -387,6 +388,21 @@ router.post('/claim', authMiddleware, async (req: AuthRequest, res: Response) =>
       totalAura,
     });
 
+    createNotification({
+      userId: req.user.id,
+      type: 'SYSTEM',
+      title: 'Recompenses de quetes recuperees',
+      body: `Tu as recu ${totalAura} aura et $${totalMoney} pour ${userQuests.length} quete${userQuests.length > 1 ? 's' : ''}.`,
+      data: {
+        questIds: userQuests.map((uq) => uq.id),
+        totalMoney,
+        totalAura,
+        claimedQuests: userQuests.length,
+      },
+      link: '/quests',
+      icon: 'gift',
+    }).catch(() => {});
+
     res.json({
       success: true,
       rewards: {
@@ -479,6 +495,20 @@ export async function checkQuestProgress(
           questId: userQuest.id,
           questTitle: userQuest.quest.title,
         });
+
+        createNotification({
+          userId,
+          type: 'QUEST_COMPLETED',
+          title: 'Quete terminee',
+          body: `${userQuest.quest.title} est prete a etre reclamee.`,
+          data: {
+            questId: userQuest.id,
+            questTitle: userQuest.quest.title,
+            questType: userQuest.quest.questType,
+          },
+          link: '/quests',
+          icon: 'check',
+        }).catch(() => {});
       }
     }
   } catch (error) {

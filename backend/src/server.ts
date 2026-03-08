@@ -43,6 +43,7 @@ import { setupPokerHandlers } from './socket/poker.js';
 import { setupPetitBacHandlers } from './socket/petitbac.js';
 import { setupBattleshipHandlers } from './socket/battleship.js';
 import { setupPuissanceQuatreHandlers } from './socket/puissancequatre.js';
+import { setupChessHandlers } from './socket/chess.js';
 
 // Logger
 import { initLogger } from './utils/logger.js';
@@ -230,6 +231,7 @@ io.on('connection', (socket) => {
   setupPetitBacHandlers(socket, io);
   setupBattleshipHandlers(socket, io);
   setupPuissanceQuatreHandlers(socket, io);
+  setupChessHandlers(socket, io);
   
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.id}`);
@@ -241,24 +243,35 @@ const start = async () => {
   try {
     await prisma.$connect();
     console.log('Connected to database');
-    
-    // Start price engine for AuraCoin
-    startAuraCoinEngine();
+    await new Promise<void>((resolve, reject) => {
+      const onError = (error: NodeJS.ErrnoException) => {
+        httpServer.off('listening', onListening);
+        reject(error);
+      };
 
-    // Start online user count broadcast (every 5s)
-    startOnlineCountBroadcast(io);
+      const onListening = () => {
+        httpServer.off('error', onError);
+        resolve();
+      };
 
-    // Record online user count snapshots every 5 minutes for activity graphs
-    startOnlineSnapshotRecording();
-
-    // Start bomb party game cleanup
-    startBombPartyCleanup(io);
-
-    httpServer.listen(config.port, () => {
-      console.log(`Server running on port ${config.port}`);
+      httpServer.once('error', onError);
+      httpServer.once('listening', onListening);
+      httpServer.listen(config.port);
     });
+
+    console.log(`Server running on port ${config.port}`);
+
+    // Start background jobs only after the HTTP server is actually bound.
+    startAuraCoinEngine();
+    startOnlineCountBroadcast(io);
+    startOnlineSnapshotRecording();
+    startBombPartyCleanup(io);
   } catch (error) {
-    console.error('Failed to start server:', error);
+    if ((error as NodeJS.ErrnoException).code === 'EADDRINUSE') {
+      console.error(`Failed to start server: port ${config.port} is already in use`);
+    } else {
+      console.error('Failed to start server:', error);
+    }
     process.exit(1);
   }
 };

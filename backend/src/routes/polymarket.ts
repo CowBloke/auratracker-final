@@ -3,6 +3,7 @@ import { prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { logAdmin } from '../utils/logger.js';
 import { isAllowedImageUrl } from '../utils/uploads.js';
+import { createNotification } from '../utils/notifications.js';
 
 const router = Router();
 
@@ -110,6 +111,27 @@ router.post('/suggestions', authMiddleware, async (req: AuthRequest, res: Respon
         },
       },
     });
+
+    const admins = await prisma.user.findMany({
+      where: { isAdmin: true, isApproved: true },
+      select: { id: true },
+    });
+
+    await Promise.allSettled(admins.map((admin) =>
+      createNotification({
+        userId: admin.id,
+        type: 'SYSTEM',
+        title: 'Nouvelle suggestion Polymarket',
+        body: `${suggestion.user.username} a propose "${suggestion.title}".`,
+        data: {
+          suggestionId: suggestion.id,
+          title: suggestion.title,
+          authorId: suggestion.user.id,
+        },
+        link: '/games/polymarket',
+        icon: 'chart-no-axes-column',
+      })
+    ));
 
     res.status(201).json({ suggestion });
   } catch (error) {
@@ -458,6 +480,19 @@ router.post('/suggestions/:id/approve', authMiddleware, requireAdmin, async (req
       noOdds: event.noOdds,
     });
 
+    createNotification({
+      userId: suggestion.userId,
+      type: 'SYSTEM',
+      title: 'Suggestion Polymarket acceptee',
+      body: `Ta suggestion "${suggestion.title}" a ete acceptee et publiee.`,
+      data: {
+        suggestionId: suggestion.id,
+        eventId: event.id,
+      },
+      link: '/games/polymarket',
+      icon: 'badge-check',
+    }).catch(() => {});
+
     res.json({ event });
   } catch (error) {
     console.error('Approve suggestion error:', error);
@@ -492,6 +527,18 @@ router.post('/suggestions/:id/reject', authMiddleware, requireAdmin, async (req:
     });
 
     logAdmin('polymarket_suggestion_reject', req.user!.id, undefined, id, suggestion.title, {});
+
+    createNotification({
+      userId: suggestion.userId,
+      type: 'SYSTEM',
+      title: 'Suggestion Polymarket refusee',
+      body: `Ta suggestion "${suggestion.title}" a ete refusee.`,
+      data: {
+        suggestionId: suggestion.id,
+      },
+      link: '/games/polymarket',
+      icon: 'badge-x',
+    }).catch(() => {});
 
     res.json({ success: true });
   } catch (error) {
@@ -658,6 +705,21 @@ router.post('/bets', authMiddleware, async (req: AuthRequest, res: Response) => 
       },
     });
 
+    createNotification({
+      userId: req.user!.id,
+      type: 'SYSTEM',
+      title: 'Pari Polymarket place',
+      body: `Tu as mise $${amount} sur ${prediction} pour "${bet.event.title}".`,
+      data: {
+        betId: bet.id,
+        eventId: event.id,
+        prediction,
+        amount,
+      },
+      link: '/games/polymarket',
+      icon: 'chart-no-axes-column',
+    }).catch(() => {});
+
     res.status(201).json({ bet });
   } catch (error: any) {
     console.error('Place bet error:', error);
@@ -736,7 +798,40 @@ router.post('/events/:id/resolve', authMiddleware, requireAdmin, async (req: Aut
           },
         },
       });
+
+      createNotification({
+        userId: bet.userId,
+        type: 'POLYMARKET_WIN',
+        title: 'Pari Polymarket gagne',
+        body: `Ton pari sur "${event.title}" a gagne. Gain: $${payoutAmount}.`,
+        data: {
+          betId: bet.id,
+          eventId: event.id,
+          resolution,
+          payoutAmount,
+        },
+        link: '/games/polymarket',
+        icon: 'trending-up',
+      }).catch(() => {});
     }
+
+    const losingBets = event.bets.filter((bet) => bet.prediction !== resolution);
+    await Promise.allSettled(losingBets.map((bet) =>
+      createNotification({
+        userId: bet.userId,
+        type: 'POLYMARKET_LOSS',
+        title: 'Pari Polymarket perdu',
+        body: `Ton pari sur "${event.title}" a perdu.`,
+        data: {
+          betId: bet.id,
+          eventId: event.id,
+          resolution,
+          amount: bet.amount,
+        },
+        link: '/games/polymarket',
+        icon: 'trending-down',
+      })
+    ));
 
     logAdmin('polymarket_event_resolve', req.user!.id, undefined, id, event.title, {
       resolution,

@@ -1,12 +1,7 @@
 Games
 Solo
 Multijoueur
-- jeux multijoueurs/solo : pas de casino : party : quitter/venir sur latable
-- complet clash
-- animation/événements échecs
-- monopoly
 
-Design
 Brand
 Mascotte 
 logo
@@ -18,14 +13,13 @@ UI
 Big improvement
 - plus d'effets objets, objets en quantité limité
 - envoyer mails quand accepté sur le site avec présentation : Resend vérifier si domaine = saintdo
-- guerres des clans
 - seasons : space + scoby and wallace
+
 Small improvement
 - chat in den clan
 - chat in den partys
 - party liste topbar
 - scooby serie
-- faux compteur de gens en ligne en fonction de l’heure
 - supp conneries sur la age maintenance
 Bugs
 
@@ -34,8 +28,8 @@ Bugs
 - intégrer jeux github
 https://github.com/DavidNHill/JSMinesweeper
 https://github.com/pi0/space-invaders
-- subway surfer
 - skin payant
+- harmoniser replay et multiplayer games
 
 
 ## à FIX
@@ -60,3 +54,7 @@ Consistence UI
 - do .md ai rules (ui : shadcn only, consistency, etc.)
 - FIX pb textes encodage ex envoyer cadeau re\u00e7u
 - vérifier si radix ui ou shadcn
+
+## Prompts
+
+crée un nouveau jeu "clash" clone du jeu clash of clans. chaque joueur peux améliorer sa base isometric en achetat des defenses (défendre son hotel de ville) avec de l'argent emaisil y. ades limites de construction et on peut vendre aussi à moitié prix des batiments. on peut ainsi attaquer les autres joueurs tous les 24 heures pour voler leur argent et eux recoivent un boulier quand ils sont attaqués de 11 heures. crée 3 tabs : pour gérer sa base, attaquer (liste des joueurs avec nombre d'argent à piller) et historique. pour l'instant tous les joueurs ont les memes troupes à déployer

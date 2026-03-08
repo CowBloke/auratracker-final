@@ -106,9 +106,13 @@ const gameShortcuts: GameShortcut[] = [
   { id: 'solitaire', label: 'Solitaire', path: '/games/solitaire', description: 'Classique et relax.', image: '/images/games/solitaire.png' },
   { id: 'racer', label: 'Racer', path: '/games/racer', description: 'Course pseudo-3D style Outrun.', image: '/images/games/racer.png' },
   { id: 'tetris', label: 'Tetris', path: '/games/tetris', description: 'Puzzle classique et addictif.', image: '/images/games/tetris.png' },
+  { id: 'knife-hit', label: 'Knife Hit', path: '/games/knife-hit', description: 'Timing sec et précision.', image: '/images/games/knifehit.svg' },
+  { id: 'helix-jump', label: 'Helix Jump', path: '/games/helix-jump', description: 'Tourne la tour et chute sans toucher le rouge.' },
+  { id: 'subway-rush', label: 'Subway Rush', path: '/games/subway-rush', description: 'Runner 3 voies style Subway Surfers.' },
 ];
 
 const defaultShortcuts = ['doodle-jump', 'flappy-bird', 'bomb-party', '2048', 'poker', 'solitaire', 'tetris', 'racer'];
+const defaultShortcutSet = new Set(defaultShortcuts);
 const quickActions = [
   { label: 'Créer party', path: '/party', icon: Users, color: 'text-violet-500', bg: 'bg-violet-500/15' },
   { label: 'Voir quêtes', path: '/quests', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/15' },
@@ -213,6 +217,32 @@ interface ExtraStatValue {
   value: string | number | null;
 }
 
+const dashboardWidgetCardClass = "flex h-full flex-col overflow-hidden rounded-xl border-border/60 shadow-sm";
+const dashboardWidgetHeaderClass = "px-4 pb-3 pt-4 sm:px-5";
+const dashboardWidgetContentClass = "min-h-0 flex-1 px-4 pb-4 pt-0 sm:px-5 sm:pb-5";
+const dashboardWidgetCompactContentClass = "min-h-0 flex-1 p-3 pt-0 sm:p-4 sm:pt-0";
+
+function DashboardWidgetTitle({
+  title,
+  icon: Icon,
+  iconClassName,
+  iconWrapperClassName,
+}: {
+  title: string;
+  icon: React.FC<{ className?: string }>;
+  iconClassName: string;
+  iconWrapperClassName: string;
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-2.5">
+      <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg", iconWrapperClassName)}>
+        <Icon className={cn("h-3.5 w-3.5", iconClassName)} />
+      </div>
+      <CardTitle className={cn(TYPOGRAPHY.H3, "truncate")}>{title}</CardTitle>
+    </div>
+  );
+}
+
 
 function SortableDashboardWidget({
   widgetId,
@@ -240,7 +270,7 @@ function SortableDashboardWidget({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group relative min-h-0 h-[360px] md:h-[420px]",
+        "group relative min-h-0 h-[312px] md:h-[356px] xl:h-[372px]",
         isDragging && "z-20"
       )}
     >
@@ -550,7 +580,14 @@ export default function Dashboard() {
         if (Array.isArray(parsed)) {
           const filtered = parsed.filter((id: string) => shortcutMap.has(id)).slice(0, maxShortcutWidgets);
           if (filtered.length > 0) {
-            setShortcutWidgets(filtered);
+            const shouldFillLegacyDefaults =
+              filtered.length < maxShortcutWidgets && filtered.every((id: string) => defaultShortcutSet.has(id));
+
+            setShortcutWidgets(
+              shouldFillLegacyDefaults
+                ? [...new Set([...filtered, ...defaultShortcuts])].slice(0, maxShortcutWidgets)
+                : filtered
+            );
           }
         }
       }
@@ -814,19 +851,24 @@ export default function Dashboard() {
             items={visibleDashboardLayout}
             strategy={rectSortingStrategy}
           >
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:gap-5">
               {visibleDashboardLayout.map((widgetId) => (
                 <SortableDashboardWidget
                   key={widgetId}
                   widgetId={widgetId}
                 >
                   {widgetId === 'quick-actions' && (
-                    <Card className="flex h-full flex-col overflow-hidden">
-                      <CardHeader>
-                        <CardTitle className={TYPOGRAPHY.H3}>Actions rapides</CardTitle>
+                    <Card className={dashboardWidgetCardClass}>
+                      <CardHeader className={dashboardWidgetHeaderClass}>
+                        <DashboardWidgetTitle
+                          title="Actions rapides"
+                          icon={Zap}
+                          iconClassName="text-amber-500"
+                          iconWrapperClassName="bg-amber-500/15"
+                        />
                       </CardHeader>
-                      <CardContent className="min-h-0 flex-1 p-6">
-                        <div className="grid grid-cols-4 gap-2">
+                      <CardContent className={dashboardWidgetContentClass}>
+                        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                           {quickActions.map((action) => {
                             const Icon = action.icon;
                             return (
@@ -834,11 +876,11 @@ export default function Dashboard() {
                                 key={action.path}
                                 asChild
                                 variant="outline"
-                                className="aspect-square h-auto w-full flex-col items-center justify-center gap-2 rounded-xl p-3 text-center hover:border-border"
+                                className="aspect-square h-auto w-full flex-col items-center justify-center gap-1.5 rounded-xl p-2.5 text-center hover:border-border"
                               >
                                 <Link to={action.path}>
-                                  <div className={cn("flex h-9 w-9 items-center justify-center rounded-lg", action.bg)}>
-                                    <Icon className={cn("h-4.5 w-4.5", action.color)} />
+                                  <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg", action.bg)}>
+                                    <Icon className={cn("h-4 w-4", action.color)} />
                                   </div>
                                   <span className="text-xs font-medium leading-tight">{action.label}</span>
                                 </Link>
@@ -851,14 +893,17 @@ export default function Dashboard() {
                   )}
 
                   {widgetId === 'shortcuts' && (
-                    <Card className="flex h-full flex-col overflow-hidden">
-                      <CardHeader>
+                    <Card className={dashboardWidgetCardClass}>
+                      <CardHeader className={dashboardWidgetHeaderClass}>
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div>
-                            <CardTitle className={TYPOGRAPHY.H3}>Raccourcis jeux</CardTitle>
-                          </div>
+                          <DashboardWidgetTitle
+                            title="Raccourcis jeux"
+                            icon={Gamepad2}
+                            iconClassName="text-sky-500"
+                            iconWrapperClassName="bg-sky-500/15"
+                          />
                           <Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
-                            <Button variant="outline" onClick={() => setShortcutsOpen(true)}>
+                            <Button variant="outline" size="sm" onClick={() => setShortcutsOpen(true)}>
                               Modifier
                             </Button>
                             <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
@@ -918,8 +963,8 @@ export default function Dashboard() {
                           </Dialog>
                         </div>
                       </CardHeader>
-                      <CardContent className={cn(SPACING.SECTION_SPACING, "min-h-0 flex-1 overflow-y-auto")}>
-                        <div className="grid grid-cols-4 gap-3">
+                      <CardContent className={cn(dashboardWidgetContentClass, "overflow-y-auto")}>
+                        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
                           {orderedShortcuts.length > 0 ? (
                             orderedShortcuts.map((shortcut) => (
                               <ShortcutTile key={shortcut.id} shortcut={shortcut} />
@@ -937,15 +982,15 @@ export default function Dashboard() {
                   )}
 
                   {widgetId === 'quests' && (
-                    <Card className="flex h-full flex-col overflow-hidden">
-                      <CardHeader>
+                    <Card className={dashboardWidgetCardClass}>
+                      <CardHeader className={dashboardWidgetHeaderClass}>
                         <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/15">
-                              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                            </div>
-                            <CardTitle className={TYPOGRAPHY.H3}>Quêtes du jour</CardTitle>
-                          </div>
+                          <DashboardWidgetTitle
+                            title="Quêtes du jour"
+                            icon={CheckCircle2}
+                            iconClassName="text-emerald-600"
+                            iconWrapperClassName="bg-emerald-500/15"
+                          />
                           {completedQuestCount > 0 && (
                             <Badge className="bg-emerald-500 text-white hover:bg-emerald-500/90">
                               {completedQuestCount} à réclamer
@@ -953,36 +998,38 @@ export default function Dashboard() {
                           )}
                         </div>
                       </CardHeader>
-                      <CardContent className="min-h-0 flex-1 overflow-y-auto space-y-3">
+                      <CardContent className={cn(dashboardWidgetContentClass, "flex flex-col")}>
                         {questWidgets.length > 0 ? (
                           <>
-                            <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/30 px-4 py-3 text-sm">
-                              <span className="text-muted-foreground">{questWidgets.length} actives</span>
-                              {completedQuestCount > 0 ? (
-                                <span className="tabular-nums font-medium text-emerald-600">{completedQuestCount} à réclamer</span>
-                              ) : (
-                                <span className="tabular-nums text-muted-foreground">0 à réclamer</span>
-                              )}
-                            </div>
+                            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
+                              <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/30 px-3 py-2.5 text-sm">
+                                <span className="text-muted-foreground">{questWidgets.length} actives</span>
+                                {completedQuestCount > 0 ? (
+                                  <span className="tabular-nums font-medium text-emerald-600">{completedQuestCount} à réclamer</span>
+                                ) : (
+                                  <span className="tabular-nums text-muted-foreground">0 à réclamer</span>
+                                )}
+                              </div>
 
-                            <div className="space-y-2">
-                              {questWidgets.slice(0, 3).map((quest) => {
-                                const progress = quest.progress?.currentValue || 0;
-                                const target = quest.quest.targetValue;
+                              <div className="space-y-2">
+                                {questWidgets.slice(0, 3).map((quest) => {
+                                  const progress = quest.progress?.currentValue || 0;
+                                  const target = quest.quest.targetValue;
 
-                                return (
-                                  <div key={quest.id} className="space-y-2 rounded-lg border border-border/60 px-4 py-3">
-                                    <div className="flex items-center justify-between gap-3">
-                                      <p className="min-w-0 truncate text-sm font-medium">{quest.quest.title}</p>
-                                      <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{progress}/{target}</span>
+                                  return (
+                                    <div key={quest.id} className="space-y-2 rounded-lg border border-border/60 px-3 py-2.5">
+                                      <div className="flex items-center justify-between gap-3">
+                                        <p className="min-w-0 truncate text-sm font-medium">{quest.quest.title}</p>
+                                        <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{progress}/{target}</span>
+                                      </div>
+                                      <Progress value={Math.min((progress / target) * 100, 100)} className="h-1.5" />
                                     </div>
-                                    <Progress value={Math.min((progress / target) * 100, 100)} className="h-1.5" />
-                                  </div>
-                                );
-                              })}
+                                  );
+                                })}
+                              </div>
                             </div>
 
-                            <Button asChild variant="outline" className="w-full">
+                            <Button asChild variant="outline" className="mt-3 w-full">
                               <Link to="/quests">Ouvrir les quêtes</Link>
                             </Button>
                           </>
@@ -991,7 +1038,7 @@ export default function Dashboard() {
                             <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>
                               Choisis 3 quêtes · {widgetQuestSelection.length}/3 sélectionnées
                             </p>
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                               {availableDailyQuests.slice(0, 9).map((quest) => {
                                 const isSelected = widgetQuestSelection.includes(quest.id);
                                 const limitReached = !isSelected && widgetQuestSelection.length >= 3;
@@ -1008,7 +1055,7 @@ export default function Dashboard() {
                                       )
                                     }
                                     className={cn(
-                                      "flex flex-col items-start gap-1 rounded-lg border p-2 text-left text-xs transition",
+                                      "flex flex-col items-start gap-1 rounded-lg border p-2.5 text-left text-xs transition",
                                       isSelected
                                         ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
                                         : "border-border/60 hover:bg-accent/50",
@@ -1030,9 +1077,9 @@ export default function Dashboard() {
                             </Button>
                           </>
                         ) : (
-                          <div className="flex h-full flex-col justify-between gap-4">
+                          <div className="flex min-h-0 flex-1 flex-col gap-3">
                             <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground")}>Les quêtes du jour ne sont pas encore disponibles.</p>
-                            <Button asChild>
+                            <Button asChild className="mt-auto">
                               <Link to="/quests">Voir les quêtes</Link>
                             </Button>
                           </div>
@@ -1042,13 +1089,15 @@ export default function Dashboard() {
                   )}
 
                   {widgetId === 'live' && (
-                    <Card className="flex h-full flex-col overflow-hidden">
-                      <CardHeader>
+                    <Card className={dashboardWidgetCardClass}>
+                      <CardHeader className={dashboardWidgetHeaderClass}>
                         <div className="flex items-center gap-2">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/15">
-                            <Users className="h-4 w-4 text-violet-500" />
-                          </div>
-                          <CardTitle className={TYPOGRAPHY.H3}>Activité des parties</CardTitle>
+                          <DashboardWidgetTitle
+                            title="Activité des parties"
+                            icon={Users}
+                            iconClassName="text-violet-500"
+                            iconWrapperClassName="bg-violet-500/15"
+                          />
                           {publicParties.length > 0 && (
                             <span className="ml-auto flex items-center gap-1.5 text-xs font-medium text-emerald-600">
                               <span className="relative flex h-2 w-2">
@@ -1060,17 +1109,17 @@ export default function Dashboard() {
                           )}
                         </div>
                       </CardHeader>
-                      <CardContent className="min-h-0 flex-1 overflow-y-auto">
+                      <CardContent className={cn(dashboardWidgetContentClass, "overflow-y-auto")}>
                         {publicParties.length === 0 ? (
                           <p className={TYPOGRAPHY.SMALL}>Aucune party active.</p>
                         ) : (
-                          <div className="space-y-3">
+                          <div className="space-y-2.5">
                             {publicParties.slice(0, 6).map((party) => {
                               const isFull = party.memberCount >= party.maxSize;
                               const isPending = pendingJoinRequests.includes(party.id);
                               const isCurrentParty = currentParty?.id === party.id;
                               return (
-                                <div key={party.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/60 px-4 py-3">
+                                <div key={party.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/60 px-3 py-2.5">
                                   <div className="min-w-0">
                                     <p className={TYPOGRAPHY.SMALL}>{party.name || 'Party sans nom'}</p>
                                     <p className={cn(TYPOGRAPHY.XS, "truncate text-muted-foreground")}>
@@ -1108,19 +1157,24 @@ export default function Dashboard() {
                   )}
 
                   {widgetId === 'stats' && (
-                    <Card className="flex h-full flex-col overflow-hidden">
-                      <CardHeader className="pb-2 pt-4 px-4">
-                        <CardTitle className={TYPOGRAPHY.H3}>Stats</CardTitle>
+                    <Card className={dashboardWidgetCardClass}>
+                      <CardHeader className={cn(dashboardWidgetHeaderClass, "pb-2")}>
+                        <DashboardWidgetTitle
+                          title="Stats"
+                          icon={BarChart3}
+                          iconClassName="text-primary"
+                          iconWrapperClassName="bg-primary/15"
+                        />
                       </CardHeader>
-                      <CardContent className="min-h-0 flex-1 p-3 pt-0">
+                      <CardContent className={dashboardWidgetCompactContentClass}>
                         <div className="grid h-full grid-cols-2 gap-2">
                           <Card className="border-primary/20 bg-primary/5">
-                            <CardContent className="flex h-full flex-col justify-between p-3">
+                            <CardContent className="flex h-full flex-col justify-between p-2.5 sm:p-3">
                               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/15">
                                 <Zap className="h-3.5 w-3.5 text-primary" />
                               </div>
                               <div>
-                                <p className="text-2xl font-semibold tabular-nums text-primary leading-tight">
+                                <p className="text-xl font-semibold tabular-nums text-primary leading-tight sm:text-2xl">
                                   {user?.aura.toLocaleString()}
                                 </p>
                                 <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>aura</p>
@@ -1128,12 +1182,12 @@ export default function Dashboard() {
                             </CardContent>
                           </Card>
                           <Card className="border-emerald-500/20 bg-emerald-500/5">
-                            <CardContent className="flex h-full flex-col justify-between p-3">
+                            <CardContent className="flex h-full flex-col justify-between p-2.5 sm:p-3">
                               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/15">
                                 <DollarSign className="h-3.5 w-3.5 text-emerald-600" />
                               </div>
                               <div>
-                                <p className="text-2xl font-semibold tabular-nums text-emerald-600 leading-tight">
+                                <p className="text-xl font-semibold tabular-nums text-emerald-600 leading-tight sm:text-2xl">
                                   ${user?.money.toLocaleString()}
                                 </p>
                                 <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>argent</p>
@@ -1144,12 +1198,12 @@ export default function Dashboard() {
                             const Icon = config.icon;
                             return (
                               <Card key={config.id} className="border-border/60">
-                                <CardContent className="flex h-full flex-col justify-between p-3">
+                                <CardContent className="flex h-full flex-col justify-between p-2.5 sm:p-3">
                                   <div className={cn("flex h-7 w-7 items-center justify-center rounded-lg", config.bg)}>
                                     <Icon className={cn("h-3.5 w-3.5", config.color)} />
                                   </div>
                                   <div>
-                                    <p className={cn("text-2xl font-semibold tabular-nums leading-tight", value === '--' && "text-muted-foreground")}>
+                                    <p className={cn("text-xl font-semibold tabular-nums leading-tight sm:text-2xl", value === '--' && "text-muted-foreground")}>
                                       {value ?? '--'}
                                     </p>
                                     <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>{config.label}</p>
@@ -1172,15 +1226,15 @@ export default function Dashboard() {
                       },
                     } satisfies ChartConfig;
                     return (
-                      <Card className="flex h-full flex-col overflow-hidden">
-                        <CardHeader className="pb-2">
+                      <Card className={dashboardWidgetCardClass}>
+                        <CardHeader className={cn(dashboardWidgetHeaderClass, "pb-2")}>
                           <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15">
-                                <Star className="h-4 w-4 text-primary" />
-                              </div>
-                              <CardTitle className={TYPOGRAPHY.H3}>Aura Coin</CardTitle>
-                            </div>
+                            <DashboardWidgetTitle
+                              title="Aura Coin"
+                              icon={Star}
+                              iconClassName="text-primary"
+                              iconWrapperClassName="bg-primary/15"
+                            />
                             <div
                               className={cn(
                                 "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
@@ -1200,46 +1254,48 @@ export default function Dashboard() {
                             </div>
                           </div>
                         </CardHeader>
-                        <CardContent className="flex min-h-0 flex-1 flex-col justify-between px-6 pb-6 pt-0">
-                          <p className={cn(TYPOGRAPHY.H1, "tabular-nums text-primary md:text-5xl")}>
-                            {auraCoinPrice === null ? '--' : `$${auraCoinPrice.toFixed(2)}`}
-                          </p>
+                        <CardContent className={cn(dashboardWidgetContentClass, "flex flex-col")}>
+                          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
+                            <p className={cn(TYPOGRAPHY.H1, "tabular-nums text-primary text-4xl md:text-[2.75rem]")}>
+                              {auraCoinPrice === null ? '--' : `$${auraCoinPrice.toFixed(2)}`}
+                            </p>
 
-                          {auraCoinHistory.length >= 2 ? (
-                            <ChartContainer config={auraCoinChartConfig} className="!aspect-auto h-24 w-full">
-                              <AreaChart data={auraCoinHistory} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
-                                <defs>
-                                  <linearGradient id="acGrad" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="var(--color-price)" stopOpacity={0.25} />
-                                    <stop offset="95%" stopColor="var(--color-price)" stopOpacity={0} />
-                                  </linearGradient>
-                                </defs>
-                                <XAxis dataKey="time" hide />
-                                <YAxis domain={['auto', 'auto']} hide />
-                                <ChartTooltip
-                                  content={
-                                    <ChartTooltipContent
-                                      formatter={(v) => [`$${Number(v).toFixed(2)}`, 'Prix']}
-                                      labelFormatter={(l) => l}
-                                    />
-                                  }
-                                />
-                                <Area
-                                  type="monotone"
-                                  dataKey="price"
-                                  stroke="var(--color-price)"
-                                  fill="url(#acGrad)"
-                                  strokeWidth={2}
-                                  dot={false}
-                                  isAnimationActive={false}
-                                />
-                              </AreaChart>
-                            </ChartContainer>
-                          ) : (
-                            <div className="h-24" />
-                          )}
+                            {auraCoinHistory.length >= 2 ? (
+                              <ChartContainer config={auraCoinChartConfig} className="!aspect-auto h-20 w-full sm:h-24">
+                                <AreaChart data={auraCoinHistory} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+                                  <defs>
+                                    <linearGradient id="acGrad" x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="5%" stopColor="var(--color-price)" stopOpacity={0.25} />
+                                      <stop offset="95%" stopColor="var(--color-price)" stopOpacity={0} />
+                                    </linearGradient>
+                                  </defs>
+                                  <XAxis dataKey="time" hide />
+                                  <YAxis domain={['auto', 'auto']} hide />
+                                  <ChartTooltip
+                                    content={
+                                      <ChartTooltipContent
+                                        formatter={(v) => [`$${Number(v).toFixed(2)}`, 'Prix']}
+                                        labelFormatter={(l) => l}
+                                      />
+                                    }
+                                  />
+                                  <Area
+                                    type="monotone"
+                                    dataKey="price"
+                                    stroke="var(--color-price)"
+                                    fill="url(#acGrad)"
+                                    strokeWidth={2}
+                                    dot={false}
+                                    isAnimationActive={false}
+                                  />
+                                </AreaChart>
+                              </ChartContainer>
+                            ) : (
+                              <div className="h-20 sm:h-24" />
+                            )}
+                          </div>
 
-                          <Button asChild variant="outline" className="w-full">
+                          <Button asChild variant="outline" className="mt-3 w-full">
                             <Link to="/games/aura-coin">Ouvrir Aura Coin</Link>
                           </Button>
                         </CardContent>
@@ -1248,23 +1304,23 @@ export default function Dashboard() {
                   })()}
 
                   {widgetId === 'aura-leaders' && (
-                    <Card className="flex h-full flex-col overflow-hidden">
-                      <CardHeader>
-                        <div className="flex items-center gap-2">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/15">
-                            <Trophy className="h-4 w-4 text-amber-500" />
-                          </div>
-                          <CardTitle className={TYPOGRAPHY.H3}>Top Aura</CardTitle>
-                        </div>
+                    <Card className={dashboardWidgetCardClass}>
+                      <CardHeader className={dashboardWidgetHeaderClass}>
+                        <DashboardWidgetTitle
+                          title="Top Aura"
+                          icon={Trophy}
+                          iconClassName="text-amber-500"
+                          iconWrapperClassName="bg-amber-500/15"
+                        />
                       </CardHeader>
-                      <CardContent className="flex min-h-0 flex-1 flex-col">
+                      <CardContent className={cn(dashboardWidgetContentClass, "flex flex-col")}>
                         {auraLeaders.length > 0 ? (
                           <div className="space-y-2">
                             {auraLeaders.slice(0, 5).map((entry) => (
                               <div
                                 key={entry.userId}
                                 className={cn(
-                                  "flex items-center justify-between rounded-lg border px-4 py-3",
+                                  "flex items-center justify-between rounded-lg border px-3 py-2.5",
                                   entry.rank === 1 && "border-amber-500/30 bg-amber-500/5",
                                   entry.rank === 2 && "border-zinc-400/30 bg-zinc-400/5",
                                   entry.rank === 3 && "border-orange-600/30 bg-orange-600/5",
@@ -1298,54 +1354,56 @@ export default function Dashboard() {
                   )}
 
                   {widgetId === 'inventory' && (
-                    <Card className="flex h-full flex-col overflow-hidden">
-                      <CardHeader>
+                    <Card className={dashboardWidgetCardClass}>
+                      <CardHeader className={dashboardWidgetHeaderClass}>
                         <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/15">
-                              <Package className="h-4 w-4 text-blue-500" />
-                            </div>
-                            <CardTitle className={TYPOGRAPHY.H3}>Inventaire</CardTitle>
-                          </div>
+                          <DashboardWidgetTitle
+                            title="Inventaire"
+                            icon={Package}
+                            iconClassName="text-blue-500"
+                            iconWrapperClassName="bg-blue-500/15"
+                          />
                           {totalInventoryCount > 0 && (
                             <Badge variant="secondary" className="tabular-nums">{totalInventoryCount}</Badge>
                           )}
                         </div>
                       </CardHeader>
-                      <CardContent className="min-h-0 flex-1 overflow-y-auto space-y-4">
-                        <div className="flex items-center justify-between rounded-lg border border-border/60 px-4 py-3 text-sm">
-                          <span>Cadeaux stockés</span>
-                          <span className="tabular-nums text-muted-foreground">{giftInventoryCount}</span>
+                      <CardContent className={cn(dashboardWidgetContentClass, "flex flex-col")}>
+                        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
+                          <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2.5 text-sm">
+                            <span>Cadeaux stockés</span>
+                            <span className="tabular-nums text-muted-foreground">{giftInventoryCount}</span>
+                          </div>
+
+                          {inventoryItems.length > 0 ? (
+                            <div className="space-y-2">
+                              {inventoryItems.slice(0, 4).map((item) => (
+                                <div
+                                  key={item.id}
+                                  className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2.5"
+                                >
+                                  <div className="flex min-w-0 items-center gap-2">
+                                    <p className="min-w-0 text-sm font-medium truncate">{item.item.name}</p>
+                                    <Badge variant="outline" className={cn(
+                                      "shrink-0 text-xs capitalize",
+                                      item.item.type === 'CONSUMABLE' && "border-blue-500/40 text-blue-600",
+                                      item.item.type === 'COSMETIC' && "border-violet-500/40 text-violet-600",
+                                      item.item.type === 'UPGRADE' && "border-emerald-500/40 text-emerald-600",
+                                      item.item.type === 'GIFT' && "border-rose-500/40 text-rose-600"
+                                    )}>
+                                      {item.item.type.toLowerCase()}
+                                    </Badge>
+                                  </div>
+                                  <span className="shrink-0 text-sm font-medium tabular-nums">x{item.quantity}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground")}>Aucun objet dans l&apos;inventaire.</p>
+                          )}
                         </div>
 
-                        {inventoryItems.length > 0 ? (
-                          <div className="space-y-2">
-                            {inventoryItems.slice(0, 4).map((item) => (
-                              <div
-                                key={item.id}
-                                className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-3"
-                              >
-                                <div className="flex min-w-0 items-center gap-2">
-                                  <p className="min-w-0 text-sm font-medium truncate">{item.item.name}</p>
-                                  <Badge variant="outline" className={cn(
-                                    "shrink-0 text-xs capitalize",
-                                    item.item.type === 'CONSUMABLE' && "border-blue-500/40 text-blue-600",
-                                    item.item.type === 'COSMETIC' && "border-violet-500/40 text-violet-600",
-                                    item.item.type === 'UPGRADE' && "border-emerald-500/40 text-emerald-600",
-                                    item.item.type === 'GIFT' && "border-rose-500/40 text-rose-600"
-                                  )}>
-                                    {item.item.type.toLowerCase()}
-                                  </Badge>
-                                </div>
-                                <span className="shrink-0 text-sm font-medium tabular-nums">x{item.quantity}</span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground")}>Aucun objet dans l&apos;inventaire.</p>
-                        )}
-
-                        <Button asChild variant="outline" className="w-full">
+                        <Button asChild variant="outline" className="mt-3 w-full">
                           <Link to="/inventory">Ouvrir l&apos;inventaire</Link>
                         </Button>
                       </CardContent>
@@ -1353,14 +1411,16 @@ export default function Dashboard() {
                   )}
 
                   {widgetId === 'gifts' && (
-                    <Card className="flex h-full flex-col overflow-hidden">
-                      <CardHeader>
+                    <Card className={dashboardWidgetCardClass}>
+                      <CardHeader className={dashboardWidgetHeaderClass}>
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <div className="flex items-center gap-2">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/15">
-                              <GiftIcon className="h-4 w-4 text-rose-500" />
-                            </div>
-                            <CardTitle className={TYPOGRAPHY.H3}>Cadeaux</CardTitle>
+                            <DashboardWidgetTitle
+                              title="Cadeaux"
+                              icon={GiftIcon}
+                              iconClassName="text-rose-500"
+                              iconWrapperClassName="bg-rose-500/15"
+                            />
                             {inboxGifts.length > 0 && (
                               <Badge className="bg-rose-500 text-white hover:bg-rose-500/90 tabular-nums">
                                 {inboxGifts.length}
@@ -1374,56 +1434,58 @@ export default function Dashboard() {
                           </div>
                         </div>
                       </CardHeader>
-                      <CardContent className="min-h-0 flex-1 overflow-y-auto space-y-4">
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <div className={cn(
-                            "rounded-lg border px-4 py-3",
-                            inboxGifts.length > 0 ? "border-rose-500/30 bg-rose-500/5" : "border-border/60"
-                          )}>
-                            <p className={cn(TYPOGRAPHY.H2, "tabular-nums", inboxGifts.length > 0 && "text-rose-600")}>{inboxGifts.length}</p>
-                            <p className={TYPOGRAPHY.SMALL}>en attente</p>
+                      <CardContent className={cn(dashboardWidgetContentClass, "flex flex-col")}>
+                        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div className={cn(
+                              "rounded-lg border px-3 py-2.5",
+                              inboxGifts.length > 0 ? "border-rose-500/30 bg-rose-500/5" : "border-border/60"
+                            )}>
+                              <p className={cn(TYPOGRAPHY.H2, "tabular-nums", inboxGifts.length > 0 && "text-rose-600")}>{inboxGifts.length}</p>
+                              <p className={TYPOGRAPHY.SMALL}>en attente</p>
+                            </div>
+                            <div className="rounded-lg border border-border/60 px-3 py-2.5">
+                              <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>{receivedGifts.length}</p>
+                              <p className={TYPOGRAPHY.SMALL}>ouverts</p>
+                            </div>
                           </div>
-                          <div className="rounded-lg border border-border/60 px-4 py-3">
-                            <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>{receivedGifts.length}</p>
-                            <p className={TYPOGRAPHY.SMALL}>ouverts</p>
-                          </div>
-                        </div>
 
-                        <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/30 px-4 py-3">
-                          <div>
-                            <p className={TYPOGRAPHY.SMALL}>Aura disponible</p>
-                            <p className={cn(TYPOGRAPHY.H5, "tabular-nums")}>
-                              {giftStatus?.remainingAura ?? 0}/{giftStatus?.limit ?? 50}
+                          <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/30 px-3 py-2.5">
+                            <div>
+                              <p className={TYPOGRAPHY.SMALL}>Aura disponible</p>
+                              <p className={cn(TYPOGRAPHY.H5, "tabular-nums")}>
+                                {giftStatus?.remainingAura ?? 0}/{giftStatus?.limit ?? 50}
+                              </p>
+                            </div>
+                            <p className={cn(TYPOGRAPHY.SMALL, "tabular-nums text-muted-foreground")}>
+                              {nextRefillCountdown ?? '--:--:--'}
                             </p>
                           </div>
-                          <p className={cn(TYPOGRAPHY.SMALL, "tabular-nums text-muted-foreground")}>
-                            {nextRefillCountdown ?? '--:--:--'}
-                          </p>
+
+                          {giftsLoading ? (
+                            <p className={cn(TYPOGRAPHY.MUTED)}>Chargement des cadeaux...</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {inboxGifts.length === 0 ? (
+                                <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground")}>Aucun cadeau en attente.</p>
+                              ) : (
+                                inboxGifts.slice(0, 4).map((gift) => (
+                                  <button
+                                    key={gift.id}
+                                    type="button"
+                                    onClick={() => openGiftDialog('inbox')}
+                                    className="block w-full rounded-lg border border-border/60 px-3 py-2.5 text-left transition hover:bg-accent/40"
+                                  >
+                                    <p className="text-sm font-medium truncate">Cadeau de {gift.sender.username}</p>
+                                    <p className="text-xs text-muted-foreground">{formatTimeAgo(gift.createdAt)}</p>
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                          )}
                         </div>
 
-                        {giftsLoading ? (
-                          <p className={cn(TYPOGRAPHY.MUTED)}>Chargement des cadeaux...</p>
-                        ) : (
-                          <div className="space-y-2">
-                            {inboxGifts.length === 0 ? (
-                              <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground")}>Aucun cadeau en attente.</p>
-                            ) : (
-                              inboxGifts.slice(0, 4).map((gift) => (
-                                <button
-                                  key={gift.id}
-                                  type="button"
-                                  onClick={() => openGiftDialog('inbox')}
-                                  className="block w-full rounded-lg border border-border/60 px-4 py-3 text-left transition hover:bg-accent/40"
-                                >
-                                  <p className="text-sm font-medium truncate">Cadeau de {gift.sender.username}</p>
-                                  <p className="text-xs text-muted-foreground">{formatTimeAgo(gift.createdAt)}</p>
-                                </button>
-                              ))
-                            )}
-                          </div>
-                        )}
-
-                        <Button variant="outline" className="w-full" onClick={() => openGiftDialog('inbox')}>
+                        <Button variant="outline" className="mt-3 w-full" onClick={() => openGiftDialog('inbox')}>
                           Ouvrir la boîte
                         </Button>
                       </CardContent>
