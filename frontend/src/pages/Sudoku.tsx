@@ -4,9 +4,9 @@ import { gamesApi } from '@/services/api';
 import { PageHeader, PageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
-import { Brain, Eraser, RefreshCcw, Sparkles, Target, Trophy } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Brain, Eraser, RefreshCcw, Target, Trophy } from 'lucide-react';
 
 type LeaderboardEntry = {
   id: string;
@@ -208,9 +208,6 @@ function generatePuzzle(difficulty: Difficulty): GeneratedPuzzle {
   return { puzzle, solution };
 }
 
-function countFilledCells(grid: Grid) {
-  return grid.reduce((total, row) => total + row.filter((value) => value !== 0).length, 0);
-}
 
 function isSolved(grid: Grid, solution: Grid) {
   return grid.every((row, rowIndex) => row.every((value, columnIndex) => value === solution[rowIndex][columnIndex]));
@@ -257,7 +254,7 @@ function createInitialSudokuState() {
   };
 }
 
-export default function LogicLab() {
+export default function Sudoku() {
   const { user, refreshUser } = useAuth();
   const submitLockRef = useRef(false);
   const [startingState] = useState(createInitialSudokuState);
@@ -277,9 +274,7 @@ export default function LogicLab() {
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
 
-  const filledCells = countFilledCells(draftGrid);
-  const progressValue = (filledCells / (GRID_SIZE * GRID_SIZE)) * 100;
-  const currentScore = completed ? getCompletionScore(difficulty, elapsedSeconds, hintsUsed, mistakesFound) : 0;
+  const currentScore = getCompletionScore(difficulty, elapsedSeconds, hintsUsed, mistakesFound);
 
   useEffect(() => {
     if (!user) {
@@ -417,7 +412,7 @@ export default function LogicLab() {
   };
 
   const useHint = () => {
-    if (completed) {
+    if (completed || hintsUsed >= 3) {
       return;
     }
 
@@ -488,55 +483,94 @@ export default function LogicLab() {
 
   return (
     <PageShell size="wide">
-      <PageHeader
-        title="Sudoku"
-        description="Un vrai Sudoku 9x9 avec génération aléatoire, plusieurs niveaux et un classement basé sur tes meilleures résolutions."
-        actions={
-          <Button type="button" variant="outline" onClick={() => generateNewPuzzle(difficulty)}>
-            <RefreshCcw className="mr-2 h-4 w-4" />
-            Nouvelle grille
-          </Button>
-        }
-      />
+      <PageHeader title="Sudoku" />
 
-      <div className="grid gap-6 xl:grid-cols-[1.45fr_0.95fr]">
-        <Card className="overflow-hidden border-border/60">
-          <div className="border-b border-border/60 bg-[radial-gradient(circle_at_top_left,_rgba(249,115,22,0.22),_transparent_35%),linear-gradient(135deg,rgba(28,25,23,0.98),rgba(120,53,15,0.92))] text-white">
-            <CardContent className="space-y-5 p-6">
-              <div className="flex flex-wrap items-center gap-3">
-                <Badge variant="secondary" className="border-0 bg-white/12 text-white">
-                  {difficultyConfig[difficulty].label}
-                </Badge>
-                <Badge variant="secondary" className="border-0 bg-white/12 text-white">
-                  Temps {formatDuration(elapsedSeconds)}
-                </Badge>
-                <Badge variant="secondary" className="border-0 bg-white/12 text-white">
-                  Cases {filledCells}/81
-                </Badge>
+      <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-start px-4 pb-6">
+        {/* LEFT: Options / Score */}
+        <div className="flex flex-col gap-4">
+          {/* 1. Time & Score */}
+          <Card>
+            <CardContent className="pt-4">
+              <div className="grid grid-cols-2 gap-3 text-center">
+                <div className="rounded-xl border border-border/60 p-3">
+                  <p className="text-xs text-muted-foreground">Temps</p>
+                  <p className="text-xl font-semibold">{formatDuration(elapsedSeconds)}</p>
+                </div>
+                <div className="rounded-xl border border-border/60 p-3">
+                  <p className="text-xs text-muted-foreground">Score</p>
+                  <p className="text-xl font-semibold">{currentScore}</p>
+                </div>
+                <div className="col-span-2 rounded-xl border border-border/60 p-3">
+                  <p className="text-xs text-muted-foreground">Record</p>
+                  <p className="text-xl font-semibold">{highScore}</p>
+                </div>
               </div>
-              <div className="space-y-2">
-                <h2 className="text-2xl font-semibold tracking-tight">Remplis chaque ligne, colonne et bloc 3x3 avec les chiffres de 1 a 9.</h2>
-                <p className="text-sm text-white/80">
-                  Les grilles sont generees a la volee avec solution unique, puis scorees selon la difficulte, le temps et l aide utilisee.
-                </p>
-              </div>
-              <Progress value={progressValue} className="h-2 bg-white/10" />
             </CardContent>
-          </div>
+          </Card>
 
-          <CardContent className="space-y-6 p-6">
-            <div className="flex flex-wrap gap-2">
-              {(Object.keys(difficultyConfig) as Difficulty[]).map((level) => (
-                <Button
-                  key={level}
-                  type="button"
-                  variant={difficulty === level ? 'default' : 'outline'}
-                  onClick={() => generateNewPuzzle(level)}
-                >
-                  {difficultyConfig[level].label}
-                </Button>
-              ))}
-            </div>
+          {/* 2. Difficulty + New grid */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Difficulte</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Select value={difficulty} onValueChange={(value) => setDifficulty(value as Difficulty)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(difficultyConfig) as Difficulty[]).map((level) => (
+                    <SelectItem key={level} value={level}>
+                      {difficultyConfig[level].label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button type="button" variant="outline" className="w-full" onClick={() => generateNewPuzzle(difficulty)}>
+                <RefreshCcw className="mr-2 h-4 w-4" />
+                Nouvelle grille
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* 3. Actions */}
+          <Card>
+            <CardContent className="pt-4 space-y-2">
+              <Button type="button" variant="outline" className="w-full justify-start" onClick={validateGrid} disabled={completed}>
+                <Target className="mr-2 h-4 w-4" />
+                Verifier
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full justify-start"
+                onClick={useHint}
+                disabled={completed || hintsUsed >= 3}
+              >
+                <Brain className="mr-2 h-4 w-4" />
+                Indice ({3 - hintsUsed} restant{3 - hintsUsed !== 1 ? 's' : ''})
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full justify-start"
+                onClick={() => {
+                  setDraftGrid(cloneGrid(initialGrid));
+                  setShowConflicts(false);
+                  setMistakesFound(0);
+                  setHintsUsed(0);
+                  setElapsedSeconds(0);
+                  setCompleted(false);
+                  setRewards(null);
+                  submitLockRef.current = false;
+                }}
+              >
+                <RefreshCcw className="mr-2 h-4 w-4" />
+                Recommencer
+      </Button>
+    </CardContent>
+  </Card>
+</div>
 
         {/* CENTER: Game Board */}
         <div className="flex flex-col items-center gap-4">
@@ -591,87 +625,22 @@ export default function LogicLab() {
                 <Eraser className="h-4 w-4" />
               </Button>
             </div>
-
-            <div className="flex flex-wrap gap-3">
-              <Button type="button" variant="outline" onClick={validateGrid} disabled={completed}>
-                <Target className="mr-2 h-4 w-4" />
-                Verifier
-              </Button>
-              <Button type="button" variant="outline" onClick={useHint} disabled={completed}>
-                <Brain className="mr-2 h-4 w-4" />
-                Indice
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setDraftGrid(cloneGrid(initialGrid));
-                  setShowConflicts(false);
-                  setMistakesFound(0);
-                  setHintsUsed(0);
-                  setElapsedSeconds(0);
-                  setCompleted(false);
-                  setRewards(null);
-                  submitLockRef.current = false;
-                }}
-              >
-                Recommencer
-              </Button>
-            </div>
           </div>
 
-            {completed ? (
-              <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4">
-                <p className="font-medium">Grille resolue.</p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Score {currentScore} • temps {formatDuration(elapsedSeconds)} • {hintsUsed} indice{hintsUsed > 1 ? 's' : ''} • {mistakesFound} erreur{mistakesFound > 1 ? 's' : ''}
-                </p>
-                {rewards ? (
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Recompenses: +{rewards.money}$ et +{rewards.aura} aura{isNewHighScore ? ' • nouveau record' : ''}.
-                  </p>
-                ) : null}
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground">
-                {difficultyConfig[difficulty].description} Utilise les fleches du clavier pour naviguer, les touches 1 a 9 pour remplir et `Suppr` pour vider.
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Sparkles className="h-4 w-4" />
-                Partie
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-3 text-center">
-                <div className="rounded-xl border border-border/60 p-3">
-                  <p className="text-xs text-muted-foreground">Difficulte</p>
-                  <p className="text-xl font-semibold">{difficultyConfig[difficulty].label}</p>
-                </div>
-                <div className="rounded-xl border border-border/60 p-3">
-                  <p className="text-xs text-muted-foreground">Record</p>
-                  <p className="text-xl font-semibold">{highScore}</p>
-                </div>
-                <div className="rounded-xl border border-border/60 p-3">
-                  <p className="text-xs text-muted-foreground">Indices</p>
-                  <p className="text-xl font-semibold">{hintsUsed}</p>
-                </div>
-                <div className="rounded-xl border border-border/60 p-3">
-                  <p className="text-xs text-muted-foreground">Erreurs</p>
-                  <p className="text-xl font-semibold">{mistakesFound}</p>
-                </div>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Le score final favorise les resolutions propres et rapides. Les grilles sont toutes generees cote client, avec rotation aleatoire et verification d unicite.
+          {completed && (
+            <div className="w-full rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4">
+              <p className="font-medium">Grille resolue.</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Score {currentScore} • temps {formatDuration(elapsedSeconds)} • {hintsUsed} indice{hintsUsed > 1 ? 's' : ''} • {mistakesFound} erreur{mistakesFound > 1 ? 's' : ''}
               </p>
-            </CardContent>
-          </Card>
+              {rewards ? (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Recompenses: +{rewards.money}$ et +{rewards.aura} aura{isNewHighScore ? ' • nouveau record' : ''}.
+                </p>
+              ) : null}
+            </div>
+          )}
+        </div>
 
         {/* RIGHT: Leaderboard */}
         <Card>
