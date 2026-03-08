@@ -39,8 +39,40 @@ const getEffectLabel = (effect: string | null) => {
   return null;
 };
 
+// Exact dark-theme platform colors from DoodleJump.tsx
+const DJ_COLORS = {
+  background: '#0a0a0a',
+  platformNormal: '#e5e7eb',
+  platformMoving: '#9ca3af',
+  platformBounce: '#7c3aed',
+  platformDisappear: '#8b5cf6',
+};
+
+const PW = 80; // platform width
+const PH = 15; // platform height
+
+function drawPlatform(ctx: CanvasRenderingContext2D, x: number, y: number, color: string) {
+  const r = 5;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + PW - r, y);
+  ctx.arcTo(x + PW, y, x + PW, y + PH, r);
+  ctx.lineTo(x + PW, y + PH);
+  ctx.arcTo(x + PW, y + PH, x, y + PH, r);
+  ctx.lineTo(x + r, y + PH);
+  ctx.arcTo(x, y + PH, x, y, r);
+  ctx.arcTo(x, y, x + PW, y, r);
+  ctx.closePath();
+  ctx.fill();
+}
+
 function DoodleJumpSkinPreview({ skinImageUrl }: { skinImageUrl: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // logical canvas dimensions
+  const CW = 400;
+  const CH = 220;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -48,59 +80,94 @@ function DoodleJumpSkinPreview({ skinImageUrl }: { skinImageUrl: string }) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const W = canvas.width;
-    const H = canvas.height;
+    // Enable crisp rendering
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
 
-    // Background
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(0, 0, W, H);
+    const draw = (skinImg: HTMLImageElement | null) => {
+      // Background
+      ctx.fillStyle = DJ_COLORS.background;
+      ctx.fillRect(0, 0, CW, CH);
 
-    // Draw platforms
-    const platforms = [
-      { x: 20, y: H - 30, w: 80 },
-      { x: 110, y: H - 80, w: 80 },
-      { x: 30, y: H - 140, w: 80 },
-      { x: 120, y: H - 200, w: 80 },
-    ];
-    ctx.fillStyle = '#22c55e';
-    ctx.shadowColor = '#22c55e';
-    ctx.shadowBlur = 4;
-    for (const p of platforms) {
-      const r = 4;
+      // Platform layout — staggered, spread across width, rising left-to-right
+      const platY1 = CH - 28;
+      const platY2 = CH - 90;
+      const platY3 = CH - 152;
+
+      const p1x = 40;
+      const p2x = CW / 2 - PW / 2; // center
+      const p3x = CW - 40 - PW;
+
+      // Subtle vertical grid lines as background texture
+      ctx.strokeStyle = 'rgba(255,255,255,0.025)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < CW; x += 32) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, CH); ctx.stroke();
+      }
+
+      // Bottom-left platform (normal)
+      drawPlatform(ctx, p1x, platY1, DJ_COLORS.platformNormal);
+      // Center platform (bounce — purple) — character stands here
+      drawPlatform(ctx, p2x, platY2, DJ_COLORS.platformBounce);
+      // Top-right platform (moving — gray)
+      drawPlatform(ctx, p3x, platY3, DJ_COLORS.platformMoving);
+
+      // Jump arc — dashed line from center platform to top-right
+      ctx.setLineDash([4, 6]);
+      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(p.x + r, p.y);
-      ctx.lineTo(p.x + p.w - r, p.y);
-      ctx.arcTo(p.x + p.w, p.y, p.x + p.w, p.y + 10, r);
-      ctx.lineTo(p.x + p.w, p.y + 10);
-      ctx.arcTo(p.x + p.w, p.y + 10, p.x, p.y + 10, r);
-      ctx.lineTo(p.x + r, p.y + 10);
-      ctx.arcTo(p.x, p.y + 10, p.x, p.y, r);
-      ctx.arcTo(p.x, p.y, p.x + p.w, p.y, r);
-      ctx.closePath();
-      ctx.fill();
-    }
-    ctx.shadowBlur = 0;
+      const arcStartX = p2x + PW / 2;
+      const arcStartY = platY2;
+      const arcEndX = p3x + PW / 2;
+      const arcEndY = platY3;
+      const cpX = (arcStartX + arcEndX) / 2;
+      const cpY = Math.min(arcStartY, arcEndY) - 50;
+      ctx.moveTo(arcStartX, arcStartY);
+      ctx.quadraticCurveTo(cpX, cpY, arcEndX, arcEndY);
+      ctx.stroke();
+      ctx.setLineDash([]);
 
-    // Draw skin image on top of the second platform
+      // Character on center platform
+      const charSize = 70;
+      const charX = p2x + PW / 2 - charSize / 2;
+      const charY = platY2 - charSize;
+
+      if (skinImg && skinImg.complete && skinImg.naturalWidth > 0) {
+        ctx.drawImage(skinImg, charX, charY, charSize, charSize);
+      } else {
+        // Fallback silhouette
+        ctx.fillStyle = '#374151';
+        ctx.beginPath();
+        ctx.arc(p2x + PW / 2, platY2 - charSize / 2, charSize / 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Score indicator (decorative)
+      ctx.font = 'bold 11px monospace';
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      ctx.textAlign = 'right';
+      ctx.fillText('DOODLE JUMP', CW - 12, 18);
+      ctx.textAlign = 'left';
+    };
+
+    // Draw background immediately, then draw with image once loaded
+    draw(null);
+
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const plat = platforms[1];
-      const size = 36;
-      const cx = plat.x + plat.w / 2 - size / 2;
-      const cy = plat.y - size - 2;
-      ctx.drawImage(img, cx, cy, size, size);
-    };
+    img.onload = () => draw(img);
+    img.onerror = () => { /* keep background-only render */ };
     img.src = resolveImageUrl(skinImageUrl);
-  }, [skinImageUrl]);
+  }, [skinImageUrl]); // CW/CH are constants, no need in deps
 
   return (
     <canvas
       ref={canvasRef}
-      width={230}
-      height={176}
-      className="h-44 w-full object-cover"
-      style={{ display: 'block' }}
+      width={CW}
+      height={CH}
+      className="w-full"
+      style={{ display: 'block', height: '220px' }}
     />
   );
 }
