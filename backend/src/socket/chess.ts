@@ -358,6 +358,17 @@ async function resolvePlayAgainPrompt(partyId: string, io: Server) {
   emitState(game, io);
 }
 
+export function startDirectChessGame(
+  partyId: string,
+  players: Array<{ user: { id: string; username: string; usernameColor?: string | null } }>,
+  io: Server
+) {
+  if (activeGames.has(partyId)) return;
+  const game = createGame(partyId, players);
+  activeGames.set(partyId, game);
+  emitState(game, io);
+}
+
 export const setupChessHandlers = (socket: Socket, io: Server) => {
   socket.on('chess:register', async () => {
     const userId = socket.data.userId as string | undefined;

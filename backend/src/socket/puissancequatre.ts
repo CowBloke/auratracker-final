@@ -317,43 +317,78 @@ async function resolveJoinPrompt(partyId: string, io: Server) {
   emitState(game, io);
 }
 
+export function startDirectP4Game(
+  partyId: string,
+  players: Array<{ user: { id: string; username: string; usernameColor?: string | null } }>,
+  io: Server
+) {
+  if (activeGames.has(partyId)) return;
+  const game: P4Game = {
+    partyId,
+    players: players.map((m, i) => ({
+      userId: m.user.id,
+      username: m.user.username,
+      usernameColor: m.user.usernameColor ?? null,
+      playerIndex: i as 0 | 1,
+    })),
+    board: createBoard(),
+    currentPlayerIndex: Math.floor(Math.random() * 2) as 0 | 1,
+    phase: 'playing',
+    winnerId: null,
+    winCells: null,
+    lastMove: null,
+    isActive: true,
+  };
+  activeGames.set(partyId, game);
+  emitState(game, io);
+}
+
 export const setupPuissanceQuatreHandlers = (socket: Socket, io: Server) => {
-  socket.on('p4:register', () => {
+  socket.on('p4:register', async () => {
     const userId = socket.data.userId as string | undefined;
     if (!userId) return;
     playerSockets.set(userId, socket.id);
 
-    // Resend active game state on reconnect
-    const partyId = (socket.data.partyId as string | undefined);
-    if (partyId) {
-      const game = activeGames.get(partyId);
-      if (game) {
-        socket.emit('p4:state', serializeState(game));
-      }
-      const joinPrompt = pendingJoinPrompts.get(partyId);
-      if (joinPrompt) {
-        const responses = Array.from(joinPrompt.responses.entries()).map(([uid, v]) => ({ userId: uid, accepted: v }));
-        socket.emit('p4:join-prompt', {
-          partyId: joinPrompt.partyId,
-          leaderId: joinPrompt.leaderId,
-          timeLimit: JOIN_PROMPT_TIMEOUT,
-          startTime: joinPrompt.startTime,
-          members: joinPrompt.members,
-          responses,
+    // Resend active game state on reconnect — fall back to Prisma lookup if partyId not in socket.data
+    let partyId = socket.data.partyId as string | undefined;
+    if (!partyId) {
+      try {
+        const membership = await prisma.partyMember.findUnique({
+          where: { userId },
+          select: { partyId: true },
         });
-      }
+        partyId = membership?.partyId;
+      } catch {}
+    }
+    if (!partyId) return;
 
-      const playAgainPrompt = pendingPlayAgainPrompts.get(partyId);
-      if (playAgainPrompt) {
-        const responses = Array.from(playAgainPrompt.responses.entries()).map(([uid, v]) => ({ userId: uid, playAgain: v }));
-        socket.emit('p4:play-again-prompt', {
-          partyId: playAgainPrompt.partyId,
-          timeLimit: PLAY_AGAIN_TIMEOUT,
-          startTime: playAgainPrompt.startTime,
-          players: playAgainPrompt.players,
-          responses,
-        });
-      }
+    const game = activeGames.get(partyId);
+    if (game && game.players.some((p) => p.userId === userId)) {
+      socket.emit('p4:state', serializeState(game));
+    }
+    const joinPrompt = pendingJoinPrompts.get(partyId);
+    if (joinPrompt) {
+      const responses = Array.from(joinPrompt.responses.entries()).map(([uid, v]) => ({ userId: uid, accepted: v }));
+      socket.emit('p4:join-prompt', {
+        partyId: joinPrompt.partyId,
+        leaderId: joinPrompt.leaderId,
+        timeLimit: JOIN_PROMPT_TIMEOUT,
+        startTime: joinPrompt.startTime,
+        members: joinPrompt.members,
+        responses,
+      });
+    }
+
+    const playAgainPrompt = pendingPlayAgainPrompts.get(partyId);
+    if (playAgainPrompt) {
+      const responses = Array.from(playAgainPrompt.responses.entries()).map(([uid, v]) => ({ userId: uid, playAgain: v }));
+      socket.emit('p4:play-again-prompt', {
+        partyId: playAgainPrompt.partyId,
+        timeLimit: PLAY_AGAIN_TIMEOUT,
+        startTime: playAgainPrompt.startTime,
+        players: playAgainPrompt.players,
+        responses,
+      });
     }
   });
 

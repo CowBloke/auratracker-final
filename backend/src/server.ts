@@ -44,6 +44,7 @@ import { setupPetitBacHandlers } from './socket/petitbac.js';
 import { setupBattleshipHandlers } from './socket/battleship.js';
 import { setupPuissanceQuatreHandlers } from './socket/puissancequatre.js';
 import { setupChessHandlers } from './socket/chess.js';
+import { setupDuelHandlers } from './socket/duel.js';
 
 // Logger
 import { initLogger } from './utils/logger.js';
@@ -232,7 +233,8 @@ io.on('connection', (socket) => {
   setupBattleshipHandlers(socket, io);
   setupPuissanceQuatreHandlers(socket, io);
   setupChessHandlers(socket, io);
-  
+  setupDuelHandlers(socket, io);
+
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.id}`);
   });

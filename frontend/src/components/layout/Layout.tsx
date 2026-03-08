@@ -5,6 +5,7 @@ import ChatBubble from '../chat/ChatBubble';
 import UpdatePopupModal from './UpdatePopupModal';
 import GameJoinPrompt from '../game/GameJoinPrompt';
 import GameReplayPrompt from '../game/GameReplayPrompt';
+import DuelChallengePopup from '../game/DuelChallengePopup';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { useSocket } from '@/contexts/SocketContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,7 +28,7 @@ function ChatBubbleContainer() {
 }
 
 export default function Layout() {
-  const { connected, setCurrentPage, activeJoinPrompt, activeReplayPrompt, respondToGameJoinPrompt, respondToGameReplayPrompt } = useSocket();
+  const { connected, setCurrentPage, activeJoinPrompt, activeReplayPrompt, respondToGameJoinPrompt, respondToGameReplayPrompt, incomingDuelChallenge, acceptDuelChallenge, declineDuelChallenge } = useSocket();
   const { user } = useAuth();
   const location = useLocation();
 
@@ -92,6 +93,19 @@ export default function Layout() {
             currentUserId={user.id}
             onPlayAgain={() => respondToGameReplayPrompt(true)}
             onLeave={() => respondToGameReplayPrompt(false)}
+          />
+        )}
+
+        {incomingDuelChallenge && (
+          <DuelChallengePopup
+            key={incomingDuelChallenge.sentAt}
+            challengerUsername={incomingDuelChallenge.challengerUsername}
+            challengerUsernameColor={incomingDuelChallenge.challengerUsernameColor}
+            gameType={incomingDuelChallenge.gameType}
+            timeLimit={incomingDuelChallenge.timeLimit}
+            sentAt={incomingDuelChallenge.sentAt}
+            onAccept={acceptDuelChallenge}
+            onDecline={declineDuelChallenge}
           />
         )}
 

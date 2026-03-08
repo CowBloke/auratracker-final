@@ -21,7 +21,8 @@
       "Bash(grep -rn \"OnlineHistoryPoint\" \"c:\\\\Users\\\\cowbl\\\\source\\\\repos\\\\CRust\\\\auratracker-final\\\\frontend\\\\src\"\" --include=\"*.ts\" --include=\"*.tsx \")",
       "Bash(npx prisma:*)",
       "Bash(npm install:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(wc:*)"
     ]
   }
 }

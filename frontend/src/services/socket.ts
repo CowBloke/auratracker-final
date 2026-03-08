@@ -203,4 +203,20 @@ export const battleshipEvents = {
   },
 };
 
+// Duel events
+export const duelEvents = {
+  challenge: (targetId: string, gameType: 'chess' | 'battleship' | 'p4') => {
+    socket?.emit('duel:challenge', { targetId, gameType });
+  },
+  accept: (challengerId: string, gameType: 'chess' | 'battleship' | 'p4') => {
+    socket?.emit('duel:accept', { challengerId, gameType });
+  },
+  decline: (challengerId: string, gameType: 'chess' | 'battleship' | 'p4') => {
+    socket?.emit('duel:decline', { challengerId, gameType });
+  },
+  cancel: (targetId: string, gameType: 'chess' | 'battleship' | 'p4') => {
+    socket?.emit('duel:cancel', { targetId, gameType });
+  },
+};
+
 export default socket;

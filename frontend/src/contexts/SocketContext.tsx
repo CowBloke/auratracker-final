@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Socket } from 'socket.io-client';
-import { initSocket, connectSocket, disconnectSocket, chatEvents, partyEvents, gameEvents, bombPartyEvents, pokerEvents, petitBacEvents } from '../services/socket';
+import { initSocket, connectSocket, disconnectSocket, chatEvents, partyEvents, gameEvents, bombPartyEvents, pokerEvents, petitBacEvents, duelEvents } from '../services/socket';
 import { storeBanInfo } from '../services/ban';
 import { useAuth } from './AuthContext';
 
@@ -414,6 +414,21 @@ interface ChessPlayAgainPrompt {
   responses: Array<{ userId: string; playAgain: boolean }>;
 }
 
+interface IncomingDuelChallenge {
+  challengerId: string;
+  challengerUsername: string;
+  challengerUsernameColor?: string | null;
+  gameType: 'chess' | 'battleship' | 'p4';
+  timeLimit: number;
+  sentAt: number;
+}
+
+interface OutgoingDuelChallenge {
+  targetId: string;
+  targetUsername: string;
+  gameType: 'chess' | 'battleship' | 'p4';
+}
+
 interface ActiveJoinPrompt {
   gameType: string;
   title: string;
@@ -533,6 +548,13 @@ interface SocketContextType {
   activeReplayPrompt: ActiveReplayPrompt | null;
   respondToGameJoinPrompt: (accepted: boolean) => void;
   respondToGameReplayPrompt: (playAgain: boolean) => void;
+  // Duel challenges
+  incomingDuelChallenge: IncomingDuelChallenge | null;
+  outgoingDuelChallenge: OutgoingDuelChallenge | null;
+  challengeUserToDuel: (targetId: string, targetUsername: string, gameType: 'chess' | 'battleship' | 'p4') => void;
+  acceptDuelChallenge: () => void;
+  declineDuelChallenge: () => void;
+  cancelDuelChallenge: () => void;
 }
 
 const SocketContext = createContext<SocketContextType | null>(null);
@@ -594,6 +616,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   // Chess state
   const [chessJoinPrompt, setChessJoinPrompt] = useState<ChessJoinPrompt | null>(null);
   const [chessPlayAgainPrompt, setChessPlayAgainPrompt] = useState<ChessPlayAgainPrompt | null>(null);
+
+  // Duel state
+  const [incomingDuelChallenge, setIncomingDuelChallenge] = useState<IncomingDuelChallenge | null>(null);
+  const [outgoingDuelChallenge, setOutgoingDuelChallenge] = useState<OutgoingDuelChallenge | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -1341,6 +1367,54 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setChessPlayAgainPrompt(null);
       });
 
+      // Duel events
+      s.on('duel:challenge-received', (data: IncomingDuelChallenge) => {
+        setIncomingDuelChallenge(data);
+      });
+
+      s.on('duel:challenge-sent', () => {
+        // outgoing challenge state is set optimistically in challengeUserToDuel
+      });
+
+      s.on('duel:challenge-accepted', (data: { targetId: string; targetUsername: string; gameType: string }) => {
+        setOutgoingDuelChallenge(null);
+        import('sonner').then(({ toast }) => {
+          toast(`Défi accepté !`, { description: `${data.targetUsername} a accepté. Redirection en cours...` });
+        });
+      });
+
+      s.on('duel:challenge-declined', (data: { targetId: string; targetUsername: string; gameType: string }) => {
+        setOutgoingDuelChallenge(null);
+        import('sonner').then(({ toast }) => {
+          toast(`Défi refusé`, { description: `${data.targetUsername} a refusé le défi.` });
+        });
+      });
+
+      s.on('duel:challenge-expired', () => {
+        setOutgoingDuelChallenge(null);
+        import('sonner').then(({ toast }) => {
+          toast('Défi expiré', { description: "Le joueur n'a pas répondu à temps." });
+        });
+      });
+
+      s.on('duel:challenge-cancelled', () => {
+        setIncomingDuelChallenge(null);
+      });
+
+      s.on('duel:challenge-error', (data: { message: string }) => {
+        setIncomingDuelChallenge(null);
+        setOutgoingDuelChallenge(null);
+        import('sonner').then(({ toast }) => {
+          toast.error(data.message);
+        });
+      });
+
+      s.on('duel:redirect', (data: { gameType: string; partyId: string; path: string }) => {
+        setIncomingDuelChallenge(null);
+        setOutgoingDuelChallenge(null);
+        navigate(data.path);
+      });
+
       return () => {
         disconnectSocket();
         s.removeAllListeners();
@@ -1649,6 +1723,30 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const challengeUserToDuel = (targetId: string, targetUsername: string, gameType: 'chess' | 'battleship' | 'p4') => {
+    if (!user) return;
+    setOutgoingDuelChallenge({ targetId, targetUsername, gameType });
+    duelEvents.challenge(targetId, gameType);
+  };
+
+  const acceptDuelChallenge = () => {
+    if (!incomingDuelChallenge) return;
+    duelEvents.accept(incomingDuelChallenge.challengerId, incomingDuelChallenge.gameType);
+    setIncomingDuelChallenge(null);
+  };
+
+  const declineDuelChallenge = () => {
+    if (!incomingDuelChallenge) return;
+    duelEvents.decline(incomingDuelChallenge.challengerId, incomingDuelChallenge.gameType);
+    setIncomingDuelChallenge(null);
+  };
+
+  const cancelDuelChallenge = () => {
+    if (!outgoingDuelChallenge) return;
+    duelEvents.cancel(outgoingDuelChallenge.targetId, outgoingDuelChallenge.gameType);
+    setOutgoingDuelChallenge(null);
+  };
+
   const respondToGameJoinPrompt = (accepted: boolean) => {
     if (!user) return;
     if (bombPartyJoinPrompt) {
@@ -1924,6 +2022,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         activeReplayPrompt,
         respondToGameJoinPrompt,
         respondToGameReplayPrompt,
+        incomingDuelChallenge,
+        outgoingDuelChallenge,
+        challengeUserToDuel,
+        acceptDuelChallenge,
+        declineDuelChallenge,
+        cancelDuelChallenge,
       }}
     >
       {children}

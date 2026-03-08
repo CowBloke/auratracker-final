@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
-import { ArrowLeft, Play, LogOut, Trophy } from 'lucide-react';
+import { ArrowLeft, Play, LogOut, Search, Swords, Trophy } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { PageHeader, PageShell } from '@/components/layout/page-shell';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { cn } from '@/lib/utils';
@@ -53,8 +54,10 @@ interface GameOverData {
 // ─── Component ──────────────────────────────────────────────────────────────
 export default function PuissanceQuatre() {
   const { user, refreshUser } = useAuth();
-  const { currentParty, partyMembers, socket } = useSocket();
+  const { currentParty, partyMembers, socket, onlineUsers, requestOnlineUsers, challengeUserToDuel, outgoingDuelChallenge } = useSocket();
 
+  const [showChallengePicker, setShowChallengePicker] = useState(false);
+  const [challengeSearch, setChallengeSearch] = useState('');
   const [gameState, setGameState] = useState<P4State | null>(null);
   const [gameOver, setGameOver] = useState<GameOverData | null>(null);
   const [hoverCol, setHoverCol] = useState<number | null>(null);
@@ -168,6 +171,10 @@ export default function PuissanceQuatre() {
 
   // ── Not in a party ──────────────────────────────────────────────────────
   if (!currentParty) {
+    const challengeableUsers = onlineUsers.filter(
+      (u) => u.userId !== user?.id && u.username.toLowerCase().includes(challengeSearch.toLowerCase())
+    );
+
     return (
       <PageShell>
         <PageHeader
@@ -183,15 +190,75 @@ export default function PuissanceQuatre() {
           }
         />
         <Card>
-          <CardContent className="py-14 text-center space-y-6">
+          <CardContent className="py-10 px-6 text-center space-y-4">
             <p className="text-sm text-muted-foreground">
-              Rejoins ou crée un duel pour jouer au Puissance 4
+              Joue en 1v1 contre un autre joueur
             </p>
-            <Button asChild>
-              <Link to="/party">Aller aux duels</Link>
-            </Button>
+            <div className="flex flex-col gap-2 max-w-xs mx-auto">
+              <Button onClick={() => { setChallengeSearch(''); requestOnlineUsers(); setShowChallengePicker(true); }}>
+                <Swords className="h-4 w-4 mr-2" />
+                Défier un joueur
+              </Button>
+              <Button asChild variant="outline">
+                <Link to="/party">Via une party</Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
+
+        <Dialog open={showChallengePicker} onOpenChange={setShowChallengePicker}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="font-normal flex items-center gap-2">
+                <Swords className="h-4 w-4" />
+                Défier en Puissance 4
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Rechercher un joueur..."
+                  value={challengeSearch}
+                  onChange={(e) => setChallengeSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <div className="max-h-64 overflow-y-auto space-y-1">
+                {challengeableUsers.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-6">
+                    {onlineUsers.filter((u) => u.userId !== user?.id).length === 0
+                      ? 'Aucun joueur en ligne'
+                      : 'Aucun résultat'}
+                  </p>
+                ) : (
+                  challengeableUsers.map((u) => {
+                    const isPending = outgoingDuelChallenge?.targetId === u.userId && outgoingDuelChallenge.gameType === 'p4';
+                    return (
+                      <div
+                        key={u.userId}
+                        className="flex items-center justify-between py-2 px-3 rounded-md border border-border/40 hover:border-border/80 transition-colors"
+                      >
+                        <UsernameDisplay username={u.username} usernameColor={u.usernameColor} className="text-sm" />
+                        <Button
+                          size="sm"
+                          variant={isPending ? 'outline' : 'default'}
+                          disabled={isPending}
+                          onClick={() => {
+                            challengeUserToDuel(u.userId, u.username, 'p4');
+                            setShowChallengePicker(false);
+                          }}
+                        >
+                          {isPending ? 'Envoyé...' : 'Défier'}
+                        </Button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </PageShell>
     );
   }

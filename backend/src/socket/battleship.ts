@@ -301,10 +301,21 @@ async function endGame(game: BattleshipGame, io: Server, winnerId: string) {
 }
 
 export const setupBattleshipHandlers = (socket: Socket, io: Server) => {
-  socket.on('battleship:register', (data: { userId: string }) => {
+  socket.on('battleship:register', async (data?: { userId?: string }) => {
     const userId = socket.data.userId as string | undefined;
     if (!userId) return;
     playerSockets.set(userId, socket.id);
+
+    try {
+      const membership = await prisma.partyMember.findUnique({
+        where: { userId },
+        select: { partyId: true },
+      });
+      if (membership) {
+        sendActiveBattleshipState(socket, membership.partyId, userId);
+        sendPendingBattleshipPlayAgainPrompt(socket, membership.partyId, userId);
+      }
+    } catch {}
   });
 
   socket.on('battleship:start', async (data: { userId: string; partyId: string }) => {
@@ -608,6 +619,33 @@ async function resolvePlayAgainPrompt(partyId: string, io: Server) {
     isActive: true,
   };
 
+  activeGames.set(partyId, game);
+  emitState(game, io);
+}
+
+export function startDirectBattleshipGame(
+  partyId: string,
+  players: Array<{ user: { id: string; username: string; usernameColor?: string | null } }>,
+  io: Server
+) {
+  if (activeGames.has(partyId)) return;
+  const game: BattleshipGame = {
+    partyId,
+    players: players.map((m) => ({
+      userId: m.user.id,
+      username: m.user.username,
+      usernameColor: m.user.usernameColor ?? null,
+      board: createEmptyBoard(),
+      opponentBoard: createEmptyBoard(),
+      ships: [],
+      ready: false,
+      shipsPlaced: false,
+    })),
+    currentPlayerIndex: 0,
+    phase: 'placement',
+    winnerId: null,
+    isActive: true,
+  };
   activeGames.set(partyId, game);
   emitState(game, io);
 }
