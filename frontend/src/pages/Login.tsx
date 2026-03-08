@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { AlertCircle, Info, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -15,9 +16,12 @@ import {
   FormItem,
   FormMessage,
 } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { CenteredShell } from '@/components/layout/centered-shell';
 import { TYPOGRAPHY } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { CenteredShell } from '@/components/layout/centered-shell';
 import { maintenanceApi } from '@/services/api';
 
 const loginSchema = z.object({
@@ -33,13 +37,24 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [loginMessage, setLoginMessage] = useState('');
+  const [showLoginMessageModal, setShowLoginMessageModal] = useState(false);
+  const [loginMessageModalOpen, setLoginMessageModalOpen] = useState(false);
 
   useEffect(() => {
     maintenanceApi.getStatus().then((res) => {
       setLoginMessage(res.data.loginMessage ?? '');
     }).catch(() => {});
   }, []);
-  
+
+  useEffect(() => {
+    if (loginMessage && showLoginMessageModal) {
+      setLoginMessageModalOpen(true);
+      return;
+    }
+
+    setLoginMessageModalOpen(false);
+  }, [loginMessage, showLoginMessageModal]);
+
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -55,7 +70,7 @@ export default function Login() {
       await login(data.username, data.password);
       navigate('/');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Échec de connexion');
+      setError(err.response?.data?.error || 'Echec de connexion');
     } finally {
       setLoading(false);
     }
@@ -69,7 +84,13 @@ export default function Login() {
       </CardHeader>
       <CardContent className="space-y-4">
         {error && (
-          <p className={cn(TYPOGRAPHY.SMALL, "text-destructive text-center")}>{error}</p>
+          <Alert variant="destructive" className="border-2 bg-destructive/10 shadow-sm" aria-live="assertive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Echec de connexion</AlertTitle>
+            <AlertDescription className={cn(TYPOGRAPHY.SMALL, 'pr-6')}>
+              {error}
+            </AlertDescription>
+          </Alert>
         )}
 
         <Form {...form}>
@@ -120,10 +141,10 @@ export default function Login() {
           </form>
         </Form>
 
-        <p className={cn(TYPOGRAPHY.SMALL, "text-center text-muted-foreground")}>
+        <p className={cn(TYPOGRAPHY.SMALL, 'text-center text-muted-foreground')}>
           Pas de compte ?{' '}
           <Link to="/register" className="text-foreground hover:underline">
-            Créer un compte
+            Creer un compte
           </Link>
         </p>
       </CardContent>
@@ -132,14 +153,60 @@ export default function Login() {
 
   if (loginMessage) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4 gap-8">
-        <div className="max-w-sm w-full text-muted-foreground whitespace-pre-wrap text-sm leading-relaxed">
-          {loginMessage}
+      <>
+        <div className="min-h-screen bg-background flex items-center justify-center gap-8 p-4">
+          <div className="max-w-sm w-full space-y-4">
+            <div className="rounded-2xl border border-border/60 bg-card/80 p-5 shadow-sm">
+              <div className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground">
+                <Info className="h-4 w-4" />
+                Information de connexion
+              </div>
+              <div className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+                {loginMessage}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-card/60 px-4 py-3">
+              <div className="space-y-1">
+                <Label htmlFor="login-message-modal" className="text-sm font-medium">
+                  Afficher aussi en popup
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Ouvre cette information dans une fenetre modale a fermer.
+                </p>
+              </div>
+              <Switch
+                id="login-message-modal"
+                checked={showLoginMessageModal}
+                onCheckedChange={setShowLoginMessageModal}
+              />
+            </div>
+          </div>
+
+          <div className="max-w-sm w-full">
+            {loginForm}
+          </div>
         </div>
-        <div className="max-w-sm w-full">
-          {loginForm}
-        </div>
-      </div>
+
+        <Dialog open={loginMessageModalOpen} onOpenChange={setLoginMessageModalOpen}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Information de connexion</DialogTitle>
+              <DialogDescription>
+                Message affiche a cote du formulaire.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[60vh] overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+              {loginMessage}
+            </div>
+            <DialogFooter>
+              <Button type="button" onClick={() => setLoginMessageModalOpen(false)}>
+                Fermer
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </>
     );
   }
 

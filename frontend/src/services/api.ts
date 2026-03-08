@@ -28,6 +28,12 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    const requestUrl = typeof error.config?.url === 'string' ? error.config.url : '';
+    const isAuthRequest =
+      requestUrl.includes('/auth/login') ||
+      requestUrl.includes('/auth/register') ||
+      requestUrl.includes('/auth/refresh');
+
     if (error.response?.status === 403 && error.response?.data?.banned) {
       const banData = error.response.data;
       storeBanInfo({
@@ -42,7 +48,7 @@ api.interceptors.response.use(
       window.location.href = '/banned';
       return Promise.reject(error);
     }
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && !isAuthRequest) {
       localStorage.removeItem('token');
       window.location.href = '/login';
     }
