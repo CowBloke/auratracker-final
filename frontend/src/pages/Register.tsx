@@ -16,15 +16,26 @@ import {
   FormItem,
   FormMessage,
 } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TYPOGRAPHY } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { CenteredShell } from '@/components/layout/centered-shell';
+
+const SCHOOL_LEVELS = [
+  { value: 'SECONDE', label: 'Seconde' },
+  { value: 'PREMIERE', label: 'Première' },
+  { value: 'TERMINALE', label: 'Terminale' },
+] as const;
+
+const CLASS_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G'] as const;
 
 const registerSchema = z.object({
   firstName: z.string()
     .trim()
     .min(1, 'Prénom requis')
     .max(50, 'Maximum 50 caractères'),
+  schoolLevel: z.enum(['SECONDE', 'PREMIERE', 'TERMINALE']),
+  classLetter: z.enum(['A', 'B', 'C', 'D', 'E', 'F', 'G']),
   username: z.string()
     .min(3, 'Minimum 3 caractères')
     .max(20, 'Maximum 20 caractères'),
@@ -51,6 +62,8 @@ export default function Register() {
     resolver: zodResolver(registerSchema),
     defaultValues: {
       firstName: '',
+      schoolLevel: undefined,
+      classLetter: undefined,
       username: '',
       email: '',
       password: '',
@@ -66,6 +79,8 @@ export default function Register() {
       await authApi.register({
         username: data.username,
         firstName: data.firstName,
+        schoolLevel: data.schoolLevel,
+        classLetter: data.classLetter,
         email: data.email,
         password: data.password,
         motivationMessage: data.motivationMessage,
@@ -159,6 +174,56 @@ export default function Register() {
                   </FormItem>
                 )}
               />
+
+              <div className="grid grid-cols-2 gap-3">
+                <FormField
+                  control={form.control}
+                  name="schoolLevel"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger className="h-12 border-border/50">
+                            <SelectValue placeholder="Niveau" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SCHOOL_LEVELS.map((level) => (
+                              <SelectItem key={level.value} value={level.value}>
+                                {level.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage className="text-center" />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="classLetter"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger className="h-12 border-border/50">
+                            <SelectValue placeholder="Lettre" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {CLASS_LETTERS.map((letter) => (
+                              <SelectItem key={letter} value={letter}>
+                                {letter}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage className="text-center" />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               <FormField
                 control={form.control}

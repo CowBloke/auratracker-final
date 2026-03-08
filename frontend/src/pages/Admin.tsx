@@ -2027,6 +2027,11 @@ export default function Admin() {
                               <h3 className="text-lg font-semibold">{u.username}</h3>
                               <p className="text-sm text-muted-foreground">{u.email}</p>
                               {u.firstName && <p className="text-sm text-muted-foreground">Prénom : {u.firstName}</p>}
+                              {(u.schoolLevel || u.classLetter) && (
+                                <p className="text-sm text-muted-foreground">
+                                  Classe : {[u.schoolLevel === 'SECONDE' ? 'Seconde' : u.schoolLevel === 'PREMIERE' ? 'Première' : u.schoolLevel === 'TERMINALE' ? 'Terminale' : null, u.classLetter].filter(Boolean).join(' ')}
+                                </p>
+                              )}
                             </div>
                             <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
                               <p className="text-xs font-medium text-muted-foreground/70 mb-2">Message de motivation</p>

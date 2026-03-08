@@ -52,7 +52,7 @@ api.interceptors.response.use(
 
 // Auth API
 export const authApi = {
-  register: (data: { username: string; firstName: string; email: string; password: string; motivationMessage: string }) =>
+  register: (data: { username: string; firstName: string; schoolLevel: 'SECONDE' | 'PREMIERE' | 'TERMINALE'; classLetter: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G'; email: string; password: string; motivationMessage: string }) =>
     api.post('/auth/register', data),
   login: (data: { username: string; password: string }) =>
     api.post('/auth/login', data),
@@ -732,6 +732,8 @@ export interface PendingUser {
   id: string;
   username: string;
   firstName: string | null;
+  schoolLevel: 'SECONDE' | 'PREMIERE' | 'TERMINALE' | null;
+  classLetter: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | null;
   email: string;
   motivationMessage: string | null;
   createdAt: string;

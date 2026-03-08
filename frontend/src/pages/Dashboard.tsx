@@ -115,7 +115,7 @@ const defaultShortcutSet = new Set(defaultShortcuts);
 const quickActions = [
   { label: 'Créer party', path: '/party', icon: Users, color: 'text-violet-500', bg: 'bg-violet-500/15' },
   { label: 'Voir quêtes', path: '/quests', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/15' },
-  { label: 'Ouvrir shop', path: '/shop', icon: Package, color: 'text-blue-500', bg: 'bg-blue-500/15' },
+  { label: 'Ouvrir shop', path: '/market', icon: Package, color: 'text-blue-500', bg: 'bg-blue-500/15' },
   { label: 'Classements', path: '/leaderboards', icon: Trophy, color: 'text-amber-500', bg: 'bg-amber-500/15' },
   { label: 'Clans', path: '/clans', icon: Shield, color: 'text-teal-500', bg: 'bg-teal-500/15' },
   { label: 'Mon profil', path: '/profile', icon: UserIcon, color: 'text-rose-500', bg: 'bg-rose-500/15' },

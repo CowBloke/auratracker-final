@@ -71,7 +71,7 @@ const navItems = [
   { to: '/leaderboards', label: 'Classement', icon: Trophy },
   { to: '/party', label: 'Party', icon: Users },
   { to: '/clans', label: 'Clans', icon: Flag },
-  { to: '/shop', label: 'Shop', icon: Store },
+  { to: '/market', label: 'Shop', icon: Store },
   { to: '/inventory', label: 'Inventaire', icon: Backpack },
   { to: '/pass', label: 'Pass', icon: Ticket },
   { to: '/quests', label: 'Quêtes', icon: Target },

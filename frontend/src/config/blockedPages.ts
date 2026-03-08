@@ -14,7 +14,7 @@ export const BLOCKABLE_PAGES: BlockablePage[] = [
   { key: 'game-minesweeper', path: '/games/minesweeper', label: 'Démineur', category: 'Jeux' },
   { key: 'game-flappy-bird', path: '/games/flappy-bird', label: 'Flappy Bird', category: 'Jeux' },
   { key: 'game-casino', path: '/games/casino', label: 'Casino', category: 'Jeux' },
-  { key: 'game-market', path: '/shop', label: 'Shop', category: 'Général' },
+  { key: 'game-market', path: '/market', label: 'Shop', category: 'Général' },
   { key: 'game-aura-coin', path: '/games/aura-coin', label: 'Aura Coin', category: 'Jeux' },
   { key: 'game-bomb-party', path: '/games/bomb-party', label: 'Bomb Party', category: 'Jeux' },
   { key: 'game-poker', path: '/games/poker', label: 'Poker', category: 'Jeux' },

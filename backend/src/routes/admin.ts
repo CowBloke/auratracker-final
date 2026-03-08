@@ -133,6 +133,8 @@ router.get('/pending-users', authMiddleware, requireAdmin, async (req: AuthReque
         id: true,
         username: true,
         firstName: true,
+        schoolLevel: true,
+        classLetter: true,
         email: true,
         motivationMessage: true,
         createdAt: true,

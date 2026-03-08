@@ -67,7 +67,7 @@ const games = [
     name: 'Démineur',
     description: 'Balise les bombes, ouvre les zones sûres et finis la grille le plus proprement possible.',
     type: 'Logique',
-    emoji: '💣',
+    image: '/images/games/demineur.png',
   },
   {
     id: 'game-2048',
@@ -155,7 +155,7 @@ const games = [
     name: 'Clash',
     description: "Base isométrique, défenses à acheter, raids toutes les 24 heures et historique des pillages.",
     type: 'Stratégie',
-    emoji: '🏰',
+    image: '/images/games/clash.png',
   },
   {
     id: 'puissance-quatre',

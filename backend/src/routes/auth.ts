@@ -31,7 +31,7 @@ const generateToken = (userId: string, email: string): string => {
 // Register - Creates a pending account that needs admin approval
 router.post('/register', validate(registerSchema), async (req, res) => {
   try {
-    const { username, firstName, email, password, motivationMessage } = req.body;
+    const { username, firstName, schoolLevel, classLetter, email, password, motivationMessage } = req.body;
     
     // Check if user exists
     const existingUser = await prisma.user.findFirst({
@@ -59,6 +59,8 @@ router.post('/register', validate(registerSchema), async (req, res) => {
       data: {
         username,
         firstName: typeof firstName === 'string' ? firstName.trim() : firstName,
+        schoolLevel,
+        classLetter,
         email,
         passwordHash,
         motivationMessage: typeof motivationMessage === 'string' ? motivationMessage.trim() : motivationMessage,
@@ -69,7 +71,7 @@ router.post('/register', validate(registerSchema), async (req, res) => {
     });
     
     // Log registration
-    logAuth('register', undefined, username, { email, isAdmin }, getIpAddress(req));
+    logAuth('register', undefined, username, { email, isAdmin, schoolLevel, classLetter }, getIpAddress(req));
 
     // Don't return token - account needs approval first (unless admin)
     res.status(201).json({
@@ -154,6 +156,8 @@ router.post('/login', validate(loginSchema), async (req, res) => {
         id: user.id,
         username: user.username,
         firstName: user.firstName,
+        schoolLevel: user.schoolLevel,
+        classLetter: user.classLetter,
         email: user.email,
         aura: user.aura,
         money: user.money,
@@ -198,6 +202,8 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
         id: true,
         username: true,
         firstName: true,
+        schoolLevel: true,
+        classLetter: true,
         email: true,
         aura: true,
         money: true,

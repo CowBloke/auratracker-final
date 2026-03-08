@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { z, ZodSchema } from 'zod';
 
+const schoolLevelSchema = z.enum(['SECONDE', 'PREMIERE', 'TERMINALE']);
+const classLetterSchema = z.enum(['A', 'B', 'C', 'D', 'E', 'F', 'G']);
+
 export const validate = (schema: ZodSchema) => {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -25,6 +28,8 @@ export const validate = (schema: ZodSchema) => {
 export const registerSchema = z.object({
   username: z.string().min(3).max(20),
   firstName: z.string().trim().min(1).max(50),
+  schoolLevel: schoolLevelSchema,
+  classLetter: classLetterSchema,
   email: z.string().email(),
   password: z.string().min(6).max(100),
   motivationMessage: z.string().trim().min(10).max(500),

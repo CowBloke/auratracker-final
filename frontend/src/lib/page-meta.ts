@@ -12,7 +12,7 @@ const STATIC_PAGE_META: Record<string, PageMeta> = {
   '/games/2048': { title: '2048', description: 'Fusionne les tuiles et améliore ton record.' },
   '/games/flappy-bird': { title: 'Flappy Bird', description: 'Session arcade rapide avec classement.' },
   '/games/casino': { title: 'Casino', description: 'Roulette, slots et blackjack.' },
-  '/shop': { title: 'Shop', description: 'Boutique des objets, cosmetiques et bonus.' },
+  '/market': { title: 'Shop', description: 'Boutique des objets, cosmetiques et bonus.' },
   '/games/aura-coin': { title: 'Aura Coin', description: 'Trading et positions à effet de levier.' },
   '/games/bomb-party': { title: 'Bomb Party', description: 'Partie multijoueur basée sur les mots.' },
   '/games/poker': { title: 'Poker', description: "Table de poker avec paramètres de party." },

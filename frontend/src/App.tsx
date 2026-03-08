@@ -154,10 +154,8 @@ function App() {
         <Route path="games/casino" element={<Casino />} />
         <Route path="games/aura-coin" element={<AuraCoin />} />
         <Route path="games/minesweeper" element={<Minesweeper />} />
-        <Route path="shop" element={<Shop />} />
-        <Route path="shop/*" element={<Shop />} />
-        <Route path="games/market" element={<Navigate to="/shop" replace />} />
-        <Route path="games/market/*" element={<Navigate to="/shop" replace />} />
+        <Route path="market" element={<Shop />} />
+        <Route path="market/*" element={<Shop />} />
         <Route path="games/bomb-party" element={<BombParty />} />
         <Route path="games/poker" element={<Poker />} />
         <Route path="games/petit-bac" element={<PetitBac />} />
@@ -172,8 +170,7 @@ function App() {
         <Route path="games/puissance-quatre" element={<PuissanceQuatre />} />
         <Route path="games/echecs" element={<Echecs />} />
         <Route path="games/logic-lab" element={<Sudoku />} />
-        <Route path="games/polymarket" element={<Polymarket />} />
-        <Route path="polymarket" element={<Navigate to="/games/polymarket" replace />} />
+        <Route path="polymarket" element={<Polymarket />} />
         <Route path="leaderboards" element={<Leaderboards />} />
         <Route path="leaderboards/nombres" element={<Numbers />} />
         <Route path="party" element={<Party />} />
