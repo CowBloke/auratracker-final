@@ -524,7 +524,7 @@ export default function KnifeHit() {
                   color: palette.text,
                 }}
               >
-                <p className="text-xs uppercase tracking-[0.18em]" style={{ color: palette.subtext }}>
+                <p className="text-xs" style={{ color: palette.subtext }}>
                   Monde
                 </p>
                 <p className="text-sm font-semibold">{worldName}</p>

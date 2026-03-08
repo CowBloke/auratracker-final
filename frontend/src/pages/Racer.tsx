@@ -1311,7 +1311,7 @@ export default function Racer() {
         <div className="text-right text-sm text-muted-foreground tabular-nums">
           <div className="text-2xl font-light text-foreground">{speed} mph</div>
           <div>Temps: {formatTime(currentLapTime)}</div>
-          <div>Piste du jour (UTC): {trackDateLabel}</div>
+          <div>Piste du jour (temps universel) : {trackDateLabel}</div>
           <div>Meilleur du jour: {dailyBestLapTimeMs ? formatMsTime(dailyBestLapTimeMs) : '--'}</div>
           <div>Tentatives du jour: {dailyRunCount}</div>
         </div>
@@ -1430,7 +1430,7 @@ export default function Racer() {
         </div>
         <div className="flex items-center gap-2">
           <span>ou</span>
-          <kbd className="px-2 py-1 border border-border/50 rounded">WASD</kbd>
+          <kbd className="px-2 py-1 border border-border/50 rounded">wasd</kbd>
         </div>
       </div>
     </div>

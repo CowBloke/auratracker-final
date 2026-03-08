@@ -175,7 +175,7 @@ export default function Profile() {
               className={cn(TYPOGRAPHY.H2, "md:text-4xl")}
               style={profileUser.usernameColor ? { color: profileUser.usernameColor } : undefined}
             >
-              {profileUser.username.slice(0, 2).toUpperCase()}
+              {profileUser.username.slice(0, 2)}
             </span>
           </div>
         )}
@@ -195,7 +195,7 @@ export default function Profile() {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className="inline-flex min-w-7 items-center justify-center rounded-full border border-border/60 px-2 py-1 text-[10px] font-semibold text-muted-foreground cursor-help">
-                        ARG
+                        Argent
                       </span>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -214,7 +214,7 @@ export default function Profile() {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className="inline-flex min-w-7 items-center justify-center rounded-full border border-border/60 px-2 py-1 text-[10px] font-semibold text-muted-foreground cursor-help">
-                        AUR
+                        Aura
                       </span>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -327,7 +327,7 @@ export default function Profile() {
         <Card>
           <CardContent className="p-4 space-y-1">
             <p className={cn(TYPOGRAPHY.H2, "md:text-5xl tabular-nums")}>
-              {profileUser.auraCoinBalance.toFixed(4)} AC
+              {profileUser.auraCoinBalance.toFixed(4)} AuraCoin
             </p>
             <p className={TYPOGRAPHY.SMALL}>
               Aura Coin

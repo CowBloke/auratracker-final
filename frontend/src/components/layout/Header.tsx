@@ -111,7 +111,7 @@ export default function Header() {
                   type="text"
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder="Pseudo, ID..."
+                  placeholder="Pseudo, identifiant..."
                   autoFocus
                   className="h-12 shrink-0 border-border/50"
                 />
@@ -137,7 +137,7 @@ export default function Header() {
                             <AvatarImage src={resolveImageUrl(u.profilePicture)} alt={u.username} />
                           ) : null}
                           <AvatarFallback className="bg-muted text-foreground">
-                            {u.username.slice(0, 1).toUpperCase()}
+                            {u.username.slice(0, 1)}
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0 flex-1">

@@ -42,7 +42,7 @@ export async function sendBugReportReplyEmail(opts: {
             Votre signalement <strong style="color:#e4e4e7;">"${bugTitle}"</strong> a été marqué comme <strong style="color:#22c55e;">${statusLabel}</strong>.
           </p>
           <div style="background:#09090b;border-left:3px solid #6366f1;border-radius:6px;padding:16px;margin:0 0 24px;">
-            <p style="margin:0 0 6px;font-size:12px;color:#71717a;text-transform:uppercase;letter-spacing:.05em;">Réponse de l'équipe</p>
+            <p style="margin:0 0 6px;font-size:12px;color:#71717a;">Réponse de l'équipe</p>
             <p style="margin:0;font-size:14px;color:#e4e4e7;white-space:pre-wrap;">${adminReply}</p>
           </div>
           <p style="color:#52525b;font-size:12px;margin:0;">

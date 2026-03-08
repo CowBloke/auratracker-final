@@ -55,6 +55,15 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
   UPGRADE: 'Amélioration',
 };
 
+const humanizeIdentifier = (value: string | null | undefined) => {
+  if (!value) return '';
+  const normalized = value
+    .toLowerCase()
+    .replace(/_/g, ' ')
+    .trim();
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+};
+
 const ANNOUNCEMENT_MAX_LENGTH = 120;
 
 // Log type configuration with icons, colors and labels
@@ -2411,7 +2420,7 @@ export default function Admin() {
                             <p className="tabular-nums">${u.money.toLocaleString()}</p>
                           </div>
                           <div className="text-right">
-                            <p className="tabular-nums">{u.auraCoinBalance.toFixed(2)} AC</p>
+                            <p className="tabular-nums">{u.auraCoinBalance.toFixed(2)} AuraCoin</p>
                           </div>
                           <div className="text-right">
                             <p className="tabular-nums">{u.dailyAuraGiven}/{u.dailyAuraLimit} donné</p>
@@ -2767,7 +2776,7 @@ export default function Admin() {
                     <Input
                       value={newCategoryId}
                       onChange={(e) => setNewCategoryId(e.target.value)}
-                      placeholder="ID (ex: DOODLE_SKIN)"
+                      placeholder="Identifiant (ex. doodle skin)"
                       className="bg-transparent flex-1"
                     />
                     <Input
@@ -2816,18 +2825,18 @@ export default function Admin() {
                   return acc;
                 }, {});
                 const allTypes = [...shopCategories.map(c => c.id), ...Object.keys(grouped).filter(t => !shopCategories.find(c => c.id === t))];
-                const getCategoryLabel = (typeId: string) => shopCategories.find(c => c.id === typeId)?.label || typeId;
+                const getCategoryLabel = (typeId: string) => shopCategories.find(c => c.id === typeId)?.label || ITEM_TYPE_LABELS[typeId] || humanizeIdentifier(typeId);
                 return (
                   <div className="space-y-6">
                     {allTypes.filter(t => grouped[t]?.length).map(type => (
                       <div key={type}>
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
+                        <p className="mb-2 px-1 text-xs font-semibold text-muted-foreground">
                           {getCategoryLabel(type)}
                         </p>
                         <div className="divide-y divide-border/30">
                           {grouped[type].map((item) => {
                             const { type: effectType } = parseEffect(item.effect);
-                            const effectLabel = EFFECT_TYPES.find(e => e.value === effectType)?.label || effectType;
+                            const effectLabel = EFFECT_TYPES.find(e => e.value === effectType)?.label || humanizeIdentifier(effectType);
                             return (
                               <div key={item.id} className="py-3 flex items-center justify-between">
                                 <div className="flex items-center gap-4 min-w-0 flex-1">
@@ -3479,21 +3488,21 @@ export default function Admin() {
 
                           {log.ipAddress && (
                             <>
-                              <div className="text-muted-foreground">Adresse IP</div>
+                              <div className="text-muted-foreground">Adresse réseau</div>
                               <div className="font-mono">{log.ipAddress}</div>
                             </>
                           )}
 
                           {log.userId && (
                             <>
-                              <div className="text-muted-foreground">ID utilisateur</div>
+                              <div className="text-muted-foreground">Identifiant utilisateur</div>
                               <div className="font-mono text-[11px]">{log.userId}</div>
                             </>
                           )}
 
                           {log.targetId && (
                             <>
-                              <div className="text-muted-foreground">ID cible</div>
+                              <div className="text-muted-foreground">Identifiant cible</div>
                               <div className="font-mono text-[11px]">{log.targetId}</div>
                             </>
                           )}
@@ -4021,7 +4030,7 @@ export default function Admin() {
                       ) : (
                         items.map((item) => (
                           <SelectItem key={item.id} value={item.id}>
-                            {item.name} • {ITEM_TYPE_LABELS[item.type] || item.type}
+                            {item.name} • {ITEM_TYPE_LABELS[item.type] || humanizeIdentifier(item.type)}
                           </SelectItem>
                         ))
                       )}
@@ -4076,7 +4085,7 @@ export default function Admin() {
                   {inventoryItems.map((inventoryItem) => {
                     const effect = inventoryItem.item.effect ? parseEffect(inventoryItem.item.effect) : null;
                     const effectLabel = effect
-                      ? EFFECT_TYPES.find((effectItem) => effectItem.value === effect.type)?.label || effect.type
+                      ? EFFECT_TYPES.find((effectItem) => effectItem.value === effect.type)?.label || humanizeIdentifier(effect.type)
                       : null;
 
                     return (
@@ -4101,7 +4110,7 @@ export default function Admin() {
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-medium truncate">{inventoryItem.item.name}</span>
                                 <span className="text-xs text-muted-foreground  ">
-                                  {ITEM_TYPE_LABELS[inventoryItem.item.type] || inventoryItem.item.type}
+                                  {ITEM_TYPE_LABELS[inventoryItem.item.type] || humanizeIdentifier(inventoryItem.item.type)}
                                 </span>
                               </div>
                               {effectLabel && (
@@ -4214,7 +4223,7 @@ export default function Admin() {
             {/* Row 1: Name + Category + Price */}
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-1 space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Nom</label>
+                <label className="text-xs font-medium text-muted-foreground">Nom</label>
                 <Input
                   value={itemForm.name}
                   onChange={(e) => setItemForm(prev => ({ ...prev, name: e.target.value }))}
@@ -4223,7 +4232,7 @@ export default function Admin() {
                 />
               </div>
               <div className="col-span-1 space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Catégorie</label>
+                <label className="text-xs font-medium text-muted-foreground">Catégorie</label>
                 <Select
                   value={itemForm.type}
                   onValueChange={(value) => setItemForm(prev => ({ ...prev, type: value }))}
@@ -4239,7 +4248,7 @@ export default function Admin() {
                 </Select>
               </div>
               <div className="col-span-1 space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Prix ($)</label>
+                <label className="text-xs font-medium text-muted-foreground">Prix ($)</label>
                 <Input
                   type="number"
                   value={itemForm.price}
@@ -4252,7 +4261,7 @@ export default function Admin() {
 
             {/* Row 2: Description */}
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Description</label>
+              <label className="text-xs font-medium text-muted-foreground">Description</label>
               <Textarea
                 value={itemForm.description}
                 onChange={(e) => setItemForm(prev => ({ ...prev, description: e.target.value }))}
@@ -4265,7 +4274,7 @@ export default function Admin() {
             {/* Row 3: Image + Effect */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Image boutique (optionnel)</label>
+                <label className="text-xs font-medium text-muted-foreground">Image boutique (optionnel)</label>
                 <ImagePicker
                   value={itemForm.imageUrl}
                   onChange={(url) => setItemForm(prev => ({ ...prev, imageUrl: url }))}
@@ -4275,7 +4284,7 @@ export default function Admin() {
 
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Type d'effet</label>
+                  <label className="text-xs font-medium text-muted-foreground">Type d'effet</label>
                   <Select
                     value={itemForm.effectType}
                     onValueChange={(value) => {
@@ -4307,7 +4316,7 @@ export default function Admin() {
 
                 {itemForm.effectType === 'BONUS_AURA' && (
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Valeur Bonus Aura</label>
+                    <label className="text-xs font-medium text-muted-foreground">Valeur Bonus Aura</label>
                     <Input
                       type="number"
                       value={itemForm.bonusAura || 0}
@@ -4320,7 +4329,7 @@ export default function Admin() {
 
                 {itemForm.effectType === 'BONUS_MONEY' && (
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Valeur Bonus Argent</label>
+                    <label className="text-xs font-medium text-muted-foreground">Valeur Bonus Argent</label>
                     <Input
                       type="number"
                       value={itemForm.bonusMoney || 0}
@@ -4333,7 +4342,7 @@ export default function Admin() {
 
                 {itemForm.effectType === 'DOODLE_JUMP_SKIN' && (
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Image du skin</label>
+                    <label className="text-xs font-medium text-muted-foreground">Image du skin</label>
                     <ImagePicker
                       value={itemForm.skinImageUrl || ''}
                       onChange={(url) => setItemForm(prev => ({ ...prev, skinImageUrl: url }))}
@@ -4345,7 +4354,7 @@ export default function Admin() {
 
                 {itemForm.effectType !== 'BONUS_AURA' && itemForm.effectType !== 'BONUS_MONEY' && itemForm.effectType !== 'DOODLE_JUMP_SKIN' && (
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Valeur de l'effet</label>
+                    <label className="text-xs font-medium text-muted-foreground">Valeur de l'effet</label>
                     <Input
                       value={itemForm.effectValue}
                       onChange={(e) => setItemForm(prev => ({ ...prev, effectValue: e.target.value }))}

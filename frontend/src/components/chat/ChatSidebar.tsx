@@ -392,7 +392,7 @@ export default function ChatSidebar() {
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <span className="inline-flex min-w-6 items-center justify-center rounded-full border border-border/60 px-1.5 text-[9px] font-semibold text-muted-foreground cursor-help">
-                                      ARG
+                                      Argent
                                     </span>
                                   </TooltipTrigger>
                                   <TooltipContent>
@@ -411,7 +411,7 @@ export default function ChatSidebar() {
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <span className="inline-flex min-w-6 items-center justify-center rounded-full border border-border/60 px-1.5 text-[9px] font-semibold text-muted-foreground cursor-help">
-                                      AUR
+                                      Aura
                                     </span>
                                   </TooltipTrigger>
                                   <TooltipContent>

@@ -354,9 +354,9 @@ function PlayerSeat({
 
         {(isDealer || isSB || isBB) && (
           <div style={{ display: 'flex', justifyContent: 'center', gap: 3, marginBottom: 3 }}>
-            {isDealer && <RoleToken label="D" bg="#1a56db" />}
-            {isSB && <RoleToken label="SB" bg="#9f1239" />}
-            {isBB && <RoleToken label="BB" bg="#065f46" />}
+            {isDealer && <RoleToken label="d" bg="#1a56db" />}
+            {isSB && <RoleToken label="sb" bg="#9f1239" />}
+            {isBB && <RoleToken label="bb" bg="#065f46" />}
           </div>
         )}
 
@@ -504,7 +504,7 @@ function PokerTableView({
             textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
           }}
         >
-          <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 600 }}>
             {stageLabel[game.stage] ?? game.stage}
           </div>
 

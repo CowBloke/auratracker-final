@@ -275,7 +275,7 @@ export default function AuraCoin() {
             <Card>
               <CardContent className="p-4">
                 <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground  ")}>Solde AuraCoin</p>
-                <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>{auraCoinBalance.toFixed(4)} AC</p>
+                <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>{auraCoinBalance.toFixed(4)} AuraCoin</p>
                 <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground tabular-nums")}>
                   ≈ ${(auraCoinBalance * currentPrice).toFixed(2)}
                 </p>
@@ -445,7 +445,7 @@ export default function AuraCoin() {
                         </div>
                         <div className="flex justify-between">
                           <span>Vous recevrez</span>
-                          <span className="tabular-nums text-foreground">{buyCoinsEstimate.toFixed(4)} AC</span>
+                          <span className="tabular-nums text-foreground">{buyCoinsEstimate.toFixed(4)} AuraCoin</span>
                         </div>
                       </div>
                     )}
@@ -461,7 +461,7 @@ export default function AuraCoin() {
                     </div>
 
                     <div>
-                      <label className={TYPOGRAPHY.XS}>Quantité (AC)</label>
+                      <label className={TYPOGRAPHY.XS}>Quantité (AuraCoin)</label>
                       <div className="flex items-center gap-2 mt-1">
                         <Input
                           type="number"
@@ -602,8 +602,8 @@ export default function AuraCoin() {
                             <span className="tabular-nums text-foreground">${notionalValue.toFixed(2)}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span>Quantité (AC)</span>
-                            <span className="tabular-nums text-foreground">{coinAmountLeveraged.toFixed(4)} AC</span>
+                            <span>Quantité (AuraCoin)</span>
+                            <span className="tabular-nums text-foreground">{coinAmountLeveraged.toFixed(4)} AuraCoin</span>
                           </div>
                           <div className="flex justify-between">
                             <span>Prix d'entrée</span>
@@ -781,7 +781,7 @@ export default function AuraCoin() {
                       </div>
                       <div className="text-right">
                         <p className={cn(TYPOGRAPHY.XS, "tabular-nums")}>
-                          {tx.type === 'BUY' ? '+' : '-'}{tx.coinAmount.toFixed(4)} AC
+                          {tx.type === 'BUY' ? '+' : '-'}{tx.coinAmount.toFixed(4)} AuraCoin
                         </p>
                         <p className="text-[10px] text-muted-foreground tabular-nums">
                           @ ${tx.price.toFixed(2)} • Frais: ${tx.fee}

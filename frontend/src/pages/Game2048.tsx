@@ -487,7 +487,7 @@ export default function Game2048() {
               <kbd className="px-1.5 py-0.5 border border-border/50 rounded flex items-center"><ArrowLeft className="w-3 h-3" /></kbd>
               <kbd className="px-1.5 py-0.5 border border-border/50 rounded flex items-center"><ArrowRight className="w-3 h-3" /></kbd>
             </div>
-            <p className="text-xs text-muted-foreground">ou <kbd className="px-1.5 py-0.5 border border-border/50 rounded">WASD</kbd></p>
+            <p className="text-xs text-muted-foreground">ou <kbd className="px-1.5 py-0.5 border border-border/50 rounded">wasd</kbd></p>
             <p className="text-xs text-muted-foreground">ou glisser sur mobile</p>
           </CardContent>
         </Card>

@@ -199,7 +199,7 @@ export default function Clash() {
             <CardContent className="flex items-center gap-3 p-4">
               <Castle className="h-9 w-9 rounded-2xl bg-amber-100 p-2 text-amber-700" />
               <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Hôtel de Ville</p>
+                <p className="text-xs text-muted-foreground">Hôtel de ville</p>
                 <p className="text-xl font-semibold">Niv. {village.townHallLevel}</p>
               </div>
             </CardContent>
@@ -208,7 +208,7 @@ export default function Clash() {
             <CardContent className="flex items-center gap-3 p-4">
               <Hammer className="h-9 w-9 rounded-2xl bg-lime-100 p-2 text-lime-700" />
               <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Défenses</p>
+                <p className="text-xs text-muted-foreground">Défenses</p>
                 <p className="text-xl font-semibold">{village.buildings.length} / {constructionLimit(village.townHallLevel)}</p>
               </div>
             </CardContent>
@@ -217,7 +217,7 @@ export default function Clash() {
             <CardContent className="flex items-center gap-3 p-4">
               <Shield className="h-9 w-9 rounded-2xl bg-sky-100 p-2 text-sky-700" />
               <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Score défensif</p>
+                <p className="text-xs text-muted-foreground">Score défensif</p>
                 <p className="text-xl font-semibold">
                   {village.townHallLevel * 45 + village.buildings.reduce((sum, item) => sum + BUILDINGS[item.type].defense, 0)}
                 </p>
@@ -228,7 +228,7 @@ export default function Clash() {
             <CardContent className="flex items-center gap-3 p-4">
               <Swords className="h-9 w-9 rounded-2xl bg-rose-100 p-2 text-rose-700" />
               <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Prochain raid</p>
+                <p className="text-xs text-muted-foreground">Prochain raid</p>
                 <p className="text-xl font-semibold">{attackCooldownRemaining > 0 ? formatRemaining(attackCooldownRemaining) : 'Disponible'}</p>
               </div>
             </CardContent>
@@ -265,7 +265,7 @@ export default function Clash() {
                   <div className="absolute left-1/2 top-[43%] z-20 flex h-24 w-24 -translate-x-1/2 -translate-y-1/2 rotate-45 items-center justify-center rounded-3xl border-4 border-amber-200 bg-[linear-gradient(135deg,#f97316,#fb923c,#fed7aa)] shadow-[0_20px_40px_rgba(0,0,0,0.18)]">
                     <div className="-rotate-45 text-center text-white">
                       <div className="text-3xl">🏰</div>
-                      <div className="text-xs font-semibold uppercase tracking-[0.22em]">HDV {village.townHallLevel}</div>
+                      <div className="text-xs font-semibold">Hôtel de ville {village.townHallLevel}</div>
                     </div>
                   </div>
 
@@ -293,14 +293,14 @@ export default function Clash() {
                             {building ? (
                               <>
                                 <div className="text-3xl">{BUILDINGS[building.type].emoji}</div>
-                                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-700">
+                                <div className="text-[10px] font-semibold text-zinc-700">
                                   {BUILDINGS[building.type].name}
                                 </div>
                               </>
                             ) : unlocked ? (
-                              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Libre</span>
+                              <span className="text-xs font-semibold text-emerald-700">Libre</span>
                             ) : (
-                              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Verrou</span>
+                              <span className="text-[10px] font-semibold text-zinc-500">Verrou</span>
                             )}
                           </div>
                         </div>
@@ -464,7 +464,7 @@ export default function Clash() {
                       <div className="space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="text-lg font-semibold">{opponent.name}</p>
-                          <Badge variant="secondary">HDV {opponent.townHallLevel}</Badge>
+                          <Badge variant="secondary">Hôtel de ville {opponent.townHallLevel}</Badge>
                           <Badge variant="outline">Défense {opponent.defenseScore}</Badge>
                         </div>
                         <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">

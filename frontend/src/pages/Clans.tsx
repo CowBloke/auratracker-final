@@ -108,6 +108,8 @@ const getAttackColor = (attackType: ClanWarActionType['type']) => {
   }
 };
 
+const getAvatarFallback = (value: string) => value.trim().slice(0, 2);
+
 const DefenseCard = ({
   defense,
   canFortify,
@@ -531,7 +533,7 @@ export default function Clans() {
                 <div className="bg-gradient-to-br from-amber-200/50 via-background to-rose-200/50 p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Guerres en cours</p>
+                      <p className="text-xs text-muted-foreground">Guerres en cours</p>
                       <h2 className="mt-1 text-xl font-semibold">Front global</h2>
                     </div>
                     <Badge variant="secondary">{activeWars.length}</Badge>
@@ -605,7 +607,7 @@ export default function Clans() {
                         <div className="flex items-center gap-3">
                           <Avatar className="h-11 w-11">
                             <AvatarImage src={resolveImageUrl(clan.imageUrl)} alt={clan.name} />
-                            <AvatarFallback>{clan.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                            <AvatarFallback>{getAvatarFallback(clan.name)}</AvatarFallback>
                           </Avatar>
                           <div className="min-w-0 flex-1">
                             <div className="truncate font-medium">{clan.name}</div>
@@ -643,7 +645,7 @@ export default function Clans() {
                         <div className="flex items-start gap-4">
                           <Avatar className="h-20 w-20 rounded-2xl border bg-background/80">
                             <AvatarImage src={resolveImageUrl(selectedClan.imageUrl)} alt={selectedClan.name} />
-                            <AvatarFallback className="rounded-2xl text-xl">{selectedClan.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                            <AvatarFallback className="rounded-2xl text-xl">{getAvatarFallback(selectedClan.name)}</AvatarFallback>
                           </Avatar>
                           <div className="space-y-3">
                             <div className="flex flex-wrap items-center gap-2">
@@ -690,17 +692,17 @@ export default function Clans() {
                     </div>
                     <CardContent className="grid gap-4 p-6 md:grid-cols-3">
                       <div className="rounded-xl border bg-muted/30 p-4">
-                        <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Chef</p>
+                        <p className="text-xs text-muted-foreground">Chef</p>
                         <div className="mt-3 flex items-center gap-3">
                           <Avatar>
                             <AvatarImage src={resolveImageUrl(selectedClan.leader.profilePicture)} alt={selectedClan.leader.username} />
-                            <AvatarFallback>{selectedClan.leader.username.slice(0, 2).toUpperCase()}</AvatarFallback>
+                            <AvatarFallback>{getAvatarFallback(selectedClan.leader.username)}</AvatarFallback>
                           </Avatar>
                           <UsernameDisplay username={selectedClan.leader.username} usernameColor={selectedClan.leader.usernameColor} />
                         </div>
                       </div>
                       <div className="rounded-xl border bg-muted/30 p-4">
-                        <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Éligibilité guerre</p>
+                        <p className="text-xs text-muted-foreground">Éligibilité guerre</p>
                         <div className="mt-3 text-sm">
                           {selectedClan.memberCount >= selectedClan.warHub.minimumMembersRequired
                             ? 'Le clan peut participer aux guerres.'
@@ -708,7 +710,7 @@ export default function Clans() {
                         </div>
                       </div>
                       <div className="rounded-xl border bg-muted/30 p-4">
-                        <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Cooldown</p>
+                        <p className="text-xs text-muted-foreground">Cooldown</p>
                         <div className="mt-3 text-sm">
                           {selectedClan.warHub.cooldownEndsAt
                             ? `Disponible dans ${formatCountdown(selectedClan.warHub.cooldownEndsAt)}`
@@ -741,11 +743,11 @@ export default function Clans() {
 
                           <div className="grid grid-cols-2 gap-3 text-center">
                             <div className="rounded-xl border bg-background/70 px-4 py-3">
-                              <div className="text-xs uppercase tracking-[0.22em] text-muted-foreground">{selectedWar.attackerClan.name}</div>
+                              <div className="text-xs text-muted-foreground">{selectedWar.attackerClan.name}</div>
                               <div className="mt-1 text-3xl font-semibold tabular-nums">{selectedWar.attackerScore}</div>
                             </div>
                             <div className="rounded-xl border bg-background/70 px-4 py-3">
-                              <div className="text-xs uppercase tracking-[0.22em] text-muted-foreground">{selectedWar.defenderClan.name}</div>
+                              <div className="text-xs text-muted-foreground">{selectedWar.defenderClan.name}</div>
                               <div className="mt-1 text-3xl font-semibold tabular-nums">{selectedWar.defenderScore}</div>
                             </div>
                           </div>
@@ -769,7 +771,7 @@ export default function Clans() {
                               </div>
                               <div className="mt-4 grid gap-3 md:grid-cols-2">
                                 <div className="rounded-lg border bg-muted/30 p-4">
-                                  <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Endurance (24h)</div>
+                                  <div className="text-xs text-muted-foreground">Endurance (24h)</div>
                                   <div className="mt-2 text-2xl font-semibold tabular-nums">
                                     {selectedWar.viewerActions.staminaRemaining}/{selectedWar.viewerActions.staminaCap}
                                   </div>
@@ -778,7 +780,7 @@ export default function Clans() {
                                   </p>
                                 </div>
                                 <div className="rounded-lg border bg-muted/30 p-4">
-                                  <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Fortifications</div>
+                                  <div className="text-xs text-muted-foreground">Fortifications</div>
                                   <div className="mt-2 text-2xl font-semibold tabular-nums">
                                     {selectedWar.viewerActions.fortificationsRemaining}/{selectedWar.viewerActions.fortificationsCap}
                                   </div>
@@ -1027,7 +1029,7 @@ export default function Clans() {
                             <div className="flex items-center gap-3">
                               <Avatar>
                                 <AvatarImage src={resolveImageUrl(member.profilePicture)} alt={member.username} />
-                                <AvatarFallback>{member.username.slice(0, 2).toUpperCase()}</AvatarFallback>
+                                <AvatarFallback>{getAvatarFallback(member.username)}</AvatarFallback>
                               </Avatar>
                               <div>
                                 <div className="flex items-center gap-2">
@@ -1067,7 +1069,7 @@ export default function Clans() {
                                 <div className="flex items-center gap-3">
                                   <Avatar>
                                     <AvatarImage src={resolveImageUrl(request.profilePicture)} alt={request.username} />
-                                    <AvatarFallback>{request.username.slice(0, 2).toUpperCase()}</AvatarFallback>
+                                    <AvatarFallback>{getAvatarFallback(request.username)}</AvatarFallback>
                                   </Avatar>
                                   <div className="min-w-0 flex-1">
                                     <UsernameDisplay username={request.username} usernameColor={request.usernameColor} />
@@ -1200,7 +1202,7 @@ export default function Clans() {
                   <div className="flex items-center gap-3">
                     <Avatar className="h-12 w-12">
                       <AvatarImage src={resolveImageUrl(opponent.imageUrl)} alt={opponent.name} />
-                      <AvatarFallback>{opponent.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                      <AvatarFallback>{getAvatarFallback(opponent.name)}</AvatarFallback>
                     </Avatar>
                     <div>
                       <div className="font-medium">{opponent.name}</div>

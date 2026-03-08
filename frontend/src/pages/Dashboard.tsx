@@ -19,18 +19,16 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
-import { Gift, GiftStatus, UserDailyQuest, DailyQuest, auraCoinApi, giftsApi, leaderboardsApi, marketplaceApi, questsApi, passApi, bombPartyApi, polymarketApi } from '../services/api';
-import { GripVertical, Zap, DollarSign, Trophy, Users, Gift as GiftIcon, Package, TrendingUp, TrendingDown, CheckCircle2, Star, Flame, Gamepad2, Hash, BarChart3, Coins, Shield, User as UserIcon } from 'lucide-react';
+import { Gift, GiftStatus, auraCoinApi, giftsApi, marketplaceApi } from '../services/api';
+import { GripVertical, Zap, Trophy, Users, Gift as GiftIcon, Package, TrendingUp, TrendingDown, CheckCircle2, Star, Gamepad2, BarChart3, Coins, Shield, User as UserIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 import { AreaChart, Area, XAxis, YAxis } from 'recharts';
 import GiftDialog from '@/components/gifts/GiftDialog';
-import { toast } from 'sonner';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 
@@ -42,7 +40,7 @@ interface GameShortcut {
   image?: string;
 }
 
-type DashboardWidgetId = 'shortcuts' | 'live' | 'stats' | 'gifts' | 'auracoin' | 'quests' | 'quick-actions' | 'inventory' | 'aura-leaders';
+type DashboardWidgetId = 'shortcuts' | 'live' | 'gifts' | 'auracoin' | 'quick-actions' | 'inventory';
 
 interface DashboardInventoryItem {
   id: string;
@@ -54,18 +52,10 @@ interface DashboardInventoryItem {
   };
 }
 
-interface AuraLeaderboardEntry {
-  rank: number;
-  userId: string;
-  username: string;
-  usernameColor?: string | null;
-  value: number;
-}
-
 const shortcutStorageKey = 'auratracker:dashboard-shortcuts';
 const dashboardLayoutStorageKey = 'auratracker:dashboard-layout';
 const dashboardVisibleWidgetsStorageKey = 'auratracker:dashboard-visible-widgets';
-const maxShortcutWidgets = 8;
+const maxShortcutWidgets = 12;
 
 const welcomeTemplates = [
   'Bienvenue, {username}',
@@ -110,7 +100,20 @@ const gameShortcuts: GameShortcut[] = [
   { id: 'subway-rush', label: 'Subway Rush', path: '/games/subway-rush', description: 'Runner 3 voies style Subway Surfers.' },
 ];
 
-const defaultShortcuts = ['doodle-jump', 'flappy-bird', 'bomb-party', '2048', 'poker', 'solitaire', 'tetris', 'racer'];
+const defaultShortcuts = [
+  'doodle-jump',
+  'flappy-bird',
+  'bomb-party',
+  '2048',
+  'poker',
+  'solitaire',
+  'tetris',
+  'racer',
+  'petit-bac',
+  'casino',
+  'bataille-navale',
+  'knife-hit',
+];
 const defaultShortcutSet = new Set(defaultShortcuts);
 const quickActions = [
   { label: 'Créer party', path: '/party', icon: Users, color: 'text-violet-500', bg: 'bg-violet-500/15' },
@@ -120,111 +123,37 @@ const quickActions = [
   { label: 'Clans', path: '/clans', icon: Shield, color: 'text-teal-500', bg: 'bg-teal-500/15' },
   { label: 'Mon profil', path: '/profile', icon: UserIcon, color: 'text-rose-500', bg: 'bg-rose-500/15' },
   { label: 'Polymarket', path: '/polymarket', icon: BarChart3, color: 'text-indigo-500', bg: 'bg-indigo-500/15' },
+  { label: 'Tous les jeux', path: '/games', icon: Gamepad2, color: 'text-orange-500', bg: 'bg-orange-500/15' },
+  { label: 'Inventaire', path: '/inventory', icon: Package, color: 'text-cyan-500', bg: 'bg-cyan-500/15' },
+  { label: 'Inbox', path: '/inbox', icon: GiftIcon, color: 'text-pink-500', bg: 'bg-pink-500/15' },
+  { label: 'Pass', path: '/pass', icon: Star, color: 'text-yellow-500', bg: 'bg-yellow-500/15' },
+  { label: 'Réglages', path: '/settings', icon: Coins, color: 'text-zinc-500', bg: 'bg-zinc-500/15' },
 ];
 
-const defaultDashboardLayout: DashboardWidgetId[] = ['shortcuts', 'live', 'quick-actions', 'stats', 'quests', 'auracoin', 'aura-leaders', 'inventory', 'gifts'];
+const defaultDashboardLayout: DashboardWidgetId[] = ['shortcuts', 'live', 'quick-actions', 'auracoin', 'inventory', 'gifts'];
 const dashboardWidgetLabels: Record<DashboardWidgetId, { title: string; description: string }> = {
   'quick-actions': { title: 'Actions rapides', description: 'Liens utiles du dashboard.' },
   shortcuts: { title: 'Raccourcis jeux', description: 'Accès rapide à tes jeux favoris.' },
-  quests: { title: 'Quêtes du jour', description: 'Suivi des quêtes actives.' },
   auracoin: { title: 'Aura Coin', description: 'Prix et variation du marché.' },
-  'aura-leaders': { title: 'Top Aura', description: 'Utilisateurs avec le plus d’aura.' },
   inventory: { title: 'Inventaire', description: 'Résumé de tes objets.' },
   live: { title: 'Activité des parties', description: 'Parties ouvertes en direct.' },
-  stats: { title: 'Stats', description: 'Vue rapide de tes ressources.' },
   gifts: { title: 'Cadeaux', description: 'Boîte, envois et historique.' },
 };
 
 const isDashboardWidgetId = (value: string): value is DashboardWidgetId =>
-  ['shortcuts', 'live', 'stats', 'gifts', 'auracoin', 'quests', 'quick-actions', 'inventory', 'aura-leaders'].includes(value);
+  ['shortcuts', 'live', 'gifts', 'auracoin', 'quick-actions', 'inventory'].includes(value);
 
-interface ExtraStatConfig {
-  id: string;
-  label: string;
-  icon: React.FC<{ className?: string }>;
-  color: string;
-  bg: string;
-  fetch: (userId: string) => Promise<string | number>;
-}
-
-const EXTRA_STAT_POOL: ExtraStatConfig[] = [
-  {
-    id: 'pass-streak',
-    label: 'Streak pass',
-    icon: Flame,
-    color: 'text-orange-500',
-    bg: 'bg-orange-500/15',
-    fetch: async () => {
-      const res = await passApi.getStatus();
-      return `${res.data.streak}j`;
-    },
-  },
-  {
-    id: 'bomb-wins',
-    label: 'Victoires BP',
-    icon: Gamepad2,
-    color: 'text-red-500',
-    bg: 'bg-red-500/15',
-    fetch: async (userId) => {
-      const res = await bombPartyApi.getStats(userId);
-      return res.data.wins;
-    },
-  },
-  {
-    id: 'bomb-words',
-    label: 'Mots tapés',
-    icon: Hash,
-    color: 'text-sky-500',
-    bg: 'bg-sky-500/15',
-    fetch: async (userId) => {
-      const res = await bombPartyApi.getStats(userId);
-      return Number(res.data.wordsTyped).toLocaleString('fr-FR');
-    },
-  },
-  {
-    id: 'poly-bets',
-    label: 'Paris placés',
-    icon: BarChart3,
-    color: 'text-violet-500',
-    bg: 'bg-violet-500/15',
-    fetch: async () => {
-      const res = await polymarketApi.getBets();
-      return res.data.bets.length;
-    },
-  },
-  {
-    id: 'auracoin-balance',
-    label: 'Balance AC',
-    icon: Coins,
-    color: 'text-primary',
-    bg: 'bg-primary/15',
-    fetch: async () => {
-      const res = await auraCoinApi.getPrice(1);
-      return res.data.userBalance.auraCoin.toFixed(4);
-    },
-  },
-];
-
-function pickRandomStats(count: number): ExtraStatConfig[] {
-  const shuffled = [...EXTRA_STAT_POOL].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, count);
-}
-
-interface ExtraStatValue {
-  config: ExtraStatConfig;
-  value: string | number | null;
-}
-
-const dashboardWidgetCardClass = "flex h-full flex-col overflow-hidden rounded-xl border-border/60 shadow-sm";
+const dashboardWidgetCardClass = "flex h-full flex-col overflow-hidden rounded-2xl border border-border/50 bg-background shadow-none";
 const dashboardWidgetHeaderClass = "px-4 pb-3 pt-4 sm:px-5";
 const dashboardWidgetContentClass = "min-h-0 flex-1 px-4 pb-4 pt-0 sm:px-5 sm:pb-5";
-const dashboardWidgetCompactContentClass = "min-h-0 flex-1 p-3 pt-0 sm:p-4 sm:pt-0";
+const dashboardRowClass = "flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-muted/20 px-3 py-3";
+const dashboardGhostButtonClass = "border-border/50 bg-transparent shadow-none hover:bg-muted/30";
 
 function DashboardWidgetTitle({
   title,
-  icon: Icon,
-  iconClassName,
-  iconWrapperClassName,
+  icon: _icon,
+  iconClassName: _iconClassName,
+  iconWrapperClassName: _iconWrapperClassName,
 }: {
   title: string;
   icon: React.FC<{ className?: string }>;
@@ -232,11 +161,8 @@ function DashboardWidgetTitle({
   iconWrapperClassName: string;
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-2.5">
-      <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg", iconWrapperClassName)}>
-        <Icon className={cn("h-3.5 w-3.5", iconClassName)} />
-      </div>
-      <CardTitle className={cn(TYPOGRAPHY.H3, "truncate")}>{title}</CardTitle>
+    <div className="flex min-w-0 items-center">
+      <CardTitle className="truncate text-base font-medium tracking-tight">{title}</CardTitle>
     </div>
   );
 }
@@ -268,7 +194,7 @@ function SortableDashboardWidget({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group relative min-h-0 h-[312px] md:h-[356px] xl:h-[372px]",
+        "group relative min-h-0 h-[300px] md:h-[340px] xl:h-[356px]",
         isDragging && "z-20"
       )}
     >
@@ -277,7 +203,7 @@ function SortableDashboardWidget({
           type="button"
           aria-label="Deplacer le widget"
           className={cn(
-            "inline-flex h-8 w-8 items-center justify-center rounded-full border border-border/60 bg-background/90 text-foreground backdrop-blur-sm transition hover:bg-accent",
+            "inline-flex h-8 w-8 items-center justify-center rounded-full border border-border/50 bg-background text-muted-foreground transition hover:bg-muted/30 hover:text-foreground",
             "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto",
             isDragging && "opacity-100 pointer-events-auto"
           )}
@@ -289,7 +215,7 @@ function SortableDashboardWidget({
         </button>
       </div>
 
-      <div className={cn("h-full", isDragging && "scale-[1.01] shadow-xl ring-2 ring-foreground/15 rounded-xl")}>
+      <div className={cn("h-full", isDragging && "scale-[1.01] rounded-2xl ring-1 ring-foreground/10")}>
         {children}
       </div>
     </div>
@@ -300,26 +226,25 @@ function ShortcutTile({ shortcut }: { shortcut: GameShortcut }) {
   return (
     <Link
       to={shortcut.path}
+      aria-label={shortcut.label}
+      title={shortcut.label}
       className={cn(
-        "group relative flex aspect-square overflow-hidden rounded-lg border p-4 shadow-sm transition hover:border-foreground/30",
-        shortcut.image ? "text-white" : "bg-card hover:bg-accent/50"
+        "group relative block aspect-square overflow-hidden rounded-xl border border-border/50 bg-muted/20 transition hover:border-foreground/20 hover:bg-muted/40",
+        !shortcut.image && "flex items-center justify-center"
       )}
     >
-      {shortcut.image && (
-        <>
-          <img
-            src={shortcut.image}
-            alt={shortcut.label}
-            className="absolute inset-0 h-full w-full object-cover"
-            loading="lazy"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
-        </>
+      {shortcut.image ? (
+        <img
+          src={shortcut.image}
+          alt={shortcut.label}
+          className="h-full w-full object-cover transition duration-200 group-hover:scale-[1.02]"
+          loading="lazy"
+        />
+      ) : (
+        <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          {shortcut.label.slice(0, 2)}
+        </span>
       )}
-
-      <div className="relative z-10 mt-auto flex h-full flex-col justify-end gap-1">
-        <h3 className={TYPOGRAPHY.H5}>{shortcut.label}</h3>
-      </div>
     </Link>
   );
 }
@@ -378,14 +303,7 @@ export default function Dashboard() {
   const [auraCoinPrice, setAuraCoinPrice] = useState<number | null>(null);
   const [auraCoinPreviousPrice, setAuraCoinPreviousPrice] = useState<number | null>(null);
   const [auraCoinHistory, setAuraCoinHistory] = useState<{ price: number; time: string }[]>([]);
-  const [questWidgets, setQuestWidgets] = useState<UserDailyQuest[]>([]);
-  const [availableDailyQuests, setAvailableDailyQuests] = useState<DailyQuest[]>([]);
-  const [widgetQuestSelection, setWidgetQuestSelection] = useState<string[]>([]);
-  const [widgetQuestSelecting, setWidgetQuestSelecting] = useState(false);
   const [inventoryItems, setInventoryItems] = useState<DashboardInventoryItem[]>([]);
-  const [auraLeaders, setAuraLeaders] = useState<AuraLeaderboardEntry[]>([]);
-  const [extraStats, setExtraStats] = useState<ExtraStatValue[]>([]);
-  const [selectedStatPool] = useState<ExtraStatConfig[]>(() => pickRandomStats(2));
 
   const shortcutMap = useMemo(() => new Map(gameShortcuts.map((item) => [item.id, item])), []);
   const orderedShortcuts = useMemo(
@@ -461,15 +379,12 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [inboxRes, receivedRes, statusRes, auraCoinRes, myQuestsRes, dailyQuestsRes, inventoryRes, auraLeadersRes] = await Promise.allSettled([
+        const [inboxRes, receivedRes, statusRes, auraCoinRes, inventoryRes] = await Promise.allSettled([
           giftsApi.getInbox(),
           giftsApi.getReceived(),
           giftsApi.getStatus(),
           auraCoinApi.getPrice(4),
-          questsApi.getMyQuests(),
-          questsApi.getDaily(),
           user?.id ? marketplaceApi.getInventory(user.id) : Promise.resolve({ data: { items: [] as DashboardInventoryItem[] } }),
-          leaderboardsApi.get('aura', { limit: 5 }),
         ]);
 
         if (inboxRes.status === 'fulfilled') {
@@ -496,35 +411,10 @@ export default function Dashboard() {
           );
         }
 
-        if (myQuestsRes.status === 'fulfilled') {
-          setQuestWidgets(myQuestsRes.value.data.userQuests || []);
-        }
-
-        if (dailyQuestsRes.status === 'fulfilled') {
-          const quests = dailyQuestsRes.value.data.quests || [];
-          setAvailableDailyQuests(quests);
-        }
-
         if (inventoryRes.status === 'fulfilled') {
           setInventoryItems((inventoryRes.value.data.items || []) as DashboardInventoryItem[]);
         }
 
-        if (auraLeadersRes.status === 'fulfilled') {
-          setAuraLeaders((auraLeadersRes.value.data.rankings || []) as AuraLeaderboardEntry[]);
-        }
-
-        // Fetch randomly selected extra stats
-        if (selectedStatPool.length > 0 && user?.id) {
-          const extraResults = await Promise.allSettled(
-            selectedStatPool.map((s) => s.fetch(user.id))
-          );
-          setExtraStats(
-            selectedStatPool.map((config, i) => ({
-              config,
-              value: extraResults[i].status === 'fulfilled' ? (extraResults[i] as PromiseFulfilledResult<string | number>).value : '--',
-            }))
-          );
-        }
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
       } finally {
@@ -674,21 +564,6 @@ export default function Dashboard() {
     setGiftDialogOpen(true);
   };
 
-  const handleWidgetQuestConfirm = async () => {
-    if (widgetQuestSelection.length !== 3) return;
-    setWidgetQuestSelecting(true);
-    try {
-      const res = await questsApi.select(widgetQuestSelection);
-      setQuestWidgets(res.data.userQuests || []);
-      setWidgetQuestSelection([]);
-      toast.success('Quêtes sélectionnées !');
-    } catch (e: any) {
-      toast.error(e.response?.data?.error || 'Erreur lors de la sélection');
-    } finally {
-      setWidgetQuestSelecting(false);
-    }
-  };
-
   const handleDashboardDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -721,10 +596,6 @@ export default function Dashboard() {
     return ((auraCoinPrice - auraCoinPreviousPrice) / auraCoinPreviousPrice) * 100;
   }, [auraCoinPrice, auraCoinPreviousPrice]);
 
-  const completedQuestCount = useMemo(
-    () => questWidgets.filter((quest) => quest.isCompleted && !quest.isClaimed).length,
-    [questWidgets]
-  );
   const totalInventoryCount = useMemo(
     () => inventoryItems.reduce((sum, item) => sum + item.quantity, 0),
     [inventoryItems]
@@ -752,13 +623,10 @@ export default function Dashboard() {
 
   return (
     <>
-      <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-6">
-        <div className="rounded-2xl border border-border/60 bg-card/70 px-6 py-8 md:px-8 md:py-10">
+      <div className="w-full space-y-6 px-4 pb-6 lg:px-6 lg:pb-8">
+        <div className="px-1 py-1">
           <div className={cn("space-y-2", SPACING.TIGHT_SPACING)}>
-            <p
-              className={cn(TYPOGRAPHY.H1, "text-center md:text-left md:text-5xl")}
-              style={user?.usernameColor ? { color: user.usernameColor } : undefined}
-            >
+            <p className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
               {welcomeMessage || `Bienvenue, ${user?.username ?? ''}`}
             </p>
           </div>
@@ -767,7 +635,7 @@ export default function Dashboard() {
         <div className="flex justify-end">
           <div className="flex flex-wrap justify-end gap-2">
             <Dialog open={widgetsDialogOpen} onOpenChange={setWidgetsDialogOpen}>
-              <Button variant="outline" onClick={() => setWidgetsDialogOpen(true)}>
+              <Button variant="outline" className={dashboardGhostButtonClass} onClick={() => setWidgetsDialogOpen(true)}>
                 Gérer widgets
               </Button>
               <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
@@ -820,6 +688,7 @@ export default function Dashboard() {
                 <DialogFooter className="gap-2 sm:gap-0">
                   <Button
                     variant="ghost"
+                    className="hover:bg-muted/30"
                     onClick={() => setVisibleWidgets(defaultDashboardLayout)}
                   >
                     Tout afficher
@@ -830,6 +699,7 @@ export default function Dashboard() {
             </Dialog>
             <Button
               variant="ghost"
+              className="hover:bg-muted/30"
               onClick={() => {
                 setDashboardLayout(defaultDashboardLayout);
                 setVisibleWidgets(defaultDashboardLayout);
@@ -849,7 +719,7 @@ export default function Dashboard() {
             items={visibleDashboardLayout}
             strategy={rectSortingStrategy}
           >
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:gap-5">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 xl:gap-5">
               {visibleDashboardLayout.map((widgetId) => (
                 <SortableDashboardWidget
                   key={widgetId}
@@ -874,11 +744,11 @@ export default function Dashboard() {
                                 key={action.path}
                                 asChild
                                 variant="outline"
-                                className="aspect-square h-auto w-full flex-col items-center justify-center gap-1.5 rounded-xl p-2.5 text-center hover:border-border"
+                                className="aspect-square h-auto w-full flex-col items-start justify-between rounded-xl border-border/50 bg-muted/20 p-3 text-left shadow-none hover:bg-muted/40"
                               >
                                 <Link to={action.path}>
-                                  <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg", action.bg)}>
-                                    <Icon className={cn("h-4 w-4", action.color)} />
+                                  <div className="flex h-8 w-8 items-center justify-center rounded-full border border-border/50">
+                                    <Icon className="h-4 w-4 text-foreground" />
                                   </div>
                                   <span className="text-xs font-medium leading-tight">{action.label}</span>
                                 </Link>
@@ -901,14 +771,14 @@ export default function Dashboard() {
                             iconWrapperClassName="bg-sky-500/15"
                           />
                           <Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
-                            <Button variant="outline" size="sm" onClick={() => setShortcutsOpen(true)}>
+                            <Button variant="outline" size="sm" className={dashboardGhostButtonClass} onClick={() => setShortcutsOpen(true)}>
                               Modifier
                             </Button>
                             <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
                               <DialogHeader>
                                 <DialogTitle className={TYPOGRAPHY.H5}>Widgets de raccourcis</DialogTitle>
                                 <DialogDescription>
-                                  Active les jeux à afficher dans le widget. Maximum {maxShortcutWidgets} jeux (2 rangées de 4).
+                                  Active les jeux à afficher dans le widget. Maximum {maxShortcutWidgets} jeux (3 rangées de 4).
                                 </DialogDescription>
                               </DialogHeader>
                               <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>
@@ -968,120 +838,13 @@ export default function Dashboard() {
                               <ShortcutTile key={shortcut.id} shortcut={shortcut} />
                             ))
                           ) : (
-                            <Card className="col-span-full border-dashed border-border/60">
-                              <CardContent className="p-6 text-center">
-                                <p className={TYPOGRAPHY.SMALL}>Aucun widget actif. Ajoute des jeux pour un accès rapide.</p>
-                              </CardContent>
+                              <Card className="col-span-full border-dashed border-border/50 bg-muted/10 shadow-none">
+                                <CardContent className="p-6 text-center">
+                                  <p className={TYPOGRAPHY.SMALL}>Aucun widget actif. Ajoute des jeux pour un accès rapide.</p>
+                                </CardContent>
                             </Card>
                           )}
                         </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {widgetId === 'quests' && (
-                    <Card className={dashboardWidgetCardClass}>
-                      <CardHeader className={dashboardWidgetHeaderClass}>
-                        <div className="flex items-center justify-between gap-3">
-                          <DashboardWidgetTitle
-                            title="Quêtes du jour"
-                            icon={CheckCircle2}
-                            iconClassName="text-emerald-600"
-                            iconWrapperClassName="bg-emerald-500/15"
-                          />
-                          {completedQuestCount > 0 && (
-                            <Badge className="bg-emerald-500 text-white hover:bg-emerald-500/90">
-                              {completedQuestCount} à réclamer
-                            </Badge>
-                          )}
-                        </div>
-                      </CardHeader>
-                      <CardContent className={cn(dashboardWidgetContentClass, "flex flex-col")}>
-                        {questWidgets.length > 0 ? (
-                          <>
-                            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
-                              <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/30 px-3 py-2.5 text-sm">
-                                <span className="text-muted-foreground">{questWidgets.length} actives</span>
-                                {completedQuestCount > 0 ? (
-                                  <span className="tabular-nums font-medium text-emerald-600">{completedQuestCount} à réclamer</span>
-                                ) : (
-                                  <span className="tabular-nums text-muted-foreground">0 à réclamer</span>
-                                )}
-                              </div>
-
-                              <div className="space-y-2">
-                                {questWidgets.slice(0, 3).map((quest) => {
-                                  const progress = quest.progress?.currentValue || 0;
-                                  const target = quest.quest.targetValue;
-
-                                  return (
-                                    <div key={quest.id} className="space-y-2 rounded-lg border border-border/60 px-3 py-2.5">
-                                      <div className="flex items-center justify-between gap-3">
-                                        <p className="min-w-0 truncate text-sm font-medium">{quest.quest.title}</p>
-                                        <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{progress}/{target}</span>
-                                      </div>
-                                      <Progress value={Math.min((progress / target) * 100, 100)} className="h-1.5" />
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-
-                            <Button asChild variant="outline" className="mt-3 w-full">
-                              <Link to="/quests">Ouvrir les quêtes</Link>
-                            </Button>
-                          </>
-                        ) : availableDailyQuests.length > 0 ? (
-                          <>
-                            <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>
-                              Choisis 3 quêtes · {widgetQuestSelection.length}/3 sélectionnées
-                            </p>
-                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                              {availableDailyQuests.slice(0, 9).map((quest) => {
-                                const isSelected = widgetQuestSelection.includes(quest.id);
-                                const limitReached = !isSelected && widgetQuestSelection.length >= 3;
-                                return (
-                                  <button
-                                    key={quest.id}
-                                    type="button"
-                                    disabled={limitReached}
-                                    onClick={() =>
-                                      setWidgetQuestSelection((prev) =>
-                                        prev.includes(quest.id)
-                                          ? prev.filter((id) => id !== quest.id)
-                                          : prev.length >= 3 ? prev : [...prev, quest.id]
-                                      )
-                                    }
-                                    className={cn(
-                                      "flex flex-col items-start gap-1 rounded-lg border p-2.5 text-left text-xs transition",
-                                      isSelected
-                                        ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                                        : "border-border/60 hover:bg-accent/50",
-                                      limitReached && "opacity-40 cursor-not-allowed"
-                                    )}
-                                  >
-                                    <span className="font-medium leading-tight line-clamp-2">{quest.title}</span>
-                                    <span className="text-muted-foreground">+{quest.auraReward} aura</span>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                            <Button
-                              className="w-full"
-                              disabled={widgetQuestSelection.length !== 3 || widgetQuestSelecting}
-                              onClick={handleWidgetQuestConfirm}
-                            >
-                              {widgetQuestSelecting ? 'Sélection...' : `Valider (${widgetQuestSelection.length}/3)`}
-                            </Button>
-                          </>
-                        ) : (
-                          <div className="flex min-h-0 flex-1 flex-col gap-3">
-                            <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground")}>Les quêtes du jour ne sont pas encore disponibles.</p>
-                            <Button asChild className="mt-auto">
-                              <Link to="/quests">Voir les quêtes</Link>
-                            </Button>
-                          </div>
-                        )}
                       </CardContent>
                     </Card>
                   )}
@@ -1097,10 +860,10 @@ export default function Dashboard() {
                             iconWrapperClassName="bg-violet-500/15"
                           />
                           {publicParties.length > 0 && (
-                            <span className="ml-auto flex items-center gap-1.5 text-xs font-medium text-emerald-600">
+                            <span className="ml-auto flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                               <span className="relative flex h-2 w-2">
-                                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
-                                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-foreground/40 opacity-75" />
+                                <span className="relative inline-flex h-2 w-2 rounded-full bg-foreground/70" />
                               </span>
                               Live
                             </span>
@@ -1117,7 +880,7 @@ export default function Dashboard() {
                               const isPending = pendingJoinRequests.includes(party.id);
                               const isCurrentParty = currentParty?.id === party.id;
                               return (
-                                <div key={party.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/60 px-3 py-2.5">
+                                <div key={party.id} className={dashboardRowClass}>
                                   <div className="min-w-0">
                                     <p className={TYPOGRAPHY.SMALL}>{party.name || 'Party sans nom'}</p>
                                     <p className={cn(TYPOGRAPHY.XS, "truncate text-muted-foreground")}>
@@ -1127,7 +890,7 @@ export default function Dashboard() {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className="shrink-0"
+                                    className={cn("shrink-0", dashboardGhostButtonClass)}
                                     onClick={() => {
                                       if (party.isPublic) {
                                         joinParty(party.id);
@@ -1154,73 +917,12 @@ export default function Dashboard() {
                     </Card>
                   )}
 
-                  {widgetId === 'stats' && (
-                    <Card className={dashboardWidgetCardClass}>
-                      <CardHeader className={cn(dashboardWidgetHeaderClass, "pb-2")}>
-                        <DashboardWidgetTitle
-                          title="Stats"
-                          icon={BarChart3}
-                          iconClassName="text-primary"
-                          iconWrapperClassName="bg-primary/15"
-                        />
-                      </CardHeader>
-                      <CardContent className={dashboardWidgetCompactContentClass}>
-                        <div className="grid h-full grid-cols-2 gap-2">
-                          <Card className="border-primary/20 bg-primary/5">
-                            <CardContent className="flex h-full flex-col justify-between p-2.5 sm:p-3">
-                              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/15">
-                                <Zap className="h-3.5 w-3.5 text-primary" />
-                              </div>
-                              <div>
-                                <p className="text-xl font-semibold tabular-nums text-primary leading-tight sm:text-2xl">
-                                  {user?.aura.toLocaleString()}
-                                </p>
-                                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>aura</p>
-                              </div>
-                            </CardContent>
-                          </Card>
-                          <Card className="border-emerald-500/20 bg-emerald-500/5">
-                            <CardContent className="flex h-full flex-col justify-between p-2.5 sm:p-3">
-                              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/15">
-                                <DollarSign className="h-3.5 w-3.5 text-emerald-600" />
-                              </div>
-                              <div>
-                                <p className="text-xl font-semibold tabular-nums text-emerald-600 leading-tight sm:text-2xl">
-                                  ${user?.money.toLocaleString()}
-                                </p>
-                                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>argent</p>
-                              </div>
-                            </CardContent>
-                          </Card>
-                          {extraStats.map(({ config, value }) => {
-                            const Icon = config.icon;
-                            return (
-                              <Card key={config.id} className="border-border/60">
-                                <CardContent className="flex h-full flex-col justify-between p-2.5 sm:p-3">
-                                  <div className={cn("flex h-7 w-7 items-center justify-center rounded-lg", config.bg)}>
-                                    <Icon className={cn("h-3.5 w-3.5", config.color)} />
-                                  </div>
-                                  <div>
-                                    <p className={cn("text-xl font-semibold tabular-nums leading-tight sm:text-2xl", value === '--' && "text-muted-foreground")}>
-                                      {value ?? '--'}
-                                    </p>
-                                    <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>{config.label}</p>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            );
-                          })}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
                   {widgetId === 'auracoin' && (() => {
                     const isUp = (auraCoinDelta ?? 0) >= 0;
                     const auraCoinChartConfig = {
                       price: {
                         label: 'Prix',
-                        color: isUp ? 'hsl(var(--chart-1))' : 'hsl(var(--destructive))',
+                        color: isUp ? '#10b981' : '#ef4444',
                       },
                     } satisfies ChartConfig;
                     return (
@@ -1233,16 +935,7 @@ export default function Dashboard() {
                               iconClassName="text-primary"
                               iconWrapperClassName="bg-primary/15"
                             />
-                            <div
-                              className={cn(
-                                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
-                                auraCoinDelta === null
-                                  ? "bg-muted text-muted-foreground"
-                                  : isUp
-                                    ? "bg-emerald-500/10 text-emerald-600"
-                                    : "bg-red-500/10 text-red-600"
-                              )}
-                            >
+                            <div className="inline-flex items-center gap-1.5 rounded-full border border-border/50 px-2.5 py-1 text-xs font-medium text-muted-foreground">
                               {auraCoinDelta !== null && (
                                 isUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />
                               )}
@@ -1254,7 +947,7 @@ export default function Dashboard() {
                         </CardHeader>
                         <CardContent className={cn(dashboardWidgetContentClass, "flex flex-col")}>
                           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
-                            <p className={cn(TYPOGRAPHY.H1, "tabular-nums text-primary text-4xl md:text-[2.75rem]")}>
+                            <p className="text-4xl font-semibold tracking-tight tabular-nums md:text-[2.75rem]">
                               {auraCoinPrice === null ? '--' : `$${auraCoinPrice.toFixed(2)}`}
                             </p>
 
@@ -1293,63 +986,13 @@ export default function Dashboard() {
                             )}
                           </div>
 
-                          <Button asChild variant="outline" className="mt-3 w-full">
+                          <Button asChild variant="outline" className={cn("mt-3 w-full", dashboardGhostButtonClass)}>
                             <Link to="/games/aura-coin">Ouvrir Aura Coin</Link>
                           </Button>
                         </CardContent>
                       </Card>
                     );
                   })()}
-
-                  {widgetId === 'aura-leaders' && (
-                    <Card className={dashboardWidgetCardClass}>
-                      <CardHeader className={dashboardWidgetHeaderClass}>
-                        <DashboardWidgetTitle
-                          title="Top Aura"
-                          icon={Trophy}
-                          iconClassName="text-amber-500"
-                          iconWrapperClassName="bg-amber-500/15"
-                        />
-                      </CardHeader>
-                      <CardContent className={cn(dashboardWidgetContentClass, "flex flex-col")}>
-                        {auraLeaders.length > 0 ? (
-                          <div className="space-y-2">
-                            {auraLeaders.slice(0, 5).map((entry) => (
-                              <div
-                                key={entry.userId}
-                                className={cn(
-                                  "flex items-center justify-between rounded-lg border px-3 py-2.5",
-                                  entry.rank === 1 && "border-amber-500/30 bg-amber-500/5",
-                                  entry.rank === 2 && "border-zinc-400/30 bg-zinc-400/5",
-                                  entry.rank === 3 && "border-orange-600/30 bg-orange-600/5",
-                                  entry.rank > 3 && "border-border/60"
-                                )}
-                              >
-                                <div className="flex items-center gap-3 min-w-0">
-                                  <span className={cn(
-                                    "shrink-0 w-5 text-sm font-bold tabular-nums",
-                                    entry.rank === 1 && "text-amber-500",
-                                    entry.rank === 2 && "text-zinc-400",
-                                    entry.rank === 3 && "text-orange-600",
-                                    entry.rank > 3 && "text-muted-foreground"
-                                  )}>{entry.rank}</span>
-                                  <p
-                                    className="text-sm font-medium truncate"
-                                    style={entry.usernameColor ? { color: entry.usernameColor } : undefined}
-                                  >{entry.username}</p>
-                                </div>
-                                <span className="shrink-0 text-sm font-medium tabular-nums">{Number(entry.value).toLocaleString('fr-FR')}</span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="flex h-full items-center justify-center">
-                            <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground")}>Classement aura indisponible.</p>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  )}
 
                   {widgetId === 'inventory' && (
                     <Card className={dashboardWidgetCardClass}>
@@ -1362,13 +1005,13 @@ export default function Dashboard() {
                             iconWrapperClassName="bg-blue-500/15"
                           />
                           {totalInventoryCount > 0 && (
-                            <Badge variant="secondary" className="tabular-nums">{totalInventoryCount}</Badge>
+                            <Badge variant="secondary" className="tabular-nums border border-border/50 bg-muted/30">{totalInventoryCount}</Badge>
                           )}
                         </div>
                       </CardHeader>
                       <CardContent className={cn(dashboardWidgetContentClass, "flex flex-col")}>
                         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
-                          <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2.5 text-sm">
+                          <div className={cn(dashboardRowClass, "text-sm")}>
                             <span>Cadeaux stockés</span>
                             <span className="tabular-nums text-muted-foreground">{giftInventoryCount}</span>
                           </div>
@@ -1378,16 +1021,12 @@ export default function Dashboard() {
                               {inventoryItems.slice(0, 4).map((item) => (
                                 <div
                                   key={item.id}
-                                  className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2.5"
+                                  className={dashboardRowClass}
                                 >
                                   <div className="flex min-w-0 items-center gap-2">
                                     <p className="min-w-0 text-sm font-medium truncate">{item.item.name}</p>
                                     <Badge variant="outline" className={cn(
-                                      "shrink-0 text-xs capitalize",
-                                      item.item.type === 'CONSUMABLE' && "border-blue-500/40 text-blue-600",
-                                      item.item.type === 'COSMETIC' && "border-violet-500/40 text-violet-600",
-                                      item.item.type === 'UPGRADE' && "border-emerald-500/40 text-emerald-600",
-                                      item.item.type === 'GIFT' && "border-rose-500/40 text-rose-600"
+                                      "shrink-0 border-border/50 bg-background text-xs capitalize text-muted-foreground"
                                     )}>
                                       {item.item.type.toLowerCase()}
                                     </Badge>
@@ -1401,7 +1040,7 @@ export default function Dashboard() {
                           )}
                         </div>
 
-                        <Button asChild variant="outline" className="mt-3 w-full">
+                        <Button asChild variant="outline" className={cn("mt-3 w-full", dashboardGhostButtonClass)}>
                           <Link to="/inventory">Ouvrir l&apos;inventaire</Link>
                         </Button>
                       </CardContent>
@@ -1414,19 +1053,19 @@ export default function Dashboard() {
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <div className="flex items-center gap-2">
                             <DashboardWidgetTitle
-                              title="Cadeaux"
-                              icon={GiftIcon}
-                              iconClassName="text-rose-500"
-                              iconWrapperClassName="bg-rose-500/15"
-                            />
+                            title="Cadeaux"
+                            icon={GiftIcon}
+                            iconClassName="text-foreground"
+                            iconWrapperClassName="bg-muted/40"
+                          />
                             {inboxGifts.length > 0 && (
-                              <Badge className="bg-rose-500 text-white hover:bg-rose-500/90 tabular-nums">
+                              <Badge variant="secondary" className="border border-border/50 bg-muted/30 tabular-nums text-foreground hover:bg-muted/30">
                                 {inboxGifts.length}
                               </Badge>
                             )}
                           </div>
                           <div className="flex items-center gap-2">
-                            <Button size="sm" onClick={() => openGiftDialog('send')}>
+                            <Button size="sm" variant="outline" className={dashboardGhostButtonClass} onClick={() => openGiftDialog('send')}>
                               Envoyer
                             </Button>
                           </div>
@@ -1436,19 +1075,19 @@ export default function Dashboard() {
                         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
                           <div className="grid gap-3 sm:grid-cols-2">
                             <div className={cn(
-                              "rounded-lg border px-3 py-2.5",
-                              inboxGifts.length > 0 ? "border-rose-500/30 bg-rose-500/5" : "border-border/60"
+                              "rounded-xl border px-3 py-3",
+                              inboxGifts.length > 0 ? "border-border/50 bg-muted/20" : "border-border/50 bg-muted/10"
                             )}>
-                              <p className={cn(TYPOGRAPHY.H2, "tabular-nums", inboxGifts.length > 0 && "text-rose-600")}>{inboxGifts.length}</p>
+                              <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>{inboxGifts.length}</p>
                               <p className={TYPOGRAPHY.SMALL}>en attente</p>
                             </div>
-                            <div className="rounded-lg border border-border/60 px-3 py-2.5">
+                            <div className="rounded-xl border border-border/50 bg-muted/10 px-3 py-3">
                               <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>{receivedGifts.length}</p>
                               <p className={TYPOGRAPHY.SMALL}>ouverts</p>
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/30 px-3 py-2.5">
+                          <div className={dashboardRowClass}>
                             <div>
                               <p className={TYPOGRAPHY.SMALL}>Aura disponible</p>
                               <p className={cn(TYPOGRAPHY.H5, "tabular-nums")}>
@@ -1472,7 +1111,7 @@ export default function Dashboard() {
                                     key={gift.id}
                                     type="button"
                                     onClick={() => openGiftDialog('inbox')}
-                                    className="block w-full rounded-lg border border-border/60 px-3 py-2.5 text-left transition hover:bg-accent/40"
+                                    className="block w-full rounded-xl border border-border/50 bg-muted/20 px-3 py-3 text-left transition hover:bg-muted/40"
                                   >
                                     <p className="text-sm font-medium truncate">Cadeau de {gift.sender.username}</p>
                                     <p className="text-xs text-muted-foreground">{formatTimeAgo(gift.createdAt)}</p>
@@ -1483,7 +1122,7 @@ export default function Dashboard() {
                           )}
                         </div>
 
-                        <Button variant="outline" className="mt-3 w-full" onClick={() => openGiftDialog('inbox')}>
+                        <Button variant="outline" className={cn("mt-3 w-full", dashboardGhostButtonClass)} onClick={() => openGiftDialog('inbox')}>
                           Ouvrir la boîte
                         </Button>
                       </CardContent>

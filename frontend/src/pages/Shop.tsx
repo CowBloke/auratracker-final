@@ -20,6 +20,15 @@ const DEFAULT_CATEGORIES: ShopCategory[] = [
   { id: 'GIFT', label: 'Cadeaux' },
 ];
 
+const humanizeIdentifier = (value: string | null | undefined) => {
+  if (!value) return '';
+  const normalized = value
+    .toLowerCase()
+    .replace(/_/g, ' ')
+    .trim();
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+};
+
 const parseEffectType = (effect: string | null): string | null => {
   if (!effect) return null;
   try {
@@ -160,7 +169,7 @@ function DoodleJumpSkinPreview({ skinImageUrl }: { skinImageUrl: string }) {
       ctx.font = 'bold 11px monospace';
       ctx.fillStyle = 'rgba(255,255,255,0.25)';
       ctx.textAlign = 'right';
-      ctx.fillText('DOODLE JUMP', CW - 12, 18);
+      ctx.fillText('Doodle Jump', CW - 12, 18);
       ctx.textAlign = 'left';
     };
 
@@ -235,7 +244,7 @@ function ShopCard({
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <h3 className={TYPOGRAPHY.H5}>{item.name}</h3>
-                <p className="text-xs text-muted-foreground">{item.type}</p>
+                <p className="text-xs text-muted-foreground">{humanizeIdentifier(item.type)}</p>
               </div>
               <div className="rounded-md border border-border/40 px-2 py-1 text-sm font-medium tabular-nums">
                 ${item.price}

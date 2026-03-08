@@ -1,5 +1,6 @@
 [
   { "id": "default", "label": "Default" },
+  { "id": "aura-classic", "label": "Aura Classic" },
   { "id": "cosmic-night", "label": "Cosmic Night" },
   { "id": "sunset-horizon", "label": "Sunset Horizon" }
 ]

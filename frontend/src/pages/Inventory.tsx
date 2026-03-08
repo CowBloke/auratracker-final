@@ -47,6 +47,15 @@ const typeLabels: Record<string, string> = {
   GIFT: 'Cadeau',
 };
 
+const humanizeIdentifier = (value: string | null | undefined) => {
+  if (!value) return '';
+  const normalized = value
+    .toLowerCase()
+    .replace(/_/g, ' ')
+    .trim();
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+};
+
 const PRESET_COLORS = [
   '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', 
   '#22c55e', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9',
@@ -286,7 +295,7 @@ export default function Inventory() {
       case 'BONUS_MONEY':
         return `+$${effect.value || '?'}`;
       default:
-        return effect.type;
+        return humanizeIdentifier(effect.type);
     }
   };
 

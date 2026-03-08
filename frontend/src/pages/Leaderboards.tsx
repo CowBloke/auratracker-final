@@ -31,7 +31,7 @@ const categories: { id: Category; name: string; valueLabel: string; icon: typeof
   { id: 'aura', name: 'Aura', valueLabel: 'aura', icon: Zap },
   { id: 'money', name: 'Argent', valueLabel: '$', icon: DollarSign },
   { id: 'total_money', name: 'Argent total', valueLabel: '$', icon: TrendingUp },
-  { id: 'auracoin', name: 'Aura Coin', valueLabel: 'AC', icon: Gem },
+  { id: 'auracoin', name: 'Aura Coin', valueLabel: 'AuraCoin', icon: Gem },
   { id: 'doodle_jump', name: 'Doodle Jump', valueLabel: 'score', icon: ArrowUp },
   { id: 'doodle_jump_mort_subite', name: 'Doodle Jump - Mort subite', valueLabel: 'score', icon: Skull },
   { id: 'game_2048', name: '2048', valueLabel: 'score', icon: Layers },
@@ -204,7 +204,7 @@ export default function Leaderboards() {
     const numericValue = typeof ranking.value === 'number' ? ranking.value : Number(ranking.value);
     switch (category) {
       case 'auracoin':
-        return `${numericValue.toFixed(4)} AC • ≈ $${(ranking.moneyValue || 0).toFixed(2)}`;
+        return `${numericValue.toFixed(4)} AuraCoin • ≈ $${(ranking.moneyValue || 0).toFixed(2)}`;
       case 'total_money':
         return `$${numericValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
       case 'money':
