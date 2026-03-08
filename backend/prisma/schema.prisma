@@ -451,6 +451,7 @@ model BugReport {
   title       String
   description String
   status      String    @default("PENDING") // PENDING, DONE
+  adminReply  String?   // Admin's response to the bug report
   createdAt   DateTime  @default(now())
   resolvedAt  DateTime?
 
