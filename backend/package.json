@@ -5,7 +5,6 @@
   "description": "Aura Tracker Backend API",
   "main": "dist/server.js",
   "scripts": {
-    "predev": "prisma migrate deploy && prisma generate",
     "prebuild": "prisma generate",
     "dev": "tsx watch src/server.ts",
     "build": "tsc",

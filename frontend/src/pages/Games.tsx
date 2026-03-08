@@ -262,7 +262,7 @@ export default function Games() {
                 <Card className="relative aspect-square overflow-hidden transition hover:border-foreground/40 hover:shadow-md">
                   {'emoji' in game && (
                     <div className="absolute inset-0 flex items-center justify-center bg-green-950/40 text-8xl">
-                      {game.emoji}
+                      {game.emoji as string}
                     </div>
                   )}
                   {game.image && (
