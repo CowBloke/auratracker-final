@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
+import { PageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trophy, RotateCcw, Target, Zap } from 'lucide-react';
@@ -102,16 +103,16 @@ export default function KnifeHit() {
   const palette = useMemo(
     () => ({
       bgA: '#0f172a',
-      bgB: '#1d4ed8',
-      ring: '#f97316',
-      core: '#7c2d12',
+      bgB: '#1a2e4a',
+      ring: '#cbd5e1',
+      core: '#1e293b',
       knife: '#e2e8f0',
-      knifeHandle: '#111827',
-      accent: '#facc15',
+      knifeHandle: '#0f172a',
+      accent: '#94a3b8',
       danger: '#fb7185',
       text: '#f8fafc',
-      subtext: 'rgba(248,250,252,0.72)',
-      track: 'rgba(255,255,255,0.12)',
+      subtext: 'rgba(248,250,252,0.55)',
+      track: 'rgba(255,255,255,0.08)',
     }),
     []
   );
@@ -309,11 +310,7 @@ export default function KnifeHit() {
 
     ctx.font = '700 15px system-ui';
     ctx.fillStyle = palette.text;
-    ctx.fillText(directionLabel, CENTER, 54);
-
-    ctx.font = '600 16px system-ui';
-    ctx.fillStyle = palette.subtext;
-    ctx.fillText('Appuie sur espace ou clique pour lancer', CENTER, 30);
+    ctx.fillText(directionLabel, CENTER, 38);
   }, [directionLabel, drawKnifeFromTip, palette]);
 
   const gameLoop = useCallback((timestamp: number) => {
@@ -407,170 +404,132 @@ export default function KnifeHit() {
   }, [gameOver, started, startGame, throwKnife]);
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-6">
-      <div className="flex flex-col gap-2">
-        <p className="text-sm uppercase tracking-[0.28em] text-orange-500">Arcade</p>
-        <h1 className="text-3xl font-black tracking-tight text-foreground">Knife Hit</h1>
-        <p className="max-w-2xl text-sm text-muted-foreground">
-          Lance au bon timing, évite les couteaux déjà plantés, et enchaîne les niveaux pour pousser ton record.
-        </p>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <Card className="overflow-hidden border-orange-500/20 bg-slate-950 text-white shadow-2xl shadow-orange-950/20">
-          <CardContent className="p-0">
-            <div className="grid gap-0 lg:grid-cols-[180px_minmax(0,1fr)]">
-              <div className="flex flex-col gap-4 border-b border-white/10 bg-white/5 p-5 lg:border-b-0 lg:border-r">
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                  <p className="text-xs uppercase tracking-[0.22em] text-white/50">Score</p>
-                  <p className="mt-2 text-4xl font-black">{score}</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                  <p className="text-xs uppercase tracking-[0.22em] text-white/50">Record</p>
-                  <p className="mt-2 text-2xl font-bold">{highScore}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-white/50">Niveau</p>
-                    <p className="mt-2 text-2xl font-bold">{level}</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-white/50">Restants</p>
-                    <p className="mt-2 text-2xl font-bold">{knivesLeft}</p>
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-white/50">Rotation</p>
-                  <p className="mt-2 text-lg font-bold">{directionLabel}</p>
-                  <p className="mt-1 text-xs text-white/60">
-                    {directionChangeInMs === null
-                      ? 'Direction fixe pour ce niveau'
-                      : `Changement dans ${(directionChangeInMs / 1000).toFixed(1)}s`}
-                  </p>
-                </div>
-                <Button
-                  onClick={started && !gameOver ? throwKnife : startGame}
-                  className="h-12 bg-orange-500 font-semibold text-black hover:bg-orange-400"
-                >
-                  {started && !gameOver ? <Zap className="mr-2 h-4 w-4" /> : <Target className="mr-2 h-4 w-4" />}
-                  {started && !gameOver ? 'Lancer' : 'Commencer'}
-                </Button>
-                {(gameOver || started) && (
-                  <Button
-                    onClick={startGame}
-                    variant="outline"
-                    className="h-11 border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"
-                  >
-                    <RotateCcw className="mr-2 h-4 w-4" />
-                    Rejouer
-                  </Button>
-                )}
-              </div>
-
-              <div className="relative flex items-center justify-center p-4 sm:p-6">
-                <canvas
-                  ref={canvasRef}
-                  width={CANVAS_SIZE}
-                  height={CANVAS_SIZE}
-                  className="h-auto w-full max-w-[420px] rounded-[28px] border border-white/10 bg-black/10"
-                  onClick={() => {
-                    if (!started || gameOver) {
-                      startGame();
-                      return;
-                    }
-                    throwKnife();
-                  }}
-                />
-
-                {!started && (
-                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
-                    <div className="max-w-sm rounded-3xl border border-white/10 bg-slate-950/80 p-6 text-center backdrop-blur">
-                      <p className="text-xs uppercase tracking-[0.3em] text-orange-400">Timing</p>
-                      <h2 className="mt-2 text-3xl font-black">Plante-les tous</h2>
-                      <p className="mt-3 text-sm text-white/70">
-                        Clique ou appuie sur espace pour lancer. Un contact avec un couteau existant termine la run.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {gameOver && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-slate-950/62 p-6 backdrop-blur-sm">
-                    <div className="w-full max-w-sm rounded-3xl border border-rose-400/20 bg-slate-950/95 p-6 text-center shadow-2xl">
-                      <p className="text-xs uppercase tracking-[0.28em] text-rose-400">Run terminée</p>
-                      <h2 className="mt-2 text-4xl font-black">{score}</h2>
-                      <p className="mt-1 text-sm text-white/70">couteaux placés avant collision</p>
-                      {isNewHighScore && <p className="mt-3 text-sm font-semibold text-amber-300">Nouveau record personnel</p>}
-                      {rewards && (
-                        <div className="mt-4 grid grid-cols-2 gap-3 text-left">
-                          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                            <p className="text-xs uppercase tracking-[0.2em] text-white/45">Aura</p>
-                            <p className="mt-1 text-xl font-bold">+{rewards.aura}</p>
-                          </div>
-                          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                            <p className="text-xs uppercase tracking-[0.2em] text-white/45">Money</p>
-                            <p className="mt-1 text-xl font-bold">+${rewards.money}</p>
-                          </div>
-                        </div>
-                      )}
-                      <Button
-                        onClick={startGame}
-                        className="mt-5 h-11 w-full bg-orange-500 font-semibold text-black hover:bg-orange-400"
-                      >
-                        <RotateCcw className="mr-2 h-4 w-4" />
-                        Nouvelle run
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="space-y-6">
+    <PageShell size="wide">
+      <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-start px-4 pb-4">
+        {/* LEFT: Options / Score */}
+        <div className="flex flex-col gap-4">
+          {/* 1. Score + Record */}
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Trophy className="h-5 w-5 text-amber-500" />
-                Classement
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {leaderboard.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Aucun score enregistré pour l’instant.</p>
-              ) : (
-                leaderboard.map((entry, index) => (
-                  <div
-                    key={entry.id}
-                    className="flex items-center justify-between rounded-2xl border bg-card/60 px-4 py-3"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold">
-                        #{index + 1} {entry.user.username}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Meilleure run</p>
-                    </div>
-                    <p className="text-lg font-black">{entry.highScore}</p>
-                  </div>
-                ))
+            <CardContent className="pt-4">
+              <div className="grid grid-cols-2 gap-3 text-center">
+                <div className="rounded-xl border border-border/60 p-3">
+                  <p className="text-xs text-muted-foreground">Score</p>
+                  <p className="text-xl font-semibold">{score}</p>
+                </div>
+                <div className="rounded-xl border border-border/60 p-3">
+                  <p className="text-xs text-muted-foreground">Record</p>
+                  <p className="text-xl font-semibold">{highScore}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 2. Level info */}
+          <Card>
+            <CardContent className="pt-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3 text-center">
+                <div className="rounded-xl border border-border/60 p-3">
+                  <p className="text-xs text-muted-foreground">Niveau</p>
+                  <p className="text-xl font-semibold">{level}</p>
+                </div>
+                <div className="rounded-xl border border-border/60 p-3">
+                  <p className="text-xs text-muted-foreground">Restants</p>
+                  <p className="text-xl font-semibold">{knivesLeft}</p>
+                </div>
+              </div>
+              <div className="rounded-xl border border-border/60 p-3 text-center">
+                <p className="text-xs text-muted-foreground">Rotation</p>
+                <p className="text-sm font-semibold">{directionLabel}</p>
+                {directionChangeInMs !== null && (
+                  <p className="text-xs text-muted-foreground">change dans {(directionChangeInMs / 1000).toFixed(1)}s</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 3. Actions */}
+          <Card>
+            <CardContent className="pt-4 space-y-2">
+              <Button
+                className="w-full justify-start"
+                onClick={started && !gameOver ? throwKnife : startGame}
+              >
+                {started && !gameOver ? <Zap className="mr-2 h-4 w-4" /> : <Target className="mr-2 h-4 w-4" />}
+                {started && !gameOver ? 'Lancer' : 'Commencer'}
+              </Button>
+              {(started || gameOver) && (
+                <Button variant="outline" className="w-full justify-start" onClick={startGame}>
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Rejouer
+                </Button>
               )}
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Règles</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-muted-foreground">
-              <p>Les premiers niveaux gardent une rotation lente et stable pour poser le rythme.</p>
-              <p>Chaque lancer réussi ajoute un couteau au disque et augmente ton score.</p>
-              <p>À partir du niveau 4, la direction peut changer, mais plus lentement et avec transition douce.</p>
-              <p>Le classement prend ton meilleur score total sur une run complète.</p>
-            </CardContent>
-          </Card>
         </div>
+
+        {/* CENTER: Canvas */}
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <canvas
+              ref={canvasRef}
+              width={CANVAS_SIZE}
+              height={CANVAS_SIZE}
+              className="rounded-[28px] border border-border/40"
+              onClick={() => {
+                if (!started || gameOver) {
+                  startGame();
+                  return;
+                }
+                throwKnife();
+              }}
+            />
+
+            {gameOver && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-[28px] bg-black/50 backdrop-blur-sm">
+                <div className="w-full max-w-xs rounded-2xl border border-border/60 bg-background/95 p-6 text-center shadow-xl">
+                  <p className="text-sm text-muted-foreground">Run terminee</p>
+                  <p className="mt-1 text-4xl font-bold">{score}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">couteaux places avant collision</p>
+                  {isNewHighScore && <p className="mt-3 text-sm font-medium text-amber-500">Nouveau record</p>}
+                  {rewards && (
+                    <p className="mt-3 text-sm text-muted-foreground">
+                      +${rewards.money} · +{rewards.aura} aura
+                    </p>
+                  )}
+                  <Button className="mt-4 w-full" onClick={startGame}>
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    Nouvelle run
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* RIGHT: Leaderboard */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Trophy className="h-4 w-4" />
+              Classement
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="max-h-[420px] overflow-y-auto space-y-2">
+              {leaderboard.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Aucun score enregistre pour l’instant.</p>
+              ) : (
+                leaderboard.map((entry, index) => (
+                  <div key={entry.id} className="flex items-center justify-between rounded-xl border border-border/60 px-3 py-2">
+                    <p className="text-sm font-medium">#{index + 1} {entry.user.username}</p>
+                    <p className="text-sm text-muted-foreground">{entry.highScore}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
-    </div>
+    </PageShell>
   );
 }
