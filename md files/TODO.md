@@ -5,6 +5,11 @@
 
 - bouton créer clans scroll fix amine
 
+- UI roulette
+- mode fullscreen pour tous les jeux
+- solitaire with
+- knife hit rotation plusen valeur
+
 ## à FIX
 
 - Consistence UI
