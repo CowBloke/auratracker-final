@@ -67,6 +67,15 @@ export function SiteHeader() {
   const [showUsers, setShowUsers] = useState(false);
   const [showParty, setShowParty] = useState(false);
   const [announcement, setAnnouncement] = useState('');
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const mainEl = document.querySelector('main');
+    if (!mainEl) return;
+    const handleScroll = () => setScrolled(mainEl.scrollTop > 10);
+    mainEl.addEventListener('scroll', handleScroll, { passive: true });
+    return () => mainEl.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
   const doodleSpectateSessionMap = useMemo(
@@ -150,7 +159,12 @@ export function SiteHeader() {
   }, [location.pathname]);
 
   return (
-    <header className="flex h-14 items-center justify-between border-b border-border/40 px-6">
+    <header className={cn(
+      "sticky top-0 z-10 flex h-14 items-center justify-between border-b px-6 transition-all duration-300",
+      scrolled
+        ? "border-border/20 bg-background/60 backdrop-blur-md"
+        : "border-border/40 bg-background"
+    )}>
       <div className="flex min-w-0 items-center gap-3">
         <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
         {announcement && (
