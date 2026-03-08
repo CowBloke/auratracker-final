@@ -68,6 +68,7 @@ const games = [
     description: 'Balise les bombes, ouvre les zones sûres et finis la grille le plus proprement possible.',
     type: 'Logique',
     emoji: '💣',
+    image: '/images/games/minesweeper.png',
   },
   {
     id: 'game-2048',

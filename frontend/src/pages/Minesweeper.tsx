@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
-import { PageHeader, PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { cn } from '@/lib/utils';
-import { Bomb, Flag, RotateCcw, ShieldAlert, Timer, Trophy, Wand2, X } from 'lucide-react';
+import { Bomb, Flag, RotateCcw, Trophy, X } from 'lucide-react';
 
 type DifficultyKey = 'debutant' | 'intermediaire' | 'expert';
 type GameStatus = 'ready' | 'playing' | 'won' | 'lost';
@@ -469,114 +468,68 @@ export default function Minesweeper() {
 
   return (
     <PageShell size="full">
-      <PageHeader
-        title="Démineur"
-        description="Version AuraTracker du classique Minesweeper: premier clic securise, drapeaux, reveal rapide et classement sur le meilleur score."
-        actions={
-          <Button type="button" variant="outline" onClick={() => resetBoard()}>
-            <RotateCcw className="mr-2 h-4 w-4" />
-            Nouvelle partie
-          </Button>
-        }
-      />
-
-      <div className="grid gap-6 xl:grid-cols-[18rem_minmax(0,1fr)_20rem]">
-        <div className="space-y-4">
+      <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-start px-4 pb-4">
+        {/* LEFT: Options / Score */}
+        <div className="flex flex-col gap-4">
+          {/* 1. Stats */}
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Partie</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+            <CardContent className="pt-4">
+              <div className="grid grid-cols-2 gap-3 text-center">
                 <div className="rounded-xl border border-border/60 p-3">
                   <p className="text-xs text-muted-foreground">Temps</p>
-                  <p className="mt-1 text-2xl font-semibold tabular-nums">{elapsedSeconds}s</p>
+                  <p className="text-xl font-semibold tabular-nums">{elapsedSeconds}s</p>
                 </div>
-                <div className="rounded-xl border border-border/60 p-3">
-                  <p className="text-xs text-muted-foreground">Mines</p>
-                  <p className="mt-1 text-2xl font-semibold tabular-nums">{minesLeft}</p>
-                </div>
+                {status === 'won' || status === 'lost' ? (
+                  <div className="rounded-xl border border-border/60 p-3">
+                    <p className="text-xs text-muted-foreground">Score</p>
+                    <p className="text-xl font-semibold tabular-nums">{lastScore}</p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-border/60 p-3">
+                    <p className="text-xs text-muted-foreground">Mines</p>
+                    <p className="text-xl font-semibold tabular-nums">{minesLeft}</p>
+                  </div>
+                )}
                 <div className="rounded-xl border border-border/60 p-3">
                   <p className="text-xs text-muted-foreground">Record</p>
-                  <p className="mt-1 text-2xl font-semibold tabular-nums">{highScore}</p>
+                  <p className="text-xl font-semibold tabular-nums">{highScore}</p>
                 </div>
                 <div className="rounded-xl border border-border/60 p-3">
                   <p className="text-xs text-muted-foreground">Winrate</p>
-                  <p className="mt-1 text-2xl font-semibold tabular-nums">{winRate}%</p>
+                  <p className="text-xl font-semibold tabular-nums">{winRate}%</p>
                 </div>
               </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Etat</span>
-                  <Badge variant="secondary" className="capitalize">
-                    {status === 'ready' && 'Pret'}
-                    {status === 'playing' && 'En cours'}
-                    {status === 'won' && 'Victoire'}
-                    {status === 'lost' && 'Explose'}
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Cases sûres</span>
-                  <span className="tabular-nums">{revealedSafeCells}/{totalSafeCells}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Drapeaux poses</span>
-                  <span className="tabular-nums">{flagsUsed}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Erreurs de flag</span>
-                  <span className="tabular-nums">{wrongFlags}</span>
-                </div>
-              </div>
-
-              {isNewHighScore ? <p className="text-sm">Nouveau record personnel.</p> : null}
-              {rewards && (rewards.money > 0 || rewards.aura > 0) ? (
-                <p className="text-sm text-muted-foreground">
-                  Recompenses: {rewards.money > 0 ? `+$${rewards.money}` : '$0'}
-                  {` · `}
-                  {rewards.aura > 0 ? `+${rewards.aura} aura` : '+0 aura'}
-                </p>
-              ) : null}
             </CardContent>
           </Card>
 
+          {/* 2. Difficulty + New game */}
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Difficulte</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {(Object.keys(DIFFICULTIES) as DifficultyKey[]).map((level) => (
-                <button
-                  key={level}
-                  type="button"
-                  onClick={() => setDifficulty(level)}
-                  className={cn(
-                    'w-full rounded-xl border px-3 py-3 text-left transition-colors',
-                    difficulty === level
-                      ? 'border-foreground bg-muted'
-                      : 'border-border/60 hover:border-foreground/30 hover:bg-muted/40'
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="font-medium">{DIFFICULTIES[level].label}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {DIFFICULTIES[level].rows}x{DIFFICULTIES[level].columns} · {DIFFICULTIES[level].mines}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">{DIFFICULTIES[level].description}</p>
-                </button>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Controles</CardTitle>
+            <CardHeader>
+              <CardTitle className="text-base">Difficulte</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
+              <Select value={difficulty} onValueChange={(value) => setDifficulty(value as DifficultyKey)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(DIFFICULTIES) as DifficultyKey[]).map((level) => (
+                    <SelectItem key={level} value={level}>
+                      {DIFFICULTIES[level].label} — {DIFFICULTIES[level].rows}×{DIFFICULTIES[level].columns} · {DIFFICULTIES[level].mines} mines
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button type="button" variant="outline" className="w-full" onClick={() => resetBoard()}>
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Nouvelle partie
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* 3. Actions */}
+          <Card>
+            <CardContent className="pt-4">
               <Button
                 type="button"
                 variant={flagMode ? 'default' : 'outline'}
@@ -584,143 +537,89 @@ export default function Minesweeper() {
                 onClick={() => setFlagMode((current) => !current)}
               >
                 <Flag className="mr-2 h-4 w-4" />
-                Mode mobile: {flagMode ? 'Drapeau' : 'Reveal'}
+                {flagMode ? 'Mode drapeau' : 'Mode reveal'}
               </Button>
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <p>Clic: revele une case.</p>
-                <p>Clic droit: pose ou retire un drapeau.</p>
-                <p>Clic sur un chiffre deja ouvert: reveal rapide si les drapeaux autour sont corrects.</p>
-                <p>Le premier clic est toujours securise.</p>
-              </div>
             </CardContent>
           </Card>
         </div>
 
-        <Card className="overflow-hidden border-border/60">
-          <div className="border-b border-border/60 bg-[radial-gradient(circle_at_top_left,_rgba(244,114,182,0.18),_transparent_34%),radial-gradient(circle_at_top_right,_rgba(14,165,233,0.18),_transparent_32%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(17,24,39,0.94))] text-white">
-            <CardContent className="space-y-5 p-6">
-              <div className="flex flex-wrap items-center gap-3">
-                <Badge variant="secondary" className="border-0 bg-white/12 text-white">
-                  {config.label}
-                </Badge>
-                <Badge variant="secondary" className="border-0 bg-white/12 text-white">
-                  <Timer className="mr-1 h-3.5 w-3.5" />
-                  {elapsedSeconds}s
-                </Badge>
-                <Badge variant="secondary" className="border-0 bg-white/12 text-white">
-                  <Bomb className="mr-1 h-3.5 w-3.5" />
-                  {config.mines} mines
-                </Badge>
-                <Badge variant="secondary" className="border-0 bg-white/12 text-white">
-                  Progression {progress}%
-                </Badge>
+        {/* CENTER: Game Board */}
+        <div className="flex flex-col items-center gap-4">
+          <div className="rounded-[1.75rem] border border-stone-300 bg-[linear-gradient(180deg,#f8fafc,#e2e8f0)] p-3 shadow-[0_24px_70px_rgba(15,23,42,0.14)] sm:p-4">
+            <div className="rounded-[1.25rem] border border-slate-300 bg-slate-100 p-2 shadow-inner">
+              <div className="grid gap-1" style={boardStyle}>
+                {board.flat().map((cell) => {
+                  const isExplodedMine = status === 'lost' && cell.isMine;
+                  return (
+                    <button
+                      key={`${cell.row}-${cell.column}`}
+                      type="button"
+                      onClick={() => handleCellAction(cell.row, cell.column)}
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        toggleFlagAt(cell.row, cell.column);
+                      }}
+                      className={cn(
+                        'flex aspect-square items-center justify-center rounded-md border text-sm font-black transition-all select-none',
+                        cell.isRevealed
+                          ? 'border-slate-300 bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]'
+                          : 'border-slate-400 bg-[linear-gradient(180deg,#e2e8f0,#cbd5e1)] hover:-translate-y-px hover:shadow-sm',
+                        !cell.isRevealed && 'active:translate-y-0',
+                        isExplodedMine && 'border-red-400 bg-red-100 text-red-700',
+                        status === 'won' && cell.isMine && 'border-emerald-400 bg-emerald-100 text-emerald-700'
+                      )}
+                      style={{ width: getCellSize(config.columns) }}
+                    >
+                      {cell.isRevealed ? (
+                        cell.isMine ? (
+                          <Bomb className="h-4 w-4" />
+                        ) : cell.adjacentMines > 0 ? (
+                          <span className={NUMBER_COLORS[cell.adjacentMines]}>{cell.adjacentMines}</span>
+                        ) : null
+                      ) : cell.isFlagged ? (
+                        <Flag className="h-4 w-4 text-rose-600" />
+                      ) : null}
+                    </button>
+                  );
+                })}
               </div>
-
-              <div className="space-y-2">
-                <h2 className="text-2xl font-semibold tracking-tight">Lis les chiffres, ferme les angles morts et nettoie la grille sans toucher une bombe.</h2>
-                <p className="text-sm text-white/80">
-                  Le score favorise les grilles denses resolues vite et proprement. Les erreurs de drapeau reduisent le bonus final.
-                </p>
-              </div>
-            </CardContent>
+            </div>
           </div>
 
-          <CardContent className="space-y-5 p-4 sm:p-6">
-            <div className="flex flex-wrap items-center gap-2">
-              <Button type="button" variant="outline" onClick={() => resetBoard()}>
-                <Wand2 className="mr-2 h-4 w-4" />
-                Regenerer
-              </Button>
-              <Button type="button" variant="outline" onClick={() => setFlagMode((current) => !current)}>
-                <Flag className="mr-2 h-4 w-4" />
-                {flagMode ? 'Passer en reveal' : 'Passer en drapeau'}
-              </Button>
-              {(status === 'won' || status === 'lost') && (
-                <Badge variant="outline" className="ml-auto">
-                  Score final {lastScore}
-                </Badge>
+          {status === 'won' && (
+            <div className="w-full rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4">
+              <p className="font-medium">Grille nettoyee.</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Score {lastScore} · temps {elapsedSeconds}s · {wrongFlags} erreur{wrongFlags !== 1 ? 's' : ''} de drapeau.
+              </p>
+              {rewards && (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Recompenses: +${rewards.money} · +{rewards.aura} aura{isNewHighScore ? ' · nouveau record' : ''}.
+                </p>
               )}
             </div>
+          )}
 
-            <div className="overflow-x-auto">
-              <div className="mx-auto w-max rounded-[1.75rem] border border-stone-300 bg-[linear-gradient(180deg,#f8fafc,#e2e8f0)] p-3 shadow-[0_24px_70px_rgba(15,23,42,0.14)] sm:p-4">
-                <div className="rounded-[1.25rem] border border-slate-300 bg-slate-100 p-2 shadow-inner">
-                  <div className="grid gap-1" style={boardStyle}>
-                    {board.flat().map((cell) => {
-                      const isExplodedMine = status === 'lost' && cell.isMine;
-
-                      return (
-                        <button
-                          key={`${cell.row}-${cell.column}`}
-                          type="button"
-                          onClick={() => handleCellAction(cell.row, cell.column)}
-                          onContextMenu={(event) => {
-                            event.preventDefault();
-                            toggleFlagAt(cell.row, cell.column);
-                          }}
-                          className={cn(
-                            'flex aspect-square items-center justify-center rounded-md border text-sm font-black transition-all select-none',
-                            cell.isRevealed
-                              ? 'border-slate-300 bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]'
-                              : 'border-slate-400 bg-[linear-gradient(180deg,#e2e8f0,#cbd5e1)] hover:-translate-y-px hover:shadow-sm',
-                            !cell.isRevealed && 'active:translate-y-0',
-                            isExplodedMine && 'border-red-400 bg-red-100 text-red-700',
-                            status === 'won' && cell.isMine && 'border-emerald-400 bg-emerald-100 text-emerald-700'
-                          )}
-                          style={{ width: getCellSize(config.columns) }}
-                        >
-                          {cell.isRevealed ? (
-                            cell.isMine ? (
-                              <Bomb className="h-4 w-4" />
-                            ) : cell.adjacentMines > 0 ? (
-                              <span className={NUMBER_COLORS[cell.adjacentMines]}>{cell.adjacentMines}</span>
-                            ) : null
-                          ) : cell.isFlagged ? (
-                            <Flag className="h-4 w-4 text-rose-600" />
-                          ) : null}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
+          {status === 'lost' && (
+            <div className="w-full rounded-2xl border border-red-500/40 bg-red-500/10 p-4">
+              <p className="font-medium">Bombe declenchee.</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {progress}% de progression apres {elapsedSeconds}s.
+              </p>
             </div>
+          )}
+        </div>
 
-            {status === 'ready' && (
-              <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground">
-                La grille est prete. Premier clic securise, puis le chrono se lance automatiquement.
-              </div>
-            )}
-
-            {status === 'won' && (
-              <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4">
-                <p className="font-medium">Grille nettoyee.</p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Score {lastScore} · temps {elapsedSeconds}s · {wrongFlags} erreur{wrongFlags > 1 ? 's' : ''} de drapeau.
-                </p>
-              </div>
-            )}
-
-            {status === 'lost' && (
-              <div className="rounded-2xl border border-red-500/40 bg-red-500/10 p-4">
-                <p className="font-medium">Bombe declenchee.</p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Tu etais a {progress}% de progression apres {elapsedSeconds}s. Relance une grille pour repartir.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-sm font-medium">
-                <Trophy className="h-4 w-4 text-muted-foreground" />
-                Classement
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
+        {/* RIGHT: Leaderboard */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Trophy className="h-4 w-4" />
+              Classement
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="max-h-[420px] overflow-y-auto space-y-2">
               {leaderboard.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Aucun score enregistre pour le moment.</p>
               ) : (
@@ -746,7 +645,6 @@ export default function Minesweeper() {
                         size="icon"
                         className="h-7 w-7 text-destructive hover:bg-destructive/10"
                         onClick={() => handleDeleteScore(entry.user.id)}
-                        title="Supprimer ce score"
                       >
                         <X className="h-3.5 w-3.5" />
                       </Button>
@@ -754,23 +652,9 @@ export default function Minesweeper() {
                   </div>
                 ))
               )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-sm font-medium">
-                <ShieldAlert className="h-4 w-4 text-muted-foreground" />
-                Lecture de grille
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-muted-foreground">
-              <p>Un chiffre indique le nombre exact de mines dans les 8 cases autour.</p>
-              <p>Si un 1 est deja satisfait par un drapeau voisin, les autres voisins sont surs.</p>
-              <p>Le reveal rapide sur un chiffre ouvert fait gagner du temps quand ton marquage est propre.</p>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </PageShell>
   );
