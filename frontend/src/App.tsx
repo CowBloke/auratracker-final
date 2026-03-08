@@ -41,6 +41,7 @@ import PuissanceQuatre from './pages/PuissanceQuatre';
 import SubwayRush from './pages/SubwayRush';
 import Echecs from './pages/Echecs';
 import LogicLab from './pages/LogicLab';
+import Minesweeper from './pages/Minesweeper';
 import Inbox from './pages/Inbox';
 import Blocked from './pages/Blocked';
 import { BLOCKABLE_PAGES } from './config/blockedPages';
@@ -152,8 +153,10 @@ function App() {
         <Route path="games/flappy-bird" element={<FlappyBird />} />
         <Route path="games/casino" element={<Casino />} />
         <Route path="games/aura-coin" element={<AuraCoin />} />
-        <Route path="games/market" element={<Shop />} />
-        <Route path="games/market/*" element={<Shop />} />
+        <Route path="shop" element={<Shop />} />
+        <Route path="shop/*" element={<Shop />} />
+        <Route path="games/market" element={<Navigate to="/shop" replace />} />
+        <Route path="games/market/*" element={<Navigate to="/shop" replace />} />
         <Route path="games/bomb-party" element={<BombParty />} />
         <Route path="games/poker" element={<Poker />} />
         <Route path="games/petit-bac" element={<PetitBac />} />
@@ -168,8 +171,9 @@ function App() {
         <Route path="games/puissance-quatre" element={<PuissanceQuatre />} />
         <Route path="games/echecs" element={<Echecs />} />
         <Route path="games/logic-lab" element={<LogicLab />} />
-        <Route path="games/polymarket" element={<Polymarket />} />
-        <Route path="polymarket" element={<Navigate to="/games/polymarket" replace />} />
+        <Route path="games/minesweeper" element={<Minesweeper />} />
+        <Route path="polymarket" element={<Polymarket />} />
+        <Route path="games/polymarket" element={<Navigate to="/polymarket" replace />} />
         <Route path="leaderboards" element={<Leaderboards />} />
         <Route path="leaderboards/nombres" element={<Numbers />} />
         <Route path="party" element={<Party />} />

@@ -358,7 +358,7 @@ router.post('/:id/vote', authMiddleware, async (req: AuthRequest, res: Response)
         userId: suggestion.userId,
         type: 'SYSTEM',
         title: value === 1 ? 'Nouvel upvote' : 'Nouveau downvote',
-        body: `${voter?.username || 'Un utilisateur'} a ${value === 1 ? 'approuve' : 'desapprouve'} ta suggestion "${suggestion.title}".`,
+        body: `${voter?.username || 'Un utilisateur'} a ${value === 1 ? 'approuvé' : 'désapprouvé'} ta suggestion "${suggestion.title}".`,
         data: {
           suggestionId: id,
           voterId: req.user!.id,

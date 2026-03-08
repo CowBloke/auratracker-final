@@ -174,8 +174,8 @@ router.post('/claim', authMiddleware, async (req: AuthRequest, res: Response) =>
     createNotification({
       userId: req.user.id,
       type: 'SYSTEM',
-      title: 'Pass quotidien reclame',
-      body: `Tu as recu $${reward} pour le jour ${claimDay} de ta serie.`,
+      title: 'Pass quotidien réclamé',
+      body: `Tu as reçu $${reward} pour le jour ${claimDay} de ta série.`,
       data: {
         reward,
         streak: newStreak,

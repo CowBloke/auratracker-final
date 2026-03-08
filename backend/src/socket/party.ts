@@ -1207,7 +1207,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
         userId: targetUserId,
         type: 'SYSTEM',
         title: 'Retire du groupe',
-        body: 'Tu as ete retire de ton groupe par le leader.',
+        body: 'Tu as été retiré de ton groupe par le leader.',
         data: {
           partyId: membership.partyId,
           removedByUserId: userId,

@@ -98,7 +98,7 @@ const gameShortcuts: GameShortcut[] = [
   { id: 'petit-bac', label: 'Petit Bac', path: '/games/petit-bac', description: 'Catégories, lettres, vitesse.', image: '/images/games/petitbac.png' },
   { id: 'casino', label: 'Casino', path: '/games/casino', description: 'Mini-jeux et mises rapides.', image: '/images/games/casino.png' },
   { id: 'aura-coin', label: 'Aura Coin', path: '/games/aura-coin', description: 'Suivi des coins aura.', image: '/images/games/auracoin.png' },
-  { id: 'polymarket', label: 'Polymarket', path: '/games/polymarket', description: 'Paris en temps réel.' },
+  { id: 'polymarket', label: 'Polymarket', path: '/polymarket', description: 'Paris en temps réel.' },
   { id: 'doodle-jump', label: 'Doodle Jump', path: '/games/doodle-jump', description: 'Grimpe sans fin.', image: '/images/games/doodlejump.png' },
   { id: '2048', label: '2048', path: '/games/2048', description: "Fusionne jusqu'à 2048.", image: '/images/games/2048.png' },
   { id: 'flappy-bird', label: 'Flappy Bird', path: '/games/flappy-bird', description: 'Timing parfait.', image: '/images/games/flappybird.png' },
@@ -115,24 +115,24 @@ const defaultShortcutSet = new Set(defaultShortcuts);
 const quickActions = [
   { label: 'Créer party', path: '/party', icon: Users, color: 'text-violet-500', bg: 'bg-violet-500/15' },
   { label: 'Voir quêtes', path: '/quests', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/15' },
-  { label: 'Ouvrir shop', path: '/games/market', icon: Package, color: 'text-blue-500', bg: 'bg-blue-500/15' },
+  { label: 'Ouvrir shop', path: '/shop', icon: Package, color: 'text-blue-500', bg: 'bg-blue-500/15' },
   { label: 'Classements', path: '/leaderboards', icon: Trophy, color: 'text-amber-500', bg: 'bg-amber-500/15' },
   { label: 'Clans', path: '/clans', icon: Shield, color: 'text-teal-500', bg: 'bg-teal-500/15' },
   { label: 'Mon profil', path: '/profile', icon: UserIcon, color: 'text-rose-500', bg: 'bg-rose-500/15' },
-  { label: 'Polymarket', path: '/games/polymarket', icon: BarChart3, color: 'text-indigo-500', bg: 'bg-indigo-500/15' },
+  { label: 'Polymarket', path: '/polymarket', icon: BarChart3, color: 'text-indigo-500', bg: 'bg-indigo-500/15' },
 ];
 
 const defaultDashboardLayout: DashboardWidgetId[] = ['shortcuts', 'live', 'quick-actions', 'stats', 'quests', 'auracoin', 'aura-leaders', 'inventory', 'gifts'];
 const dashboardWidgetLabels: Record<DashboardWidgetId, { title: string; description: string }> = {
   'quick-actions': { title: 'Actions rapides', description: 'Liens utiles du dashboard.' },
-  shortcuts: { title: 'Raccourcis jeux', description: 'Acces rapide a tes jeux favoris.' },
-  quests: { title: 'Quetes du jour', description: 'Suivi des quetes actives.' },
-  auracoin: { title: 'Aura Coin', description: 'Prix et variation du marche.' },
-  'aura-leaders': { title: 'Top Aura', description: 'Utilisateurs avec le plus d aura.' },
-  inventory: { title: 'Inventaire', description: 'Resume de tes objets.' },
-  live: { title: 'Activite des parties', description: 'Parties ouvertes en direct.' },
+  shortcuts: { title: 'Raccourcis jeux', description: 'Accès rapide à tes jeux favoris.' },
+  quests: { title: 'Quêtes du jour', description: 'Suivi des quêtes actives.' },
+  auracoin: { title: 'Aura Coin', description: 'Prix et variation du marché.' },
+  'aura-leaders': { title: 'Top Aura', description: 'Utilisateurs avec le plus d’aura.' },
+  inventory: { title: 'Inventaire', description: 'Résumé de tes objets.' },
+  live: { title: 'Activité des parties', description: 'Parties ouvertes en direct.' },
   stats: { title: 'Stats', description: 'Vue rapide de tes ressources.' },
-  gifts: { title: 'Cadeaux', description: 'Boite, envois et historique.' },
+  gifts: { title: 'Cadeaux', description: 'Boîte, envois et historique.' },
 };
 
 const isDashboardWidgetId = (value: string): value is DashboardWidgetId =>

@@ -491,7 +491,7 @@ export default function LogicLab() {
     <PageShell size="wide">
       <PageHeader
         title="Sudoku"
-        description="Un vrai Sudoku 9x9 avec generation aleatoire, plusieurs niveaux et un classement base sur tes meilleures resolutions."
+        description="Un vrai Sudoku 9x9 avec génération aléatoire, plusieurs niveaux et un classement basé sur tes meilleures résolutions."
         actions={
           <Button type="button" variant="outline" onClick={() => generateNewPuzzle(difficulty)}>
             <RefreshCcw className="mr-2 h-4 w-4" />
@@ -518,7 +518,7 @@ export default function LogicLab() {
               <div className="space-y-2">
                 <h2 className="text-2xl font-semibold tracking-tight">Remplis chaque ligne, colonne et bloc 3x3 avec les chiffres de 1 a 9.</h2>
                 <p className="text-sm text-white/80">
-                  Les grilles sont generees a la volee avec solution unique, puis scorees selon la difficulte, le temps et l aide utilisee.
+                  Les grilles sont générées à la volée avec solution unique, puis scorées selon la difficulté, le temps et l’aide utilisée.
                 </p>
               </div>
               <Progress value={progressValue} className="h-2 bg-white/10" />
@@ -667,7 +667,7 @@ export default function LogicLab() {
                 </div>
               </div>
               <p className="text-sm text-muted-foreground">
-                Le score final favorise les resolutions propres et rapides. Les grilles sont toutes generees cote client, avec rotation aleatoire et verification d unicite.
+                Le score final favorise les résolutions propres et rapides. Les grilles sont toutes générées côté client, avec rotation aléatoire et vérification d’unicité.
               </p>
             </CardContent>
           </Card>

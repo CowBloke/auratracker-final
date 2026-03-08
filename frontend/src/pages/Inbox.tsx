@@ -121,6 +121,7 @@ function filterNotifications(notifications: Notification[], id: CategoryId): Not
   if (id === 'polymarket') {
     return notifications.filter((n) =>
       POLY_TYPES.includes(n.type)
+      || n.link === '/polymarket'
       || n.link === '/games/polymarket'
       || (n.icon !== null && ['chart-no-axes-column', 'chart-candlestick', 'chart-no-axes-column-increasing', 'trending-up', 'trending-down', 'badge-check', 'badge-x'].includes(n.icon))
     );

@@ -29,6 +29,34 @@ interface BattleshipState {
   players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
 }
 
+interface ShipSegment {
+  horizontal: boolean;
+  isStart: boolean;
+  isEnd: boolean;
+  length: number;
+}
+
+function buildShipSegmentMap(
+  ships: BattleshipState['myShips']
+): Map<string, ShipSegment> {
+  const segments = new Map<string, ShipSegment>();
+
+  for (const ship of ships) {
+    for (let index = 0; index < ship.length; index += 1) {
+      const x = ship.horizontal ? ship.x : ship.x + index;
+      const y = ship.horizontal ? ship.y + index : ship.y;
+      segments.set(`${x}-${y}`, {
+        horizontal: ship.horizontal,
+        isStart: index === 0,
+        isEnd: index === ship.length - 1,
+        length: ship.length,
+      });
+    }
+  }
+
+  return segments;
+}
+
 export default function BatailleNavale() {
   const { user, refreshUser } = useAuth();
   const {
@@ -59,6 +87,7 @@ export default function BatailleNavale() {
   const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
   const isMyTurn = gameState?.currentPlayerId === user?.id;
   const opponent = gameState?.players.find((p) => p.userId !== user?.id);
+  const myShipSegments = gameState ? buildShipSegmentMap(gameState.myShips) : new Map<string, ShipSegment>();
 
   const postGameModals = (
     <>
@@ -213,30 +242,49 @@ export default function BatailleNavale() {
     onClick?: () => void
   ) => {
     const cell = board[x][y];
+    const shipSegment = isMyBoard ? myShipSegments.get(`${x}-${y}`) : undefined;
     const isClickable = onClick !== undefined;
-    let bgColor = 'bg-transparent';
+    let bgColor = 'bg-sky-950/20';
     let borderColor = 'border-border/30';
 
     if (isMyBoard) {
-      if (cell === 1) {
-        bgColor = 'bg-blue-500/30';
-        borderColor = 'border-blue-500/50';
-      } else if (cell === 2) {
-        bgColor = 'bg-red-500';
+      if (cell === 2) {
+        bgColor = 'bg-red-500/20';
         borderColor = 'border-red-600';
       } else if (cell === 3) {
-        bgColor = 'bg-gray-400/30';
-        borderColor = 'border-gray-400/50';
+        bgColor = 'bg-slate-400/20';
+        borderColor = 'border-slate-300/40';
+      } else if (shipSegment) {
+        borderColor = 'border-cyan-200/40';
       }
     } else {
       if (cell === 2) {
-        bgColor = 'bg-red-500';
+        bgColor = 'bg-red-500/20';
         borderColor = 'border-red-600';
       } else if (cell === 3) {
-        bgColor = 'bg-gray-400/30';
-        borderColor = 'border-gray-400/50';
+        bgColor = 'bg-slate-400/20';
+        borderColor = 'border-slate-300/40';
       }
     }
+
+    const shipShape = shipSegment
+      ? cn(
+          'pointer-events-none absolute inset-[2px] border border-slate-950/30 bg-gradient-to-b from-slate-200 via-slate-400 to-slate-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]',
+          shipSegment.horizontal
+            ? [
+                'top-[6px] bottom-[6px]',
+                shipSegment.length === 1 && 'rounded-full',
+                shipSegment.isStart && 'rounded-l-full',
+                shipSegment.isEnd && 'rounded-r-full',
+              ]
+            : [
+                'left-[6px] right-[6px]',
+                shipSegment.length === 1 && 'rounded-full',
+                shipSegment.isStart && 'rounded-t-full',
+                shipSegment.isEnd && 'rounded-b-full',
+              ]
+        )
+      : null;
 
     return (
       <Button variant="ghost"
@@ -244,13 +292,35 @@ export default function BatailleNavale() {
         onClick={onClick}
         disabled={!isClickable}
         className={cn(
-          'h-8 w-8 border transition-colors',
+          'relative h-8 w-8 overflow-hidden rounded-none border p-0 transition-colors',
           bgColor,
           borderColor,
-          isClickable && 'hover:border-foreground cursor-pointer',
+          isClickable && 'hover:border-foreground hover:bg-sky-900/30 cursor-pointer',
           !isClickable && 'cursor-not-allowed'
         )}
-      />
+      >
+        {shipShape ? <span className={shipShape} /> : null}
+        {shipSegment && cell !== 2 ? (
+          <span
+            className={cn(
+              'pointer-events-none absolute bg-slate-100/35',
+              shipSegment.horizontal
+                ? 'left-1/2 top-[9px] h-[2px] w-3 -translate-x-1/2 rounded-full'
+                : 'left-[9px] top-1/2 h-3 w-[2px] -translate-y-1/2 rounded-full'
+            )}
+          />
+        ) : null}
+        {cell === 2 ? (
+          <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <span className="h-4 w-4 rounded-full border border-red-200/70 bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]" />
+          </span>
+        ) : null}
+        {cell === 3 ? (
+          <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <span className="h-2.5 w-2.5 rounded-full bg-slate-200/80" />
+          </span>
+        ) : null}
+      </Button>
     );
   };
 

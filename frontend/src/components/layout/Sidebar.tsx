@@ -26,6 +26,7 @@ import {
   Bug,
   Crown,
   Brain,
+  Bomb,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -70,7 +71,7 @@ const navItems = [
   { to: '/leaderboards', label: 'Classement', icon: Trophy },
   { to: '/party', label: 'Party', icon: Users },
   { to: '/clans', label: 'Clans', icon: Flag },
-  { to: '/games/market', label: 'Shop', icon: Store },
+  { to: '/shop', label: 'Shop', icon: Store },
   { to: '/inventory', label: 'Inventaire', icon: Backpack },
   { to: '/pass', label: 'Pass', icon: Ticket },
   { to: '/quests', label: 'Quêtes', icon: Target },
@@ -89,6 +90,7 @@ const gameItems = [
   { to: '/games/bataille-navale', label: 'Bataille Navale', icon: Swords },
   { to: '/games/doodle-jump', label: 'Doodle Jump', icon: ArrowUp },
   { to: '/games/logic-lab', label: 'Logic Lab', icon: Brain },
+  { to: '/games/minesweeper', label: 'Démineur', icon: Bomb },
   { to: '/games/2048', label: '2048', icon: Gamepad2 },
   { to: '/games/flappy-bird', label: 'Flappy Bird', icon: Gamepad2 },
   { to: '/games/casino', label: 'Casino', icon: Dices },
@@ -314,20 +316,20 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
             )}
 
             {/* Polymarket */}
-            {!isDisabled('/games/polymarket') && (
+            {!isDisabled('/polymarket') && (
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                isActive={location.pathname === '/games/polymarket' || location.pathname.startsWith('/games/polymarket')}
+                isActive={location.pathname === '/polymarket' || location.pathname.startsWith('/polymarket')}
                 tooltip="Polymarket"
                 className={cn(
                   "h-9 px-3 text-sm font-normal",
-                  location.pathname === '/games/polymarket' || location.pathname.startsWith('/games/polymarket')
+                  location.pathname === '/polymarket' || location.pathname.startsWith('/polymarket')
                     ? "text-foreground bg-muted/50"
                     : "text-muted-foreground hover:text-foreground hover:bg-transparent"
                 )}
               >
-                <NavLink to="/games/polymarket">
+                <NavLink to="/polymarket">
                   <BarChart3 className="h-4 w-4" />
                   <span className="group-data-[collapsible=icon]:hidden">Polymarket</span>
                 </NavLink>

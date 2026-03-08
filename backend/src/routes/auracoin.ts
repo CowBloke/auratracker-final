@@ -466,7 +466,7 @@ const checkLiquidations = async () => {
           userId: position.userId,
           type: 'SYSTEM',
           title: 'Position liquidée',
-          body: `Ta position ${position.type} x${position.leverage} a ete liquidee.`,
+          body: `Ta position ${position.type} x${position.leverage} a été liquidée.`,
           data: {
             positionId: position.id,
             type: position.type,

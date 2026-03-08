@@ -171,6 +171,7 @@ const GAME_TYPE_LABELS: Record<string, string> = {
   tetris: 'Tetris',
   knife_hit: 'Knife Hit',
   subway_rush: 'Subway Rush',
+  minesweeper: 'Démineur',
   casino: 'Casino',
   bombparty: 'Bomb Party',
   petit_bac: 'Petit Bac',
@@ -277,6 +278,7 @@ const GAME_TYPES = [
   { value: 'tetris', label: 'Tetris' },
   { value: 'knife_hit', label: 'Knife Hit' },
   { value: 'subway_rush', label: 'Subway Rush' },
+  { value: 'minesweeper', label: 'Démineur' },
   { value: 'casino', label: 'Casino' },
   { value: 'bombparty', label: 'Bomb Party' },
   { value: 'petit_bac', label: 'Petit Bac' },
@@ -469,11 +471,13 @@ export default function Admin() {
   const logsPerPage = 50;
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [downloadLogsOpen, setDownloadLogsOpen] = useState(false);
+  const [downloadLogsMode, setDownloadLogsMode] = useState<'range' | 'all'>('range');
   const [downloadLogsStartDate, setDownloadLogsStartDate] = useState(() => {
     const date = new Date();
     date.setDate(date.getDate() - 7);
     return date.toISOString().slice(0, 10);
   });
+  const [downloadLogsEndDate, setDownloadLogsEndDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [downloadingLogs, setDownloadingLogs] = useState(false);
   const [downloadLogsError, setDownloadLogsError] = useState<string | null>(null);
 
@@ -952,17 +956,27 @@ export default function Admin() {
   };
 
   const handleDownloadLogs = async () => {
-    if (!downloadLogsStartDate) {
+    if (downloadLogsMode === 'range' && !downloadLogsStartDate) {
       setDownloadLogsError('Choisis une date de début.');
+      return;
+    }
+
+    if (downloadLogsMode === 'range' && !downloadLogsEndDate) {
+      setDownloadLogsError('Choisis une date de fin.');
+      return;
+    }
+
+    if (downloadLogsMode === 'range' && downloadLogsEndDate < downloadLogsStartDate) {
+      setDownloadLogsError('La date de fin doit être après la date de début.');
       return;
     }
 
     try {
       setDownloadLogsError(null);
       setDownloadingLogs(true);
-      const startDate = new Date(`${downloadLogsStartDate}T00:00:00`).toISOString();
       const res = await adminApi.downloadLogs({
-        startDate,
+        startDate: downloadLogsMode === 'range' ? downloadLogsStartDate : undefined,
+        endDate: downloadLogsMode === 'range' ? downloadLogsEndDate : undefined,
         type: logFilter.type !== 'ALL' ? logFilter.type : undefined,
         gameType: logFilter.gameType !== 'ALL' ? logFilter.gameType : undefined,
         username: logFilter.username || undefined,
@@ -973,7 +987,12 @@ export default function Admin() {
       const link = document.createElement('a');
       const contentDisposition = res.headers?.['content-disposition'] as string | undefined;
       const match = contentDisposition?.match(/filename="([^"]+)"/);
-      const filename = match?.[1] ?? `admin-logs-${downloadLogsStartDate}.csv`;
+      const fallbackLabel = downloadLogsMode === 'all'
+        ? 'all-time'
+        : downloadLogsStartDate === downloadLogsEndDate
+          ? downloadLogsStartDate
+          : `${downloadLogsStartDate}_to_${downloadLogsEndDate}`;
+      const filename = match?.[1] ?? `admin-logs-${fallbackLabel}.csv`;
       link.href = url;
       link.download = filename;
       document.body.appendChild(link);
@@ -3227,17 +3246,60 @@ export default function Admin() {
               <DialogHeader>
                 <DialogTitle>Télécharger les logs</DialogTitle>
                 <DialogDescription>
-                  Choisis une date de début. Les filtres actuels seront appliqués.
+                  Exporte une plage de dates précise ou tous les logs. Les filtres actuels seront appliqués.
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Depuis le</label>
-                <Input
-                  type="date"
-                  value={downloadLogsStartDate}
-                  onChange={(e) => setDownloadLogsStartDate(e.target.value)}
-                  className="h-9"
-                />
+              <div className="space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant={downloadLogsMode === 'range' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      setDownloadLogsMode('range');
+                      setDownloadLogsError(null);
+                    }}
+                  >
+                    Plage de dates
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={downloadLogsMode === 'all' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      setDownloadLogsMode('all');
+                      setDownloadLogsError(null);
+                    }}
+                  >
+                    Tous les temps
+                  </Button>
+                </div>
+                {downloadLogsMode === 'range' ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Depuis le</label>
+                      <Input
+                        type="date"
+                        value={downloadLogsStartDate}
+                        onChange={(e) => setDownloadLogsStartDate(e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Jusqu'au</label>
+                      <Input
+                        type="date"
+                        value={downloadLogsEndDate}
+                        onChange={(e) => setDownloadLogsEndDate(e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Tous les logs correspondant aux filtres actifs seront exportés, sans limite de date.
+                  </p>
+                )}
                 {downloadLogsError && (
                   <p className="text-xs text-red-400">{downloadLogsError}</p>
                 )}

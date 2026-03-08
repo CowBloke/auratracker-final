@@ -483,8 +483,8 @@ router.post('/suggestions/:id/approve', authMiddleware, requireAdmin, async (req
     createNotification({
       userId: suggestion.userId,
       type: 'SYSTEM',
-      title: 'Suggestion Polymarket acceptee',
-      body: `Ta suggestion "${suggestion.title}" a ete acceptee et publiee.`,
+      title: 'Suggestion Polymarket acceptée',
+      body: `Ta suggestion "${suggestion.title}" a été acceptée et publiée.`,
       data: {
         suggestionId: suggestion.id,
         eventId: event.id,
@@ -531,8 +531,8 @@ router.post('/suggestions/:id/reject', authMiddleware, requireAdmin, async (req:
     createNotification({
       userId: suggestion.userId,
       type: 'SYSTEM',
-      title: 'Suggestion Polymarket refusee',
-      body: `Ta suggestion "${suggestion.title}" a ete refusee.`,
+      title: 'Suggestion Polymarket refusée',
+      body: `Ta suggestion "${suggestion.title}" a été refusée.`,
       data: {
         suggestionId: suggestion.id,
       },

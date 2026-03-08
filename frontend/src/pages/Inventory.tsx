@@ -37,6 +37,7 @@ interface UserItem {
 interface ItemEffect {
   type: string;
   value?: string;
+  skinImageUrl?: string;
 }
 
 const typeLabels: Record<string, string> = {
@@ -83,18 +84,7 @@ export default function Inventory() {
     try {
       setLoading(true);
       const response = await marketplaceApi.getInventory(user!.id);
-      // Filter out Doodle Jump skins — they appear in Doodle Jump's skin selector instead
-      const allItems = (response.data.items || []) as UserItem[];
-      const filtered = allItems.filter((userItem) => {
-        try {
-          if (!userItem.item.effect) return true;
-          const effect = JSON.parse(userItem.item.effect);
-          return effect.type !== 'DOODLE_JUMP_SKIN';
-        } catch {
-          return true;
-        }
-      });
-      setItems(filtered);
+      setItems((response.data.items || []) as UserItem[]);
     } catch (error) {
       console.error('Failed to fetch inventory:', error);
     } finally {
@@ -275,6 +265,8 @@ export default function Inventory() {
         return <Palette className="w-4 h-4" />;
       case 'PROFILE_PICTURE':
         return <Camera className="w-4 h-4" />;
+      case 'DOODLE_JUMP_SKIN':
+        return <Package className="w-4 h-4" />;
       default:
         return null;
     }
@@ -287,6 +279,8 @@ export default function Inventory() {
         return 'Couleur de pseudo';
       case 'PROFILE_PICTURE':
         return 'Photo de profil';
+      case 'DOODLE_JUMP_SKIN':
+        return 'Skin Doodle Jump';
       case 'BONUS_AURA':
         return `+${effect.value || '?'} aura`;
       case 'BONUS_MONEY':
@@ -333,6 +327,10 @@ export default function Inventory() {
                   const effect = parseEffect(userItem.item.effect);
                   const effectIcon = getEffectIcon(effect);
                   const effectLabel = getEffectLabel(effect);
+                  const previewImageUrl = effect?.type === 'DOODLE_JUMP_SKIN' && effect.skinImageUrl
+                    ? effect.skinImageUrl
+                    : userItem.item.imageUrl;
+                  const isDoodleJumpSkin = effect?.type === 'DOODLE_JUMP_SKIN';
                   
                   return (
                     <div
@@ -341,9 +339,9 @@ export default function Inventory() {
                     >
                       <div className="flex items-center gap-4 flex-1">
                         {/* Item Image */}
-                        {userItem.item.imageUrl ? (
+                        {previewImageUrl ? (
                           <img 
-                            src={resolveImageUrl(userItem.item.imageUrl)} 
+                            src={resolveImageUrl(previewImageUrl)} 
                             alt={userItem.item.name}
                             className="w-14 h-14 object-cover rounded shrink-0"
                             onError={(e) => {
@@ -406,7 +404,7 @@ export default function Inventory() {
                             )}
                           </Button>
                         </div>
-                      ) : (userItem.item.type === 'CONSUMABLE' || userItem.item.type === 'COSMETIC') ? (
+                      ) : (userItem.item.type === 'CONSUMABLE' || (userItem.item.type === 'COSMETIC' && !isDoodleJumpSkin)) ? (
                         <Button
                           onClick={() => handleUseItem(userItem)}
                           disabled={using === userItem.id}
@@ -420,6 +418,10 @@ export default function Inventory() {
                             'Utiliser'
                           )}
                         </Button>
+                      ) : isDoodleJumpSkin ? (
+                        <span className={cn(TYPOGRAPHY.XS, "ml-4 shrink-0 text-muted-foreground")}>
+                          Sélectionnable dans Doodle Jump
+                        </span>
                       ) : null}
                     </div>
                   );

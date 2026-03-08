@@ -223,7 +223,7 @@ const defenseConfig: Record<DefenseType, {
   },
   BANNER: {
     label: 'Banniere',
-    description: 'Booste le moral et aide le clan a revenir dans la partie.',
+    description: 'Booste le moral et aide le clan à revenir dans la partie.',
     baseDurability: 42,
     durabilityPerLevel: 14,
   },
@@ -602,15 +602,15 @@ const finalizeClanWar = async (warId: string) => {
     notifyClanMembers(winnerClanId === war.attackerClanId ? attackerMemberIds : defenderMemberIds, {
       type: 'CLAN_WAR_WON',
       title: 'Victoire de clan',
-      body: `${winnerName} remporte la guerre et empoche les meilleures recompenses.`,
+      body: `${winnerName} remporte la guerre et empoche les meilleures récompenses.`,
       data: { warId: war.id, clanId: winnerClanId },
       link: '/clans',
       icon: 'trophy',
     }),
     notifyClanMembers(winnerClanId === war.attackerClanId ? defenderMemberIds : attackerMemberIds, {
       type: 'CLAN_WAR_LOST',
-      title: 'Defaite de clan',
-      body: `${winnerName} a remporte la guerre. Les recompenses de consolation ont ete versees.`,
+      title: 'Défaite de clan',
+      body: `${winnerName} a remporté la guerre. Les récompenses de consolation ont été versées.`,
       data: { warId: war.id, clanId: winnerClanId },
       link: '/clans',
       icon: 'shield',
@@ -1223,7 +1223,7 @@ router.post('/:id/war/declare', authMiddleware, async (req: AuthRequest, res: Re
     }
 
     if (attackerCooldown || defenderCooldown) {
-      return res.status(400).json({ error: 'Un des deux clans est encore en periode de recuperation.' });
+      return res.status(400).json({ error: 'Un des deux clans est encore en période de récupération.' });
     }
 
     const now = new Date();
@@ -1598,7 +1598,7 @@ router.post('/:id/requests/:requestId/accept', authMiddleware, async (req: AuthR
     createNotification({
       userId: request.userId,
       type: 'CLAN_JOIN_ACCEPTED',
-      title: 'Demande acceptee',
+      title: 'Demande acceptée',
       body: `Vous avez rejoint le clan ${clan.name}.`,
       data: { clanId: id, clanName: clan.name },
       link: '/clans',
@@ -1659,8 +1659,8 @@ router.post('/:id/requests/:requestId/reject', authMiddleware, async (req: AuthR
       createNotification({
         userId: request.userId,
         type: 'CLAN_JOIN_REJECTED',
-        title: 'Demande refusee',
-        body: `Votre demande pour rejoindre ${clanInfo.name} a ete refusee.`,
+        title: 'Demande refusée',
+        body: `Votre demande pour rejoindre ${clanInfo.name} a été refusée.`,
         data: { clanId: id, clanName: clanInfo.name },
         link: '/clans',
         icon: 'users',
@@ -1830,8 +1830,8 @@ router.delete('/:id/members/:targetUserId', authMiddleware, async (req: AuthRequ
       type: 'SYSTEM',
       title: 'Retire du clan',
       body: clanInfo?.name
-        ? `Tu as ete retire du clan ${clanInfo.name}.`
-        : 'Tu as ete retire de ton clan.',
+        ? `Tu as été retiré du clan ${clanInfo.name}.`
+        : 'Tu as été retiré de ton clan.',
       data: {
         clanId: id,
         clanName: clanInfo?.name ?? null,

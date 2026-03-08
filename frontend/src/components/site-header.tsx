@@ -6,6 +6,14 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { getPageMeta } from '@/components/chat/presence';
 import { resolveImageUrl } from '@/lib/images';
 import { usersApi } from '@/services/api';
@@ -44,8 +52,11 @@ export function SiteHeader() {
     requestDoodleSpectateSessions,
     currentParty,
     partyMembers,
+    publicParties,
     leaveParty,
     deleteParty,
+    joinParty,
+    fetchPublicParties,
     bombPartyGame,
     petitBacGame,
     sendMessage,
@@ -69,6 +80,10 @@ export function SiteHeader() {
       : 'En attente';
   const inviteLabel = currentParty?.name ? `Rejoins ${currentParty.name}` : 'Rejoins ma party';
   const inviteVisibility = currentParty?.isPublic ? 'public' : 'private';
+  const availableParties = useMemo(
+    () => publicParties.filter((party) => party.memberCount < party.maxSize),
+    [publicParties]
+  );
 
   const sendChatInvite = () => {
     if (currentParty) {
@@ -169,6 +184,63 @@ export function SiteHeader() {
 
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-8 text-sm">
+          {!currentParty && (
+            <DropdownMenu
+              onOpenChange={(open) => {
+                if (open) {
+                  fetchPublicParties();
+                }
+              }}
+            >
+              <DropdownMenuTrigger asChild>
+                <Button type="button" variant="outline" size="sm" className="h-8 gap-2">
+                  <Users className="h-4 w-4" />
+                  Rejoindre une party
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-72">
+                <DropdownMenuLabel>Partys en cours</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {availableParties.length > 0 ? (
+                  availableParties.map((party) => {
+                    const isDuel = party.maxSize === 2;
+                    return (
+                      <DropdownMenuItem
+                        key={party.id}
+                        onSelect={(event) => event.preventDefault()}
+                        className="flex items-center justify-between gap-3 py-2"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-medium">
+                            {party.name || (isDuel ? 'Duel sans nom' : 'Party sans nom')}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {party.memberCount}/{party.maxSize} membres
+                            {party.selectedGame?.gameName ? ` · ${party.selectedGame.gameName}` : ''}
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            joinParty(party.id);
+                          }}
+                        >
+                          Rejoindre
+                        </Button>
+                      </DropdownMenuItem>
+                    );
+                  })
+                ) : (
+                  <DropdownMenuItem disabled>Aucune party en cours</DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
           {currentParty && (
             <div className="relative">
               <Collapsible open={showParty} onOpenChange={setShowParty}>
@@ -224,6 +296,20 @@ export function SiteHeader() {
                     </ScrollArea>
 
                     <div className="flex flex-wrap gap-2 border-t border-border/30 px-3 py-2">
+                      {location.pathname !== '/party' && (
+                        <Button
+                          asChild
+                          variant="outline"
+                          size="sm"
+                          className="h-7 gap-1 px-2 text-xs text-muted-foreground"
+                          onClick={() => setShowParty(false)}
+                        >
+                          <Link to="/party">
+                            <Eye className="h-3 w-3" />
+                            Ouvrir
+                          </Link>
+                        </Button>
+                      )}
                       <Button
                         type="button"
                         onClick={() => {

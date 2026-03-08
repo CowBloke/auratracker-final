@@ -286,8 +286,8 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
     createNotification({
       userId: inviterId,
       type: 'SYSTEM',
-      title: 'Invitation acceptee',
-      body: `${responderName} a accepte ton invitation pour ${gameType}.`,
+      title: 'Invitation acceptée',
+      body: `${responderName} a accepté ton invitation pour ${gameType}.`,
       data: {
         userId,
         gameType,
@@ -345,7 +345,7 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
     createNotification({
       userId: inviterId,
       type: 'SYSTEM',
-      title: 'Invitation refusee',
+      title: 'Invitation refusée',
       body: `${responderName} a refuse ton invitation pour ${gameType}.`,
       data: {
         userId,

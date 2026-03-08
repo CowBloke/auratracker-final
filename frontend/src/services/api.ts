@@ -957,7 +957,7 @@ export const adminApi = {
     endDate?: string;
   }) => api.get<{ logs: ActivityLog[]; total: number }>('/admin/logs', { params }),
   downloadLogs: (params: {
-    startDate: string;
+    startDate?: string;
     endDate?: string;
     type?: string;
     action?: string;

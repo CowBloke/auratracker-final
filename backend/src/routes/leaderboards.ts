@@ -17,6 +17,7 @@ type LeaderboardCategory =
   | 'tetris'
   | 'knife_hit'
   | 'subway_rush'
+  | 'minesweeper'
   | 'casino'
   | 'casino_losses'
   | 'games_played'
@@ -307,6 +308,29 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
       case 'subway_rush':
         rankings = await prisma.gameStats.findMany({
           where: { gameType: 'subway_rush', user: { isAdmin: false } },
+          select: {
+            userId: true,
+            highScore: true,
+            user: {
+              select: { username: true, usernameColor: true },
+            },
+          },
+          orderBy: { highScore: 'desc' },
+          take: parseInt(limit as string),
+          skip: parseInt(offset as string),
+        });
+        rankings = rankings.map((s, i) => ({
+          rank: parseInt(offset as string) + i + 1,
+          userId: s.userId,
+          username: s.user.username,
+          usernameColor: s.user.usernameColor,
+          value: s.highScore,
+        }));
+        break;
+
+      case 'minesweeper':
+        rankings = await prisma.gameStats.findMany({
+          where: { gameType: 'minesweeper', user: { isAdmin: false } },
           select: {
             userId: true,
             highScore: true,
@@ -638,6 +662,25 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
           const higherScores = await prisma.gameStats.count({
             where: {
               gameType: 'subway_rush',
+              highScore: { gt: userStats.highScore },
+              user: { isAdmin: false },
+            },
+          });
+          userRank = higherScores + 1;
+        }
+      } else if (category === 'minesweeper') {
+        const userStats = await prisma.gameStats.findUnique({
+          where: {
+            userId_gameType: {
+              userId: req.user.id,
+              gameType: 'minesweeper',
+            },
+          },
+        });
+        if (userStats) {
+          const higherScores = await prisma.gameStats.count({
+            where: {
+              gameType: 'minesweeper',
               highScore: { gt: userStats.highScore },
               user: { isAdmin: false },
             },

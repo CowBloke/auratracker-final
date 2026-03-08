@@ -21,6 +21,7 @@ const ITEM_UPLOAD_DIR = path.resolve('uploads', 'items');
 const MAX_UPDATE_POPUP_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 const MAX_ITEM_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 const ADMIN_CLAN_MAX_MEMBERS_LIMIT = 12;
+const LOG_EXPORT_BATCH_SIZE = 5000;
 
 const ensureUpdatePopupUploadDir = () => {
   if (!fs.existsSync(UPDATE_POPUP_UPLOAD_DIR)) {
@@ -41,6 +42,67 @@ const inferImageExtension = (mimeType: string) => {
     default:
       return null;
   }
+};
+
+const parseLogDateBoundary = (value: unknown, boundary: 'start' | 'end'): Date | null => {
+  if (typeof value !== 'string' || value.trim() === '') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+
+  if (dateOnlyMatch) {
+    const [, year, month, day] = dateOnlyMatch;
+    return boundary === 'start'
+      ? new Date(Number(year), Number(month) - 1, Number(day), 0, 0, 0, 0)
+      : new Date(Number(year), Number(month) - 1, Number(day), 23, 59, 59, 999);
+  }
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const buildLogWhereClause = (query: Record<string, unknown>) => {
+  const { type, action, username, gameType, startDate, endDate } = query;
+  const where: Record<string, unknown> = {};
+
+  if (type && type !== 'ALL') {
+    where.type = type as string;
+  }
+
+  if (action) {
+    where.action = { contains: action as string };
+  }
+
+  if (username) {
+    where.OR = [
+      { username: { contains: username as string } },
+      { targetName: { contains: username as string } },
+    ];
+  }
+
+  if (gameType && gameType !== 'ALL') {
+    where.metadata = { contains: `"gameType":"${gameType}"` };
+  }
+
+  const createdAt: Record<string, Date> = {};
+  const parsedStartDate = parseLogDateBoundary(startDate, 'start');
+  const parsedEndDate = parseLogDateBoundary(endDate, 'end');
+
+  if (parsedStartDate) {
+    createdAt.gte = parsedStartDate;
+  }
+
+  if (parsedEndDate) {
+    createdAt.lte = parsedEndDate;
+  }
+
+  if (Object.keys(createdAt).length > 0) {
+    where.createdAt = createdAt;
+  }
+
+  return where;
 };
 
 // Middleware to check if user is admin
@@ -106,8 +168,8 @@ router.post('/users/:id/approve', authMiddleware, requireAdmin, async (req: Auth
     createNotification({
       userId: id,
       type: 'SYSTEM',
-      title: 'Compte approuve',
-      body: 'Ton compte a ete approuve. Tu peux maintenant te connecter.',
+      title: 'Compte approuvé',
+      body: 'Ton compte a été approuvé. Tu peux maintenant te connecter.',
       data: {
         approvedAt: new Date().toISOString(),
       },
@@ -800,8 +862,8 @@ router.post('/users/:id/inventory', authMiddleware, requireAdmin, async (req: Au
     createNotification({
       userId: id,
       type: 'ITEM_RECEIVED',
-      title: 'Objet ajoute a ton inventaire',
-      body: `${userItem.item.name} x${parseInt(quantity)} a ete ajoute a ton inventaire.`,
+      title: 'Objet ajouté à ton inventaire',
+      body: `${userItem.item.name} x${parseInt(quantity)} a été ajouté à ton inventaire.`,
       data: {
         itemId,
         itemName: userItem.item.name,
@@ -1162,37 +1224,7 @@ router.get('/logs', authMiddleware, requireAdmin, async (req: AuthRequest, res: 
       startDate,
       endDate,
     } = req.query;
-
-    // Build where clause
-    const where: Record<string, unknown> = {};
-
-    if (type && type !== 'ALL') {
-      where.type = type as string;
-    }
-
-    if (action) {
-      where.action = { contains: action as string };
-    }
-
-    if (username) {
-      where.OR = [
-        { username: { contains: username as string } },
-        { targetName: { contains: username as string } },
-      ];
-    }
-
-    // Filter by game type in metadata (for GAME type logs)
-    if (gameType && gameType !== 'ALL') {
-      where.metadata = { contains: `"gameType":"${gameType}"` };
-    }
-
-    if (startDate) {
-      where.createdAt = { ...((where.createdAt as Record<string, Date>) || {}), gte: new Date(startDate as string) };
-    }
-
-    if (endDate) {
-      where.createdAt = { ...((where.createdAt as Record<string, Date>) || {}), lte: new Date(endDate as string) };
-    }
+    const where = buildLogWhereClause({ type, action, username, gameType, startDate, endDate });
 
     const [logs, total] = await Promise.all([
       prisma.log.findMany({
@@ -1229,45 +1261,29 @@ router.get('/logs/download', authMiddleware, requireAdmin, async (req: AuthReque
       startDate,
       endDate,
     } = req.query;
+    const where = buildLogWhereClause({ type, action, username, gameType, startDate, endDate });
+    const logs = [];
+    let skip = 0;
 
-    if (!startDate) {
-      return res.status(400).json({ error: 'startDate is required' });
+    while (true) {
+      const batch = await prisma.log.findMany({
+        where,
+        orderBy: [
+          { createdAt: 'asc' },
+          { id: 'asc' },
+        ],
+        skip,
+        take: LOG_EXPORT_BATCH_SIZE,
+      });
+
+      logs.push(...batch);
+
+      if (batch.length < LOG_EXPORT_BATCH_SIZE) {
+        break;
+      }
+
+      skip += batch.length;
     }
-
-    const where: Record<string, unknown> = {};
-
-    if (type && type !== 'ALL') {
-      where.type = type as string;
-    }
-
-    if (action) {
-      where.action = { contains: action as string };
-    }
-
-    if (username) {
-      where.OR = [
-        { username: { contains: username as string } },
-        { targetName: { contains: username as string } },
-      ];
-    }
-
-    if (gameType && gameType !== 'ALL') {
-      where.metadata = { contains: `"gameType":"${gameType}"` };
-    }
-
-    if (startDate) {
-      where.createdAt = { ...((where.createdAt as Record<string, Date>) || {}), gte: new Date(startDate as string) };
-    }
-
-    if (endDate) {
-      where.createdAt = { ...((where.createdAt as Record<string, Date>) || {}), lte: new Date(endDate as string) };
-    }
-
-    const logs = await prisma.log.findMany({
-      where,
-      orderBy: { createdAt: 'asc' },
-      take: 10000,
-    });
 
     const escapeCsv = (value: unknown) => {
       if (value === null || value === undefined) {
@@ -1306,9 +1322,11 @@ router.get('/logs/download', authMiddleware, requireAdmin, async (req: AuthReque
     ].join(','));
 
     const csv = [header, ...rows].join('\n');
-    const safeStart = new Date(startDate as string).toISOString().slice(0, 10);
+    const safeStart = typeof startDate === 'string' && startDate.trim() !== '' ? startDate.slice(0, 10) : 'all-time';
+    const safeEnd = typeof endDate === 'string' && endDate.trim() !== '' ? endDate.slice(0, 10) : null;
+    const fileLabel = safeEnd ? `${safeStart}_to_${safeEnd}` : safeStart;
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="admin-logs-${safeStart}.csv"`);
+    res.setHeader('Content-Disposition', `attachment; filename="admin-logs-${fileLabel}.csv"`);
     res.send(csv);
   } catch (error) {
     console.error('Admin download logs error:', error);
@@ -1535,7 +1553,7 @@ router.delete('/bans/:userId', authMiddleware, requireAdmin, async (req: AuthReq
       userId,
       type: 'SYSTEM',
       title: 'Compte debanni',
-      body: 'Ton bannissement a ete leve. Tu peux de nouveau utiliser le site.',
+      body: 'Ton bannissement a été levé. Tu peux de nouveau utiliser le site.',
       data: {
         bansRemoved: result.count,
       },
@@ -2122,7 +2140,7 @@ router.get('/update-popups/suggest-summary', authMiddleware, requireAdmin, async
 
     const parts: string[] = [];
     if (typeSummary.length > 0) {
-      parts.push(`Activite recente depuis le ${sinceDate.toISOString().slice(0, 10)}: ${typeSummary.join(', ')}.`);
+      parts.push(`Activité récente depuis le ${sinceDate.toISOString().slice(0, 10)}: ${typeSummary.join(', ')}.`);
     }
     if (recentChanges.length > 0) {
       parts.push(`Dernieres actions admin: ${recentChanges.join(' | ')}.`);
@@ -2456,10 +2474,10 @@ router.put('/ban-appeals/:id', authMiddleware, requireAdmin, async (req: AuthReq
     createNotification({
       userId: appeal.userId,
       type: 'SYSTEM',
-      title: action === 'approve' ? 'Appel accepte' : 'Appel refuse',
+      title: action === 'approve' ? 'Appel accepté' : 'Appel refusé',
       body: action === 'approve'
-        ? 'Ton appel a ete accepte et ton bannissement a ete leve.'
-        : 'Ton appel a ete refuse par l administration.',
+        ? 'Ton appel a été accepté et ton bannissement a été levé.'
+        : 'Ton appel a été refusé par l’administration.',
       data: {
         appealId: id,
         action,
@@ -2543,10 +2561,10 @@ router.put('/name-change-requests/:id', authMiddleware, requireAdmin, async (req
     createNotification({
       userId: request.userId,
       type: 'SYSTEM',
-      title: action === 'approve' ? 'Changement de pseudo accepte' : 'Changement de pseudo refuse',
+      title: action === 'approve' ? 'Changement de pseudo accepté' : 'Changement de pseudo refusé',
       body: action === 'approve'
         ? `Ton pseudo est maintenant ${request.requestedUsername}.`
-        : `Ta demande pour ${request.requestedUsername} a ete refusee.`,
+        : `Ta demande pour ${request.requestedUsername} a été refusée.`,
       data: {
         requestId: request.id,
         action,

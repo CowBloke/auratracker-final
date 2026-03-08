@@ -49,7 +49,7 @@ const games = [
     id: 'doodle-jump',
     pageKey: 'game-doodle-jump',
     name: 'Doodle Jump',
-    description: 'Saute le plus haut possible pour gagner des recompenses.',
+    description: 'Saute le plus haut possible pour gagner des récompenses.',
     type: 'Score',
     image: '/images/games/doodlejump.png',
   },
@@ -57,15 +57,23 @@ const games = [
     id: 'logic-lab',
     pageKey: 'game-logic-lab',
     name: 'Sudoku',
-    description: 'Grilles Sudoku generees a la volee, plusieurs niveaux et classement sur tes meilleures resolutions.',
+    description: 'Grilles Sudoku générées à la volée, plusieurs niveaux et classement sur tes meilleures résolutions.',
     type: 'Logique',
     image: '/images/games/logiclab.png',
+  },
+  {
+    id: 'minesweeper',
+    pageKey: 'game-minesweeper',
+    name: 'Démineur',
+    description: 'Balise les bombes, ouvre les zones sûres et finis la grille le plus proprement possible.',
+    type: 'Logique',
+    emoji: '💣',
   },
   {
     id: 'game-2048',
     pageKey: 'game-2048',
     name: '2048',
-    description: 'Fusionne les tuiles pour atteindre 2048 et gagner des recompenses.',
+    description: 'Fusionne les tuiles pour atteindre 2048 et gagner des récompenses.',
     type: 'Score',
     image: '/images/games/2048.png',
   },
@@ -73,7 +81,7 @@ const games = [
     id: 'flappy-bird',
     pageKey: 'game-flappy-bird',
     name: 'Flappy Bird',
-    description: 'Evite les tuyaux et survole le plus loin possible pour gagner des recompenses.',
+    description: 'Évite les tuyaux et survole le plus loin possible pour gagner des récompenses.',
     type: 'Score',
     image: '/images/games/flappybird.png',
   },
@@ -105,7 +113,7 @@ const games = [
     id: 'racer',
     pageKey: 'game-racer',
     name: 'Racer',
-    description: 'Course pseudo-3D style Outrun. Evite les voitures et finis le tour le plus vite possible.',
+    description: 'Course pseudo-3D style Outrun. Évite les voitures et finis le tour le plus vite possible.',
     type: 'Score',
     image: '/images/games/racer.png',
   },
@@ -210,6 +218,9 @@ export default function Games() {
     }
     if (gameId === 'logic-lab') {
       return '/games/logic-lab';
+    }
+    if (gameId === 'minesweeper') {
+      return '/games/minesweeper';
     }
     if (gameId === 'solitaire') {
       return '/games/solitaire';

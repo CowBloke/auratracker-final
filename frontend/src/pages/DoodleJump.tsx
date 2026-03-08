@@ -210,6 +210,7 @@ export default function DoodleJump() {
   const activeModeRef = useRef<DoodleGameMode>('classic');
   const lastBroadcastAtRef = useRef(0);
   const spectatingRef = useRef(false);
+  const spectatingHostRef = useRef<{ hostUserId: string; hostUsername: string } | null>(null);
   const spectateTargetFrameRef = useRef<DoodleSpectateFrame | null>(null);
   const spectateReplayQueueRef = useRef<DoodleSpectateFrame[]>([]);
   const spectateSkinRef = useRef<SkinId>('default');
@@ -452,17 +453,31 @@ export default function DoodleJump() {
     }
   }, [createPlatform, getPlatformSequenceIndex, getRandomPlatformType, getSeededValue]);
 
+  const clearSpectateState = useCallback((resetGameState: boolean) => {
+    spectatingRef.current = false;
+    spectatingHostRef.current = null;
+    setSpectatingHost(null);
+    spectateTargetFrameRef.current = null;
+    spectateReplayQueueRef.current = [];
+    setSpectatorCount(0);
+
+    if (resetGameState) {
+      setStarted(false);
+      setGameOver(false);
+      setScore(0);
+      scoreRef.current = 0;
+      setRewards(null);
+      setIsNewHighScore(false);
+    }
+  }, []);
+
   // ============================================
   // GAME INITIALIZATION
   // ============================================
   const initGame = useCallback(() => {
     if (spectatingRef.current) {
       socket?.emit('doodle:spectate-leave');
-      spectatingRef.current = false;
-      spectateTargetFrameRef.current = null;
-      spectateReplayQueueRef.current = [];
-      setSpectatingHost(null);
-      setSpectatorCount(0);
+      clearSpectateState(true);
     }
 
     if (socket && user && isMultiplayer && !spectatingRef.current) {
@@ -541,7 +556,7 @@ export default function DoodleJump() {
         },
       });
     }
-  }, [applyMortSubiteRules, clearMultiplayerRoom, createPlatform, getPlatformSequenceIndex, getRandomPlatformType, getSeededValue, isMultiplayer, selectedGameType, selectedMode, selectedSkin, selectedSkinImageUrl, socket, user]);
+  }, [applyMortSubiteRules, clearMultiplayerRoom, clearSpectateState, createPlatform, getPlatformSequenceIndex, getRandomPlatformType, getSeededValue, isMultiplayer, selectedGameType, selectedMode, selectedSkin, selectedSkinImageUrl, socket, user]);
 
   const stopSpectateBroadcast = useCallback(() => {
     socket?.emit('doodle:spectate-stop');
@@ -1023,10 +1038,12 @@ export default function DoodleJump() {
       setScore(frame.score);
     }
     setStarted(true);
-    if (gameOver !== frame.gameOver) {
-      setGameOver(frame.gameOver);
+    setGameOver(frame.gameOver);
+    if (!frame.gameOver) {
+      setRewards(null);
+      setIsNewHighScore(false);
     }
-  }, [gameOver]);
+  }, []);
 
   useEffect(() => {
     if (!socket) return;
@@ -1041,7 +1058,9 @@ export default function DoodleJump() {
       stopSpectateBroadcast();
       clearMultiplayerRoom();
       spectatingRef.current = true;
-      setSpectatingHost({ hostUserId: data.hostUserId, hostUsername: data.hostUsername });
+      const nextHost = { hostUserId: data.hostUserId, hostUsername: data.hostUsername };
+      spectatingHostRef.current = nextHost;
+      setSpectatingHost(nextHost);
       setRewards(null);
       setIsNewHighScore(false);
       setSpectatorCount(data.spectatorCount ?? 0);
@@ -1055,7 +1074,8 @@ export default function DoodleJump() {
     };
 
     const handleFrame = (data: { hostUserId: string; frame: DoodleSpectateFrame }) => {
-      if (!spectatingRef.current || !spectatingHost || data.hostUserId !== spectatingHost.hostUserId) return;
+      const currentHost = spectatingHostRef.current;
+      if (!spectatingRef.current || !currentHost || data.hostUserId !== currentHost.hostUserId) return;
       spectateTargetFrameRef.current = data.frame;
     };
 
@@ -1063,28 +1083,20 @@ export default function DoodleJump() {
       if (user && data.hostUserId === user.id) {
         setSpectatorCount(data.spectatorCount);
       }
-      if (spectatingHost && data.hostUserId === spectatingHost.hostUserId) {
+      const currentHost = spectatingHostRef.current;
+      if (currentHost && data.hostUserId === currentHost.hostUserId) {
         setSpectatorCount(data.spectatorCount);
       }
     };
 
     const handleStopped = (data: { hostUserId: string }) => {
-      if (!spectatingRef.current || !spectatingHost || data.hostUserId !== spectatingHost.hostUserId) return;
-      spectatingRef.current = false;
-      setSpectatingHost(null);
-      spectateTargetFrameRef.current = null;
-      spectateReplayQueueRef.current = [];
-      setStarted(false);
-      setGameOver(false);
-      setScore(0);
-      scoreRef.current = 0;
-      setSpectatorCount(0);
+      const currentHost = spectatingHostRef.current;
+      if (!spectatingRef.current || !currentHost || data.hostUserId !== currentHost.hostUserId) return;
+      clearSpectateState(true);
     };
 
     const handleError = () => {
-      spectatingRef.current = false;
-      setSpectatingHost(null);
-      setSpectatorCount(0);
+      clearSpectateState(true);
     };
 
     socket.on('doodle:spectate-joined', handleJoined);
@@ -1100,7 +1112,7 @@ export default function DoodleJump() {
       socket.off('doodle:spectate-stopped', handleStopped);
       socket.off('doodle:spectate-error', handleError);
     };
-  }, [applySpectateFrame, clearMultiplayerRoom, location.pathname, navigate, socket, spectatingHost, stopSpectateBroadcast, user]);
+  }, [applySpectateFrame, clearMultiplayerRoom, clearSpectateState, location.pathname, navigate, socket, stopSpectateBroadcast, user]);
 
   useEffect(() => {
     if (!socket || !user || !spectateHostUserIdFromRoute) return;
@@ -1493,15 +1505,7 @@ export default function DoodleJump() {
             type="button"
             onClick={() => {
               socket?.emit('doodle:spectate-leave');
-              spectatingRef.current = false;
-              setSpectatingHost(null);
-              spectateTargetFrameRef.current = null;
-              spectateReplayQueueRef.current = [];
-              setStarted(false);
-              setGameOver(false);
-              setScore(0);
-              scoreRef.current = 0;
-              setSpectatorCount(0);
+              clearSpectateState(true);
             }}
             className="flex items-center gap-2 w-full"
           >

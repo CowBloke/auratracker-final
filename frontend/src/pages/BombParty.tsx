@@ -432,7 +432,7 @@ export default function BombParty() {
           </div>
         ) : myPlayer?.isEliminated ? (
           <div className="text-center text-muted-foreground py-4">
-            Tu as ete elimine. Tu regardes la partie...
+            Tu as été éliminé. Tu regardes la partie...
           </div>
         ) : (
           <div className="text-center text-muted-foreground py-4">

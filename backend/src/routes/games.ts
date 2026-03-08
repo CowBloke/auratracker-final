@@ -148,6 +148,17 @@ const GAME_REWARDS = {
       { minScore: 900, moneyReward: 220, auraBonus: 22 },
     ],
   },
+  minesweeper: {
+    minScoreForReward: 700,
+    scoreTiers: [
+      { minScore: 0, moneyReward: 0, auraBonus: 0 },
+      { minScore: 700, moneyReward: 22, auraBonus: 2 },
+      { minScore: 1000, moneyReward: 50, auraBonus: 5 },
+      { minScore: 1300, moneyReward: 90, auraBonus: 9 },
+      { minScore: 1650, moneyReward: 150, auraBonus: 15 },
+      { minScore: 2100, moneyReward: 230, auraBonus: 22 },
+    ],
+  },
 };
 
 // Calculate progressive rewards for Doodle Jump based on score
@@ -451,6 +462,35 @@ function calculateLogicLabRewards(score: number, isNewHighScore: boolean): { mon
   return { money: moneyReward, aura: auraReward };
 }
 
+function calculateMinesweeperRewards(score: number, isNewHighScore: boolean, won: boolean): { money: number; aura: number } {
+  if (!won) {
+    return { money: 0, aura: 0 };
+  }
+
+  const config = GAME_REWARDS.minesweeper;
+
+  if (score < config.minScoreForReward) {
+    return { money: 0, aura: 0 };
+  }
+
+  let selectedTier = config.scoreTiers[0];
+  for (let i = config.scoreTiers.length - 1; i >= 0; i--) {
+    if (score >= config.scoreTiers[i].minScore) {
+      selectedTier = config.scoreTiers[i];
+      break;
+    }
+  }
+
+  const moneyReward = selectedTier.moneyReward;
+  let auraReward = selectedTier.auraBonus;
+
+  if (isNewHighScore) {
+    auraReward += Math.min(Math.floor(score / 300), 10);
+  }
+
+  return { money: moneyReward, aura: auraReward };
+}
+
 
 router.get('/daily/racer', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
@@ -670,6 +710,10 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       const rewards = calculateLogicLabRewards(score, isNewHighScore);
       moneyReward = rewards.money;
       auraReward = rewards.aura;
+    } else if (gameType === 'minesweeper') {
+      const rewards = calculateMinesweeperRewards(score, isNewHighScore, won || false);
+      moneyReward = rewards.money;
+      auraReward = rewards.aura;
     } else if (gameType === 'casino' && bet) {
       // Casino: score is the win amount, bet is deducted, netGain = score - bet
       // Deduct bet first, then add winnings
@@ -814,6 +858,11 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
         await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
       }
     } else if (gameType === 'logic_lab') {
+      await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
+      if (won) {
+        await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
+      }
+    } else if (gameType === 'minesweeper') {
       await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
       if (won) {
         await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);

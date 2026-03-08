@@ -391,8 +391,8 @@ router.post('/claim', authMiddleware, async (req: AuthRequest, res: Response) =>
     createNotification({
       userId: req.user.id,
       type: 'SYSTEM',
-      title: 'Recompenses de quetes recuperees',
-      body: `Tu as recu ${totalAura} aura et $${totalMoney} pour ${userQuests.length} quete${userQuests.length > 1 ? 's' : ''}.`,
+      title: 'Récompenses de quêtes récupérées',
+      body: `Tu as reçu ${totalAura} aura et $${totalMoney} pour ${userQuests.length} quête${userQuests.length > 1 ? 's' : ''}.`,
       data: {
         questIds: userQuests.map((uq) => uq.id),
         totalMoney,

@@ -136,7 +136,7 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened, initialTa
             <TabsList className="h-auto flex-wrap">
               <TabsTrigger value="inbox" className="flex items-center gap-1">
                 <Inbox className="h-3.5 w-3.5" />
-                Boite
+                Boîte
               </TabsTrigger>
               <TabsTrigger value="send" className="flex items-center gap-1">
                 <Send className="h-3.5 w-3.5" />
@@ -263,7 +263,7 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened, initialTa
                       ) : (
                         <Send className="h-4 w-4 mr-1" />
                       )}
-                      {sendSuccess ? 'Envoy\u00e9 !' : 'Envoyer'}
+                      {sendSuccess ? 'Envoyé !' : 'Envoyer'}
                     </Button>
                   </div>
                 </div>
@@ -279,7 +279,7 @@ export default function GiftDialog({ open, onOpenChange, onGiftOpened, initialTa
                   </div>
                 ) : receivedGifts.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
-                    Aucun cadeau re\u00e7u
+                    Aucun cadeau reçu
                   </div>
                 ) : (
                   <div className="space-y-2 pr-4">
