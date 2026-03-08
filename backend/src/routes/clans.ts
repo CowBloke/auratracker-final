@@ -688,6 +688,21 @@ const getEligibleOpponents = async (clanId: string) => {
   return result;
 };
 
+const getClanMembership = (clanId: string, userId: string) =>
+  prisma.clanMember.findUnique({
+    where: {
+      clanId_userId: {
+        clanId,
+        userId,
+      },
+    },
+    select: {
+      clanId: true,
+      userId: true,
+      isLeader: true,
+    },
+  });
+
 // Get all clans
 router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
@@ -831,6 +846,144 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Get clan error:', error);
     res.status(500).json({ error: 'Failed to get clan' });
+  }
+});
+
+router.get('/:id/chat', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+    const rawLimit = Number.parseInt(String(req.query.limit ?? '50'), 10);
+    const limit = Number.isNaN(rawLimit) ? 50 : Math.min(Math.max(rawLimit, 1), 100);
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const [clan, membership] = await Promise.all([
+      prisma.clan.findUnique({
+        where: { id },
+        select: { id: true },
+      }),
+      getClanMembership(id, userId),
+    ]);
+
+    if (!clan) {
+      return res.status(404).json({ error: 'Clan not found' });
+    }
+
+    if (!membership) {
+      return res.status(403).json({ error: 'Tu dois etre membre du clan pour acceder au chat.' });
+    }
+
+    const messages = await prisma.clanMessage.findMany({
+      where: { clanId: id },
+      include: {
+        user: {
+          select: clanLeaderSelect,
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: limit,
+    });
+
+    res.json({
+      messages: messages.reverse().map((message) => ({
+        id: message.id,
+        message: message.message,
+        createdAt: message.createdAt,
+        user: message.user,
+      })),
+    });
+  } catch (error) {
+    console.error('Get clan chat error:', error);
+    res.status(500).json({ error: 'Failed to get clan chat' });
+  }
+});
+
+router.post('/:id/chat', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+    const message = typeof req.body.message === 'string' ? req.body.message.trim() : '';
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (message.length < 1 || message.length > 400) {
+      return res.status(400).json({ error: 'Le message doit contenir entre 1 et 400 caracteres.' });
+    }
+
+    const [clan, membership] = await Promise.all([
+      prisma.clan.findUnique({
+        where: { id },
+        select: { id: true },
+      }),
+      getClanMembership(id, userId),
+    ]);
+
+    if (!clan) {
+      return res.status(404).json({ error: 'Clan not found' });
+    }
+
+    if (!membership) {
+      return res.status(403).json({ error: 'Tu dois etre membre du clan pour ecrire dans ce chat.' });
+    }
+
+    const createdMessage = await prisma.clanMessage.create({
+      data: {
+        clanId: id,
+        userId,
+        message,
+      },
+      include: {
+        user: {
+          select: clanLeaderSelect,
+        },
+      },
+    });
+
+    const messageCount = await prisma.clanMessage.count({
+      where: { clanId: id },
+    });
+
+    if (messageCount > 200) {
+      const oldMessages = await prisma.clanMessage.findMany({
+        where: { clanId: id },
+        orderBy: {
+          createdAt: 'asc',
+        },
+        take: messageCount - 200,
+        select: {
+          id: true,
+        },
+      });
+
+      if (oldMessages.length > 0) {
+        await prisma.clanMessage.deleteMany({
+          where: {
+            id: {
+              in: oldMessages.map((entry) => entry.id),
+            },
+          },
+        });
+      }
+    }
+
+    res.status(201).json({
+      message: {
+        id: createdMessage.id,
+        message: createdMessage.message,
+        createdAt: createdMessage.createdAt,
+        user: createdMessage.user,
+      },
+    });
+  } catch (error) {
+    console.error('Create clan chat message error:', error);
+    res.status(500).json({ error: 'Failed to create clan chat message' });
   }
 });
 

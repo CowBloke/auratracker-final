@@ -33,6 +33,7 @@ import questsRoutes from './routes/quests.js';
 import solitaireRoutes from './routes/solitaire.js';
 import giftsRoutes from './routes/gifts.js';
 import notificationsRoutes from './routes/notifications.js';
+import clashRoutes from './routes/clash.js';
 
 // Socket handlers
 import { setupChatHandlers, startOnlineCountBroadcast, startOnlineSnapshotRecording } from './socket/chat.js';
@@ -97,6 +98,7 @@ app.use('/api/quests', questsRoutes);
 app.use('/api/solitaire', solitaireRoutes);
 app.use('/api/gifts', giftsRoutes);
 app.use('/api/notifications', notificationsRoutes);
+app.use('/api/clash', clashRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -119,6 +119,16 @@ interface PartySelectedGame {
   selectedAt: number;
 }
 
+interface PartyChatMessage {
+  id: string;
+  partyId: string;
+  userId: string;
+  username: string;
+  usernameColor?: string | null;
+  message: string;
+  timestamp: string;
+}
+
 interface BombPartyPlayer {
   userId: string;
   username: string;
@@ -491,6 +501,8 @@ interface SocketContextType {
   partySelectedGame: PartySelectedGame | null;
   suggestPartyGame: (gameId: string, gameName: string) => void;
   selectPartyGame: (gameId: string, gameName: string) => void;
+  partyMessages: PartyChatMessage[];
+  sendPartyMessage: (message: string) => void;
   // Balance updates
   balanceUpdate: { userId: string; aura: number; money: number } | null;
   // Bomb Party
@@ -582,6 +594,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [partyGameSuggestions, setPartyGameSuggestions] = useState<PartyGameSuggestion[]>([]);
   const [partySelectedGame, setPartySelectedGame] = useState<PartySelectedGame | null>(null);
   const [pendingJoinRedirectPartyId, setPendingJoinRedirectPartyId] = useState<string | null>(null);
+  const [partyMessages, setPartyMessages] = useState<PartyChatMessage[]>([]);
   
   // Balance update state
   const [balanceUpdate, setBalanceUpdate] = useState<{ userId: string; aura: number; money: number } | null>(null);
@@ -753,6 +766,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       s.on('party:created', (data: { party: Party; members: PartyMember[] }) => {
         setCurrentParty(data.party);
         setPartyMembers(data.members);
+        setPartyMessages([]);
         setBombPartyPlayAgainPrompt(null);
         setPendingJoinRequests([]);
         setPartyGameSuggestions([]);
@@ -767,6 +781,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       s.on('party:joined', (data: { party: Party; members: PartyMember[] }) => {
         setCurrentParty(data.party);
         setPartyMembers(data.members);
+        setPartyMessages([]);
         setBombPartyPlayAgainPrompt(null);
         setPartyInvites((prev) => prev.filter((invite) => invite.partyId !== data.party.id));
         setPendingJoinRequests([]);
@@ -790,6 +805,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       s.on('party:restored', (data: { party: Party; members: PartyMember[] }) => {
         setCurrentParty(data.party);
         setPartyMembers(data.members);
+        setPartyMessages([]);
         setBombPartyPlayAgainPrompt((prev) =>
           prev && prev.partyId === data.party.id ? prev : null
         );
@@ -816,6 +832,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       s.on('party:disbanded', () => {
         setCurrentParty(null);
         setPartyMembers([]);
+        setPartyMessages([]);
         setBombPartyPlayAgainPrompt(null);
         setPartyJoinRequests([]);
         setPendingJoinRequests([]);
@@ -831,6 +848,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       s.on('party:left', () => {
         setCurrentParty(null);
         setPartyMembers([]);
+        setPartyMessages([]);
         setBombPartyPlayAgainPrompt(null);
         setPartyJoinRequests([]);
         setPendingJoinRequests([]);
@@ -846,6 +864,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       s.on('party:kicked', () => {
         setCurrentParty(null);
         setPartyMembers([]);
+        setPartyMessages([]);
         setBombPartyPlayAgainPrompt(null);
         setPartyJoinRequests([]);
         setPendingJoinRequests([]);
@@ -856,6 +875,16 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setPokerPlayAgainPrompt(null);
         setPokerGameOver(null);
         partyEvents.list();
+      });
+
+      s.on('party:not-in-party', () => {
+        setCurrentParty(null);
+        setPartyMembers([]);
+        setPartyMessages([]);
+        setPartyJoinRequests([]);
+        setPendingJoinRequests([]);
+        setPartyGameSuggestions([]);
+        setPartySelectedGame(null);
       });
 
       s.on('party:invite', (invite: PartyInvite) => {
@@ -916,6 +945,25 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       s.on('party:game-state', (data: { selectedGame: PartySelectedGame | null; suggestions: PartyGameSuggestion[] }) => {
         setPartySelectedGame(data.selectedGame);
         setPartyGameSuggestions(data.suggestions);
+      });
+
+      s.on('party:chat-history', (data: { partyId: string; messages: PartyChatMessage[] }) => {
+        setPartyMessages(data.messages);
+      });
+
+      s.on('party:chat-message', (message: PartyChatMessage) => {
+        setPartyMessages((prev) => {
+          if (prev.some((entry) => entry.id === message.id)) {
+            return prev;
+          }
+          return [...prev, message];
+        });
+      });
+
+      s.on('party:chat-error', (data: { message: string }) => {
+        import('sonner').then(({ toast }) => {
+          toast.error(data.message);
+        });
       });
 
       s.on('party:error', () => {
@@ -1563,6 +1611,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const sendPartyMessage = (message: string) => {
+    if (user && currentParty) {
+      partyEvents.sendChatMessage(message);
+    }
+  };
+
   // Bomb Party actions
   const startBombParty = (lives: number, difficulty: 'easy' | 'medium' | 'hard') => {
     if (user && currentParty) {
@@ -1973,6 +2027,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         partySelectedGame,
         suggestPartyGame,
         selectPartyGame,
+        partyMessages,
+        sendPartyMessage,
         balanceUpdate,
         bombPartyGame,
         bombPartyGameOver,
@@ -2042,4 +2098,3 @@ export function useSocket() {
   }
   return context;
 }
-

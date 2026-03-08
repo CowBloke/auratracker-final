@@ -5,10 +5,9 @@ import { PageHeader, PageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
-import { Brain, RefreshCcw, Sparkles, Trophy } from 'lucide-react';
+import { Brain, Eraser, RefreshCcw, Sparkles, Target, Trophy } from 'lucide-react';
 
 type LeaderboardEntry = {
   id: string;
@@ -19,273 +18,54 @@ type LeaderboardEntry = {
   };
 };
 
-type PuzzleType = 'sequence' | 'odd-one-out' | 'anagram' | 'analogy' | 'equation' | 'sudoku';
+type Difficulty = 'easy' | 'medium' | 'hard' | 'expert';
+type Grid = number[][];
+type CellPosition = { row: number; column: number };
 
-type BasePuzzle = {
-  id: string;
-  type: PuzzleType;
-  title: string;
-  prompt: string;
-  explanation: string;
-  sourceNote: string;
+type DifficultyConfig = {
+  label: string;
+  description: string;
+  blanks: number;
+  scoreMultiplier: number;
 };
 
-type TextPuzzle = BasePuzzle & {
-  type: 'sequence' | 'anagram' | 'equation';
-  answer: string;
-  placeholder: string;
+type GeneratedPuzzle = {
+  puzzle: Grid;
+  solution: Grid;
 };
 
-type ChoicePuzzle = BasePuzzle & {
-  type: 'odd-one-out' | 'analogy';
-  options: string[];
-  answer: string;
+const GRID_SIZE = 9;
+const BOX_SIZE = 3;
+
+const difficultyConfig: Record<Difficulty, DifficultyConfig> = {
+  easy: {
+    label: 'Facile',
+    description: 'Plus d indices, parfait pour jouer vite.',
+    blanks: 38,
+    scoreMultiplier: 1,
+  },
+  medium: {
+    label: 'Moyen',
+    description: 'Equilibre entre deduction et rythme.',
+    blanks: 46,
+    scoreMultiplier: 1.35,
+  },
+  hard: {
+    label: 'Difficile',
+    description: 'Moins d indices, plus de contraintes.',
+    blanks: 52,
+    scoreMultiplier: 1.75,
+  },
+  expert: {
+    label: 'Expert',
+    description: 'Grilles denses a resoudre proprement.',
+    blanks: 58,
+    scoreMultiplier: 2.2,
+  },
 };
 
-type SudokuPuzzle = BasePuzzle & {
-  type: 'sudoku';
-  givens: number[][];
-  solution: number[][];
-};
-
-type Puzzle = TextPuzzle | ChoicePuzzle | SudokuPuzzle;
-
-type SessionState = {
-  puzzles: Puzzle[];
-  score: number;
-  solved: number;
-};
-
-const sequencePuzzles: TextPuzzle[] = [
-  {
-    id: 'seq-1',
-    type: 'sequence',
-    title: 'Suite logique',
-    prompt: '2, 6, 12, 20, 30, ?',
-    answer: '42',
-    placeholder: 'Nombre manquant',
-    explanation: 'On ajoute des nombres pairs croissants: +4, +6, +8, +10, puis +12.',
-    sourceNote: 'Inspiré des exercices de complétion de suites logiques.',
-  },
-  {
-    id: 'seq-2',
-    type: 'sequence',
-    title: 'Suite logique',
-    prompt: '3, 9, 18, 30, 45, ?',
-    answer: '63',
-    placeholder: 'Nombre manquant',
-    explanation: 'Les écarts sont +6, +9, +12, +15, puis +18.',
-    sourceNote: 'Inspiré des séries numériques classiques.',
-  },
-  {
-    id: 'seq-3',
-    type: 'sequence',
-    title: 'Suite logique',
-    prompt: '1, 4, 9, 16, 25, ?',
-    answer: '36',
-    placeholder: 'Nombre manquant',
-    explanation: 'Ce sont les carrés parfaits: 1², 2², 3², 4², 5², 6².',
-    sourceNote: 'Inspiré des suites mathématiques des puzzles de logique.',
-  },
-];
-
-const oddOneOutPuzzles: ChoicePuzzle[] = [
-  {
-    id: 'odd-1',
-    type: 'odd-one-out',
-    title: 'Mot intrus',
-    prompt: 'Quel mot n’appartient pas au même groupe ?',
-    options: ['Triangle', 'Carré', 'Cercle', 'Roman'],
-    answer: 'Roman',
-    explanation: 'Les trois premiers sont des formes géométriques, pas “Roman”.',
-    sourceNote: 'Inspiré des jeux d’intrus sémantiques.',
-  },
-  {
-    id: 'odd-2',
-    type: 'odd-one-out',
-    title: 'Mot intrus',
-    prompt: 'Trouve l’intrus parmi ces éléments.',
-    options: ['Lundi', 'Mercredi', 'Samedi', 'Mars'],
-    answer: 'Mars',
-    explanation: 'Trois réponses sont des jours de la semaine, “Mars” est un mois.',
-    sourceNote: 'Inspiré des quiz de catégorisation logique.',
-  },
-  {
-    id: 'odd-3',
-    type: 'odd-one-out',
-    title: 'Mot intrus',
-    prompt: 'Quel élément casse la logique du groupe ?',
-    options: ['Tulipe', 'Rose', 'Lys', 'Chêne'],
-    answer: 'Chêne',
-    explanation: 'Tulipe, rose et lys sont des fleurs; le chêne est un arbre.',
-    sourceNote: 'Inspiré des jeux d’association et de classification.',
-  },
-];
-
-const anagramPuzzles: TextPuzzle[] = [
-  {
-    id: 'ana-1',
-    type: 'anagram',
-    title: 'Anagramme',
-    prompt: 'Remets ces lettres dans l’ordre pour former un mot: M I R O R',
-    answer: 'MIROIR',
-    placeholder: 'Mot reconstitué',
-    explanation: 'Les lettres forment le mot “MIROIR”.',
-    sourceNote: 'Inspiré des jeux de mots et d’anagrammes.',
-  },
-  {
-    id: 'ana-2',
-    type: 'anagram',
-    title: 'Anagramme',
-    prompt: 'Remets ces lettres dans l’ordre pour former un métier: N I E G É N U R',
-    answer: 'INGENIEUR',
-    placeholder: 'Mot reconstitué',
-    explanation: 'Les lettres donnent “INGENIEUR”.',
-    sourceNote: 'Inspiré des anagrammes de vocabulaire.',
-  },
-  {
-    id: 'ana-3',
-    type: 'anagram',
-    title: 'Anagramme',
-    prompt: 'Remets ces lettres dans l’ordre pour former un objet: R A V I E L',
-    answer: 'LIVRE',
-    placeholder: 'Mot reconstitué',
-    explanation: 'Les lettres se réorganisent en “LIVRE”.',
-    sourceNote: 'Inspiré des mini-jeux de réarrangement de lettres.',
-  },
-];
-
-const analogyPuzzles: ChoicePuzzle[] = [
-  {
-    id: 'ana-log-1',
-    type: 'analogy',
-    title: 'Analogie',
-    prompt: 'Main est à gant ce que pied est à...',
-    options: ['Chaise', 'Chaussette', 'Chaussure', 'Casque'],
-    answer: 'Chaussure',
-    explanation: 'Le gant couvre la main, la chaussure couvre le pied.',
-    sourceNote: 'Inspiré des analogies verbales.',
-  },
-  {
-    id: 'ana-log-2',
-    type: 'analogy',
-    title: 'Analogie',
-    prompt: 'Poisson est à eau ce qu’oiseau est à...',
-    options: ['Arbre', 'Air', 'Graine', 'Plume'],
-    answer: 'Air',
-    explanation: 'Chaque être est associé à son milieu de déplacement naturel.',
-    sourceNote: 'Inspiré des jeux d’analogie logique.',
-  },
-  {
-    id: 'ana-log-3',
-    type: 'analogy',
-    title: 'Analogie',
-    prompt: 'Livre est à lire ce que musique est à...',
-    options: ['Danser', 'Écouter', 'Peindre', 'Dormir'],
-    answer: 'Écouter',
-    explanation: 'La relation porte sur l’action principale liée à l’objet.',
-    sourceNote: 'Inspiré des raisonnements verbaux rapides.',
-  },
-];
-
-const equationPuzzles: TextPuzzle[] = [
-  {
-    id: 'eq-1',
-    type: 'equation',
-    title: 'Opérateur caché',
-    prompt: 'Si 3 -> 9, 4 -> 16 et 6 -> 36, alors 8 -> ?',
-    answer: '64',
-    placeholder: 'Résultat',
-    explanation: 'Chaque nombre est transformé en son carré.',
-    sourceNote: 'Inspiré des puzzles à règle cachée.',
-  },
-  {
-    id: 'eq-2',
-    type: 'equation',
-    title: 'Opérateur caché',
-    prompt: 'Si A=1, B=2, C=3, alors CAB = ?',
-    answer: '312',
-    placeholder: 'Résultat',
-    explanation: 'On remplace chaque lettre par sa position alphabétique.',
-    sourceNote: 'Inspiré des codes alphanumériques.',
-  },
-  {
-    id: 'eq-3',
-    type: 'equation',
-    title: 'Opérateur caché',
-    prompt: '2 + 3 = 10, 4 + 5 = 18, 6 + 7 = 26, alors 8 + 9 = ?',
-    answer: '34',
-    placeholder: 'Résultat',
-    explanation: 'La règle cachée est a + b + a + b, soit 2(a + b).',
-    sourceNote: 'Inspiré des fausses équations de logique.',
-  },
-];
-
-const sudokuPuzzles: SudokuPuzzle[] = [
-  {
-    id: 'sdk-1',
-    type: 'sudoku',
-    title: 'Mini Sudoku 4x4',
-    prompt: 'Complète la grille: chaque ligne, colonne et bloc 2x2 doit contenir 1 à 4.',
-    givens: [
-      [1, 0, 0, 4],
-      [0, 4, 1, 0],
-      [2, 0, 4, 3],
-      [0, 3, 0, 1],
-    ],
-    solution: [
-      [1, 2, 3, 4],
-      [3, 4, 1, 2],
-      [2, 1, 4, 3],
-      [4, 3, 2, 1],
-    ],
-    explanation: 'La solution respecte les lignes, colonnes et sous-grilles 2x2.',
-    sourceNote: 'Inspiré du format Sudoku, popularisé dans la presse et sur le web.',
-  },
-  {
-    id: 'sdk-2',
-    type: 'sudoku',
-    title: 'Mini Sudoku 4x4',
-    prompt: 'Complète la grille: chaque ligne, colonne et bloc 2x2 doit contenir 1 à 4.',
-    givens: [
-      [0, 2, 0, 4],
-      [4, 0, 2, 0],
-      [0, 1, 0, 3],
-      [3, 0, 1, 0],
-    ],
-    solution: [
-      [1, 2, 3, 4],
-      [4, 3, 2, 1],
-      [2, 1, 4, 3],
-      [3, 4, 1, 2],
-    ],
-    explanation: 'Chaque chiffre 1-4 apparaît exactement une fois par zone.',
-    sourceNote: 'Inspiré des variantes de mini-sudoku.',
-  },
-  {
-    id: 'sdk-3',
-    type: 'sudoku',
-    title: 'Mini Sudoku 4x4',
-    prompt: 'Complète la grille: chaque ligne, colonne et bloc 2x2 doit contenir 1 à 4.',
-    givens: [
-      [0, 0, 2, 1],
-      [2, 1, 0, 0],
-      [0, 0, 1, 2],
-      [1, 2, 0, 0],
-    ],
-    solution: [
-      [4, 3, 2, 1],
-      [2, 1, 4, 3],
-      [3, 4, 1, 2],
-      [1, 2, 3, 4],
-    ],
-    explanation: 'On combine exclusion par ligne, colonne et bloc.',
-    sourceNote: 'Inspiré des grilles Sudoku compactes.',
-  },
-];
-
-function pickRandom<T>(items: T[]) {
-  return items[Math.floor(Math.random() * items.length)];
+function cloneGrid(grid: Grid) {
+  return grid.map((row) => [...row]);
 }
 
 function shuffle<T>(items: T[]) {
@@ -297,52 +77,210 @@ function shuffle<T>(items: T[]) {
   return clone;
 }
 
-function normalizeAnswer(value: string) {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-zA-Z0-9]/g, '')
-    .toUpperCase();
+function range(size: number) {
+  return Array.from({ length: size }, (_, index) => index);
 }
 
-function createSudokuDraft(puzzle: SudokuPuzzle) {
-  return puzzle.givens.map((row) => row.map((value) => (value === 0 ? '' : String(value))));
+function generateSolvedGrid() {
+  const rows = shuffle(range(BOX_SIZE)).flatMap((group) =>
+    shuffle(range(BOX_SIZE)).map((row) => group * BOX_SIZE + row)
+  );
+  const columns = shuffle(range(BOX_SIZE)).flatMap((group) =>
+    shuffle(range(BOX_SIZE)).map((column) => group * BOX_SIZE + column)
+  );
+  const digits = shuffle(range(GRID_SIZE).map((value) => value + 1));
+
+  return rows.map((row) =>
+    columns.map((column) => digits[(BOX_SIZE * (row % BOX_SIZE) + Math.floor(row / BOX_SIZE) + column) % GRID_SIZE])
+  );
 }
 
-function buildSession(): SessionState {
+function isPlacementValid(grid: Grid, row: number, column: number, value: number) {
+  for (let index = 0; index < GRID_SIZE; index += 1) {
+    if (index !== column && grid[row][index] === value) {
+      return false;
+    }
+    if (index !== row && grid[index][column] === value) {
+      return false;
+    }
+  }
+
+  const boxRow = Math.floor(row / BOX_SIZE) * BOX_SIZE;
+  const boxColumn = Math.floor(column / BOX_SIZE) * BOX_SIZE;
+
+  for (let currentRow = boxRow; currentRow < boxRow + BOX_SIZE; currentRow += 1) {
+    for (let currentColumn = boxColumn; currentColumn < boxColumn + BOX_SIZE; currentColumn += 1) {
+      if ((currentRow !== row || currentColumn !== column) && grid[currentRow][currentColumn] === value) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+function findBestEmptyCell(grid: Grid) {
+  let bestCell: CellPosition | null = null;
+  let bestCandidates: number[] | null = null;
+
+  for (let row = 0; row < GRID_SIZE; row += 1) {
+    for (let column = 0; column < GRID_SIZE; column += 1) {
+      if (grid[row][column] !== 0) {
+        continue;
+      }
+
+      const candidates = range(GRID_SIZE)
+        .map((value) => value + 1)
+        .filter((value) => isPlacementValid(grid, row, column, value));
+
+      if (candidates.length === 0) {
+        return { row, column, candidates };
+      }
+
+      if (!bestCandidates || candidates.length < bestCandidates.length) {
+        bestCell = { row, column };
+        bestCandidates = candidates;
+      }
+    }
+  }
+
+  if (!bestCell || !bestCandidates) {
+    return null;
+  }
+
+  return { ...bestCell, candidates: bestCandidates };
+}
+
+function countSolutions(grid: Grid, limit = 2): number {
+  const nextCell = findBestEmptyCell(grid);
+  if (!nextCell) {
+    return 1;
+  }
+
+  if (nextCell.candidates.length === 0) {
+    return 0;
+  }
+
+  let solutions = 0;
+
+  for (const candidate of shuffle(nextCell.candidates)) {
+    grid[nextCell.row][nextCell.column] = candidate;
+    solutions += countSolutions(grid, limit - solutions);
+    if (solutions >= limit) {
+      break;
+    }
+  }
+
+  grid[nextCell.row][nextCell.column] = 0;
+  return solutions;
+}
+
+function carvePuzzle(solution: Grid, blanks: number) {
+  const puzzle = cloneGrid(solution);
+  const positions = shuffle(
+    range(GRID_SIZE).flatMap((row) => range(GRID_SIZE).map((column) => ({ row, column })))
+  );
+
+  let removed = 0;
+
+  for (const position of positions) {
+    if (removed >= blanks) {
+      break;
+    }
+
+    const previousValue = puzzle[position.row][position.column];
+    puzzle[position.row][position.column] = 0;
+
+    const hasUniqueSolution = countSolutions(cloneGrid(puzzle), 2) === 1;
+    if (!hasUniqueSolution) {
+      puzzle[position.row][position.column] = previousValue;
+      continue;
+    }
+
+    removed += 1;
+  }
+
+  return puzzle;
+}
+
+function generatePuzzle(difficulty: Difficulty): GeneratedPuzzle {
+  const solution = generateSolvedGrid();
+  const puzzle = carvePuzzle(solution, difficultyConfig[difficulty].blanks);
+  return { puzzle, solution };
+}
+
+function countFilledCells(grid: Grid) {
+  return grid.reduce((total, row) => total + row.filter((value) => value !== 0).length, 0);
+}
+
+function isSolved(grid: Grid, solution: Grid) {
+  return grid.every((row, rowIndex) => row.every((value, columnIndex) => value === solution[rowIndex][columnIndex]));
+}
+
+function hasConflict(grid: Grid, row: number, column: number) {
+  const value = grid[row][column];
+  if (value === 0) {
+    return false;
+  }
+
+  return !isPlacementValid(grid, row, column, value);
+}
+
+function getCompletionScore(difficulty: Difficulty, elapsedSeconds: number, hintsUsed: number, mistakesFound: number) {
+  const base = 1000 * difficultyConfig[difficulty].scoreMultiplier;
+  const timePenalty = elapsedSeconds * 2.2;
+  const hintPenalty = hintsUsed * 120;
+  const mistakePenalty = mistakesFound * 35;
+  return Math.max(150, Math.round(base - timePenalty - hintPenalty - mistakePenalty));
+}
+
+function formatDuration(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+function getCellBorderStyle(row: number, column: number) {
   return {
-    puzzles: shuffle<Puzzle>([
-      pickRandom(sequencePuzzles),
-      pickRandom(oddOneOutPuzzles),
-      pickRandom(anagramPuzzles),
-      pickRandom(analogyPuzzles),
-      pickRandom(equationPuzzles),
-      pickRandom(sudokuPuzzles),
-    ]),
-    score: 0,
-    solved: 0,
+    borderTopWidth: row === 0 ? '0px' : row % BOX_SIZE === 0 ? '2.5px' : '1px',
+    borderLeftWidth: column === 0 ? '0px' : column % BOX_SIZE === 0 ? '2.5px' : '1px',
+    borderRightWidth: column === GRID_SIZE - 1 ? '0px' : '0px',
+    borderBottomWidth: row === GRID_SIZE - 1 ? '0px' : '0px',
+  };
+}
+
+function createInitialSudokuState() {
+  const generated = generatePuzzle('medium');
+  return {
+    initialGrid: cloneGrid(generated.puzzle),
+    solutionGrid: cloneGrid(generated.solution),
+    draftGrid: cloneGrid(generated.puzzle),
   };
 }
 
 export default function LogicLab() {
   const { user, refreshUser } = useAuth();
   const submitLockRef = useRef(false);
+  const [startingState] = useState(createInitialSudokuState);
 
-  const [session, setSession] = useState<SessionState>(buildSession);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [difficulty, setDifficulty] = useState<Difficulty>('medium');
+  const [initialGrid, setInitialGrid] = useState<Grid>(() => startingState.initialGrid);
+  const [solutionGrid, setSolutionGrid] = useState<Grid>(() => startingState.solutionGrid);
+  const [draftGrid, setDraftGrid] = useState<Grid>(() => startingState.draftGrid);
+  const [selectedCell, setSelectedCell] = useState<CellPosition>({ row: 0, column: 0 });
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [highScore, setHighScore] = useState(0);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [textAnswer, setTextAnswer] = useState('');
-  const [selectedAnswer, setSelectedAnswer] = useState('');
-  const [sudokuDraft, setSudokuDraft] = useState<string[][]>(Array.from({ length: 4 }, () => Array(4).fill('')));
-  const [revealed, setRevealed] = useState(false);
-  const [lastWasCorrect, setLastWasCorrect] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [hintsUsed, setHintsUsed] = useState(0);
+  const [mistakesFound, setMistakesFound] = useState(0);
+  const [showConflicts, setShowConflicts] = useState(false);
+  const [completed, setCompleted] = useState(false);
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
 
-  const currentPuzzle = session.puzzles[currentIndex];
-  const progressValue = ((currentIndex + (revealed ? 1 : 0)) / session.puzzles.length) * 100;
+  const filledCells = countFilledCells(draftGrid);
+  const progressValue = (filledCells / (GRID_SIZE * GRID_SIZE)) * 100;
+  const currentScore = completed ? getCompletionScore(difficulty, elapsedSeconds, hintsUsed, mistakesFound) : 0;
 
   useEffect(() => {
     if (!user) {
@@ -358,68 +296,157 @@ export default function LogicLab() {
         setHighScore(statsResponse.data.stats.highScore || 0);
         setLeaderboard(leaderboardResponse.data.rankings || []);
       } catch (error) {
-        console.error('Failed to fetch logic lab data:', error);
+        console.error('Failed to fetch sudoku data:', error);
       }
     };
 
-    fetchStats();
+    void fetchStats();
   }, [user]);
 
   useEffect(() => {
-    if (currentPuzzle?.type === 'sudoku') {
-      setSudokuDraft(createSudokuDraft(currentPuzzle));
-      setTextAnswer('');
-      setSelectedAnswer('');
+    const interval = window.setInterval(() => {
+      setElapsedSeconds((previous) => (completed ? previous : previous + 1));
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [completed]);
+
+  const generateNewPuzzle = (nextDifficulty: Difficulty = difficulty) => {
+    submitLockRef.current = false;
+    const generated = generatePuzzle(nextDifficulty);
+    setDifficulty(nextDifficulty);
+    setInitialGrid(cloneGrid(generated.puzzle));
+    setSolutionGrid(cloneGrid(generated.solution));
+    setDraftGrid(cloneGrid(generated.puzzle));
+    setSelectedCell({ row: 0, column: 0 });
+    setElapsedSeconds(0);
+    setHintsUsed(0);
+    setMistakesFound(0);
+    setShowConflicts(false);
+    setCompleted(false);
+    setRewards(null);
+    setIsNewHighScore(false);
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key.startsWith('Arrow')) {
+        event.preventDefault();
+        setSelectedCell((previous) => {
+          if (event.key === 'ArrowUp') {
+            return { row: Math.max(0, previous.row - 1), column: previous.column };
+          }
+          if (event.key === 'ArrowDown') {
+            return { row: Math.min(GRID_SIZE - 1, previous.row + 1), column: previous.column };
+          }
+          if (event.key === 'ArrowLeft') {
+            return { row: previous.row, column: Math.max(0, previous.column - 1) };
+          }
+          return { row: previous.row, column: Math.min(GRID_SIZE - 1, previous.column + 1) };
+        });
+        return;
+      }
+
+      if (/^[1-9]$/.test(event.key)) {
+        event.preventDefault();
+        const value = Number(event.key);
+        setDraftGrid((previous) =>
+          previous.map((row, rowIndex) =>
+            row.map((cell, columnIndex) => {
+              if (rowIndex !== selectedCell.row || columnIndex !== selectedCell.column) {
+                return cell;
+              }
+              if (initialGrid[rowIndex][columnIndex] !== 0 || completed) {
+                return cell;
+              }
+              return value;
+            })
+          )
+        );
+        return;
+      }
+
+      if (event.key === 'Backspace' || event.key === 'Delete' || event.key === '0') {
+        event.preventDefault();
+        setDraftGrid((previous) =>
+          previous.map((row, rowIndex) =>
+            row.map((cell, columnIndex) => {
+              if (rowIndex !== selectedCell.row || columnIndex !== selectedCell.column) {
+                return cell;
+              }
+              if (initialGrid[rowIndex][columnIndex] !== 0 || completed) {
+                return cell;
+              }
+              return 0;
+            })
+          )
+        );
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [completed, initialGrid, selectedCell]);
+
+  const updateCell = (value: number) => {
+    setDraftGrid((previous) =>
+      previous.map((row, rowIndex) =>
+        row.map((cell, columnIndex) => {
+          if (rowIndex !== selectedCell.row || columnIndex !== selectedCell.column) {
+            return cell;
+          }
+          if (initialGrid[rowIndex][columnIndex] !== 0 || completed) {
+            return cell;
+          }
+          return value;
+        })
+      )
+    );
+  };
+
+  const validateGrid = () => {
+    let nextMistakes = 0;
+    for (let row = 0; row < GRID_SIZE; row += 1) {
+      for (let column = 0; column < GRID_SIZE; column += 1) {
+        if (draftGrid[row][column] !== 0 && draftGrid[row][column] !== solutionGrid[row][column]) {
+          nextMistakes += 1;
+        }
+      }
+    }
+    setShowConflicts(true);
+    setMistakesFound(nextMistakes);
+  };
+
+  const useHint = () => {
+    if (completed) {
       return;
     }
 
-    setTextAnswer('');
-    setSelectedAnswer('');
-  }, [currentPuzzle]);
+    const empties = range(GRID_SIZE).flatMap((row) =>
+      range(GRID_SIZE)
+        .filter((column) => draftGrid[row][column] !== solutionGrid[row][column])
+        .map((column) => ({ row, column }))
+    );
 
-  const resetSession = () => {
-    submitLockRef.current = false;
-    setSession(buildSession());
-    setCurrentIndex(0);
-    setRevealed(false);
-    setLastWasCorrect(false);
-    setSubmitted(false);
-    setRewards(null);
-    setIsNewHighScore(false);
-    setTextAnswer('');
-    setSelectedAnswer('');
-  };
-
-  const getCurrentAnswerState = () => {
-    if (!currentPuzzle) {
-      return false;
+    if (empties.length === 0) {
+      return;
     }
 
-    if (currentPuzzle.type === 'sudoku') {
-      return currentPuzzle.solution.every((row, rowIndex) =>
-        row.every((value, columnIndex) => sudokuDraft[rowIndex]?.[columnIndex] === String(value))
-      );
-    }
-
-    if (currentPuzzle.type === 'odd-one-out' || currentPuzzle.type === 'analogy') {
-      return selectedAnswer === currentPuzzle.answer;
-    }
-
-    return normalizeAnswer(textAnswer) === normalizeAnswer(currentPuzzle.answer);
+    const hintCell = empties[Math.floor(Math.random() * empties.length)];
+    setDraftGrid((previous) =>
+      previous.map((row, rowIndex) =>
+        row.map((cell, columnIndex) =>
+          rowIndex === hintCell.row && columnIndex === hintCell.column
+            ? solutionGrid[rowIndex][columnIndex]
+            : cell
+        )
+      )
+    );
+    setSelectedCell(hintCell);
+    setHintsUsed((previous) => previous + 1);
   };
 
-  const handleSubmitRound = () => {
-    const isCorrect = getCurrentAnswerState();
-    setLastWasCorrect(isCorrect);
-    setRevealed(true);
-    setSession((previous) => ({
-      ...previous,
-      score: previous.score + (isCorrect ? 150 : 20),
-      solved: previous.solved + (isCorrect ? 1 : 0),
-    }));
-  };
-
-  const handleFinish = async (finalScore: number, finalSolved: number) => {
+  const submitCompletedPuzzle = async (finalScore: number) => {
     if (!user || submitLockRef.current) {
       return;
     }
@@ -429,10 +456,10 @@ export default function LogicLab() {
     try {
       const response = await gamesApi.complete('logic_lab', {
         score: finalScore,
-        won: finalSolved >= 4,
+        won: true,
+        duration: elapsedSeconds,
       });
 
-      setSubmitted(true);
       setRewards({
         aura: response.data.auraReward,
         money: response.data.moneyReward,
@@ -448,179 +475,167 @@ export default function LogicLab() {
       const leaderboardResponse = await gamesApi.getLeaderboard('logic_lab', 20);
       setLeaderboard(leaderboardResponse.data.rankings || []);
     } catch (error) {
-      console.error('Failed to submit logic lab score:', error);
+      console.error('Failed to submit sudoku score:', error);
     }
   };
 
-  const handleNextRound = () => {
-    const isLastRound = currentIndex >= session.puzzles.length - 1;
-    if (isLastRound) {
-      void handleFinish(session.score, session.solved);
-      return;
+  useEffect(() => {
+    if (!completed && isSolved(draftGrid, solutionGrid)) {
+      const finalScore = getCompletionScore(difficulty, elapsedSeconds, hintsUsed, mistakesFound);
+      setCompleted(true);
+      void submitCompletedPuzzle(finalScore);
     }
-
-    setCurrentIndex((previous) => previous + 1);
-    setRevealed(false);
-    setLastWasCorrect(false);
-  };
-
-  const updateSudokuCell = (rowIndex: number, columnIndex: number, value: string) => {
-    if (currentPuzzle?.type !== 'sudoku' || currentPuzzle.givens[rowIndex][columnIndex] !== 0) {
-      return;
-    }
-
-    const nextValue = value.replace(/[^1-4]/g, '').slice(-1);
-    setSudokuDraft((previous) =>
-      previous.map((row, currentRow) =>
-        row.map((cell, currentColumn) =>
-          currentRow === rowIndex && currentColumn === columnIndex ? nextValue : cell
-        )
-      )
-    );
-  };
-
-  const renderPuzzle = () => {
-    if (!currentPuzzle) {
-      return null;
-    }
-
-    if (currentPuzzle.type === 'odd-one-out' || currentPuzzle.type === 'analogy') {
-      return (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {currentPuzzle.options.map((option) => (
-            <button
-              key={option}
-              type="button"
-              onClick={() => setSelectedAnswer(option)}
-              disabled={revealed}
-              className={cn(
-                'rounded-xl border px-4 py-4 text-left transition',
-                selectedAnswer === option
-                  ? 'border-emerald-500 bg-emerald-500/10'
-                  : 'border-border/70 bg-background hover:border-foreground/30',
-                revealed && option === currentPuzzle.answer && 'border-emerald-500 bg-emerald-500/10'
-              )}
-            >
-              {option}
-            </button>
-          ))}
-        </div>
-      );
-    }
-
-    if (currentPuzzle.type === 'sudoku') {
-      return (
-        <div className="grid gap-2 self-start rounded-2xl border border-border/70 bg-muted/20 p-3">
-          {sudokuDraft.map((row, rowIndex) => (
-            <div key={`row-${rowIndex}`} className="grid grid-cols-4 gap-2">
-              {row.map((cell, columnIndex) => {
-                const isGiven = currentPuzzle.givens[rowIndex][columnIndex] !== 0;
-                const heavyRightBorder = columnIndex === 1 ? 'border-r-2 border-r-foreground/30' : '';
-                const heavyBottomBorder = rowIndex === 1 ? 'border-b-2 border-b-foreground/30' : '';
-
-                return (
-                  <div key={`cell-${rowIndex}-${columnIndex}`} className={cn('rounded-xl', heavyRightBorder, heavyBottomBorder)}>
-                    <Input
-                      value={cell}
-                      disabled={isGiven || revealed}
-                      onChange={(event) => updateSudokuCell(rowIndex, columnIndex, event.target.value)}
-                      className={cn(
-                        'h-14 w-14 text-center text-lg font-semibold',
-                        isGiven ? 'bg-foreground/10' : 'bg-background'
-                      )}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-      );
-    }
-
-    const textPuzzle = currentPuzzle as TextPuzzle;
-
-    return (
-      <Input
-        value={textAnswer}
-        onChange={(event) => setTextAnswer(event.target.value)}
-        placeholder={textPuzzle.placeholder}
-        disabled={revealed}
-        className="h-12 max-w-md"
-      />
-    );
-  };
+  }, [completed, difficulty, draftGrid, elapsedSeconds, hintsUsed, mistakesFound, solutionGrid]);
 
   return (
     <PageShell size="wide">
       <PageHeader
-        title="Logic Lab"
-        description="Un nouveau hub de jeux de logique: suites, intrus, anagrammes, analogies, règles cachées et mini-sudoku dans une même session compétitive."
+        title="Sudoku"
+        description="Un vrai Sudoku 9x9 avec generation aleatoire, plusieurs niveaux et un classement base sur tes meilleures resolutions."
         actions={
-          <Button type="button" variant="outline" onClick={resetSession}>
+          <Button type="button" variant="outline" onClick={() => generateNewPuzzle(difficulty)}>
             <RefreshCcw className="mr-2 h-4 w-4" />
-            Nouvelle session
+            Nouvelle grille
           </Button>
         }
       />
 
-      <div className="grid gap-6 xl:grid-cols-[1.6fr_0.9fr]">
+      <div className="grid gap-6 xl:grid-cols-[1.45fr_0.95fr]">
         <Card className="overflow-hidden border-border/60">
-          <div className="border-b border-border/60 bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.18),_transparent_35%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(12,74,110,0.92))] text-white">
+          <div className="border-b border-border/60 bg-[radial-gradient(circle_at_top_left,_rgba(249,115,22,0.22),_transparent_35%),linear-gradient(135deg,rgba(28,25,23,0.98),rgba(120,53,15,0.92))] text-white">
             <CardContent className="space-y-5 p-6">
               <div className="flex flex-wrap items-center gap-3">
                 <Badge variant="secondary" className="border-0 bg-white/12 text-white">
-                  Manche {currentIndex + 1}/{session.puzzles.length}
+                  {difficultyConfig[difficulty].label}
                 </Badge>
                 <Badge variant="secondary" className="border-0 bg-white/12 text-white">
-                  {currentPuzzle?.title}
+                  Temps {formatDuration(elapsedSeconds)}
                 </Badge>
                 <Badge variant="secondary" className="border-0 bg-white/12 text-white">
-                  Score {session.score}
+                  Cases {filledCells}/81
                 </Badge>
               </div>
               <div className="space-y-2">
-                <h2 className="text-2xl font-semibold tracking-tight">{currentPuzzle?.prompt}</h2>
-                <p className="text-sm text-white/80">{currentPuzzle?.sourceNote}</p>
+                <h2 className="text-2xl font-semibold tracking-tight">Remplis chaque ligne, colonne et bloc 3x3 avec les chiffres de 1 a 9.</h2>
+                <p className="text-sm text-white/80">
+                  Les grilles sont generees a la volee avec solution unique, puis scorees selon la difficulte, le temps et l aide utilisee.
+                </p>
               </div>
               <Progress value={progressValue} className="h-2 bg-white/10" />
             </CardContent>
           </div>
 
           <CardContent className="space-y-6 p-6">
-            {renderPuzzle()}
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(difficultyConfig) as Difficulty[]).map((level) => (
+                <Button
+                  key={level}
+                  type="button"
+                  variant={difficulty === level ? 'default' : 'outline'}
+                  onClick={() => generateNewPuzzle(level)}
+                >
+                  {difficultyConfig[level].label}
+                </Button>
+              ))}
+            </div>
 
-            {revealed ? (
-              <div className={cn('rounded-2xl border p-4', lastWasCorrect ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-amber-500/40 bg-amber-500/10')}>
-                <p className="font-medium">
-                  {lastWasCorrect ? 'Bonne réponse.' : 'Réponse incorrecte.'}
-                </p>
-                <p className="mt-2 text-sm text-muted-foreground">{currentPuzzle?.explanation}</p>
+            <div className="mx-auto w-full max-w-[42rem] rounded-[2rem] border border-stone-300 bg-[linear-gradient(180deg,#fdfcf8,#f4efe4)] p-4 shadow-[0_24px_80px_rgba(15,23,42,0.12)] sm:p-6">
+              <div className="mx-auto w-full max-w-[34rem] rounded-sm border-[3px] border-stone-900 bg-white shadow-[0_8px_18px_rgba(0,0,0,0.08)]">
+                <div className="grid grid-cols-9">
+                {draftGrid.map((row, rowIndex) =>
+                  row.map((value, columnIndex) => {
+                    const isGiven = initialGrid[rowIndex][columnIndex] !== 0;
+                    const isSelected = selectedCell.row === rowIndex && selectedCell.column === columnIndex;
+                    const isPeer = selectedCell.row === rowIndex || selectedCell.column === columnIndex ||
+                      (
+                        Math.floor(selectedCell.row / BOX_SIZE) === Math.floor(rowIndex / BOX_SIZE) &&
+                        Math.floor(selectedCell.column / BOX_SIZE) === Math.floor(columnIndex / BOX_SIZE)
+                      );
+                    const isConflict = showConflicts && value !== 0 && hasConflict(draftGrid, rowIndex, columnIndex);
+                    const sameValue = value !== 0 && value === draftGrid[selectedCell.row][selectedCell.column];
+
+                    return (
+                      <button
+                        key={`${rowIndex}-${columnIndex}`}
+                        type="button"
+                        onClick={() => setSelectedCell({ row: rowIndex, column: columnIndex })}
+                        style={getCellBorderStyle(rowIndex, columnIndex)}
+                        className={cn(
+                          'aspect-square min-h-[2.45rem] border-stone-400 text-[1.35rem] leading-none transition sm:min-h-[3.55rem] sm:text-[1.8rem]',
+                          isGiven ? 'bg-stone-100 font-bold text-stone-900' : 'bg-white font-medium text-stone-700 hover:bg-amber-50/70',
+                          isPeer && !isSelected && 'bg-amber-50',
+                          sameValue && 'text-amber-700',
+                          isSelected && 'bg-amber-200/80 text-stone-950 ring-2 ring-inset ring-amber-500',
+                          isConflict && 'bg-red-100 text-red-700',
+                          !isSelected && !isConflict && 'focus-visible:bg-amber-100'
+                        )}
+                      >
+                        {value === 0 ? '' : value}
+                      </button>
+                    );
+                  })
+                )}
+                </div>
               </div>
-            ) : null}
+            </div>
 
-            <div className="flex flex-wrap gap-3">
-              {!revealed ? (
+            <div className="mx-auto grid w-full max-w-[38rem] gap-3">
+              <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
+                {range(9).map((index) => (
+                  <Button key={index + 1} type="button" variant="outline" onClick={() => updateCell(index + 1)}>
+                    {index + 1}
+                  </Button>
+                ))}
+                <Button type="button" variant="outline" onClick={() => updateCell(0)} className="sm:col-span-1">
+                  <Eraser className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <Button type="button" variant="outline" onClick={validateGrid} disabled={completed}>
+                  <Target className="mr-2 h-4 w-4" />
+                  Verifier
+                </Button>
+                <Button type="button" variant="outline" onClick={useHint} disabled={completed}>
+                  <Brain className="mr-2 h-4 w-4" />
+                  Indice
+                </Button>
                 <Button
                   type="button"
-                  onClick={handleSubmitRound}
-                  disabled={
-                    currentPuzzle?.type === 'sudoku'
-                      ? sudokuDraft.some((row) => row.some((value) => value === ''))
-                      : currentPuzzle?.type === 'odd-one-out' || currentPuzzle?.type === 'analogy'
-                        ? !selectedAnswer
-                        : !textAnswer.trim()
-                  }
+                  variant="outline"
+                  onClick={() => {
+                    setDraftGrid(cloneGrid(initialGrid));
+                    setShowConflicts(false);
+                    setMistakesFound(0);
+                    setHintsUsed(0);
+                    setElapsedSeconds(0);
+                    setCompleted(false);
+                    setRewards(null);
+                    submitLockRef.current = false;
+                  }}
                 >
-                  <Brain className="mr-2 h-4 w-4" />
-                  Valider
+                  Recommencer
                 </Button>
-              ) : (
-                <Button type="button" onClick={handleNextRound}>
-                  {currentIndex >= session.puzzles.length - 1 ? 'Terminer la session' : 'Puzzle suivant'}
-                </Button>
-              )}
+              </div>
             </div>
+
+            {completed ? (
+              <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4">
+                <p className="font-medium">Grille resolue.</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Score {currentScore} • temps {formatDuration(elapsedSeconds)} • {hintsUsed} indice{hintsUsed > 1 ? 's' : ''} • {mistakesFound} erreur{mistakesFound > 1 ? 's' : ''}
+                </p>
+                {rewards ? (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Recompenses: +{rewards.money}$ et +{rewards.aura} aura{isNewHighScore ? ' • nouveau record' : ''}.
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground">
+                {difficultyConfig[difficulty].description} Utilise les fleches du clavier pour naviguer, les touches 1 a 9 pour remplir et `Suppr` pour vider.
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -629,36 +644,31 @@ export default function LogicLab() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <Sparkles className="h-4 w-4" />
-                Session
+                Partie
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="grid grid-cols-2 gap-3 text-center">
                 <div className="rounded-xl border border-border/60 p-3">
-                  <p className="text-xs text-muted-foreground">Score</p>
-                  <p className="text-2xl font-semibold">{session.score}</p>
-                </div>
-                <div className="rounded-xl border border-border/60 p-3">
-                  <p className="text-xs text-muted-foreground">Réussis</p>
-                  <p className="text-2xl font-semibold">{session.solved}</p>
+                  <p className="text-xs text-muted-foreground">Difficulte</p>
+                  <p className="text-xl font-semibold">{difficultyConfig[difficulty].label}</p>
                 </div>
                 <div className="rounded-xl border border-border/60 p-3">
                   <p className="text-xs text-muted-foreground">Record</p>
-                  <p className="text-2xl font-semibold">{highScore}</p>
+                  <p className="text-xl font-semibold">{highScore}</p>
+                </div>
+                <div className="rounded-xl border border-border/60 p-3">
+                  <p className="text-xs text-muted-foreground">Indices</p>
+                  <p className="text-xl font-semibold">{hintsUsed}</p>
+                </div>
+                <div className="rounded-xl border border-border/60 p-3">
+                  <p className="text-xs text-muted-foreground">Erreurs</p>
+                  <p className="text-xl font-semibold">{mistakesFound}</p>
                 </div>
               </div>
               <p className="text-sm text-muted-foreground">
-                Les sessions mélangent des genres inspirés de formats populaires comme les suites logiques, les jeux d’intrus, les anagrammes et le Sudoku.
+                Le score final favorise les resolutions propres et rapides. Les grilles sont toutes generees cote client, avec rotation aleatoire et verification d unicite.
               </p>
-              {submitted && rewards ? (
-                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm">
-                  <p className="font-medium">Session enregistrée.</p>
-                  <p className="mt-1 text-muted-foreground">
-                    Récompenses: +{rewards.money}$ et +{rewards.aura} aura
-                    {isNewHighScore ? ' • nouveau record' : ''}.
-                  </p>
-                </div>
-              ) : null}
             </CardContent>
           </Card>
 
@@ -671,7 +681,7 @@ export default function LogicLab() {
             </CardHeader>
             <CardContent className="space-y-3">
               {leaderboard.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Aucun score enregistré pour le moment.</p>
+                <p className="text-sm text-muted-foreground">Aucun score enregistre pour le moment.</p>
               ) : (
                 leaderboard.slice(0, 10).map((entry, index) => (
                   <div key={entry.id} className="flex items-center justify-between rounded-xl border border-border/60 px-3 py-2">

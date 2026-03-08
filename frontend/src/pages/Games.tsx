@@ -56,8 +56,8 @@ const games = [
   {
     id: 'logic-lab',
     pageKey: 'game-logic-lab',
-    name: 'Logic Lab',
-    description: 'Suites logiques, intrus, anagrammes, analogies et mini-sudoku dans une session scoree.',
+    name: 'Sudoku',
+    description: 'Grilles Sudoku generees a la volee, plusieurs niveaux et classement sur tes meilleures resolutions.',
     type: 'Logique',
     image: '/images/games/logiclab.png',
   },
@@ -140,6 +140,14 @@ const games = [
     description: "Construis un empire de goyaves. Récolte, améliore et encaisse des récompenses.",
     type: 'Idle',
     image: '/images/games/goyaveempire.png',
+  },
+  {
+    id: 'clash',
+    pageKey: 'game-clash',
+    name: 'Clash',
+    description: "Base isométrique, défenses à acheter, raids toutes les 24 heures et historique des pillages.",
+    type: 'Stratégie',
+    emoji: '🏰',
   },
   {
     id: 'puissance-quatre',

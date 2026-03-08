@@ -395,8 +395,8 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
       hostSocketId: socket.id,
       mode,
       spectators: existing?.spectators ?? new Set<string>(),
-      latestFrame: existing?.latestFrame ?? null,
-      replayFrames: existing?.replayFrames ?? [],
+      latestFrame: null,
+      replayFrames: [],
     });
     socket.join(getDoodleRoom(hostUserId));
     emitDoodleSpectatorCount(io, hostUserId);
