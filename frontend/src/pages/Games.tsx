@@ -123,7 +123,7 @@ const games = [
     name: 'Knife Hit',
     description: 'Lance au bon moment, evite les lames en place et grimpe de niveau en niveau.',
     type: 'Arcade',
-    image: '/images/games/knifehit.svg',
+    image: '/images/games/knifehit.png',
   },
   {
     id: 'helix-jump',
@@ -166,7 +166,7 @@ const games = [
     description: 'Duel complet avec roque, prise en passant, promotion et mat.',
     type: 'Duel',
     requiresParty: true,
-    image: '/images/games/chess.svg',
+    image: '/images/games/chess.png',
   },
 ];
 

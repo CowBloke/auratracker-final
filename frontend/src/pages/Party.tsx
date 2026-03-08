@@ -67,7 +67,7 @@ const duelGames = [
     name: 'Échecs',
     description: 'Joue une partie complète avec toutes les règles standard.',
     type: 'Duel',
-    image: '/images/games/chess.svg',
+    image: '/images/games/chess.png',
   },
 ];
 
