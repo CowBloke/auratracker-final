@@ -309,30 +309,24 @@ export default function Casino() {
           )}
         </section>
       ) : (
-        <section className="grid gap-3 md:grid-cols-3">
+        <section className="grid grid-cols-1 gap-6 sm:grid-cols-3">
           {gameCards.map((game) => (
             <button
               key={game.id}
               type="button"
               onClick={() => setActiveGame(game.id)}
-              className="block text-left"
+              className="group block text-left"
             >
-              <Card className="h-full overflow-hidden border-border/50 shadow-none transition-colors hover:border-foreground/20">
-                <div className="h-36 w-full overflow-hidden bg-muted">
-                  <img
-                    src={game.image}
-                    alt={game.title}
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-                <CardContent className="flex flex-col justify-between p-5">
-                  <div className="space-y-1">
-                    <h2 className="text-lg font-semibold tracking-tight">{game.title}</h2>
-                    <p className="text-sm text-muted-foreground">{game.subtitle}</p>
-                  </div>
-                  <div className="mt-3 text-sm text-foreground/80">
-                    Ouvrir
-                  </div>
+              <Card className="relative aspect-square overflow-hidden transition hover:border-foreground/40 hover:shadow-md">
+                <img
+                  src={game.image}
+                  alt={game.title}
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+                <CardContent className="relative z-10 flex h-full flex-col justify-end p-5 text-white">
+                  <h2 className="text-lg font-semibold tracking-tight">{game.title}</h2>
+                  <p className="mt-1 text-xs text-white/85">{game.subtitle}</p>
                 </CardContent>
               </Card>
             </button>
