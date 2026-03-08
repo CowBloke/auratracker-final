@@ -97,6 +97,9 @@ export const partyEvents = {
   selectGame: (userId: string, gameId: string, gameName: string) => {
     socket?.emit('party:game-select', { userId, gameId, gameName });
   },
+  sendChatMessage: (message: string) => {
+    socket?.emit('party:chat-message', { message });
+  },
 };
 
 // Game events

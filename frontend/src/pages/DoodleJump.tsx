@@ -236,7 +236,7 @@ export default function DoodleJump() {
   const [purchasedSkins, setPurchasedSkins] = useState<DoodleSkin[]>([]);
   const skinImagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
   const [isMortSubite, setIsMortSubite] = useState(false);
-  const [isMultiplayer, setIsMultiplayer] = useState(false);
+  const [isMultiplayer, setIsMultiplayer] = useState(true);
   const [spectatorCount, setSpectatorCount] = useState(0);
   const [spectatingHost, setSpectatingHost] = useState<{ hostUserId: string; hostUsername: string } | null>(null);
   const [multiplayerRoster, setMultiplayerRoster] = useState<DoodleMultiplayerRosterItem[]>([]);
@@ -518,6 +518,7 @@ export default function DoodleJump() {
     lastBroadcastAtRef.current = 0;
 
     socket?.emit('doodle:spectate-start', { mode: selectedMode });
+    socket?.emit('doodle:spectate-frame', { frame: buildSpectateFrame(performance.now(), false) });
     if (!isMultiplayer) {
       clearMultiplayerRoom();
     } else if (socket && user && multiplayerRoomIdRef.current && !spectatingRef.current) {
@@ -586,7 +587,6 @@ export default function DoodleJump() {
       socket.emit('doodle:spectate-frame', { frame: buildSpectateFrame(performance.now(), true) });
     }
     emitMultiplayerState(true);
-    stopSpectateBroadcast();
 
     try {
       const response = await gamesApi.complete(activeGameTypeRef.current, {
@@ -1332,7 +1332,9 @@ export default function DoodleJump() {
             {spectatingHost && (
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Eye className="h-3 w-3" />
-                <span>Spectate : {spectatingHost.hostUsername}</span>
+                <span>
+                  Spectate : {spectatingHost.hostUsername} · {spectatorCount} spectateur{spectatorCount !== 1 ? 's' : ''}
+                </span>
               </div>
             )}
           </CardContent>

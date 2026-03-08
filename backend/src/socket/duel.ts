@@ -3,6 +3,7 @@ import { prisma } from '../server.js';
 import { startDirectChessGame } from './chess.js';
 import { startDirectBattleshipGame } from './battleship.js';
 import { startDirectP4Game } from './puissancequatre.js';
+import { emitPartyChatHistory } from './party.js';
 
 type DuelGameType = 'chess' | 'battleship' | 'p4';
 
@@ -147,6 +148,7 @@ export const setupDuelHandlers = (socket: Socket, io: Server) => {
 
       // Notify both of the new party
       io.to(partyRoom).emit('party:joined', { party: partyData, members });
+      await emitPartyChatHistory(socket, party.id);
 
       // Start game directly
       const gamePlayers = party.members.map((m) => ({ user: m.user }));
@@ -171,6 +173,10 @@ export const setupDuelHandlers = (socket: Socket, io: Server) => {
         partyId: party.id,
         path: GAME_ROUTES[gameType],
       });
+
+      for (const challengerSocket of challengerSockets) {
+        await emitPartyChatHistory(challengerSocket, party.id);
+      }
     } catch (error) {
       console.error('duel:accept error:', error);
       socket.emit('duel:challenge-error', { message: 'Impossible de démarrer le duel.' });

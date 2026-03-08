@@ -38,6 +38,7 @@ model User {
   receivedTransfers     Transfer[]             @relation("ReceivedTransfers")
   gameStats             GameStats[]
   partyMemberships      PartyMember[]
+  partyMessages         PartyMessage[]
   sentMessages          ChatMessage[]
   chatReactions         ChatReaction[]
   auraCoinTransactions  AuraCoinTransaction[]
@@ -55,6 +56,7 @@ model User {
   ownedClans            Clan[]                 @relation("ClanOwner")
   clanMemberships       ClanMember[]
   clanJoinRequests      ClanJoinRequest[]
+  clanMessages          ClanMessage[]
   declaredClanWars      ClanWar[]               @relation("ClanWarDeclaredBy")
   clanWarAttacks        ClanWarAttack[]
   clanWarFortifications ClanWarFortification[]
@@ -75,6 +77,7 @@ model User {
   notifications       Notification[]
   dailyRacerRuns      DailyRacerRun[]
   goyaveSave          GoyaveSave?
+  clashVillage        ClashVillage?
   clanWarsWon         ClanWar[]                 @relation("ClanWarWinner")
 
   @@index([aura])
@@ -154,6 +157,35 @@ model GoyaveSave {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model ClashVillage {
+  id              String         @id @default(uuid())
+  userId          String         @unique
+  townHallLevel   Int            @default(1)
+  buildingsJson   String         @default("[]")
+  lastAttackAt    DateTime?
+  shieldUntil     DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  history         ClashHistory[]
+}
+
+model ClashHistory {
+  id             String        @id @default(uuid())
+  villageId      String
+  eventType      String
+  title          String
+  detail         String
+  deltaMoney     Int           @default(0)
+  relatedUserId  String?
+  createdAt      DateTime      @default(now())
+
+  village        ClashVillage  @relation(fields: [villageId], references: [id], onDelete: Cascade)
+
+  @@index([villageId, createdAt])
+}
+
 model DailyRacerRun {
   id        String   @id @default(uuid())
   userId    String
@@ -177,7 +209,8 @@ model Party {
   createdAt    DateTime @default(now())
   lastActivity DateTime @default(now())
 
-  members PartyMember[]
+  members       PartyMember[]
+  partyMessages PartyMessage[]
 }
 
 model PartyMember {
@@ -192,6 +225,20 @@ model PartyMember {
 
   @@unique([partyId, userId])
   @@unique([userId]) // User can only be in one party at a time
+}
+
+model PartyMessage {
+  id        String   @id @default(uuid())
+  partyId    String
+  userId    String
+  message   String
+  createdAt DateTime @default(now())
+
+  party Party @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([partyId, createdAt])
+  @@index([userId, createdAt])
 }
 
 // Clan System
@@ -209,6 +256,7 @@ model Clan {
   owner        User              @relation("ClanOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   members      ClanMember[]
   joinRequests ClanJoinRequest[]
+  messages     ClanMessage[]
   attackerWars ClanWar[]         @relation("ClanWarAttacker")
   defenderWars ClanWar[]         @relation("ClanWarDefender")
   wonWars      ClanWar[]         @relation("ClanWarWinnerClan")
@@ -248,6 +296,20 @@ model ClanJoinRequest {
   @@unique([clanId, userId])
   @@index([clanId])
   @@index([userId])
+}
+
+model ClanMessage {
+  id        String   @id @default(uuid())
+  clanId     String
+  userId     String
+  message    String
+  createdAt  DateTime @default(now())
+
+  clan Clan @relation(fields: [clanId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([clanId, createdAt])
+  @@index([userId, createdAt])
 }
 
 model ClanWar {

@@ -11,6 +11,7 @@ import { useSocket } from '@/contexts/SocketContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SiteHeader } from '@/components/site-header';
+import PartyChatFloating from '@/components/party/PartyChatFloating';
 import { CONTAINER } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 
@@ -24,6 +25,14 @@ function ChatBubbleContainer() {
     >
       <ChatBubble />
     </div>
+  );
+}
+
+function PartyChatFloatingContainer() {
+  const { open } = useChatSidebar();
+
+  return (
+    <PartyChatFloating rightOffset={open ? 'calc(20rem + 1.5rem)' : '1.5rem'} />
   );
 }
 
@@ -63,6 +72,7 @@ export default function Layout() {
           </SidebarInset>
         </SidebarProvider>
         <ChatSidebarWrapper />
+        <PartyChatFloatingContainer />
         <ChatBubbleContainer />
 
         {activeJoinPrompt && user && (

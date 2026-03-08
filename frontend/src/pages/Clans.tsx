@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Axe, Check, Crown, Loader2, LogOut, Plus, Shield, Sparkles, Swords, Target, UserX, X } from 'lucide-react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { AlertTriangle, Axe, Check, Crown, Loader2, LogOut, Plus, Send, Shield, Sparkles, Swords, Target, UserX, X } from 'lucide-react';
 import {
+  ClanChatMessage,
   ClanDetail,
   ClanSummary,
   ClanWarActionType,
@@ -25,6 +26,7 @@ import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
 import { UsernameDisplay } from '@/components/ui/username-display';
+import { useAuth } from '@/contexts/AuthContext';
 
 const CLAN_WAR_TARGET_SCORE = 180;
 
@@ -159,6 +161,7 @@ const DefenseCard = ({
 );
 
 export default function Clans() {
+  const { user } = useAuth();
   const [clans, setClans] = useState<ClanSummary[]>([]);
   const [activeWars, setActiveWars] = useState<ClanWarState[]>([]);
   const [viewerClanId, setViewerClanId] = useState<string | null>(null);
@@ -168,6 +171,11 @@ export default function Clans() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [warActionKey, setWarActionKey] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<ClanChatMessage[]>([]);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatSending, setChatSending] = useState(false);
+  const [chatDraft, setChatDraft] = useState('');
+  const chatBottomRef = useRef<HTMLDivElement | null>(null);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [warDialogOpen, setWarDialogOpen] = useState(false);
@@ -192,6 +200,24 @@ export default function Clans() {
     if (!selectedClanId) return;
     void fetchClanDetail(selectedClanId);
   }, [selectedClanId]);
+
+  useEffect(() => {
+    if (!selectedClanId || !selectedClan?.viewer.isMember) {
+      setChatMessages([]);
+      return;
+    }
+
+    void fetchClanChat(selectedClanId);
+    const interval = window.setInterval(() => {
+      void fetchClanChat(selectedClanId, false);
+    }, 10000);
+
+    return () => window.clearInterval(interval);
+  }, [selectedClanId, selectedClan?.viewer.isMember]);
+
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
 
   const selectedClanSummary = useMemo(
     () => clans.find((clan) => clan.id === selectedClanId) ?? null,
@@ -262,6 +288,20 @@ export default function Clans() {
       });
     } finally {
       setDetailLoading(false);
+    }
+  };
+
+  const fetchClanChat = async (clanId: string, withLoader = true) => {
+    try {
+      if (withLoader) setChatLoading(true);
+      const res = await clansApi.getChat(clanId, 60);
+      setChatMessages(res.data.messages ?? []);
+    } catch (error: any) {
+      if (error.response?.status !== 403) {
+        console.error('Failed to fetch clan chat:', error);
+      }
+    } finally {
+      if (withLoader) setChatLoading(false);
     }
   };
 
@@ -454,6 +494,30 @@ export default function Clans() {
       });
     } finally {
       setWarActionKey(null);
+    }
+  };
+
+  const handleSendChatMessage = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedClan || !selectedClan.viewer.isMember) return;
+
+    const message = chatDraft.trim();
+    if (!message) return;
+
+    setChatSending(true);
+    try {
+      const res = await clansApi.sendMessage(selectedClan.id, message);
+      setChatMessages((current) => [...current, res.data.message].slice(-60));
+      setChatDraft('');
+    } catch (error: any) {
+      console.error('Failed to send clan chat message:', error);
+      toast({
+        title: 'Erreur',
+        description: error.response?.data?.error || 'Impossible d’envoyer le message.',
+        variant: 'destructive',
+      });
+    } finally {
+      setChatSending(false);
     }
   };
 
@@ -891,6 +955,65 @@ export default function Clans() {
                             : `Le clan doit atteindre ${selectedClan.warHub.minimumMembersRequired} membres pour entrer en guerre.`}
                       </AlertDescription>
                     </Alert>
+                  )}
+
+                  {selectedClan.viewer.isMember && (
+                    <Card className="overflow-hidden">
+                      <CardHeader className="border-b bg-muted/20 pb-4">
+                        <CardTitle className="text-base">Chat du clan</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4 p-4">
+                        <div className="max-h-[420px] space-y-3 overflow-y-auto rounded-xl border bg-muted/15 p-3">
+                          {chatLoading ? (
+                            <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Chargement des messages...
+                            </div>
+                          ) : chatMessages.length === 0 ? (
+                            <div className="py-10 text-center text-sm text-muted-foreground">
+                              Aucun message pour le moment. Lance la conversation.
+                            </div>
+                          ) : (
+                            chatMessages.map((entry) => {
+                              const isOwnMessage = entry.user.id === user?.id;
+                              return (
+                                <div
+                                  key={entry.id}
+                                  className={cn('flex', isOwnMessage ? 'justify-end' : 'justify-start')}
+                                >
+                                  <div className={cn('max-w-[85%] rounded-2xl border px-4 py-3', isOwnMessage ? 'bg-primary/10 border-primary/20' : 'bg-background')}>
+                                    <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
+                                      <UsernameDisplay username={entry.user.username} usernameColor={entry.user.usernameColor} />
+                                      <span>•</span>
+                                      <span>{formatDate(entry.createdAt)}</span>
+                                    </div>
+                                    <p className="whitespace-pre-wrap break-words text-sm">{entry.message}</p>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                          <div ref={chatBottomRef} />
+                        </div>
+
+                        <form onSubmit={handleSendChatMessage} className="space-y-3">
+                          <Textarea
+                            value={chatDraft}
+                            onChange={(event) => setChatDraft(event.target.value.slice(0, 400))}
+                            rows={3}
+                            placeholder="Écris à ton clan..."
+                            disabled={chatSending}
+                          />
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs text-muted-foreground">{chatDraft.trim().length}/400</span>
+                            <Button type="submit" disabled={chatSending || !chatDraft.trim()}>
+                              {chatSending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                              Envoyer
+                            </Button>
+                          </div>
+                        </form>
+                      </CardContent>
+                    </Card>
                   )}
 
                   <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">

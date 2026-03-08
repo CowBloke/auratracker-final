@@ -49,6 +49,16 @@ interface PartySelectedGame {
   selectedAt: number;
 }
 
+interface PartyChatMessagePayload {
+  id: string;
+  partyId: string;
+  userId: string;
+  username: string;
+  usernameColor?: string | null;
+  message: string;
+  timestamp: string;
+}
+
 const partyInvites = new Map<string, PartyInvite[]>(); // userId -> invites
 const partyJoinRequests = new Map<string, PartyJoinRequest[]>(); // partyId -> join requests
 const userSockets = new Map<string, string>(); // userId -> socketId
@@ -61,6 +71,8 @@ const INACTIVITY_TIMEOUT = 15 * 60 * 1000;
 
 // Invite cooldown (5 minutes) after rejection
 const INVITE_COOLDOWN = 5 * 60 * 1000;
+const PARTY_CHAT_HISTORY_LIMIT = 100;
+const PARTY_CHAT_MESSAGE_MAX_LENGTH = 500;
 
 const getPartyRoomId = (partyId: string) => `party:${partyId}`;
 
@@ -80,6 +92,50 @@ const broadcastPartyGameState = (io: Server, partyId: string) => {
 const clearPartyGameState = (partyId: string) => {
   partyGameSuggestions.delete(partyId);
   partySelectedGames.delete(partyId);
+};
+
+const serializePartyChatMessage = (message: {
+  id: string;
+  partyId: string;
+  userId: string;
+  message: string;
+  createdAt: Date;
+  user: {
+    username: string;
+    usernameColor?: string | null;
+  };
+}): PartyChatMessagePayload => ({
+  id: message.id,
+  partyId: message.partyId,
+  userId: message.userId,
+  username: message.user.username,
+  usernameColor: message.user.usernameColor,
+  message: message.message,
+  timestamp: message.createdAt.toISOString(),
+});
+
+export const emitPartyChatHistory = async (
+  socket: Pick<Socket, 'emit'>,
+  partyId: string,
+) => {
+  const messages = await prisma.partyMessage.findMany({
+    where: { partyId },
+    take: PARTY_CHAT_HISTORY_LIMIT,
+    orderBy: { createdAt: 'desc' },
+    include: {
+      user: {
+        select: {
+          username: true,
+          usernameColor: true,
+        },
+      },
+    },
+  });
+
+  socket.emit('party:chat-history', {
+    partyId,
+    messages: messages.reverse().map(serializePartyChatMessage),
+  });
 };
 
 const getPartyMembers = async (partyId: string) => {
@@ -180,7 +236,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
           })),
         });
         emitPartyGameState(socket, membership.partyId);
-        emitPartyGameState(socket, membership.partyId);
+        await emitPartyChatHistory(socket, membership.partyId);
 
         // Send any active game state to the reconnecting player
         sendActiveGameState(socket, membership.partyId, userId);
@@ -285,6 +341,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
         })),
       });
       emitPartyGameState(socket, party.id);
+      await emitPartyChatHistory(socket, party.id);
     } catch (error) {
       console.error('Create party error:', error);
       socket.emit('party:error', { message: 'Failed to create party' });
@@ -389,6 +446,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
       // Notify the joining user
       socket.emit('party:joined', serializePartyPayload(updatedParty!));
       emitPartyGameState(socket, partyId);
+      await emitPartyChatHistory(socket, partyId);
       
       // Log party join
       logParty('party_join', userId, user!.username, {
@@ -604,6 +662,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
           accepted: true,
         });
         emitPartyGameState(targetSocket, partyId);
+        await emitPartyChatHistory(targetSocket, partyId);
       }
 
       if (targetSocket) {
@@ -716,6 +775,112 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
     } catch (error) {
       console.error('Game select error:', error);
       socket.emit('party:error', { message: 'Failed to select game' });
+    }
+  });
+
+  socket.on('party:chat-message', async (data: { message: string }) => {
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+
+    const rawMessage = typeof data.message === 'string' ? data.message : '';
+    const message = rawMessage.trim();
+
+    if (!message) {
+      socket.emit('party:chat-error', { message: 'Le message est vide.' });
+      return;
+    }
+
+    if (message.length > PARTY_CHAT_MESSAGE_MAX_LENGTH) {
+      socket.emit('party:chat-error', {
+        message: `Le message ne peut pas dépasser ${PARTY_CHAT_MESSAGE_MAX_LENGTH} caractères.`,
+      });
+      return;
+    }
+
+    try {
+      const membership = await prisma.partyMember.findUnique({
+        where: { userId },
+        include: {
+          user: {
+            select: {
+              username: true,
+              usernameColor: true,
+              isChatMuted: true,
+            },
+          },
+        },
+      });
+
+      if (!membership) {
+        socket.emit('party:chat-error', { message: "Tu n'es pas dans une party." });
+        return;
+      }
+
+      if (membership.user.isChatMuted) {
+        socket.emit('party:chat-error', { message: 'Tu es mute du chat pour le moment.' });
+        return;
+      }
+
+      const activeBan = await prisma.ban.findFirst({
+        where: {
+          userId,
+          isActive: true,
+          OR: [
+            { expiresAt: null },
+            { expiresAt: { gt: new Date() } },
+          ],
+        },
+      });
+
+      if (activeBan) {
+        socket.emit('party:chat-error', { message: "Impossible d'envoyer un message pour le moment." });
+        return;
+      }
+
+      const savedMessage = await prisma.partyMessage.create({
+        data: {
+          partyId: membership.partyId,
+          userId,
+          message,
+        },
+        include: {
+          user: {
+            select: {
+              username: true,
+              usernameColor: true,
+            },
+          },
+        },
+      });
+
+      await prisma.party.update({
+        where: { id: membership.partyId },
+        data: { lastActivity: new Date() },
+      });
+
+      io.to(getPartyRoomId(membership.partyId)).emit('party:chat-message', serializePartyChatMessage(savedMessage));
+
+      const messageCount = await prisma.partyMessage.count({
+        where: { partyId: membership.partyId },
+      });
+
+      if (messageCount > PARTY_CHAT_HISTORY_LIMIT) {
+        const oldMessages = await prisma.partyMessage.findMany({
+          where: { partyId: membership.partyId },
+          take: messageCount - PARTY_CHAT_HISTORY_LIMIT,
+          orderBy: { createdAt: 'asc' },
+          select: { id: true },
+        });
+
+        if (oldMessages.length > 0) {
+          await prisma.partyMessage.deleteMany({
+            where: { id: { in: oldMessages.map((entry) => entry.id) } },
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Party chat message error:', error);
+      socket.emit('party:chat-error', { message: "Impossible d'envoyer le message." });
     }
   });
   
@@ -1134,6 +1299,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
             isLeader: m.isLeader,
           })),
         });
+        await emitPartyChatHistory(socket, membership.partyId);
 
         if (membership.isLeader) {
           const joinRequests = partyJoinRequests.get(membership.partyId) || [];
@@ -1253,6 +1419,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
         })),
       });
       emitPartyGameState(socket, party.id);
+      await emitPartyChatHistory(socket, party.id);
     } catch (error) {
       console.error('Party sync error:', error);
       socket.emit('party:error', { message: 'Failed to sync party' });

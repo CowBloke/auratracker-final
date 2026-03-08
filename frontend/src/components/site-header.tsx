@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocket } from '@/contexts/SocketContext';
 import { SidebarTrigger } from '@/components/ui/sidebar';
@@ -22,8 +22,6 @@ import {
 import {
   ChevronDown,
   ChevronUp,
-  Maximize2,
-  Minimize2,
   Users,
   LogOut,
   Bomb,
@@ -57,10 +55,8 @@ export function SiteHeader() {
 
   const [showUsers, setShowUsers] = useState(false);
   const [showParty, setShowParty] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [announcement, setAnnouncement] = useState('');
 
-  const isGameRoute = location.pathname.startsWith('/games/');
   const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
   const doodleSpectateSessionMap = useMemo(
     () => new Map(doodleSpectateSessions.map((session) => [session.hostUserId, session])),
@@ -81,16 +77,6 @@ export function SiteHeader() {
   };
 
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    handleFullscreenChange();
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, []);
-
-  useEffect(() => {
     let isMounted = true;
 
     const fetchAnnouncement = async () => {
@@ -109,18 +95,6 @@ export function SiteHeader() {
     return () => {
       isMounted = false;
     };
-  }, []);
-
-  const toggleFullscreen = useCallback(async () => {
-    try {
-      if (!document.fullscreenElement) {
-        await document.documentElement.requestFullscreen();
-      } else {
-        await document.exitFullscreen();
-      }
-    } catch (error) {
-      console.error('Fullscreen error:', error);
-    }
   }, []);
 
   const getPageName = (pathname: string): string => getPageMetaForPath(pathname).title;
@@ -194,18 +168,6 @@ export function SiteHeader() {
       </div>
 
       <div className="flex items-center gap-4">
-        {isGameRoute && (
-          <Button
-            type="button"
-            onClick={toggleFullscreen}
-            variant="outline"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground"
-            title={isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
-          >
-            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          </Button>
-        )}
         <div className="flex items-center gap-8 text-sm">
           {currentParty && (
             <div className="relative">
