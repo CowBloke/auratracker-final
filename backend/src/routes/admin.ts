@@ -12,6 +12,7 @@ import { listBombPartyLanguageFiles } from '../utils/bombpartyDictionary.js';
 import { recalculateBombPartyPrompts } from '../utils/bombpartyPrompts.js';
 import { getOnlineCount, getOnlineUsers } from '../socket/chat.js';
 import { createNotification } from '../utils/notifications.js';
+import { sendBugReportReplyEmail } from '../utils/email.js';
 
 const router = Router();
 const ANNOUNCEMENT_KEY = 'topbar_announcement';
@@ -1160,33 +1161,66 @@ router.get('/bugs', authMiddleware, requireAdmin, async (req: AuthRequest, res: 
   }
 });
 
-// Update bug report status (admin only)
+// Update bug report status (and optionally reply) (admin only)
 router.put('/bugs/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
-    
+    const { status, adminReply } = req.body;
+
     if (!['PENDING', 'DONE'].includes(status)) {
       return res.status(400).json({ error: 'Invalid status. Must be PENDING or DONE' });
     }
-    
+
+    if (adminReply !== undefined && typeof adminReply !== 'string') {
+      return res.status(400).json({ error: 'adminReply must be a string' });
+    }
+
     const bugReport = await prisma.bugReport.update({
       where: { id },
       data: {
         status,
         resolvedAt: status === 'DONE' ? new Date() : null,
+        ...(adminReply !== undefined ? { adminReply: adminReply.trim() || null } : {}),
       },
       include: {
         user: {
           select: {
             id: true,
             username: true,
+            email: true,
           },
         },
       },
     });
-    
-    res.json({ bugReport });
+
+    // If there's a reply, notify the user in-app and by email
+    const reply = adminReply?.trim();
+    if (reply) {
+      const notifBody = status === 'DONE'
+        ? `Votre bug "${bugReport.title}" a été résolu.\n\n${reply}`
+        : `Mise à jour de votre bug "${bugReport.title}".\n\n${reply}`;
+
+      await createNotification({
+        userId: bugReport.userId,
+        type: 'ADMIN',
+        title: status === 'DONE' ? 'Bug résolu' : 'Mise à jour de votre signalement',
+        body: notifBody,
+        icon: 'Bug',
+      });
+
+      // Send email (no-op if SMTP not configured)
+      sendBugReportReplyEmail({
+        to: bugReport.user.email,
+        username: bugReport.user.username,
+        bugTitle: bugReport.title,
+        adminReply: reply,
+        status,
+      }).catch(err => console.error('Bug report email error:', err));
+    }
+
+    // Return without email field
+    const { user: { email: _email, ...userWithoutEmail }, ...rest } = bugReport as any;
+    res.json({ bugReport: { ...rest, user: userWithoutEmail } });
   } catch (error) {
     console.error('Admin update bug report error:', error);
     res.status(500).json({ error: 'Failed to update bug report' });

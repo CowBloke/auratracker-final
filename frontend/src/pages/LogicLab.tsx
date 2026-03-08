@@ -4,7 +4,6 @@ import { gamesApi } from '@/services/api';
 import { PageHeader, PageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { Brain, Eraser, RefreshCcw, Sparkles, Target, Trophy } from 'lucide-react';
@@ -518,7 +517,7 @@ export default function LogicLab() {
               <div className="space-y-2">
                 <h2 className="text-2xl font-semibold tracking-tight">Remplis chaque ligne, colonne et bloc 3x3 avec les chiffres de 1 a 9.</h2>
                 <p className="text-sm text-white/80">
-                  Les grilles sont générées à la volée avec solution unique, puis scorées selon la difficulté, le temps et l’aide utilisée.
+                  Les grilles sont generees a la volee avec solution unique, puis scorees selon la difficulte, le temps et l aide utilisee.
                 </p>
               </div>
               <Progress value={progressValue} className="h-2 bg-white/10" />
@@ -539,9 +538,11 @@ export default function LogicLab() {
               ))}
             </div>
 
-            <div className="mx-auto w-full max-w-[42rem] rounded-[2rem] border border-stone-300 bg-[linear-gradient(180deg,#fdfcf8,#f4efe4)] p-4 shadow-[0_24px_80px_rgba(15,23,42,0.12)] sm:p-6">
-              <div className="mx-auto w-full max-w-[34rem] rounded-sm border-[3px] border-stone-900 bg-white shadow-[0_8px_18px_rgba(0,0,0,0.08)]">
-                <div className="grid grid-cols-9">
+        {/* CENTER: Game Board */}
+        <div className="flex flex-col items-center gap-4">
+          <div className="rounded-[2rem] border border-stone-300 bg-[linear-gradient(180deg,#fdfcf8,#f4efe4)] p-4 shadow-[0_24px_80px_rgba(15,23,42,0.12)] sm:p-6">
+            <div className="rounded-sm border-[3px] border-stone-900 bg-white shadow-[0_8px_18px_rgba(0,0,0,0.08)]">
+              <div className="grid grid-cols-9">
                 {draftGrid.map((row, rowIndex) =>
                   row.map((value, columnIndex) => {
                     const isGiven = initialGrid[rowIndex][columnIndex] !== 0;
@@ -575,49 +576,49 @@ export default function LogicLab() {
                     );
                   })
                 )}
-                </div>
               </div>
             </div>
+          </div>
 
-            <div className="mx-auto grid w-full max-w-[38rem] gap-3">
-              <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
-                {range(9).map((index) => (
-                  <Button key={index + 1} type="button" variant="outline" onClick={() => updateCell(index + 1)}>
-                    {index + 1}
-                  </Button>
-                ))}
-                <Button type="button" variant="outline" onClick={() => updateCell(0)} className="sm:col-span-1">
-                  <Eraser className="h-4 w-4" />
+          <div className="w-full space-y-3">
+            <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
+              {range(9).map((index) => (
+                <Button key={index + 1} type="button" variant="outline" onClick={() => updateCell(index + 1)}>
+                  {index + 1}
                 </Button>
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                <Button type="button" variant="outline" onClick={validateGrid} disabled={completed}>
-                  <Target className="mr-2 h-4 w-4" />
-                  Verifier
-                </Button>
-                <Button type="button" variant="outline" onClick={useHint} disabled={completed}>
-                  <Brain className="mr-2 h-4 w-4" />
-                  Indice
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setDraftGrid(cloneGrid(initialGrid));
-                    setShowConflicts(false);
-                    setMistakesFound(0);
-                    setHintsUsed(0);
-                    setElapsedSeconds(0);
-                    setCompleted(false);
-                    setRewards(null);
-                    submitLockRef.current = false;
-                  }}
-                >
-                  Recommencer
-                </Button>
-              </div>
+              ))}
+              <Button type="button" variant="outline" onClick={() => updateCell(0)}>
+                <Eraser className="h-4 w-4" />
+              </Button>
             </div>
+
+            <div className="flex flex-wrap gap-3">
+              <Button type="button" variant="outline" onClick={validateGrid} disabled={completed}>
+                <Target className="mr-2 h-4 w-4" />
+                Verifier
+              </Button>
+              <Button type="button" variant="outline" onClick={useHint} disabled={completed}>
+                <Brain className="mr-2 h-4 w-4" />
+                Indice
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setDraftGrid(cloneGrid(initialGrid));
+                  setShowConflicts(false);
+                  setMistakesFound(0);
+                  setHintsUsed(0);
+                  setElapsedSeconds(0);
+                  setCompleted(false);
+                  setRewards(null);
+                  submitLockRef.current = false;
+                }}
+              >
+                Recommencer
+              </Button>
+            </div>
+          </div>
 
             {completed ? (
               <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4">
@@ -667,34 +668,32 @@ export default function LogicLab() {
                 </div>
               </div>
               <p className="text-sm text-muted-foreground">
-                Le score final favorise les résolutions propres et rapides. Les grilles sont toutes générées côté client, avec rotation aléatoire et vérification d’unicité.
+                Le score final favorise les resolutions propres et rapides. Les grilles sont toutes generees cote client, avec rotation aleatoire et verification d unicite.
               </p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Trophy className="h-4 w-4" />
-                Leaderboard
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {leaderboard.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Aucun score enregistre pour le moment.</p>
-              ) : (
-                leaderboard.slice(0, 10).map((entry, index) => (
-                  <div key={entry.id} className="flex items-center justify-between rounded-xl border border-border/60 px-3 py-2">
-                    <div>
-                      <p className="text-sm font-medium">#{index + 1} {entry.user.username}</p>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{entry.highScore}</p>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-        </div>
+        {/* RIGHT: Leaderboard */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Trophy className="h-4 w-4" />
+              Leaderboard
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {leaderboard.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Aucun score enregistre pour le moment.</p>
+            ) : (
+              leaderboard.slice(0, 10).map((entry, index) => (
+                <div key={entry.id} className="flex items-center justify-between rounded-xl border border-border/60 px-3 py-2">
+                  <p className="text-sm font-medium">#{index + 1} {entry.user.username}</p>
+                  <p className="text-sm text-muted-foreground">{entry.highScore}</p>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
       </div>
     </PageShell>
   );

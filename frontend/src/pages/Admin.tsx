@@ -12,7 +12,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, Inbox, Archive, UserCog, Crown, Swords } from 'lucide-react';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, Inbox, Archive, UserCog, Crown, Swords, Send } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, ReferenceDot } from 'recharts';
 import {
   AlertDialog,
@@ -423,6 +423,7 @@ export default function Admin() {
   const [bugReports, setBugReports] = useState<BugReport[]>([]);
   const [loadingBugs, setLoadingBugs] = useState(false);
   const [updatingBug, setUpdatingBug] = useState<string | null>(null);
+  const [bugReply, setBugReply] = useState<Record<string, string>>({});
   const [selectedInboxItem, setSelectedInboxItem] = useState<string | null>(null);
   const [inboxFilter, setInboxFilter] = useState<'all' | 'registrations' | 'bugs' | 'appeals' | 'namechanges' | 'archived'>('all');
 
@@ -1285,13 +1286,35 @@ export default function Admin() {
     }
   };
 
-  const toggleBugStatus = async (bug: BugReport) => {
+  const toggleBugStatus = async (bug: BugReport, newStatus?: 'PENDING' | 'DONE') => {
     setUpdatingBug(bug.id);
     try {
-      const newStatus = bug.status === 'PENDING' ? 'DONE' : 'PENDING';
-      const res = await adminApi.updateBugReport(bug.id, { status: newStatus });
+      const status = newStatus ?? (bug.status === 'PENDING' ? 'DONE' : 'PENDING');
+      const reply = bugReply[bug.id]?.trim();
+      const res = await adminApi.updateBugReport(bug.id, { status, ...(reply ? { adminReply: reply } : {}) });
       setBugReports(prev => prev.map(b => b.id === bug.id ? res.data.bugReport : b));
-      showMessage('success', newStatus === 'DONE' ? 'Bug marqué comme résolu' : 'Bug marqué comme en attente');
+      if (reply) {
+        setBugReply(prev => { const next = { ...prev }; delete next[bug.id]; return next; });
+        showMessage('success', status === 'DONE' ? 'Bug résolu — réponse envoyée' : 'Bug rouvert — réponse envoyée');
+      } else {
+        showMessage('success', status === 'DONE' ? 'Bug marqué comme résolu' : 'Bug marqué comme en attente');
+      }
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur');
+    } finally {
+      setUpdatingBug(null);
+    }
+  };
+
+  const sendBugReply = async (bug: BugReport) => {
+    const reply = bugReply[bug.id]?.trim();
+    if (!reply) return;
+    setUpdatingBug(bug.id);
+    try {
+      const res = await adminApi.updateBugReport(bug.id, { status: bug.status, adminReply: reply });
+      setBugReports(prev => prev.map(b => b.id === bug.id ? res.data.bugReport : b));
+      setBugReply(prev => { const next = { ...prev }; delete next[bug.id]; return next; });
+      showMessage('success', 'Réponse envoyée');
     } catch (error: any) {
       showMessage('error', error.response?.data?.error || 'Erreur');
     } finally {
@@ -2047,6 +2070,7 @@ export default function Admin() {
                       (() => {
                         const bug = selectedItem.data as BugReport;
                         const isArchived = bug.status === 'DONE';
+                        const replyValue = bugReply[bug.id] ?? '';
                         return (
                           <div className="p-6 space-y-5">
                             <div>
@@ -2064,10 +2088,37 @@ export default function Admin() {
                             <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
                               <p className="text-sm whitespace-pre-wrap break-words">{bug.description}</p>
                             </div>
-                            <Button size="sm" variant="outline" onClick={() => toggleBugStatus(bug)} disabled={updatingBug === bug.id}
-                              className={cn('h-8', isArchived ? 'border-amber-500/50 text-amber-500 hover:bg-amber-500/10' : 'border-green-500/50 text-green-500 hover:bg-green-500/10')}>
-                              {updatingBug === bug.id ? <Loader2 className="h-4 w-4 animate-spin" /> : isArchived ? <><X className="h-4 w-4 mr-1" />Rouvrir</> : <><Check className="h-4 w-4 mr-1" />Résolu</>}
-                            </Button>
+                            {bug.adminReply && (
+                              <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/5 p-4">
+                                <p className="text-xs font-medium text-indigo-400/70 mb-2">Réponse envoyée</p>
+                                <p className="text-sm whitespace-pre-wrap break-words text-muted-foreground">{bug.adminReply}</p>
+                              </div>
+                            )}
+                            <div className="space-y-2">
+                              <p className="text-xs font-medium text-muted-foreground/70">
+                                {bug.adminReply ? 'Modifier la réponse' : 'Répondre au signalement'}
+                              </p>
+                              <textarea
+                                className="w-full rounded-md border border-border/40 bg-muted/20 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500/50 placeholder:text-muted-foreground/40"
+                                rows={3}
+                                placeholder="Écrivez votre réponse… Elle sera envoyée par notification et par e-mail."
+                                value={replyValue}
+                                onChange={e => setBugReply(prev => ({ ...prev, [bug.id]: e.target.value }))}
+                                disabled={updatingBug === bug.id}
+                              />
+                              <div className="flex items-center gap-2">
+                                {replyValue.trim() && (
+                                  <Button size="sm" variant="outline" onClick={() => sendBugReply(bug)} disabled={updatingBug === bug.id}
+                                    className="h-8 border-indigo-500/50 text-indigo-400 hover:bg-indigo-500/10">
+                                    {updatingBug === bug.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4 mr-1" />Envoyer</>}
+                                  </Button>
+                                )}
+                                <Button size="sm" variant="outline" onClick={() => toggleBugStatus(bug)} disabled={updatingBug === bug.id}
+                                  className={cn('h-8', isArchived ? 'border-amber-500/50 text-amber-500 hover:bg-amber-500/10' : 'border-green-500/50 text-green-500 hover:bg-green-500/10')}>
+                                  {updatingBug === bug.id ? <Loader2 className="h-4 w-4 animate-spin" /> : isArchived ? <><X className="h-4 w-4 mr-1" />Rouvrir</> : <><Check className="h-4 w-4 mr-1" />Résolu</>}
+                                </Button>
+                              </div>
+                            </div>
                           </div>
                         );
                       })()

@@ -764,6 +764,7 @@ export interface BugReport {
   title: string;
   description: string;
   status: 'PENDING' | 'DONE';
+  adminReply: string | null;
   createdAt: string;
   resolvedAt: string | null;
   user: {
@@ -937,7 +938,7 @@ export const adminApi = {
     api.put<{ categories: ShopCategory[] }>('/admin/shop-categories', { categories }),
   // Bug reports management
   getBugReports: () => api.get<{ bugReports: BugReport[] }>('/admin/bugs'),
-  updateBugReport: (id: string, data: { status: 'PENDING' | 'DONE' }) =>
+  updateBugReport: (id: string, data: { status: 'PENDING' | 'DONE'; adminReply?: string }) =>
     api.put<{ bugReport: BugReport }>(`/admin/bugs/${id}`, data),
   deleteBugReport: (id: string) => api.delete<{ success: boolean }>(`/admin/bugs/${id}`),
   // Ban management
