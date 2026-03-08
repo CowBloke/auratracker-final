@@ -243,21 +243,25 @@ export default function Casino() {
     id: GameTab;
     title: string;
     subtitle: string;
+    image: string;
   }> = [
     {
       id: 'roulette',
       title: 'Roulette',
       subtitle: 'Tirage instantane',
+      image: '/images/games/casino.png',
     },
     {
       id: 'slots',
       title: 'Machine a sous',
       subtitle: 'Partie rapide',
+      image: '/images/games/cashmachine.png',
     },
     {
       id: 'blackjack',
       title: 'Blackjack',
       subtitle: 'Jeu de cartes',
+      image: '/images/games/blackjack.png',
     },
   ];
 
@@ -313,13 +317,20 @@ export default function Casino() {
               onClick={() => setActiveGame(game.id)}
               className="block text-left"
             >
-              <Card className="h-full border-border/50 shadow-none transition-colors hover:border-foreground/20">
-                <CardContent className="flex min-h-[132px] flex-col justify-between p-5">
+              <Card className="h-full overflow-hidden border-border/50 shadow-none transition-colors hover:border-foreground/20">
+                <div className="h-36 w-full overflow-hidden bg-muted">
+                  <img
+                    src={game.image}
+                    alt={game.title}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <CardContent className="flex flex-col justify-between p-5">
                   <div className="space-y-1">
                     <h2 className="text-lg font-semibold tracking-tight">{game.title}</h2>
                     <p className="text-sm text-muted-foreground">{game.subtitle}</p>
                   </div>
-                  <div className="text-sm text-foreground/80">
+                  <div className="mt-3 text-sm text-foreground/80">
                     Ouvrir
                   </div>
                 </CardContent>
