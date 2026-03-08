@@ -208,9 +208,6 @@ function generatePuzzle(difficulty: Difficulty): GeneratedPuzzle {
   return { puzzle, solution };
 }
 
-function countFilledCells(grid: Grid) {
-  return grid.reduce((total, row) => total + row.filter((value) => value !== 0).length, 0);
-}
 
 function isSolved(grid: Grid, solution: Grid) {
   return grid.every((row, rowIndex) => row.every((value, columnIndex) => value === solution[rowIndex][columnIndex]));
