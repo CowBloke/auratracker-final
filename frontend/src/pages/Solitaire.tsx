@@ -283,9 +283,11 @@ export default function Solitaire() {
     const minCardWidth = 46;
     const maxCardWidth = 96;
     const gapRatio = 0.12;
+    const padRatio = 0.04;
 
     const updateCardWidth = (boardWidth: number) => {
-      const computed = boardWidth / (7 + 6 * gapRatio);
+      // Account for pilePadding (2 * padRatio per column) so tableau never overflows
+      const computed = boardWidth / (7 * (1 + 2 * padRatio) + 6 * gapRatio);
       const nextCardWidth = Math.max(minCardWidth, Math.min(maxCardWidth, computed));
       setCardWidth((prev) => (Math.abs(prev - nextCardWidth) < 0.5 ? prev : nextCardWidth));
     };
@@ -559,69 +561,70 @@ export default function Solitaire() {
           <CardTitle className="text-sm font-medium">Solitaire</CardTitle>
         </CardHeader>
         <CardContent className="p-3 md:p-4">
-          <div className="overflow-x-auto">
-            <div
-              ref={boardRef}
-              style={
-                {
-                  '--card-w': `${cardWidth}px`,
-                  '--pile-gap': `${boardGap}px`,
-                  '--stack-faceup': `${stackOffsetFaceUp}px`,
-                  '--stack-facedown': `${stackOffsetFaceDown}px`,
-                  '--pile-pad': `${pilePadding}px`,
-                  '--pile-col-w': `${cardWidth + pilePadding * 2}px`,
-                } as CSSProperties
-              }
-            >
-          <div className="mb-4 grid grid-cols-4 gap-[var(--pile-gap)]">
-            <div className="rounded-xl border border-border/40 bg-muted/25 p-2">
-              <div className="mb-1 text-xs font-semibold text-muted-foreground">Pioche</div>
-              <div
-                onClick={drawFromStock}
-                className="inline-block rounded-xl focus:outline-none focus:ring-2 focus:ring-ring"
-                role="button"
-                tabIndex={0}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    drawFromStock();
-                  }
-                }}
-              >
-                {game.stock.length > 0 ? (
-                  <SolitaireCard card={{ ...game.stock[game.stock.length - 1], faceUp: false }} draggable={false} />
-                ) : (
-                  <div className="flex h-[calc(var(--card-w)*1.4)] w-[var(--card-w)] items-center justify-center rounded-xl border-2 border-dashed border-border/60 bg-muted/10 text-xs text-muted-foreground">
-                    Retourner
-                  </div>
-                )}
+          <div
+            ref={boardRef}
+            style={
+              {
+                '--card-w': `${cardWidth}px`,
+                '--pile-gap': `${boardGap}px`,
+                '--stack-faceup': `${stackOffsetFaceUp}px`,
+                '--stack-facedown': `${stackOffsetFaceDown}px`,
+                '--pile-pad': `${pilePadding}px`,
+                '--pile-col-w': `${cardWidth + pilePadding * 2}px`,
+              } as CSSProperties
+            }
+          >
+          <div className="mb-4 flex items-start justify-between gap-[var(--pile-gap)]">
+            <div className="flex gap-[var(--pile-gap)]">
+              <div className="rounded-xl border border-border/40 bg-muted/25 p-2">
+                <div className="mb-1 text-xs font-semibold text-muted-foreground">Pioche</div>
+                <div
+                  onClick={drawFromStock}
+                  className="inline-block rounded-xl focus:outline-none focus:ring-2 focus:ring-ring"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      drawFromStock();
+                    }
+                  }}
+                >
+                  {game.stock.length > 0 ? (
+                    <SolitaireCard card={{ ...game.stock[game.stock.length - 1], faceUp: false }} draggable={false} />
+                  ) : (
+                    <div className="flex h-[calc(var(--card-w)*1.4)] w-[var(--card-w)] items-center justify-center rounded-xl border-2 border-dashed border-border/60 bg-muted/10 text-xs text-muted-foreground">
+                      Retourner
+                    </div>
+                  )}
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">{game.stock.length} cartes</div>
               </div>
-              <div className="mt-1 text-xs text-muted-foreground">{game.stock.length} cartes</div>
+
+              <div className="rounded-xl border border-border/40 bg-muted/25 p-2">
+                <div className="mb-1 text-xs font-semibold text-muted-foreground">Défausse</div>
+                <div>
+                  {game.waste.length > 0 ? (
+                    <SolitaireCard
+                      card={game.waste[game.waste.length - 1]}
+                      draggable={!isWon}
+                      onDragStart={() => setDragSource({ type: 'waste' })}
+                      onDragEnd={() => setDragSource(null)}
+                      onDoubleClick={() => tryAutoMoveToFoundation({ type: 'waste' })}
+                    />
+                  ) : (
+                    <div className="flex h-[calc(var(--card-w)*1.4)] w-[var(--card-w)] items-center justify-center rounded-xl border-2 border-dashed border-border/60 bg-muted/10 text-xs text-muted-foreground">
+                      Vide
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             <div className="rounded-xl border border-border/40 bg-muted/25 p-2">
-              <div className="mb-1 text-xs font-semibold text-muted-foreground">Défausse</div>
-              <div>
-                {game.waste.length > 0 ? (
-                  <SolitaireCard
-                    card={game.waste[game.waste.length - 1]}
-                    draggable={!isWon}
-                    onDragStart={() => setDragSource({ type: 'waste' })}
-                    onDragEnd={() => setDragSource(null)}
-                    onDoubleClick={() => tryAutoMoveToFoundation({ type: 'waste' })}
-                  />
-                ) : (
-                  <div className="flex h-[calc(var(--card-w)*1.4)] w-[var(--card-w)] items-center justify-center rounded-xl border-2 border-dashed border-border/60 bg-muted/10 text-xs text-muted-foreground">
-                    Vide
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="col-span-2 rounded-xl border border-border/40 bg-muted/25 p-2">
               <div className="mb-1 text-xs font-semibold text-muted-foreground">Fondations</div>
               <div
-                className="grid justify-center gap-[var(--pile-gap)]"
+                className="grid gap-[var(--pile-gap)]"
                 style={{ gridTemplateColumns: 'repeat(4, var(--pile-col-w))' }}
               >
                 {SUITS.map((suit) => {
@@ -734,7 +737,6 @@ export default function Solitaire() {
               );
             })}
           </div>
-            </div>
           </div>
           {isWon && (
             <div className="mt-4 rounded-xl border border-primary/30 bg-primary/10 p-4 text-center">
