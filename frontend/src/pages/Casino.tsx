@@ -242,26 +242,22 @@ export default function Casino() {
   const gameCards: Array<{
     id: GameTab;
     title: string;
-    description: string;
-    detail: string;
+    subtitle: string;
   }> = [
     {
       id: 'roulette',
       title: 'Roulette',
-      description: 'Mises multi-cases, roue animee et tirage rapide.',
-      detail: 'Jusqu a 36x sur un numero plein.',
+      subtitle: 'Tirage instantane',
     },
     {
       id: 'slots',
       title: 'Machine a sous',
-      description: 'Classique, rapide et minimaliste.',
-      detail: 'Tours rapides et paiements sur lignes.',
+      subtitle: 'Partie rapide',
     },
     {
       id: 'blackjack',
       title: 'Blackjack',
-      description: 'Cartes grandes, actions simples: tirer ou rester.',
-      detail: 'Partie courte avec double et split.',
+      subtitle: 'Jeu de cartes',
     },
   ];
 
@@ -269,7 +265,6 @@ export default function Casino() {
     <PageShell size="wide">
       <PageHeader
         title="Casino"
-        description="Choisis ta table: machine a sous classique, roulette animee ou blackjack."
         actions={(
           <div className="flex flex-wrap items-center gap-3">
             <div className="rounded-lg border border-border/60 bg-card px-4 py-2 text-right">
@@ -310,59 +305,27 @@ export default function Casino() {
           )}
         </section>
       ) : (
-        <section className="space-y-6">
-          <Card>
-            <CardContent className="flex flex-col gap-6 p-6 lg:flex-row lg:items-start lg:justify-between">
-              <div className="space-y-2">
-                <h2 className="text-xl font-semibold tracking-tight">Tables disponibles</h2>
-                <p className="max-w-2xl text-sm text-muted-foreground">
-                  Les gains et pertes mettent a jour ton solde directement. Choisis un jeu, pose ta mise et lance une manche.
-                </p>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-lg border border-border/50 bg-muted/20 px-4 py-3">
-                  <p className="text-sm font-medium">Regle simple</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Chaque partie debite la mise puis applique le resultat.
-                  </p>
-                </div>
-                <div className="rounded-lg border border-border/50 bg-muted/20 px-4 py-3">
-                  <p className="text-sm font-medium">Session rapide</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Roulette, slots et blackjack se jouent en quelques clics.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <section className="grid gap-6 md:grid-cols-3">
+        <section className="grid gap-3 md:grid-cols-3">
           {gameCards.map((game) => (
             <button
               key={game.id}
               type="button"
               onClick={() => setActiveGame(game.id)}
-              className="group block text-left"
+              className="block text-left"
             >
-              <Card className="h-full border-border/50 transition hover:border-foreground/30 hover:bg-accent/20">
-                <CardContent className="flex min-h-[220px] flex-col justify-between p-6">
-                  <div className="space-y-3">
-                    <h2 className="text-2xl font-semibold tracking-tight">{game.title}</h2>
-                    <p className="max-w-xs text-sm text-muted-foreground">
-                      {game.description}
-                    </p>
-                    <div className="rounded-md border border-border/40 bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
-                      {game.detail}
-                    </div>
+              <Card className="h-full border-border/50 shadow-none transition-colors hover:border-foreground/20">
+                <CardContent className="flex min-h-[132px] flex-col justify-between p-5">
+                  <div className="space-y-1">
+                    <h2 className="text-lg font-semibold tracking-tight">{game.title}</h2>
+                    <p className="text-sm text-muted-foreground">{game.subtitle}</p>
                   </div>
-                  <div className="pt-8 text-sm font-medium text-foreground/80 transition group-hover:text-foreground">
-                    Ouvrir la table
+                  <div className="text-sm text-foreground/80">
+                    Ouvrir
                   </div>
                 </CardContent>
               </Card>
             </button>
           ))}
-          </section>
         </section>
       )}
     </PageShell>
