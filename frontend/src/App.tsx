@@ -41,10 +41,7 @@ import PuissanceQuatre from './pages/PuissanceQuatre';
 import SubwayRush from './pages/SubwayRush';
 import Echecs from './pages/Echecs';
 import LogicLab from './pages/LogicLab';
-import WallaceGromit from './pages/WallaceGromit';
-import News from './pages/News';
 import Inbox from './pages/Inbox';
-import MusicLounge from './pages/MusicLounge';
 import Blocked from './pages/Blocked';
 import { BLOCKABLE_PAGES } from './config/blockedPages';
 import { useFeatures } from './contexts/FeaturesContext';
@@ -140,9 +137,6 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/banned" element={<Banned />} />
       <Route path="/register" element={<Register />} />
-      <Route path="/maintenance/wallace-gromit" element={<WallaceGromit />} />
-      <Route path="/maintenance/news" element={<News />} />
-      <Route path="/maintenance/musique" element={<MusicLounge />} />
       <Route
         path="/"
         element={

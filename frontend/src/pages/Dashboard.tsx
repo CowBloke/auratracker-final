@@ -20,7 +20,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import { Gift, GiftStatus, UserDailyQuest, DailyQuest, auraCoinApi, giftsApi, leaderboardsApi, marketplaceApi, questsApi, passApi, bombPartyApi, polymarketApi } from '../services/api';
-import { GripVertical, Zap, DollarSign, Trophy, Users, Gift as GiftIcon, Package, TrendingUp, TrendingDown, CheckCircle2, Star, Flame, Gamepad2, Hash, BarChart3, Coins, Shield, Newspaper, User as UserIcon } from 'lucide-react';
+import { GripVertical, Zap, DollarSign, Trophy, Users, Gift as GiftIcon, Package, TrendingUp, TrendingDown, CheckCircle2, Star, Flame, Gamepad2, Hash, BarChart3, Coins, Shield, User as UserIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -117,7 +117,6 @@ const quickActions = [
   { label: 'Voir quêtes', path: '/quests', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/15' },
   { label: 'Ouvrir shop', path: '/games/market', icon: Package, color: 'text-blue-500', bg: 'bg-blue-500/15' },
   { label: 'Classements', path: '/leaderboards', icon: Trophy, color: 'text-amber-500', bg: 'bg-amber-500/15' },
-  { label: 'Actualités', path: '/news', icon: Newspaper, color: 'text-sky-500', bg: 'bg-sky-500/15' },
   { label: 'Clans', path: '/clans', icon: Shield, color: 'text-teal-500', bg: 'bg-teal-500/15' },
   { label: 'Mon profil', path: '/profile', icon: UserIcon, color: 'text-rose-500', bg: 'bg-rose-500/15' },
   { label: 'Polymarket', path: '/games/polymarket', icon: BarChart3, color: 'text-indigo-500', bg: 'bg-indigo-500/15' },

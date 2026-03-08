@@ -119,7 +119,7 @@ export function ImagePicker({
           <img
             src={resolveImageUrl(value)}
             alt="Preview"
-            className="max-h-40 rounded-md object-cover border border-border/30"
+            className="max-h-40 w-full max-w-full rounded-md border border-border/30 object-cover"
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = 'none';
             }}
