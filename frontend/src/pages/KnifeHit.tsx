@@ -455,7 +455,7 @@ export default function KnifeHit() {
                 onClick={started && !gameOver ? throwKnife : startGame}
               >
                 {started && !gameOver ? <Zap className="mr-2 h-4 w-4" /> : <Target className="mr-2 h-4 w-4" />}
-                {started && !gameOver ? ‘Lancer’ : ‘Commencer’}
+                {started && !gameOver ? 'Lancer' : 'Commencer'}
               </Button>
               {(started || gameOver) && (
                 <Button variant="outline" className="w-full justify-start" onClick={startGame}>
