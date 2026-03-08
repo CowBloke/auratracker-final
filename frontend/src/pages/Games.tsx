@@ -59,7 +59,7 @@ const games = [
     name: 'Logic Lab',
     description: 'Suites logiques, intrus, anagrammes, analogies et mini-sudoku dans une session scoree.',
     type: 'Logique',
-    emoji: '🧠',
+    image: '/images/games/logiclab.png',
   },
   {
     id: 'game-2048',
@@ -131,7 +131,7 @@ const games = [
     name: 'Helix Jump',
     description: 'Fais tourner la tour, plonge dans les ouvertures et evite les plateformes rouges.',
     type: 'Arcade',
-    emoji: '🌀',
+    image: '/images/games/helixjump.png',
   },
   {
     id: 'subway-rush',
@@ -139,7 +139,7 @@ const games = [
     name: 'Subway Rush',
     description: 'Runner endless en 3 voies. Saute, glisse et esquive les trains.',
     type: 'Arcade',
-    emoji: '🚇',
+    image: '/images/games/suwaysurfer.png',
   },
   {
     id: 'goyave-empire',
@@ -148,7 +148,6 @@ const games = [
     description: "Construis un empire de goyaves. Récolte, améliore et encaisse des récompenses.",
     type: 'Idle',
     image: '/images/games/goyaveempire.png',
-    emoji: '🍈',
   },
   {
     id: 'puissance-quatre',
