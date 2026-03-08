@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { cn } from '@/lib/utils';
 import { Bomb, Flag, RotateCcw, Trophy, X } from 'lucide-react';
+import { GameFullscreenButton } from '@/components/game/GameFullscreenButton';
+import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 
 type DifficultyKey = 'debutant' | 'intermediaire' | 'expert';
 type GameStatus = 'ready' | 'playing' | 'won' | 'lost';
@@ -201,6 +203,7 @@ function getCellSize(columns: number): string {
 }
 
 export default function Minesweeper() {
+  const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
   const { user, refreshUser } = useAuth();
   const [difficulty, setDifficulty] = useState<DifficultyKey>('intermediaire');
   const [board, setBoard] = useState<Cell[][]>(() => createEmptyBoard(DIFFICULTIES.intermediaire.rows, DIFFICULTIES.intermediaire.columns));
@@ -468,9 +471,12 @@ export default function Minesweeper() {
 
   return (
     <PageShell size="full">
-      <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-start px-4 pb-4">
+      <div className={cn(
+        'grid gap-4 items-start px-4 pb-4',
+        isFullscreen ? 'grid-cols-1 justify-items-center' : 'grid-cols-[1fr_auto_1fr]'
+      )}>
         {/* LEFT: Options / Score */}
-        <div className="flex flex-col gap-4">
+        <div className={cn('flex flex-col gap-4', isFullscreen && 'hidden')}>
           {/* 1. Stats */}
           <Card>
             <CardContent className="pt-4">
@@ -544,7 +550,35 @@ export default function Minesweeper() {
         </div>
 
         {/* CENTER: Game Board */}
-        <div className="flex flex-col items-center gap-4">
+        <div
+          ref={gameContainerRef}
+          className={cn(
+            'flex flex-col items-center gap-4',
+            isFullscreen && 'min-h-screen w-screen justify-center bg-background px-4 py-6'
+          )}
+        >
+          <div className="flex w-full max-w-[42rem] justify-between gap-2">
+            {isFullscreen ? (
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" onClick={() => resetBoard()}>
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Nouvelle partie
+                </Button>
+                <Button
+                  type="button"
+                  variant={flagMode ? 'default' : 'outline'}
+                  onClick={() => setFlagMode((current) => !current)}
+                >
+                  <Flag className="mr-2 h-4 w-4" />
+                  {flagMode ? 'Mode drapeau' : 'Mode reveal'}
+                </Button>
+              </div>
+            ) : (
+              <div />
+            )}
+            <GameFullscreenButton isFullscreen={isFullscreen} onClick={toggleFullscreen} />
+          </div>
+
           <div className="rounded-[1.75rem] border border-stone-300 bg-[linear-gradient(180deg,#f8fafc,#e2e8f0)] p-3 shadow-[0_24px_70px_rgba(15,23,42,0.14)] sm:p-4">
             <div className="rounded-[1.25rem] border border-slate-300 bg-slate-100 p-2 shadow-inner">
               <div className="grid gap-1" style={boardStyle}>
@@ -611,7 +645,7 @@ export default function Minesweeper() {
         </div>
 
         {/* RIGHT: Leaderboard */}
-        <Card>
+        <Card className={cn(isFullscreen && 'hidden')}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Trophy className="h-4 w-4" />

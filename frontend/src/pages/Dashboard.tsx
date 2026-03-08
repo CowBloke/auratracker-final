@@ -97,7 +97,6 @@ const gameShortcuts: GameShortcut[] = [
   { id: 'racer', label: 'Racer', path: '/games/racer', description: 'Course pseudo-3D style Outrun.', image: '/images/games/racer.png' },
   { id: 'tetris', label: 'Tetris', path: '/games/tetris', description: 'Puzzle classique et addictif.', image: '/images/games/tetris.png' },
   { id: 'knife-hit', label: 'Knife Hit', path: '/games/knife-hit', description: 'Timing sec et précision.', image: '/images/games/knifehit.png' },
-  { id: 'subway-rush', label: 'Subway Rush', path: '/games/subway-rush', description: 'Runner 3 voies style Subway Surfers.' },
 ];
 
 const defaultShortcuts = [

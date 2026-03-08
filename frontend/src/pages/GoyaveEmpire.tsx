@@ -4,6 +4,9 @@ import { gamesApi } from '../services/api';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
+import { GameFullscreenButton } from '@/components/game/GameFullscreenButton';
+import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 
 // ---- Constants ----
 const SAVE_KEY = 'goyave_empire_save';
@@ -189,6 +192,7 @@ function persistSave(state: SaveState): void {
 
 // ---- Component ----
 export default function GoyaveEmpire() {
+  const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
   const { user, refreshUser } = useAuth();
 
   const [save, setSave] = useState<SaveState>(() => loadSave());
@@ -359,7 +363,19 @@ export default function GoyaveEmpire() {
   return (
     <div className="w-full px-2 pb-6 lg:px-4 lg:pb-8">
       {/* Three-column Cookie Clicker layout */}
-      <div className="flex gap-0 items-stretch w-full" style={{ height: PANEL_HEIGHT }}>
+      <div
+        ref={gameContainerRef}
+        className={cn(
+          'relative flex gap-0 items-stretch w-full',
+          isFullscreen && 'min-h-screen w-screen bg-background p-4'
+        )}
+        style={{ height: PANEL_HEIGHT }}
+      >
+        <GameFullscreenButton
+          isFullscreen={isFullscreen}
+          onClick={toggleFullscreen}
+          className="absolute right-2 top-2 z-30"
+        />
 
         {/* ── LEFT: Upgrades ── */}
         <div className="flex-shrink-0 border border-border/30 border-r-0 rounded-l-xl bg-card flex flex-col overflow-hidden" style={{ width: 192 }}>

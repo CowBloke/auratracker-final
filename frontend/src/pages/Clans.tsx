@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Axe, Check, Crown, Loader2, LogOut, Plus, Send, Shield, Sparkles, Swords, Target, UserX, X } from 'lucide-react';
 import {
   ClanChatMessage,
@@ -15,20 +15,22 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ImagePicker } from '@/components/ui/image-picker';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { toast } from '@/hooks/use-toast';
-import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { resolveImageUrl } from '@/lib/images';
-import { cn } from '@/lib/utils';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from '@/hooks/use-toast';
+import { SPACING, TYPOGRAPHY } from '@/lib/design-system';
+import { resolveImageUrl } from '@/lib/images';
+import { cn } from '@/lib/utils';
 
 const CLAN_WAR_TARGET_SCORE = 180;
+const panelClassName = 'rounded-2xl border border-border/50 bg-background shadow-none';
+const mutedPanelClassName = 'rounded-2xl border border-border/50 bg-muted/15 shadow-none';
 
 const formatAura = (value: number | string) => {
   const numericValue = typeof value === 'string' ? Number(value) : value;
@@ -110,6 +112,24 @@ const getAttackColor = (attackType: ClanWarActionType['type']) => {
 
 const getAvatarFallback = (value: string) => value.trim().slice(0, 2);
 
+const SectionTitle = ({
+  title,
+  description,
+  action,
+}: {
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+}) => (
+  <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div className="space-y-1">
+      <h2 className="text-base font-medium tracking-tight">{title}</h2>
+      {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
+    </div>
+    {action ? <div className="flex items-center gap-2">{action}</div> : null}
+  </div>
+);
+
 const DefenseCard = ({
   defense,
   canFortify,
@@ -121,7 +141,7 @@ const DefenseCard = ({
   fortifying: boolean;
   onFortify: () => void;
 }) => (
-  <Card className="border-muted/60">
+  <Card className={panelClassName}>
     <CardContent className="space-y-3 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -525,26 +545,19 @@ export default function Clans() {
 
   return (
     <>
-      <PageShell>
+      <PageShell size="wide">
         <div className={SPACING.PAGE_CONTENT}>
-          <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+          <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
             <div className="space-y-4">
-              <Card className="overflow-hidden">
-                <div className="bg-gradient-to-br from-amber-200/50 via-background to-rose-200/50 p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs text-muted-foreground">Guerres en cours</p>
-                      <h2 className="mt-1 text-xl font-semibold">Front global</h2>
-                    </div>
-                    <Badge variant="secondary">{activeWars.length}</Badge>
-                  </div>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Les clans s’affrontent en préparation puis en phase active. Le premier à {CLAN_WAR_TARGET_SCORE} points gagne.
-                  </p>
-                </div>
-                <CardContent className="space-y-3 p-4">
+              <Card className={panelClassName}>
+                <CardContent className="space-y-4 p-4">
+                  <SectionTitle
+                    title="Front global"
+                    description="Guerres en préparation ou déjà lancées."
+                    action={<Badge variant="secondary">{activeWars.length}</Badge>}
+                  />
                   {activeWars.length === 0 ? (
-                    <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                    <div className="rounded-2xl border border-dashed border-border/60 p-4 text-sm text-muted-foreground">
                       Aucune guerre active pour le moment.
                     </div>
                   ) : (
@@ -553,15 +566,18 @@ export default function Clans() {
                         key={war.id}
                         type="button"
                         onClick={() => setSelectedClanId(war.attackerClan.id)}
-                        className="w-full rounded-lg border p-3 text-left transition-colors hover:bg-muted/40"
+                        className="w-full rounded-2xl border border-border/50 bg-muted/15 p-4 text-left transition-colors hover:bg-muted/30"
                       >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="font-medium">
-                            {war.attackerClan.name} <span className="text-muted-foreground">vs</span> {war.defenderClan.name}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <div className="text-xs text-muted-foreground">Guerre #{war.id.slice(0, 6)}</div>
+                            <div className="font-medium">
+                              {war.attackerClan.name} <span className="text-muted-foreground">vs</span> {war.defenderClan.name}
+                            </div>
                           </div>
                           <Badge variant={getStatusVariant(war.status)}>{getStatusLabel(war.status)}</Badge>
                         </div>
-                        <div className="mt-2 flex items-center justify-between text-sm text-muted-foreground">
+                        <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
                           <span>{war.attackerScore} - {war.defenderScore}</span>
                           <span>
                             {war.status === 'PREPARING'
@@ -575,20 +591,23 @@ export default function Clans() {
                 </CardContent>
               </Card>
 
-              <Card className="h-fit">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">Clans</CardTitle>
-                    <span className={cn(TYPOGRAPHY.SMALL, 'text-muted-foreground tabular-nums')}>{clans.length}</span>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {canCreateClan && (
-                    <Button type="button" onClick={() => setDialogOpen(true)} className="w-full justify-start">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Créer un clan
-                    </Button>
-                  )}
+              <Card className={panelClassName}>
+                <CardContent className="space-y-3 p-4">
+                  <SectionTitle
+                    title="Répertoire"
+                    description="Tous les clans disponibles."
+                    action={
+                      <>
+                        <span className={cn(TYPOGRAPHY.SMALL, 'text-muted-foreground tabular-nums')}>{clans.length}</span>
+                        {canCreateClan ? (
+                          <Button type="button" size="sm" onClick={() => setDialogOpen(true)}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Créer
+                          </Button>
+                        ) : null}
+                      </>
+                    }
+                  />
                   {loading ? (
                     <div className={cn(TYPOGRAPHY.MUTED, 'py-10')}>Chargement...</div>
                   ) : clans.length === 0 ? (
@@ -600,8 +619,8 @@ export default function Clans() {
                         type="button"
                         onClick={() => setSelectedClanId(clan.id)}
                         className={cn(
-                          'w-full rounded-lg border px-3 py-3 text-left transition-colors hover:bg-muted/40',
-                          clan.id === selectedClanId && 'border-primary/40 bg-muted/40'
+                          'w-full rounded-2xl border border-border/50 px-3 py-3 text-left transition-colors hover:bg-muted/30',
+                          clan.id === selectedClanId && 'border-foreground/15 bg-muted/30'
                         )}
                       >
                         <div className="flex items-center gap-3">
@@ -615,7 +634,7 @@ export default function Clans() {
                               {clan.memberCount}/{clan.maxMembers} membres • {formatAura(clan.totalAura)} aura
                             </div>
                           </div>
-                          {viewerClanId === clan.id && <Badge>Mon clan</Badge>}
+                          {viewerClanId === clan.id ? <Badge>Mon clan</Badge> : null}
                         </div>
                       </button>
                     ))
@@ -626,24 +645,24 @@ export default function Clans() {
 
             <div className="space-y-6">
               {!selectedClanId || !selectedClanSummary ? (
-                <Card>
+                <Card className={panelClassName}>
                   <CardContent className="p-10 text-center text-muted-foreground">
                     Sélectionne un clan pour afficher son quartier général.
                   </CardContent>
                 </Card>
               ) : detailLoading || !selectedClan ? (
-                <Card>
+                <Card className={panelClassName}>
                   <CardContent className="flex items-center justify-center p-12">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </CardContent>
                 </Card>
               ) : (
                 <>
-                  <Card className="overflow-hidden">
-                    <div className="relative border-b bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.25),_transparent_35%),radial-gradient(circle_at_bottom_right,_rgba(244,63,94,0.18),_transparent_40%)] p-6">
+                  <Card className={panelClassName}>
+                    <CardContent className="space-y-6 p-6">
                       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                         <div className="flex items-start gap-4">
-                          <Avatar className="h-20 w-20 rounded-2xl border bg-background/80">
+                          <Avatar className="h-20 w-20 rounded-2xl border border-border/50 bg-muted/20">
                             <AvatarImage src={resolveImageUrl(selectedClan.imageUrl)} alt={selectedClan.name} />
                             <AvatarFallback className="rounded-2xl text-xl">{getAvatarFallback(selectedClan.name)}</AvatarFallback>
                           </Avatar>
@@ -653,7 +672,12 @@ export default function Clans() {
                               <Badge variant={selectedClan.isPublic ? 'secondary' : 'outline'}>
                                 {selectedClan.isPublic ? 'Ouvert' : 'Privé'}
                               </Badge>
-                              {selectedClan.viewer.isLeader && <Badge className="gap-1"><Crown className="h-3.5 w-3.5" /> Chef</Badge>}
+                              {selectedClan.viewer.isLeader ? (
+                                <Badge className="gap-1">
+                                  <Crown className="h-3.5 w-3.5" />
+                                  Chef
+                                </Badge>
+                              ) : null}
                             </div>
                             <p className="max-w-2xl text-sm text-muted-foreground">
                               {selectedClan.description || 'Aucune description pour le moment.'}
@@ -669,67 +693,74 @@ export default function Clans() {
                         </div>
 
                         <div className="flex flex-wrap gap-2">
-                          {selectedClan.warHub.canDeclareWar && (
+                          {selectedClan.warHub.canDeclareWar ? (
                             <Button onClick={() => setWarDialogOpen(true)}>
                               <Swords className="mr-2 h-4 w-4" />
                               Déclarer une guerre
                             </Button>
-                          )}
-                          {canJoinSelectedClan && (
+                          ) : null}
+                          {canJoinSelectedClan ? (
                             <Button onClick={handleJoin} disabled={actionLoading || selectedClan.viewer.hasPendingRequest}>
                               {actionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                               {selectedClan.viewer.hasPendingRequest ? 'Demande en attente' : 'Rejoindre'}
                             </Button>
-                          )}
-                          {selectedClan.viewer.isMember && (
+                          ) : null}
+                          {selectedClan.viewer.isMember ? (
                             <Button variant="outline" onClick={handleLeave} disabled={actionLoading}>
                               <LogOut className="mr-2 h-4 w-4" />
                               Quitter
                             </Button>
-                          )}
+                          ) : null}
                         </div>
                       </div>
-                    </div>
-                    <CardContent className="grid gap-4 p-6 md:grid-cols-3">
-                      <div className="rounded-xl border bg-muted/30 p-4">
-                        <p className="text-xs text-muted-foreground">Chef</p>
-                        <div className="mt-3 flex items-center gap-3">
-                          <Avatar>
-                            <AvatarImage src={resolveImageUrl(selectedClan.leader.profilePicture)} alt={selectedClan.leader.username} />
-                            <AvatarFallback>{getAvatarFallback(selectedClan.leader.username)}</AvatarFallback>
-                          </Avatar>
-                          <UsernameDisplay username={selectedClan.leader.username} usernameColor={selectedClan.leader.usernameColor} />
+
+                      <div className="grid gap-4 md:grid-cols-3">
+                        <div className={mutedPanelClassName}>
+                          <div className="space-y-3 p-4">
+                            <p className="text-xs text-muted-foreground">Chef</p>
+                            <div className="flex items-center gap-3">
+                              <Avatar>
+                                <AvatarImage src={resolveImageUrl(selectedClan.leader.profilePicture)} alt={selectedClan.leader.username} />
+                                <AvatarFallback>{getAvatarFallback(selectedClan.leader.username)}</AvatarFallback>
+                              </Avatar>
+                              <UsernameDisplay username={selectedClan.leader.username} usernameColor={selectedClan.leader.usernameColor} />
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      <div className="rounded-xl border bg-muted/30 p-4">
-                        <p className="text-xs text-muted-foreground">Éligibilité guerre</p>
-                        <div className="mt-3 text-sm">
-                          {selectedClan.memberCount >= selectedClan.warHub.minimumMembersRequired
-                            ? 'Le clan peut participer aux guerres.'
-                            : `Il faut ${selectedClan.warHub.minimumMembersRequired} membres minimum.`}
+                        <div className={mutedPanelClassName}>
+                          <div className="space-y-3 p-4">
+                            <p className="text-xs text-muted-foreground">Éligibilité guerre</p>
+                            <div className="text-sm">
+                              {selectedClan.memberCount >= selectedClan.warHub.minimumMembersRequired
+                                ? 'Le clan peut participer aux guerres.'
+                                : `Il faut ${selectedClan.warHub.minimumMembersRequired} membres minimum.`}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      <div className="rounded-xl border bg-muted/30 p-4">
-                        <p className="text-xs text-muted-foreground">Cooldown</p>
-                        <div className="mt-3 text-sm">
-                          {selectedClan.warHub.cooldownEndsAt
-                            ? `Disponible dans ${formatCountdown(selectedClan.warHub.cooldownEndsAt)}`
-                            : 'Le clan peut repartir au combat.'}
+                        <div className={mutedPanelClassName}>
+                          <div className="space-y-3 p-4">
+                            <p className="text-xs text-muted-foreground">Cooldown</p>
+                            <div className="text-sm">
+                              {selectedClan.warHub.cooldownEndsAt
+                                ? `Disponible dans ${formatCountdown(selectedClan.warHub.cooldownEndsAt)}`
+                                : 'Le clan peut repartir au combat.'}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
 
                   {selectedWar ? (
-                    <Card className="overflow-hidden border-rose-500/20">
-                      <div className="border-b bg-gradient-to-r from-rose-500/10 via-background to-amber-500/10 p-6">
+                    <Card className={panelClassName}>
+                      <div className="border-b border-border/50 p-6">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                           <div>
                             <div className="flex items-center gap-2">
                               <Badge variant={getStatusVariant(selectedWar.status)}>{getStatusLabel(selectedWar.status)}</Badge>
                               <span className="text-sm text-muted-foreground">Objectif {selectedWar.targetScore} points</span>
                             </div>
-                            <h2 className="mt-2 text-2xl font-semibold">
+                            <h2 className="mt-2 text-2xl font-semibold tracking-tight">
                               {selectedWar.attackerClan.name} vs {selectedWar.defenderClan.name}
                             </h2>
                             <p className="mt-2 text-sm text-muted-foreground">
@@ -742,109 +773,121 @@ export default function Clans() {
                           </div>
 
                           <div className="grid grid-cols-2 gap-3 text-center">
-                            <div className="rounded-xl border bg-background/70 px-4 py-3">
-                              <div className="text-xs text-muted-foreground">{selectedWar.attackerClan.name}</div>
-                              <div className="mt-1 text-3xl font-semibold tabular-nums">{selectedWar.attackerScore}</div>
+                            <div className={mutedPanelClassName}>
+                              <div className="px-4 py-3">
+                                <div className="text-xs text-muted-foreground">{selectedWar.attackerClan.name}</div>
+                                <div className="mt-1 text-3xl font-semibold tabular-nums">{selectedWar.attackerScore}</div>
+                              </div>
                             </div>
-                            <div className="rounded-xl border bg-background/70 px-4 py-3">
-                              <div className="text-xs text-muted-foreground">{selectedWar.defenderClan.name}</div>
-                              <div className="mt-1 text-3xl font-semibold tabular-nums">{selectedWar.defenderScore}</div>
+                            <div className={mutedPanelClassName}>
+                              <div className="px-4 py-3">
+                                <div className="text-xs text-muted-foreground">{selectedWar.defenderClan.name}</div>
+                                <div className="mt-1 text-3xl font-semibold tabular-nums">{selectedWar.defenderScore}</div>
+                              </div>
                             </div>
                           </div>
                         </div>
                       </div>
 
                       <CardContent className="space-y-6 p-6">
-                        {isOwnClan && (
+                        {isOwnClan ? (
                           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-                            <div className="rounded-xl border p-4">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <h3 className="font-medium">Centre de commandement</h3>
-                                  <p className="text-sm text-muted-foreground">
-                                    {selectedWar.status === 'PREPARING'
-                                      ? 'Utilise la phase de préparation pour monter tes structures.'
-                                      : 'Coordonne les attaques et surveille la pression adverse.'}
-                                  </p>
-                                </div>
-                                <Badge variant="secondary">{selectedWar.viewerSide === 'ATTACKER' ? 'Attaquant' : 'Défenseur'}</Badge>
-                              </div>
-                              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                                <div className="rounded-lg border bg-muted/30 p-4">
-                                  <div className="text-xs text-muted-foreground">Endurance (24h)</div>
-                                  <div className="mt-2 text-2xl font-semibold tabular-nums">
-                                    {selectedWar.viewerActions.staminaRemaining}/{selectedWar.viewerActions.staminaCap}
+                            <div className={mutedPanelClassName}>
+                              <div className="space-y-4 p-4">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <h3 className="font-medium">Centre de commandement</h3>
+                                    <p className="text-sm text-muted-foreground">
+                                      {selectedWar.status === 'PREPARING'
+                                        ? 'Utilise la phase de préparation pour monter tes structures.'
+                                        : 'Coordonne les attaques et surveille la pression adverse.'}
+                                    </p>
                                   </div>
-                                  <p className="mt-1 text-sm text-muted-foreground">
-                                    {selectedWar.viewerActions.staminaUsed} consommée(s) sur les dernières 24h.
-                                  </p>
+                                  <Badge variant="secondary">{selectedWar.viewerSide === 'ATTACKER' ? 'Attaquant' : 'Défenseur'}</Badge>
                                 </div>
-                                <div className="rounded-lg border bg-muted/30 p-4">
-                                  <div className="text-xs text-muted-foreground">Fortifications</div>
-                                  <div className="mt-2 text-2xl font-semibold tabular-nums">
-                                    {selectedWar.viewerActions.fortificationsRemaining}/{selectedWar.viewerActions.fortificationsCap}
+
+                                <div className="grid gap-3 md:grid-cols-2">
+                                  <div className={panelClassName}>
+                                    <div className="space-y-1 p-4">
+                                      <div className="text-xs text-muted-foreground">Endurance (24h)</div>
+                                      <div className="text-2xl font-semibold tabular-nums">
+                                        {selectedWar.viewerActions.staminaRemaining}/{selectedWar.viewerActions.staminaCap}
+                                      </div>
+                                      <p className="text-sm text-muted-foreground">
+                                        {selectedWar.viewerActions.staminaUsed} consommée(s) sur les dernières 24h.
+                                      </p>
+                                    </div>
                                   </div>
-                                  <p className="mt-1 text-sm text-muted-foreground">
-                                    Chaque membre peut renforcer deux fois par guerre.
-                                  </p>
+                                  <div className={panelClassName}>
+                                    <div className="space-y-1 p-4">
+                                      <div className="text-xs text-muted-foreground">Fortifications</div>
+                                      <div className="text-2xl font-semibold tabular-nums">
+                                        {selectedWar.viewerActions.fortificationsRemaining}/{selectedWar.viewerActions.fortificationsCap}
+                                      </div>
+                                      <p className="text-sm text-muted-foreground">
+                                        Chaque membre peut renforcer deux fois par guerre.
+                                      </p>
+                                    </div>
+                                  </div>
                                 </div>
+
+                                {selectedWar.status === 'ACTIVE' ? (
+                                  <div className="grid gap-3 md:grid-cols-3">
+                                    {selectedClan.warHub.attackTypes.map((attack) => (
+                                      <button
+                                        key={attack.type}
+                                        type="button"
+                                        onClick={() => handleAttack(attack.type)}
+                                        disabled={!canAttack || warActionKey === `attack:${attack.type}`}
+                                        className={cn(
+                                          'rounded-2xl border px-4 py-4 text-left transition-colors hover:bg-muted/30 disabled:cursor-not-allowed disabled:opacity-60',
+                                          getAttackColor(attack.type)
+                                        )}
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <span className="font-medium">{attack.label}</span>
+                                          <Badge variant="outline">-{attack.staminaCost} end.</Badge>
+                                        </div>
+                                        <p className="mt-2 text-sm text-muted-foreground">{attack.description}</p>
+                                        <div className="mt-3 text-xs text-muted-foreground">
+                                          {attack.minPoints}-{attack.maxPoints} pts • {attack.structureDamage} dégâts structure
+                                        </div>
+                                      </button>
+                                    ))}
+                                  </div>
+                                ) : null}
                               </div>
-                              {selectedWar.status === 'ACTIVE' && (
-                                <div className="mt-4 grid gap-3 md:grid-cols-3">
-                                  {selectedClan.warHub.attackTypes.map((attack) => (
-                                    <button
-                                      key={attack.type}
-                                      type="button"
-                                      onClick={() => handleAttack(attack.type)}
-                                      disabled={!canAttack || warActionKey === `attack:${attack.type}`}
-                                      className={cn(
-                                        'rounded-xl border px-4 py-4 text-left transition-colors hover:bg-muted/40 disabled:cursor-not-allowed disabled:opacity-60',
-                                        getAttackColor(attack.type)
-                                      )}
-                                    >
-                                      <div className="flex items-center justify-between">
-                                        <span className="font-medium">{attack.label}</span>
-                                        <Badge variant="outline">-{attack.staminaCost} end.</Badge>
-                                      </div>
-                                      <p className="mt-2 text-sm text-muted-foreground">{attack.description}</p>
-                                      <div className="mt-3 text-xs text-muted-foreground">
-                                        {attack.minPoints}-{attack.maxPoints} pts • {attack.structureDamage} dégâts structure
-                                      </div>
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
                             </div>
 
-                            <div className="rounded-xl border p-4">
-                              <h3 className="font-medium">Récompenses</h3>
-                              <div className="mt-4 space-y-3 text-sm">
-                                <div className="rounded-lg border bg-emerald-500/5 p-3">
+                            <div className={mutedPanelClassName}>
+                              <div className="space-y-3 p-4">
+                                <h3 className="font-medium">Récompenses</h3>
+                                <div className="rounded-2xl border border-border/50 bg-emerald-500/5 p-3 text-sm">
                                   <div className="font-medium">Victoire</div>
                                   <div className="mt-1 text-muted-foreground">
                                     +{selectedWar.rewardTable.winner.money} money et +{selectedWar.rewardTable.winner.aura} aura par membre.
                                   </div>
                                 </div>
-                                <div className="rounded-lg border bg-muted/30 p-3">
+                                <div className="rounded-2xl border border-border/50 bg-background p-3 text-sm">
                                   <div className="font-medium">Défaite / égalité</div>
                                   <div className="mt-1 text-muted-foreground">
                                     +{selectedWar.rewardTable.loser.money} money et +{selectedWar.rewardTable.loser.aura} aura par membre.
                                   </div>
                                 </div>
-                                {selectedWar.winnerClan && (
+                                {selectedWar.winnerClan ? (
                                   <Alert>
-                                    <TrophyLike />
+                                    <Sparkles className="h-4 w-4" />
                                     <AlertTitle>Vainqueur</AlertTitle>
                                     <AlertDescription>
                                       {selectedWar.winnerClan.name}
                                       {selectedWar.winnerUser ? ` • MVP: ${selectedWar.winnerUser.username}` : ''}
                                     </AlertDescription>
                                   </Alert>
-                                )}
+                                ) : null}
                               </div>
                             </div>
                           </div>
-                        )}
+                        ) : null}
 
                         <div className="grid gap-6 xl:grid-cols-2">
                           <div className="space-y-4">
@@ -865,6 +908,7 @@ export default function Clans() {
                                 ))}
                               </div>
                             </div>
+
                             <div>
                               <div className="mb-3 flex items-center gap-2">
                                 <Target className="h-4 w-4 text-muted-foreground" />
@@ -885,16 +929,14 @@ export default function Clans() {
                           </div>
 
                           <div className="space-y-4">
-                            <Card className="border-muted/60">
-                              <CardHeader className="pb-3">
-                                <CardTitle className="text-base">Journal des attaques</CardTitle>
-                              </CardHeader>
-                              <CardContent className="space-y-3">
+                            <Card className={panelClassName}>
+                              <CardContent className="space-y-3 p-4">
+                                <SectionTitle title="Journal des attaques" />
                                 {selectedWar.recentAttacks.length === 0 ? (
                                   <div className="text-sm text-muted-foreground">Aucune attaque enregistrée.</div>
                                 ) : (
                                   selectedWar.recentAttacks.map((attack) => (
-                                    <div key={attack.id} className="rounded-lg border p-3">
+                                    <div key={attack.id} className="rounded-2xl border border-border/50 bg-muted/15 p-3">
                                       <div className="flex items-start justify-between gap-3">
                                         <div>
                                           <div className="flex flex-wrap items-center gap-2">
@@ -917,16 +959,14 @@ export default function Clans() {
                               </CardContent>
                             </Card>
 
-                            <Card className="border-muted/60">
-                              <CardHeader className="pb-3">
-                                <CardTitle className="text-base">Journal des fortifications</CardTitle>
-                              </CardHeader>
-                              <CardContent className="space-y-3">
+                            <Card className={panelClassName}>
+                              <CardContent className="space-y-3 p-4">
+                                <SectionTitle title="Journal des fortifications" />
                                 {selectedWar.recentFortifications.length === 0 ? (
                                   <div className="text-sm text-muted-foreground">Aucun renfort pour l’instant.</div>
                                 ) : (
                                   selectedWar.recentFortifications.map((entry) => (
-                                    <div key={entry.id} className="rounded-lg border p-3">
+                                    <div key={entry.id} className="rounded-2xl border border-border/50 bg-muted/15 p-3">
                                       <div className="flex items-start justify-between gap-3">
                                         <div className="text-sm">
                                           <UsernameDisplay username={entry.user.username} usernameColor={entry.user.usernameColor} /> a renforcé{' '}
@@ -959,13 +999,11 @@ export default function Clans() {
                     </Alert>
                   )}
 
-                  {selectedClan.viewer.isMember && (
-                    <Card className="overflow-hidden">
-                      <CardHeader className="border-b bg-muted/20 pb-4">
-                        <CardTitle className="text-base">Chat du clan</CardTitle>
-                      </CardHeader>
+                  {selectedClan.viewer.isMember ? (
+                    <Card className={panelClassName}>
                       <CardContent className="space-y-4 p-4">
-                        <div className="max-h-[420px] space-y-3 overflow-y-auto rounded-xl border bg-muted/15 p-3">
+                        <SectionTitle title="Chat du clan" description="Conversation interne du clan." />
+                        <div className="max-h-[420px] space-y-3 overflow-y-auto rounded-2xl border border-border/50 bg-muted/15 p-3">
                           {chatLoading ? (
                             <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">
                               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -983,7 +1021,12 @@ export default function Clans() {
                                   key={entry.id}
                                   className={cn('flex', isOwnMessage ? 'justify-end' : 'justify-start')}
                                 >
-                                  <div className={cn('max-w-[85%] rounded-2xl border px-4 py-3', isOwnMessage ? 'bg-primary/10 border-primary/20' : 'bg-background')}>
+                                  <div
+                                    className={cn(
+                                      'max-w-[85%] rounded-2xl border border-border/50 px-4 py-3',
+                                      isOwnMessage ? 'border-primary/20 bg-primary/10' : 'bg-background'
+                                    )}
+                                  >
                                     <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
                                       <UsernameDisplay username={entry.user.username} usernameColor={entry.user.usernameColor} />
                                       <span>•</span>
@@ -1016,16 +1059,14 @@ export default function Clans() {
                         </form>
                       </CardContent>
                     </Card>
-                  )}
+                  ) : null}
 
                   <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-base">Rosters</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
+                    <Card className={panelClassName}>
+                      <CardContent className="space-y-3 p-4">
+                        <SectionTitle title="Roster" description="Tous les membres du clan." />
                         {selectedClan.members.map((member) => (
-                          <div key={member.id} className="flex items-center justify-between gap-3 rounded-xl border p-3">
+                          <div key={member.id} className="flex items-center justify-between gap-3 rounded-2xl border border-border/50 bg-muted/15 p-3">
                             <div className="flex items-center gap-3">
                               <Avatar>
                                 <AvatarImage src={resolveImageUrl(member.profilePicture)} alt={member.username} />
@@ -1034,14 +1075,14 @@ export default function Clans() {
                               <div>
                                 <div className="flex items-center gap-2">
                                   <UsernameDisplay username={member.username} usernameColor={member.usernameColor} />
-                                  {member.isLeader && <Crown className="h-4 w-4 text-amber-500" />}
+                                  {member.isLeader ? <Crown className="h-4 w-4 text-amber-500" /> : null}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
                                   {formatAura(member.aura)} aura • rejoint le {formatDate(member.joinedAt)}
                                 </div>
                               </div>
                             </div>
-                            {selectedClan.viewer.isLeader && !member.isLeader && (
+                            {selectedClan.viewer.isLeader && !member.isLeader ? (
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -1051,21 +1092,19 @@ export default function Clans() {
                                 <UserX className="mr-2 h-4 w-4" />
                                 Retirer
                               </Button>
-                            )}
+                            ) : null}
                           </div>
                         ))}
                       </CardContent>
                     </Card>
 
                     <div className="space-y-6">
-                      {selectedClan.viewer.isLeader && selectedClan.joinRequests.length > 0 && (
-                        <Card>
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-base">Candidatures</CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-3">
+                      {selectedClan.viewer.isLeader && selectedClan.joinRequests.length > 0 ? (
+                        <Card className={panelClassName}>
+                          <CardContent className="space-y-3 p-4">
+                            <SectionTitle title="Candidatures" description="Demandes en attente." />
                             {selectedClan.joinRequests.map((request) => (
-                              <div key={request.id} className="rounded-xl border p-3">
+                              <div key={request.id} className="rounded-2xl border border-border/50 bg-muted/15 p-3">
                                 <div className="flex items-center gap-3">
                                   <Avatar>
                                     <AvatarImage src={resolveImageUrl(request.profilePicture)} alt={request.username} />
@@ -1092,13 +1131,11 @@ export default function Clans() {
                             ))}
                           </CardContent>
                         </Card>
-                      )}
+                      ) : null}
 
-                      <Card>
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-base">Historique des guerres</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
+                      <Card className={panelClassName}>
+                        <CardContent className="space-y-3 p-4">
+                          <SectionTitle title="Historique des guerres" description="Conflits terminés du clan." />
                           {selectedClan.warHub.history.length === 0 ? (
                             <div className="text-sm text-muted-foreground">Aucune guerre terminée pour ce clan.</div>
                           ) : (
@@ -1107,20 +1144,17 @@ export default function Clans() {
                               const isWin = war.winnerClan?.id === selectedClan.id;
                               const isDraw = !war.winnerClan;
                               return (
-                                <div key={war.id} className="rounded-xl border p-3">
-                                  <div className="flex items-center justify-between gap-3">
-                                    <div>
-                                      <div className="font-medium">Contre {opponent.name}</div>
-                                      <div className="text-xs text-muted-foreground">{formatDate(war.completedAt)}</div>
+                                <div key={war.id} className="flex items-start justify-between gap-3 rounded-2xl border border-border/50 bg-muted/15 p-4">
+                                  <div className="min-w-0 space-y-1">
+                                    <div className="text-sm font-medium">Contre {opponent.name}</div>
+                                    <div className="text-sm text-muted-foreground">
+                                      {formatDate(war.completedAt)} • Score final {war.attackerScore} - {war.defenderScore}
+                                      {war.winnerUser ? ` • MVP: ${war.winnerUser.username}` : ''}
                                     </div>
-                                    <Badge variant={isDraw ? 'outline' : isWin ? 'secondary' : 'destructive'}>
-                                      {isDraw ? 'Égalité' : isWin ? 'Victoire' : 'Défaite'}
-                                    </Badge>
                                   </div>
-                                  <div className="mt-2 text-sm text-muted-foreground">
-                                    Score final {war.attackerScore} - {war.defenderScore}
-                                    {war.winnerUser ? ` • MVP: ${war.winnerUser.username}` : ''}
-                                  </div>
+                                  <Badge variant={isDraw ? 'outline' : isWin ? 'secondary' : 'destructive'}>
+                                    {isDraw ? 'Égalité' : isWin ? 'Victoire' : 'Défaite'}
+                                  </Badge>
                                 </div>
                               );
                             })
@@ -1143,12 +1177,12 @@ export default function Clans() {
             <DialogDescription>Coût: 100 money. Le chef devient automatiquement le premier membre.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateClan} className="space-y-4">
-            {formError && (
+            {formError ? (
               <Alert variant="destructive">
                 <AlertTitle>Erreur</AlertTitle>
                 <AlertDescription>{formError}</AlertDescription>
               </Alert>
-            )}
+            ) : null}
             <div className="space-y-2">
               <label className="text-sm font-medium">Nom</label>
               <Input value={name} onChange={(event) => setName(event.target.value)} maxLength={32} placeholder="Les Veilleurs" />
@@ -1198,7 +1232,7 @@ export default function Clans() {
           <div className="grid gap-3">
             {selectedClan?.warHub.eligibleOpponents.length ? (
               selectedClan.warHub.eligibleOpponents.map((opponent) => (
-                <div key={opponent.id} className="flex items-center justify-between rounded-xl border p-4">
+                <div key={opponent.id} className="flex items-center justify-between rounded-2xl border border-border/50 p-4">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-12 w-12">
                       <AvatarImage src={resolveImageUrl(opponent.imageUrl)} alt={opponent.name} />
@@ -1221,7 +1255,7 @@ export default function Clans() {
                 </div>
               ))
             ) : (
-              <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+              <div className="rounded-2xl border border-dashed border-border/60 p-6 text-sm text-muted-foreground">
                 Aucun adversaire disponible actuellement.
               </div>
             )}
@@ -1230,8 +1264,4 @@ export default function Clans() {
       </Dialog>
     </>
   );
-}
-
-function TrophyLike() {
-  return <Sparkles className="h-4 w-4" />;
 }

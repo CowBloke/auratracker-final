@@ -33,7 +33,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { cn } from '@/lib/utils';
+import { cn, humanizeUiLabel } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { ImagePicker } from '@/components/ui/image-picker';
 import { BLOCKABLE_PAGES } from '@/config/blockedPages';
@@ -53,15 +53,6 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
   CONSUMABLE: 'Consommable',
   COSMETIC: 'Cosmétique',
   UPGRADE: 'Amélioration',
-};
-
-const humanizeIdentifier = (value: string | null | undefined) => {
-  if (!value) return '';
-  const normalized = value
-    .toLowerCase()
-    .replace(/_/g, ' ')
-    .trim();
-  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 };
 
 const ANNOUNCEMENT_MAX_LENGTH = 120;
@@ -179,7 +170,6 @@ const GAME_TYPE_LABELS: Record<string, string> = {
   racer: 'Racer',
   tetris: 'Tetris',
   knife_hit: 'Knife Hit',
-  subway_rush: 'Subway Rush',
   minesweeper: 'Démineur',
   casino: 'Casino',
   bombparty: 'Bomb Party',
@@ -269,7 +259,7 @@ const formatLogSummary = (log: ActivityLog): string => {
     }
   }
 
-  const actionLabel = ACTION_LABELS[log.action] || log.action.replace(/_/g, ' ');
+  const actionLabel = ACTION_LABELS[log.action] || humanizeUiLabel(log.action);
   if (log.targetName) {
     return `${actionLabel} par ${actor} → ${log.targetName}`;
   }
@@ -286,7 +276,6 @@ const GAME_TYPES = [
   { value: 'racer', label: 'Racer' },
   { value: 'tetris', label: 'Tetris' },
   { value: 'knife_hit', label: 'Knife Hit' },
-  { value: 'subway_rush', label: 'Subway Rush' },
   { value: 'minesweeper', label: 'Démineur' },
   { value: 'casino', label: 'Casino' },
   { value: 'bombparty', label: 'Bomb Party' },
@@ -2825,7 +2814,7 @@ export default function Admin() {
                   return acc;
                 }, {});
                 const allTypes = [...shopCategories.map(c => c.id), ...Object.keys(grouped).filter(t => !shopCategories.find(c => c.id === t))];
-                const getCategoryLabel = (typeId: string) => shopCategories.find(c => c.id === typeId)?.label || ITEM_TYPE_LABELS[typeId] || humanizeIdentifier(typeId);
+                const getCategoryLabel = (typeId: string) => shopCategories.find(c => c.id === typeId)?.label || ITEM_TYPE_LABELS[typeId] || humanizeUiLabel(typeId);
                 return (
                   <div className="space-y-6">
                     {allTypes.filter(t => grouped[t]?.length).map(type => (
@@ -2836,7 +2825,7 @@ export default function Admin() {
                         <div className="divide-y divide-border/30">
                           {grouped[type].map((item) => {
                             const { type: effectType } = parseEffect(item.effect);
-                            const effectLabel = EFFECT_TYPES.find(e => e.value === effectType)?.label || humanizeIdentifier(effectType);
+                            const effectLabel = EFFECT_TYPES.find(e => e.value === effectType)?.label || humanizeUiLabel(effectType);
                             return (
                               <div key={item.id} className="py-3 flex items-center justify-between">
                                 <div className="flex items-center gap-4 min-w-0 flex-1">
@@ -3447,7 +3436,7 @@ export default function Admin() {
                         "text-white"
                       )}>
                         <Icon className="h-2.5 w-2.5" />
-                        {config?.label || log.type}
+                        {config?.label || humanizeUiLabel(log.type)}
                       </span>
 
                       {/* Action + User summary */}
@@ -3510,7 +3499,7 @@ export default function Admin() {
                           {/* Metadata with human-readable labels */}
                           {log.metadata && Object.entries(log.metadata).map(([key, value]) => (
                             <div key={key} className="contents">
-                              <div className="text-muted-foreground">{METADATA_LABELS[key] || key}</div>
+                              <div className="text-muted-foreground">{METADATA_LABELS[key] || humanizeUiLabel(key)}</div>
                               <div>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</div>
                             </div>
                           ))}
@@ -3518,7 +3507,7 @@ export default function Admin() {
                           {/* Details with human-readable labels */}
                           {log.details && !log.metadata && Object.entries(log.details).map(([key, value]) => (
                             <div key={key} className="contents">
-                              <div className="text-muted-foreground">{METADATA_LABELS[key] || key}</div>
+                              <div className="text-muted-foreground">{METADATA_LABELS[key] || humanizeUiLabel(key)}</div>
                               <div>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</div>
                             </div>
                           ))}
@@ -4030,7 +4019,7 @@ export default function Admin() {
                       ) : (
                         items.map((item) => (
                           <SelectItem key={item.id} value={item.id}>
-                            {item.name} • {ITEM_TYPE_LABELS[item.type] || humanizeIdentifier(item.type)}
+                            {item.name} • {ITEM_TYPE_LABELS[item.type] || humanizeUiLabel(item.type)}
                           </SelectItem>
                         ))
                       )}
@@ -4085,7 +4074,7 @@ export default function Admin() {
                   {inventoryItems.map((inventoryItem) => {
                     const effect = inventoryItem.item.effect ? parseEffect(inventoryItem.item.effect) : null;
                     const effectLabel = effect
-                      ? EFFECT_TYPES.find((effectItem) => effectItem.value === effect.type)?.label || humanizeIdentifier(effect.type)
+                      ? EFFECT_TYPES.find((effectItem) => effectItem.value === effect.type)?.label || humanizeUiLabel(effect.type)
                       : null;
 
                     return (
@@ -4110,7 +4099,7 @@ export default function Admin() {
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-medium truncate">{inventoryItem.item.name}</span>
                                 <span className="text-xs text-muted-foreground  ">
-                                  {ITEM_TYPE_LABELS[inventoryItem.item.type] || humanizeIdentifier(inventoryItem.item.type)}
+                                  {ITEM_TYPE_LABELS[inventoryItem.item.type] || humanizeUiLabel(inventoryItem.item.type)}
                                 </span>
                               </div>
                               {effectLabel && (

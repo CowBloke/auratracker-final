@@ -4,9 +4,11 @@ import { useTheme } from '../contexts/ThemeContext';
 import { gamesApi } from '../services/api';
 import { Play, RotateCcw, Trophy, X, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { GameFullscreenButton } from '@/components/game/GameFullscreenButton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 
 // ============================================
 // GAME CONSTANTS
@@ -240,6 +242,7 @@ const getTextColor = (value: number, theme: 'light' | 'dark'): string => {
 export default function Game2048() {
   const { theme } = useTheme();
   const { user, refreshUser } = useAuth();
+  const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
 
   const [tiles, setTiles] = useState<Tile[]>(createEmptyTiles());
   const [score, setScore] = useState(0);
@@ -447,10 +450,13 @@ export default function Game2048() {
   };
   
   return (
-    <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-start px-4 pb-6 lg:px-6 lg:pb-8">
+    <div className={cn(
+      'grid items-start gap-4 px-4 pb-6 lg:px-6 lg:pb-8',
+      isFullscreen ? 'grid-cols-1 justify-items-center' : 'grid-cols-[1fr_auto_1fr]'
+    )}>
 
       {/* ── Left column ── */}
-      <div className="flex flex-col gap-3">
+      <div className={cn('flex flex-col gap-3', isFullscreen && 'hidden')}>
         <Card>
           <CardHeader className="px-4 py-3">
             <CardTitle className="text-sm font-medium">Score</CardTitle>
@@ -503,110 +509,124 @@ export default function Game2048() {
 
       {/* ── Center column — board ── */}
       <div
-        className="relative border border-border/30 rounded-lg bg-muted/20 p-2"
-        style={{ width: BOARD_SIZE, height: BOARD_SIZE }}
+        ref={gameContainerRef}
+        className={cn(
+          'relative',
+          isFullscreen && 'flex min-h-screen w-screen items-center justify-center bg-background'
+        )}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Background grid */}
-        <div className="absolute inset-2 grid grid-cols-4 gap-2.5">
-          {Array.from({ length: GRID_SIZE * GRID_SIZE }).map((_, i) => (
-            <div key={i} className="bg-muted/30 rounded" />
-          ))}
-        </div>
+        <GameFullscreenButton
+          isFullscreen={isFullscreen}
+          onClick={toggleFullscreen}
+          className="absolute right-2 top-2 z-30"
+        />
 
-        {/* Tiles */}
-        <div className="absolute inset-0 p-2.5">
-          {tiles.map((tile) => {
-            const x = tile.col * (CELL_SIZE + CELL_GAP);
-            const y = tile.row * (CELL_SIZE + CELL_GAP);
-            return (
-              <div
-                key={tile.id}
-                className={cn(
-                  'absolute rounded flex items-center justify-center font-bold',
-                  'transition-transform duration-150 ease-out',
-                  tile.isNew && 'animate-tile-appear',
-                  tile.isMerged && 'animate-tile-merge'
-                )}
-                style={{
-                  width: CELL_SIZE,
-                  height: CELL_SIZE,
-                  transform: `translate(${x}px, ${y}px)`,
-                  backgroundColor: getTileColor(tile.value, theme),
-                  color: getTextColor(tile.value, theme),
-                  fontSize: tile.value >= 1024 ? '1.5rem' : tile.value >= 128 ? '1.75rem' : '2rem',
-                  zIndex: tile.isMerged ? 10 : 1,
-                }}
-              >
-                {tile.value}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Start Screen */}
-        {!started && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
-            <Button
-              variant="ghost"
-              onClick={initGame}
-              className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-            >
-              <Play className="w-4 h-4" />
-              Jouer
-            </Button>
+        <div
+          className="relative border border-border/30 rounded-lg bg-muted/20 p-2"
+          style={{ width: BOARD_SIZE, height: BOARD_SIZE }}
+        >
+          {/* Background grid */}
+          <div className="absolute inset-2 grid grid-cols-4 gap-2.5">
+            {Array.from({ length: GRID_SIZE * GRID_SIZE }).map((_, i) => (
+              <div key={i} className="bg-muted/30 rounded" />
+            ))}
           </div>
-        )}
 
-        {/* Win Screen */}
-        {won && !gameOver && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg">
-            <div className="text-center space-y-4 bg-card border border-border/50 rounded-lg p-6">
-              <h2 className="text-2xl font-light">Tu as atteint 2048 !</h2>
-              <p className="text-sm text-muted-foreground">Continue pour un meilleur score</p>
-              <Button
-                variant="ghost"
-                onClick={() => setWon(false)}
-                className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-              >
-                Continuer
-              </Button>
-            </div>
+          {/* Tiles */}
+          <div className="absolute inset-0 p-2.5">
+            {tiles.map((tile) => {
+              const x = tile.col * (CELL_SIZE + CELL_GAP);
+              const y = tile.row * (CELL_SIZE + CELL_GAP);
+              return (
+                <div
+                  key={tile.id}
+                  className={cn(
+                    'absolute rounded flex items-center justify-center font-bold',
+                    'transition-transform duration-150 ease-out',
+                    tile.isNew && 'animate-tile-appear',
+                    tile.isMerged && 'animate-tile-merge'
+                  )}
+                  style={{
+                    width: CELL_SIZE,
+                    height: CELL_SIZE,
+                    transform: `translate(${x}px, ${y}px)`,
+                    backgroundColor: getTileColor(tile.value, theme),
+                    color: getTextColor(tile.value, theme),
+                    fontSize: tile.value >= 1024 ? '1.5rem' : tile.value >= 128 ? '1.75rem' : '2rem',
+                    zIndex: tile.isMerged ? 10 : 1,
+                  }}
+                >
+                  {tile.value}
+                </div>
+              );
+            })}
           </div>
-        )}
 
-        {/* Game Over Screen */}
-        {gameOver && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
-            <div className="text-center space-y-6">
-              <div>
-                <h2 className="text-2xl font-light mb-2">Fin de partie</h2>
-                <p className="text-3xl tabular-nums">{score.toLocaleString()}</p>
-              </div>
-              {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
-              {rewards && (rewards.money > 0 || rewards.aura > 0) && (
-                <p className="text-sm text-muted-foreground">
-                  {rewards.money > 0 && `+$${rewards.money}`}
-                  {rewards.money > 0 && rewards.aura > 0 && ' · '}
-                  {rewards.aura > 0 && `+${rewards.aura} aura`}
-                </p>
-              )}
+          {/* Start Screen */}
+          {!started && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
               <Button
                 variant="ghost"
                 onClick={initGame}
-                className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors mx-auto"
+                className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
               >
-                <RotateCcw className="w-4 h-4" />
-                Rejouer
+                <Play className="w-4 h-4" />
+                Jouer
               </Button>
             </div>
-          </div>
-        )}
+          )}
+
+          {/* Win Screen */}
+          {won && !gameOver && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg">
+              <div className="text-center space-y-4 bg-card border border-border/50 rounded-lg p-6">
+                <h2 className="text-2xl font-light">Tu as atteint 2048 !</h2>
+                <p className="text-sm text-muted-foreground">Continue pour un meilleur score</p>
+                <Button
+                  variant="ghost"
+                  onClick={() => setWon(false)}
+                  className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+                >
+                  Continuer
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Game Over Screen */}
+          {gameOver && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
+              <div className="text-center space-y-6">
+                <div>
+                  <h2 className="text-2xl font-light mb-2">Fin de partie</h2>
+                  <p className="text-3xl tabular-nums">{score.toLocaleString()}</p>
+                </div>
+                {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
+                {rewards && (rewards.money > 0 || rewards.aura > 0) && (
+                  <p className="text-sm text-muted-foreground">
+                    {rewards.money > 0 && `+$${rewards.money}`}
+                    {rewards.money > 0 && rewards.aura > 0 && ' · '}
+                    {rewards.aura > 0 && `+${rewards.aura} aura`}
+                  </p>
+                )}
+                <Button
+                  variant="ghost"
+                  onClick={initGame}
+                  className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors mx-auto"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Rejouer
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Right column — leaderboard ── */}
-      <Card>
+      <Card className={cn(isFullscreen && 'hidden')}>
         <CardHeader className="px-4 py-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Trophy className="h-4 w-4 text-muted-foreground" />

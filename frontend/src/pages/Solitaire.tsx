@@ -3,9 +3,11 @@ import { RotateCcw, Trophy } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { gamesApi } from '@/services/api';
 import { cn } from '@/lib/utils';
+import { GameFullscreenButton } from '@/components/game/GameFullscreenButton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 
 type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades';
 
@@ -181,6 +183,7 @@ function SolitaireCard({
 }
 
 export default function Solitaire() {
+  const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
   const { user, refreshUser } = useAuth();
   const boardRef = useRef<HTMLDivElement | null>(null);
 
@@ -506,8 +509,11 @@ export default function Solitaire() {
   const pilePadding = Math.max(2, Math.round(cardWidth * 0.04));
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr_320px] gap-4 items-start px-4 pb-6 lg:px-6 lg:pb-8">
-      <div className="flex flex-col gap-3">
+    <div className={cn(
+      'grid grid-cols-1 gap-4 items-start px-4 pb-6 lg:px-6 lg:pb-8',
+      isFullscreen ? 'justify-items-center' : 'xl:grid-cols-[280px_1fr_320px]'
+    )}>
+      <div className={cn('flex flex-col gap-3', isFullscreen && 'hidden')}>
         <Card>
           <CardHeader className="px-4 py-3">
             <CardTitle className="text-sm font-medium">Statistiques</CardTitle>
@@ -556,9 +562,25 @@ export default function Solitaire() {
         </Button>
       </div>
 
-      <Card>
+      <Card
+        ref={gameContainerRef}
+        className={cn(
+          isFullscreen && 'w-screen min-h-screen rounded-none border-0 bg-background shadow-none'
+        )}
+      >
         <CardHeader className="px-4 py-3">
-          <CardTitle className="text-sm font-medium">Solitaire</CardTitle>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="text-sm font-medium">Solitaire</CardTitle>
+            <div className="flex items-center gap-2">
+              {isFullscreen && (
+                <Button variant="outline" size="sm" type="button" onClick={startNewGame}>
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Nouvelle partie
+                </Button>
+              )}
+              <GameFullscreenButton isFullscreen={isFullscreen} onClick={toggleFullscreen} />
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="p-3 md:p-4">
           <div
@@ -755,7 +777,7 @@ export default function Solitaire() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className={cn(isFullscreen && 'hidden')}>
         <CardHeader className="px-4 py-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Trophy className="h-4 w-4 text-muted-foreground" />

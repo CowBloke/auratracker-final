@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { marketplaceApi, uploadUserImage } from '../services/api';
 import { ImagePicker } from '@/components/ui/image-picker';
 import { Loader2, Palette, Camera, Package } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, humanizeUiLabel } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -45,15 +45,6 @@ const typeLabels: Record<string, string> = {
   COSMETIC: 'Cosmétique',
   UPGRADE: 'Amélioration',
   GIFT: 'Cadeau',
-};
-
-const humanizeIdentifier = (value: string | null | undefined) => {
-  if (!value) return '';
-  const normalized = value
-    .toLowerCase()
-    .replace(/_/g, ' ')
-    .trim();
-  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 };
 
 const PRESET_COLORS = [
@@ -295,7 +286,7 @@ export default function Inventory() {
       case 'BONUS_MONEY':
         return `+$${effect.value || '?'}`;
       default:
-        return humanizeIdentifier(effect.type);
+        return humanizeUiLabel(effect.type);
     }
   };
 

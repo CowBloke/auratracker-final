@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS "ClashHistory";
+DROP TABLE IF EXISTS "ClashVillage";

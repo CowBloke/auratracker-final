@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { PageShell } from '@/components/layout/page-shell';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
+import { cn, humanizeUiLabel } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { Coins, Loader2, Package, Gift, Send } from 'lucide-react';
 
@@ -19,15 +19,6 @@ const DEFAULT_CATEGORIES: ShopCategory[] = [
   { id: 'UPGRADE', label: 'Améliorations' },
   { id: 'GIFT', label: 'Cadeaux' },
 ];
-
-const humanizeIdentifier = (value: string | null | undefined) => {
-  if (!value) return '';
-  const normalized = value
-    .toLowerCase()
-    .replace(/_/g, ' ')
-    .trim();
-  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
-};
 
 const parseEffectType = (effect: string | null): string | null => {
   if (!effect) return null;
@@ -244,7 +235,7 @@ function ShopCard({
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <h3 className={TYPOGRAPHY.H5}>{item.name}</h3>
-                <p className="text-xs text-muted-foreground">{humanizeIdentifier(item.type)}</p>
+                <p className="text-xs text-muted-foreground">{humanizeUiLabel(item.type)}</p>
               </div>
               <div className="rounded-md border border-border/40 px-2 py-1 text-sm font-medium tabular-nums">
                 ${item.price}

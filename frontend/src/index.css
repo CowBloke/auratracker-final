@@ -122,6 +122,17 @@
 }
 
 @layer utilities {
+  /* Hard block for all-caps UI styling. Keep this global to prevent regressions. */
+  .uppercase {
+    text-transform: none !important;
+    letter-spacing: inherit !important;
+  }
+
+  [style*="text-transform: uppercase"] {
+    text-transform: none !important;
+    letter-spacing: normal !important;
+  }
+
   /* Custom scrollbar */
   .custom-scroll::-webkit-scrollbar {
     width: 4px;

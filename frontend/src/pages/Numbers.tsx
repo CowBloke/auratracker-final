@@ -40,7 +40,6 @@ const gamesCatalog = [
   'Solitaire',
   'Racer',
   'Tetris',
-  'Subway Rush',
   'Polymarket',
 ];
 

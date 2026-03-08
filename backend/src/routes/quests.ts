@@ -106,7 +106,9 @@ const QUEST_TEMPLATES = [
   },
 ];
 
-// Generate 10 daily quests for a specific date
+const DAILY_QUEST_COUNT = 9;
+
+// Generate daily quests for a specific date
 async function generateDailyQuests(date: Date): Promise<void> {
   try {
     // Normalize date to start of day
@@ -130,9 +132,9 @@ async function generateDailyQuests(date: Date): Promise<void> {
       return; // Quests already generated for this date
     }
 
-    // Shuffle templates and pick 10
+    // Shuffle templates and pick the daily set
     const shuffled = [...QUEST_TEMPLATES].sort(() => Math.random() - 0.5);
-    const selectedTemplates = shuffled.slice(0, 10);
+    const selectedTemplates = shuffled.slice(0, DAILY_QUEST_COUNT);
 
     // Create quests with random difficulty
     const quests = selectedTemplates.map((template) => {

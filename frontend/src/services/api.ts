@@ -178,63 +178,6 @@ export const gamesApi = {
     api.post('/games/goyave_empire/save', { saveData }),
 };
 
-export interface ClashBuildingInstance {
-  id: string;
-  type: 'cannon' | 'archer' | 'mortar' | 'tesla';
-  slot: number;
-}
-
-export interface ClashHistoryEntry {
-  id: string;
-  kind: string;
-  title: string;
-  detail: string;
-  deltaMoney: number;
-  timestamp: string;
-  relatedUserId: string | null;
-}
-
-export interface ClashVillageState {
-  id: string;
-  money: number;
-  townHallLevel: number;
-  buildings: ClashBuildingInstance[];
-  lastAttackAt: string | null;
-  shieldUntil: string | null;
-  history: ClashHistoryEntry[];
-}
-
-export interface ClashOpponent {
-  id: string;
-  name: string;
-  money: number;
-  townHallLevel: number;
-  defenseScore: number;
-  shieldUntil: string | null;
-}
-
-export const clashApi = {
-  getState: () => api.get<{ village: ClashVillageState }>('/clash/state'),
-  getOpponents: () => api.get<{ opponents: ClashOpponent[] }>('/clash/opponents'),
-  build: (type: ClashBuildingInstance['type']) =>
-    api.post<{ village: ClashVillageState }>('/clash/build', { type }),
-  sell: (buildingId: string) =>
-    api.post<{ village: ClashVillageState }>('/clash/sell', { buildingId }),
-  upgradeTownHall: () =>
-    api.post<{ village: ClashVillageState }>('/clash/town-hall/upgrade'),
-  attack: (targetUserId: string) =>
-    api.post<{
-      village: ClashVillageState;
-      attack: {
-        success: boolean;
-        plunder: number;
-        targetUserId: string;
-        targetUsername: string;
-        targetShieldUntil: string;
-      };
-    }>('/clash/attack', { targetUserId }),
-};
-
 export interface DailyRacerLeaderboardEntry {
   rank: number;
   userId: string;

@@ -547,7 +547,7 @@ export default function Polymarket() {
           {resolvedEvents.length > 0 && (
             <div className={SPACING.CARD_SPACING}>
               <h2 className={TYPOGRAPHY.H2}>Événements résolus</h2>
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4">
                 {resolvedEvents.slice(0, 6).map((event) => (
                   <Card key={event.id} className="opacity-75">
                     <CardHeader>

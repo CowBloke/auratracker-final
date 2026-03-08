@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { GameFullscreenButton } from '@/components/game/GameFullscreenButton';
+import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 
 interface LeaderboardEntry {
   id: string;
@@ -30,6 +32,7 @@ const GAME_HEIGHT = 760;
 
 export default function Tetris() {
   const { user, refreshUser } = useAuth();
+  const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
 
   const [highScore, setHighScore] = useState(0);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -128,10 +131,13 @@ export default function Tetris() {
   };
 
   return (
-    <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-start px-4 pb-6 lg:px-6 lg:pb-8">
+    <div className={cn(
+      'grid items-start gap-4 px-4 pb-6 lg:px-6 lg:pb-8',
+      isFullscreen ? 'grid-cols-1 justify-items-center' : 'grid-cols-[1fr_auto_1fr]'
+    )}>
 
       {/* ── Left column ── */}
-      <div className="flex flex-col gap-3">
+      <div className={cn('flex flex-col gap-3', isFullscreen && 'hidden')}>
         <Card>
           <CardHeader className="px-4 py-3">
             <CardTitle className="text-sm font-medium">Statistiques</CardTitle>
@@ -181,16 +187,42 @@ export default function Tetris() {
       </div>
 
       {/* ── Center column — iframe ── */}
-      <iframe
-        key={sessionKey}
-        src={`/tetrjs/index.html?k=${sessionKey}`}
-        title="Tetris"
-        className="border border-border/30 rounded-lg bg-black block"
-        style={{ width: GAME_WIDTH, height: GAME_HEIGHT }}
-      />
+      <div
+        ref={gameContainerRef}
+        className={cn(
+          'relative',
+          isFullscreen && 'flex min-h-screen w-screen items-center justify-center bg-background'
+        )}
+      >
+        <GameFullscreenButton
+          isFullscreen={isFullscreen}
+          onClick={toggleFullscreen}
+          className="absolute right-2 top-2 z-30"
+        />
+
+        {isFullscreen && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={restartSession}
+            className="absolute left-2 top-2 z-30"
+          >
+            <RotateCcw className="mr-2 h-4 w-4" />
+            Recharger
+          </Button>
+        )}
+
+        <iframe
+          key={sessionKey}
+          src={`/tetrjs/index.html?k=${sessionKey}`}
+          title="Tetris"
+          className="border border-border/30 rounded-lg bg-black block"
+          style={{ width: GAME_WIDTH, height: GAME_HEIGHT }}
+        />
+      </div>
 
       {/* ── Right column — leaderboard ── */}
-      <Card>
+      <Card className={cn(isFullscreen && 'hidden')}>
         <CardHeader className="px-4 py-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Trophy className="h-4 w-4 text-muted-foreground" />

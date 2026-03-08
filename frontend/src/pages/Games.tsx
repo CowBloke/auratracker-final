@@ -135,28 +135,12 @@ const games = [
     image: '/images/games/knifehit.png',
   },
   {
-    id: 'subway-rush',
-    pageKey: 'game-subway-rush',
-    name: 'Subway Rush',
-    description: 'Runner endless en 3 voies. Saute, glisse et esquive les trains.',
-    type: 'Arcade',
-    image: '/images/games/suwaysurfer.png',
-  },
-  {
     id: 'goyave-empire',
     pageKey: 'game-goyave-empire',
     name: 'Goyave Empire',
     description: "Construis un empire de goyaves. Récolte, améliore et encaisse des récompenses.",
     type: 'Idle',
     image: '/images/games/goyaveempire.png',
-  },
-  {
-    id: 'clash',
-    pageKey: 'game-clash',
-    name: 'Clash',
-    description: "Base isométrique, défenses à acheter, raids toutes les 24 heures et historique des pillages.",
-    type: 'Stratégie',
-    image: '/images/games/clash.png',
   },
   {
     id: 'puissance-quatre',
@@ -234,9 +218,6 @@ export default function Games() {
     }
     if (gameId === 'knife-hit') {
       return '/games/knife-hit';
-    }
-    if (gameId === 'subway-rush') {
-      return '/games/subway-rush';
     }
     if (gameId === 'puissance-quatre') {
       return '/games/puissance-quatre';

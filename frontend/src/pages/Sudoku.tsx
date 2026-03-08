@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Brain, Eraser, RefreshCcw, Target, Trophy } from 'lucide-react';
+import { GameFullscreenButton } from '@/components/game/GameFullscreenButton';
+import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 
 type LeaderboardEntry = {
   id: string;
@@ -255,6 +257,7 @@ function createInitialSudokuState() {
 }
 
 export default function Sudoku() {
+  const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
   const { user, refreshUser } = useAuth();
   const submitLockRef = useRef(false);
   const [startingState] = useState(createInitialSudokuState);
@@ -484,9 +487,12 @@ export default function Sudoku() {
   return (
     <PageShell size="wide">
 
-      <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-start px-4 pb-6">
+      <div className={cn(
+        'grid gap-4 items-start px-4 pb-6',
+        isFullscreen ? 'grid-cols-1 justify-items-center' : 'grid-cols-[1fr_auto_1fr]'
+      )}>
         {/* LEFT: Options / Score */}
-        <div className="flex flex-col gap-4">
+        <div className={cn('flex flex-col gap-4', isFullscreen && 'hidden')}>
           {/* 1. Time & Score */}
           <Card>
             <CardContent className="pt-4">
@@ -575,7 +581,35 @@ export default function Sudoku() {
 </div>
 
         {/* CENTER: Game Board */}
-        <div className="flex flex-col items-center gap-4">
+        <div
+          ref={gameContainerRef}
+          className={cn(
+            'flex flex-col items-center gap-4',
+            isFullscreen && 'min-h-screen w-screen justify-center bg-background px-4 py-6'
+          )}
+        >
+          <div className="flex w-full max-w-[42rem] justify-between gap-2">
+            {isFullscreen ? (
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" onClick={validateGrid} disabled={completed}>
+                  <Target className="mr-2 h-4 w-4" />
+                  Verifier
+                </Button>
+                <Button type="button" variant="outline" onClick={useHint} disabled={completed || hintsUsed >= 3}>
+                  <Brain className="mr-2 h-4 w-4" />
+                  Indice
+                </Button>
+                <Button type="button" variant="outline" onClick={() => generateNewPuzzle(difficulty)}>
+                  <RefreshCcw className="mr-2 h-4 w-4" />
+                  Nouvelle grille
+                </Button>
+              </div>
+            ) : (
+              <div />
+            )}
+            <GameFullscreenButton isFullscreen={isFullscreen} onClick={toggleFullscreen} />
+          </div>
+
           <div className="rounded-[2rem] border border-stone-300 bg-[linear-gradient(180deg,#fdfcf8,#f4efe4)] p-4 shadow-[0_24px_80px_rgba(15,23,42,0.12)] sm:p-6">
             <div className="rounded-sm border-[3px] border-stone-900 bg-white shadow-[0_8px_18px_rgba(0,0,0,0.08)]">
               <div className="grid grid-cols-9">
@@ -616,8 +650,8 @@ export default function Sudoku() {
             </div>
           </div>
 
-          <div className="w-full space-y-3">
-            <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
+          <div className={cn('space-y-3', isFullscreen ? 'w-auto max-w-[28rem]' : 'w-full')}>
+            <div className={cn('grid gap-2', isFullscreen ? 'grid-cols-5' : 'grid-cols-5 sm:grid-cols-10')}>
               {range(9).map((index) => (
                 <Button key={index + 1} type="button" variant="outline" onClick={() => updateCell(index + 1)}>
                   {index + 1}
@@ -645,7 +679,7 @@ export default function Sudoku() {
         </div>
 
         {/* RIGHT: Leaderboard */}
-        <Card>
+        <Card className={cn(isFullscreen && 'hidden')}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Trophy className="h-4 w-4" />

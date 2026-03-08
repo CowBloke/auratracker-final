@@ -5,6 +5,9 @@ import { PageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trophy, RotateCcw, Target, Zap } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { GameFullscreenButton } from '@/components/game/GameFullscreenButton';
+import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 
 const CANVAS_SIZE = 420;
 const CENTER = CANVAS_SIZE / 2;
@@ -166,6 +169,7 @@ export default function KnifeHit() {
   const animationRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
   const submittedRef = useRef(false);
+  const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
 
   const wheelRotationRef = useRef(0);
   const wheelSpeedRef = useRef(0.001);
@@ -484,9 +488,12 @@ export default function KnifeHit() {
 
   return (
     <PageShell size="wide">
-      <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-start px-4 pb-4">
+      <div className={cn(
+        'grid items-start gap-4 px-4 pb-4',
+        isFullscreen ? 'grid-cols-1 justify-items-center' : 'grid-cols-[1fr_auto_1fr]'
+      )}>
         {/* LEFT: Options / Score */}
-        <div className="flex flex-col gap-4">
+        <div className={cn('flex flex-col gap-4', isFullscreen && 'hidden')}>
           {/* 1. Score + Record */}
           <Card>
             <CardContent className="pt-4">
@@ -560,8 +567,35 @@ export default function KnifeHit() {
         </div>
 
         {/* CENTER: Canvas */}
-        <div className="flex flex-col items-center gap-4">
+        <div
+          ref={gameContainerRef}
+          className={cn(
+            'flex flex-col items-center gap-4',
+            isFullscreen && 'min-h-screen w-screen justify-center bg-background'
+          )}
+        >
           <div className="relative">
+            <GameFullscreenButton
+              isFullscreen={isFullscreen}
+              onClick={toggleFullscreen}
+              className="absolute right-2 top-2 z-30"
+            />
+
+            {isFullscreen && (
+              <div className="absolute left-2 top-2 z-30 flex gap-2">
+                <Button size="sm" variant="outline" onClick={started && !gameOver ? throwKnife : startGame}>
+                  {started && !gameOver ? <Zap className="mr-2 h-4 w-4" /> : <Target className="mr-2 h-4 w-4" />}
+                  {started && !gameOver ? 'Lancer' : 'Commencer'}
+                </Button>
+                {(started || gameOver) && (
+                  <Button size="sm" variant="outline" onClick={startGame}>
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    Rejouer
+                  </Button>
+                )}
+              </div>
+            )}
+
             <canvas
               ref={canvasRef}
               width={CANVAS_SIZE}
@@ -599,7 +633,7 @@ export default function KnifeHit() {
         </div>
 
         {/* RIGHT: Leaderboard */}
-        <Card>
+        <Card className={cn(isFullscreen && 'hidden')}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Trophy className="h-4 w-4" />

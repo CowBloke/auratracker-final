@@ -79,7 +79,6 @@ model User {
   notifications       Notification[]
   dailyRacerRuns      DailyRacerRun[]
   goyaveSave          GoyaveSave?
-  clashVillage        ClashVillage?
   clanWarsWon         ClanWar[]                 @relation("ClanWarWinner")
 
   @@index([aura])
@@ -157,35 +156,6 @@ model GoyaveSave {
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model ClashVillage {
-  id              String         @id @default(uuid())
-  userId          String         @unique
-  townHallLevel   Int            @default(1)
-  buildingsJson   String         @default("[]")
-  lastAttackAt    DateTime?
-  shieldUntil     DateTime?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-
-  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  history         ClashHistory[]
-}
-
-model ClashHistory {
-  id             String        @id @default(uuid())
-  villageId      String
-  eventType      String
-  title          String
-  detail         String
-  deltaMoney     Int           @default(0)
-  relatedUserId  String?
-  createdAt      DateTime      @default(now())
-
-  village        ClashVillage  @relation(fields: [villageId], references: [id], onDelete: Cascade)
-
-  @@index([villageId, createdAt])
 }
 
 model DailyRacerRun {

@@ -4,11 +4,13 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useSocket } from '../contexts/SocketContext';
 import { gamesApi, marketplaceApi } from '../services/api';
 import { resolveImageUrl } from '@/lib/images';
-import { Play, RotateCcw, Trophy, X, Eye, EyeOff, Users, Maximize2, Minimize2 } from 'lucide-react';
+import { Play, RotateCcw, Trophy, X, Eye, EyeOff, Users } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { GameFullscreenButton } from '@/components/game/GameFullscreenButton';
+import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 
 // ============================================
 // GAME CONSTANTS (from old implementation)
@@ -242,8 +244,7 @@ export default function DoodleJump() {
   const [spectatorCount, setSpectatorCount] = useState(0);
   const [spectatingHost, setSpectatingHost] = useState<{ hostUserId: string; hostUsername: string } | null>(null);
   const [multiplayerRoster, setMultiplayerRoster] = useState<DoodleMultiplayerRosterItem[]>([]);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const gameContainerRef = useRef<HTMLDivElement>(null);
+  const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
   const spectateHostUserIdFromRoute = ((location.state as { spectateHostUserId?: string } | null)?.spectateHostUserId) ?? null;
   const selectedGameType: DoodleGameType = isMortSubite ? 'doodle_jump_mort_subite' : 'doodle_jump';
   const selectedMode: DoodleGameMode = isMortSubite ? 'mort_subite' : 'classic';
@@ -300,21 +301,6 @@ export default function DoodleJump() {
   useEffect(() => {
     localStorage.setItem(SKIN_STORAGE_KEY, selectedSkin);
   }, [selectedSkin]);
-
-  // Fullscreen handling
-  const toggleFullscreen = useCallback(() => {
-    if (!document.fullscreenElement) {
-      gameContainerRef.current?.requestFullscreen();
-    } else {
-      document.exitFullscreen();
-    }
-  }, []);
-
-  useEffect(() => {
-    const onFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener('fullscreenchange', onFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
-  }, []);
 
   const fetchStats = useCallback(async () => {
     if (!user?.id) return;
@@ -1521,14 +1507,11 @@ export default function DoodleJump() {
         className={`relative ${isFullscreen ? 'flex items-center justify-center w-screen h-screen bg-background' : ''}`}
       >
         {/* Fullscreen button */}
-        <button
-          type="button"
+        <GameFullscreenButton
+          isFullscreen={isFullscreen}
           onClick={toggleFullscreen}
-          className="absolute top-2 right-2 z-30 p-1.5 rounded-md bg-background/70 hover:bg-background/90 border border-border/40 text-muted-foreground hover:text-foreground transition-colors backdrop-blur-sm"
-          title={isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
-        >
-          {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-        </button>
+          className="absolute right-2 top-2 z-30"
+        />
 
         {/* Multiplayer live roster bar */}
         {isPlaying && isMultiplayer && !spectatingHost && (

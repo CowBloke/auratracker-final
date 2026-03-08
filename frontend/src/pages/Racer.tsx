@@ -3,6 +3,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { gamesApi, DailyRacerLeaderboardEntry } from '../services/api';
 import { Play, RotateCcw, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { GameFullscreenButton } from '@/components/game/GameFullscreenButton';
+import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 
 // ============================================
 // GAME CONSTANTS
@@ -432,6 +435,7 @@ interface Car {
 // COMPONENT
 // ============================================
 export default function Racer() {
+  const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
@@ -1307,7 +1311,7 @@ export default function Racer() {
 
   return (
     <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
-      <div className="flex items-center justify-end gap-4">
+      <div className={cn('flex items-center justify-end gap-4', isFullscreen && 'hidden')}>
         <div className="text-right text-sm text-muted-foreground tabular-nums">
           <div className="text-2xl font-light text-foreground">{speed} mph</div>
           <div>Temps: {formatTime(currentLapTime)}</div>
@@ -1317,8 +1321,17 @@ export default function Racer() {
         </div>
       </div>
 
-      <div className="flex justify-center items-start gap-6">
-        <div className="relative">
+      <div className={cn('flex justify-center items-start gap-6', isFullscreen && 'min-h-screen')}>
+        <div
+          ref={gameContainerRef}
+          className={cn('relative', isFullscreen && 'flex min-h-screen w-screen items-center justify-center bg-background')}
+        >
+          <GameFullscreenButton
+            isFullscreen={isFullscreen}
+            onClick={toggleFullscreen}
+            className="absolute right-2 top-2 z-30"
+          />
+
           <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="border border-border/30 rounded-lg" />
 
           {!started && (
@@ -1369,7 +1382,7 @@ export default function Racer() {
           )}
         </div>
 
-        <div className="w-80 border border-border/30 rounded-lg bg-card overflow-hidden shadow-sm" style={{ height: HEIGHT }}>
+        <div className={cn('w-80 border border-border/30 rounded-lg bg-card overflow-hidden shadow-sm', isFullscreen && 'hidden')} style={{ height: HEIGHT }}>
           <div className="p-4 border-b border-border/30 bg-muted/30">
             <div className="flex items-center gap-2">
               <Trophy className="w-5 h-5 text-yellow-500" />
@@ -1411,7 +1424,7 @@ export default function Racer() {
         </div>
       </div>
 
-      <div className="flex justify-center gap-8 text-xs text-muted-foreground">
+      <div className={cn('flex justify-center gap-8 text-xs text-muted-foreground', isFullscreen && 'hidden')}>
         <div className="flex items-center gap-2">
           <kbd className="px-2 py-1 border border-border/50 rounded">Left</kbd>
           <span>Gauche</span>
