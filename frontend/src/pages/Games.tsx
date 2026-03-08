@@ -126,14 +126,6 @@ const games = [
     image: '/images/games/knifehit.png',
   },
   {
-    id: 'helix-jump',
-    pageKey: 'game-helix-jump',
-    name: 'Helix Jump',
-    description: 'Fais tourner la tour, plonge dans les ouvertures et evite les plateformes rouges.',
-    type: 'Arcade',
-    image: '/images/games/helixjump.png',
-  },
-  {
     id: 'subway-rush',
     pageKey: 'game-subway-rush',
     name: 'Subway Rush',
@@ -222,9 +214,6 @@ export default function Games() {
     }
     if (gameId === 'knife-hit') {
       return '/games/knife-hit';
-    }
-    if (gameId === 'helix-jump') {
-      return '/games/helix-jump';
     }
     if (gameId === 'subway-rush') {
       return '/games/subway-rush';

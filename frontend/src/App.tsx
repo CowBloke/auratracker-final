@@ -35,7 +35,6 @@ import Solitaire from './pages/Solitaire';
 import Racer from './pages/Racer';
 import Tetris from './pages/Tetris';
 import KnifeHit from './pages/KnifeHit';
-import HelixJump from './pages/HelixJump';
 import GoyaveEmpire from './pages/GoyaveEmpire';
 import PuissanceQuatre from './pages/PuissanceQuatre';
 import SubwayRush from './pages/SubwayRush';
@@ -168,7 +167,6 @@ function App() {
         <Route path="games/racer" element={<Racer />} />
         <Route path="games/tetris" element={<Tetris />} />
         <Route path="games/knife-hit" element={<KnifeHit />} />
-        <Route path="games/helix-jump" element={<HelixJump />} />
         <Route path="games/subway-rush" element={<SubwayRush />} />
         <Route path="games/goyave-empire" element={<GoyaveEmpire />} />
         <Route path="games/puissance-quatre" element={<PuissanceQuatre />} />

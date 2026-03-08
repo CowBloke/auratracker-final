@@ -24,7 +24,6 @@ export const BLOCKABLE_PAGES: BlockablePage[] = [
   { key: 'game-tetris', path: '/games/tetris', label: 'Tetris', category: 'Jeux' },
   { key: 'game-knife-hit', path: '/games/knife-hit', label: 'Knife Hit', category: 'Jeux' },
   { key: 'game-echecs', path: '/games/echecs', label: 'Échecs', category: 'Jeux' },
-  { key: 'game-helix-jump', path: '/games/helix-jump', label: 'Helix Jump', category: 'Jeux' },
   { key: 'game-subway-rush', path: '/games/subway-rush', label: 'Subway Rush', category: 'Jeux' },
   { key: 'game-goyave-empire', path: '/games/goyave-empire', label: 'Goyave Empire', category: 'Jeux' },
   { key: 'game-puissance-quatre', path: '/games/puissance-quatre', label: 'Puissance 4', category: 'Jeux' },

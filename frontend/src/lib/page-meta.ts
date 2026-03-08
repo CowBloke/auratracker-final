@@ -23,7 +23,6 @@ const STATIC_PAGE_META: Record<string, PageMeta> = {
   '/games/tetris': { title: 'Tetris', description: 'Session puzzle et classement.' },
   '/games/knife-hit': { title: 'Knife Hit', description: 'Timing arcade et classement.' },
   '/games/echecs': { title: 'Échecs', description: 'Duel complet avec règles officielles.' },
-  '/games/helix-jump': { title: 'Helix Jump', description: 'Tourne la tour, plonge et vise le meilleur score.' },
   '/games/subway-rush': { title: 'Subway Rush', description: 'Runner endless a 3 voies avec score et classement.' },
   '/games/goyave-empire': { title: 'Goyave Empire', description: 'Idle farming : récolte des goyaves et bâtis ton empire.' },
   '/games/polymarket': { title: 'Polymarket', description: 'Marché de prédictions communautaire.' },

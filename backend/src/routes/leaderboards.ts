@@ -16,7 +16,6 @@ type LeaderboardCategory =
   | 'racer'
   | 'tetris'
   | 'knife_hit'
-  | 'helix_jump'
   | 'subway_rush'
   | 'casino'
   | 'casino_losses'
@@ -285,29 +284,6 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
       case 'knife_hit':
         rankings = await prisma.gameStats.findMany({
           where: { gameType: 'knife_hit', user: { isAdmin: false } },
-          select: {
-            userId: true,
-            highScore: true,
-            user: {
-              select: { username: true, usernameColor: true },
-            },
-          },
-          orderBy: { highScore: 'desc' },
-          take: parseInt(limit as string),
-          skip: parseInt(offset as string),
-        });
-        rankings = rankings.map((s, i) => ({
-          rank: parseInt(offset as string) + i + 1,
-          userId: s.userId,
-          username: s.user.username,
-          usernameColor: s.user.usernameColor,
-          value: s.highScore,
-        }));
-        break;
-
-      case 'helix_jump':
-        rankings = await prisma.gameStats.findMany({
-          where: { gameType: 'helix_jump', user: { isAdmin: false } },
           select: {
             userId: true,
             highScore: true,
@@ -643,25 +619,6 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
           const higherScores = await prisma.gameStats.count({
             where: {
               gameType: 'knife_hit',
-              highScore: { gt: userStats.highScore },
-              user: { isAdmin: false },
-            },
-          });
-          userRank = higherScores + 1;
-        }
-      } else if (category === 'helix_jump') {
-        const userStats = await prisma.gameStats.findUnique({
-          where: {
-            userId_gameType: {
-              userId: req.user.id,
-              gameType: 'helix_jump',
-            },
-          },
-        });
-        if (userStats) {
-          const higherScores = await prisma.gameStats.count({
-            where: {
-              gameType: 'helix_jump',
               highScore: { gt: userStats.highScore },
               user: { isAdmin: false },
             },
