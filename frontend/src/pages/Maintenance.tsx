@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
+import { Wrench } from 'lucide-react';
 import { TYPOGRAPHY } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { CenteredShell } from '@/components/layout/centered-shell';
@@ -55,8 +55,11 @@ export default function Maintenance({ message, endDate }: MaintenanceProps) {
   }, [endDate]);
 
   return (
-    <CenteredShell widthClassName="max-w-5xl">
+    <CenteredShell widthClassName="max-w-2xl">
       <div className="space-y-6 text-center">
+        <div className="flex justify-center">
+          <Wrench className="h-14 w-14 text-muted-foreground" />
+        </div>
         <div className={TYPOGRAPHY.H2}>
           Site en maintenance
         </div>
@@ -69,7 +72,7 @@ export default function Maintenance({ message, endDate }: MaintenanceProps) {
             <div className={TYPOGRAPHY.H5}>
               Retour prévu dans :
             </div>
-            <div className="grid grid-cols-4 gap-4 max-w-2xl mx-auto">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <Card>
                 <CardContent className="p-6">
                   <div className={cn(TYPOGRAPHY.H1, "mb-2 tabular-nums")}>
@@ -113,50 +116,6 @@ export default function Maintenance({ message, endDate }: MaintenanceProps) {
             </div>
           </div>
         )}
-
-        <div className="space-y-4">
-          <div className={TYPOGRAPHY.H5}>
-            En attendant, choisis ton ambiance :
-          </div>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Link to="/maintenance/wallace-gromit">
-              <Card className="hover:border-foreground/30 transition-colors">
-                <CardHeader>
-                  <CardTitle className={TYPOGRAPHY.SMALL}>Wallace & Gromit</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription>
-                    Installe-toi confortablement, prends du pop-corn et lance un épisode culte.
-                  </CardDescription>
-                </CardContent>
-              </Card>
-            </Link>
-            <Link to="/maintenance/news">
-              <Card className="hover:border-foreground/30 transition-colors">
-                <CardHeader>
-                  <CardTitle className={TYPOGRAPHY.SMALL}>News lounge</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription>
-                    Feuillette une sélection d'articles courts pour passer le temps.
-                  </CardDescription>
-                </CardContent>
-              </Card>
-            </Link>
-            <Link to="/maintenance/musique">
-              <Card className="hover:border-foreground/30 transition-colors">
-                <CardHeader>
-                  <CardTitle className={TYPOGRAPHY.SMALL}>Playlist AuraTracker</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription>
-                    Détends-toi avec la playlist spéciale AuraTracker et laisse la musique faire le reste.
-                  </CardDescription>
-                </CardContent>
-              </Card>
-            </Link>
-          </div>
-        </div>
 
         {message && message.trim().length > 0 && (
           <Card>

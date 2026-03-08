@@ -14,7 +14,7 @@ const userGameSockets = new Map<string, string>(); // userId -> socketId
 type DoodleMode = 'classic' | 'mort_subite';
 type PlatformMovement = 'normal' | 'moving' | 'conveyor-left' | 'conveyor-right';
 type PlatformEffect = 'bounce' | 'disappear' | 'instant-disappear' | null;
-type SkinId = 'default' | 'red' | 'blue' | 'green' | 'yellow' | 'purple' | 'orange' | 'pink';
+type SkinId = string;
 
 interface DoodlePlatformFrame {
   x: number;
@@ -63,6 +63,7 @@ interface DoodleMultiplayerState {
   velocity: number;
   facingLeft: boolean;
   selectedSkin: SkinId;
+  selectedSkinImageUrl?: string | null;
   isDead: boolean;
   updatedAt: number;
 }
@@ -528,6 +529,7 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
       velocity: 0,
       facingLeft: false,
       selectedSkin: 'default',
+      selectedSkinImageUrl: null,
       isDead: false,
       updatedAt: Date.now(),
     });
@@ -553,6 +555,7 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
       velocity: 0,
       facingLeft: false,
       selectedSkin: 'default',
+      selectedSkinImageUrl: null,
       isDead: false,
       updatedAt: Date.now(),
     });
@@ -573,6 +576,7 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
       velocity: number;
       facingLeft: boolean;
       selectedSkin: SkinId;
+      selectedSkinImageUrl?: string | null;
       isDead: boolean;
     };
   }) => {
@@ -597,6 +601,7 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
       velocity: Number.isFinite(data.state.velocity) ? data.state.velocity : 0,
       facingLeft: !!data.state.facingLeft,
       selectedSkin: data.state.selectedSkin ?? 'default',
+      selectedSkinImageUrl: typeof data.state.selectedSkinImageUrl === 'string' ? data.state.selectedSkinImageUrl : null,
       isDead: !!data.state.isDead,
       updatedAt: Date.now(),
     };

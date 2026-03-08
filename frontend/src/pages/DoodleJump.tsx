@@ -122,6 +122,7 @@ interface DoodleMultiplayerNetState {
   velocity: number;
   facingLeft: boolean;
   selectedSkin: SkinId;
+  selectedSkinImageUrl?: string | null;
   isDead: boolean;
   updatedAt: number;
 }
@@ -289,6 +290,10 @@ export default function DoodleJump() {
 
   // All available skins = default + purchased
   const allSkins = useMemo<DoodleSkin[]>(() => [DEFAULT_SKIN, ...purchasedSkins], [purchasedSkins]);
+  const selectedSkinImageUrl = useMemo(
+    () => allSkins.find((skin) => skin.id === selectedSkin)?.imageUrl ?? DEFAULT_SKIN.imageUrl,
+    [allSkins, selectedSkin]
+  );
 
   // Save skin selection to localStorage
   useEffect(() => {
@@ -531,11 +536,12 @@ export default function DoodleJump() {
           velocity: velocityRef.current,
           facingLeft: facingLeftRef.current,
           selectedSkin,
+          selectedSkinImageUrl,
           isDead: false,
         },
       });
     }
-  }, [applyMortSubiteRules, clearMultiplayerRoom, createPlatform, getPlatformSequenceIndex, getRandomPlatformType, getSeededValue, isMultiplayer, selectedGameType, selectedMode, selectedSkin, socket, user]);
+  }, [applyMortSubiteRules, clearMultiplayerRoom, createPlatform, getPlatformSequenceIndex, getRandomPlatformType, getSeededValue, isMultiplayer, selectedGameType, selectedMode, selectedSkin, selectedSkinImageUrl, socket, user]);
 
   const stopSpectateBroadcast = useCallback(() => {
     socket?.emit('doodle:spectate-stop');
@@ -571,10 +577,11 @@ export default function DoodleJump() {
         velocity: velocityRef.current,
         facingLeft: facingLeftRef.current,
         selectedSkin,
+        selectedSkinImageUrl,
         isDead,
       },
     });
-  }, [selectedSkin, socket, user]);
+  }, [selectedSkin, selectedSkinImageUrl, socket, user]);
 
   // ============================================
   // GAME OVER HANDLING
@@ -738,19 +745,33 @@ export default function DoodleJump() {
         continue;
       }
 
-      const remoteSkin = SKINS.find((item) => item.id === remote.selectedSkin) ?? SKINS[0];
-      ctx.fillStyle = remoteSkin.color;
-      ctx.globalAlpha = remote.isDead ? 0.7 : 0.9;
-      ctx.beginPath();
-      ctx.arc(
-        remote.displayX + CHARACTER_WIDTH / 2,
-        remoteScreenY + CHARACTER_HEIGHT / 2,
-        CHARACTER_WIDTH / 2,
-        0,
-        Math.PI * 2
-      );
-      ctx.fill();
-      ctx.globalAlpha = 1;
+      const remoteSkinImage = skinImagesRef.current.get(remote.selectedSkin);
+      if (remoteSkinImage && remoteSkinImage.complete && remoteSkinImage.naturalWidth > 0) {
+        ctx.save();
+        ctx.globalAlpha = remote.isDead ? 0.7 : 0.9;
+        if (remote.facingLeft) {
+          ctx.translate(remote.displayX + CHARACTER_WIDTH, remoteScreenY);
+          ctx.scale(-1, 1);
+          ctx.drawImage(remoteSkinImage, 0, 0, CHARACTER_WIDTH, CHARACTER_HEIGHT);
+        } else {
+          ctx.drawImage(remoteSkinImage, remote.displayX, remoteScreenY, CHARACTER_WIDTH, CHARACTER_HEIGHT);
+        }
+        ctx.restore();
+      } else {
+        const remoteSkin = SKINS.find((item) => item.id === remote.selectedSkin) ?? SKINS[0];
+        ctx.fillStyle = remoteSkin.color;
+        ctx.globalAlpha = remote.isDead ? 0.7 : 0.9;
+        ctx.beginPath();
+        ctx.arc(
+          remote.displayX + CHARACTER_WIDTH / 2,
+          remoteScreenY + CHARACTER_HEIGHT / 2,
+          CHARACTER_WIDTH / 2,
+          0,
+          Math.PI * 2
+        );
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
     }
   }, [colors, user]);
 
@@ -1115,8 +1136,18 @@ export default function DoodleJump() {
   useEffect(() => {
     if (!socket || !user) return;
 
+    const ensureSkinImageLoaded = (skinId: string, imageUrl?: string | null) => {
+      if (skinImagesRef.current.has(skinId)) return;
+      const resolvedUrl = resolveImageUrl(imageUrl || DEFAULT_SKIN.imageUrl);
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = resolvedUrl;
+      skinImagesRef.current.set(skinId, img);
+    };
+
     const upsertDisplayPlayer = (player: DoodleMultiplayerNetState) => {
       if (player.userId === user.id) return;
+      ensureSkinImageLoaded(player.selectedSkin, player.selectedSkinImageUrl);
       const existing = multiplayerDisplayPlayersRef.current.get(player.userId);
       if (!existing) {
         multiplayerDisplayPlayersRef.current.set(player.userId, {
