@@ -494,6 +494,7 @@ export default function Admin() {
   const [announcementMessage, setAnnouncementMessage] = useState('');
   const [savingAnnouncement, setSavingAnnouncement] = useState(false);
   const [loginMessage, setLoginMessage] = useState('');
+  const [loginMessageFailedModalEnabled, setLoginMessageFailedModalEnabled] = useState(false);
   const [savingLoginMessage, setSavingLoginMessage] = useState(false);
   const [updatePopups, setUpdatePopups] = useState<AdminUpdatePopup[]>([]);
   const [loadingUpdatePopups, setLoadingUpdatePopups] = useState(false);
@@ -1025,6 +1026,7 @@ export default function Admin() {
       setMaintenanceMessage(res.data.settings.maintenance_message || '');
       setBlockedMessage(res.data.settings.blocked_message || '');
       setLoginMessage(res.data.settings.login_message || '');
+      setLoginMessageFailedModalEnabled(res.data.settings.login_message_failed_modal_enabled === 'true');
 
       if (res.data.settings.blocked_pages) {
         try {
@@ -1180,8 +1182,12 @@ export default function Admin() {
   const saveLoginMessage = async () => {
     try {
       setSavingLoginMessage(true);
-      await adminApi.updateSetting('login_message', loginMessage.trim());
-      setLoginMessage(loginMessage.trim());
+      const trimmed = loginMessage.trim();
+      await adminApi.updateSettings({
+        login_message: trimmed,
+        login_message_failed_modal_enabled: loginMessageFailedModalEnabled ? 'true' : 'false',
+      });
+      setLoginMessage(trimmed);
       showMessage('success', 'Message de connexion sauvegardé');
     } catch (error) {
       console.error('Failed to save login message:', error);
@@ -3637,6 +3643,18 @@ export default function Admin() {
                     <p className="text-xs text-muted-foreground">
                       Laissez vide pour masquer le message.
                     </p>
+                    <div className="flex items-center justify-between rounded-lg border border-border/50 px-4 py-3">
+                      <div className="space-y-1 pr-4">
+                        <p className="text-sm font-medium">Popup apres echec de connexion</p>
+                        <p className="text-xs text-muted-foreground">
+                          Si active, ce message s'ouvre aussi dans une modale uniquement apres une connexion ratee.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={loginMessageFailedModalEnabled}
+                        onCheckedChange={setLoginMessageFailedModalEnabled}
+                      />
+                    </div>
                     <div className="flex justify-end">
                       <Button onClick={saveLoginMessage} disabled={savingLoginMessage}>
                         {savingLoginMessage ? (

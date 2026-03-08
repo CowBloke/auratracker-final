@@ -1010,6 +1010,7 @@ export const maintenanceApi = {
     blockedPages?: string[];
     blockedMessage?: string;
     loginMessage?: string;
+    loginMessageFailedModalEnabled?: boolean;
   }>('/maintenance'),
 };
 

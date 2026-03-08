@@ -17,8 +17,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { CenteredShell } from '@/components/layout/centered-shell';
 import { TYPOGRAPHY } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
@@ -37,23 +35,15 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [loginMessage, setLoginMessage] = useState('');
-  const [showLoginMessageModal, setShowLoginMessageModal] = useState(false);
+  const [loginMessageFailedModalEnabled, setLoginMessageFailedModalEnabled] = useState(false);
   const [loginMessageModalOpen, setLoginMessageModalOpen] = useState(false);
 
   useEffect(() => {
     maintenanceApi.getStatus().then((res) => {
       setLoginMessage(res.data.loginMessage ?? '');
+      setLoginMessageFailedModalEnabled(res.data.loginMessageFailedModalEnabled === true);
     }).catch(() => {});
   }, []);
-
-  useEffect(() => {
-    if (loginMessage && showLoginMessageModal) {
-      setLoginMessageModalOpen(true);
-      return;
-    }
-
-    setLoginMessageModalOpen(false);
-  }, [loginMessage, showLoginMessageModal]);
 
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -71,6 +61,9 @@ export default function Login() {
       navigate('/');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Echec de connexion');
+      if (loginMessage && loginMessageFailedModalEnabled) {
+        setLoginMessageModalOpen(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -164,22 +157,6 @@ export default function Login() {
               <div className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
                 {loginMessage}
               </div>
-            </div>
-
-            <div className="flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-card/60 px-4 py-3">
-              <div className="space-y-1">
-                <Label htmlFor="login-message-modal" className="text-sm font-medium">
-                  Afficher aussi en popup
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Ouvre cette information dans une fenetre modale a fermer.
-                </p>
-              </div>
-              <Switch
-                id="login-message-modal"
-                checked={showLoginMessageModal}
-                onCheckedChange={setShowLoginMessageModal}
-              />
             </div>
           </div>
 
