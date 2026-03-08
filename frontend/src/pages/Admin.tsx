@@ -46,6 +46,7 @@ const EFFECT_TYPES = [
   { value: 'BONUS_AURA', label: 'Bonus Aura', description: 'Donne un bonus d\'aura à l\'utilisation' },
   { value: 'BONUS_MONEY', label: 'Bonus Argent', description: 'Donne un bonus d\'argent à l\'utilisation' },
   { value: 'DOODLE_JUMP_SKIN', label: 'Skin Doodle Jump', description: 'Débloque un skin personnalisé dans Doodle Jump (sélectionner une image pour le skin)' },
+  { value: 'GIFT', label: 'Cadeau', description: 'L\'objet est un cadeau : l\'acheteur choisit un destinataire et le lui envoie directement.' },
 ];
 
 const ITEM_TYPE_LABELS: Record<string, string> = {

@@ -20,6 +20,18 @@ const DEFAULT_CATEGORIES: ShopCategory[] = [
   { id: 'GIFT', label: 'Cadeaux' },
 ];
 
+const parseEffectType = (effect: string | null): string | null => {
+  if (!effect) return null;
+  try {
+    const p = JSON.parse(effect);
+    if (typeof p.bonusAura === 'number') return 'BONUS_AURA';
+    if (typeof p.bonusMoney === 'number') return 'BONUS_MONEY';
+    return p.type ?? null;
+  } catch {
+    return null;
+  }
+};
+
 const getEffectLabel = (effect: string | null) => {
   if (!effect) return null;
   try {
@@ -33,6 +45,7 @@ const getEffectLabel = (effect: string | null) => {
     if (parsed.type === 'USERNAME_COLOR') return 'Couleur de pseudo';
     if (parsed.type === 'PROFILE_PICTURE') return 'Photo de profil';
     if (parsed.type === 'DOODLE_JUMP_SKIN') return 'Skin Doodle Jump';
+    if (parsed.type === 'GIFT') return 'Cadeau à envoyer';
   } catch {
     return null;
   }
@@ -185,8 +198,8 @@ function ShopCard({
   onPurchase: (item: ShopItem) => void;
   onSend: (item: ShopItem) => void;
 }) {
-  const isGift = item.type === 'GIFT';
-  const effectLabel = isGift ? `${item.price} aura pour le destinataire` : getEffectLabel(item.effect);
+  const isGift = item.type === 'GIFT' || parseEffectType(item.effect) === 'GIFT';
+  const effectLabel = isGift ? null : getEffectLabel(item.effect);
   const canAfford = (user?.money ?? 0) >= item.price;
 
   let skinImageUrl: string | null = null;
