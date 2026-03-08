@@ -9,6 +9,7 @@
 - mode fullscreen pour tous les jeux
 - solitaire with
 - knife hit rotation plusen valeur
+- notif chat party et ajouter notif cha clans et ajouter message chef clan
 
 ## à FIX
 
