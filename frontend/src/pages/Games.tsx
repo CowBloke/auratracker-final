@@ -59,7 +59,7 @@ const games = [
     name: 'Sudoku',
     description: 'Grilles Sudoku générées à la volée, plusieurs niveaux et classement sur tes meilleures résolutions.',
     type: 'Logique',
-    image: '/images/games/logiclab.png',
+    image: '/images/games/sudoku.png',
   },
   {
     id: 'minesweeper',
@@ -67,7 +67,7 @@ const games = [
     name: 'Démineur',
     description: 'Balise les bombes, ouvre les zones sûres et finis la grille le plus proprement possible.',
     type: 'Logique',
-    image: '/images/games/demineur.png',
+    emoji: '💣',
   },
   {
     id: 'game-2048',

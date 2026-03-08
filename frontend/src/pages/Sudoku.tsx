@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { gamesApi } from '@/services/api';
-import { PageHeader, PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -483,7 +483,6 @@ export default function Sudoku() {
 
   return (
     <PageShell size="wide">
-      <PageHeader title="Sudoku" />
 
       <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-start px-4 pb-6">
         {/* LEFT: Options / Score */}
@@ -496,14 +495,17 @@ export default function Sudoku() {
                   <p className="text-xs text-muted-foreground">Temps</p>
                   <p className="text-xl font-semibold">{formatDuration(elapsedSeconds)}</p>
                 </div>
-                <div className="rounded-xl border border-border/60 p-3">
-                  <p className="text-xs text-muted-foreground">Score</p>
-                  <p className="text-xl font-semibold">{currentScore}</p>
-                </div>
-                <div className="col-span-2 rounded-xl border border-border/60 p-3">
-                  <p className="text-xs text-muted-foreground">Record</p>
-                  <p className="text-xl font-semibold">{highScore}</p>
-                </div>
+                {completed ? (
+                  <div className="rounded-xl border border-border/60 p-3">
+                    <p className="text-xs text-muted-foreground">Score</p>
+                    <p className="text-xl font-semibold">{currentScore}</p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-border/60 p-3">
+                    <p className="text-xs text-muted-foreground">Record</p>
+                    <p className="text-xl font-semibold">{highScore}</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
