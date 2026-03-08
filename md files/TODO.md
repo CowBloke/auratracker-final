@@ -3,6 +3,8 @@
 - seasons : space + scoby and wallace
 - harmoniser replay et multiplayer games
 
+- bouton créer clans scroll fix amine
+
 ## à FIX
 
 - Consistence UI

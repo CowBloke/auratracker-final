@@ -40,6 +40,94 @@ interface LeaderboardEntry {
   };
 }
 
+interface WorldPalette {
+  name: string;
+  bgA: string;
+  bgB: string;
+  ring: string;
+  core: string;
+  knife: string;
+  knifeHandle: string;
+  accent: string;
+  danger: string;
+  text: string;
+  subtext: string;
+  track: string;
+}
+
+const WORLD_PALETTES: WorldPalette[] = [
+  {
+    name: 'Nuit polaire',
+    bgA: '#0f172a',
+    bgB: '#1a2e4a',
+    ring: '#cbd5e1',
+    core: '#1e293b',
+    knife: '#e2e8f0',
+    knifeHandle: '#0f172a',
+    accent: '#94a3b8',
+    danger: '#fb7185',
+    text: '#f8fafc',
+    subtext: 'rgba(248,250,252,0.55)',
+    track: 'rgba(255,255,255,0.08)',
+  },
+  {
+    name: 'Lave neon',
+    bgA: '#2b0a0a',
+    bgB: '#7c2d12',
+    ring: '#fdba74',
+    core: '#431407',
+    knife: '#ffedd5',
+    knifeHandle: '#3b0a00',
+    accent: '#fb7185',
+    danger: '#fef08a',
+    text: '#fff7ed',
+    subtext: 'rgba(255,247,237,0.6)',
+    track: 'rgba(255,237,213,0.12)',
+  },
+  {
+    name: 'Jungle toxique',
+    bgA: '#052e16',
+    bgB: '#14532d',
+    ring: '#86efac',
+    core: '#166534',
+    knife: '#ecfccb',
+    knifeHandle: '#1a2e05',
+    accent: '#bef264',
+    danger: '#facc15',
+    text: '#f7fee7',
+    subtext: 'rgba(247,254,231,0.62)',
+    track: 'rgba(190,242,100,0.12)',
+  },
+  {
+    name: 'Cyber ocean',
+    bgA: '#082f49',
+    bgB: '#0f766e',
+    ring: '#67e8f9',
+    core: '#164e63',
+    knife: '#ecfeff',
+    knifeHandle: '#083344',
+    accent: '#22d3ee',
+    danger: '#a5f3fc',
+    text: '#ecfeff',
+    subtext: 'rgba(236,254,255,0.62)',
+    track: 'rgba(103,232,249,0.12)',
+  },
+  {
+    name: 'Crépuscule royal',
+    bgA: '#3b0764',
+    bgB: '#581c87',
+    ring: '#e9d5ff',
+    core: '#4c1d95',
+    knife: '#faf5ff',
+    knifeHandle: '#2e1065',
+    accent: '#c084fc',
+    danger: '#f9a8d4',
+    text: '#faf5ff',
+    subtext: 'rgba(250,245,255,0.62)',
+    track: 'rgba(233,213,255,0.12)',
+  },
+];
+
 function normalizeAngle(angle: number) {
   let result = angle % (Math.PI * 2);
   if (result < 0) {
@@ -67,6 +155,10 @@ function getLevelConfig(level: number) {
     directionChanges: normalizedLevel >= 4,
     switchIntervalMs: Math.max(4200 - normalizedLevel * 140, 2200),
   };
+}
+
+function getWorldPalette(level: number) {
+  return WORLD_PALETTES[(Math.max(1, level) - 1) % WORLD_PALETTES.length];
 }
 
 export default function KnifeHit() {
@@ -99,23 +191,9 @@ export default function KnifeHit() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [directionLabel, setDirectionLabel] = useState<'Horaire' | 'Antihoraire'>('Horaire');
   const [directionChangeInMs, setDirectionChangeInMs] = useState<number | null>(null);
+  const [worldName, setWorldName] = useState(WORLD_PALETTES[0].name);
 
-  const palette = useMemo(
-    () => ({
-      bgA: '#0f172a',
-      bgB: '#1a2e4a',
-      ring: '#cbd5e1',
-      core: '#1e293b',
-      knife: '#e2e8f0',
-      knifeHandle: '#0f172a',
-      accent: '#94a3b8',
-      danger: '#fb7185',
-      text: '#f8fafc',
-      subtext: 'rgba(248,250,252,0.55)',
-      track: 'rgba(255,255,255,0.08)',
-    }),
-    []
-  );
+  const palette = useMemo(() => getWorldPalette(level), [level]);
 
   const fetchStats = useCallback(async () => {
     if (!user) return;
@@ -165,6 +243,7 @@ export default function KnifeHit() {
     levelRef.current = levelNumber;
 
     setLevel(levelNumber);
+    setWorldName(getWorldPalette(levelNumber).name);
     setKnivesLeft(config.knivesToThrow);
     setScore(scoreRef.current);
     setDirectionLabel(config.speed >= 0 ? 'Horaire' : 'Antihoraire');
@@ -436,6 +515,19 @@ export default function KnifeHit() {
                   <p className="text-xs text-muted-foreground">Restants</p>
                   <p className="text-xl font-semibold">{knivesLeft}</p>
                 </div>
+              </div>
+              <div
+                className="rounded-xl border p-3 text-center transition-colors"
+                style={{
+                  borderColor: `${palette.accent}55`,
+                  background: `linear-gradient(135deg, ${palette.bgA}, ${palette.bgB})`,
+                  color: palette.text,
+                }}
+              >
+                <p className="text-xs uppercase tracking-[0.18em]" style={{ color: palette.subtext }}>
+                  Monde
+                </p>
+                <p className="text-sm font-semibold">{worldName}</p>
               </div>
               <div className="rounded-xl border border-border/60 p-3 text-center">
                 <p className="text-xs text-muted-foreground">Rotation</p>
