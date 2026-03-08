@@ -40,7 +40,7 @@ import Clash from './pages/Clash';
 import PuissanceQuatre from './pages/PuissanceQuatre';
 import SubwayRush from './pages/SubwayRush';
 import Echecs from './pages/Echecs';
-import LogicLab from './pages/LogicLab';
+import Sudoku from './pages/Sudoku';
 import Inbox from './pages/Inbox';
 import Blocked from './pages/Blocked';
 import { BLOCKABLE_PAGES } from './config/blockedPages';
@@ -167,7 +167,7 @@ function App() {
         <Route path="games/clash" element={<Clash />} />
         <Route path="games/puissance-quatre" element={<PuissanceQuatre />} />
         <Route path="games/echecs" element={<Echecs />} />
-        <Route path="games/logic-lab" element={<LogicLab />} />
+        <Route path="games/logic-lab" element={<Sudoku />} />
         <Route path="games/polymarket" element={<Polymarket />} />
         <Route path="polymarket" element={<Navigate to="/games/polymarket" replace />} />
         <Route path="leaderboards" element={<Leaderboards />} />
