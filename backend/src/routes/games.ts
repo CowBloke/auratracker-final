@@ -70,6 +70,18 @@ const GAME_REWARDS = {
       { minScore: 500, moneyMultiplier: 0.5, auraBonus: 50 },     // 500+: 0.5x score + 50 aura
     ],
   },
+  geometry_dash: {
+    minScoreForReward: 100,
+    scoreTiers: [
+      { minScore: 0, moneyReward: 0, auraBonus: 0 },
+      { minScore: 100, moneyReward: 12, auraBonus: 1 },
+      { minScore: 250, moneyReward: 28, auraBonus: 3 },
+      { minScore: 500, moneyReward: 60, auraBonus: 6 },
+      { minScore: 900, moneyReward: 110, auraBonus: 10 },
+      { minScore: 1400, moneyReward: 180, auraBonus: 16 },
+      { minScore: 2200, moneyReward: 280, auraBonus: 24 },
+    ],
+  },
   casino: {
     auraForBigWin: 10, // For wins >= 10x bet
     bigWinMultiplier: 10,
@@ -241,6 +253,32 @@ function calculateFlappyBirdRewards(score: number, isNewHighScore: boolean): { m
     // Additional bonus for beating your own record (scales with score)
     const highScoreBonus = Math.min(Math.floor(score / 50) * 5, 50);
     auraReward += highScoreBonus;
+  }
+
+  return { money: moneyReward, aura: auraReward };
+}
+
+function calculateGeometryDashRewards(score: number, isNewHighScore: boolean): { money: number; aura: number } {
+  const config = GAME_REWARDS.geometry_dash;
+
+  if (score < config.minScoreForReward) {
+    return { money: 0, aura: 0 };
+  }
+
+  let selectedTier = config.scoreTiers[0];
+  for (let i = config.scoreTiers.length - 1; i >= 0; i--) {
+    if (score >= config.scoreTiers[i].minScore) {
+      selectedTier = config.scoreTiers[i];
+      break;
+    }
+  }
+
+  let moneyReward = selectedTier.moneyReward;
+  let auraReward = selectedTier.auraBonus;
+
+  if (isNewHighScore) {
+    moneyReward += Math.min(Math.floor(score / 250) * 6, 60);
+    auraReward += Math.min(Math.floor(score / 300), 10);
   }
 
   return { money: moneyReward, aura: auraReward };
@@ -644,6 +682,10 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       const rewards = calculateFlappyBirdRewards(score, isNewHighScore);
       moneyReward = rewards.money;
       auraReward = rewards.aura;
+    } else if (gameType === 'geometry_dash') {
+      const rewards = calculateGeometryDashRewards(score, isNewHighScore);
+      moneyReward = rewards.money;
+      auraReward = rewards.aura;
     } else if (gameType === 'solitaire') {
       const rewards = calculateSolitaireRewards(score, isNewHighScore, won || false);
       moneyReward = rewards.money;
@@ -777,6 +819,11 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       }
     } else if (gameType === 'flappy_bird') {
       await checkQuestProgress(req.user.id, 'FLAPPY_BIRD_SCORE', score);
+      await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
+      if (won) {
+        await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
+      }
+    } else if (gameType === 'geometry_dash') {
       await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
       if (won) {
         await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);

@@ -88,6 +88,14 @@ const games = [
     image: '/images/games/flappybird.png',
   },
   {
+    id: 'geometry-dash',
+    pageKey: 'game-geometry-dash',
+    name: 'Geometry Dash',
+    description: 'Cours en rythme, saute au pixel près et tiens le plus loin possible dans ce dash arcade.',
+    type: 'Arcade',
+    image: '/images/games/geometrydash.svg',
+  },
+  {
     id: 'casino',
     pageKey: 'game-casino',
     name: 'Casino',
@@ -210,6 +218,9 @@ export default function Games() {
     }
     if (gameId === 'flappy-bird') {
       return '/games/flappy-bird';
+    }
+    if (gameId === 'geometry-dash') {
+      return '/games/geometry-dash';
     }
     if (gameId === 'logic-lab') {
       return '/games/logic-lab';
