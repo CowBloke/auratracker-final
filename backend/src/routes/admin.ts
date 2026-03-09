@@ -13,7 +13,6 @@ import { recalculateBombPartyPrompts } from '../utils/bombpartyPrompts.js';
 import { getOnlineCount, getOnlineUsers } from '../socket/chat.js';
 import { createNotification } from '../utils/notifications.js';
 import { sendBugReportReplyEmail } from '../utils/email.js';
-import { isAdminRole, isSuperAdminRole, type AdminRole } from '../utils/adminRoles.js';
 
 const router = Router();
 const ANNOUNCEMENT_KEY = 'topbar_announcement';
@@ -626,7 +625,6 @@ router.get('/users', authMiddleware, requireAdmin, async (req: AuthRequest, res:
         aura: true,
         money: true,
         auraCoinBalance: true,
-        adminRole: true,
         isAdmin: true,
         isChatMuted: true,
         dailyAuraGiven: true,
@@ -651,21 +649,10 @@ router.get('/users', authMiddleware, requireAdmin, async (req: AuthRequest, res:
 router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { aura, money, auraCoinBalance, dailyAuraLimit, username, firstName, password, isChatMuted, adminRole } = req.body;
+    const { aura, money, auraCoinBalance, dailyAuraLimit, username, firstName, password, isChatMuted } = req.body;
 
     // Build update data
-    const updateData: {
-      aura?: number;
-      money?: number;
-      auraCoinBalance?: number;
-      dailyAuraLimit?: number;
-      username?: string;
-      firstName?: string | null;
-      passwordHash?: string;
-      isChatMuted?: boolean;
-      adminRole?: AdminRole;
-      isAdmin?: boolean;
-    } = {};
+    const updateData: { aura?: number; money?: number; auraCoinBalance?: number; dailyAuraLimit?: number; username?: string; firstName?: string | null; passwordHash?: string; isChatMuted?: boolean } = {};
 
     if (username !== undefined) {
       if (typeof username !== 'string') {
@@ -734,68 +721,31 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
       updateData.passwordHash = await bcrypt.hash(normalizedPassword, 10);
     }
 
-    if (adminRole !== undefined) {
-      if (!req.user || !isSuperAdminRole(req.user.adminRole)) {
-        return res.status(403).json({ error: 'Only super admins can change roles' });
-      }
-      if (adminRole !== 'USER' && adminRole !== 'ADMIN' && adminRole !== 'SUPER_ADMIN') {
-        return res.status(400).json({ error: 'Invalid admin role' });
-      }
-      if (req.user.id === id && adminRole !== 'SUPER_ADMIN') {
-        return res.status(400).json({ error: 'You cannot change your own role' });
-      }
-      updateData.adminRole = adminRole;
-      updateData.isAdmin = isAdminRole(adminRole);
-    }
-
     // Get old user data for logging
     const oldUser = await prisma.user.findUnique({
       where: { id },
+      select: { username: true, firstName: true, aura: true, money: true, auraCoinBalance: true, dailyAuraLimit: true, isChatMuted: true },
+    });
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: updateData,
       select: {
+        id: true,
         username: true,
         firstName: true,
+        email: true,
         aura: true,
         money: true,
         auraCoinBalance: true,
-        dailyAuraLimit: true,
+        isAdmin: true,
         isChatMuted: true,
-        adminRole: true,
+        dailyAuraGiven: true,
+        dailyAuraLimit: true,
+        lastDailyReset: true,
+        createdAt: true,
+        updatedAt: true,
       },
-    });
-
-    if (!oldUser) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const user = await prisma.$transaction(async (tx) => {
-      const updatedUser = await tx.user.update({
-        where: { id },
-        data: updateData,
-        select: {
-          id: true,
-          username: true,
-          firstName: true,
-          email: true,
-          aura: true,
-          money: true,
-          auraCoinBalance: true,
-          adminRole: true,
-          isAdmin: true,
-          isChatMuted: true,
-          dailyAuraGiven: true,
-          dailyAuraLimit: true,
-          lastDailyReset: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      });
-
-      if (updateData.adminRole === 'SUPER_ADMIN' && oldUser.adminRole !== 'SUPER_ADMIN') {
-        await tx.gameStats.deleteMany({ where: { userId: id } });
-        await tx.dailyRacerRun.deleteMany({ where: { userId: id } });
-      }
-
-      return updatedUser;
     });
 
     // Log user update
@@ -815,7 +765,6 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
         auraCoinBalance: oldUser?.auraCoinBalance,
         dailyAuraLimit: oldUser?.dailyAuraLimit,
         isChatMuted: oldUser?.isChatMuted,
-        adminRole: oldUser?.adminRole,
       },
     });
 

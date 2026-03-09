@@ -602,7 +602,6 @@ export interface AdminUser {
   aura: number;
   money: number;
   auraCoinBalance: number;
-  adminRole: 'USER' | 'ADMIN' | 'SUPER_ADMIN';
   isAdmin: boolean;
   isChatMuted: boolean;
   dailyAuraGiven: number;
@@ -842,7 +841,7 @@ export const adminApi = {
   transferClanLeadership: (id: string, targetUserId: string) =>
     api.post<{ success: boolean }>(`/admin/clans/${id}/transfer-leadership`, { targetUserId }),
   deleteClan: (id: string) => api.delete<{ success: boolean }>(`/admin/clans/${id}`),
-  updateUser: (id: string, data: { username?: string; firstName?: string | null; aura?: number; money?: number; auraCoinBalance?: number; dailyAuraLimit?: number; password?: string; isChatMuted?: boolean; adminRole?: 'USER' | 'ADMIN' | 'SUPER_ADMIN' }) =>
+  updateUser: (id: string, data: { username?: string; firstName?: string | null; aura?: number; money?: number; auraCoinBalance?: number; dailyAuraLimit?: number; password?: string; isChatMuted?: boolean }) =>
     api.put<{ user: AdminUser }>(`/admin/users/${id}`, data),
   deleteUser: (id: string) => api.delete<{ success: boolean; message: string }>(`/admin/users/${id}`),
   getUserInventory: (id: string) =>

@@ -56,16 +56,6 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
 };
 
 const ANNOUNCEMENT_MAX_LENGTH = 120;
-const ADMIN_ROLE_OPTIONS = [
-  { value: 'USER', label: 'Pas admin' },
-  { value: 'ADMIN', label: 'Admin' },
-  { value: 'SUPER_ADMIN', label: 'Super admin' },
-] as const;
-const ADMIN_ROLE_META: Record<(typeof ADMIN_ROLE_OPTIONS)[number]['value'], { label: string; className: string }> = {
-  USER: { label: 'pas admin', className: 'text-muted-foreground' },
-  ADMIN: { label: 'admin', className: 'text-amber-500' },
-  SUPER_ADMIN: { label: 'super admin', className: 'text-yellow-400' },
-};
 
 // Log type configuration with icons, colors and labels
 const LOG_TYPE_CONFIG: Record<string, { label: string; color: string; bgColor: string; borderColor: string; icon: React.ComponentType<{ className?: string }> }> = {
@@ -345,14 +335,13 @@ export default function Admin() {
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState<{ username: string; firstName: string; aura: number; money: number; auraCoinBalance: number; dailyAuraLimit: number; adminRole: 'USER' | 'ADMIN' | 'SUPER_ADMIN' }>({
+  const [editValues, setEditValues] = useState<{ username: string; firstName: string; aura: number; money: number; auraCoinBalance: number; dailyAuraLimit: number }>({
     username: '',
     firstName: '',
     aura: 0,
     money: 0,
     auraCoinBalance: 0,
     dailyAuraLimit: 50,
-    adminRole: 'USER',
   });
   const [editPassword, setEditPassword] = useState('');
   const [saving, setSaving] = useState(false);
@@ -1719,7 +1708,6 @@ export default function Admin() {
       money: u.money,
       auraCoinBalance: u.auraCoinBalance,
       dailyAuraLimit: u.dailyAuraLimit,
-      adminRole: u.adminRole,
     });
     setEditPassword('');
   };
@@ -1733,9 +1721,6 @@ export default function Admin() {
     setSaving(true);
     try {
       const payload = { ...editValues } as Parameters<typeof adminApi.updateUser>[1];
-      if (!canManageAdminRoles) {
-        delete payload.adminRole;
-      }
       if (editPassword.trim()) {
         payload.password = editPassword.trim();
       }
@@ -1750,8 +1735,6 @@ export default function Admin() {
       setSaving(false);
     }
   };
-
-  const canManageAdminRoles = user?.adminRole === 'SUPER_ADMIN';
 
   const toggleChatMute = async (u: AdminUser) => {
     setMutingUser(u.id);
@@ -2446,9 +2429,9 @@ export default function Admin() {
                       <div className="flex items-center justify-between">
                         <div>
                           <span className="font-medium">{u.username}</span>
-                          <span className={cn("ml-2 text-xs", ADMIN_ROLE_META[u.adminRole].className)}>
-                            {ADMIN_ROLE_META[u.adminRole].label}
-                          </span>
+                          {u.isAdmin && (
+                            <span className="ml-2 text-xs text-amber-500">admin</span>
+                          )}
                           <p className="text-xs text-muted-foreground">{u.email}</p>
                         </div>
                         <div className="flex gap-2">
@@ -2490,31 +2473,6 @@ export default function Admin() {
                           className="h-9 bg-transparent border-border/50"
                           placeholder="Non défini"
                         />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-xs text-muted-foreground">Type d'admin</label>
-                        {canManageAdminRoles ? (
-                          <Select
-                            value={editValues.adminRole}
-                            onValueChange={(value: 'USER' | 'ADMIN' | 'SUPER_ADMIN') => setEditValues(prev => ({ ...prev, adminRole: value }))}
-                          >
-                            <SelectTrigger className="h-9 bg-transparent border-border/50">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {ADMIN_ROLE_OPTIONS.map((option) => (
-                                <SelectItem key={option.value} value={option.value}>
-                                  {option.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          <div className="h-9 rounded-md border border-border/50 px-3 text-sm flex items-center bg-transparent text-muted-foreground">
-                            {ADMIN_ROLE_OPTIONS.find((option) => option.value === u.adminRole)?.label ?? 'Pas admin'}
-                          </div>
-                        )}
                       </div>
 
                       <div className="grid grid-cols-4 gap-4">
@@ -2576,9 +2534,9 @@ export default function Admin() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="font-medium truncate">{u.username}</span>
-                            <span className={cn("text-xs", ADMIN_ROLE_META[u.adminRole].className)}>
-                              {ADMIN_ROLE_META[u.adminRole].label}
-                            </span>
+                            {u.isAdmin && (
+                              <span className="text-xs text-amber-500">admin</span>
+                            )}
                             {u.isChatMuted && (
                               <span className="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-400">
                                 muet
