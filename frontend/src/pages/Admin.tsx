@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { adminApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan } from '../services/api';
+import { adminApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, RegistrationReview } from '../services/api';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Minus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, Inbox, Archive, UserCog, Crown, Swords, Send } from 'lucide-react';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Minus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, Inbox, Archive, UserCog, Crown, Swords, Send, Upload } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, ReferenceDot } from 'recharts';
 import {
   AlertDialog,
@@ -56,6 +56,47 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
 };
 
 const ANNOUNCEMENT_MAX_LENGTH = 120;
+const ADMIN_ARCHIVED_REGISTRATIONS_STORAGE_KEY = 'admin_archived_registrations';
+
+type ArchivedRegistration = PendingUser & {
+  registrationStatus: 'APPROVED' | 'REJECTED';
+  reviewedAt?: string;
+  importedFromLegacy?: boolean;
+};
+
+const parseLegacyArchivedRegistrations = (): ArchivedRegistration[] => {
+  try {
+    const raw = localStorage.getItem(ADMIN_ARCHIVED_REGISTRATIONS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((entry): entry is ArchivedRegistration => (
+      entry &&
+      typeof entry === 'object' &&
+      typeof entry.id === 'string' &&
+      typeof entry.username === 'string' &&
+      typeof entry.email === 'string' &&
+      typeof entry.createdAt === 'string' &&
+      (entry.registrationStatus === 'APPROVED' || entry.registrationStatus === 'REJECTED')
+    ));
+  } catch {
+    return [];
+  }
+};
+
+const mapRegistrationReviewToArchivedRegistration = (review: RegistrationReview): ArchivedRegistration => ({
+  id: review.registrationUserId,
+  username: review.username,
+  firstName: review.firstName,
+  schoolLevel: review.schoolLevel,
+  classLetter: review.classLetter,
+  email: review.email,
+  motivationMessage: review.motivationMessage,
+  createdAt: review.registrationCreatedAt,
+  registrationStatus: review.status,
+  reviewedAt: review.reviewedAt,
+  importedFromLegacy: review.importedFromLegacy,
+});
 
 // Log type configuration with icons, colors and labels
 const LOG_TYPE_CONFIG: Record<string, { label: string; color: string; bgColor: string; borderColor: string; icon: React.ComponentType<{ className?: string }> }> = {
@@ -434,9 +475,9 @@ export default function Admin() {
   const [loadingPending, setLoadingPending] = useState(false);
   const [approvingUser, setApprovingUser] = useState<string | null>(null);
   const [rejectingUser, setRejectingUser] = useState<string | null>(null);
-  const [archivedRegistrations, setArchivedRegistrations] = useState<(PendingUser & { registrationStatus: 'APPROVED' | 'REJECTED' })[]>(() => {
-    try { return JSON.parse(localStorage.getItem('admin_archived_registrations') || '[]'); } catch { return []; }
-  });
+  const [archivedRegistrations, setArchivedRegistrations] = useState<ArchivedRegistration[]>([]);
+  const [importingArchivedRegistrations, setImportingArchivedRegistrations] = useState(false);
+  const [legacyArchivedRegistrationsCount, setLegacyArchivedRegistrationsCount] = useState(() => parseLegacyArchivedRegistrations().length);
 
   // Ban appeals state
   const [banAppeals, setBanAppeals] = useState<BanAppeal[]>([]);
@@ -713,6 +754,7 @@ export default function Admin() {
     fetchShopCategories();
     fetchBugReports();
     fetchPendingUsers();
+    fetchRegistrationReviews();
     fetchBans();
     fetchBanAppeals();
     fetchNameChangeRequests();
@@ -997,6 +1039,16 @@ export default function Admin() {
       showMessage('error', 'Erreur lors du chargement des demandes');
     } finally {
       setLoadingPending(false);
+    }
+  };
+
+  const fetchRegistrationReviews = async () => {
+    try {
+      const res = await adminApi.getRegistrationReviews();
+      setArchivedRegistrations(res.data.registrationReviews.map(mapRegistrationReviewToArchivedRegistration));
+    } catch (error) {
+      console.error('Failed to fetch registration reviews:', error);
+      showMessage('error', 'Erreur lors du chargement des inscriptions archivées');
     }
   };
 
@@ -1412,21 +1464,34 @@ export default function Admin() {
     }
   };
 
+  const importArchivedRegistrations = async () => {
+    const legacyEntries = parseLegacyArchivedRegistrations();
+    if (legacyEntries.length === 0) {
+      showMessage('error', 'Aucune archive locale à importer');
+      setLegacyArchivedRegistrationsCount(0);
+      return;
+    }
+
+    setImportingArchivedRegistrations(true);
+    try {
+      const res = await adminApi.importRegistrationReviews(legacyEntries);
+      setArchivedRegistrations(res.data.registrationReviews.map(mapRegistrationReviewToArchivedRegistration));
+      localStorage.removeItem(ADMIN_ARCHIVED_REGISTRATIONS_STORAGE_KEY);
+      setLegacyArchivedRegistrationsCount(0);
+      showMessage('success', `${res.data.importedCount} archive${res.data.importedCount > 1 ? 's' : ''} importée${res.data.importedCount > 1 ? 's' : ''}`);
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur lors de l\'import');
+    } finally {
+      setImportingArchivedRegistrations(false);
+    }
+  };
+
   const approveUser = async (id: string) => {
     setApprovingUser(id);
     try {
       await adminApi.approveUser(id);
-      setPendingUsers(prev => {
-        const user = prev.find(u => u.id === id);
-        if (user) {
-          setArchivedRegistrations(arch => {
-            const updated = [{ ...user, registrationStatus: 'APPROVED' as const }, ...arch.filter(a => a.id !== id)];
-            localStorage.setItem('admin_archived_registrations', JSON.stringify(updated));
-            return updated;
-          });
-        }
-        return prev.filter(u => u.id !== id);
-      });
+      setPendingUsers(prev => prev.filter(u => u.id !== id));
+      await fetchRegistrationReviews();
       showMessage('success', 'Utilisateur approuvé');
       // Refresh users list to include newly approved user
       fetchUsers();
@@ -1440,16 +1505,9 @@ export default function Admin() {
   const rejectUser = async (id: string) => {
     setRejectingUser(id);
     try {
-      const user = pendingUsers.find(u => u.id === id);
       await adminApi.rejectUser(id);
       setPendingUsers(prev => prev.filter(u => u.id !== id));
-      if (user) {
-        setArchivedRegistrations(arch => {
-          const updated = [{ ...user, registrationStatus: 'REJECTED' as const }, ...arch.filter(a => a.id !== id)];
-          localStorage.setItem('admin_archived_registrations', JSON.stringify(updated));
-          return updated;
-        });
-      }
+      await fetchRegistrationReviews();
       showMessage('success', 'Demande rejetée');
     } catch (error: any) {
       showMessage('error', error.response?.data?.error || 'Erreur');
@@ -2051,8 +2109,21 @@ export default function Admin() {
             return (
               <Card className="overflow-hidden">
                 <CardHeader className="border-b border-border/30 pb-3 shrink-0">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-4">
                     <CardDescription>Boîte de réception</CardDescription>
+                    {legacyArchivedRegistrationsCount > 0 && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={importArchivedRegistrations}
+                        disabled={importingArchivedRegistrations}
+                        className="h-8 gap-1.5"
+                      >
+                        {importingArchivedRegistrations ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                        Importer {legacyArchivedRegistrationsCount} archive{legacyArchivedRegistrationsCount > 1 ? 's' : ''} locale{legacyArchivedRegistrationsCount > 1 ? 's' : ''}
+                      </Button>
+                    )}
                     <div className={cn("flex items-center gap-2", TYPOGRAPHY.SMALL)}>
                       <Inbox className="h-4 w-4" />
                       <span>{allPending} en attente</span>

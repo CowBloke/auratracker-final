@@ -27,16 +27,16 @@ model User {
   lastDailyReset     DateTime  @default(now()) // When daily allowance was last reset
   dailyPassStreak    Int       @default(0) // Current daily pass streak
   lastDailyPassClaim DateTime? // Last date when daily pass reward was claimed
-  usernameColor      String? // Custom username color for chat (hex)
-  profilePicture     String? // Custom profile picture URL for chat
-  bio                String? // User bio/description
-  motivationMessage  String? // Registration motivation shown to admins before approval
-  referralCode       String?   @unique
-  referredById       String?
-  referredAt         DateTime?
+  usernameColor           String? // Custom username color for chat (hex)
+  profilePicture          String? // Custom profile picture URL for chat
+  bio                     String? // User bio/description
+  motivationMessage       String? // Registration motivation shown to admins before approval
+  referralCode            String?  @unique
+  referredById            String?
+  referredAt              DateTime?
   referralRewardGrantedAt DateTime?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
   // Relations
   ownedItems            UserItem[]
@@ -84,10 +84,34 @@ model User {
   dailyRacerRuns      DailyRacerRun[]
   goyaveSave          GoyaveSave?
   clanWarsWon         ClanWar[]                 @relation("ClanWarWinner")
+  registrationReviews RegistrationReview[]      @relation("RegistrationReviewReviewer")
 
   @@index([aura])
   @@index([money])
   @@index([referredById])
+}
+
+model RegistrationReview {
+  id                    String   @id @default(uuid())
+  registrationUserId    String   @unique
+  username              String
+  firstName             String?
+  schoolLevel           String?
+  classLetter           String?
+  email                 String
+  motivationMessage     String?
+  registrationCreatedAt DateTime
+  status                String
+  reviewedAt            DateTime @default(now())
+  reviewedById          String?
+  importedFromLegacy    Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  reviewedBy User? @relation("RegistrationReviewReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([status, reviewedAt])
+  @@index([reviewedAt])
 }
 
 // Item Model

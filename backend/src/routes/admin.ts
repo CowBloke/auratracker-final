@@ -115,6 +115,45 @@ const requireAdmin = (req: AuthRequest, res: Response, next: Function) => {
   next();
 };
 
+const serializeRegistrationReview = (review: {
+  id: string;
+  registrationUserId: string;
+  username: string;
+  firstName: string | null;
+  schoolLevel: string | null;
+  classLetter: string | null;
+  email: string;
+  motivationMessage: string | null;
+  registrationCreatedAt: Date;
+  status: string;
+  reviewedAt: Date;
+  reviewedById: string | null;
+  importedFromLegacy: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}) => ({
+  ...review,
+  registrationCreatedAt: review.registrationCreatedAt.toISOString(),
+  reviewedAt: review.reviewedAt.toISOString(),
+  createdAt: review.createdAt.toISOString(),
+  updatedAt: review.updatedAt.toISOString(),
+});
+
+type RegistrationReviewImportEntry = {
+  registrationUserId: string;
+  username: string;
+  firstName: string | null;
+  schoolLevel: string | null;
+  classLetter: string | null;
+  email: string;
+  motivationMessage: string | null;
+  registrationCreatedAt: Date;
+  status: 'APPROVED' | 'REJECTED';
+  reviewedAt: Date;
+  reviewedById: string;
+  importedFromLegacy: true;
+};
+
 const adminClanMemberUserSelect = {
   id: true,
   username: true,
@@ -149,6 +188,91 @@ router.get('/pending-users', authMiddleware, requireAdmin, async (req: AuthReque
   }
 });
 
+router.get('/registration-reviews', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    const registrationReviews = await prisma.registrationReview.findMany({
+      orderBy: { reviewedAt: 'desc' },
+    });
+    res.json({ registrationReviews: registrationReviews.map(serializeRegistrationReview) });
+  } catch (error) {
+    console.error('Admin get registration reviews error:', error);
+    res.status(500).json({ error: 'Failed to get registration reviews' });
+  }
+});
+
+router.post('/registration-reviews/import-local', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const rawEntries: unknown[] | null = Array.isArray(req.body?.entries) ? req.body.entries : null;
+    if (!rawEntries) {
+      return res.status(400).json({ error: 'entries must be an array' });
+    }
+
+    const reviewedAt = new Date();
+    const entries = rawEntries
+      .map((entry): RegistrationReviewImportEntry | null => {
+        if (!entry || typeof entry !== 'object') return null;
+        const candidate = entry as Record<string, unknown>;
+
+        const status = candidate.registrationStatus === 'APPROVED' || candidate.registrationStatus === 'REJECTED'
+          ? candidate.registrationStatus
+          : null;
+        const registrationUserId = typeof candidate.id === 'string' && candidate.id.trim() ? candidate.id.trim() : null;
+        const username = typeof candidate.username === 'string' && candidate.username.trim() ? candidate.username.trim() : null;
+        const email = typeof candidate.email === 'string' && candidate.email.trim() ? candidate.email.trim() : null;
+        const registrationCreatedAt = typeof candidate.createdAt === 'string' ? new Date(candidate.createdAt) : null;
+
+        if (!status || !registrationUserId || !username || !email || !registrationCreatedAt || Number.isNaN(registrationCreatedAt.getTime())) {
+          return null;
+        }
+
+        return {
+          registrationUserId,
+          username,
+          firstName: typeof candidate.firstName === 'string' && candidate.firstName.trim() ? candidate.firstName.trim() : null,
+          schoolLevel: typeof candidate.schoolLevel === 'string' && candidate.schoolLevel.trim() ? candidate.schoolLevel.trim() : null,
+          classLetter: typeof candidate.classLetter === 'string' && candidate.classLetter.trim() ? candidate.classLetter.trim() : null,
+          email,
+          motivationMessage: typeof candidate.motivationMessage === 'string' && candidate.motivationMessage.trim() ? candidate.motivationMessage : null,
+          registrationCreatedAt,
+          status,
+          reviewedAt,
+          reviewedById: req.user!.id,
+          importedFromLegacy: true,
+        };
+      })
+      .filter((entry): entry is RegistrationReviewImportEntry => entry !== null);
+
+    if (entries.length === 0) {
+      return res.status(400).json({ error: 'No valid entries to import' });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      for (const entry of entries) {
+        await tx.registrationReview.upsert({
+          where: { registrationUserId: entry.registrationUserId },
+          update: entry,
+          create: entry,
+        });
+      }
+
+      const registrationReviews = await tx.registrationReview.findMany({
+        orderBy: { reviewedAt: 'desc' },
+      });
+
+      return { registrationReviews };
+    });
+
+    res.json({
+      success: true,
+      importedCount: entries.length,
+      registrationReviews: result.registrationReviews.map(serializeRegistrationReview),
+    });
+  } catch (error) {
+    console.error('Admin import registration reviews error:', error);
+    res.status(500).json({ error: 'Failed to import registration reviews' });
+  }
+});
+
 // Approve a user
 router.post('/users/:id/approve', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
@@ -159,7 +283,12 @@ router.post('/users/:id/approve', authMiddleware, requireAdmin, async (req: Auth
       select: {
         id: true,
         username: true,
+        firstName: true,
+        schoolLevel: true,
+        classLetter: true,
         email: true,
+        motivationMessage: true,
+        createdAt: true,
         isApproved: true,
         referredById: true,
         referralRewardGrantedAt: true,
@@ -178,10 +307,42 @@ router.post('/users/:id/approve', authMiddleware, requireAdmin, async (req: Auth
 
     const result = await prisma.$transaction(async (tx) => {
       let rewardGrantedToReferrer: { id: string; username: string } | null = null;
+      const reviewedAt = new Date();
 
       await tx.user.update({
         where: { id },
         data: { isApproved: true },
+      });
+
+      await tx.registrationReview.upsert({
+        where: { registrationUserId: id },
+        update: {
+          username: existingUser.username,
+          firstName: existingUser.firstName,
+          schoolLevel: existingUser.schoolLevel,
+          classLetter: existingUser.classLetter,
+          email: existingUser.email,
+          motivationMessage: existingUser.motivationMessage,
+          registrationCreatedAt: existingUser.createdAt,
+          status: 'APPROVED',
+          reviewedAt,
+          reviewedById: req.user!.id,
+          importedFromLegacy: false,
+        },
+        create: {
+          registrationUserId: id,
+          username: existingUser.username,
+          firstName: existingUser.firstName,
+          schoolLevel: existingUser.schoolLevel,
+          classLetter: existingUser.classLetter,
+          email: existingUser.email,
+          motivationMessage: existingUser.motivationMessage,
+          registrationCreatedAt: existingUser.createdAt,
+          status: 'APPROVED',
+          reviewedAt,
+          reviewedById: req.user!.id,
+          importedFromLegacy: false,
+        },
       });
 
       if (existingUser.referredById && !existingUser.referralRewardGrantedAt) {
@@ -314,8 +475,43 @@ router.post('/users/:id/reject', authMiddleware, requireAdmin, async (req: AuthR
     // Log rejection
     logAdmin('user_reject', req.user!.id, undefined, id, user.username, { email: user.email });
 
-    await prisma.user.delete({
-      where: { id },
+    await prisma.$transaction(async (tx) => {
+      const reviewedAt = new Date();
+
+      await tx.registrationReview.upsert({
+        where: { registrationUserId: id },
+        update: {
+          username: user.username,
+          firstName: user.firstName,
+          schoolLevel: user.schoolLevel,
+          classLetter: user.classLetter,
+          email: user.email,
+          motivationMessage: user.motivationMessage,
+          registrationCreatedAt: user.createdAt,
+          status: 'REJECTED',
+          reviewedAt,
+          reviewedById: req.user!.id,
+          importedFromLegacy: false,
+        },
+        create: {
+          registrationUserId: id,
+          username: user.username,
+          firstName: user.firstName,
+          schoolLevel: user.schoolLevel,
+          classLetter: user.classLetter,
+          email: user.email,
+          motivationMessage: user.motivationMessage,
+          registrationCreatedAt: user.createdAt,
+          status: 'REJECTED',
+          reviewedAt,
+          reviewedById: req.user!.id,
+          importedFromLegacy: false,
+        },
+      });
+
+      await tx.user.delete({
+        where: { id },
+      });
     });
 
     res.json({ success: true, message: 'Demande rejetée' });

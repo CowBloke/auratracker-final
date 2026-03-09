@@ -691,6 +691,24 @@ export interface PendingUser {
   createdAt: string;
 }
 
+export interface RegistrationReview {
+  id: string;
+  registrationUserId: string;
+  username: string;
+  firstName: string | null;
+  schoolLevel: 'SECONDE' | 'PREMIERE' | 'TERMINALE' | null;
+  classLetter: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | null;
+  email: string;
+  motivationMessage: string | null;
+  registrationCreatedAt: string;
+  status: 'APPROVED' | 'REJECTED';
+  reviewedAt: string;
+  reviewedById: string | null;
+  importedFromLegacy: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Shop Item Interface
 export interface ShopItem {
   id: string;
@@ -865,6 +883,9 @@ export const adminApi = {
     runRareAction({ action: 'chat_clear' }) as Promise<{ data: { success: boolean; message: string; messagesDeleted: number } }>,
   // Pending users management
   getPendingUsers: () => api.get<{ pendingUsers: PendingUser[] }>('/admin/pending-users'),
+  getRegistrationReviews: () => api.get<{ registrationReviews: RegistrationReview[] }>('/admin/registration-reviews'),
+  importRegistrationReviews: (entries: Array<PendingUser & { registrationStatus: 'APPROVED' | 'REJECTED' }>) =>
+    api.post<{ success: boolean; importedCount: number; registrationReviews: RegistrationReview[] }>('/admin/registration-reviews/import-local', { entries }),
   approveUser: (id: string) => api.post<{ success: boolean; user: PendingUser; message: string }>(`/admin/users/${id}/approve`),
   rejectUser: (id: string) => api.post<{ success: boolean; message: string }>(`/admin/users/${id}/reject`),
   // Items management
