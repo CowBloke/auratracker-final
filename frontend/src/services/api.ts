@@ -844,6 +844,8 @@ export const adminApi = {
   deleteClan: (id: string) => api.delete<{ success: boolean }>(`/admin/clans/${id}`),
   updateUser: (id: string, data: { username?: string; firstName?: string | null; aura?: number; money?: number; auraCoinBalance?: number; dailyAuraLimit?: number; password?: string; isChatMuted?: boolean; adminRole?: 'USER' | 'ADMIN' | 'SUPER_ADMIN' }) =>
     api.put<{ user: AdminUser }>(`/admin/users/${id}`, data),
+  setUserAdmin: (id: string, isAdmin: boolean) =>
+    api.put<{ user: AdminUser; message: string }>(`/admin/users/${id}/admin`, { isAdmin }),
   deleteUser: (id: string) => api.delete<{ success: boolean; message: string }>(`/admin/users/${id}`),
   getUserInventory: (id: string) =>
     api.get<{ items: AdminInventoryItem[] }>(`/admin/users/${id}/inventory`),
