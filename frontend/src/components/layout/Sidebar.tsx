@@ -88,6 +88,7 @@ const gameItems = [
   { to: '/games/poker', label: 'Poker', icon: Dices },
   { to: '/games/petit-bac', label: 'Petit Bac', icon: BookOpen },
   { to: '/games/bataille-navale', label: 'Bataille Navale', icon: Swords },
+  { to: '/games/puissance-quatre', label: 'Puissance 4', icon: Gamepad2 },
   { to: '/games/doodle-jump', label: 'Doodle Jump', icon: ArrowUp },
   { to: '/games/logic-lab', label: 'Logic Lab', icon: Brain },
   { to: '/games/minesweeper', label: 'Démineur', icon: Bomb },
@@ -96,7 +97,10 @@ const gameItems = [
   { to: '/games/casino', label: 'Casino', icon: Dices },
   { to: '/games/aura-coin', label: 'Aura Coin', icon: Coins },
   { to: '/games/solitaire', label: 'Solitaire', icon: Layers },
+  { to: '/games/racer', label: 'Racer', icon: Gamepad2 },
+  { to: '/games/tetris', label: 'Tetris', icon: Gamepad2 },
   { to: '/games/knife-hit', label: 'Knife Hit', icon: Target },
+  { to: '/games/goyave-empire', label: 'Goyave Empire', icon: Gamepad2 },
   { to: '/games/echecs', label: 'Échecs', icon: Crown },
 ];
 
