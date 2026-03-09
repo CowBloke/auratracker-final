@@ -722,21 +722,23 @@ export default function Admin() {
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
       const [fullStart, fullEnd] = activityFullDomainRef.current;
-      if (fullEnd === fullStart) return;
+      if (fullEnd <= fullStart) return;
       const [currentStart, currentEnd] = activityZoomDomainRef.current ?? [fullStart, fullEnd];
       const currentRange = currentEnd - currentStart;
+      const fullRange = fullEnd - fullStart;
+      const minRange = Math.max(fullRange / 500, 5 * 60 * 1000);
       const rightOffset = 4;
       const rect = el.getBoundingClientRect();
       // Dynamically read the plot area left boundary from the rendered YAxis element
       const yAxisEl = el.querySelector('.recharts-yAxis');
       const plotAreaLeft = yAxisEl ? yAxisEl.getBoundingClientRect().right - rect.left : 16;
       const chartWidth = rect.width - plotAreaLeft - rightOffset;
+      if (chartWidth <= 0) return;
       const mouseX = e.clientX - rect.left - plotAreaLeft;
       const fraction = Math.max(0, Math.min(1, mouseX / chartWidth));
       const mouseTs = currentStart + fraction * currentRange;
       const zoomFactor = e.deltaY > 0 ? 1.25 : 1 / 1.25;
-      const fullRange = fullEnd - fullStart;
-      const newRange = Math.min(currentRange * zoomFactor, fullRange);
+      const newRange = Math.max(minRange, Math.min(currentRange * zoomFactor, fullRange));
       let newStart = mouseTs - fraction * newRange;
       let newEnd = mouseTs + (1 - fraction) * newRange;
       // Clamp to full domain
@@ -4692,6 +4694,7 @@ export default function Admin() {
                                 dataKey="ts"
                                 type="number"
                                 domain={[viewStart, viewEnd]}
+                                allowDataOverflow
                                 ticks={xAxisTicks}
                                 tickFormatter={tickFormatter}
                                 tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
