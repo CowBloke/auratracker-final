@@ -252,6 +252,33 @@
   .poker-pulse   { animation: poker-pulse-turn 1.6s ease-in-out infinite; }
   .poker-chip-in { animation: poker-chip-in 0.3s ease-out forwards; }
 
+  @keyframes knife-hit-float {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+    50% { transform: translate3d(0, -18px, 0) scale(1.04); }
+  }
+
+  @keyframes knife-hit-shimmer {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+  }
+
+  .knife-hit-float {
+    animation: knife-hit-float 7s ease-in-out infinite;
+  }
+
+  .knife-hit-shimmer {
+    background-size: 200% 100%;
+    animation: knife-hit-shimmer 3.6s linear infinite;
+  }
+
+  .knife-hit-grid {
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 34px 34px;
+    mask-image: radial-gradient(circle at center, black 38%, transparent 92%);
+  }
+
   .text-gradient {
     @apply bg-clip-text text-transparent bg-gradient-to-r;
   }

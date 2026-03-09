@@ -4,7 +4,8 @@ import { gamesApi, DailyRacerLeaderboardEntry } from '../services/api';
 import { Play, RotateCcw, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { GameFullscreenButton } from '@/components/game/GameFullscreenButton';
+import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
+import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 
 // ============================================
@@ -1324,62 +1325,64 @@ export default function Racer() {
       <div className={cn('flex justify-center items-start gap-6', isFullscreen && 'min-h-screen')}>
         <div
           ref={gameContainerRef}
-          className={cn('relative', isFullscreen && 'flex min-h-screen w-screen items-center justify-center bg-background')}
+          className={cn('flex flex-col gap-3', isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4')}
         >
-          <GameFullscreenButton
+          <GameFullscreenToolbar
             isFullscreen={isFullscreen}
-            onClick={toggleFullscreen}
-            className="absolute right-2 top-2 z-30"
+            onToggleFullscreen={toggleFullscreen}
+            className="w-full max-w-[1024px]"
           />
 
-          <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="border border-border/30 rounded-lg" />
+          <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={WIDTH} baseHeight={HEIGHT}>
+            <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="h-full w-full rounded-lg border border-border/30" />
 
-          {!started && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
-              {!imagesLoaded ? (
-                <div className="text-center">
-                  <div className="text-lg mb-2">Chargement...</div>
-                </div>
-              ) : (
-                <Button variant="ghost"
-                  onClick={initGame}
-                  className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-                >
-                  <Play className="w-4 h-4" />
-                  Jouer
-                </Button>
-              )}
-            </div>
-          )}
-
-          {gameOver && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
-              <div className="text-center space-y-6">
-                <div>
-                  <h2 className="text-2xl font-light mb-2">Tour termine</h2>
-                  <p className="text-3xl tabular-nums">{formatTime(score)}</p>
-                </div>
-
-                {isNewDailyBest && <p className="text-sm text-foreground">Nouveau record du jour !</p>}
-
-                {rewards && (rewards.money > 0 || rewards.aura > 0) && (
-                  <p className="text-sm text-muted-foreground">
-                    {rewards.money > 0 && `+$${rewards.money}`}
-                    {rewards.money > 0 && rewards.aura > 0 && ' - '}
-                    {rewards.aura > 0 && `+${rewards.aura} aura`}
-                  </p>
+            {!started && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/90">
+                {!imagesLoaded ? (
+                  <div className="text-center">
+                    <div className="text-lg mb-2">Chargement...</div>
+                  </div>
+                ) : (
+                  <Button variant="ghost"
+                    onClick={initGame}
+                    className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+                  >
+                    <Play className="w-4 h-4" />
+                    Jouer
+                  </Button>
                 )}
-
-                <Button variant="ghost"
-                  onClick={initGame}
-                  className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors mx-auto"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  Rejouer
-                </Button>
               </div>
-            </div>
-          )}
+            )}
+
+            {gameOver && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/90">
+                <div className="text-center space-y-6">
+                  <div>
+                    <h2 className="text-2xl font-light mb-2">Tour termine</h2>
+                    <p className="text-3xl tabular-nums">{formatTime(score)}</p>
+                  </div>
+
+                  {isNewDailyBest && <p className="text-sm text-foreground">Nouveau record du jour !</p>}
+
+                  {rewards && (rewards.money > 0 || rewards.aura > 0) && (
+                    <p className="text-sm text-muted-foreground">
+                      {rewards.money > 0 && `+$${rewards.money}`}
+                      {rewards.money > 0 && rewards.aura > 0 && ' - '}
+                      {rewards.aura > 0 && `+${rewards.aura} aura`}
+                    </p>
+                  )}
+
+                  <Button variant="ghost"
+                    onClick={initGame}
+                    className="mx-auto flex items-center gap-2 px-6 py-3 border border-foreground text-foreground transition-colors hover:bg-foreground hover:text-background"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    Rejouer
+                  </Button>
+                </div>
+              </div>
+            )}
+          </GameFullscreenStage>
         </div>
 
         <div className={cn('w-80 border border-border/30 rounded-lg bg-card overflow-hidden shadow-sm', isFullscreen && 'hidden')} style={{ height: HEIGHT }}>

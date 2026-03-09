@@ -28,7 +28,6 @@ import { SPACING, TYPOGRAPHY } from '@/lib/design-system';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
 
-const CLAN_WAR_TARGET_SCORE = 180;
 const panelClassName = 'rounded-2xl border border-border/50 bg-background shadow-none';
 const mutedPanelClassName = 'rounded-2xl border border-border/50 bg-muted/15 shadow-none';
 

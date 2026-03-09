@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import { GameFullscreenButton } from '@/components/game/GameFullscreenButton';
+import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
+import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 
 // ============================================
@@ -81,6 +82,7 @@ export default function FlappyBird() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
+  const canvasScaleRef = useRef(1);
   const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
 
   const { theme } = useTheme();
@@ -236,6 +238,9 @@ export default function FlappyBird() {
 
     if (!canvas || !ctx || !gameRunningRef.current) return;
 
+    ctx.setTransform(canvasScaleRef.current, 0, 0, canvasScaleRef.current, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+
     // Calculate delta time
     if (!lastTimeRef.current) lastTimeRef.current = timestamp;
     const deltaTimeRaw = timestamp - lastTimeRef.current;
@@ -376,6 +381,33 @@ export default function FlappyBird() {
   }, [gameOver]);
 
   useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const resizeCanvas = () => {
+      const rect = canvas.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 3);
+      const width = Math.round(rect.width * dpr);
+      const height = Math.round(rect.height * dpr);
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+      canvasScaleRef.current = width / CANVAS_WIDTH;
+    };
+
+    resizeCanvas();
+    const observer = new ResizeObserver(resizeCanvas);
+    observer.observe(canvas);
+    window.addEventListener('resize', resizeCanvas);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', resizeCanvas);
+    };
+  }, [isFullscreen]);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w') {
         e.preventDefault();
@@ -454,54 +486,56 @@ export default function FlappyBird() {
       <div
         ref={gameContainerRef}
         className={cn(
-          'relative',
-          isFullscreen && 'flex min-h-screen w-screen items-center justify-center bg-background'
+          'flex flex-col gap-3',
+          isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
         )}
       >
-        <GameFullscreenButton
+        <GameFullscreenToolbar
           isFullscreen={isFullscreen}
-          onClick={toggleFullscreen}
-          className="absolute right-2 top-2 z-30"
+          onToggleFullscreen={toggleFullscreen}
+          className="w-full max-w-[400px]"
         />
 
-        <canvas
-          ref={canvasRef}
-          width={CANVAS_WIDTH}
-          height={CANVAS_HEIGHT}
-          className="border border-border rounded-lg cursor-pointer block"
-          style={{ imageRendering: 'pixelated' }}
-        />
-        {!started && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg">
-            <div className="text-center space-y-4">
-              <p className="text-sm text-muted-foreground">Appuie sur Espace ou clique pour sauter</p>
-              <Button onClick={initGame} variant="outline" className="border-foreground">
-                <Play className="h-4 w-4 mr-2" />
-                Commencer
-              </Button>
+        <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={CANVAS_WIDTH} baseHeight={CANVAS_HEIGHT}>
+          <canvas
+            ref={canvasRef}
+            width={CANVAS_WIDTH}
+            height={CANVAS_HEIGHT}
+            className="block h-full w-full cursor-pointer rounded-lg border border-border"
+            style={{ imageRendering: 'auto' }}
+          />
+          {!started && (
+            <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/80">
+              <div className="text-center space-y-4">
+                <p className="text-sm text-muted-foreground">Appuie sur Espace ou clique pour sauter</p>
+                <Button onClick={initGame} variant="outline" className="border-foreground">
+                  <Play className="h-4 w-4 mr-2" />
+                  Commencer
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
-        {gameOver && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
-            <div className="text-center space-y-4 p-6">
-              <p className="text-2xl font-light">Game Over</p>
-              <p className="text-3xl tabular-nums">{score}</p>
-              {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
-              {rewards && (
-                <p className="text-sm text-muted-foreground">
-                  {rewards.aura > 0 && `+${rewards.aura} aura`}
-                  {rewards.aura > 0 && rewards.money > 0 && ' · '}
-                  {rewards.money > 0 && `+${rewards.money}$`}
-                </p>
-              )}
-              <Button onClick={initGame} variant="outline" className="border-foreground">
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Rejouer
-              </Button>
+          )}
+          {gameOver && (
+            <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/90">
+              <div className="text-center space-y-4 p-6">
+                <p className="text-2xl font-light">Game Over</p>
+                <p className="text-3xl tabular-nums">{score}</p>
+                {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
+                {rewards && (
+                  <p className="text-sm text-muted-foreground">
+                    {rewards.aura > 0 && `+${rewards.aura} aura`}
+                    {rewards.aura > 0 && rewards.money > 0 && ' · '}
+                    {rewards.money > 0 && `+${rewards.money}$`}
+                  </p>
+                )}
+                <Button onClick={initGame} variant="outline" className="border-foreground">
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Rejouer
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </GameFullscreenStage>
       </div>
 
       {/* ── Right column — leaderboard ── */}
