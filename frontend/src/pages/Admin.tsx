@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Minus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, Inbox, Archive, UserCog, Crown, Swords, Send } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, ReferenceDot } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, ReferenceDot } from 'recharts';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -354,6 +354,8 @@ export default function Admin() {
 
   // Activity tab state
   type OnlineHistoryPoint = { timestamp: string; count: number; max: number; usernames: { userId: string; username: string }[] };
+  type ActivityChartPoint = OnlineHistoryPoint & { ts: number };
+  type ActivityHoverState = { cursorTs: number; point: ActivityChartPoint };
   type OnlineStats = { current: number; allTimeRecord: number; allTimeRecordAt: string | null; avg1d: number; avg7d: number; avg30d: number; peak1d: number; peak7d: number; peak30d: number };
   const [activityPeriod, setActivityPeriod] = useState<'day' | 'week' | 'month' | 'custom' | 'specific'>('day');
   const [activityCustomStart, setActivityCustomStart] = useState('');
@@ -363,11 +365,11 @@ export default function Admin() {
   const [onlineStats, setOnlineStats] = useState<OnlineStats | null>(null);
   const [loadingActivity, setLoadingActivity] = useState(false);
   const [snapshotting, setSnapshotting] = useState(false);
-  const [hoveredPoint, setHoveredPoint] = useState<OnlineHistoryPoint | null>(null);
-  const [lockedPoint, setLockedPoint] = useState<OnlineHistoryPoint | null>(null);
+  const [hoveredActivity, setHoveredActivity] = useState<ActivityHoverState | null>(null);
   const [activityZoomDomain, setActivityZoomDomain] = useState<[number, number] | null>(null);
   const activityZoomDomainRef = useRef<[number, number] | null>(null);
   const activityFullDomainRef = useRef<[number, number]>([0, 0]);
+  const activityChartDataRef = useRef<ActivityChartPoint[]>([]);
   const activityChartRef = useRef<HTMLDivElement>(null);
   const activityPanRef = useRef<{ pointerId: number; startClientX: number; domain: [number, number] } | null>(null);
   const activityDidPanRef = useRef(false);
@@ -773,6 +775,36 @@ export default function Admin() {
     setActivityDomain([newStart, newEnd]);
   };
 
+  const resolveActivityHoverState = (clientX: number): ActivityHoverState | null => {
+    const metrics = getActivityPlotMetrics();
+    const chartData = activityChartDataRef.current;
+    if (!metrics || chartData.length === 0) return null;
+    const [fullStart, fullEnd] = activityFullDomainRef.current;
+    const [viewStart, viewEnd] = activityZoomDomainRef.current ?? [fullStart, fullEnd];
+    if (viewEnd <= viewStart) return null;
+    const mouseX = clientX - metrics.rect.left - metrics.plotAreaLeft;
+    const fraction = Math.max(0, Math.min(1, mouseX / metrics.chartWidth));
+    const cursorTs = viewStart + fraction * (viewEnd - viewStart);
+
+    let low = 0;
+    let high = chartData.length - 1;
+    let resolvedIndex = 0;
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      if (chartData[mid].ts <= cursorTs) {
+        resolvedIndex = mid;
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+
+    return {
+      cursorTs,
+      point: chartData[resolvedIndex],
+    };
+  };
+
   const handleActivityPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     const el = activityChartRef.current;
     if (!el) return;
@@ -790,7 +822,10 @@ export default function Admin() {
 
   const handleActivityPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
     const panState = activityPanRef.current;
-    if (!panState || panState.pointerId !== e.pointerId) return;
+    if (!panState || panState.pointerId !== e.pointerId) {
+      setHoveredActivity(resolveActivityHoverState(e.clientX));
+      return;
+    }
     const metrics = getActivityPlotMetrics();
     if (!metrics) return;
     const [fullStart, fullEnd] = activityFullDomainRef.current;
@@ -811,6 +846,7 @@ export default function Admin() {
       newEnd = fullEnd;
     }
     setActivityDomain([newStart, newEnd]);
+    setHoveredActivity(resolveActivityHoverState(e.clientX));
   };
 
   const handleActivityPointerEnd = (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -822,6 +858,12 @@ export default function Admin() {
     window.setTimeout(() => {
       activityDidPanRef.current = false;
     }, 0);
+  };
+
+  const handleActivityPointerLeave = () => {
+    if (!activityPanRef.current) {
+      setHoveredActivity(null);
+    }
   };
 
   // Scroll-wheel horizontal zoom for the activity chart
@@ -1010,8 +1052,7 @@ export default function Admin() {
       ]);
       setActivityHistory({ data: histRes.data.data, peak: histRes.data.peak, peakAt: histRes.data.peakAt });
       setOnlineStats(statsRes.data);
-      setLockedPoint(null);
-      setHoveredPoint(null);
+      setHoveredActivity(null);
       setActivityZoomDomain(null);
       activityZoomDomainRef.current = null;
     } catch {
@@ -4663,7 +4704,8 @@ export default function Admin() {
                         const MS_DAY = 86400000;
 
                         // All periods use a numeric time axis for proportional spacing
-                        const chartData = activityHistory.data.map(pt => ({ ...pt, ts: new Date(pt.timestamp).getTime() }));
+                        const chartData: ActivityChartPoint[] = activityHistory.data.map(pt => ({ ...pt, ts: new Date(pt.timestamp).getTime() }));
+                        activityChartDataRef.current = chartData;
 
                         // Compute full domain boundaries for this period
                         const now = new Date();
@@ -4814,26 +4856,13 @@ export default function Admin() {
                             onPointerMove={handleActivityPointerMove}
                             onPointerUp={handleActivityPointerEnd}
                             onPointerCancel={handleActivityPointerEnd}
+                            onPointerLeave={handleActivityPointerLeave}
                             className={cn('touch-none select-none', isZoomed ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer')}
                           >
                           <ResponsiveContainer width="100%" height={300}>
                             <AreaChart
                               data={chartData}
                               margin={{ top: 6, right: 4, left: -8, bottom: 0 }}
-                              onMouseMove={(chartData) => {
-                                if (lockedPoint) return;
-                                const pt = chartData?.activePayload?.[0]?.payload as OnlineHistoryPoint | undefined;
-                                setHoveredPoint(pt ?? null);
-                              }}
-                              onMouseLeave={() => {
-                                if (!lockedPoint) setHoveredPoint(null);
-                              }}
-                              onClick={(chartData) => {
-                                if (activityDidPanRef.current) return;
-                                const pt = chartData?.activePayload?.[0]?.payload as OnlineHistoryPoint | undefined;
-                                if (!pt) { setLockedPoint(null); return; }
-                                setLockedPoint(prev => prev?.timestamp === pt.timestamp ? null : pt);
-                              }}
                               style={{ cursor: isZoomed ? 'grab' : 'pointer' }}
                             >
                               <defs>
@@ -4866,22 +4895,6 @@ export default function Admin() {
                                 tickLine={false}
                                 width={24}
                               />
-                              <RechartsTooltip
-                                active={!lockedPoint}
-                                contentStyle={{
-                                  background: 'hsl(var(--popover))',
-                                  border: '1px solid hsl(var(--border))',
-                                  borderRadius: 8,
-                                  fontSize: 12,
-                                  padding: '8px 12px',
-                                }}
-                                labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: 6, fontSize: 11 }}
-                                labelFormatter={ts => new Date(ts as number).toLocaleString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                                formatter={(value: number) => [
-                                  <span style={{ fontWeight: 600 }}>{value}</span>,
-                                  'Joueurs'
-                                ]}
-                              />
                               {activityHistory.peak > 0 && (
                                 <ReferenceLine
                                   y={activityHistory.peak}
@@ -4899,15 +4912,23 @@ export default function Admin() {
                                   strokeWidth={1.5}
                                 />
                               ))}
-                              {lockedPoint && (
-                                <ReferenceDot
-                                  x={new Date(lockedPoint.timestamp).getTime()}
-                                  y={lockedPoint.max}
-                                  r={6}
-                                  fill="hsl(var(--foreground))"
-                                  stroke="hsl(var(--background))"
-                                  strokeWidth={2}
-                                />
+                              {hoveredActivity && (
+                                <>
+                                  <ReferenceLine
+                                    x={hoveredActivity.cursorTs}
+                                    stroke="hsl(var(--foreground))"
+                                    strokeDasharray="4 4"
+                                    strokeWidth={1.25}
+                                  />
+                                  <ReferenceDot
+                                    x={hoveredActivity.cursorTs}
+                                    y={hoveredActivity.point.max}
+                                    r={5}
+                                    fill="hsl(var(--foreground))"
+                                    stroke="hsl(var(--background))"
+                                    strokeWidth={2}
+                                  />
+                                </>
                               )}
                               <Area
                                 type="stepAfter"
