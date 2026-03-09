@@ -224,6 +224,7 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
         aura: true,
         money: true,
         auraCoinBalance: true,
+        adminRole: true,
         isAdmin: true,
         usernameColor: true,
         profilePicture: true,

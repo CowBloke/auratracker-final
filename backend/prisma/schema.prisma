@@ -19,6 +19,7 @@ model User {
   aura               BigInt    @default(0)
   money              Int       @default(1000)
   auraCoinBalance    Float     @default(0) // Aura Coin balance for trading game
+  adminRole          String    @default("USER") // USER | ADMIN | SUPER_ADMIN
   isAdmin            Boolean   @default(false)
   isChatMuted        Boolean   @default(false)
   isApproved         Boolean   @default(false) // Account must be approved by admin before login

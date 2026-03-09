@@ -2,12 +2,14 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { config } from '../config/index.js';
 import { prisma } from '../server.js';
+import { normalizeAdminRole, type AdminRole } from '../utils/adminRoles.js';
 
 export interface AuthRequest extends Request {
   user?: {
     id: string;
     email: string;
     username: string;
+    adminRole: AdminRole;
     isAdmin: boolean;
   };
 }
@@ -37,6 +39,7 @@ export const authMiddleware = async (
         id: true,
         email: true,
         username: true,
+        adminRole: true,
         isAdmin: true,
       },
     });
@@ -78,7 +81,10 @@ export const authMiddleware = async (
       });
     }
 
-    req.user = user;
+    req.user = {
+      ...user,
+      adminRole: normalizeAdminRole(user.adminRole),
+    };
     next();
   } catch (error) {
     return res.status(401).json({ error: 'Invalid token' });

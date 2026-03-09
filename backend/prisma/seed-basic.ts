@@ -19,6 +19,7 @@ async function main() {
       username: ADMIN_USERNAME,
       email: ADMIN_EMAIL,
       passwordHash,
+      adminRole: 'SUPER_ADMIN',
       isAdmin: true,
       isApproved: true,
       aura: BigInt(0),

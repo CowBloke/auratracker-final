@@ -4,6 +4,7 @@ import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { validate, gameCompleteSchema } from '../middleware/validation.js';
 import { logGame, logAdmin } from '../utils/logger.js';
 import { checkQuestProgress } from './quests.js';
+import { isSuperAdminRole } from '../utils/adminRoles.js';
 
 const router = Router();
 const isDoodleJumpType = (gameType: string) => gameType === 'doodle_jump' || gameType === 'doodle_jump_mort_subite';
@@ -464,7 +465,10 @@ router.get('/daily/racer', authMiddleware, async (req: AuthRequest, res: Respons
     const trackDate = getUtcDayStart();
 
     const allRuns = await prisma.dailyRacerRun.findMany({
-      where: { trackDate },
+      where: {
+        trackDate,
+        user: { adminRole: { not: 'SUPER_ADMIN' } },
+      },
       orderBy: [{ lapTimeMs: 'asc' }, { createdAt: 'asc' }],
       include: {
         user: {
@@ -520,6 +524,19 @@ router.post('/daily/racer/complete', authMiddleware, async (req: AuthRequest, re
     const lapTimeMs = Number(req.body?.lapTimeMs);
     if (!Number.isInteger(lapTimeMs) || lapTimeMs < 1_000 || lapTimeMs > 3_600_000) {
       return res.status(400).json({ error: 'lapTimeMs must be an integer between 1000 and 3600000' });
+    }
+
+    const currentUser = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { adminRole: true },
+    });
+
+    if (!currentUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (isSuperAdminRole(currentUser.adminRole)) {
+      return res.status(403).json({ error: 'Super admins cannot record daily racer runs' });
     }
 
     const trackDate = getUtcDayStart();
@@ -606,6 +623,10 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
     
     if (!currentUser) {
       return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (isSuperAdminRole(currentUser.adminRole)) {
+      return res.status(403).json({ error: 'Super admins cannot record game scores' });
     }
     
     // For casino, check if user has enough money for bet
@@ -841,7 +862,7 @@ router.get('/:gameType/leaderboard', authMiddleware, async (req: AuthRequest, re
     const { limit = '20' } = req.query;
 
     const rankings = await prisma.gameStats.findMany({
-      where: { gameType, user: { isAdmin: false } },
+      where: { gameType, user: { adminRole: { not: 'SUPER_ADMIN' } } },
       orderBy: { highScore: gameType === 'racer' ? 'asc' : 'desc' },
       take: parseInt(limit as string),
       include: {

@@ -11,6 +11,7 @@ interface User {
   email: string;
   aura: number;
   money: number;
+  adminRole: 'USER' | 'ADMIN' | 'SUPER_ADMIN';
   isAdmin: boolean;
   usernameColor?: string | null;
   profilePicture?: string | null;

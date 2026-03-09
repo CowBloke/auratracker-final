@@ -341,6 +341,7 @@ async function main() {
     update: {
       email: 'admin@auratracker.com',
       passwordHash: adminHash,
+      adminRole: 'SUPER_ADMIN',
       isAdmin: true,
       isApproved: true,
       money: 250000,
@@ -354,6 +355,7 @@ async function main() {
       firstName: 'Admin',
       email: 'admin@auratracker.com',
       passwordHash: adminHash,
+      adminRole: 'SUPER_ADMIN',
       isAdmin: true,
       isApproved: true,
       money: 250000,

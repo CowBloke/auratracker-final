@@ -6,6 +6,7 @@ import { config } from '../config/index.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { validate, registerSchema, loginSchema } from '../middleware/validation.js';
 import { logAuth } from '../utils/logger.js';
+import { isAdminRole } from '../utils/adminRoles.js';
 
 // Helper to get IP address from request
 const getIpAddress = (req: Request | AuthRequest): string | null => {
@@ -52,7 +53,8 @@ router.post('/register', validate(registerSchema), async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 10);
     
     // Check if this is the admin email - auto-approve admin
-    const isAdmin = email === config.adminEmail;
+    const adminRole = email === config.adminEmail ? 'SUPER_ADMIN' : 'USER';
+    const isAdmin = isAdminRole(adminRole);
     
     // Create user - auto-approve if admin, otherwise pending approval
     await prisma.user.create({
@@ -64,6 +66,7 @@ router.post('/register', validate(registerSchema), async (req, res) => {
         email,
         passwordHash,
         motivationMessage: typeof motivationMessage === 'string' ? motivationMessage.trim() : motivationMessage,
+        adminRole,
         isAdmin,
         isApproved: isAdmin, // Admin is auto-approved
         money: 1000, // Starting money
@@ -71,7 +74,7 @@ router.post('/register', validate(registerSchema), async (req, res) => {
     });
     
     // Log registration
-    logAuth('register', undefined, username, { email, isAdmin, schoolLevel, classLetter }, getIpAddress(req));
+    logAuth('register', undefined, username, { email, isAdmin, adminRole, schoolLevel, classLetter }, getIpAddress(req));
 
     // Don't return token - account needs approval first (unless admin)
     res.status(201).json({
@@ -149,7 +152,7 @@ router.post('/login', validate(loginSchema), async (req, res) => {
     const token = generateToken(user.id, user.email);
 
     // Log successful login
-    logAuth('login', user.id, user.username, { isAdmin: user.isAdmin }, getIpAddress(req));
+    logAuth('login', user.id, user.username, { isAdmin: user.isAdmin, adminRole: user.adminRole }, getIpAddress(req));
 
     res.json({
       user: {
@@ -161,6 +164,7 @@ router.post('/login', validate(loginSchema), async (req, res) => {
         email: user.email,
         aura: user.aura,
         money: user.money,
+        adminRole: user.adminRole,
         isAdmin: user.isAdmin,
         usernameColor: user.usernameColor,
         profilePicture: user.profilePicture,
@@ -207,6 +211,7 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
         email: true,
         aura: true,
         money: true,
+        adminRole: true,
         isAdmin: true,
         usernameColor: true,
         profilePicture: true,

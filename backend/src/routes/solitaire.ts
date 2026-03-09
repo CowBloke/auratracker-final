@@ -61,7 +61,7 @@ router.get('/leaderboard', authMiddleware, async (req: AuthRequest, res: Respons
     const rankings = await prisma.gameStats.findMany({
       where: { 
         gameType: 'solitaire',
-        user: { isAdmin: false },
+        user: { adminRole: { not: 'SUPER_ADMIN' } },
       },
       orderBy,
       take: parseInt(limit as string),
@@ -107,7 +107,7 @@ router.get('/leaderboard', authMiddleware, async (req: AuthRequest, res: Respons
           where: {
             gameType: 'solitaire',
             highScore: { gt: stats.highScore },
-            user: { isAdmin: false },
+            user: { adminRole: { not: 'SUPER_ADMIN' } },
           },
         });
 

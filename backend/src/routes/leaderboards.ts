@@ -3,6 +3,7 @@ import { prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
+const leaderboardEligibleUserWhere = { adminRole: { not: 'SUPER_ADMIN' as const } };
 
 type LeaderboardCategory =
   | 'aura'
@@ -34,7 +35,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
     switch (category) {
       case 'aura':
         rankings = await prisma.user.findMany({
-          where: { isAdmin: false },
+          where: leaderboardEligibleUserWhere,
           select: {
             id: true,
             username: true,
@@ -56,7 +57,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
         
       case 'money':
         rankings = await prisma.user.findMany({
-          where: { isAdmin: false },
+          where: leaderboardEligibleUserWhere,
           select: {
             id: true,
             username: true,
@@ -102,7 +103,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
             auraCoinBalance,
             (money + auraCoinBalance * ${totalMoneyPrice}) as total
           FROM "User"
-          WHERE isAdmin = 0
+          WHERE adminRole != 'SUPER_ADMIN'
           ORDER BY total DESC
           LIMIT ${take} OFFSET ${skip}
         `;
@@ -118,7 +119,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
         
       case 'doodle_jump':
         rankings = await prisma.gameStats.findMany({
-          where: { gameType: 'doodle_jump', user: { isAdmin: false } },
+          where: { gameType: 'doodle_jump', user: leaderboardEligibleUserWhere },
           select: {
             userId: true,
             highScore: true,
@@ -141,7 +142,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
 
       case 'doodle_jump_mort_subite':
         rankings = await prisma.gameStats.findMany({
-          where: { gameType: 'doodle_jump_mort_subite', user: { isAdmin: false } },
+          where: { gameType: 'doodle_jump_mort_subite', user: leaderboardEligibleUserWhere },
           select: {
             userId: true,
             highScore: true,
@@ -164,7 +165,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
         
       case 'game_2048':
         rankings = await prisma.gameStats.findMany({
-          where: { gameType: 'game_2048', user: { isAdmin: false } },
+          where: { gameType: 'game_2048', user: leaderboardEligibleUserWhere },
           select: {
             userId: true,
             highScore: true,
@@ -187,7 +188,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
         
       case 'flappy_bird':
         rankings = await prisma.gameStats.findMany({
-          where: { gameType: 'flappy_bird', user: { isAdmin: false } },
+          where: { gameType: 'flappy_bird', user: leaderboardEligibleUserWhere },
           select: {
             userId: true,
             highScore: true,
@@ -210,7 +211,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
 
       case 'solitaire':
         rankings = await prisma.gameStats.findMany({
-          where: { gameType: 'solitaire', user: { isAdmin: false } },
+          where: { gameType: 'solitaire', user: leaderboardEligibleUserWhere },
           select: {
             userId: true,
             highScore: true,
@@ -237,7 +238,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
 
       case 'racer':
         rankings = await prisma.gameStats.findMany({
-          where: { gameType: 'racer', user: { isAdmin: false } },
+          where: { gameType: 'racer', user: leaderboardEligibleUserWhere },
           select: {
             userId: true,
             highScore: true,
@@ -260,7 +261,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
 
       case 'tetris':
         rankings = await prisma.gameStats.findMany({
-          where: { gameType: 'tetris', user: { isAdmin: false } },
+          where: { gameType: 'tetris', user: leaderboardEligibleUserWhere },
           select: {
             userId: true,
             highScore: true,
@@ -283,7 +284,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
 
       case 'knife_hit':
         rankings = await prisma.gameStats.findMany({
-          where: { gameType: 'knife_hit', user: { isAdmin: false } },
+          where: { gameType: 'knife_hit', user: leaderboardEligibleUserWhere },
           select: {
             userId: true,
             highScore: true,
@@ -306,7 +307,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
 
       case 'minesweeper':
         rankings = await prisma.gameStats.findMany({
-          where: { gameType: 'minesweeper', user: { isAdmin: false } },
+          where: { gameType: 'minesweeper', user: leaderboardEligibleUserWhere },
           select: {
             userId: true,
             highScore: true,
@@ -329,7 +330,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
 
       case 'casino':
         rankings = await prisma.gameStats.findMany({
-          where: { gameType: 'casino', user: { isAdmin: false } },
+          where: { gameType: 'casino', user: leaderboardEligibleUserWhere },
           select: {
             userId: true,
             highScore: true,
@@ -353,7 +354,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
       case 'casino_losses': {
         // Get all non-admin user IDs first
         const nonAdminUsers = await prisma.user.findMany({
-          where: { isAdmin: false },
+          where: leaderboardEligibleUserWhere,
           select: { id: true },
         });
         const nonAdminUserIds = new Set(nonAdminUsers.map((u) => u.id));
@@ -397,7 +398,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
           break;
         }
         const users = await prisma.user.findMany({
-          where: { id: { in: userIds }, isAdmin: false },
+          where: { id: { in: userIds }, ...leaderboardEligibleUserWhere },
           select: { id: true, username: true, usernameColor: true },
         });
         const userMap = new Map(users.map((u) => [u.id, { username: u.username, usernameColor: u.usernameColor }]));
@@ -428,7 +429,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
         // Aggregate total games played across all game types
         const userGames = await prisma.gameStats.groupBy({
           by: ['userId'],
-          where: { user: { isAdmin: false } },
+          where: { user: leaderboardEligibleUserWhere },
           _sum: { totalPlayed: true },
           orderBy: { _sum: { totalPlayed: 'desc' } },
           take: parseInt(limit as string),
@@ -437,7 +438,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
         
         const userIds = userGames.map((g) => g.userId);
         const users = await prisma.user.findMany({
-          where: { id: { in: userIds }, isAdmin: false },
+          where: { id: { in: userIds }, ...leaderboardEligibleUserWhere },
           select: { id: true, username: true, usernameColor: true },
         });
         const userMap = new Map(users.map((u) => [u.id, { username: u.username, usernameColor: u.usernameColor }]));
@@ -453,7 +454,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
 
       case 'bombparty':
         rankings = await prisma.bombPartyStats.findMany({
-          where: { user: { isAdmin: false } },
+          where: { user: leaderboardEligibleUserWhere },
           select: {
             userId: true,
             wins: true,
@@ -503,7 +504,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
             where: {
               gameType: 'casino',
               highScore: { gt: userStats.highScore },
-              user: { isAdmin: false },
+              user: leaderboardEligibleUserWhere,
             },
           });
           userRank = higherScores + 1;
@@ -523,7 +524,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
             where: {
               gameType: 'doodle_jump',
               highScore: { gt: userStats.highScore },
-              user: { isAdmin: false },
+              user: leaderboardEligibleUserWhere,
             },
           });
           userRank = higherScores + 1;
@@ -543,7 +544,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
             where: {
               gameType: 'doodle_jump_mort_subite',
               highScore: { gt: userStats.highScore },
-              user: { isAdmin: false },
+              user: leaderboardEligibleUserWhere,
             },
           });
           userRank = higherScores + 1;
@@ -563,7 +564,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
             where: {
               gameType: 'game_2048',
               highScore: { gt: userStats.highScore },
-              user: { isAdmin: false },
+              user: leaderboardEligibleUserWhere,
             },
           });
           userRank = higherScores + 1;
@@ -582,7 +583,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
             where: {
               gameType: 'racer',
               highScore: { lt: userStats.highScore },
-              user: { isAdmin: false },
+              user: leaderboardEligibleUserWhere,
             },
           });
           userRank = lowerTimes + 1;
@@ -601,7 +602,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
             where: {
               gameType: 'tetris',
               highScore: { gt: userStats.highScore },
-              user: { isAdmin: false },
+              user: leaderboardEligibleUserWhere,
             },
           });
           userRank = higherScores + 1;
@@ -620,7 +621,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
             where: {
               gameType: 'knife_hit',
               highScore: { gt: userStats.highScore },
-              user: { isAdmin: false },
+              user: leaderboardEligibleUserWhere,
             },
           });
           userRank = higherScores + 1;
@@ -639,7 +640,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
             where: {
               gameType: 'minesweeper',
               highScore: { gt: userStats.highScore },
-              user: { isAdmin: false },
+              user: leaderboardEligibleUserWhere,
             },
           });
           userRank = higherScores + 1;
@@ -652,7 +653,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
           const higherWins = await prisma.bombPartyStats.count({
             where: {
               wins: { gt: userStats.wins },
-              user: { isAdmin: false },
+              user: leaderboardEligibleUserWhere,
             },
           });
           userRank = higherWins + 1;
@@ -668,7 +669,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
           const higherTotals = await prisma.$queryRaw<{ count: number }[]>`
             SELECT COUNT(*) as count
             FROM "User"
-            WHERE isAdmin = 0
+            WHERE adminRole != 'SUPER_ADMIN'
               AND (money + auraCoinBalance * ${priceToUse}) > ${userTotalValue}
           `;
           userRank = Number(higherTotals[0]?.count ?? 0) + 1;
@@ -703,7 +704,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
         if (userTotalLosses > 0) {
           // Get all non-admin user IDs first
           const nonAdminUsers = await prisma.user.findMany({
-            where: { isAdmin: false },
+            where: leaderboardEligibleUserWhere,
             select: { id: true },
           });
           const nonAdminUserIds = new Set(nonAdminUsers.map((u) => u.id));
@@ -776,11 +777,11 @@ router.get('/user/:userId', authMiddleware, async (req: AuthRequest, res: Respon
     
     // Calculate ranks
     const auraRank = await prisma.user.count({
-      where: { aura: { gt: user.aura }, isAdmin: false },
+      where: { aura: { gt: user.aura }, ...leaderboardEligibleUserWhere },
     }) + 1;
     
     const moneyRank = await prisma.user.count({
-      where: { money: { gt: user.money }, isAdmin: false },
+      where: { money: { gt: user.money }, ...leaderboardEligibleUserWhere },
     }) + 1;
     
     const rankings: Record<string, any> = {
@@ -794,12 +795,12 @@ router.get('/user/:userId', authMiddleware, async (req: AuthRequest, res: Respon
           ? {
               gameType: stat.gameType,
               highScore: { lt: stat.highScore },
-              user: { isAdmin: false },
+              user: leaderboardEligibleUserWhere,
             }
           : {
               gameType: stat.gameType,
               highScore: { gt: stat.highScore },
-              user: { isAdmin: false },
+              user: leaderboardEligibleUserWhere,
             };
 
       const betterScores = await prisma.gameStats.count({
@@ -823,7 +824,7 @@ router.get('/user/:userId', authMiddleware, async (req: AuthRequest, res: Respon
       const higherWins = await prisma.bombPartyStats.count({
         where: {
           wins: { gt: bombPartyStats.wins },
-          user: { isAdmin: false },
+          user: leaderboardEligibleUserWhere,
         },
       });
 
