@@ -95,7 +95,7 @@ const games = [
     name: 'Geometry Dash',
     description: 'Cours en rythme, saute au pixel près et tiens le plus loin possible dans ce dash arcade.',
     type: 'Arcade',
-    image: '/images/games/geometrydash.svg',
+    image: '/images/games/geometrydash.png',
   },
   {
     id: 'casino',
