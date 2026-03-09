@@ -82,6 +82,18 @@ const GAME_REWARDS = {
       { minScore: 2200, moneyReward: 280, auraBonus: 24 },
     ],
   },
+  qs_watermelon: {
+    minScoreForReward: 80,
+    scoreTiers: [
+      { minScore: 0, moneyReward: 0, auraBonus: 0 },
+      { minScore: 80, moneyReward: 14, auraBonus: 1 },
+      { minScore: 180, moneyReward: 32, auraBonus: 3 },
+      { minScore: 320, moneyReward: 58, auraBonus: 6 },
+      { minScore: 520, moneyReward: 95, auraBonus: 10 },
+      { minScore: 800, moneyReward: 150, auraBonus: 16 },
+      { minScore: 1200, moneyReward: 220, auraBonus: 24 },
+    ],
+  },
   casino: {
     auraForBigWin: 10, // For wins >= 10x bet
     bigWinMultiplier: 10,
@@ -279,6 +291,36 @@ function calculateGeometryDashRewards(score: number, isNewHighScore: boolean): {
   if (isNewHighScore) {
     moneyReward += Math.min(Math.floor(score / 250) * 6, 60);
     auraReward += Math.min(Math.floor(score / 300), 10);
+  }
+
+  return { money: moneyReward, aura: auraReward };
+}
+
+function calculateQsWatermelonRewards(score: number, isNewHighScore: boolean, won: boolean): { money: number; aura: number } {
+  const config = GAME_REWARDS.qs_watermelon;
+
+  if (score < config.minScoreForReward) {
+    return { money: 0, aura: 0 };
+  }
+
+  let selectedTier = config.scoreTiers[0];
+  for (let i = config.scoreTiers.length - 1; i >= 0; i--) {
+    if (score >= config.scoreTiers[i].minScore) {
+      selectedTier = config.scoreTiers[i];
+      break;
+    }
+  }
+
+  let moneyReward = selectedTier.moneyReward;
+  let auraReward = selectedTier.auraBonus;
+
+  if (isNewHighScore) {
+    moneyReward += Math.min(Math.floor(score / 200) * 6, 54);
+    auraReward += Math.min(Math.floor(score / 250), 8);
+  }
+
+  if (won) {
+    auraReward += 8;
   }
 
   return { money: moneyReward, aura: auraReward };
@@ -686,6 +728,10 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       const rewards = calculateGeometryDashRewards(score, isNewHighScore);
       moneyReward = rewards.money;
       auraReward = rewards.aura;
+    } else if (gameType === 'qs_watermelon') {
+      const rewards = calculateQsWatermelonRewards(score, isNewHighScore, won || false);
+      moneyReward = rewards.money;
+      auraReward = rewards.aura;
     } else if (gameType === 'solitaire') {
       const rewards = calculateSolitaireRewards(score, isNewHighScore, won || false);
       moneyReward = rewards.money;
@@ -824,6 +870,11 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
         await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
       }
     } else if (gameType === 'geometry_dash') {
+      await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
+      if (won) {
+        await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
+      }
+    } else if (gameType === 'qs_watermelon') {
       await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
       if (won) {
         await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);

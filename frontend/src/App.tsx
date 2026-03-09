@@ -43,6 +43,7 @@ import Inbox from './pages/Inbox';
 import Blocked from './pages/Blocked';
 import Minesweeper from './pages/Minesweeper';
 import GeometryDash from './pages/GeometryDash';
+import QSWatermelon from './pages/QSWatermelon';
 import { BLOCKABLE_PAGES } from './config/blockedPages';
 import { useFeatures } from './contexts/FeaturesContext';
 
@@ -151,6 +152,7 @@ function App() {
         <Route path="games/2048" element={<Game2048 />} />
         <Route path="games/flappy-bird" element={<FlappyBird />} />
         <Route path="games/geometry-dash" element={<GeometryDash />} />
+        <Route path="games/qs-watermelon" element={<QSWatermelon />} />
         <Route path="games/casino" element={<Casino />} />
         <Route path="games/aura-coin" element={<AuraCoin />} />
         <Route path="games/minesweeper" element={<Minesweeper />} />
