@@ -9,6 +9,7 @@ export interface AuthRequest extends Request {
     email: string;
     username: string;
     isAdmin: boolean;
+    referralCode?: string | null;
   };
 }
 
@@ -38,6 +39,7 @@ export const authMiddleware = async (
         email: true,
         username: true,
         isAdmin: true,
+        referralCode: true,
       },
     });
 

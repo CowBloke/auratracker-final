@@ -239,6 +239,45 @@
     100% { transform: scale(4); opacity: 0; }
   }
 
+  @keyframes referral-token-pulse {
+    0%, 100% { transform: scale(1) rotate(0deg); box-shadow: 0 22px 70px rgba(245, 158, 11, 0.18); }
+    50% { transform: scale(1.04) rotate(-2deg); box-shadow: 0 28px 90px rgba(245, 158, 11, 0.28); }
+  }
+
+  @keyframes referral-ring-spin {
+    from { transform: rotate(0deg); opacity: 0.35; }
+    to { transform: rotate(360deg); opacity: 0.75; }
+  }
+
+  @keyframes referral-burst {
+    0% { transform: scale(0.08); opacity: 1; }
+    50% { opacity: 1; }
+    100% { transform: scale(3.8); opacity: 0; }
+  }
+
+  @keyframes referral-reveal {
+    0% { opacity: 0; transform: translateY(28px) scale(0.95); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .referral-claim-token {
+    animation: referral-token-pulse 1.8s ease-in-out infinite;
+  }
+
+  .referral-claim-ring {
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+    animation: referral-ring-spin 4s linear infinite;
+  }
+
+  .referral-burst {
+    animation: referral-burst 0.85s ease-out forwards;
+  }
+
+  .referral-reveal-panel {
+    animation: referral-reveal 0.45s cubic-bezier(.22, .61, .36, 1) forwards;
+  }
+
   /* Poker animations */
   @keyframes poker-deal {
     from { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }

@@ -497,6 +497,8 @@ export default function Admin() {
   const [savingFakeOnline, setSavingFakeOnline] = useState(false);
   const [announcementMessage, setAnnouncementMessage] = useState('');
   const [savingAnnouncement, setSavingAnnouncement] = useState(false);
+  const [referralRewardAmount, setReferralRewardAmount] = useState('250');
+  const [savingReferralReward, setSavingReferralReward] = useState(false);
   const [loginMessage, setLoginMessage] = useState('');
   const [loginRegisterCtaEnabled, setLoginRegisterCtaEnabled] = useState(true);
   const [savingLoginMessage, setSavingLoginMessage] = useState(false);
@@ -1155,6 +1157,7 @@ export default function Admin() {
       setLoadingSettings(true);
       const res = await adminApi.getSettings();
       setAnnouncementMessage(res.data.settings.topbar_announcement || '');
+      setReferralRewardAmount(res.data.settings.referral_reward_amount || '250');
       setMaintenanceMessage(res.data.settings.maintenance_message || '');
       setBlockedMessage(res.data.settings.blocked_message || '');
       setLoginMessage(res.data.settings.login_message || '');
@@ -1307,6 +1310,27 @@ export default function Admin() {
       showMessage('error', 'Erreur lors de la sauvegarde de l\'annonce');
     } finally {
       setSavingAnnouncement(false);
+    }
+  };
+
+
+  const saveReferralReward = async () => {
+    try {
+      const parsed = Number.parseInt(referralRewardAmount, 10);
+      if (!Number.isInteger(parsed) || parsed < 0) {
+        showMessage('error', 'La recompense de parrainage doit etre un entier positif ou nul');
+        return;
+      }
+
+      setSavingReferralReward(true);
+      await adminApi.updateSetting('referral_reward_amount', parsed);
+      setReferralRewardAmount(String(parsed));
+      showMessage('success', 'Recompense de parrainage sauvegardee');
+    } catch (error) {
+      console.error('Failed to save referral reward:', error);
+      showMessage('error', 'Erreur lors de la sauvegarde de la recompense');
+    } finally {
+      setSavingReferralReward(false);
     }
   };
 
@@ -3055,6 +3079,51 @@ export default function Admin() {
                   disabled={savingFakeOnline}
                   onCheckedChange={saveFakeOnline}
                 />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardDescription>Parrainage</CardDescription>
+            </CardHeader>
+            <CardContent className={SPACING.CARD_SPACING}>
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div className="space-y-2">
+                  <h3 className="font-medium">Recompense fixe par inscription validee</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Quand un compte inscrit avec un code de parrainage est approuve, le nouveau joueur et le parrain recoivent chacun cette somme en money.
+                  </p>
+                </div>
+
+                <div className="flex w-full max-w-sm items-end gap-3">
+                  <div className="flex-1 space-y-2">
+                    <label htmlFor="referral-reward-amount" className="text-sm font-medium">
+                      Recompense
+                    </label>
+                    <Input
+                      id="referral-reward-amount"
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={referralRewardAmount}
+                      onChange={(event) => setReferralRewardAmount(event.target.value)}
+                    />
+                  </div>
+                  <Button onClick={saveReferralReward} disabled={savingReferralReward}>
+                    {savingReferralReward ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sauvegarde...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="mr-2 h-4 w-4" />
+                        Sauvegarder
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

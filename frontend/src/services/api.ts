@@ -52,13 +52,22 @@ api.interceptors.response.use(
 
 // Auth API
 export const authApi = {
-  register: (data: { username: string; firstName: string; schoolLevel: 'SECONDE' | 'PREMIERE' | 'TERMINALE'; classLetter: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G'; email: string; password: string; motivationMessage: string }) =>
+  register: (data: { username: string; firstName: string; schoolLevel: 'SECONDE' | 'PREMIERE' | 'TERMINALE'; classLetter: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G'; email: string; password: string; motivationMessage: string; referralCode?: string }) =>
     api.post('/auth/register', data),
   login: (data: { username: string; password: string }) =>
     api.post('/auth/login', data),
   refresh: () => api.post('/auth/refresh'),
   me: () => api.get('/auth/me'),
+  getReferralSummary: () => api.get<ReferralSummary>('/auth/referral-summary'),
 };
+
+export interface ReferralSummary {
+  referralCode: string;
+  rewardAmount: number;
+  successfulReferrals: number;
+  pendingReferrals: number;
+  totalRewardsEarned: number;
+}
 
 // Uploads API - Deprecated: File uploads are no longer supported, only URL-based images are allowed
 

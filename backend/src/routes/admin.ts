@@ -13,6 +13,7 @@ import { recalculateBombPartyPrompts } from '../utils/bombpartyPrompts.js';
 import { getOnlineCount, getOnlineUsers } from '../socket/chat.js';
 import { createNotification } from '../utils/notifications.js';
 import { sendBugReportReplyEmail } from '../utils/email.js';
+import { getReferralRewardAmount, REFERRAL_REWARD_SETTING_KEY } from '../utils/referrals.js';
 
 const router = Router();
 const ANNOUNCEMENT_KEY = 'topbar_announcement';
@@ -152,21 +153,97 @@ router.get('/pending-users', authMiddleware, requireAdmin, async (req: AuthReque
 router.post('/users/:id/approve', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    
-    const user = await prisma.user.update({
+
+    const existingUser = await prisma.user.findUnique({
       where: { id },
-      data: { isApproved: true },
       select: {
         id: true,
         username: true,
         email: true,
         isApproved: true,
-        createdAt: true,
+        referredById: true,
+        referralRewardGrantedAt: true,
       },
     });
+
+    if (!existingUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (existingUser.isApproved) {
+      return res.status(400).json({ error: 'User already approved' });
+    }
+
+    const rewardAmount = await getReferralRewardAmount();
+
+    const result = await prisma.$transaction(async (tx) => {
+      let rewardGrantedToReferrer: { id: string; username: string } | null = null;
+
+      await tx.user.update({
+        where: { id },
+        data: { isApproved: true },
+      });
+
+      if (existingUser.referredById && !existingUser.referralRewardGrantedAt) {
+        const referrer = await tx.user.findUnique({
+          where: { id: existingUser.referredById },
+          select: { id: true, username: true },
+        });
+
+        if (referrer) {
+          rewardGrantedToReferrer = referrer;
+
+          if (rewardAmount > 0) {
+            await tx.user.update({
+              where: { id },
+              data: {
+                money: { increment: rewardAmount },
+                referralRewardGrantedAt: new Date(),
+              },
+            });
+
+            await tx.user.update({
+              where: { id: referrer.id },
+              data: {
+                money: { increment: rewardAmount },
+              },
+            });
+          } else {
+            await tx.user.update({
+              where: { id },
+              data: {
+                referralRewardGrantedAt: new Date(),
+              },
+            });
+          }
+        }
+      }
+
+      const approvedUser = await tx.user.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          isApproved: true,
+          createdAt: true,
+        },
+      });
+
+      return { user: approvedUser, rewardGrantedToReferrer };
+    });
     
-    // Log approval
-    logAdmin('user_approve', req.user!.id, undefined, id, user.username, { email: user.email });
+    if (!result.user) {
+      return res.status(404).json({ error: 'User not found after approval' });
+    }
+
+    logAdmin('user_approve', req.user!.id, undefined, id, result.user.username, {
+      email: result.user.email,
+      referralRewardAmount: result.rewardGrantedToReferrer ? rewardAmount : 0,
+      referralRewardRecipient: result.rewardGrantedToReferrer?.username,
+    });
+
+    const user = result.user;
 
     createNotification({
       userId: id,
@@ -179,6 +256,35 @@ router.post('/users/:id/approve', authMiddleware, requireAdmin, async (req: Auth
       link: '/login',
       icon: 'badge-check',
     }).catch(() => {});
+
+    if (result.rewardGrantedToReferrer && rewardAmount > 0) {
+      createNotification({
+        userId: id,
+        type: 'SYSTEM',
+        title: 'Prime de parrainage',
+        body: `Tu as recu ${rewardAmount} money apres validation de ton compte.`,
+        data: {
+          rewardAmount,
+          referredById: result.rewardGrantedToReferrer.id,
+        },
+        link: '/dashboard',
+        icon: 'coins',
+      }).catch(() => {});
+
+      createNotification({
+        userId: result.rewardGrantedToReferrer.id,
+        type: 'SYSTEM',
+        title: 'Parrainage valide',
+        body: `${result.user.username} a ete approuve. Tu recois ${rewardAmount} money.`,
+        data: {
+          referredUserId: result.user.id,
+          referredUsername: result.user.username,
+          rewardAmount,
+        },
+        link: '/dashboard',
+        icon: 'sparkles',
+      }).catch(() => {});
+    }
 
     res.json({ success: true, user, message: 'Utilisateur approuvé' });
   } catch (error) {
@@ -1685,6 +1791,13 @@ router.put('/settings/:key', authMiddleware, requireAdmin, async (req: AuthReque
       }
     }
 
+    if (key === REFERRAL_REWARD_SETTING_KEY) {
+      const numValue = parseInt(normalizedValue, 10);
+      if (isNaN(numValue) || numValue < 0) {
+        return res.status(400).json({ error: 'Referral reward must be a non-negative integer' });
+      }
+    }
+
     const setting = await prisma.gameSettings.upsert({
       where: { key },
       create: { key, value: normalizedValue },
@@ -1757,6 +1870,14 @@ router.put('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, r
         const languages = listBombPartyLanguageFiles().map((lang) => lang.fileName);
         if (!languages.includes(normalizedValue)) {
           errors.push(`${key}: Invalid bombparty language selection`);
+          continue;
+        }
+      }
+
+      if (key === REFERRAL_REWARD_SETTING_KEY) {
+        const numValue = parseInt(normalizedValue, 10);
+        if (isNaN(numValue) || numValue < 0) {
+          errors.push(`${key}: Referral reward must be a non-negative integer`);
           continue;
         }
       }
