@@ -7,7 +7,7 @@ import { PageShell } from '@/components/layout/page-shell';
 import { useFeatures } from '@/contexts/FeaturesContext';
 
 type GamesTab = 'singleplayer' | 'multiplayer';
-type MultiplayerTab = 'duel' | 'party';
+type MultiplayerTab = 'all' | 'duel' | 'party';
 
 const games = [
   {
@@ -176,7 +176,7 @@ const tabConfig: Array<{ id: GamesTab; label: string }> = [
 
 export default function Games() {
   const [activeTab, setActiveTab] = useState<GamesTab>('singleplayer');
-  const [activeMultiplayerTab, setActiveMultiplayerTab] = useState<MultiplayerTab>('party');
+  const [activeMultiplayerTab, setActiveMultiplayerTab] = useState<MultiplayerTab>('all');
   const { maintenanceStatus } = useFeatures();
   const disabledPages = maintenanceStatus.disabledPages;
 
@@ -242,7 +242,9 @@ export default function Games() {
     ? soloGames
     : activeMultiplayerTab === 'duel'
       ? duelGames
-      : partyGames;
+      : activeMultiplayerTab === 'party'
+        ? partyGames
+        : multiplayerGames;
 
   return (
     <PageShell>
@@ -262,6 +264,7 @@ export default function Games() {
               onValueChange={(value) => setActiveMultiplayerTab(value as MultiplayerTab)}
             >
               <TabsList className="h-auto flex-wrap">
+                <TabsTrigger value="all">Tous</TabsTrigger>
                 <TabsTrigger value="party">Party</TabsTrigger>
                 <TabsTrigger value="duel">Duel</TabsTrigger>
               </TabsList>

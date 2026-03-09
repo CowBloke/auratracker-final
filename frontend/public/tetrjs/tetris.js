@@ -268,7 +268,7 @@ var lastKeys;
 var released;
 
 var binds = {
-  pause: 27,
+  pause: 80,
   moveLeft: 37,
   moveRight: 39,
   moveDown: 40,
