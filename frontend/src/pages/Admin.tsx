@@ -4982,7 +4982,7 @@ export default function Admin() {
 
                     {/* User list side panel — always visible */}
                     {(() => {
-                      const displayPoint = lockedPoint ?? hoveredPoint;
+                      const displayPoint = hoveredActivity?.point ?? null;
                       const users = displayPoint?.usernames ?? [];
                       return (
                         <div className="w-44 shrink-0 border border-border/40 rounded-lg bg-muted/10 flex flex-col" style={{ height: 300 }}>
@@ -4991,14 +4991,11 @@ export default function Admin() {
                               <>
                                 <p className="text-xs font-medium tabular-nums">{displayPoint.max} joueur{displayPoint.max !== 1 ? 's' : ''}</p>
                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                  {new Date(displayPoint.timestamp).toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}
+                                  {new Date(hoveredActivity!.cursorTs).toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}
                                 </p>
-                                {lockedPoint && (
-                                  <p className="text-xs text-muted-foreground/60 mt-1">Clique à nouveau pour déverrouiller</p>
-                                )}
                               </>
                             ) : (
-                              <p className="text-xs text-muted-foreground/60">Survolez un point</p>
+                              <p className="text-xs text-muted-foreground/60">Survolez le graphe</p>
                             )}
                           </div>
                           <div className="overflow-y-auto flex-1 p-1.5">
