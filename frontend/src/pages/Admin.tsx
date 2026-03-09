@@ -347,6 +347,7 @@ export default function Admin() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [mutingUser, setMutingUser] = useState<string | null>(null);
+  const [updatingAdminUser, setUpdatingAdminUser] = useState<string | null>(null);
   const [clearingChat, setClearingChat] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [activeTab, setActiveTab] = useState<'inbox' | 'users' | 'clubs' | 'logs' | 'bans' | 'content' | 'communication' | 'settings' | 'activity'>('inbox');
@@ -1749,6 +1750,23 @@ export default function Admin() {
     }
   };
 
+  const toggleAdminAccess = async (u: AdminUser) => {
+    setUpdatingAdminUser(u.id);
+    try {
+      const res = await adminApi.setUserAdmin(u.id, !u.isAdmin);
+      setUsers(prev => prev.map(user => user.id === u.id ? res.data.user : user));
+      showMessage('success', res.data.message);
+      if (editingUser === u.id) {
+        setEditingUser(null);
+        setEditPassword('');
+      }
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur');
+    } finally {
+      setUpdatingAdminUser(null);
+    }
+  };
+
   const deleteUser = async (id: string) => {
     setDeleting(id);
     try {
@@ -2583,6 +2601,28 @@ export default function Admin() {
                           >
                             <Package className="h-4 w-4 mr-1" />
                             Inventaire
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => toggleAdminAccess(u)}
+                            disabled={updatingAdminUser === u.id || (u.isAdmin && user?.id === u.id)}
+                            title={u.isAdmin && user?.id === u.id ? 'Vous ne pouvez pas retirer vos propres droits admin' : undefined}
+                            className={cn(
+                              "h-8",
+                              u.isAdmin
+                                ? "border-amber-500/50 text-amber-500 hover:bg-amber-500/10"
+                                : "border-sky-500/50 text-sky-500 hover:bg-sky-500/10"
+                            )}
+                          >
+                            {updatingAdminUser === u.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Shield className="h-4 w-4 mr-1" />
+                                {u.isAdmin ? 'Retirer admin' : 'Donner admin'}
+                              </>
+                            )}
                           </Button>
 
                           {!u.isAdmin && (

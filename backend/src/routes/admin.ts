@@ -775,6 +775,68 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
   }
 });
 
+router.put('/users/:id/admin', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { isAdmin } = req.body as { isAdmin?: boolean };
+
+    if (typeof isAdmin !== 'boolean') {
+      return res.status(400).json({ error: 'Invalid admin status' });
+    }
+
+    if (req.user?.id === id && !isAdmin) {
+      return res.status(400).json({ error: 'You cannot remove your own admin access' });
+    }
+
+    const existingUser = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        username: true,
+        isAdmin: true,
+      },
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: { isAdmin },
+      select: {
+        id: true,
+        username: true,
+        firstName: true,
+        email: true,
+        aura: true,
+        money: true,
+        auraCoinBalance: true,
+        isAdmin: true,
+        isChatMuted: true,
+        dailyAuraGiven: true,
+        dailyAuraLimit: true,
+        lastDailyReset: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    logAdmin('user_update', req.user!.id, undefined, id, user.username, {
+      changes: { isAdmin },
+      oldValues: { isAdmin: existingUser.isAdmin },
+    });
+
+    res.json({
+      user,
+      message: isAdmin ? 'Admin access granted' : 'Admin access removed',
+    });
+  } catch (error) {
+    console.error('Admin update user admin error:', error);
+    res.status(500).json({ error: 'Failed to update admin access' });
+  }
+});
+
 // ========== USER INVENTORY MANAGEMENT ==========
 
 // Get a user's inventory (admin only)
