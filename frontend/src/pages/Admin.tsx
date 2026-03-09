@@ -832,7 +832,6 @@ export default function Admin() {
       e.preventDefault();
       const metrics = getActivityPlotMetrics();
       if (!metrics) return;
-      const [fullStart, fullEnd] = activityFullDomainRef.current;
       const { rect, plotAreaLeft, chartWidth } = metrics;
       const mouseX = e.clientX - rect.left - plotAreaLeft;
       const fraction = Math.max(0, Math.min(1, mouseX / chartWidth));
