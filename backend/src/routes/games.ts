@@ -841,7 +841,7 @@ router.get('/:gameType/leaderboard', authMiddleware, async (req: AuthRequest, re
     const { limit = '20' } = req.query;
 
     const rankings = await prisma.gameStats.findMany({
-      where: { gameType, user: { isAdmin: false } },
+      where: { gameType, user: { isSuperAdmin: false } },
       orderBy: { highScore: gameType === 'racer' ? 'asc' : 'desc' },
       take: parseInt(limit as string),
       include: {

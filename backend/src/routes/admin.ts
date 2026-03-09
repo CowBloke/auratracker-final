@@ -115,6 +115,11 @@ const requireAdmin = (req: AuthRequest, res: Response, next: Function) => {
   next();
 };
 
+const toUserRoleFlags = (role: 'USER' | 'ADMIN' | 'SUPER_ADMIN') => ({
+  isAdmin: role !== 'USER',
+  isSuperAdmin: role === 'SUPER_ADMIN',
+});
+
 const serializeRegistrationReview = (review: {
   id: string;
   registrationUserId: string;
@@ -928,6 +933,7 @@ router.get('/users', authMiddleware, requireAdmin, async (req: AuthRequest, res:
         money: true,
         auraCoinBalance: true,
         isAdmin: true,
+        isSuperAdmin: true,
         isChatMuted: true,
         dailyAuraGiven: true,
         dailyAuraLimit: true,
@@ -951,10 +957,21 @@ router.get('/users', authMiddleware, requireAdmin, async (req: AuthRequest, res:
 router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { aura, money, auraCoinBalance, dailyAuraLimit, username, firstName, password, isChatMuted } = req.body;
+    const { aura, money, auraCoinBalance, dailyAuraLimit, username, firstName, password, isChatMuted, role } = req.body;
 
     // Build update data
-    const updateData: { aura?: number; money?: number; auraCoinBalance?: number; dailyAuraLimit?: number; username?: string; firstName?: string | null; passwordHash?: string; isChatMuted?: boolean } = {};
+    const updateData: {
+      aura?: number;
+      money?: number;
+      auraCoinBalance?: number;
+      dailyAuraLimit?: number;
+      username?: string;
+      firstName?: string | null;
+      passwordHash?: string;
+      isChatMuted?: boolean;
+      isAdmin?: boolean;
+      isSuperAdmin?: boolean;
+    } = {};
 
     if (username !== undefined) {
       if (typeof username !== 'string') {
@@ -1022,11 +1039,30 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
       }
       updateData.passwordHash = await bcrypt.hash(normalizedPassword, 10);
     }
+    if (role !== undefined) {
+      if (role !== 'USER' && role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
+        return res.status(400).json({ error: 'Invalid role' });
+      }
+      if (req.user?.id === id) {
+        return res.status(400).json({ error: 'Cannot change your own role' });
+      }
+      Object.assign(updateData, toUserRoleFlags(role));
+    }
 
     // Get old user data for logging
     const oldUser = await prisma.user.findUnique({
       where: { id },
-      select: { username: true, firstName: true, aura: true, money: true, auraCoinBalance: true, dailyAuraLimit: true, isChatMuted: true },
+      select: {
+        username: true,
+        firstName: true,
+        aura: true,
+        money: true,
+        auraCoinBalance: true,
+        dailyAuraLimit: true,
+        isChatMuted: true,
+        isAdmin: true,
+        isSuperAdmin: true,
+      },
     });
 
     const user = await prisma.user.update({
@@ -1041,6 +1077,7 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
         money: true,
         auraCoinBalance: true,
         isAdmin: true,
+        isSuperAdmin: true,
         isChatMuted: true,
         dailyAuraGiven: true,
         dailyAuraLimit: true,
@@ -1067,6 +1104,8 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
         auraCoinBalance: oldUser?.auraCoinBalance,
         dailyAuraLimit: oldUser?.dailyAuraLimit,
         isChatMuted: oldUser?.isChatMuted,
+        isAdmin: oldUser?.isAdmin,
+        isSuperAdmin: oldUser?.isSuperAdmin,
       },
     });
 

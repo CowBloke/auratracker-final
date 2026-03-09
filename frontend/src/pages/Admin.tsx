@@ -57,6 +57,13 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
 
 const ANNOUNCEMENT_MAX_LENGTH = 120;
 const ADMIN_ARCHIVED_REGISTRATIONS_STORAGE_KEY = 'admin_archived_registrations';
+const ROLE_LABELS = {
+  USER: 'membre',
+  ADMIN: 'admin',
+  SUPER_ADMIN: 'super admin',
+} as const;
+
+type AdminRole = keyof typeof ROLE_LABELS;
 
 type ArchivedRegistration = PendingUser & {
   registrationStatus: 'APPROVED' | 'REJECTED';
@@ -97,6 +104,12 @@ const mapRegistrationReviewToArchivedRegistration = (review: RegistrationReview)
   reviewedAt: review.reviewedAt,
   importedFromLegacy: review.importedFromLegacy,
 });
+
+const getAdminRole = (user: Pick<AdminUser, 'isAdmin' | 'isSuperAdmin'>): AdminRole => {
+  if (user.isSuperAdmin) return 'SUPER_ADMIN';
+  if (user.isAdmin) return 'ADMIN';
+  return 'USER';
+};
 
 // Log type configuration with icons, colors and labels
 const LOG_TYPE_CONFIG: Record<string, { label: string; color: string; bgColor: string; borderColor: string; icon: React.ComponentType<{ className?: string }> }> = {
@@ -386,6 +399,7 @@ export default function Admin() {
   });
   const [editPassword, setEditPassword] = useState('');
   const [saving, setSaving] = useState(false);
+  const [updatingRoleUserId, setUpdatingRoleUserId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [mutingUser, setMutingUser] = useState<string | null>(null);
   const [clearingChat, setClearingChat] = useState(false);
@@ -1818,6 +1832,23 @@ export default function Admin() {
     }
   };
 
+  const updateUserRole = async (targetUser: AdminUser, role: AdminRole) => {
+    if (getAdminRole(targetUser) === role) {
+      return;
+    }
+
+    setUpdatingRoleUserId(targetUser.id);
+    try {
+      const res = await adminApi.updateUser(targetUser.id, { role });
+      setUsers(prev => prev.map(u => u.id === targetUser.id ? res.data.user : u));
+      showMessage('success', 'Role mis a jour');
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur');
+    } finally {
+      setUpdatingRoleUserId(null);
+    }
+  };
+
   const toggleChatMute = async (u: AdminUser) => {
     setMutingUser(u.id);
     try {
@@ -2515,7 +2546,7 @@ export default function Admin() {
                       key={u.id}
                       className={cn(
                         "py-4",
-                        u.isAdmin && "bg-muted/20"
+                        u.isSuperAdmin ? "bg-amber-500/10" : u.isAdmin ? "bg-muted/20" : undefined
                       )}
                     >
                   {editingUser === u.id ? (
@@ -2525,7 +2556,9 @@ export default function Admin() {
                         <div>
                           <span className="font-medium">{u.username}</span>
                           {u.isAdmin && (
-                            <span className="ml-2 text-xs text-amber-500">admin</span>
+                            <span className={cn("ml-2 text-xs", u.isSuperAdmin ? "text-amber-400" : "text-amber-500")}>
+                              {u.isSuperAdmin ? 'super admin' : 'admin'}
+                            </span>
                           )}
                           <p className="text-xs text-muted-foreground">{u.email}</p>
                         </div>
@@ -2629,9 +2662,20 @@ export default function Admin() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="font-medium truncate">{u.username}</span>
-                            {u.isAdmin && (
-                              <span className="text-xs text-amber-500">admin</span>
-                            )}
+                            <Select
+                              value={getAdminRole(u)}
+                              onValueChange={(value) => void updateUserRole(u, value as AdminRole)}
+                              disabled={updatingRoleUserId === u.id || user?.id === u.id}
+                            >
+                              <SelectTrigger className="h-7 w-[140px] border-border/50 bg-transparent text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="USER">{ROLE_LABELS.USER}</SelectItem>
+                                <SelectItem value="ADMIN">{ROLE_LABELS.ADMIN}</SelectItem>
+                                <SelectItem value="SUPER_ADMIN">{ROLE_LABELS.SUPER_ADMIN}</SelectItem>
+                              </SelectContent>
+                            </Select>
                             {u.isChatMuted && (
                               <span className="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-400">
                                 muet
@@ -2680,7 +2724,7 @@ export default function Admin() {
                             Inventaire
                           </Button>
 
-                          {!u.isAdmin && (
+                          {getAdminRole(u) === 'USER' && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -2702,7 +2746,7 @@ export default function Admin() {
                             </Button>
                           )}
 
-                          {!u.isAdmin && (
+                          {getAdminRole(u) === 'USER' && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -2713,7 +2757,7 @@ export default function Admin() {
                             </Button>
                           )}
 
-                          {!u.isAdmin && (
+                          {getAdminRole(u) === 'USER' && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button

@@ -12,6 +12,7 @@ interface User {
   aura: number;
   money: number;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   usernameColor?: string | null;
   profilePicture?: string | null;
   referralCode?: string | null;
