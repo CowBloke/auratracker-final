@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '../contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
+import { ArrowRight, Loader2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,10 +33,12 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [loginMessage, setLoginMessage] = useState('');
+  const [showRegisterCta, setShowRegisterCta] = useState(true);
 
   useEffect(() => {
     maintenanceApi.getStatus().then((res) => {
       setLoginMessage(res.data.loginMessage ?? '');
+      setShowRegisterCta(res.data.loginRegisterCtaEnabled !== false);
     }).catch(() => {});
   }, []);
   
@@ -119,6 +121,28 @@ export default function Login() {
             </Button>
           </form>
         </Form>
+
+        {showRegisterCta && (
+          <Button
+            asChild
+            size="lg"
+            className={cn(
+              "group relative h-auto w-full overflow-hidden rounded-2xl border border-amber-200/50",
+              "bg-gradient-to-r from-amber-400 via-orange-400 to-rose-500 px-6 py-6 text-lg font-black tracking-[0.08em] text-white",
+              "shadow-[0_18px_50px_rgba(251,146,60,0.45)] transition-transform duration-300 hover:scale-[1.02] hover:shadow-[0_24px_70px_rgba(244,114,182,0.45)]",
+              "animate-pulse"
+            )}
+          >
+            <Link to="/register">
+              <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_20%,rgba(255,255,255,0.38)_50%,transparent_80%)] bg-[length:220%_100%] animate-[shimmer_2.8s_linear_infinite]" />
+              <span className="relative flex w-full items-center justify-center gap-3 text-center">
+                <Sparkles className="h-6 w-6 animate-bounce" />
+                <span>Creer un compte</span>
+                <ArrowRight className="h-6 w-6 transition-transform duration-300 group-hover:translate-x-1" />
+              </span>
+            </Link>
+          </Button>
+        )}
 
         <p className={cn(TYPOGRAPHY.SMALL, "text-center text-muted-foreground")}>
           Pas de compte ?{' '}
