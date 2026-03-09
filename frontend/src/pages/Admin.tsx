@@ -494,7 +494,9 @@ export default function Admin() {
   const [announcementMessage, setAnnouncementMessage] = useState('');
   const [savingAnnouncement, setSavingAnnouncement] = useState(false);
   const [loginMessage, setLoginMessage] = useState('');
+  const [loginRegisterCtaEnabled, setLoginRegisterCtaEnabled] = useState(true);
   const [savingLoginMessage, setSavingLoginMessage] = useState(false);
+  const [savingLoginRegisterCta, setSavingLoginRegisterCta] = useState(false);
   const [updatePopups, setUpdatePopups] = useState<AdminUpdatePopup[]>([]);
   const [loadingUpdatePopups, setLoadingUpdatePopups] = useState(false);
   const [savingUpdatePopup, setSavingUpdatePopup] = useState(false);
@@ -1025,6 +1027,7 @@ export default function Admin() {
       setMaintenanceMessage(res.data.settings.maintenance_message || '');
       setBlockedMessage(res.data.settings.blocked_message || '');
       setLoginMessage(res.data.settings.login_message || '');
+      setLoginRegisterCtaEnabled(res.data.settings.login_register_cta_enabled !== 'false');
 
       if (res.data.settings.blocked_pages) {
         try {
@@ -1188,6 +1191,22 @@ export default function Admin() {
       showMessage('error', 'Erreur lors de la sauvegarde du message');
     } finally {
       setSavingLoginMessage(false);
+    }
+  };
+
+  const saveLoginRegisterCta = async (value: boolean) => {
+    const previousValue = loginRegisterCtaEnabled;
+    try {
+      setLoginRegisterCtaEnabled(value);
+      setSavingLoginRegisterCta(true);
+      await adminApi.updateSetting('login_register_cta_enabled', value ? 'true' : 'false');
+      showMessage('success', value ? 'Bouton creer un compte active' : 'Bouton creer un compte desactive');
+    } catch (error) {
+      setLoginRegisterCtaEnabled(previousValue);
+      console.error('Failed to save login register CTA setting:', error);
+      showMessage('error', 'Erreur lors de la sauvegarde du bouton');
+    } finally {
+      setSavingLoginRegisterCta(false);
     }
   };
 
@@ -3628,6 +3647,19 @@ export default function Admin() {
                     <p className="text-sm text-muted-foreground">
                       Ce message s'affiche à gauche du formulaire de connexion, visible par tous les visiteurs.
                     </p>
+                    <div className="flex items-center justify-between rounded-lg border bg-background/40 p-4">
+                      <div className="space-y-1 pr-4">
+                        <p className="text-sm font-medium">Bouton "Creer un compte" geant</p>
+                        <p className="text-xs text-muted-foreground">
+                          Affiche ou masque le gros bouton anime sur la page de connexion.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={loginRegisterCtaEnabled}
+                        onCheckedChange={saveLoginRegisterCta}
+                        disabled={savingLoginRegisterCta}
+                      />
+                    </div>
                     <Textarea
                       value={loginMessage}
                       onChange={(e) => setLoginMessage(e.target.value)}

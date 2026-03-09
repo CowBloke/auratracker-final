@@ -1004,6 +1004,7 @@ export const maintenanceApi = {
     blockedPages?: string[];
     blockedMessage?: string;
     loginMessage?: string;
+    loginRegisterCtaEnabled?: boolean;
   }>('/maintenance'),
 };
 

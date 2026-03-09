@@ -153,6 +153,15 @@
     scrollbar-color: hsl(var(--border)) transparent;
   }
 
+  @keyframes shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
   /* 2048 tile animations - exact copy from original game */
   @keyframes appear {
     0% {
