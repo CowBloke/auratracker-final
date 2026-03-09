@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { PageShell } from '@/components/layout/page-shell';
+import { useTheme } from '@/contexts/ThemeContext';
+import { resolveThemeImageUrl } from '@/lib/images';
 
 type GameTab = 'roulette' | 'slots' | 'blackjack';
 
@@ -229,6 +231,7 @@ const getHandTotal = (hand: BlackjackCard[]) => {
 // -----------------------------
 export default function Casino() {
   const [activeGame, setActiveGame] = useState<GameTab | null>(null);
+  const { theme } = useTheme();
 
   const gameCards: Array<{
     id: GameTab;
@@ -279,7 +282,7 @@ export default function Casino() {
             >
               <Card className="relative aspect-square overflow-hidden transition hover:border-foreground/40 hover:shadow-md">
                 <img
-                  src={game.image}
+                  src={resolveThemeImageUrl(game.image, theme)}
                   alt={game.title}
                   className="absolute inset-0 h-full w-full object-cover"
                 />

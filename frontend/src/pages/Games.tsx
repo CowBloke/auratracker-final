@@ -5,6 +5,8 @@ import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageShell } from '@/components/layout/page-shell';
 import { useFeatures } from '@/contexts/FeaturesContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { resolveThemeImageUrl } from '@/lib/images';
 
 type GamesTab = 'singleplayer' | 'multiplayer';
 type MultiplayerTab = 'all' | 'duel' | 'party';
@@ -186,6 +188,7 @@ export default function Games() {
   const [activeTab, setActiveTab] = useState<GamesTab>('singleplayer');
   const [activeMultiplayerTab, setActiveMultiplayerTab] = useState<MultiplayerTab>('all');
   const { maintenanceStatus } = useFeatures();
+  const { theme } = useTheme();
   const disabledPages = maintenanceStatus.disabledPages;
 
   const visibleGames = useMemo(() => games.filter((game) => !disabledPages.includes(game.pageKey)), [disabledPages]);
@@ -297,7 +300,7 @@ export default function Games() {
                   )}
                   {game.image && (
                     <img
-                      src={game.image}
+                      src={resolveThemeImageUrl(game.image, theme)}
                       alt={game.name}
                       className="absolute inset-0 h-full w-full object-cover"
                       loading="lazy"

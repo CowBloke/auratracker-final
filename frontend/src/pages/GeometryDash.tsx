@@ -20,14 +20,14 @@ const PLAYER_X = 180;
 const PLAYER_SIZE = 34;
 const PLAYER_HALF = PLAYER_SIZE / 2;
 const PLAYER_START_Y = CANVAS_HEIGHT - GROUND_HEIGHT - PLAYER_HALF;
-const GRAVITY = 2200;
-const JUMP_VELOCITY = -720;
-const PAD_BOOST = -980;
+const GRAVITY = 5400;
+const JUMP_VELOCITY = -1180;
+const PAD_BOOST = -1480;
 const COYOTE_TIME = 0.11;
 const INPUT_BUFFER = 0.12;
-const START_SPEED = 340;
-const MAX_SPEED = 600;
-const SPEED_GAIN = 5.5;
+const START_SPEED = 430;
+const MAX_SPEED = 760;
+const SPEED_GAIN = 6.5;
 const GAME_TYPE = 'geometry_dash';
 
 type ObstacleType = 'spike' | 'block' | 'platform' | 'pad';
@@ -165,51 +165,51 @@ const createPattern = (choice: number, startX: number): Obstacle[] => {
     case 1:
       return [
         { id: 0, type: 'spike', x: startX, y: groundY - 26, width: TILE, height: 26 },
-        { id: 0, type: 'spike', x: startX + TILE * 0.9, y: groundY - 26, width: TILE, height: 26 },
+        { id: 0, type: 'spike', x: startX + TILE * 1.15, y: groundY - 26, width: TILE, height: 26 },
       ];
     case 2:
       return [
         { id: 0, type: 'block', x: startX, y: groundY - TILE, width: TILE, height: TILE },
-        { id: 0, type: 'spike', x: startX + TILE * 1.25, y: groundY - 26, width: TILE, height: 26 },
+        { id: 0, type: 'spike', x: startX + TILE * 1.8, y: groundY - 26, width: TILE, height: 26 },
       ];
     case 3:
       return [
         { id: 0, type: 'block', x: startX, y: groundY - TILE, width: TILE, height: TILE },
-        { id: 0, type: 'block', x: startX + TILE, y: groundY - TILE * 2, width: TILE, height: TILE * 2 },
+        { id: 0, type: 'platform', x: startX + TILE * 2.1, y: groundY - TILE * 2.15, width: TILE * 1.8, height: 16 },
       ];
     case 4:
       return [
         { id: 0, type: 'pad', x: startX, y: groundY - 18, width: TILE * 0.9, height: 18 },
-        { id: 0, type: 'spike', x: startX + TILE * 2, y: groundY - 26, width: TILE, height: 26 },
-        { id: 0, type: 'spike', x: startX + TILE * 2.9, y: groundY - 26, width: TILE, height: 26 },
+        { id: 0, type: 'spike', x: startX + TILE * 2.8, y: groundY - 26, width: TILE, height: 26 },
+        { id: 0, type: 'spike', x: startX + TILE * 4.05, y: groundY - 26, width: TILE, height: 26 },
       ];
     case 5:
       return [
-        { id: 0, type: 'platform', x: startX, y: groundY - TILE * 2.4, width: TILE * 2, height: 16 },
-        { id: 0, type: 'spike', x: startX + TILE * 2.6, y: groundY - 26, width: TILE, height: 26 },
+        { id: 0, type: 'platform', x: startX, y: groundY - TILE * 2.05, width: TILE * 1.8, height: 16 },
+        { id: 0, type: 'spike', x: startX + TILE * 3.2, y: groundY - 26, width: TILE, height: 26 },
       ];
     case 6:
       return [
         { id: 0, type: 'spike', x: startX, y: groundY - 26, width: TILE, height: 26 },
-        { id: 0, type: 'block', x: startX + TILE * 1.5, y: groundY - TILE, width: TILE * 1.2, height: TILE },
-        { id: 0, type: 'spike', x: startX + TILE * 3, y: groundY - 26, width: TILE, height: 26 },
+        { id: 0, type: 'block', x: startX + TILE * 2.2, y: groundY - TILE, width: TILE * 1.2, height: TILE },
+        { id: 0, type: 'spike', x: startX + TILE * 4, y: groundY - 26, width: TILE, height: 26 },
       ];
     case 7:
       return [
-        { id: 0, type: 'block', x: startX, y: groundY - TILE, width: TILE * 2.5, height: TILE },
-        { id: 0, type: 'spike', x: startX + TILE * 2.8, y: groundY - 26, width: TILE, height: 26 },
-        { id: 0, type: 'spike', x: startX + TILE * 3.7, y: groundY - 26, width: TILE, height: 26 },
+        { id: 0, type: 'block', x: startX, y: groundY - TILE, width: TILE * 2.1, height: TILE },
+        { id: 0, type: 'spike', x: startX + TILE * 3.1, y: groundY - 26, width: TILE, height: 26 },
+        { id: 0, type: 'spike', x: startX + TILE * 4.35, y: groundY - 26, width: TILE, height: 26 },
       ];
     case 8:
       return [
-        { id: 0, type: 'platform', x: startX, y: groundY - TILE * 1.8, width: TILE * 1.5, height: 16 },
-        { id: 0, type: 'platform', x: startX + TILE * 2.2, y: groundY - TILE * 2.8, width: TILE * 1.5, height: 16 },
+        { id: 0, type: 'platform', x: startX, y: groundY - TILE * 1.7, width: TILE * 1.4, height: 16 },
+        { id: 0, type: 'platform', x: startX + TILE * 2.6, y: groundY - TILE * 2.35, width: TILE * 1.6, height: 16 },
       ];
     default:
       return [
         { id: 0, type: 'spike', x: startX, y: groundY - 26, width: TILE, height: 26 },
-        { id: 0, type: 'spike', x: startX + TILE * 0.9, y: groundY - 26, width: TILE, height: 26 },
-        { id: 0, type: 'spike', x: startX + TILE * 1.8, y: groundY - 26, width: TILE, height: 26 },
+        { id: 0, type: 'spike', x: startX + TILE * 1.2, y: groundY - 26, width: TILE, height: 26 },
+        { id: 0, type: 'spike', x: startX + TILE * 2.4, y: groundY - 26, width: TILE, height: 26 },
       ];
   }
 };
@@ -306,7 +306,7 @@ export default function GeometryDash() {
   }, []);
 
   const addObstaclePattern = useCallback(() => {
-    const spacing = TILE * (2.8 + Math.random() * 2.8);
+    const spacing = TILE * (4 + Math.random() * 3.2);
     const pattern = createPattern(obstacleIdRef.current, nextPatternXRef.current);
     const withIds = pattern.map((obstacle) => ({
       ...obstacle,
@@ -585,6 +585,7 @@ export default function GeometryDash() {
       obstaclesRef.current = obstaclesRef.current
         .map((obstacle) => ({ ...obstacle, x: obstacle.x - moveAmount }))
         .filter((obstacle) => obstacle.x + obstacle.width > -120);
+      nextPatternXRef.current -= moveAmount;
 
       while (nextPatternXRef.current < CANVAS_WIDTH + 260) {
         addObstaclePattern();
