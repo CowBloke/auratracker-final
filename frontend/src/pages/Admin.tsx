@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { adminApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan } from '../services/api';
@@ -12,7 +12,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, Inbox, Archive, UserCog, Crown, Swords, Send } from 'lucide-react';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Minus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, Inbox, Archive, UserCog, Crown, Swords, Send } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, ReferenceDot } from 'recharts';
 import {
   AlertDialog,
@@ -369,6 +369,8 @@ export default function Admin() {
   const activityZoomDomainRef = useRef<[number, number] | null>(null);
   const activityFullDomainRef = useRef<[number, number]>([0, 0]);
   const activityChartRef = useRef<HTMLDivElement>(null);
+  const activityPanRef = useRef<{ pointerId: number; startClientX: number; domain: [number, number] } | null>(null);
+  const activityDidPanRef = useRef(false);
   const [inventoryDialogOpen, setInventoryDialogOpen] = useState(false);
   const [inventoryUser, setInventoryUser] = useState<AdminUser | null>(null);
   const [inventoryItems, setInventoryItems] = useState<AdminInventoryItem[]>([]);
@@ -715,40 +717,127 @@ export default function Admin() {
     fetchActivity('day');
   }, []);
 
+  const setActivityDomain = (domain: [number, number] | null) => {
+    activityZoomDomainRef.current = domain;
+    setActivityZoomDomain(domain ? [...domain] : null);
+  };
+
+  const getActivityPlotMetrics = () => {
+    const el = activityChartRef.current;
+    if (!el) return null;
+    const rightOffset = 4;
+    const rect = el.getBoundingClientRect();
+    const yAxisEl = el.querySelector('.recharts-yAxis');
+    const plotAreaLeft = yAxisEl ? yAxisEl.getBoundingClientRect().right - rect.left : 16;
+    const chartWidth = rect.width - plotAreaLeft - rightOffset;
+    if (chartWidth <= 0) return null;
+    return { rect, plotAreaLeft, chartWidth };
+  };
+
+  const zoomActivityDomain = (zoomFactor: number, anchorFraction = 0.5) => {
+    const [fullStart, fullEnd] = activityFullDomainRef.current;
+    if (fullEnd <= fullStart) return;
+    const [currentStart, currentEnd] = activityZoomDomainRef.current ?? [fullStart, fullEnd];
+    const currentRange = currentEnd - currentStart;
+    const fullRange = fullEnd - fullStart;
+    const minRange = Math.max(fullRange / 500, 5 * 60 * 1000);
+    const clampedAnchorFraction = Math.max(0, Math.min(1, anchorFraction));
+    const anchorTs = currentStart + clampedAnchorFraction * currentRange;
+    const newRange = Math.max(minRange, Math.min(currentRange * zoomFactor, fullRange));
+    let newStart = anchorTs - clampedAnchorFraction * newRange;
+    let newEnd = anchorTs + (1 - clampedAnchorFraction) * newRange;
+    if (newStart < fullStart) { newEnd += fullStart - newStart; newStart = fullStart; }
+    if (newEnd > fullEnd) { newStart -= newEnd - fullEnd; newEnd = fullEnd; }
+    newStart = Math.max(fullStart, newStart);
+    newEnd = Math.min(fullEnd, newEnd);
+    setActivityDomain([newStart, newEnd]);
+  };
+
+  const panActivityDomain = (deltaMs: number) => {
+    const [fullStart, fullEnd] = activityFullDomainRef.current;
+    if (fullEnd <= fullStart) return;
+    const [currentStart, currentEnd] = activityZoomDomainRef.current ?? [fullStart, fullEnd];
+    const currentRange = currentEnd - currentStart;
+    const fullRange = fullEnd - fullStart;
+    if (currentRange >= fullRange) return;
+    let newStart = currentStart + deltaMs;
+    let newEnd = currentEnd + deltaMs;
+    if (newStart < fullStart) {
+      newEnd += fullStart - newStart;
+      newStart = fullStart;
+    }
+    if (newEnd > fullEnd) {
+      newStart -= newEnd - fullEnd;
+      newEnd = fullEnd;
+    }
+    setActivityDomain([newStart, newEnd]);
+  };
+
+  const handleActivityPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const el = activityChartRef.current;
+    if (!el) return;
+    const [fullStart, fullEnd] = activityFullDomainRef.current;
+    const [currentStart, currentEnd] = activityZoomDomainRef.current ?? [fullStart, fullEnd];
+    if (currentEnd - currentStart >= fullEnd - fullStart) return;
+    activityPanRef.current = {
+      pointerId: e.pointerId,
+      startClientX: e.clientX,
+      domain: [currentStart, currentEnd],
+    };
+    activityDidPanRef.current = false;
+    el.setPointerCapture(e.pointerId);
+  };
+
+  const handleActivityPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const panState = activityPanRef.current;
+    if (!panState || panState.pointerId !== e.pointerId) return;
+    const metrics = getActivityPlotMetrics();
+    if (!metrics) return;
+    const [fullStart, fullEnd] = activityFullDomainRef.current;
+    const fullRange = fullEnd - fullStart;
+    const [domainStart, domainEnd] = panState.domain;
+    const domainRange = domainEnd - domainStart;
+    if (domainRange >= fullRange) return;
+    const deltaX = e.clientX - panState.startClientX;
+    if (Math.abs(deltaX) > 3) activityDidPanRef.current = true;
+    let newStart = domainStart - (deltaX / metrics.chartWidth) * domainRange;
+    let newEnd = domainEnd - (deltaX / metrics.chartWidth) * domainRange;
+    if (newStart < fullStart) {
+      newEnd += fullStart - newStart;
+      newStart = fullStart;
+    }
+    if (newEnd > fullEnd) {
+      newStart -= newEnd - fullEnd;
+      newEnd = fullEnd;
+    }
+    setActivityDomain([newStart, newEnd]);
+  };
+
+  const handleActivityPointerEnd = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const el = activityChartRef.current;
+    if (el && el.hasPointerCapture(e.pointerId)) {
+      el.releasePointerCapture(e.pointerId);
+    }
+    activityPanRef.current = null;
+    window.setTimeout(() => {
+      activityDidPanRef.current = false;
+    }, 0);
+  };
+
   // Scroll-wheel horizontal zoom for the activity chart
   useEffect(() => {
     const el = activityChartRef.current;
     if (!el) return;
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
+      const metrics = getActivityPlotMetrics();
+      if (!metrics) return;
       const [fullStart, fullEnd] = activityFullDomainRef.current;
-      if (fullEnd <= fullStart) return;
-      const [currentStart, currentEnd] = activityZoomDomainRef.current ?? [fullStart, fullEnd];
-      const currentRange = currentEnd - currentStart;
-      const fullRange = fullEnd - fullStart;
-      const minRange = Math.max(fullRange / 500, 5 * 60 * 1000);
-      const rightOffset = 4;
-      const rect = el.getBoundingClientRect();
-      // Dynamically read the plot area left boundary from the rendered YAxis element
-      const yAxisEl = el.querySelector('.recharts-yAxis');
-      const plotAreaLeft = yAxisEl ? yAxisEl.getBoundingClientRect().right - rect.left : 16;
-      const chartWidth = rect.width - plotAreaLeft - rightOffset;
-      if (chartWidth <= 0) return;
+      const { rect, plotAreaLeft, chartWidth } = metrics;
       const mouseX = e.clientX - rect.left - plotAreaLeft;
       const fraction = Math.max(0, Math.min(1, mouseX / chartWidth));
-      const mouseTs = currentStart + fraction * currentRange;
       const zoomFactor = e.deltaY > 0 ? 1.25 : 1 / 1.25;
-      const newRange = Math.max(minRange, Math.min(currentRange * zoomFactor, fullRange));
-      let newStart = mouseTs - fraction * newRange;
-      let newEnd = mouseTs + (1 - fraction) * newRange;
-      // Clamp to full domain
-      if (newStart < fullStart) { newEnd += fullStart - newStart; newStart = fullStart; }
-      if (newEnd > fullEnd) { newStart -= newEnd - fullEnd; newEnd = fullEnd; }
-      newStart = Math.max(fullStart, newStart);
-      newEnd = Math.min(fullEnd, newEnd);
-      const next: [number, number] = [newStart, newEnd];
-      activityZoomDomainRef.current = next;
-      setActivityZoomDomain([...next]);
+      zoomActivityDomain(zoomFactor, fraction);
     };
     el.addEventListener('wheel', handleWheel, { passive: false });
     return () => el.removeEventListener('wheel', handleWheel);
@@ -4608,6 +4697,7 @@ export default function Admin() {
                         // Apply zoom if active
                         const [viewStart, viewEnd] = activityZoomDomain ?? [domainStart, domainEnd];
                         const viewRange = viewEnd - viewStart;
+                        const isZoomed = viewRange < domainEnd - domainStart;
 
                         // Adaptive ticks and separator lines based on visible range
                         const getTicksAndLines = (start: number, end: number, range: number) => {
@@ -4659,7 +4749,74 @@ export default function Admin() {
                         };
 
                         return (
-                          <div ref={activityChartRef}>
+                          <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-xs text-muted-foreground">
+                              Molette pour zoomer, glisser pour dÃ©placer
+                            </p>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                onClick={() => panActivityDomain(-viewRange * 0.25)}
+                                disabled={!isZoomed}
+                                aria-label="DÃ©placer vers la gauche"
+                              >
+                                <ChevronLeft className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                onClick={() => zoomActivityDomain(1 / 1.25)}
+                                aria-label="Zoomer"
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                onClick={() => zoomActivityDomain(1.25)}
+                                aria-label="DÃ©zoomer"
+                              >
+                                <Minus className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-8 px-2 text-xs"
+                                onClick={() => setActivityDomain(null)}
+                                disabled={!isZoomed}
+                              >
+                                Reset
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                onClick={() => panActivityDomain(viewRange * 0.25)}
+                                disabled={!isZoomed}
+                                aria-label="DÃ©placer vers la droite"
+                              >
+                                <ChevronRight className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div
+                            ref={activityChartRef}
+                            onPointerDown={handleActivityPointerDown}
+                            onPointerMove={handleActivityPointerMove}
+                            onPointerUp={handleActivityPointerEnd}
+                            onPointerCancel={handleActivityPointerEnd}
+                            className={cn('touch-none select-none', isZoomed ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer')}
+                          >
                           <ResponsiveContainer width="100%" height={300}>
                             <AreaChart
                               data={chartData}
@@ -4673,11 +4830,12 @@ export default function Admin() {
                                 if (!lockedPoint) setHoveredPoint(null);
                               }}
                               onClick={(chartData) => {
+                                if (activityDidPanRef.current) return;
                                 const pt = chartData?.activePayload?.[0]?.payload as OnlineHistoryPoint | undefined;
                                 if (!pt) { setLockedPoint(null); return; }
                                 setLockedPoint(prev => prev?.timestamp === pt.timestamp ? null : pt);
                               }}
-                              style={{ cursor: 'pointer' }}
+                              style={{ cursor: isZoomed ? 'grab' : 'pointer' }}
                             >
                               <defs>
                                 <linearGradient id="strokeGradient" x1="0" y1="0" x2="0" y2="1">
@@ -4764,6 +4922,7 @@ export default function Admin() {
                               />
                             </AreaChart>
                           </ResponsiveContainer>
+                          </div>
                           </div>
                         );
                       })()}
