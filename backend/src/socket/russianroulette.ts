@@ -19,7 +19,6 @@ interface RRGame {
   cylinderPosition: number; // 0-5, current chamber facing barrel
   bulletChamber: number;    // 0-5, server only
   round: number;
-  stake: number;
   isActive: boolean;
   lastEvent: { type: 'click' | 'bang' | 'pass'; playerId: string; username: string } | null;
   turnTimer: NodeJS.Timeout | null;
@@ -29,7 +28,6 @@ interface RRGame {
 interface PendingJoinPrompt {
   partyId: string;
   leaderId: string;
-  stake: number;
   responses: Map<string, boolean>;
   memberIds: string[];
   timer: NodeJS.Timeout | null;
@@ -82,7 +80,6 @@ const serializeGame = (game: RRGame) => ({
   turnEndsAt: game.turnStartTime + TURN_TIME_LIMIT,
   alivePlayers: getAlivePlayers(game).length,
   totalPlayers: game.players.length,
-  stake: game.stake,
 });
 
 const emitState = (game: RRGame, io: Server) => {
@@ -221,14 +218,6 @@ const endGame = async (game: RRGame, io: Server) => {
     passedOut: p.passedOut,
   }));
 
-  // Award pot to winner
-  if (game.stake > 0 && winner) {
-    await prisma.user.update({
-      where: { id: winner.userId },
-      data: { money: { increment: game.stake * game.players.length } },
-    });
-  }
-
   for (const player of game.players) {
     const isWinner = player.userId === winner?.userId;
     logGame('game_complete', player.userId, player.username, {
@@ -290,24 +279,8 @@ const resolveJoinPrompt = async (partyId: string, io: Server) => {
     return;
   }
 
-  // Check and deduct stake
-  let finalAccepted = accepted;
-  if (prompt.stake > 0) {
-    const affordable: string[] = [];
-    for (const uid of accepted) {
-      const u = await prisma.user.findUnique({ where: { id: uid }, select: { money: true } });
-      if (u && u.money >= prompt.stake) affordable.push(uid);
-    }
-    if (affordable.length < 2) {
-      io.to(`party:${partyId}`).emit('roulette:join-cancelled', { reason: 'Pas assez de joueurs avec les fonds nécessaires' });
-      return;
-    }
-    await prisma.user.updateMany({ where: { id: { in: affordable } }, data: { money: { decrement: prompt.stake } } });
-    finalAccepted = affordable;
-  }
-
   const members = await prisma.partyMember.findMany({
-    where: { partyId, userId: { in: finalAccepted } },
+    where: { partyId, userId: { in: accepted } },
     include: { user: { select: { id: true, username: true, usernameColor: true } } },
   });
 
@@ -336,7 +309,6 @@ const resolveJoinPrompt = async (partyId: string, io: Server) => {
     lastEvent: null,
     turnTimer: null,
     turnStartTime: Date.now(),
-    stake: prompt.stake,
   };
 
   activeGames.set(partyId, game);
@@ -393,7 +365,6 @@ const resolvePlayAgainPrompt = (partyId: string, io: Server) => {
       lastEvent: null,
       turnTimer: null,
       turnStartTime: Date.now(),
-      stake: 0,
     };
 
     activeGames.set(partyId, game);
@@ -412,7 +383,7 @@ export const setupRussianRouletteHandlers = (socket: Socket, io: Server) => {
     playerSockets.set(userId, socket.id);
   });
 
-  socket.on('roulette:start', async (data: { partyId: string; stake?: number }) => {
+  socket.on('roulette:start', async (data: { partyId: string }) => {
     const userId = socket.data.userId as string | undefined;
     if (!userId) return;
     const { partyId } = data;
@@ -444,14 +415,12 @@ export const setupRussianRouletteHandlers = (socket: Socket, io: Server) => {
       }
 
       const memberIds = partyMembers.map((m) => m.user.id);
-      const stake = Math.max(0, Math.min(Math.floor(data.stake ?? 0), 100000));
       const prompt: PendingJoinPrompt = {
         partyId,
         leaderId: userId,
         responses: new Map([[userId, true]]),
         memberIds,
         timer: null,
-        stake,
       };
       pendingJoinPrompts.set(partyId, prompt);
       prompt.timer = setTimeout(() => resolveJoinPrompt(partyId, io), JOIN_TIMEOUT);
@@ -459,7 +428,6 @@ export const setupRussianRouletteHandlers = (socket: Socket, io: Server) => {
       io.to(`party:${partyId}`).emit('roulette:join-prompt', {
         partyId,
         leaderId: userId,
-        stake,
         timeLimit: JOIN_TIMEOUT,
         startTime: Date.now(),
         members: partyMembers.map((m) => ({

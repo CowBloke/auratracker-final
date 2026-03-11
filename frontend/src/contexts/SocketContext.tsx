@@ -445,7 +445,6 @@ export interface RRGameState {
   turnEndsAt: number;
   alivePlayers: number;
   totalPlayers: number;
-  stake: number;
 }
 
 export interface RRGameOver {
@@ -457,7 +456,6 @@ export interface RRGameOver {
 interface RRJoinPrompt {
   partyId: string;
   leaderId: string;
-  stake: number;
   timeLimit: number;
   startTime: number;
   members: Array<{ userId: string; username: string; usernameColor?: string | null }>;
@@ -609,7 +607,7 @@ interface SocketContextType {
   rouletteGameOver: RRGameOver | null;
   rouletteJoinPrompt: RRJoinPrompt | null;
   roulettePlayAgainPrompt: RRPlayAgainPrompt | null;
-  startRoulette: (stake: number) => void;
+  startRoulette: () => void;
   pullRouletteTrigger: () => void;
   passRoulette: () => void;
   respondToRoulettePlayAgainPrompt: (playAgain: boolean) => void;
@@ -1906,9 +1904,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Russian Roulette actions
-  const startRoulette = (stake: number) => {
+  const startRoulette = () => {
     if (socket && currentParty) {
-      socket.emit('roulette:start', { partyId: currentParty.id, stake });
+      socket.emit('roulette:start', { partyId: currentParty.id });
     }
   };
 
@@ -2080,7 +2078,6 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       return {
         gameType: 'roulette',
         title: 'Rejoindre Russian Roulette ?',
-        settingsText: rouletteJoinPrompt.stake > 0 ? `Mise: ${rouletteJoinPrompt.stake.toLocaleString()}$` : undefined,
         navigateTo: '/games/russian-roulette',
         partyId: rouletteJoinPrompt.partyId,
         leaderId: rouletteJoinPrompt.leaderId,
