@@ -19,12 +19,36 @@ function seatAngleDeg(idx: number, total: number) {
   return -90 - idx * (360 / total);
 }
 
+// ─── Cylinder (no bullet highlight) ──────────────────────────────────────────
+function CylinderDisplay({ spinning }: { spinning: boolean }) {
+  return (
+    <svg
+      width="52" height="52" viewBox="-26 -26 52 52"
+      className={spinning ? 'rr-cylinder-spin' : ''}
+      style={{ filter: 'drop-shadow(0 0 5px rgba(180,180,180,0.15))' }}
+    >
+      <circle cx="0" cy="0" r="23" fill="#1c1c1c" stroke="#484848" strokeWidth="2" />
+      <circle cx="0" cy="0" r="19" fill="#111" stroke="#333" strokeWidth="1" />
+      {Array.from({ length: 6 }).map((_, i) => {
+        const a = (i / 6) * 2 * Math.PI - Math.PI / 2;
+        return (
+          <circle
+            key={i}
+            cx={Math.cos(a) * 11} cy={Math.sin(a) * 11}
+            r="4.5" fill="#0a0a0a" stroke="#404040" strokeWidth="1"
+          />
+        );
+      })}
+      <circle cx="0" cy="0" r="3" fill="#2a2a2a" stroke="#555" strokeWidth="1" />
+    </svg>
+  );
+}
 
-// ─── Revolver SVG (barrel points right at 0°, barrel hidden) ──────────────────
+// ─── Revolver SVG (barrel points right at 0°) ─────────────────────────────────
 function RevolverSVG({ shaking, banged }: { shaking: boolean; banged: boolean }) {
   return (
     <svg
-      viewBox="0 0 160 120" width="120" height="90"
+      viewBox="0 0 220 120" width="160" height="87"
       className={cn(shaking && 'rr-gun-shake')}
       style={{
         filter: banged
@@ -33,33 +57,30 @@ function RevolverSVG({ shaking, banged }: { shaking: boolean; banged: boolean })
         transition: 'filter 0.3s',
       }}
     >
-      {/* Frame/body */}
+      <rect x="80" y="42" width="120" height="16" rx="3" fill="#2a2a2a" stroke="#555" strokeWidth="1" />
+      <rect x="80" y="43" width="118" height="5" rx="2" fill="#3a3a3a" />
+      <rect x="190" y="40" width="12" height="20" rx="2" fill="#222" stroke="#444" strokeWidth="1" />
       <path d="M80 42 Q70 42 65 50 L60 80 Q58 88 70 90 L110 90 Q118 90 120 80 L120 58 L80 58 Z" fill="#252525" stroke="#4a4a4a" strokeWidth="1" />
       <path d="M80 43 Q72 43 68 50 L64 80 Q62 87 72 88" fill="none" stroke="#3a3a3a" strokeWidth="2" />
-      {/* Cylinder */}
       <ellipse cx="95" cy="56" rx="18" ry="14" fill="#1e1e1e" stroke="#555" strokeWidth="2" />
       <ellipse cx="95" cy="56" rx="14" ry="10" fill="#161616" stroke="#3a3a3a" strokeWidth="1" />
       {[0,1,2,3,4,5].map((i) => {
         const a = (i / 6) * 2 * Math.PI;
         return <circle key={i} cx={95 + Math.cos(a) * 9} cy={56 + Math.sin(a) * 7} r="2.5" fill="#0a0a0a" stroke="#2a2a2a" strokeWidth="0.5" />;
       })}
-      {/* Hammer */}
       <rect x="62" y="36" width="12" height="8" rx="2" fill="#1e1e1e" stroke="#444" strokeWidth="1" />
       <rect x="64" y="32" width="5" height="8" rx="1.5" fill="#252525" stroke="#3a3a3a" strokeWidth="1" />
-      {/* Trigger guard + trigger */}
       <path d="M72 62 Q68 75 75 80 L85 80 Q88 75 88 68" fill="none" stroke="#444" strokeWidth="4" strokeLinecap="round" />
       <line x1="80" y1="62" x2="78" y2="72" stroke="#888" strokeWidth="2.5" strokeLinecap="round" />
-      {/* Grip */}
       <path d="M68 88 Q60 92 55 105 Q52 112 62 114 L80 114 Q90 112 92 102 L92 88 Z" fill="#1a1008" stroke="#3a2010" strokeWidth="1.5" />
       {[0,1,2,3,4].map((i) => (
         <line key={i} x1={58 + i * 4} y1="95" x2={56 + i * 4} y2="108" stroke="#3a2a18" strokeWidth="1" />
       ))}
       <circle cx="72" cy="100" r="2.5" fill="#0f0a04" stroke="#4a3020" strokeWidth="1" />
-      {/* Muzzle flash */}
       {banged && (
         <g>
-          <polygon points="113,50 138,43 128,38 136,33 118,37" fill="#ff8c00" opacity="0.9" />
-          <polygon points="113,50 140,50 132,56 137,59 118,55" fill="#ffcc00" opacity="0.8" />
+          <polygon points="200,50 222,44 212,39 222,34 203,37" fill="#ff8c00" opacity="0.9" />
+          <polygon points="200,50 224,50 216,55 221,58 203,55" fill="#ffcc00" opacity="0.8" />
         </g>
       )}
     </svg>
@@ -180,6 +201,7 @@ function RouletteTable({
   myUserId,
   turnProgress,
   bangEffect,
+  spinCylinder,
   gunAngle,
   justDiedIds,
   showResult,
@@ -188,6 +210,7 @@ function RouletteTable({
   myUserId: string;
   turnProgress: number;
   bangEffect: boolean;
+  spinCylinder: boolean;
   gunAngle: number;
   justDiedIds: Set<string>;
   showResult: boolean;
@@ -227,12 +250,12 @@ function RouletteTable({
             <div className="rr-bang-flash" style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,80,0,0.85) 0%, rgba(180,0,0,0.5) 60%, transparent 100%)', pointerEvents: 'none', zIndex: 10 }} />
           )}
 
-          {/* Center: gun */}
+          {/* Center: gun + cylinder */}
           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
             <div style={{ transform: `rotate(${gunAngle}deg)`, transition: 'transform 0.75s cubic-bezier(0.34,1.2,0.64,1)' }}>
               <RevolverSVG shaking={game.lastEvent?.type === 'click' && showResult} banged={bangEffect} />
             </div>
-            <div style={{ fontSize: 11, color: 'rgba(200,80,80,0.7)', fontWeight: 700, letterSpacing: 1 }}>1/6</div>
+            <CylinderDisplay spinning={spinCylinder} />
             <div style={{ fontSize: 9, color: 'rgba(140,140,140,0.5)', letterSpacing: 1 }}>
               R{game.round} · {game.alivePlayers}/{game.totalPlayers}
             </div>
@@ -281,18 +304,18 @@ export default function RussianRoulette() {
   const {
     currentParty, partyMembers,
     rouletteGame, rouletteGameOver, roulettePlayAgainPrompt,
-    startRoulette, pullRouletteTrigger,
+    startRoulette, pullRouletteTrigger, passRoulette,
     respondToRoulettePlayAgainPrompt, clearRouletteGameOver,
   } = useSocket();
 
   const [bangEffect, setBangEffect] = useState(false);
+  const [spinCylinder, setSpinCylinder] = useState(false);
   const [turnProgress, setTurnProgress] = useState(100);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [deathOverlay, setDeathOverlay] = useState<'yellow' | 'black' | null>(null);
   const [justDiedIds, setJustDiedIds] = useState<Set<string>>(new Set());
   const [showResult, setShowResult] = useState(false);
   const [playAgainResponded, setPlayAgainResponded] = useState(false);
-  const [bidInput, setBidInput] = useState('0');
 
   const animFrameRef = useRef<number | null>(null);
   const prevEventRef = useRef<string | null>(null);
@@ -334,10 +357,7 @@ export default function RussianRoulette() {
     const eventKey = `${event.type}-${event.playerId}-${rouletteGame.round}`;
     if (eventKey === prevEventRef.current) return;
 
-    // New event — mark dead immediately, then 3-2-1 countdown before revealing
-    if (event.type === 'bang') {
-      setJustDiedIds((prev) => new Set([...prev, event.playerId]));
-    }
+    // New event — start 3-2-1 countdown before revealing
     setShowResult(false);
     setCountdown(3);
 
@@ -351,13 +371,25 @@ export default function RussianRoulette() {
       if (event.type === 'bang') {
         setBangEffect(true);
         setDeathOverlay('yellow');
+        setJustDiedIds((prev) => new Set([...prev, event.playerId]));
         setTimeout(() => { setBangEffect(false); setDeathOverlay('black'); }, 600);
         setTimeout(() => setDeathOverlay(null), 2600);
+      } else if (event.type === 'click') {
+        setSpinCylinder(true);
+        setTimeout(() => setSpinCylinder(false), 700);
       }
     }, 3000);
 
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [rouletteGame?.lastEvent, rouletteGame?.round]);
+
+  // Cylinder spin on new round
+  useEffect(() => {
+    if (rouletteGame?.round && rouletteGame.round > 1) {
+      setSpinCylinder(true);
+      setTimeout(() => setSpinCylinder(false), 900);
+    }
+  }, [rouletteGame?.round]);
 
   // Reset on game end
   useEffect(() => {
@@ -398,6 +430,11 @@ export default function RussianRoulette() {
     <>
       {/* ─── CSS ─────────────────────────────────────────────────────────── */}
       <style>{`
+        @keyframes rr-cylinder-spin {
+          to { transform: rotate(1080deg); }
+        }
+        .rr-cylinder-spin { animation: rr-cylinder-spin 0.7s cubic-bezier(0.2,0,0.3,1) forwards; }
+
         @keyframes rr-gun-shake {
           0%   { transform: translate(0,0) rotate(0deg); }
           15%  { transform: translate(-3px,-2px) rotate(-2deg); }
@@ -492,6 +529,7 @@ export default function RussianRoulette() {
                   myUserId={myUserId}
                   turnProgress={turnProgress}
                   bangEffect={bangEffect}
+                  spinCylinder={spinCylinder}
                   gunAngle={gunAngle}
                   justDiedIds={justDiedIds}
                   showResult={showResult}
@@ -508,6 +546,9 @@ export default function RussianRoulette() {
                     style={{ background: 'hsl(var(--destructive))', color: 'hsl(var(--destructive-foreground))', fontWeight: 700, fontSize: 15, letterSpacing: 0.5, padding: '10px 28px', boxShadow: '0 0 16px rgba(180,0,0,0.35)' }}
                   >
                     🔫 Tirer
+                  </Button>
+                  <Button variant="outline" onClick={passRoulette} style={{ color: 'rgba(160,160,160,0.8)' }}>
+                    🐔 Passer
                   </Button>
                 </>
               ) : countdown !== null ? (
@@ -569,7 +610,7 @@ export default function RussianRoulette() {
             <div style={{ fontSize: 40, marginBottom: 12 }}>🔫</div>
             <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Russian Roulette</h2>
             <p style={{ fontSize: 13, color: 'rgba(140,140,140,0.7)', maxWidth: 320, margin: '0 auto 20px', lineHeight: 1.6 }}>
-              2 à 6 joueurs s'assoient autour de la table. À tour de rôle, chacun tire. Le dernier en vie gagne tout.
+              2 à 6 joueurs s'assoient autour de la table. À tour de rôle, chacun tire — ou passe. Le dernier en vie gagne.
             </p>
             <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
               {partyMembers.map((m) => (
@@ -581,25 +622,10 @@ export default function RussianRoulette() {
               ))}
             </div>
             {isLeader ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'hsl(var(--muted))', borderRadius: 10, padding: '8px 14px', border: '1px solid hsl(var(--border))' }}>
-                  <span style={{ fontSize: 12, color: 'rgba(160,160,160,0.8)', whiteSpace: 'nowrap' }}>💵 Mise par joueur</span>
-                  <input
-                    type="number"
-                    min="0"
-                    value={bidInput}
-                    onChange={(e) => setBidInput(e.target.value)}
-                    style={{
-                      width: 72, background: 'transparent', border: 'none', borderBottom: '1px solid rgba(120,120,120,0.4)',
-                      color: '#ddd', fontSize: 14, fontWeight: 700, textAlign: 'center', outline: 'none', padding: '2px 4px',
-                    }}
-                  />
-                </div>
-                <Button onClick={() => startRoulette(Math.max(0, parseInt(bidInput) || 0))} style={{ gap: 8 }}>
-                  <Play size={14} />
-                  Lancer la partie
-                </Button>
-              </div>
+              <Button onClick={startRoulette} style={{ gap: 8 }}>
+                <Play size={14} />
+                Lancer la partie
+              </Button>
             ) : (
               <p style={{ fontSize: 12, color: 'rgba(140,140,140,0.5)', fontStyle: 'italic' }}>En attente du leader pour lancer…</p>
             )}
