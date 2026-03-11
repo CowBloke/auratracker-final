@@ -79,6 +79,7 @@ export function NavUser({
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                 <UsernameDisplay
+                  userId={authUser?.id}
                   username={user.name}
                   firstName={user.firstName}
                   usernameColor={user.usernameColor}
@@ -107,6 +108,7 @@ export function NavUser({
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <UsernameDisplay
+                    userId={authUser?.id}
                     username={user.name}
                     usernameColor={user.usernameColor}
                     usernameClassName="font-semibold"

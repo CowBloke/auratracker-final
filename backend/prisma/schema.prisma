@@ -9,34 +9,34 @@ datasource db {
 
 // User Model
 model User {
-  id                 String    @id @default(uuid())
-  username           String    @unique
-  firstName          String? // Real first name
-  schoolLevel        String? // Seconde, Premiere, Terminale
-  classLetter        String? // A-G
-  email              String    @unique
-  passwordHash       String
-  aura               BigInt    @default(0)
-  money              Int       @default(1000)
-  auraCoinBalance    Float     @default(0) // Aura Coin balance for trading game
-  isAdmin            Boolean   @default(false)
-  isChatMuted        Boolean   @default(false)
-  isApproved         Boolean   @default(false) // Account must be approved by admin before login
-  dailyAuraGiven     Int       @default(0) // Aura given today
-  dailyAuraLimit     Int       @default(50) // Personal daily aura limit (default 50)
-  lastDailyReset     DateTime  @default(now()) // When daily allowance was last reset
-  dailyPassStreak    Int       @default(0) // Current daily pass streak
-  lastDailyPassClaim DateTime? // Last date when daily pass reward was claimed
-  usernameColor      String? // Custom username color for chat (hex)
-  profilePicture     String? // Custom profile picture URL for chat
-  bio                String? // User bio/description
-  motivationMessage  String? // Registration motivation shown to admins before approval
-  referralCode       String?   @unique
-  referredById       String?
-  referredAt         DateTime?
+  id                      String    @id @default(uuid())
+  username                String    @unique
+  firstName               String? // Real first name
+  schoolLevel             String? // Seconde, Premiere, Terminale
+  classLetter             String? // A-G
+  email                   String    @unique
+  passwordHash            String
+  aura                    BigInt    @default(0)
+  money                   Int       @default(1000)
+  auraCoinBalance         Float     @default(0) // Aura Coin balance for trading game
+  isAdmin                 Boolean   @default(false)
+  isChatMuted             Boolean   @default(false)
+  isApproved              Boolean   @default(false) // Account must be approved by admin before login
+  dailyAuraGiven          Int       @default(0) // Aura given today
+  dailyAuraLimit          Int       @default(50) // Personal daily aura limit (default 50)
+  lastDailyReset          DateTime  @default(now()) // When daily allowance was last reset
+  dailyPassStreak         Int       @default(0) // Current daily pass streak
+  lastDailyPassClaim      DateTime? // Last date when daily pass reward was claimed
+  usernameColor           String? // Custom username color for chat (hex)
+  profilePicture          String? // Custom profile picture URL for chat
+  bio                     String? // User bio/description
+  motivationMessage       String? // Registration motivation shown to admins before approval
+  referralCode            String?   @unique
+  referredById            String?
+  referredAt              DateTime?
   referralRewardGrantedAt DateTime?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
   // Relations
   ownedItems            UserItem[]
@@ -63,31 +63,86 @@ model User {
   clanMemberships       ClanMember[]
   clanJoinRequests      ClanJoinRequest[]
   clanMessages          ClanMessage[]
-  declaredClanWars      ClanWar[]               @relation("ClanWarDeclaredBy")
+  declaredClanWars      ClanWar[]              @relation("ClanWarDeclaredBy")
   clanWarAttacks        ClanWarAttack[]
   clanWarFortifications ClanWarFortification[]
   polymarketSuggestions PolymarketSuggestion[]
   polymarketBets        PolymarketBet[]
-  createdUpdatePopups   UpdatePopup[]           @relation("UpdatePopupCreator")
+  createdUpdatePopups   UpdatePopup[]          @relation("UpdatePopupCreator")
   updatePopupViews      UserUpdatePopupView[]
-
+  badgeGrants           UserBadgeGrant[]       @relation("UserBadgeGrants")
+  badgeSelections       UserBadgeSelection[]
+  issuedBadgeGrants     UserBadgeGrant[]       @relation("BadgeGrantIssuer")
 
   // Daily Quests relations
-  dailyQuests         UserDailyQuest[]
+  dailyQuests UserDailyQuest[]
 
   // Gift System
-  sentGifts           Gift[]                 @relation("SentGifts")
-  receivedGifts       Gift[]                 @relation("ReceivedGifts")
+  sentGifts     Gift[] @relation("SentGifts")
+  receivedGifts Gift[] @relation("ReceivedGifts")
 
   // Notifications
-  notifications       Notification[]
-  dailyRacerRuns      DailyRacerRun[]
-  goyaveSave          GoyaveSave?
-  clanWarsWon         ClanWar[]                 @relation("ClanWarWinner")
+  notifications  Notification[]
+  dailyRacerRuns DailyRacerRun[]
+  goyaveSave     GoyaveSave?
+  clanWarsWon    ClanWar[]       @relation("ClanWarWinner")
 
   @@index([aura])
   @@index([money])
   @@index([referredById])
+}
+
+// ============================================
+// BADGES (cosmetics displayed next to usernames)
+// ============================================
+
+model Badge {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  name        String
+  description String?
+  style       String   @default("{}") // JSON: { type: "GRADIENT"|"IMAGE"|"SOLID", ... }
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  grants     UserBadgeGrant[]
+  selections UserBadgeSelection[]
+}
+
+// Badges a user owns (assigned by admins)
+model UserBadgeGrant {
+  id          String    @id @default(uuid())
+  userId      String
+  badgeId     String
+  grantedById String?
+  grantedAt   DateTime  @default(now())
+  revokedAt   DateTime?
+
+  user      User  @relation("UserBadgeGrants", fields: [userId], references: [id], onDelete: Cascade)
+  badge     Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  grantedBy User? @relation("BadgeGrantIssuer", fields: [grantedById], references: [id], onDelete: SetNull)
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+  @@index([badgeId])
+  @@index([revokedAt])
+}
+
+// The 2 displayed badge slots for a user
+model UserBadgeSelection {
+  id        String   @id @default(uuid())
+  userId    String
+  slot      Int // 1..2
+  badgeId   String?
+  updatedAt DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge? @relation(fields: [badgeId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, slot])
+  @@index([userId])
+  @@index([badgeId])
 }
 
 // Item Model
@@ -115,8 +170,8 @@ model UserItem {
   quantity   Int      @default(1)
   acquiredAt DateTime @default(now())
 
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  item          Item           @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@unique([userId, itemId])
 }
@@ -157,7 +212,7 @@ model GameStats {
 model GoyaveSave {
   id        String   @id @default(uuid())
   userId    String   @unique
-  saveData  String   // JSON blob of SaveState
+  saveData  String // JSON blob of SaveState
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -206,7 +261,7 @@ model PartyMember {
 
 model PartyMessage {
   id        String   @id @default(uuid())
-  partyId    String
+  partyId   String
   userId    String
   message   String
   createdAt DateTime @default(now())
@@ -230,16 +285,16 @@ model Clan {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  owner        User              @relation("ClanOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  members      ClanMember[]
-  joinRequests ClanJoinRequest[]
-  messages     ClanMessage[]
-  attackerWars ClanWar[]         @relation("ClanWarAttacker")
-  defenderWars ClanWar[]         @relation("ClanWarDefender")
-  wonWars      ClanWar[]         @relation("ClanWarWinnerClan")
-  warDefenses  ClanWarDefense[]
-  warAttacks   ClanWarAttack[]   @relation("ClanWarAttackSource")
-  warTargets   ClanWarAttack[]   @relation("ClanWarAttackTarget")
+  owner          User                   @relation("ClanOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members        ClanMember[]
+  joinRequests   ClanJoinRequest[]
+  messages       ClanMessage[]
+  attackerWars   ClanWar[]              @relation("ClanWarAttacker")
+  defenderWars   ClanWar[]              @relation("ClanWarDefender")
+  wonWars        ClanWar[]              @relation("ClanWarWinnerClan")
+  warDefenses    ClanWarDefense[]
+  warAttacks     ClanWarAttack[]        @relation("ClanWarAttackSource")
+  warTargets     ClanWarAttack[]        @relation("ClanWarAttackTarget")
   fortifications ClanWarFortification[]
 
   @@index([isPublic])
@@ -277,10 +332,10 @@ model ClanJoinRequest {
 
 model ClanMessage {
   id        String   @id @default(uuid())
-  clanId     String
-  userId     String
-  message    String
-  createdAt  DateTime @default(now())
+  clanId    String
+  userId    String
+  message   String
+  createdAt DateTime @default(now())
 
   clan Clan @relation(fields: [clanId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -290,33 +345,33 @@ model ClanMessage {
 }
 
 model ClanWar {
-  id                String   @id @default(uuid())
+  id                String    @id @default(uuid())
   attackerClanId    String
   defenderClanId    String
   declaredByUserId  String
   winnerClanId      String?
   winnerUserId      String?
-  status            String   @default("PREPARING")
+  status            String    @default("PREPARING")
   startsAt          DateTime
   endsAt            DateTime
   completedAt       DateTime?
-  attackerScore     Int      @default(0)
-  defenderScore     Int      @default(0)
-  targetScore       Int      @default(180)
-  winnerRewardMoney Int      @default(1200)
-  loserRewardMoney  Int      @default(300)
-  winnerRewardAura  Int      @default(45)
-  loserRewardAura   Int      @default(10)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  attackerScore     Int       @default(0)
+  defenderScore     Int       @default(0)
+  targetScore       Int       @default(180)
+  winnerRewardMoney Int       @default(1200)
+  loserRewardMoney  Int       @default(300)
+  winnerRewardAura  Int       @default(45)
+  loserRewardAura   Int       @default(10)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  attackerClan Clan   @relation("ClanWarAttacker", fields: [attackerClanId], references: [id], onDelete: Cascade)
-  defenderClan Clan   @relation("ClanWarDefender", fields: [defenderClanId], references: [id], onDelete: Cascade)
-  declaredBy   User   @relation("ClanWarDeclaredBy", fields: [declaredByUserId], references: [id], onDelete: Cascade)
-  winnerClan   Clan?  @relation("ClanWarWinnerClan", fields: [winnerClanId], references: [id], onDelete: SetNull)
-  winnerUser   User?  @relation("ClanWarWinner", fields: [winnerUserId], references: [id], onDelete: SetNull)
-  defenses     ClanWarDefense[]
-  attacks      ClanWarAttack[]
+  attackerClan   Clan                   @relation("ClanWarAttacker", fields: [attackerClanId], references: [id], onDelete: Cascade)
+  defenderClan   Clan                   @relation("ClanWarDefender", fields: [defenderClanId], references: [id], onDelete: Cascade)
+  declaredBy     User                   @relation("ClanWarDeclaredBy", fields: [declaredByUserId], references: [id], onDelete: Cascade)
+  winnerClan     Clan?                  @relation("ClanWarWinnerClan", fields: [winnerClanId], references: [id], onDelete: SetNull)
+  winnerUser     User?                  @relation("ClanWarWinner", fields: [winnerUserId], references: [id], onDelete: SetNull)
+  defenses       ClanWarDefense[]
+  attacks        ClanWarAttack[]
   fortifications ClanWarFortification[]
 
   @@index([attackerClanId, status])
@@ -327,18 +382,18 @@ model ClanWar {
 }
 
 model ClanWarDefense {
-  id          String   @id @default(uuid())
-  warId       String
-  clanId      String
-  type        String
-  level       Int      @default(1)
-  durability  Int      @default(60)
-  maxDurability Int    @default(60)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(uuid())
+  warId         String
+  clanId        String
+  type          String
+  level         Int      @default(1)
+  durability    Int      @default(60)
+  maxDurability Int      @default(60)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  war   ClanWar @relation(fields: [warId], references: [id], onDelete: Cascade)
-  clan  Clan    @relation(fields: [clanId], references: [id], onDelete: Cascade)
+  war            ClanWar                @relation(fields: [warId], references: [id], onDelete: Cascade)
+  clan           Clan                   @relation(fields: [clanId], references: [id], onDelete: Cascade)
   fortifications ClanWarFortification[]
 
   @@unique([warId, clanId, type])
@@ -380,10 +435,10 @@ model ClanWarFortification {
   durabilityAdded Int      @default(0)
   createdAt       DateTime @default(now())
 
-  war     ClanWar         @relation(fields: [warId], references: [id], onDelete: Cascade)
-  defense ClanWarDefense  @relation(fields: [defenseId], references: [id], onDelete: Cascade)
-  clan    Clan            @relation(fields: [clanId], references: [id], onDelete: Cascade)
-  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  war     ClanWar        @relation(fields: [warId], references: [id], onDelete: Cascade)
+  defense ClanWarDefense @relation(fields: [defenseId], references: [id], onDelete: Cascade)
+  clan    Clan           @relation(fields: [clanId], references: [id], onDelete: Cascade)
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([warId, clanId, userId])
   @@index([defenseId])
@@ -490,7 +545,7 @@ model BugReport {
   title       String
   description String
   status      String    @default("PENDING") // PENDING, DONE
-  adminReply  String?   // Admin's response to the bug report
+  adminReply  String? // Admin's response to the bug report
   createdAt   DateTime  @default(now())
   resolvedAt  DateTime?
 
@@ -567,10 +622,10 @@ model SuggestionRating {
 
 // Bomb Party Prompts (precomputed)
 model BombPartyPrompt {
-  id         String @id @default(uuid())
-  prompt     String @unique // e.g., "TH", "ING", "QU"
-  wordCount  Int // precomputed count of valid words
-  length     Int    @default(2) // prompt length (2 or 3)
+  id        String @id @default(uuid())
+  prompt    String @unique // e.g., "TH", "ING", "QU"
+  wordCount Int // precomputed count of valid words
+  length    Int    @default(2) // prompt length (2 or 3)
 
   @@index([wordCount])
   @@index([length])
@@ -678,18 +733,18 @@ model Log {
 
 // Polymarket System
 model PolymarketSuggestion {
-  id          String    @id @default(uuid())
-  userId      String
-  title       String
-  description String
-  imageUrl    String?
-  eventDate   DateTime? // Date de réalisation de l’événement
+  id               String    @id @default(uuid())
+  userId           String
+  title            String
+  description      String
+  imageUrl         String?
+  eventDate        DateTime? // Date de réalisation de l’événement
   suggestedYesOdds Float? // Cote suggérée pour "Oui"
   suggestedNoOdds  Float? // Cote suggérée pour "Non"
-  status      String    @default("PENDING") // PENDING, APPROVED, REJECTED
-  createdAt   DateTime  @default(now())
-  reviewedAt  DateTime?
-  reviewedBy  String? // Admin ID who reviewed
+  status           String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt        DateTime  @default(now())
+  reviewedAt       DateTime?
+  reviewedBy       String? // Admin ID who reviewed
 
   user  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   event PolymarketEvent? // If approved and converted to event
@@ -741,7 +796,6 @@ model PolymarketBet {
   @@index([createdAt])
 }
 
-
 // ============================================
 // DAILY QUESTS SYSTEM
 // ============================================
@@ -766,18 +820,18 @@ model DailyQuest {
 
 // User's selected daily quests (max 3 per day)
 model UserDailyQuest {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   userId      String
   questId     String
   questDate   DateTime // Date of the quest
-  selectedAt  DateTime @default(now())
-  isCompleted Boolean  @default(false)
+  selectedAt  DateTime  @default(now())
+  isCompleted Boolean   @default(false)
   completedAt DateTime?
-  isClaimed   Boolean  @default(false)
+  isClaimed   Boolean   @default(false)
   claimedAt   DateTime?
 
-  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  quest DailyQuest  @relation(fields: [questId], references: [id], onDelete: Cascade)
+  user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quest    DailyQuest         @relation(fields: [questId], references: [id], onDelete: Cascade)
   progress UserQuestProgress?
 
   @@unique([userId, questId, questDate])
@@ -789,10 +843,10 @@ model UserDailyQuest {
 
 // User's progress on their selected quests
 model UserQuestProgress {
-  id              String   @id @default(uuid())
-  userQuestId     String   @unique
-  currentValue    Int      @default(0) // Current progress value
-  lastUpdated     DateTime @default(now())
+  id           String   @id @default(uuid())
+  userQuestId  String   @unique
+  currentValue Int      @default(0) // Current progress value
+  lastUpdated  DateTime @default(now())
 
   userQuest UserDailyQuest @relation(fields: [userQuestId], references: [id], onDelete: Cascade)
 
@@ -809,7 +863,7 @@ model GiftTemplate {
   name        String
   description String?
   imageUrl    String?
-  price       Int      // Cost in money to include this in a gift
+  price       Int // Cost in money to include this in a gift
   createdAt   DateTime @default(now())
 
   giftItems GiftItem[]
@@ -817,21 +871,21 @@ model GiftTemplate {
 
 // A gift sent from one user to another
 model Gift {
-  id            String    @id @default(uuid())
-  senderId      String
-  receiverId    String
-  message       String?   // Custom message from the gifter
-  moneyAmount   Int       @default(0) // Money included (max 1000)
-  auraAmount    Int       @default(0) // Aura included in the gift
-  giftedItemId  String?   // Item.id when a shop GIFT-type item is sent
-  isOpened      Boolean   @default(false)
-  openedAt      DateTime?
-  createdAt     DateTime  @default(now())
+  id           String    @id @default(uuid())
+  senderId     String
+  receiverId   String
+  message      String? // Custom message from the gifter
+  moneyAmount  Int       @default(0) // Money included (max 1000)
+  auraAmount   Int       @default(0) // Aura included in the gift
+  giftedItemId String? // Item.id when a shop GIFT-type item is sent
+  isOpened     Boolean   @default(false)
+  openedAt     DateTime?
+  createdAt    DateTime  @default(now())
 
-  sender      User       @relation("SentGifts", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver    User       @relation("ReceivedGifts", fields: [receiverId], references: [id], onDelete: Cascade)
-  giftedItem  Item?      @relation("GiftedItem", fields: [giftedItemId], references: [id], onDelete: SetNull)
-  items       GiftItem[]
+  sender     User       @relation("SentGifts", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   User       @relation("ReceivedGifts", fields: [receiverId], references: [id], onDelete: Cascade)
+  giftedItem Item?      @relation("GiftedItem", fields: [giftedItemId], references: [id], onDelete: SetNull)
+  items      GiftItem[]
 
   @@index([senderId])
   @@index([receiverId])
@@ -856,7 +910,7 @@ model GiftItem {
 // Online User Snapshot (for activity graphs)
 model OnlineSnapshot {
   id        String   @id @default(uuid())
-  count     Int      // Number of online users at this moment
+  count     Int // Number of online users at this moment
   usernames String   @default("[]") // JSON: [{userId, username}] captured at snapshot time
   createdAt DateTime @default(now())
 
@@ -884,12 +938,12 @@ model UpdatePopup {
 }
 
 model UserUpdatePopupView {
-  id        String   @id @default(uuid())
-  userId    String
-  popupId   String
-  viewedAt  DateTime @default(now())
+  id       String   @id @default(uuid())
+  userId   String
+  popupId  String
+  viewedAt DateTime @default(now())
 
-  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   popup UpdatePopup @relation(fields: [popupId], references: [id], onDelete: Cascade)
 
   @@unique([userId, popupId])
@@ -906,14 +960,14 @@ model UserUpdatePopupView {
 //   QUEST_COMPLETED, POLYMARKET_WIN, POLYMARKET_LOSS,
 //   PARTY_INVITE, SYSTEM, ADMIN
 model Notification {
-  id        String   @id @default(uuid())
-  userId    String   // Recipient
-  type      String   // Notification type (see above)
-  title     String   // Short title
-  body      String   // Longer description
-  data      String?  // JSON string for flexible extra payload (amounts, senderIds, etc.)
-  link      String?  // Optional front-end route to navigate to on click
-  icon      String?  // Optional icon key (maps to a Lucide icon name on frontend)
+  id         String    @id @default(uuid())
+  userId     String // Recipient
+  type       String // Notification type (see above)
+  title      String // Short title
+  body       String // Longer description
+  data       String? // JSON string for flexible extra payload (amounts, senderIds, etc.)
+  link       String? // Optional front-end route to navigate to on click
+  icon       String? // Optional icon key (maps to a Lucide icon name on frontend)
   isRead     Boolean   @default(false)
   readAt     DateTime?
   isArchived Boolean   @default(false)

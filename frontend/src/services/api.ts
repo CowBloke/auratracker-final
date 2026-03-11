@@ -83,6 +83,42 @@ export const usersApi = {
     api.post<{ request: NameChangeRequest }>('/users/name-change-request', data),
 };
 
+export type BadgeStyle = {
+  type?: 'GRADIENT' | 'IMAGE' | 'SOLID';
+  gradient?: string;
+  imageUrl?: string;
+  backgroundColor?: string;
+  textColor?: string;
+  borderColor?: string;
+  borderWidth?: number;
+  borderRadius?: number;
+  paddingX?: number;
+  paddingY?: number;
+  fontSize?: number;
+  label?: string;
+  [key: string]: unknown;
+};
+
+export interface PublicBadge {
+  id: string;
+  key: string;
+  name: string;
+  description: string | null;
+  style: BadgeStyle;
+  isActive?: boolean;
+}
+
+export const badgesApi = {
+  getSelected: (userIds: string[]) =>
+    api.get<{ users: Record<string, PublicBadge[]> }>('/badges/selected', {
+      params: { userIds: userIds.join(',') },
+    }),
+  getMy: () =>
+    api.get<{ badges: PublicBadge[]; selection: { slot1: string | null; slot2: string | null } }>('/badges/my'),
+  updateMySelection: (data: { slot1BadgeId: string | null; slot2BadgeId: string | null }) =>
+    api.put<{ success: boolean }>('/badges/my/selection', data),
+};
+
 export interface UserUpdatePopup {
   id: string;
   title: string;
@@ -620,6 +656,17 @@ export interface AdminUser {
   updatedAt: string;
 }
 
+export interface AdminBadge extends PublicBadge {
+  createdAt: string;
+  updatedAt: string;
+  grantsCount: number;
+}
+
+export interface AdminUserBadgeGrant extends PublicBadge {
+  grantedAt: string;
+  grantedById: string | null;
+}
+
 export interface AdminUpdatePopup {
   id: string;
   title: string;
@@ -861,6 +908,19 @@ export const adminApi = {
     api.patch<{ item?: AdminInventoryItem; removed?: boolean }>(`/admin/users/${id}/inventory/${userItemId}`, data),
   deleteUserInventoryItem: (id: string, userItemId: string) =>
     api.delete<{ success: boolean }>(`/admin/users/${id}/inventory/${userItemId}`),
+  // Badges management
+  getBadges: () => api.get<{ badges: AdminBadge[] }>('/admin/badges'),
+  createBadge: (data: { key: string; name: string; description?: string | null; style: BadgeStyle; isActive?: boolean }) =>
+    api.post<{ badge: PublicBadge }>('/admin/badges', data),
+  updateBadge: (id: string, data: Partial<{ key: string; name: string; description: string | null; style: BadgeStyle; isActive: boolean }>) =>
+    api.put<{ badge: PublicBadge }>(`/admin/badges/${id}`, data),
+  deactivateBadge: (id: string) => api.delete<{ success: boolean }>(`/admin/badges/${id}`),
+  getUserBadges: (userId: string) =>
+    api.get<{ grants: AdminUserBadgeGrant[]; selection: { slot1: string | null; slot2: string | null } }>(`/admin/users/${userId}/badges`),
+  grantUserBadge: (userId: string, badgeId: string) =>
+    api.post<{ success: boolean }>(`/admin/users/${userId}/badges/grant`, { badgeId }),
+  revokeUserBadge: (userId: string, badgeId: string) =>
+    api.delete<{ success: boolean }>(`/admin/users/${userId}/badges/grant/${badgeId}`),
   clearChat: () =>
     runRareAction({ action: 'chat_clear' }) as Promise<{ data: { success: boolean; message: string; messagesDeleted: number } }>,
   // Pending users management
