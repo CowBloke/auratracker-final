@@ -16,7 +16,6 @@ export const BLOCKABLE_PAGES: BlockablePage[] = [
   { key: 'game-casino', path: '/games/casino', label: 'Casino', category: 'Jeux' },
   { key: 'game-market', path: '/market', label: 'Shop', category: 'Général' },
   { key: 'game-aura-coin', path: '/games/aura-coin', label: 'Aura Coin', category: 'Jeux' },
-  { key: 'game-russian-roulette', path: '/games/russian-roulette', label: 'Russian Roulette', category: 'Jeux' },
   { key: 'game-bomb-party', path: '/games/bomb-party', label: 'Bomb Party', category: 'Jeux' },
   { key: 'game-poker', path: '/games/poker', label: 'Poker', category: 'Jeux' },
   { key: 'game-petit-bac', path: '/games/petit-bac', label: 'Petit Bac', category: 'Jeux' },

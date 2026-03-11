@@ -42,9 +42,6 @@ import Sudoku from './pages/Sudoku';
 import Inbox from './pages/Inbox';
 import Blocked from './pages/Blocked';
 import Minesweeper from './pages/Minesweeper';
-import GeometryDash from './pages/GeometryDash';
-import QSWatermelon from './pages/QSWatermelon';
-import RussianRoulette from './pages/RussianRoulette';
 import { BLOCKABLE_PAGES } from './config/blockedPages';
 import { useFeatures } from './contexts/FeaturesContext';
 
@@ -155,8 +152,6 @@ function App() {
         <Route path="games/casino" element={<Casino />} />
         <Route path="games/aura-coin" element={<AuraCoin />} />
         <Route path="games/minesweeper" element={<Minesweeper />} />
-        <Route path="games/geometry-dash" element={<GeometryDash />} />
-        <Route path="games/qs-watermelon" element={<QSWatermelon />} />
         <Route path="market" element={<Shop />} />
         <Route path="market/*" element={<Shop />} />
         <Route path="games/bomb-party" element={<BombParty />} />
@@ -171,7 +166,6 @@ function App() {
         <Route path="games/puissance-quatre" element={<PuissanceQuatre />} />
         <Route path="games/echecs" element={<Echecs />} />
         <Route path="games/logic-lab" element={<Sudoku />} />
-        <Route path="games/russian-roulette" element={<RussianRoulette />} />
         <Route path="polymarket" element={<Polymarket />} />
         <Route path="leaderboards" element={<Leaderboards />} />
         <Route path="leaderboards/nombres" element={<Numbers />} />
