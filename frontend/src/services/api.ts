@@ -81,6 +81,9 @@ export const usersApi = {
   update: (id: string, data: { username?: string; bio?: string }) => api.put(`/users/${id}`, data),
   requestNameChange: (data: { requestedUsername: string; reason?: string }) =>
     api.post<{ request: NameChangeRequest }>('/users/name-change-request', data),
+  // Admin warnings (user-facing)
+  getPendingWarnings: () => api.get<{ warnings: UserPendingWarning[] }>('/users/warnings/pending'),
+  acknowledgeWarning: (id: string) => api.post<{ success: boolean; message: string }>(`/users/warnings/${id}/acknowledge`),
 };
 
 export type BadgeStyle = {
@@ -127,6 +130,17 @@ export interface UserUpdatePopup {
   imageUrl: string | null;
   releaseDate: string;
   createdAt: string;
+}
+
+export interface UserPendingWarning {
+  id: string;
+  message: string;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH';
+  createdAt: string;
+  issuedBy: {
+    id: string;
+    username: string;
+  };
 }
 
 // Economy API
@@ -648,6 +662,7 @@ export interface AdminUser {
   money: number;
   auraCoinBalance: number;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   isChatMuted: boolean;
   dailyAuraGiven: number;
   dailyAuraLimit: number;
@@ -738,6 +753,24 @@ export interface PendingUser {
   createdAt: string;
 }
 
+export interface RegistrationReview {
+  id: string;
+  registrationUserId: string;
+  username: string;
+  firstName: string | null;
+  schoolLevel: 'SECONDE' | 'PREMIERE' | 'TERMINALE' | null;
+  classLetter: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | null;
+  email: string;
+  motivationMessage: string | null;
+  registrationCreatedAt: string;
+  status: 'APPROVED' | 'REJECTED';
+  reviewedAt: string;
+  reviewedById: string | null;
+  importedFromLegacy: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Shop Item Interface
 export interface ShopItem {
   id: string;
@@ -789,6 +822,26 @@ export interface Ban {
     email: string;
   };
   admin: {
+    id: string;
+    username: string;
+  };
+}
+
+export interface AdminWarning {
+  id: string;
+  userId: string;
+  issuedById: string;
+  message: string;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH';
+  isAcknowledged: boolean;
+  acknowledgedAt: string | null;
+  createdAt: string;
+  user: {
+    id: string;
+    username: string;
+    email: string;
+  };
+  issuedBy: {
     id: string;
     username: string;
   };
@@ -897,7 +950,7 @@ export const adminApi = {
   transferClanLeadership: (id: string, targetUserId: string) =>
     api.post<{ success: boolean }>(`/admin/clans/${id}/transfer-leadership`, { targetUserId }),
   deleteClan: (id: string) => api.delete<{ success: boolean }>(`/admin/clans/${id}`),
-  updateUser: (id: string, data: { username?: string; firstName?: string | null; aura?: number; money?: number; auraCoinBalance?: number; dailyAuraLimit?: number; password?: string; isChatMuted?: boolean }) =>
+  updateUser: (id: string, data: { username?: string; firstName?: string | null; aura?: number; money?: number; auraCoinBalance?: number; dailyAuraLimit?: number; password?: string; isChatMuted?: boolean; role?: 'USER' | 'ADMIN' | 'SUPER_ADMIN' }) =>
     api.put<{ user: AdminUser }>(`/admin/users/${id}`, data),
   deleteUser: (id: string) => api.delete<{ success: boolean; message: string }>(`/admin/users/${id}`),
   getUserInventory: (id: string) =>
@@ -925,6 +978,9 @@ export const adminApi = {
     runRareAction({ action: 'chat_clear' }) as Promise<{ data: { success: boolean; message: string; messagesDeleted: number } }>,
   // Pending users management
   getPendingUsers: () => api.get<{ pendingUsers: PendingUser[] }>('/admin/pending-users'),
+  getRegistrationReviews: () => api.get<{ registrationReviews: RegistrationReview[] }>('/admin/registration-reviews'),
+  importRegistrationReviews: (entries: Array<PendingUser & { registrationStatus: 'APPROVED' | 'REJECTED' }>) =>
+    api.post<{ success: boolean; importedCount: number; registrationReviews: RegistrationReview[] }>('/admin/registration-reviews/import-local', { entries }),
   approveUser: (id: string) => api.post<{ success: boolean; user: PendingUser; message: string }>(`/admin/users/${id}/approve`),
   rejectUser: (id: string) => api.post<{ success: boolean; message: string }>(`/admin/users/${id}/reject`),
   // Items management
@@ -1062,6 +1118,11 @@ export const adminApi = {
   getNameChangeRequests: () => api.get<{ nameChangeRequests: NameChangeRequest[] }>('/admin/name-change-requests'),
   reviewNameChangeRequest: (id: string, data: { action: 'approve' | 'reject' }) =>
     api.put<{ nameChangeRequest: NameChangeRequest }>(`/admin/name-change-requests/${id}`, data),
+  // Admin warnings
+  getWarnings: () => api.get<{ warnings: AdminWarning[] }>('/admin/warnings'),
+  createWarning: (data: { userId: string; message: string; severity?: 'LOW' | 'MEDIUM' | 'HIGH' }) =>
+    api.post<{ warning: AdminWarning; message: string }>('/admin/warnings', data),
+  deleteWarning: (id: string) => api.delete<{ success: boolean; message: string }>(`/admin/warnings/${id}`),
 };
 
 export const maintenanceApi = {

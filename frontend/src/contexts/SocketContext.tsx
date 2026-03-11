@@ -424,6 +424,53 @@ interface ChessPlayAgainPrompt {
   responses: Array<{ userId: string; playAgain: boolean }>;
 }
 
+// Russian Roulette
+interface RRPlayerState {
+  userId: string;
+  username: string;
+  usernameColor?: string | null;
+  isAlive: boolean;
+  pullCount: number;
+  passedOut: boolean;
+}
+
+export interface RRGameState {
+  partyId: string;
+  players: RRPlayerState[];
+  currentPlayerId: string | null;
+  cylinderPosition: number;
+  round: number;
+  isActive: boolean;
+  lastEvent: { type: 'click' | 'bang' | 'pass'; playerId: string; username: string } | null;
+  turnEndsAt: number;
+  alivePlayers: number;
+  totalPlayers: number;
+}
+
+export interface RRGameOver {
+  winnerId: string | null;
+  winnerUsername: string | null;
+  standings: Array<{ userId: string; username: string; usernameColor?: string | null; isAlive: boolean; pullCount: number; passedOut: boolean }>;
+}
+
+interface RRJoinPrompt {
+  partyId: string;
+  leaderId: string;
+  timeLimit: number;
+  startTime: number;
+  members: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+  responses: Array<{ userId: string; accepted: boolean }>;
+}
+
+interface RRPlayAgainPrompt {
+  partyId: string;
+  timeLimit: number;
+  startTime: number;
+  players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+  responses: Array<{ userId: string; playAgain: boolean }>;
+  playAgainCount?: number;
+}
+
 interface IncomingDuelChallenge {
   challengerId: string;
   challengerUsername: string;
@@ -555,6 +602,16 @@ interface SocketContextType {
   respondToChessJoinPrompt: (accepted: boolean) => void;
   chessPlayAgainPrompt: ChessPlayAgainPrompt | null;
   respondToChessPlayAgainPrompt: (playAgain: boolean) => void;
+  // Russian Roulette
+  rouletteGame: RRGameState | null;
+  rouletteGameOver: RRGameOver | null;
+  rouletteJoinPrompt: RRJoinPrompt | null;
+  roulettePlayAgainPrompt: RRPlayAgainPrompt | null;
+  startRoulette: () => void;
+  pullRouletteTrigger: () => void;
+  passRoulette: () => void;
+  respondToRoulettePlayAgainPrompt: (playAgain: boolean) => void;
+  clearRouletteGameOver: () => void;
   // Unified prompts
   activeJoinPrompt: ActiveJoinPrompt | null;
   activeReplayPrompt: ActiveReplayPrompt | null;
@@ -629,6 +686,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   // Chess state
   const [chessJoinPrompt, setChessJoinPrompt] = useState<ChessJoinPrompt | null>(null);
   const [chessPlayAgainPrompt, setChessPlayAgainPrompt] = useState<ChessPlayAgainPrompt | null>(null);
+
+  // Russian Roulette state
+  const [rouletteGame, setRouletteGame] = useState<RRGameState | null>(null);
+  const [rouletteGameOver, setRouletteGameOver] = useState<RRGameOver | null>(null);
+  const [rouletteJoinPrompt, setRouletteJoinPrompt] = useState<RRJoinPrompt | null>(null);
+  const [roulettePlayAgainPrompt, setRoulettePlayAgainPrompt] = useState<RRPlayAgainPrompt | null>(null);
 
   // Duel state
   const [incomingDuelChallenge, setIncomingDuelChallenge] = useState<IncomingDuelChallenge | null>(null);
@@ -817,6 +880,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setPokerJoinPrompt(null);
         setPokerPlayAgainPrompt(null);
         setPokerGameOver(null);
+        setRouletteGame(null);
+        setRouletteGameOver(null);
+        setRouletteJoinPrompt(null);
+        setRoulettePlayAgainPrompt(null);
       });
 
       s.on('party:member-joined', (member: { userId: string; username: string; usernameColor?: string | null }) => {
@@ -842,6 +909,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setPokerJoinPrompt(null);
         setPokerPlayAgainPrompt(null);
         setPokerGameOver(null);
+        setRouletteGame(null);
+        setRouletteGameOver(null);
+        setRouletteJoinPrompt(null);
+        setRoulettePlayAgainPrompt(null);
         partyEvents.list();
       });
 
@@ -858,6 +929,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setPokerJoinPrompt(null);
         setPokerPlayAgainPrompt(null);
         setPokerGameOver(null);
+        setRouletteGame(null);
+        setRouletteGameOver(null);
+        setRouletteJoinPrompt(null);
+        setRoulettePlayAgainPrompt(null);
         partyEvents.list();
       });
 
@@ -874,6 +949,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setPokerJoinPrompt(null);
         setPokerPlayAgainPrompt(null);
         setPokerGameOver(null);
+        setRouletteGame(null);
+        setRouletteGameOver(null);
+        setRouletteJoinPrompt(null);
+        setRoulettePlayAgainPrompt(null);
         partyEvents.list();
       });
 
@@ -1415,6 +1494,53 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setChessPlayAgainPrompt(null);
       });
 
+      // Russian Roulette events
+      s.on('roulette:state', (game: RRGameState) => {
+        setRouletteGame(game);
+        setRouletteGameOver(null);
+        setRouletteJoinPrompt(null);
+        setRoulettePlayAgainPrompt(null);
+      });
+
+      s.on('roulette:join-prompt', (data: RRJoinPrompt) => {
+        setRouletteJoinPrompt({ ...data, startTime: Date.now(), responses: data.responses || [] });
+      });
+
+      s.on('roulette:join-response-update', (data: { partyId: string; responses: Array<{ userId: string; accepted: boolean }> }) => {
+        setRouletteJoinPrompt((prev) => prev ? { ...prev, responses: data.responses } : null);
+      });
+
+      s.on('roulette:join-cancelled', () => {
+        setRouletteJoinPrompt(null);
+      });
+
+      s.on('roulette:game-over', (data: RRGameOver) => {
+        setRouletteGame(null);
+        setRouletteGameOver(data);
+      });
+
+      s.on('roulette:play-again-prompt', (data: RRPlayAgainPrompt) => {
+        const responses = data.responses || [];
+        setRoulettePlayAgainPrompt({
+          ...data,
+          startTime: data.startTime ?? Date.now(),
+          responses,
+          playAgainCount: data.playAgainCount ?? responses.filter((r) => r.playAgain).length,
+        });
+      });
+
+      s.on('roulette:play-again-response-update', (data: { partyId: string; responses: Array<{ userId: string; playAgain: boolean }>; playAgainCount: number }) => {
+        setRoulettePlayAgainPrompt((prev) => prev ? { ...prev, responses: data.responses, playAgainCount: data.playAgainCount } : null);
+      });
+
+      s.on('roulette:play-again-cancelled', () => {
+        setRoulettePlayAgainPrompt(null);
+      });
+
+      s.on('roulette:error', (data: { message: string }) => {
+        console.error('Roulette error:', data.message);
+      });
+
       // Duel events
       s.on('duel:challenge-received', (data: IncomingDuelChallenge) => {
         setIncomingDuelChallenge(data);
@@ -1777,6 +1903,36 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Russian Roulette actions
+  const startRoulette = () => {
+    if (socket && currentParty) {
+      socket.emit('roulette:start', { partyId: currentParty.id });
+    }
+  };
+
+  const pullRouletteTrigger = () => {
+    if (socket && currentParty) {
+      socket.emit('roulette:pull', { partyId: currentParty.id });
+    }
+  };
+
+  const passRoulette = () => {
+    if (socket && currentParty) {
+      socket.emit('roulette:pass', { partyId: currentParty.id });
+    }
+  };
+
+  const respondToRoulettePlayAgainPrompt = (playAgain: boolean) => {
+    if (socket && roulettePlayAgainPrompt) {
+      socket.emit('roulette:play-again-response', { partyId: roulettePlayAgainPrompt.partyId, playAgain });
+    }
+  };
+
+  const clearRouletteGameOver = () => {
+    setRouletteGameOver(null);
+    setRouletteGame(null);
+  };
+
   const challengeUserToDuel = (targetId: string, targetUsername: string, gameType: 'chess' | 'battleship' | 'p4') => {
     if (!user) return;
     setOutgoingDuelChallenge({ targetId, targetUsername, gameType });
@@ -1815,6 +1971,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     } else if (chessJoinPrompt && socket) {
       socket.emit('chess:join-response', { partyId: chessJoinPrompt.partyId, accepted });
       if (!accepted) setChessJoinPrompt(null);
+    } else if (rouletteJoinPrompt && socket) {
+      socket.emit('roulette:join-response', { partyId: rouletteJoinPrompt.partyId, accepted });
+      if (!accepted) setRouletteJoinPrompt(null);
     }
   };
 
@@ -1839,6 +1998,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         partyId: chessPlayAgainPrompt.partyId,
         playAgain,
       });
+    } else if (roulettePlayAgainPrompt && socket) {
+      socket.emit('roulette:play-again-response', { partyId: roulettePlayAgainPrompt.partyId, playAgain });
     }
   };
 
@@ -1913,8 +2074,21 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         startTime: chessJoinPrompt.startTime,
       };
     }
+    if (rouletteJoinPrompt) {
+      return {
+        gameType: 'roulette',
+        title: 'Rejoindre Russian Roulette ?',
+        navigateTo: '/games/russian-roulette',
+        partyId: rouletteJoinPrompt.partyId,
+        leaderId: rouletteJoinPrompt.leaderId,
+        members: rouletteJoinPrompt.members,
+        responses: rouletteJoinPrompt.responses,
+        timeLimit: rouletteJoinPrompt.timeLimit,
+        startTime: rouletteJoinPrompt.startTime,
+      };
+    }
     return null;
-  }, [bombPartyJoinPrompt, pokerJoinPrompt, petitBacJoinPrompt, p4JoinPrompt, chessJoinPrompt]);
+  }, [bombPartyJoinPrompt, pokerJoinPrompt, petitBacJoinPrompt, p4JoinPrompt, chessJoinPrompt, rouletteJoinPrompt]);
 
   const activeReplayPrompt = useMemo((): ActiveReplayPrompt | null => {
     if (bombPartyPlayAgainPrompt) {
@@ -1985,8 +2159,19 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         startTime: chessPlayAgainPrompt.startTime,
       };
     }
+    if (roulettePlayAgainPrompt) {
+      return {
+        gameType: 'roulette',
+        settingsText: 'Russian Roulette',
+        partyId: roulettePlayAgainPrompt.partyId,
+        players: roulettePlayAgainPrompt.players,
+        responses: roulettePlayAgainPrompt.responses,
+        timeLimit: roulettePlayAgainPrompt.timeLimit,
+        startTime: roulettePlayAgainPrompt.startTime,
+      };
+    }
     return null;
-  }, [bombPartyPlayAgainPrompt, pokerPlayAgainPrompt, petitBacPlayAgainPrompt, p4PlayAgainPrompt, battleshipPlayAgainPrompt, chessPlayAgainPrompt]);
+  }, [bombPartyPlayAgainPrompt, pokerPlayAgainPrompt, petitBacPlayAgainPrompt, p4PlayAgainPrompt, battleshipPlayAgainPrompt, chessPlayAgainPrompt, roulettePlayAgainPrompt]);
 
   return (
     <SocketContext.Provider
@@ -2074,6 +2259,15 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         respondToChessJoinPrompt,
         chessPlayAgainPrompt,
         respondToChessPlayAgainPrompt,
+        rouletteGame,
+        rouletteGameOver,
+        rouletteJoinPrompt,
+        roulettePlayAgainPrompt,
+        startRoulette,
+        pullRouletteTrigger,
+        passRoulette,
+        respondToRoulettePlayAgainPrompt,
+        clearRouletteGameOver,
         activeJoinPrompt,
         activeReplayPrompt,
         respondToGameJoinPrompt,

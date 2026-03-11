@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Axe, Check, Crown, Loader2, LogOut, Plus, Send, Shield, Sparkles, Swords, Target, UserX, X } from 'lucide-react';
 import {
   ClanChatMessage,
@@ -196,8 +196,6 @@ export default function Clans() {
   const [chatLoading, setChatLoading] = useState(false);
   const [chatSending, setChatSending] = useState(false);
   const [chatDraft, setChatDraft] = useState('');
-  const chatBottomRef = useRef<HTMLDivElement | null>(null);
-
   const [dialogOpen, setDialogOpen] = useState(false);
   const [warDialogOpen, setWarDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -236,9 +234,6 @@ export default function Clans() {
     return () => window.clearInterval(interval);
   }, [selectedClanId, selectedClan?.viewer.isMember]);
 
-  useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages]);
 
   const selectedClanSummary = useMemo(
     () => clans.find((clan) => clan.id === selectedClanId) ?? null,
@@ -1013,7 +1008,7 @@ export default function Clans() {
                               Aucun message pour le moment. Lance la conversation.
                             </div>
                           ) : (
-                            chatMessages.map((entry) => {
+                            [...chatMessages].reverse().map((entry) => {
                               const isOwnMessage = entry.user.id === user?.id;
                               return (
                                 <div
@@ -1037,7 +1032,6 @@ export default function Clans() {
                               );
                             })
                           )}
-                          <div ref={chatBottomRef} />
                         </div>
 
                         <form onSubmit={handleSendChatMessage} className="space-y-3">
