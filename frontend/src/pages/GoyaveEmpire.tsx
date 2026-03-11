@@ -5,7 +5,7 @@ import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { GameFullscreenButton } from '@/components/game/GameFullscreenButton';
+import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 
 // ---- Constants ----
@@ -366,16 +366,13 @@ export default function GoyaveEmpire() {
       <div
         ref={gameContainerRef}
         className={cn(
-          'relative flex gap-0 items-stretch w-full',
+          'flex w-full flex-col gap-3',
           isFullscreen && 'min-h-screen w-screen bg-background p-4'
         )}
-        style={{ height: PANEL_HEIGHT }}
       >
-        <GameFullscreenButton
-          isFullscreen={isFullscreen}
-          onClick={toggleFullscreen}
-          className="absolute right-2 top-2 z-30"
-        />
+        <GameFullscreenToolbar isFullscreen={isFullscreen} onToggleFullscreen={toggleFullscreen} className="w-full" />
+
+        <div className="relative flex gap-0 items-stretch w-full" style={{ height: PANEL_HEIGHT }}>
 
         {/* ── LEFT: Upgrades ── */}
         <div className="flex-shrink-0 border border-border/30 border-r-0 rounded-l-xl bg-card flex flex-col overflow-hidden" style={{ width: 192 }}>
@@ -622,6 +619,7 @@ export default function GoyaveEmpire() {
               )
             )}
           </div>
+        </div>
         </div>
       </div>
     </div>

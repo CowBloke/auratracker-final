@@ -1,7 +1,7 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { adminApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan } from '../services/api';
+import { adminApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, RegistrationReview, AdminWarning } from '../services/api';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,8 +12,8 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, Inbox, Archive, UserCog, Crown, Swords, Send } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, ReferenceDot } from 'recharts';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Minus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, Inbox, Archive, UserCog, Crown, Swords, Send, Upload } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, ReferenceDot } from 'recharts';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,6 +56,60 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
 };
 
 const ANNOUNCEMENT_MAX_LENGTH = 120;
+const ADMIN_ARCHIVED_REGISTRATIONS_STORAGE_KEY = 'admin_archived_registrations';
+const ROLE_LABELS = {
+  USER: 'membre',
+  ADMIN: 'admin',
+  SUPER_ADMIN: 'super admin',
+} as const;
+
+type AdminRole = keyof typeof ROLE_LABELS;
+
+type ArchivedRegistration = PendingUser & {
+  registrationStatus: 'APPROVED' | 'REJECTED';
+  reviewedAt?: string;
+  importedFromLegacy?: boolean;
+};
+
+const parseLegacyArchivedRegistrations = (): ArchivedRegistration[] => {
+  try {
+    const raw = localStorage.getItem(ADMIN_ARCHIVED_REGISTRATIONS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((entry): entry is ArchivedRegistration => (
+      entry &&
+      typeof entry === 'object' &&
+      typeof entry.id === 'string' &&
+      typeof entry.username === 'string' &&
+      typeof entry.email === 'string' &&
+      typeof entry.createdAt === 'string' &&
+      (entry.registrationStatus === 'APPROVED' || entry.registrationStatus === 'REJECTED')
+    ));
+  } catch {
+    return [];
+  }
+};
+
+const mapRegistrationReviewToArchivedRegistration = (review: RegistrationReview): ArchivedRegistration => ({
+  id: review.registrationUserId,
+  username: review.username,
+  firstName: review.firstName,
+  schoolLevel: review.schoolLevel,
+  classLetter: review.classLetter,
+  email: review.email,
+  motivationMessage: review.motivationMessage,
+  createdAt: review.registrationCreatedAt,
+  registrationStatus: review.status,
+  reviewedAt: review.reviewedAt,
+  importedFromLegacy: review.importedFromLegacy,
+});
+
+const getAdminRole = (user: Pick<AdminUser, 'isAdmin' | 'isSuperAdmin'>): AdminRole => {
+  if (user.isSuperAdmin) return 'SUPER_ADMIN';
+  if (user.isAdmin) return 'ADMIN';
+  return 'USER';
+};
 
 // Log type configuration with icons, colors and labels
 const LOG_TYPE_CONFIG: Record<string, { label: string; color: string; bgColor: string; borderColor: string; icon: React.ComponentType<{ className?: string }> }> = {
@@ -345,6 +399,7 @@ export default function Admin() {
   });
   const [editPassword, setEditPassword] = useState('');
   const [saving, setSaving] = useState(false);
+  const [updatingRoleUserId, setUpdatingRoleUserId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [mutingUser, setMutingUser] = useState<string | null>(null);
   const [clearingChat, setClearingChat] = useState(false);
@@ -354,6 +409,8 @@ export default function Admin() {
 
   // Activity tab state
   type OnlineHistoryPoint = { timestamp: string; count: number; max: number; usernames: { userId: string; username: string }[] };
+  type ActivityChartPoint = OnlineHistoryPoint & { ts: number };
+  type ActivityHoverState = { cursorTs: number; point: ActivityChartPoint };
   type OnlineStats = { current: number; allTimeRecord: number; allTimeRecordAt: string | null; avg1d: number; avg7d: number; avg30d: number; peak1d: number; peak7d: number; peak30d: number };
   const [activityPeriod, setActivityPeriod] = useState<'day' | 'week' | 'month' | 'custom' | 'specific'>('day');
   const [activityCustomStart, setActivityCustomStart] = useState('');
@@ -363,12 +420,14 @@ export default function Admin() {
   const [onlineStats, setOnlineStats] = useState<OnlineStats | null>(null);
   const [loadingActivity, setLoadingActivity] = useState(false);
   const [snapshotting, setSnapshotting] = useState(false);
-  const [hoveredPoint, setHoveredPoint] = useState<OnlineHistoryPoint | null>(null);
-  const [lockedPoint, setLockedPoint] = useState<OnlineHistoryPoint | null>(null);
+  const [hoveredActivity, setHoveredActivity] = useState<ActivityHoverState | null>(null);
   const [activityZoomDomain, setActivityZoomDomain] = useState<[number, number] | null>(null);
   const activityZoomDomainRef = useRef<[number, number] | null>(null);
   const activityFullDomainRef = useRef<[number, number]>([0, 0]);
+  const activityChartDataRef = useRef<ActivityChartPoint[]>([]);
   const activityChartRef = useRef<HTMLDivElement>(null);
+  const activityPanRef = useRef<{ pointerId: number; startClientX: number; domain: [number, number] } | null>(null);
+  const activityDidPanRef = useRef(false);
   const [inventoryDialogOpen, setInventoryDialogOpen] = useState(false);
   const [inventoryUser, setInventoryUser] = useState<AdminUser | null>(null);
   const [inventoryItems, setInventoryItems] = useState<AdminInventoryItem[]>([]);
@@ -430,9 +489,9 @@ export default function Admin() {
   const [loadingPending, setLoadingPending] = useState(false);
   const [approvingUser, setApprovingUser] = useState<string | null>(null);
   const [rejectingUser, setRejectingUser] = useState<string | null>(null);
-  const [archivedRegistrations, setArchivedRegistrations] = useState<(PendingUser & { registrationStatus: 'APPROVED' | 'REJECTED' })[]>(() => {
-    try { return JSON.parse(localStorage.getItem('admin_archived_registrations') || '[]'); } catch { return []; }
-  });
+  const [archivedRegistrations, setArchivedRegistrations] = useState<ArchivedRegistration[]>([]);
+  const [importingArchivedRegistrations, setImportingArchivedRegistrations] = useState(false);
+  const [legacyArchivedRegistrationsCount, setLegacyArchivedRegistrationsCount] = useState(() => parseLegacyArchivedRegistrations().length);
 
   // Ban appeals state
   const [banAppeals, setBanAppeals] = useState<BanAppeal[]>([]);
@@ -454,6 +513,16 @@ export default function Admin() {
   const [banDuration, setBanDuration] = useState(24);
   const [creatingBan, setCreatingBan] = useState(false);
   const [unbanning, setUnbanning] = useState<string | null>(null);
+
+  // Admin warnings state
+  const [warnings, setWarnings] = useState<AdminWarning[]>([]);
+  const [loadingWarnings, setLoadingWarnings] = useState(false);
+  const [warningDialogOpen, setWarningDialogOpen] = useState(false);
+  const [warningUserId, setWarningUserId] = useState<string>('');
+  const [warningMessage, setWarningMessage] = useState('');
+  const [warningSeverity, setWarningSeverity] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('MEDIUM');
+  const [creatingWarning, setCreatingWarning] = useState(false);
+  const [deletingWarning, setDeletingWarning] = useState<string | null>(null);
 
   // Logs state
   const [logs, setLogs] = useState<ActivityLog[]>([]);
@@ -493,9 +562,12 @@ export default function Admin() {
   const [savingFakeOnline, setSavingFakeOnline] = useState(false);
   const [announcementMessage, setAnnouncementMessage] = useState('');
   const [savingAnnouncement, setSavingAnnouncement] = useState(false);
+  const [referralRewardAmount, setReferralRewardAmount] = useState('250');
+  const [savingReferralReward, setSavingReferralReward] = useState(false);
   const [loginMessage, setLoginMessage] = useState('');
-  const [loginMessageFailedModalEnabled, setLoginMessageFailedModalEnabled] = useState(false);
+  const [loginRegisterCtaEnabled, setLoginRegisterCtaEnabled] = useState(true);
   const [savingLoginMessage, setSavingLoginMessage] = useState(false);
+  const [savingLoginRegisterCta, setSavingLoginRegisterCta] = useState(false);
   const [updatePopups, setUpdatePopups] = useState<AdminUpdatePopup[]>([]);
   const [loadingUpdatePopups, setLoadingUpdatePopups] = useState(false);
   const [savingUpdatePopup, setSavingUpdatePopup] = useState(false);
@@ -706,7 +778,9 @@ export default function Admin() {
     fetchShopCategories();
     fetchBugReports();
     fetchPendingUsers();
+    fetchRegistrationReviews();
     fetchBans();
+    fetchWarnings();
     fetchBanAppeals();
     fetchNameChangeRequests();
     fetchLogs();
@@ -716,38 +790,166 @@ export default function Admin() {
     fetchActivity('day');
   }, []);
 
+  const setActivityDomain = (domain: [number, number] | null) => {
+    activityZoomDomainRef.current = domain;
+    setActivityZoomDomain(domain ? [...domain] : null);
+  };
+
+  const getActivityPlotMetrics = () => {
+    const el = activityChartRef.current;
+    if (!el) return null;
+    const rightOffset = 4;
+    const rect = el.getBoundingClientRect();
+    const yAxisEl = el.querySelector('.recharts-yAxis');
+    const plotAreaLeft = yAxisEl ? yAxisEl.getBoundingClientRect().right - rect.left : 16;
+    const chartWidth = rect.width - plotAreaLeft - rightOffset;
+    if (chartWidth <= 0) return null;
+    return { rect, plotAreaLeft, chartWidth };
+  };
+
+  const zoomActivityDomain = (zoomFactor: number, anchorFraction = 0.5) => {
+    const [fullStart, fullEnd] = activityFullDomainRef.current;
+    if (fullEnd <= fullStart) return;
+    const [currentStart, currentEnd] = activityZoomDomainRef.current ?? [fullStart, fullEnd];
+    const currentRange = currentEnd - currentStart;
+    const fullRange = fullEnd - fullStart;
+    const minRange = Math.max(fullRange / 500, 5 * 60 * 1000);
+    const clampedAnchorFraction = Math.max(0, Math.min(1, anchorFraction));
+    const anchorTs = currentStart + clampedAnchorFraction * currentRange;
+    const newRange = Math.max(minRange, Math.min(currentRange * zoomFactor, fullRange));
+    let newStart = anchorTs - clampedAnchorFraction * newRange;
+    let newEnd = anchorTs + (1 - clampedAnchorFraction) * newRange;
+    if (newStart < fullStart) { newEnd += fullStart - newStart; newStart = fullStart; }
+    if (newEnd > fullEnd) { newStart -= newEnd - fullEnd; newEnd = fullEnd; }
+    newStart = Math.max(fullStart, newStart);
+    newEnd = Math.min(fullEnd, newEnd);
+    setActivityDomain([newStart, newEnd]);
+  };
+
+  const panActivityDomain = (deltaMs: number) => {
+    const [fullStart, fullEnd] = activityFullDomainRef.current;
+    if (fullEnd <= fullStart) return;
+    const [currentStart, currentEnd] = activityZoomDomainRef.current ?? [fullStart, fullEnd];
+    const currentRange = currentEnd - currentStart;
+    const fullRange = fullEnd - fullStart;
+    if (currentRange >= fullRange) return;
+    let newStart = currentStart + deltaMs;
+    let newEnd = currentEnd + deltaMs;
+    if (newStart < fullStart) {
+      newEnd += fullStart - newStart;
+      newStart = fullStart;
+    }
+    if (newEnd > fullEnd) {
+      newStart -= newEnd - fullEnd;
+      newEnd = fullEnd;
+    }
+    setActivityDomain([newStart, newEnd]);
+  };
+
+  const resolveActivityHoverState = (clientX: number): ActivityHoverState | null => {
+    const metrics = getActivityPlotMetrics();
+    const chartData = activityChartDataRef.current;
+    if (!metrics || chartData.length === 0) return null;
+    const [fullStart, fullEnd] = activityFullDomainRef.current;
+    const [viewStart, viewEnd] = activityZoomDomainRef.current ?? [fullStart, fullEnd];
+    if (viewEnd <= viewStart) return null;
+    const mouseX = clientX - metrics.rect.left - metrics.plotAreaLeft;
+    const fraction = Math.max(0, Math.min(1, mouseX / metrics.chartWidth));
+    const cursorTs = viewStart + fraction * (viewEnd - viewStart);
+
+    let low = 0;
+    let high = chartData.length - 1;
+    let resolvedIndex = 0;
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      if (chartData[mid].ts <= cursorTs) {
+        resolvedIndex = mid;
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+
+    return {
+      cursorTs,
+      point: chartData[resolvedIndex],
+    };
+  };
+
+  const handleActivityPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const el = activityChartRef.current;
+    if (!el) return;
+    const [fullStart, fullEnd] = activityFullDomainRef.current;
+    const [currentStart, currentEnd] = activityZoomDomainRef.current ?? [fullStart, fullEnd];
+    if (currentEnd - currentStart >= fullEnd - fullStart) return;
+    activityPanRef.current = {
+      pointerId: e.pointerId,
+      startClientX: e.clientX,
+      domain: [currentStart, currentEnd],
+    };
+    activityDidPanRef.current = false;
+    el.setPointerCapture(e.pointerId);
+  };
+
+  const handleActivityPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const panState = activityPanRef.current;
+    if (!panState || panState.pointerId !== e.pointerId) {
+      setHoveredActivity(resolveActivityHoverState(e.clientX));
+      return;
+    }
+    const metrics = getActivityPlotMetrics();
+    if (!metrics) return;
+    const [fullStart, fullEnd] = activityFullDomainRef.current;
+    const fullRange = fullEnd - fullStart;
+    const [domainStart, domainEnd] = panState.domain;
+    const domainRange = domainEnd - domainStart;
+    if (domainRange >= fullRange) return;
+    const deltaX = e.clientX - panState.startClientX;
+    if (Math.abs(deltaX) > 3) activityDidPanRef.current = true;
+    let newStart = domainStart - (deltaX / metrics.chartWidth) * domainRange;
+    let newEnd = domainEnd - (deltaX / metrics.chartWidth) * domainRange;
+    if (newStart < fullStart) {
+      newEnd += fullStart - newStart;
+      newStart = fullStart;
+    }
+    if (newEnd > fullEnd) {
+      newStart -= newEnd - fullEnd;
+      newEnd = fullEnd;
+    }
+    setActivityDomain([newStart, newEnd]);
+    setHoveredActivity(resolveActivityHoverState(e.clientX));
+  };
+
+  const handleActivityPointerEnd = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const el = activityChartRef.current;
+    if (el && el.hasPointerCapture(e.pointerId)) {
+      el.releasePointerCapture(e.pointerId);
+    }
+    activityPanRef.current = null;
+    window.setTimeout(() => {
+      activityDidPanRef.current = false;
+    }, 0);
+  };
+
+  const handleActivityPointerLeave = () => {
+    if (!activityPanRef.current) {
+      setHoveredActivity(null);
+    }
+  };
+
   // Scroll-wheel horizontal zoom for the activity chart
   useEffect(() => {
     const el = activityChartRef.current;
     if (!el) return;
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
-      const [fullStart, fullEnd] = activityFullDomainRef.current;
-      if (fullEnd === fullStart) return;
-      const [currentStart, currentEnd] = activityZoomDomainRef.current ?? [fullStart, fullEnd];
-      const currentRange = currentEnd - currentStart;
-      const rightOffset = 4;
-      const rect = el.getBoundingClientRect();
-      // Dynamically read the plot area left boundary from the rendered YAxis element
-      const yAxisEl = el.querySelector('.recharts-yAxis');
-      const plotAreaLeft = yAxisEl ? yAxisEl.getBoundingClientRect().right - rect.left : 16;
-      const chartWidth = rect.width - plotAreaLeft - rightOffset;
+      const metrics = getActivityPlotMetrics();
+      if (!metrics) return;
+      const { rect, plotAreaLeft, chartWidth } = metrics;
       const mouseX = e.clientX - rect.left - plotAreaLeft;
       const fraction = Math.max(0, Math.min(1, mouseX / chartWidth));
-      const mouseTs = currentStart + fraction * currentRange;
       const zoomFactor = e.deltaY > 0 ? 1.25 : 1 / 1.25;
-      const fullRange = fullEnd - fullStart;
-      const newRange = Math.min(currentRange * zoomFactor, fullRange);
-      let newStart = mouseTs - fraction * newRange;
-      let newEnd = mouseTs + (1 - fraction) * newRange;
-      // Clamp to full domain
-      if (newStart < fullStart) { newEnd += fullStart - newStart; newStart = fullStart; }
-      if (newEnd > fullEnd) { newStart -= newEnd - fullEnd; newEnd = fullEnd; }
-      newStart = Math.max(fullStart, newStart);
-      newEnd = Math.min(fullEnd, newEnd);
-      const next: [number, number] = [newStart, newEnd];
-      activityZoomDomainRef.current = next;
-      setActivityZoomDomain([...next]);
+      zoomActivityDomain(zoomFactor, fraction);
     };
     el.addEventListener('wheel', handleWheel, { passive: false });
     return () => el.removeEventListener('wheel', handleWheel);
@@ -865,6 +1067,16 @@ export default function Admin() {
     }
   };
 
+  const fetchRegistrationReviews = async () => {
+    try {
+      const res = await adminApi.getRegistrationReviews();
+      setArchivedRegistrations(res.data.registrationReviews.map(mapRegistrationReviewToArchivedRegistration));
+    } catch (error) {
+      console.error('Failed to fetch registration reviews:', error);
+      showMessage('error', 'Erreur lors du chargement des inscriptions archivées');
+    }
+  };
+
   const fetchBanAppeals = async () => {
     try {
       setLoadingAppeals(true);
@@ -902,6 +1114,59 @@ export default function Admin() {
     }
   };
 
+  const fetchWarnings = async () => {
+    try {
+      setLoadingWarnings(true);
+      const res = await adminApi.getWarnings();
+      setWarnings(res.data.warnings);
+    } catch (error) {
+      console.error('Failed to fetch warnings:', error);
+      showMessage('error', 'Erreur lors du chargement des avertissements');
+    } finally {
+      setLoadingWarnings(false);
+    }
+  };
+
+  const createWarning = async () => {
+    if (!warningUserId || !warningMessage.trim()) {
+      showMessage('error', 'Utilisateur et message requis');
+      return;
+    }
+    try {
+      setCreatingWarning(true);
+      const res = await adminApi.createWarning({
+        userId: warningUserId,
+        message: warningMessage.trim(),
+        severity: warningSeverity,
+      });
+      setWarnings((prev) => [res.data.warning, ...prev]);
+      setWarningDialogOpen(false);
+      setWarningUserId('');
+      setWarningMessage('');
+      setWarningSeverity('MEDIUM');
+      showMessage('success', res.data.message || 'Avertissement envoyé');
+    } catch (error) {
+      console.error('Failed to create warning:', error);
+      showMessage('error', 'Erreur lors de l\'envoi de l\'avertissement');
+    } finally {
+      setCreatingWarning(false);
+    }
+  };
+
+  const deleteWarning = async (id: string) => {
+    try {
+      setDeletingWarning(id);
+      await adminApi.deleteWarning(id);
+      setWarnings((prev) => prev.filter((w) => w.id !== id));
+      showMessage('success', 'Avertissement supprimé');
+    } catch (error) {
+      console.error('Failed to delete warning:', error);
+      showMessage('error', 'Erreur lors de la suppression');
+    } finally {
+      setDeletingWarning(null);
+    }
+  };
+
   const fetchActivity = async (period?: 'day' | 'week' | 'month' | 'custom' | 'specific', customStart?: string, customEnd?: string) => {
     const p = period ?? activityPeriod;
     setLoadingActivity(true);
@@ -921,8 +1186,7 @@ export default function Admin() {
       ]);
       setActivityHistory({ data: histRes.data.data, peak: histRes.data.peak, peakAt: histRes.data.peakAt });
       setOnlineStats(statsRes.data);
-      setLockedPoint(null);
-      setHoveredPoint(null);
+      setHoveredActivity(null);
       setActivityZoomDomain(null);
       activityZoomDomainRef.current = null;
     } catch {
@@ -1023,10 +1287,11 @@ export default function Admin() {
       setLoadingSettings(true);
       const res = await adminApi.getSettings();
       setAnnouncementMessage(res.data.settings.topbar_announcement || '');
+      setReferralRewardAmount(res.data.settings.referral_reward_amount || '250');
       setMaintenanceMessage(res.data.settings.maintenance_message || '');
       setBlockedMessage(res.data.settings.blocked_message || '');
       setLoginMessage(res.data.settings.login_message || '');
-      setLoginMessageFailedModalEnabled(res.data.settings.login_message_failed_modal_enabled === 'true');
+      setLoginRegisterCtaEnabled(res.data.settings.login_register_cta_enabled !== 'false');
 
       if (res.data.settings.blocked_pages) {
         try {
@@ -1179,21 +1444,54 @@ export default function Admin() {
   };
 
 
+  const saveReferralReward = async () => {
+    try {
+      const parsed = Number.parseInt(referralRewardAmount, 10);
+      if (!Number.isInteger(parsed) || parsed < 0) {
+        showMessage('error', 'La recompense de parrainage doit etre un entier positif ou nul');
+        return;
+      }
+
+      setSavingReferralReward(true);
+      await adminApi.updateSetting('referral_reward_amount', parsed);
+      setReferralRewardAmount(String(parsed));
+      showMessage('success', 'Recompense de parrainage sauvegardee');
+    } catch (error) {
+      console.error('Failed to save referral reward:', error);
+      showMessage('error', 'Erreur lors de la sauvegarde de la recompense');
+    } finally {
+      setSavingReferralReward(false);
+    }
+  };
+
+
   const saveLoginMessage = async () => {
     try {
       setSavingLoginMessage(true);
-      const trimmed = loginMessage.trim();
-      await adminApi.updateSettings({
-        login_message: trimmed,
-        login_message_failed_modal_enabled: loginMessageFailedModalEnabled ? 'true' : 'false',
-      });
-      setLoginMessage(trimmed);
+      await adminApi.updateSetting('login_message', loginMessage.trim());
+      setLoginMessage(loginMessage.trim());
       showMessage('success', 'Message de connexion sauvegardé');
     } catch (error) {
       console.error('Failed to save login message:', error);
       showMessage('error', 'Erreur lors de la sauvegarde du message');
     } finally {
       setSavingLoginMessage(false);
+    }
+  };
+
+  const saveLoginRegisterCta = async (value: boolean) => {
+    const previousValue = loginRegisterCtaEnabled;
+    try {
+      setLoginRegisterCtaEnabled(value);
+      setSavingLoginRegisterCta(true);
+      await adminApi.updateSetting('login_register_cta_enabled', value ? 'true' : 'false');
+      showMessage('success', value ? 'Bouton creer un compte active' : 'Bouton creer un compte desactive');
+    } catch (error) {
+      setLoginRegisterCtaEnabled(previousValue);
+      console.error('Failed to save login register CTA setting:', error);
+      showMessage('error', 'Erreur lors de la sauvegarde du bouton');
+    } finally {
+      setSavingLoginRegisterCta(false);
     }
   };
 
@@ -1244,21 +1542,34 @@ export default function Admin() {
     }
   };
 
+  const importArchivedRegistrations = async () => {
+    const legacyEntries = parseLegacyArchivedRegistrations();
+    if (legacyEntries.length === 0) {
+      showMessage('error', 'Aucune archive locale à importer');
+      setLegacyArchivedRegistrationsCount(0);
+      return;
+    }
+
+    setImportingArchivedRegistrations(true);
+    try {
+      const res = await adminApi.importRegistrationReviews(legacyEntries);
+      setArchivedRegistrations(res.data.registrationReviews.map(mapRegistrationReviewToArchivedRegistration));
+      localStorage.removeItem(ADMIN_ARCHIVED_REGISTRATIONS_STORAGE_KEY);
+      setLegacyArchivedRegistrationsCount(0);
+      showMessage('success', `${res.data.importedCount} archive${res.data.importedCount > 1 ? 's' : ''} importée${res.data.importedCount > 1 ? 's' : ''}`);
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur lors de l\'import');
+    } finally {
+      setImportingArchivedRegistrations(false);
+    }
+  };
+
   const approveUser = async (id: string) => {
     setApprovingUser(id);
     try {
       await adminApi.approveUser(id);
-      setPendingUsers(prev => {
-        const user = prev.find(u => u.id === id);
-        if (user) {
-          setArchivedRegistrations(arch => {
-            const updated = [{ ...user, registrationStatus: 'APPROVED' as const }, ...arch.filter(a => a.id !== id)];
-            localStorage.setItem('admin_archived_registrations', JSON.stringify(updated));
-            return updated;
-          });
-        }
-        return prev.filter(u => u.id !== id);
-      });
+      setPendingUsers(prev => prev.filter(u => u.id !== id));
+      await fetchRegistrationReviews();
       showMessage('success', 'Utilisateur approuvé');
       // Refresh users list to include newly approved user
       fetchUsers();
@@ -1272,16 +1583,9 @@ export default function Admin() {
   const rejectUser = async (id: string) => {
     setRejectingUser(id);
     try {
-      const user = pendingUsers.find(u => u.id === id);
       await adminApi.rejectUser(id);
       setPendingUsers(prev => prev.filter(u => u.id !== id));
-      if (user) {
-        setArchivedRegistrations(arch => {
-          const updated = [{ ...user, registrationStatus: 'REJECTED' as const }, ...arch.filter(a => a.id !== id)];
-          localStorage.setItem('admin_archived_registrations', JSON.stringify(updated));
-          return updated;
-        });
-      }
+      await fetchRegistrationReviews();
       showMessage('success', 'Demande rejetée');
     } catch (error: any) {
       showMessage('error', error.response?.data?.error || 'Erreur');
@@ -1592,6 +1896,23 @@ export default function Admin() {
     }
   };
 
+  const updateUserRole = async (targetUser: AdminUser, role: AdminRole) => {
+    if (getAdminRole(targetUser) === role) {
+      return;
+    }
+
+    setUpdatingRoleUserId(targetUser.id);
+    try {
+      const res = await adminApi.updateUser(targetUser.id, { role });
+      setUsers(prev => prev.map(u => u.id === targetUser.id ? res.data.user : u));
+      showMessage('success', 'Role mis a jour');
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur');
+    } finally {
+      setUpdatingRoleUserId(null);
+    }
+  };
+
   const toggleChatMute = async (u: AdminUser) => {
     setMutingUser(u.id);
     try {
@@ -1883,8 +2204,21 @@ export default function Admin() {
             return (
               <Card className="overflow-hidden">
                 <CardHeader className="border-b border-border/30 pb-3 shrink-0">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-4">
                     <CardDescription>Boîte de réception</CardDescription>
+                    {legacyArchivedRegistrationsCount > 0 && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={importArchivedRegistrations}
+                        disabled={importingArchivedRegistrations}
+                        className="h-8 gap-1.5"
+                      >
+                        {importingArchivedRegistrations ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                        Importer {legacyArchivedRegistrationsCount} archive{legacyArchivedRegistrationsCount > 1 ? 's' : ''} locale{legacyArchivedRegistrationsCount > 1 ? 's' : ''}
+                      </Button>
+                    )}
                     <div className={cn("flex items-center gap-2", TYPOGRAPHY.SMALL)}>
                       <Inbox className="h-4 w-4" />
                       <span>{allPending} en attente</span>
@@ -2276,7 +2610,7 @@ export default function Admin() {
                       key={u.id}
                       className={cn(
                         "py-4",
-                        u.isAdmin && "bg-muted/20"
+                        u.isSuperAdmin ? "bg-amber-500/10" : u.isAdmin ? "bg-muted/20" : undefined
                       )}
                     >
                   {editingUser === u.id ? (
@@ -2286,7 +2620,9 @@ export default function Admin() {
                         <div>
                           <span className="font-medium">{u.username}</span>
                           {u.isAdmin && (
-                            <span className="ml-2 text-xs text-amber-500">admin</span>
+                            <span className={cn("ml-2 text-xs", u.isSuperAdmin ? "text-amber-400" : "text-amber-500")}>
+                              {u.isSuperAdmin ? 'super admin' : 'admin'}
+                            </span>
                           )}
                           <p className="text-xs text-muted-foreground">{u.email}</p>
                         </div>
@@ -2390,9 +2726,20 @@ export default function Admin() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="font-medium truncate">{u.username}</span>
-                            {u.isAdmin && (
-                              <span className="text-xs text-amber-500">admin</span>
-                            )}
+                            <Select
+                              value={getAdminRole(u)}
+                              onValueChange={(value) => void updateUserRole(u, value as AdminRole)}
+                              disabled={updatingRoleUserId === u.id || user?.id === u.id}
+                            >
+                              <SelectTrigger className="h-7 w-[140px] border-border/50 bg-transparent text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="USER">{ROLE_LABELS.USER}</SelectItem>
+                                <SelectItem value="ADMIN">{ROLE_LABELS.ADMIN}</SelectItem>
+                                <SelectItem value="SUPER_ADMIN">{ROLE_LABELS.SUPER_ADMIN}</SelectItem>
+                              </SelectContent>
+                            </Select>
                             {u.isChatMuted && (
                               <span className="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-400">
                                 muet
@@ -2441,7 +2788,7 @@ export default function Admin() {
                             Inventaire
                           </Button>
 
-                          {!u.isAdmin && (
+                          {getAdminRole(u) === 'USER' && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -2463,7 +2810,7 @@ export default function Admin() {
                             </Button>
                           )}
 
-                          {!u.isAdmin && (
+                          {getAdminRole(u) === 'USER' && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -2474,7 +2821,7 @@ export default function Admin() {
                             </Button>
                           )}
 
-                          {!u.isAdmin && (
+                          {getAdminRole(u) === 'USER' && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button
@@ -2917,6 +3264,51 @@ export default function Admin() {
 
           <Card>
             <CardHeader>
+              <CardDescription>Parrainage</CardDescription>
+            </CardHeader>
+            <CardContent className={SPACING.CARD_SPACING}>
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div className="space-y-2">
+                  <h3 className="font-medium">Recompense fixe par inscription validee</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Quand un compte inscrit avec un code de parrainage est approuve, le nouveau joueur et le parrain recoivent chacun cette somme en money.
+                  </p>
+                </div>
+
+                <div className="flex w-full max-w-sm items-end gap-3">
+                  <div className="flex-1 space-y-2">
+                    <label htmlFor="referral-reward-amount" className="text-sm font-medium">
+                      Recompense
+                    </label>
+                    <Input
+                      id="referral-reward-amount"
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={referralRewardAmount}
+                      onChange={(event) => setReferralRewardAmount(event.target.value)}
+                    />
+                  </div>
+                  <Button onClick={saveReferralReward} disabled={savingReferralReward}>
+                    {savingReferralReward ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sauvegarde...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="mr-2 h-4 w-4" />
+                        Sauvegarder
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardDescription>Actions sensibles</CardDescription>
             </CardHeader>
             <CardContent className={SPACING.CARD_SPACING}>
@@ -3184,6 +3576,207 @@ export default function Admin() {
               )}
             </CardContent>
           </Card>
+
+          {/* Admin Warnings Card */}
+          <Card className="mt-6">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardDescription>Avertissements admin</CardDescription>
+                <div className="flex items-center gap-4">
+                  <div className={cn("flex items-center gap-2", TYPOGRAPHY.SMALL)}>
+                    <AlertTriangle className="h-4 w-4" />
+                    <span>{warnings.filter(w => !w.isAcknowledged).length} non lus</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => setWarningDialogOpen(true)}
+                    className="h-8"
+                  >
+                    <Send className="h-4 w-4 mr-1" />
+                    Envoyer
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingWarnings ? (
+                <div className="flex justify-center py-12">
+                  <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+                </div>
+              ) : warnings.length === 0 ? (
+                <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
+                  Aucun avertissement envoyé
+                </p>
+              ) : (
+                <div className="divide-y divide-border/30">
+                  {warnings.map((warning) => (
+                    <div
+                      key={warning.id}
+                      className={cn(
+                        "py-4",
+                        warning.isAcknowledged && "opacity-60"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium">{warning.user.username}</span>
+                            <span className={cn(
+                              "text-xs px-2 py-0.5 rounded",
+                              warning.severity === 'HIGH'
+                                ? "bg-destructive/20 text-destructive"
+                                : warning.severity === 'MEDIUM'
+                                  ? "bg-amber-500/20 text-amber-400"
+                                  : "bg-blue-500/20 text-blue-400"
+                            )}>
+                              {warning.severity === 'HIGH' ? 'Grave' : warning.severity === 'MEDIUM' ? 'Moyen' : 'Info'}
+                            </span>
+                            {warning.isAcknowledged ? (
+                              <span className="text-xs px-2 py-0.5 rounded bg-green-500/20 text-green-400">
+                                Lu
+                              </span>
+                            ) : (
+                              <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                                Non lu
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="text-sm text-muted-foreground">
+                            {warning.message}
+                          </p>
+
+                          <p className="text-xs text-muted-foreground">
+                            Par <span className="text-foreground">{warning.issuedBy.username}</span> • {new Date(warning.createdAt).toLocaleDateString('fr-FR', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                            {warning.acknowledgedAt && (
+                              <span> • Lu le {new Date(warning.acknowledgedAt).toLocaleDateString('fr-FR', {
+                                day: 'numeric',
+                                month: 'short',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}</span>
+                            )}
+                          </p>
+                        </div>
+
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10"
+                              disabled={deletingWarning === warning.id}
+                            >
+                              {deletingWarning === warning.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Supprimer cet avertissement ?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                L'avertissement sera supprimé définitivement.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Annuler</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deleteWarning(warning.id)}
+                                className="bg-destructive hover:bg-destructive/90"
+                              >
+                                Supprimer
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Warning Dialog */}
+          <Dialog open={warningDialogOpen} onOpenChange={setWarningDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Envoyer un avertissement</DialogTitle>
+                <DialogDescription>
+                  L'utilisateur verra un popup qu'il devra confirmer avoir lu.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Utilisateur</label>
+                  <Select value={warningUserId} onValueChange={setWarningUserId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un utilisateur" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users.map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.username}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Sévérité</label>
+                  <Select value={warningSeverity} onValueChange={(v) => setWarningSeverity(v as 'LOW' | 'MEDIUM' | 'HIGH')}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="LOW">Information</SelectItem>
+                      <SelectItem value="MEDIUM">Avertissement</SelectItem>
+                      <SelectItem value="HIGH">Grave</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Message</label>
+                  <Textarea
+                    value={warningMessage}
+                    onChange={(e) => setWarningMessage(e.target.value)}
+                    placeholder="Entrez le message de l'avertissement..."
+                    rows={4}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setWarningDialogOpen(false)}>
+                  Annuler
+                </Button>
+                <Button
+                  onClick={createWarning}
+                  disabled={creatingWarning || !warningUserId || !warningMessage.trim()}
+                >
+                  {creatingWarning ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Envoi...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4 mr-2" />
+                      Envoyer
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         <TabsContent value="logs" className={SPACING.CARD_SPACING}>
@@ -3634,6 +4227,19 @@ export default function Admin() {
                     <p className="text-sm text-muted-foreground">
                       Ce message s'affiche à gauche du formulaire de connexion, visible par tous les visiteurs.
                     </p>
+                    <div className="flex items-center justify-between rounded-lg border bg-background/40 p-4">
+                      <div className="space-y-1 pr-4">
+                        <p className="text-sm font-medium">Bouton "Creer un compte" geant</p>
+                        <p className="text-xs text-muted-foreground">
+                          Affiche ou masque le gros bouton anime sur la page de connexion.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={loginRegisterCtaEnabled}
+                        onCheckedChange={saveLoginRegisterCta}
+                        disabled={savingLoginRegisterCta}
+                      />
+                    </div>
                     <Textarea
                       value={loginMessage}
                       onChange={(e) => setLoginMessage(e.target.value)}
@@ -3643,18 +4249,6 @@ export default function Admin() {
                     <p className="text-xs text-muted-foreground">
                       Laissez vide pour masquer le message.
                     </p>
-                    <div className="flex items-center justify-between rounded-lg border border-border/50 px-4 py-3">
-                      <div className="space-y-1 pr-4">
-                        <p className="text-sm font-medium">Popup apres echec de connexion</p>
-                        <p className="text-xs text-muted-foreground">
-                          Si active, ce message s'ouvre aussi dans une modale uniquement apres une connexion ratee.
-                        </p>
-                      </div>
-                      <Switch
-                        checked={loginMessageFailedModalEnabled}
-                        onCheckedChange={setLoginMessageFailedModalEnabled}
-                      />
-                    </div>
                     <div className="flex justify-end">
                       <Button onClick={saveLoginMessage} disabled={savingLoginMessage}>
                         {savingLoginMessage ? (
@@ -4591,7 +5185,8 @@ export default function Admin() {
                         const MS_DAY = 86400000;
 
                         // All periods use a numeric time axis for proportional spacing
-                        const chartData = activityHistory.data.map(pt => ({ ...pt, ts: new Date(pt.timestamp).getTime() }));
+                        const chartData: ActivityChartPoint[] = activityHistory.data.map(pt => ({ ...pt, ts: new Date(pt.timestamp).getTime() }));
+                        activityChartDataRef.current = chartData;
 
                         // Compute full domain boundaries for this period
                         const now = new Date();
@@ -4624,6 +5219,7 @@ export default function Admin() {
                         // Apply zoom if active
                         const [viewStart, viewEnd] = activityZoomDomain ?? [domainStart, domainEnd];
                         const viewRange = viewEnd - viewStart;
+                        const isZoomed = viewRange < domainEnd - domainStart;
 
                         // Adaptive ticks and separator lines based on visible range
                         const getTicksAndLines = (start: number, end: number, range: number) => {
@@ -4675,25 +5271,80 @@ export default function Admin() {
                         };
 
                         return (
-                          <div ref={activityChartRef}>
+                          <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-xs text-muted-foreground">
+                              Molette pour zoomer, glisser pour dÃ©placer
+                            </p>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                onClick={() => panActivityDomain(-viewRange * 0.25)}
+                                disabled={!isZoomed}
+                                aria-label="DÃ©placer vers la gauche"
+                              >
+                                <ChevronLeft className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                onClick={() => zoomActivityDomain(1 / 1.25)}
+                                aria-label="Zoomer"
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                onClick={() => zoomActivityDomain(1.25)}
+                                aria-label="DÃ©zoomer"
+                              >
+                                <Minus className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-8 px-2 text-xs"
+                                onClick={() => setActivityDomain(null)}
+                                disabled={!isZoomed}
+                              >
+                                Reset
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                onClick={() => panActivityDomain(viewRange * 0.25)}
+                                disabled={!isZoomed}
+                                aria-label="DÃ©placer vers la droite"
+                              >
+                                <ChevronRight className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div
+                            ref={activityChartRef}
+                            onPointerDown={handleActivityPointerDown}
+                            onPointerMove={handleActivityPointerMove}
+                            onPointerUp={handleActivityPointerEnd}
+                            onPointerCancel={handleActivityPointerEnd}
+                            onPointerLeave={handleActivityPointerLeave}
+                            className={cn('touch-none select-none', isZoomed ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer')}
+                          >
                           <ResponsiveContainer width="100%" height={300}>
                             <AreaChart
                               data={chartData}
                               margin={{ top: 6, right: 4, left: -8, bottom: 0 }}
-                              onMouseMove={(chartData) => {
-                                if (lockedPoint) return;
-                                const pt = chartData?.activePayload?.[0]?.payload as OnlineHistoryPoint | undefined;
-                                setHoveredPoint(pt ?? null);
-                              }}
-                              onMouseLeave={() => {
-                                if (!lockedPoint) setHoveredPoint(null);
-                              }}
-                              onClick={(chartData) => {
-                                const pt = chartData?.activePayload?.[0]?.payload as OnlineHistoryPoint | undefined;
-                                if (!pt) { setLockedPoint(null); return; }
-                                setLockedPoint(prev => prev?.timestamp === pt.timestamp ? null : pt);
-                              }}
-                              style={{ cursor: 'pointer' }}
+                              style={{ cursor: isZoomed ? 'grab' : 'pointer' }}
                             >
                               <defs>
                                 <linearGradient id="strokeGradient" x1="0" y1="0" x2="0" y2="1">
@@ -4710,6 +5361,7 @@ export default function Admin() {
                                 dataKey="ts"
                                 type="number"
                                 domain={[viewStart, viewEnd]}
+                                allowDataOverflow
                                 ticks={xAxisTicks}
                                 tickFormatter={tickFormatter}
                                 tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
@@ -4723,22 +5375,6 @@ export default function Admin() {
                                 axisLine={false}
                                 tickLine={false}
                                 width={24}
-                              />
-                              <RechartsTooltip
-                                active={!lockedPoint}
-                                contentStyle={{
-                                  background: 'hsl(var(--popover))',
-                                  border: '1px solid hsl(var(--border))',
-                                  borderRadius: 8,
-                                  fontSize: 12,
-                                  padding: '8px 12px',
-                                }}
-                                labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: 6, fontSize: 11 }}
-                                labelFormatter={ts => new Date(ts as number).toLocaleString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                                formatter={(value: number) => [
-                                  <span style={{ fontWeight: 600 }}>{value}</span>,
-                                  'Joueurs'
-                                ]}
                               />
                               {activityHistory.peak > 0 && (
                                 <ReferenceLine
@@ -4757,15 +5393,23 @@ export default function Admin() {
                                   strokeWidth={1.5}
                                 />
                               ))}
-                              {lockedPoint && (
-                                <ReferenceDot
-                                  x={new Date(lockedPoint.timestamp).getTime()}
-                                  y={lockedPoint.max}
-                                  r={6}
-                                  fill="hsl(var(--foreground))"
-                                  stroke="hsl(var(--background))"
-                                  strokeWidth={2}
-                                />
+                              {hoveredActivity && (
+                                <>
+                                  <ReferenceLine
+                                    x={hoveredActivity.cursorTs}
+                                    stroke="hsl(var(--foreground))"
+                                    strokeDasharray="4 4"
+                                    strokeWidth={1.25}
+                                  />
+                                  <ReferenceDot
+                                    x={hoveredActivity.cursorTs}
+                                    y={hoveredActivity.point.max}
+                                    r={5}
+                                    fill="hsl(var(--foreground))"
+                                    stroke="hsl(var(--background))"
+                                    strokeWidth={2}
+                                  />
+                                </>
                               )}
                               <Area
                                 type="stepAfter"
@@ -4780,13 +5424,14 @@ export default function Admin() {
                             </AreaChart>
                           </ResponsiveContainer>
                           </div>
+                          </div>
                         );
                       })()}
                     </div>
 
                     {/* User list side panel — always visible */}
                     {(() => {
-                      const displayPoint = lockedPoint ?? hoveredPoint;
+                      const displayPoint = hoveredActivity?.point ?? null;
                       const users = displayPoint?.usernames ?? [];
                       return (
                         <div className="w-44 shrink-0 border border-border/40 rounded-lg bg-muted/10 flex flex-col" style={{ height: 300 }}>
@@ -4795,14 +5440,11 @@ export default function Admin() {
                               <>
                                 <p className="text-xs font-medium tabular-nums">{displayPoint.max} joueur{displayPoint.max !== 1 ? 's' : ''}</p>
                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                  {new Date(displayPoint.timestamp).toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}
+                                  {new Date(hoveredActivity!.cursorTs).toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}
                                 </p>
-                                {lockedPoint && (
-                                  <p className="text-xs text-muted-foreground/60 mt-1">Clique à nouveau pour déverrouiller</p>
-                                )}
                               </>
                             ) : (
-                              <p className="text-xs text-muted-foreground/60">Survolez un point</p>
+                              <p className="text-xs text-muted-foreground/60">Survolez le graphe</p>
                             )}
                           </div>
                           <div className="overflow-y-auto flex-1 p-1.5">

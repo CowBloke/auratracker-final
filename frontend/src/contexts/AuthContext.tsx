@@ -12,8 +12,11 @@ interface User {
   aura: number;
   money: number;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   usernameColor?: string | null;
   profilePicture?: string | null;
+  referralCode?: string | null;
+  referredById?: string | null;
   createdAt: string;
 }
 
@@ -21,7 +24,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
-  register: (username: string, firstName: string, schoolLevel: 'SECONDE' | 'PREMIERE' | 'TERMINALE', classLetter: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G', email: string, password: string, motivationMessage: string) => Promise<void>;
+  register: (username: string, firstName: string, schoolLevel: 'SECONDE' | 'PREMIERE' | 'TERMINALE', classLetter: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G', email: string, password: string, motivationMessage: string, referralCode?: string) => Promise<void>;
   logout: () => void;
   updateBalance: (aura: number, money: number) => void;
   refreshUser: () => Promise<void>;
@@ -69,9 +72,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     classLetter: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G',
     email: string,
     password: string,
-    motivationMessage: string
+    motivationMessage: string,
+    referralCode?: string
   ) => {
-    await authApi.register({ username, firstName, schoolLevel, classLetter, email, password, motivationMessage });
+    await authApi.register({ username, firstName, schoolLevel, classLetter, email, password, motivationMessage, referralCode });
   };
 
   const logout = () => {

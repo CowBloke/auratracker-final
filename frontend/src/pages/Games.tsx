@@ -5,9 +5,11 @@ import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageShell } from '@/components/layout/page-shell';
 import { useFeatures } from '@/contexts/FeaturesContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { resolveThemeImageUrl } from '@/lib/images';
 
 type GamesTab = 'singleplayer' | 'multiplayer';
-type MultiplayerTab = 'duel' | 'party';
+type MultiplayerTab = 'all' | 'duel' | 'party';
 
 const games = [
   {
@@ -86,6 +88,22 @@ const games = [
     description: 'Évite les tuyaux et survole le plus loin possible pour gagner des récompenses.',
     type: 'Score',
     image: '/images/games/flappybird.png',
+  },
+  {
+    id: 'geometry-dash',
+    pageKey: 'game-geometry-dash',
+    name: 'Geometry Dash',
+    description: 'Cours en rythme, saute au pixel près et tiens le plus loin possible dans ce dash arcade.',
+    type: 'Arcade',
+    image: '/images/games/geometrydash.png',
+  },
+  {
+    id: 'qs-watermelon',
+    pageKey: 'game-qs-watermelon',
+    name: 'QS Watermelon',
+    description: 'Clone du Watermelon Game: aligne, drop et fusionne les fruits sans depasser la ligne rouge.',
+    type: 'Arcade',
+    image: '/images/games/qswatermelon.svg',
   },
   {
     id: 'casino',
@@ -176,8 +194,9 @@ const tabConfig: Array<{ id: GamesTab; label: string }> = [
 
 export default function Games() {
   const [activeTab, setActiveTab] = useState<GamesTab>('singleplayer');
-  const [activeMultiplayerTab, setActiveMultiplayerTab] = useState<MultiplayerTab>('party');
+  const [activeMultiplayerTab, setActiveMultiplayerTab] = useState<MultiplayerTab>('all');
   const { maintenanceStatus } = useFeatures();
+  const { theme } = useTheme();
   const disabledPages = maintenanceStatus.disabledPages;
 
   const visibleGames = useMemo(() => games.filter((game) => !disabledPages.includes(game.pageKey)), [disabledPages]);
@@ -211,6 +230,12 @@ export default function Games() {
     if (gameId === 'flappy-bird') {
       return '/games/flappy-bird';
     }
+    if (gameId === 'geometry-dash') {
+      return '/games/geometry-dash';
+    }
+    if (gameId === 'qs-watermelon') {
+      return '/games/qs-watermelon';
+    }
     if (gameId === 'logic-lab') {
       return '/games/logic-lab';
     }
@@ -242,7 +267,9 @@ export default function Games() {
     ? soloGames
     : activeMultiplayerTab === 'duel'
       ? duelGames
-      : partyGames;
+      : activeMultiplayerTab === 'party'
+        ? partyGames
+        : multiplayerGames;
 
   return (
     <PageShell>
@@ -262,6 +289,7 @@ export default function Games() {
               onValueChange={(value) => setActiveMultiplayerTab(value as MultiplayerTab)}
             >
               <TabsList className="h-auto flex-wrap">
+                <TabsTrigger value="all">Tous</TabsTrigger>
                 <TabsTrigger value="party">Party</TabsTrigger>
                 <TabsTrigger value="duel">Duel</TabsTrigger>
               </TabsList>
@@ -283,7 +311,7 @@ export default function Games() {
                   )}
                   {game.image && (
                     <img
-                      src={game.image}
+                      src={resolveThemeImageUrl(game.image, theme)}
                       alt={game.name}
                       className="absolute inset-0 h-full w-full object-cover"
                       loading="lazy"

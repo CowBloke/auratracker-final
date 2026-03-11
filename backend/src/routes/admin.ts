@@ -13,6 +13,7 @@ import { recalculateBombPartyPrompts } from '../utils/bombpartyPrompts.js';
 import { getOnlineCount, getOnlineUsers } from '../socket/chat.js';
 import { createNotification } from '../utils/notifications.js';
 import { sendBugReportReplyEmail } from '../utils/email.js';
+import { getReferralRewardAmount, REFERRAL_REWARD_SETTING_KEY } from '../utils/referrals.js';
 
 const router = Router();
 const ANNOUNCEMENT_KEY = 'topbar_announcement';
@@ -114,6 +115,50 @@ const requireAdmin = (req: AuthRequest, res: Response, next: Function) => {
   next();
 };
 
+const toUserRoleFlags = (role: 'USER' | 'ADMIN' | 'SUPER_ADMIN') => ({
+  isAdmin: role !== 'USER',
+  isSuperAdmin: role === 'SUPER_ADMIN',
+});
+
+const serializeRegistrationReview = (review: {
+  id: string;
+  registrationUserId: string;
+  username: string;
+  firstName: string | null;
+  schoolLevel: string | null;
+  classLetter: string | null;
+  email: string;
+  motivationMessage: string | null;
+  registrationCreatedAt: Date;
+  status: string;
+  reviewedAt: Date;
+  reviewedById: string | null;
+  importedFromLegacy: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}) => ({
+  ...review,
+  registrationCreatedAt: review.registrationCreatedAt.toISOString(),
+  reviewedAt: review.reviewedAt.toISOString(),
+  createdAt: review.createdAt.toISOString(),
+  updatedAt: review.updatedAt.toISOString(),
+});
+
+type RegistrationReviewImportEntry = {
+  registrationUserId: string;
+  username: string;
+  firstName: string | null;
+  schoolLevel: string | null;
+  classLetter: string | null;
+  email: string;
+  motivationMessage: string | null;
+  registrationCreatedAt: Date;
+  status: 'APPROVED' | 'REJECTED';
+  reviewedAt: Date;
+  reviewedById: string;
+  importedFromLegacy: true;
+};
+
 const adminClanMemberUserSelect = {
   id: true,
   username: true,
@@ -148,25 +193,223 @@ router.get('/pending-users', authMiddleware, requireAdmin, async (req: AuthReque
   }
 });
 
+router.get('/registration-reviews', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    const registrationReviews = await prisma.registrationReview.findMany({
+      orderBy: { reviewedAt: 'desc' },
+    });
+    res.json({ registrationReviews: registrationReviews.map(serializeRegistrationReview) });
+  } catch (error) {
+    console.error('Admin get registration reviews error:', error);
+    res.status(500).json({ error: 'Failed to get registration reviews' });
+  }
+});
+
+router.post('/registration-reviews/import-local', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const rawEntries: unknown[] | null = Array.isArray(req.body?.entries) ? req.body.entries : null;
+    if (!rawEntries) {
+      return res.status(400).json({ error: 'entries must be an array' });
+    }
+
+    const reviewedAt = new Date();
+    const entries = rawEntries
+      .map((entry): RegistrationReviewImportEntry | null => {
+        if (!entry || typeof entry !== 'object') return null;
+        const candidate = entry as Record<string, unknown>;
+
+        const status = candidate.registrationStatus === 'APPROVED' || candidate.registrationStatus === 'REJECTED'
+          ? candidate.registrationStatus
+          : null;
+        const registrationUserId = typeof candidate.id === 'string' && candidate.id.trim() ? candidate.id.trim() : null;
+        const username = typeof candidate.username === 'string' && candidate.username.trim() ? candidate.username.trim() : null;
+        const email = typeof candidate.email === 'string' && candidate.email.trim() ? candidate.email.trim() : null;
+        const registrationCreatedAt = typeof candidate.createdAt === 'string' ? new Date(candidate.createdAt) : null;
+
+        if (!status || !registrationUserId || !username || !email || !registrationCreatedAt || Number.isNaN(registrationCreatedAt.getTime())) {
+          return null;
+        }
+
+        return {
+          registrationUserId,
+          username,
+          firstName: typeof candidate.firstName === 'string' && candidate.firstName.trim() ? candidate.firstName.trim() : null,
+          schoolLevel: typeof candidate.schoolLevel === 'string' && candidate.schoolLevel.trim() ? candidate.schoolLevel.trim() : null,
+          classLetter: typeof candidate.classLetter === 'string' && candidate.classLetter.trim() ? candidate.classLetter.trim() : null,
+          email,
+          motivationMessage: typeof candidate.motivationMessage === 'string' && candidate.motivationMessage.trim() ? candidate.motivationMessage : null,
+          registrationCreatedAt,
+          status,
+          reviewedAt,
+          reviewedById: req.user!.id,
+          importedFromLegacy: true,
+        };
+      })
+      .filter((entry): entry is RegistrationReviewImportEntry => entry !== null);
+
+    if (entries.length === 0) {
+      return res.status(400).json({ error: 'No valid entries to import' });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      for (const entry of entries) {
+        await tx.registrationReview.upsert({
+          where: { registrationUserId: entry.registrationUserId },
+          update: entry,
+          create: entry,
+        });
+      }
+
+      const registrationReviews = await tx.registrationReview.findMany({
+        orderBy: { reviewedAt: 'desc' },
+      });
+
+      return { registrationReviews };
+    });
+
+    res.json({
+      success: true,
+      importedCount: entries.length,
+      registrationReviews: result.registrationReviews.map(serializeRegistrationReview),
+    });
+  } catch (error) {
+    console.error('Admin import registration reviews error:', error);
+    res.status(500).json({ error: 'Failed to import registration reviews' });
+  }
+});
+
 // Approve a user
 router.post('/users/:id/approve', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    
-    const user = await prisma.user.update({
+
+    const existingUser = await prisma.user.findUnique({
       where: { id },
-      data: { isApproved: true },
       select: {
         id: true,
         username: true,
+        firstName: true,
+        schoolLevel: true,
+        classLetter: true,
         email: true,
-        isApproved: true,
+        motivationMessage: true,
         createdAt: true,
+        isApproved: true,
+        referredById: true,
+        referralRewardGrantedAt: true,
       },
     });
+
+    if (!existingUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (existingUser.isApproved) {
+      return res.status(400).json({ error: 'User already approved' });
+    }
+
+    const rewardAmount = await getReferralRewardAmount();
+
+    const result = await prisma.$transaction(async (tx) => {
+      let rewardGrantedToReferrer: { id: string; username: string } | null = null;
+      const reviewedAt = new Date();
+
+      await tx.user.update({
+        where: { id },
+        data: { isApproved: true },
+      });
+
+      await tx.registrationReview.upsert({
+        where: { registrationUserId: id },
+        update: {
+          username: existingUser.username,
+          firstName: existingUser.firstName,
+          schoolLevel: existingUser.schoolLevel,
+          classLetter: existingUser.classLetter,
+          email: existingUser.email,
+          motivationMessage: existingUser.motivationMessage,
+          registrationCreatedAt: existingUser.createdAt,
+          status: 'APPROVED',
+          reviewedAt,
+          reviewedById: req.user!.id,
+          importedFromLegacy: false,
+        },
+        create: {
+          registrationUserId: id,
+          username: existingUser.username,
+          firstName: existingUser.firstName,
+          schoolLevel: existingUser.schoolLevel,
+          classLetter: existingUser.classLetter,
+          email: existingUser.email,
+          motivationMessage: existingUser.motivationMessage,
+          registrationCreatedAt: existingUser.createdAt,
+          status: 'APPROVED',
+          reviewedAt,
+          reviewedById: req.user!.id,
+          importedFromLegacy: false,
+        },
+      });
+
+      if (existingUser.referredById && !existingUser.referralRewardGrantedAt) {
+        const referrer = await tx.user.findUnique({
+          where: { id: existingUser.referredById },
+          select: { id: true, username: true },
+        });
+
+        if (referrer) {
+          rewardGrantedToReferrer = referrer;
+
+          if (rewardAmount > 0) {
+            await tx.user.update({
+              where: { id },
+              data: {
+                money: { increment: rewardAmount },
+                referralRewardGrantedAt: new Date(),
+              },
+            });
+
+            await tx.user.update({
+              where: { id: referrer.id },
+              data: {
+                money: { increment: rewardAmount },
+              },
+            });
+          } else {
+            await tx.user.update({
+              where: { id },
+              data: {
+                referralRewardGrantedAt: new Date(),
+              },
+            });
+          }
+        }
+      }
+
+      const approvedUser = await tx.user.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          isApproved: true,
+          createdAt: true,
+        },
+      });
+
+      return { user: approvedUser, rewardGrantedToReferrer };
+    });
     
-    // Log approval
-    logAdmin('user_approve', req.user!.id, undefined, id, user.username, { email: user.email });
+    if (!result.user) {
+      return res.status(404).json({ error: 'User not found after approval' });
+    }
+
+    logAdmin('user_approve', req.user!.id, undefined, id, result.user.username, {
+      email: result.user.email,
+      referralRewardAmount: result.rewardGrantedToReferrer ? rewardAmount : 0,
+      referralRewardRecipient: result.rewardGrantedToReferrer?.username,
+    });
+
+    const user = result.user;
 
     createNotification({
       userId: id,
@@ -179,6 +422,35 @@ router.post('/users/:id/approve', authMiddleware, requireAdmin, async (req: Auth
       link: '/login',
       icon: 'badge-check',
     }).catch(() => {});
+
+    if (result.rewardGrantedToReferrer && rewardAmount > 0) {
+      createNotification({
+        userId: id,
+        type: 'SYSTEM',
+        title: 'Prime de parrainage',
+        body: `Tu as recu ${rewardAmount} money apres validation de ton compte.`,
+        data: {
+          rewardAmount,
+          referredById: result.rewardGrantedToReferrer.id,
+        },
+        link: '/dashboard',
+        icon: 'coins',
+      }).catch(() => {});
+
+      createNotification({
+        userId: result.rewardGrantedToReferrer.id,
+        type: 'SYSTEM',
+        title: 'Parrainage valide',
+        body: `${result.user.username} a ete approuve. Tu recois ${rewardAmount} money.`,
+        data: {
+          referredUserId: result.user.id,
+          referredUsername: result.user.username,
+          rewardAmount,
+        },
+        link: '/dashboard',
+        icon: 'sparkles',
+      }).catch(() => {});
+    }
 
     res.json({ success: true, user, message: 'Utilisateur approuvé' });
   } catch (error) {
@@ -208,8 +480,43 @@ router.post('/users/:id/reject', authMiddleware, requireAdmin, async (req: AuthR
     // Log rejection
     logAdmin('user_reject', req.user!.id, undefined, id, user.username, { email: user.email });
 
-    await prisma.user.delete({
-      where: { id },
+    await prisma.$transaction(async (tx) => {
+      const reviewedAt = new Date();
+
+      await tx.registrationReview.upsert({
+        where: { registrationUserId: id },
+        update: {
+          username: user.username,
+          firstName: user.firstName,
+          schoolLevel: user.schoolLevel,
+          classLetter: user.classLetter,
+          email: user.email,
+          motivationMessage: user.motivationMessage,
+          registrationCreatedAt: user.createdAt,
+          status: 'REJECTED',
+          reviewedAt,
+          reviewedById: req.user!.id,
+          importedFromLegacy: false,
+        },
+        create: {
+          registrationUserId: id,
+          username: user.username,
+          firstName: user.firstName,
+          schoolLevel: user.schoolLevel,
+          classLetter: user.classLetter,
+          email: user.email,
+          motivationMessage: user.motivationMessage,
+          registrationCreatedAt: user.createdAt,
+          status: 'REJECTED',
+          reviewedAt,
+          reviewedById: req.user!.id,
+          importedFromLegacy: false,
+        },
+      });
+
+      await tx.user.delete({
+        where: { id },
+      });
     });
 
     res.json({ success: true, message: 'Demande rejetée' });
@@ -626,6 +933,7 @@ router.get('/users', authMiddleware, requireAdmin, async (req: AuthRequest, res:
         money: true,
         auraCoinBalance: true,
         isAdmin: true,
+        isSuperAdmin: true,
         isChatMuted: true,
         dailyAuraGiven: true,
         dailyAuraLimit: true,
@@ -649,10 +957,21 @@ router.get('/users', authMiddleware, requireAdmin, async (req: AuthRequest, res:
 router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { aura, money, auraCoinBalance, dailyAuraLimit, username, firstName, password, isChatMuted } = req.body;
+    const { aura, money, auraCoinBalance, dailyAuraLimit, username, firstName, password, isChatMuted, role } = req.body;
 
     // Build update data
-    const updateData: { aura?: number; money?: number; auraCoinBalance?: number; dailyAuraLimit?: number; username?: string; firstName?: string | null; passwordHash?: string; isChatMuted?: boolean } = {};
+    const updateData: {
+      aura?: number;
+      money?: number;
+      auraCoinBalance?: number;
+      dailyAuraLimit?: number;
+      username?: string;
+      firstName?: string | null;
+      passwordHash?: string;
+      isChatMuted?: boolean;
+      isAdmin?: boolean;
+      isSuperAdmin?: boolean;
+    } = {};
 
     if (username !== undefined) {
       if (typeof username !== 'string') {
@@ -720,11 +1039,30 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
       }
       updateData.passwordHash = await bcrypt.hash(normalizedPassword, 10);
     }
+    if (role !== undefined) {
+      if (role !== 'USER' && role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
+        return res.status(400).json({ error: 'Invalid role' });
+      }
+      if (req.user?.id === id) {
+        return res.status(400).json({ error: 'Cannot change your own role' });
+      }
+      Object.assign(updateData, toUserRoleFlags(role));
+    }
 
     // Get old user data for logging
     const oldUser = await prisma.user.findUnique({
       where: { id },
-      select: { username: true, firstName: true, aura: true, money: true, auraCoinBalance: true, dailyAuraLimit: true, isChatMuted: true },
+      select: {
+        username: true,
+        firstName: true,
+        aura: true,
+        money: true,
+        auraCoinBalance: true,
+        dailyAuraLimit: true,
+        isChatMuted: true,
+        isAdmin: true,
+        isSuperAdmin: true,
+      },
     });
 
     const user = await prisma.user.update({
@@ -739,6 +1077,7 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
         money: true,
         auraCoinBalance: true,
         isAdmin: true,
+        isSuperAdmin: true,
         isChatMuted: true,
         dailyAuraGiven: true,
         dailyAuraLimit: true,
@@ -765,6 +1104,8 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
         auraCoinBalance: oldUser?.auraCoinBalance,
         dailyAuraLimit: oldUser?.dailyAuraLimit,
         isChatMuted: oldUser?.isChatMuted,
+        isAdmin: oldUser?.isAdmin,
+        isSuperAdmin: oldUser?.isSuperAdmin,
       },
     });
 
@@ -1685,6 +2026,13 @@ router.put('/settings/:key', authMiddleware, requireAdmin, async (req: AuthReque
       }
     }
 
+    if (key === REFERRAL_REWARD_SETTING_KEY) {
+      const numValue = parseInt(normalizedValue, 10);
+      if (isNaN(numValue) || numValue < 0) {
+        return res.status(400).json({ error: 'Referral reward must be a non-negative integer' });
+      }
+    }
+
     const setting = await prisma.gameSettings.upsert({
       where: { key },
       create: { key, value: normalizedValue },
@@ -1757,6 +2105,14 @@ router.put('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, r
         const languages = listBombPartyLanguageFiles().map((lang) => lang.fileName);
         if (!languages.includes(normalizedValue)) {
           errors.push(`${key}: Invalid bombparty language selection`);
+          continue;
+        }
+      }
+
+      if (key === REFERRAL_REWARD_SETTING_KEY) {
+        const numValue = parseInt(normalizedValue, 10);
+        if (isNaN(numValue) || numValue < 0) {
+          errors.push(`${key}: Referral reward must be a non-negative integer`);
           continue;
         }
       }
@@ -2653,6 +3009,140 @@ router.get('/online-stats', authMiddleware, requireAdmin, async (req: AuthReques
   } catch (error) {
     console.error('Online stats error:', error);
     res.status(500).json({ error: 'Failed to fetch online stats' });
+  }
+});
+
+// ========== ADMIN WARNING SYSTEM ==========
+
+// Get all warnings (admin only)
+router.get('/warnings', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const warnings = await prisma.adminWarning.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+          },
+        },
+        issuedBy: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json({ warnings });
+  } catch (error) {
+    console.error('Admin get warnings error:', error);
+    res.status(500).json({ error: 'Failed to get warnings' });
+  }
+});
+
+// Create a warning (admin only)
+router.post('/warnings', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { userId, message, severity } = req.body;
+
+    if (!userId || !message) {
+      return res.status(400).json({ error: 'User ID and message are required' });
+    }
+
+    const validSeverities = ['LOW', 'MEDIUM', 'HIGH'];
+    const warningSeverity = severity && validSeverities.includes(severity) ? severity : 'MEDIUM';
+
+    // Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, isAdmin: true, username: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Create the warning
+    const warning = await prisma.adminWarning.create({
+      data: {
+        userId,
+        issuedById: req.user!.id,
+        message: message.trim(),
+        severity: warningSeverity,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+          },
+        },
+        issuedBy: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+      },
+    });
+
+    // Log warning creation
+    logAdmin('warning_create', req.user!.id, req.user!.username, userId, user.username, {
+      severity: warningSeverity,
+      message: message.trim(),
+    });
+
+    // Emit socket event to show warning modal to the user
+    io.to(`user:${userId}`).emit('admin:warning', {
+      id: warning.id,
+      message: warning.message,
+      severity: warning.severity,
+      issuedBy: warning.issuedBy.username,
+      createdAt: warning.createdAt.toISOString(),
+    });
+
+    res.status(201).json({ warning, message: `Warning sent to ${user.username}` });
+  } catch (error) {
+    console.error('Admin create warning error:', error);
+    res.status(500).json({ error: 'Failed to create warning' });
+  }
+});
+
+// Delete a warning (admin only)
+router.delete('/warnings/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const warning = await prisma.adminWarning.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: { username: true },
+        },
+      },
+    });
+
+    if (!warning) {
+      return res.status(404).json({ error: 'Warning not found' });
+    }
+
+    await prisma.adminWarning.delete({
+      where: { id },
+    });
+
+    // Log warning deletion
+    logAdmin('warning_delete', req.user!.id, req.user!.username, warning.userId, warning.user.username, {
+      warningId: id,
+    });
+
+    res.json({ success: true, message: 'Warning deleted' });
+  } catch (error) {
+    console.error('Admin delete warning error:', error);
+    res.status(500).json({ error: 'Failed to delete warning' });
   }
 });
 

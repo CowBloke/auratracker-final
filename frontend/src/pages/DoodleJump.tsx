@@ -9,7 +9,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { GameFullscreenButton } from '@/components/game/GameFullscreenButton';
+import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
+import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 
 // ============================================
@@ -193,6 +194,7 @@ export default function DoodleJump() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
+  const canvasScaleRef = useRef(1);
 
   const { theme } = useTheme();
   const colors = useMemo(() => getColors(theme), [theme]);
@@ -621,6 +623,8 @@ export default function DoodleJump() {
   }, [buildSpectateFrame, emitMultiplayerState, fetchLeaderboard, refreshUser, socket, stopSpectateBroadcast]);
 
   const drawCurrentScene = useCallback((ctx: CanvasRenderingContext2D, timestamp: number, skinId: SkinId) => {
+    ctx.setTransform(canvasScaleRef.current, 0, 0, canvasScaleRef.current, 0, 0);
+    ctx.imageSmoothingEnabled = false;
     // Clear canvas
     ctx.fillStyle = colors.background;
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
@@ -1110,6 +1114,33 @@ export default function DoodleJump() {
   }, [location.pathname, navigate, socket, spectateHostUserIdFromRoute, user]);
 
   useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const resizeCanvas = () => {
+      const rect = canvas.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 3);
+      const width = Math.round(rect.width * dpr);
+      const height = Math.round(rect.height * dpr);
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+      canvasScaleRef.current = width / CANVAS_WIDTH;
+    };
+
+    resizeCanvas();
+    const observer = new ResizeObserver(resizeCanvas);
+    observer.observe(canvas);
+    window.addEventListener('resize', resizeCanvas);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', resizeCanvas);
+    };
+  }, [isFullscreen]);
+
+  useEffect(() => {
     if (!spectatingHost) return;
     const loop = (timestamp: number) => {
       const canvas = canvasRef.current;
@@ -1504,13 +1535,12 @@ export default function DoodleJump() {
       {/* ── Center column — canvas ── */}
       <div
         ref={gameContainerRef}
-        className={`relative ${isFullscreen ? 'flex items-center justify-center w-screen h-screen bg-background' : ''}`}
+        className={`relative flex flex-col gap-3 ${isFullscreen ? 'min-h-screen w-screen items-center bg-background px-4 py-4' : ''}`}
       >
-        {/* Fullscreen button */}
-        <GameFullscreenButton
+        <GameFullscreenToolbar
           isFullscreen={isFullscreen}
-          onClick={toggleFullscreen}
-          className="absolute right-2 top-2 z-30"
+          onToggleFullscreen={toggleFullscreen}
+          className="w-full max-w-[400px]"
         />
 
         {/* Multiplayer live roster bar */}
@@ -1537,43 +1567,45 @@ export default function DoodleJump() {
           </div>
         )}
 
-        <canvas
-          ref={canvasRef}
-          width={CANVAS_WIDTH}
-          height={CANVAS_HEIGHT}
-          className="border border-border/30 rounded-lg block"
-        />
+        <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={CANVAS_WIDTH} baseHeight={CANVAS_HEIGHT}>
+          <canvas
+            ref={canvasRef}
+            width={CANVAS_WIDTH}
+            height={CANVAS_HEIGHT}
+            className="block h-full w-full rounded-lg border border-border/30"
+            style={{ imageRendering: 'pixelated' }}
+          />
 
-        {/* Start Screen */}
-        {!started && !spectatingHost && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
-            <Button
-              variant="ghost"
-              onClick={initGame}
-              className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-            >
-              <Play className="w-4 h-4" />
-              Jouer
-            </Button>
-          </div>
-        )}
+          {/* Start Screen */}
+          {!started && !spectatingHost && (
+            <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/90">
+              <Button
+                variant="ghost"
+                onClick={initGame}
+                className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+              >
+                <Play className="w-4 h-4" />
+                Jouer
+              </Button>
+            </div>
+          )}
 
-        {/* Game Over Screen */}
-        {gameOver && !spectatingHost && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
-            <div className="text-center space-y-6">
-              <div>
-                <h2 className="text-2xl font-light mb-2">Fin de partie</h2>
-                <p className="text-3xl tabular-nums">{score.toLocaleString()}</p>
-              </div>
-              {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
-              {rewards && (rewards.money > 0 || rewards.aura > 0) && (
-                <p className="text-sm text-muted-foreground">
-                  {rewards.money > 0 && `+$${rewards.money}`}
-                  {rewards.money > 0 && rewards.aura > 0 && ' · '}
-                  {rewards.aura > 0 && `+${rewards.aura} aura`}
-                </p>
-              )}
+          {/* Game Over Screen */}
+          {gameOver && !spectatingHost && (
+            <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/90">
+              <div className="text-center space-y-6">
+                <div>
+                  <h2 className="text-2xl font-light mb-2">Fin de partie</h2>
+                  <p className="text-3xl tabular-nums">{score.toLocaleString()}</p>
+                </div>
+                {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
+                {rewards && (rewards.money > 0 || rewards.aura > 0) && (
+                  <p className="text-sm text-muted-foreground">
+                    {rewards.money > 0 && `+$${rewards.money}`}
+                    {rewards.money > 0 && rewards.aura > 0 && ' · '}
+                    {rewards.aura > 0 && `+${rewards.aura} aura`}
+                  </p>
+                )}
               <Button
                 variant="ghost"
                 onClick={initGame}
@@ -1582,9 +1614,10 @@ export default function DoodleJump() {
                 <RotateCcw className="w-4 h-4" />
                 Rejouer
               </Button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </GameFullscreenStage>
       </div>
 
       {/* ── Right column ── */}

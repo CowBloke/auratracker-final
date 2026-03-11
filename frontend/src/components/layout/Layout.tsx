@@ -3,6 +3,7 @@ import { useEffect, type CSSProperties } from 'react';
 import { ChatSidebarProvider, ChatSidebarWrapper, useChatSidebar } from '../chat/ChatSidebarWrapper';
 import ChatBubble from '../chat/ChatBubble';
 import UpdatePopupModal from './UpdatePopupModal';
+import AdminWarningModal from './AdminWarningModal';
 import GameJoinPrompt from '../game/GameJoinPrompt';
 import GameReplayPrompt from '../game/GameReplayPrompt';
 import DuelChallengePopup from '../game/DuelChallengePopup';
@@ -120,6 +121,7 @@ export default function Layout() {
         )}
 
         <UpdatePopupModal />
+        <AdminWarningModal />
       </div>
     </ChatSidebarProvider>
   );

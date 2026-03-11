@@ -57,9 +57,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   });
   const [colorScheme, setColorScheme] = useState<string>(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('colorScheme') || 'aura-classic';
+      return localStorage.getItem('colorScheme') || 'default';
     }
-    return 'aura-classic';
+    return 'default';
   });
 
   useEffect(() => {

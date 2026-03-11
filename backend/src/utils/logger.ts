@@ -28,7 +28,7 @@ export type MarketplaceAction =
   | 'listing_create'
   | 'listing_sold'
   | 'listing_cancel';
-export type AdminAction = 'user_update' | 'user_delete' | 'user_approve' | 'user_reject' | 'inventory_add' | 'inventory_update' | 'inventory_remove' | 'chat_clear' | 'stats_delete' | 'badge_create' | 'badge_assign' | 'badge_remove' | 'setting_update' | 'settings_bulk_update' | 'extreme_aura_reset' | 'deploy_trigger' | 'polymarket_event_create' | 'polymarket_event_update' | 'polymarket_event_resolve' | 'polymarket_suggestion_approve' | 'polymarket_suggestion_reject' | 'gift_template_create' | 'gift_template_update' | 'gift_template_delete' | 'bombparty_prompts_recalculate' | 'update_popup_create' | 'update_popup_update' | 'update_popup_delete' | 'appeal_reject' | 'username_change' | 'clan_update' | 'clan_transfer_leadership' | 'clan_delete';
+export type AdminAction = 'user_update' | 'user_delete' | 'user_approve' | 'user_reject' | 'inventory_add' | 'inventory_update' | 'inventory_remove' | 'chat_clear' | 'stats_delete' | 'badge_create' | 'badge_assign' | 'badge_remove' | 'setting_update' | 'settings_bulk_update' | 'extreme_aura_reset' | 'deploy_trigger' | 'polymarket_event_create' | 'polymarket_event_update' | 'polymarket_event_resolve' | 'polymarket_suggestion_approve' | 'polymarket_suggestion_reject' | 'gift_template_create' | 'gift_template_update' | 'gift_template_delete' | 'bombparty_prompts_recalculate' | 'update_popup_create' | 'update_popup_update' | 'update_popup_delete' | 'appeal_reject' | 'username_change' | 'clan_update' | 'clan_transfer_leadership' | 'clan_delete' | 'warning_create' | 'warning_delete';
 export type BanAction = 'ban_create' | 'ban_remove';
 export type AuraCoinAction =
   | 'auracoin_buy'

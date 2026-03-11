@@ -37,6 +37,7 @@ router.get('/leaderboard', authMiddleware, async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
 
     const rankings = await prisma.bombPartyStats.findMany({
+      where: { user: { isSuperAdmin: false } },
       orderBy: { wins: 'desc' },
       take: limit,
       include: {

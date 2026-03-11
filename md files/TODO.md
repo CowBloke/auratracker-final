@@ -14,6 +14,9 @@
 - textes majuscules
 - FLUIDITE MULTIJOUEURS
 - notif inobox polymarket ancien chemin
+- toast shop inventaire achat utilisé
+- voir qui a réagit dans le chat
+- confirmation toast shop
 
 ## à FIX
 

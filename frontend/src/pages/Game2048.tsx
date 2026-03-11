@@ -4,7 +4,8 @@ import { useTheme } from '../contexts/ThemeContext';
 import { gamesApi } from '../services/api';
 import { Play, RotateCcw, Trophy, X, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { GameFullscreenButton } from '@/components/game/GameFullscreenButton';
+import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
+import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -511,22 +512,22 @@ export default function Game2048() {
       <div
         ref={gameContainerRef}
         className={cn(
-          'relative',
-          isFullscreen && 'flex min-h-screen w-screen items-center justify-center bg-background'
+          'flex flex-col gap-3',
+          isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
         )}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        <GameFullscreenButton
+        <GameFullscreenToolbar
           isFullscreen={isFullscreen}
-          onClick={toggleFullscreen}
-          className="absolute right-2 top-2 z-30"
+          onToggleFullscreen={toggleFullscreen}
+          className="w-full max-w-[390px]"
         />
 
-        <div
-          className="relative border border-border/30 rounded-lg bg-muted/20 p-2"
-          style={{ width: BOARD_SIZE, height: BOARD_SIZE }}
-        >
+        <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={BOARD_SIZE} baseHeight={BOARD_SIZE}>
+          <div
+            className="relative h-full w-full border border-border/30 rounded-lg bg-muted/20 p-2"
+          >
           {/* Background grid */}
           <div className="absolute inset-2 grid grid-cols-4 gap-2.5">
             {Array.from({ length: GRID_SIZE * GRID_SIZE }).map((_, i) => (
@@ -622,7 +623,8 @@ export default function Game2048() {
               </div>
             </div>
           )}
-        </div>
+          </div>
+        </GameFullscreenStage>
       </div>
 
       {/* ── Right column — leaderboard ── */}

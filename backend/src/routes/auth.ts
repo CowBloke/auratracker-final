@@ -6,8 +6,8 @@ import { config } from '../config/index.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { validate, registerSchema, loginSchema } from '../middleware/validation.js';
 import { logAuth } from '../utils/logger.js';
+import { createUniqueReferralCode, ensureUserReferralCode, getReferralRewardAmount, normalizeReferralCode } from '../utils/referrals.js';
 
-// Helper to get IP address from request
 const getIpAddress = (req: Request | AuthRequest): string | null => {
   const forwarded = req.headers['x-forwarded-for'];
   if (typeof forwarded === 'string') {
@@ -18,7 +18,6 @@ const getIpAddress = (req: Request | AuthRequest): string | null => {
 
 const router = Router();
 
-// Generate JWT
 const generateToken = (userId: string, email: string): string => {
   const options: SignOptions = { expiresIn: '7d' };
   return jwt.sign(
@@ -28,18 +27,17 @@ const generateToken = (userId: string, email: string): string => {
   );
 };
 
-// Register - Creates a pending account that needs admin approval
 router.post('/register', validate(registerSchema), async (req, res) => {
   try {
     const { username, firstName, schoolLevel, classLetter, email, password, motivationMessage } = req.body;
-    
-    // Check if user exists
+    const referralCode = normalizeReferralCode(req.body.referralCode);
+
     const existingUser = await prisma.user.findFirst({
       where: {
         OR: [{ email }, { username }],
       },
     });
-    
+
     if (existingUser) {
       return res.status(400).json({
         error: existingUser.email === email
@@ -47,14 +45,26 @@ router.post('/register', validate(registerSchema), async (req, res) => {
           : 'Username already taken',
       });
     }
-    
-    // Hash password
+
+    let referrerId: string | null = null;
+    if (referralCode) {
+      const referrer = await prisma.user.findUnique({
+        where: { referralCode },
+        select: { id: true },
+      });
+
+      if (!referrer) {
+        return res.status(400).json({ error: 'Referral code invalid' });
+      }
+
+      referrerId = referrer.id;
+    }
+
     const passwordHash = await bcrypt.hash(password, 10);
-    
-    // Check if this is the admin email - auto-approve admin
-    const isAdmin = email === config.adminEmail;
-    
-    // Create user - auto-approve if admin, otherwise pending approval
+    const isSuperAdmin = email === config.adminEmail;
+    const isAdmin = isSuperAdmin;
+    const generatedReferralCode = await createUniqueReferralCode();
+
     await prisma.user.create({
       data: {
         username,
@@ -65,20 +75,24 @@ router.post('/register', validate(registerSchema), async (req, res) => {
         passwordHash,
         motivationMessage: typeof motivationMessage === 'string' ? motivationMessage.trim() : motivationMessage,
         isAdmin,
-        isApproved: isAdmin, // Admin is auto-approved
-        money: 1000, // Starting money
+        isSuperAdmin,
+        isApproved: isAdmin,
+        money: 1000,
+        referralCode: generatedReferralCode,
+        referredById: referrerId,
+        referredAt: referrerId ? new Date() : null,
       },
     });
-    
-    // Log registration
-    logAuth('register', undefined, username, { email, isAdmin, schoolLevel, classLetter }, getIpAddress(req));
 
-    // Don't return token - account needs approval first (unless admin)
+    logAuth('register', undefined, username, { email, isAdmin, isSuperAdmin, schoolLevel, classLetter, referredById: referrerId }, getIpAddress(req));
+
     res.status(201).json({
       success: true,
       message: isAdmin
-        ? 'Compte admin créé avec succès'
-        : 'Demande envoyée ! Un administrateur doit approuver votre compte avant que vous puissiez vous connecter.',
+        ? 'Compte admin cree avec succes'
+        : referrerId
+          ? 'Demande envoyee ! Le parrainage sera valide quand un administrateur approuvera ton compte.'
+          : 'Demande envoyee ! Un administrateur doit approuver votre compte avant que vous puissiez vous connecter.',
       requiresApproval: !isAdmin,
     });
   } catch (error) {
@@ -87,15 +101,14 @@ router.post('/register', validate(registerSchema), async (req, res) => {
   }
 });
 
-// Login
 router.post('/login', validate(loginSchema), async (req, res) => {
   try {
     const { username, password } = req.body;
-    
+
     const user = await prisma.user.findUnique({
       where: { username },
     });
-    
+
     if (!user) {
       logAuth('login_failed', undefined, username, { reason: 'user_not_found' }, getIpAddress(req));
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -107,8 +120,7 @@ router.post('/login', validate(loginSchema), async (req, res) => {
       logAuth('login_failed', user.id, username, { reason: 'invalid_password' }, getIpAddress(req));
       return res.status(401).json({ error: 'Invalid credentials' });
     }
-    
-    // Check if account is approved
+
     if (!user.isApproved) {
       logAuth('login_failed', user.id, username, { reason: 'pending_approval' }, getIpAddress(req));
       return res.status(403).json({
@@ -117,7 +129,6 @@ router.post('/login', validate(loginSchema), async (req, res) => {
       });
     }
 
-    // Check if user is banned
     const activeBan = await prisma.ban.findFirst({
       where: {
         userId: user.id,
@@ -133,7 +144,7 @@ router.post('/login', validate(loginSchema), async (req, res) => {
       logAuth('login_banned', user.id, username, { banType: activeBan.type, reason: activeBan.reason }, getIpAddress(req));
       return res.status(403).json({
         error: activeBan.type === 'PERMANENT'
-          ? `Votre compte a été banni définitivement. Raison: ${activeBan.reason}`
+          ? `Votre compte a ete banni definitivement. Raison: ${activeBan.reason}`
           : `Votre compte est banni jusqu'au ${activeBan.expiresAt?.toISOString()}. Raison: ${activeBan.reason}`,
         banned: true,
         userId: user.id,
@@ -147,9 +158,9 @@ router.post('/login', validate(loginSchema), async (req, res) => {
     }
 
     const token = generateToken(user.id, user.email);
+    const ensuredReferralCode = await ensureUserReferralCode(user.id, user.referralCode);
 
-    // Log successful login
-    logAuth('login', user.id, user.username, { isAdmin: user.isAdmin }, getIpAddress(req));
+    logAuth('login', user.id, user.username, { isAdmin: user.isAdmin, isSuperAdmin: user.isSuperAdmin }, getIpAddress(req));
 
     res.json({
       user: {
@@ -162,8 +173,11 @@ router.post('/login', validate(loginSchema), async (req, res) => {
         aura: user.aura,
         money: user.money,
         isAdmin: user.isAdmin,
+        isSuperAdmin: user.isSuperAdmin,
         usernameColor: user.usernameColor,
         profilePicture: user.profilePicture,
+        referralCode: ensuredReferralCode,
+        referredById: user.referredById,
         createdAt: user.createdAt,
       },
       token,
@@ -174,13 +188,12 @@ router.post('/login', validate(loginSchema), async (req, res) => {
   }
 });
 
-// Refresh token
 router.post('/refresh', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
-    
+
     const token = generateToken(req.user.id, req.user.email);
     res.json({ token });
   } catch (error) {
@@ -189,13 +202,12 @@ router.post('/refresh', authMiddleware, async (req: AuthRequest, res: Response) 
   }
 });
 
-// Get current user
 router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
-    
+
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
       select: {
@@ -208,16 +220,59 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
         aura: true,
         money: true,
         isAdmin: true,
+        isSuperAdmin: true,
         usernameColor: true,
         profilePicture: true,
+        referralCode: true,
+        referredById: true,
         createdAt: true,
       },
     });
-    
+
+    if (user) {
+      user.referralCode = await ensureUserReferralCode(user.id, user.referralCode);
+    }
+
     res.json({ user });
   } catch (error) {
     console.error('Get me error:', error);
     res.status(500).json({ error: 'Failed to get user' });
+  }
+});
+
+router.get('/referral-summary', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const referralCode = await ensureUserReferralCode(req.user.id, req.user.referralCode);
+    const [rewardAmount, successfulReferrals, pendingReferrals] = await Promise.all([
+      getReferralRewardAmount(),
+      prisma.user.count({
+        where: {
+          referredById: req.user.id,
+          referralRewardGrantedAt: { not: null },
+        },
+      }),
+      prisma.user.count({
+        where: {
+          referredById: req.user.id,
+          referralRewardGrantedAt: null,
+        },
+      }),
+    ]);
+
+    res.json({
+      referralCode,
+      rewardAmount,
+      successfulReferrals,
+      pendingReferrals,
+      totalRewardsEarned: successfulReferrals * rewardAmount,
+    });
+  } catch (error) {
+    console.error('Get referral summary error:', error);
+    res.status(500).json({ error: 'Failed to get referral summary' });
   }
 });
 
