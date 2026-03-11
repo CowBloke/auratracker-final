@@ -3012,4 +3012,138 @@ router.get('/online-stats', authMiddleware, requireAdmin, async (req: AuthReques
   }
 });
 
+// ========== ADMIN WARNING SYSTEM ==========
+
+// Get all warnings (admin only)
+router.get('/warnings', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const warnings = await prisma.adminWarning.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+          },
+        },
+        issuedBy: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json({ warnings });
+  } catch (error) {
+    console.error('Admin get warnings error:', error);
+    res.status(500).json({ error: 'Failed to get warnings' });
+  }
+});
+
+// Create a warning (admin only)
+router.post('/warnings', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { userId, message, severity } = req.body;
+
+    if (!userId || !message) {
+      return res.status(400).json({ error: 'User ID and message are required' });
+    }
+
+    const validSeverities = ['LOW', 'MEDIUM', 'HIGH'];
+    const warningSeverity = severity && validSeverities.includes(severity) ? severity : 'MEDIUM';
+
+    // Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, isAdmin: true, username: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Create the warning
+    const warning = await prisma.adminWarning.create({
+      data: {
+        userId,
+        issuedById: req.user!.id,
+        message: message.trim(),
+        severity: warningSeverity,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+          },
+        },
+        issuedBy: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+      },
+    });
+
+    // Log warning creation
+    logAdmin('warning_create', req.user!.id, req.user!.username, userId, user.username, {
+      severity: warningSeverity,
+      message: message.trim(),
+    });
+
+    // Emit socket event to show warning modal to the user
+    io.to(`user:${userId}`).emit('admin:warning', {
+      id: warning.id,
+      message: warning.message,
+      severity: warning.severity,
+      issuedBy: warning.issuedBy.username,
+      createdAt: warning.createdAt.toISOString(),
+    });
+
+    res.status(201).json({ warning, message: `Warning sent to ${user.username}` });
+  } catch (error) {
+    console.error('Admin create warning error:', error);
+    res.status(500).json({ error: 'Failed to create warning' });
+  }
+});
+
+// Delete a warning (admin only)
+router.delete('/warnings/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const warning = await prisma.adminWarning.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: { username: true },
+        },
+      },
+    });
+
+    if (!warning) {
+      return res.status(404).json({ error: 'Warning not found' });
+    }
+
+    await prisma.adminWarning.delete({
+      where: { id },
+    });
+
+    // Log warning deletion
+    logAdmin('warning_delete', req.user!.id, req.user!.username, warning.userId, warning.user.username, {
+      warningId: id,
+    });
+
+    res.json({ success: true, message: 'Warning deleted' });
+  } catch (error) {
+    console.error('Admin delete warning error:', error);
+    res.status(500).json({ error: 'Failed to delete warning' });
+  }
+});
+
 export default router;

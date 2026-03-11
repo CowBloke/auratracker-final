@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { adminApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, RegistrationReview } from '../services/api';
+import { adminApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, RegistrationReview, AdminWarning } from '../services/api';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -514,6 +514,16 @@ export default function Admin() {
   const [creatingBan, setCreatingBan] = useState(false);
   const [unbanning, setUnbanning] = useState<string | null>(null);
 
+  // Admin warnings state
+  const [warnings, setWarnings] = useState<AdminWarning[]>([]);
+  const [loadingWarnings, setLoadingWarnings] = useState(false);
+  const [warningDialogOpen, setWarningDialogOpen] = useState(false);
+  const [warningUserId, setWarningUserId] = useState<string>('');
+  const [warningMessage, setWarningMessage] = useState('');
+  const [warningSeverity, setWarningSeverity] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('MEDIUM');
+  const [creatingWarning, setCreatingWarning] = useState(false);
+  const [deletingWarning, setDeletingWarning] = useState<string | null>(null);
+
   // Logs state
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [logStats, setLogStats] = useState<LogStats | null>(null);
@@ -770,6 +780,7 @@ export default function Admin() {
     fetchPendingUsers();
     fetchRegistrationReviews();
     fetchBans();
+    fetchWarnings();
     fetchBanAppeals();
     fetchNameChangeRequests();
     fetchLogs();
@@ -1100,6 +1111,59 @@ export default function Admin() {
       showMessage('error', 'Erreur lors du chargement des bannissements');
     } finally {
       setLoadingBans(false);
+    }
+  };
+
+  const fetchWarnings = async () => {
+    try {
+      setLoadingWarnings(true);
+      const res = await adminApi.getWarnings();
+      setWarnings(res.data.warnings);
+    } catch (error) {
+      console.error('Failed to fetch warnings:', error);
+      showMessage('error', 'Erreur lors du chargement des avertissements');
+    } finally {
+      setLoadingWarnings(false);
+    }
+  };
+
+  const createWarning = async () => {
+    if (!warningUserId || !warningMessage.trim()) {
+      showMessage('error', 'Utilisateur et message requis');
+      return;
+    }
+    try {
+      setCreatingWarning(true);
+      const res = await adminApi.createWarning({
+        userId: warningUserId,
+        message: warningMessage.trim(),
+        severity: warningSeverity,
+      });
+      setWarnings((prev) => [res.data.warning, ...prev]);
+      setWarningDialogOpen(false);
+      setWarningUserId('');
+      setWarningMessage('');
+      setWarningSeverity('MEDIUM');
+      showMessage('success', res.data.message || 'Avertissement envoyé');
+    } catch (error) {
+      console.error('Failed to create warning:', error);
+      showMessage('error', 'Erreur lors de l\'envoi de l\'avertissement');
+    } finally {
+      setCreatingWarning(false);
+    }
+  };
+
+  const deleteWarning = async (id: string) => {
+    try {
+      setDeletingWarning(id);
+      await adminApi.deleteWarning(id);
+      setWarnings((prev) => prev.filter((w) => w.id !== id));
+      showMessage('success', 'Avertissement supprimé');
+    } catch (error) {
+      console.error('Failed to delete warning:', error);
+      showMessage('error', 'Erreur lors de la suppression');
+    } finally {
+      setDeletingWarning(null);
     }
   };
 
@@ -3512,6 +3576,207 @@ export default function Admin() {
               )}
             </CardContent>
           </Card>
+
+          {/* Admin Warnings Card */}
+          <Card className="mt-6">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardDescription>Avertissements admin</CardDescription>
+                <div className="flex items-center gap-4">
+                  <div className={cn("flex items-center gap-2", TYPOGRAPHY.SMALL)}>
+                    <AlertTriangle className="h-4 w-4" />
+                    <span>{warnings.filter(w => !w.isAcknowledged).length} non lus</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => setWarningDialogOpen(true)}
+                    className="h-8"
+                  >
+                    <Send className="h-4 w-4 mr-1" />
+                    Envoyer
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingWarnings ? (
+                <div className="flex justify-center py-12">
+                  <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+                </div>
+              ) : warnings.length === 0 ? (
+                <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
+                  Aucun avertissement envoyé
+                </p>
+              ) : (
+                <div className="divide-y divide-border/30">
+                  {warnings.map((warning) => (
+                    <div
+                      key={warning.id}
+                      className={cn(
+                        "py-4",
+                        warning.isAcknowledged && "opacity-60"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium">{warning.user.username}</span>
+                            <span className={cn(
+                              "text-xs px-2 py-0.5 rounded",
+                              warning.severity === 'HIGH'
+                                ? "bg-destructive/20 text-destructive"
+                                : warning.severity === 'MEDIUM'
+                                  ? "bg-amber-500/20 text-amber-400"
+                                  : "bg-blue-500/20 text-blue-400"
+                            )}>
+                              {warning.severity === 'HIGH' ? 'Grave' : warning.severity === 'MEDIUM' ? 'Moyen' : 'Info'}
+                            </span>
+                            {warning.isAcknowledged ? (
+                              <span className="text-xs px-2 py-0.5 rounded bg-green-500/20 text-green-400">
+                                Lu
+                              </span>
+                            ) : (
+                              <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                                Non lu
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="text-sm text-muted-foreground">
+                            {warning.message}
+                          </p>
+
+                          <p className="text-xs text-muted-foreground">
+                            Par <span className="text-foreground">{warning.issuedBy.username}</span> • {new Date(warning.createdAt).toLocaleDateString('fr-FR', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                            {warning.acknowledgedAt && (
+                              <span> • Lu le {new Date(warning.acknowledgedAt).toLocaleDateString('fr-FR', {
+                                day: 'numeric',
+                                month: 'short',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}</span>
+                            )}
+                          </p>
+                        </div>
+
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10"
+                              disabled={deletingWarning === warning.id}
+                            >
+                              {deletingWarning === warning.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Supprimer cet avertissement ?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                L'avertissement sera supprimé définitivement.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Annuler</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deleteWarning(warning.id)}
+                                className="bg-destructive hover:bg-destructive/90"
+                              >
+                                Supprimer
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Warning Dialog */}
+          <Dialog open={warningDialogOpen} onOpenChange={setWarningDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Envoyer un avertissement</DialogTitle>
+                <DialogDescription>
+                  L'utilisateur verra un popup qu'il devra confirmer avoir lu.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Utilisateur</label>
+                  <Select value={warningUserId} onValueChange={setWarningUserId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un utilisateur" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users.map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.username}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Sévérité</label>
+                  <Select value={warningSeverity} onValueChange={(v) => setWarningSeverity(v as 'LOW' | 'MEDIUM' | 'HIGH')}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="LOW">Information</SelectItem>
+                      <SelectItem value="MEDIUM">Avertissement</SelectItem>
+                      <SelectItem value="HIGH">Grave</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Message</label>
+                  <Textarea
+                    value={warningMessage}
+                    onChange={(e) => setWarningMessage(e.target.value)}
+                    placeholder="Entrez le message de l'avertissement..."
+                    rows={4}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setWarningDialogOpen(false)}>
+                  Annuler
+                </Button>
+                <Button
+                  onClick={createWarning}
+                  disabled={creatingWarning || !warningUserId || !warningMessage.trim()}
+                >
+                  {creatingWarning ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Envoi...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4 mr-2" />
+                      Envoyer
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         <TabsContent value="logs" className={SPACING.CARD_SPACING}>

@@ -25,5 +25,6 @@
       "Bash(wc:*)",
       "Bash(xargs grep:*)"
     ]
-  }
+  },
+  "outputStyle": "default"
 }

@@ -81,6 +81,9 @@ export const usersApi = {
   update: (id: string, data: { username?: string; bio?: string }) => api.put(`/users/${id}`, data),
   requestNameChange: (data: { requestedUsername: string; reason?: string }) =>
     api.post<{ request: NameChangeRequest }>('/users/name-change-request', data),
+  // Admin warnings (user-facing)
+  getPendingWarnings: () => api.get<{ warnings: UserPendingWarning[] }>('/users/warnings/pending'),
+  acknowledgeWarning: (id: string) => api.post<{ success: boolean; message: string }>(`/users/warnings/${id}/acknowledge`),
 };
 
 export interface UserUpdatePopup {
@@ -91,6 +94,17 @@ export interface UserUpdatePopup {
   imageUrl: string | null;
   releaseDate: string;
   createdAt: string;
+}
+
+export interface UserPendingWarning {
+  id: string;
+  message: string;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH';
+  createdAt: string;
+  issuedBy: {
+    id: string;
+    username: string;
+  };
 }
 
 // Economy API
@@ -766,6 +780,26 @@ export interface Ban {
   };
 }
 
+export interface AdminWarning {
+  id: string;
+  userId: string;
+  issuedById: string;
+  message: string;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH';
+  isAcknowledged: boolean;
+  acknowledgedAt: string | null;
+  createdAt: string;
+  user: {
+    id: string;
+    username: string;
+    email: string;
+  };
+  issuedBy: {
+    id: string;
+    username: string;
+  };
+}
+
 // Suggestions API
 export interface SuggestionComment {
   id: string;
@@ -1024,6 +1058,11 @@ export const adminApi = {
   getNameChangeRequests: () => api.get<{ nameChangeRequests: NameChangeRequest[] }>('/admin/name-change-requests'),
   reviewNameChangeRequest: (id: string, data: { action: 'approve' | 'reject' }) =>
     api.put<{ nameChangeRequest: NameChangeRequest }>(`/admin/name-change-requests/${id}`, data),
+  // Admin warnings
+  getWarnings: () => api.get<{ warnings: AdminWarning[] }>('/admin/warnings'),
+  createWarning: (data: { userId: string; message: string; severity?: 'LOW' | 'MEDIUM' | 'HIGH' }) =>
+    api.post<{ warning: AdminWarning; message: string }>('/admin/warnings', data),
+  deleteWarning: (id: string) => api.delete<{ success: boolean; message: string }>(`/admin/warnings/${id}`),
 };
 
 export const maintenanceApi = {

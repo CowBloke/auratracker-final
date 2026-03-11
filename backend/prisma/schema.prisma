@@ -87,6 +87,10 @@ model User {
   clanWarsWon         ClanWar[]                 @relation("ClanWarWinner")
   registrationReviews RegistrationReview[]      @relation("RegistrationReviewReviewer")
 
+  // Admin Warnings
+  warningsReceived    AdminWarning[]            @relation("WarningsReceived")
+  warningsIssued      AdminWarning[]            @relation("WarningsIssued")
+
   @@index([aura])
   @@index([money])
   @@index([referredById])
@@ -950,5 +954,27 @@ model Notification {
   @@index([userId, isRead])
   @@index([userId, isArchived])
   @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+// ============================================
+// ADMIN WARNING SYSTEM
+// ============================================
+
+// Admin warnings that display as mandatory popup modals
+model AdminWarning {
+  id             String    @id @default(uuid())
+  userId         String    // User receiving the warning
+  issuedById     String    // Admin who issued the warning
+  message        String    // Warning message content
+  severity       String    @default("MEDIUM") // LOW, MEDIUM, HIGH
+  isAcknowledged Boolean   @default(false)
+  acknowledgedAt DateTime?
+  createdAt      DateTime  @default(now())
+
+  user     User @relation("WarningsReceived", fields: [userId], references: [id], onDelete: Cascade)
+  issuedBy User @relation("WarningsIssued", fields: [issuedById], references: [id], onDelete: Cascade)
+
+  @@index([userId, isAcknowledged])
   @@index([createdAt])
 }
