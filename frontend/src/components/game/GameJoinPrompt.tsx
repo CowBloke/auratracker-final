@@ -47,6 +47,12 @@ export default function GameJoinPrompt({
   const myResponse = responses.find((r) => r.userId === currentUserId);
   const hasResponded = !!myResponse;
 
+  useEffect(() => {
+    if (timeLeft === 0 && myResponse?.accepted === true) {
+      navigate(navigateTo);
+    }
+  }, [timeLeft, myResponse?.accepted, navigate, navigateTo]);
+
   const handleAccept = () => {
     onAccept();
     navigate(navigateTo);
