@@ -13,6 +13,15 @@ type MultiplayerTab = 'all' | 'duel' | 'party';
 
 const games = [
   {
+    id: 'russian-roulette',
+    pageKey: 'game-russian-roulette',
+    name: 'Russian Roulette',
+    description: 'Assis autour d\'une table sombre, chacun tire à son tour. Le dernier en vie gagne.',
+    type: 'Party',
+    requiresParty: true,
+    emoji: '🔫',
+  },
+  {
     id: 'bomb-party',
     pageKey: 'game-bomb-party',
     name: 'Bomb Party',
@@ -212,6 +221,9 @@ export default function Games() {
   );
 
   const getGameLink = (gameId: string) => {
+    if (gameId === 'russian-roulette') {
+      return '/games/russian-roulette';
+    }
     if (gameId === 'bomb-party') {
       return '/games/bomb-party';
     }

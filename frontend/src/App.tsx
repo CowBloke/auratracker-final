@@ -44,6 +44,7 @@ import Blocked from './pages/Blocked';
 import Minesweeper from './pages/Minesweeper';
 import GeometryDash from './pages/GeometryDash';
 import QSWatermelon from './pages/QSWatermelon';
+import RussianRoulette from './pages/RussianRoulette';
 import { BLOCKABLE_PAGES } from './config/blockedPages';
 import { useFeatures } from './contexts/FeaturesContext';
 
@@ -170,6 +171,7 @@ function App() {
         <Route path="games/puissance-quatre" element={<PuissanceQuatre />} />
         <Route path="games/echecs" element={<Echecs />} />
         <Route path="games/logic-lab" element={<Sudoku />} />
+        <Route path="games/russian-roulette" element={<RussianRoulette />} />
         <Route path="polymarket" element={<Polymarket />} />
         <Route path="leaderboards" element={<Leaderboards />} />
         <Route path="leaderboards/nombres" element={<Numbers />} />
