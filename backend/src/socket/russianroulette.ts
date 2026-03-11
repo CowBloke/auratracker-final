@@ -23,6 +23,7 @@ interface RRGame {
   lastEvent: { type: 'click' | 'bang' | 'pass'; playerId: string; username: string } | null;
   turnTimer: NodeJS.Timeout | null;
   turnStartTime: number;
+  bidAmount: number;
 }
 
 interface PendingJoinPrompt {
@@ -31,6 +32,7 @@ interface PendingJoinPrompt {
   responses: Map<string, boolean>;
   memberIds: string[];
   timer: NodeJS.Timeout | null;
+  bidAmount: number;
 }
 
 interface PendingPlayAgainPrompt {
@@ -218,6 +220,11 @@ const endGame = async (game: RRGame, io: Server) => {
     passedOut: p.passedOut,
   }));
 
+  const pot = game.bidAmount * game.players.length;
+  if (winner && game.bidAmount > 0) {
+    await prisma.user.update({ where: { id: winner.userId }, data: { money: { increment: pot } } });
+  }
+
   for (const player of game.players) {
     const isWinner = player.userId === winner?.userId;
     logGame('game_complete', player.userId, player.username, {
@@ -225,7 +232,7 @@ const endGame = async (game: RRGame, io: Server) => {
       score: player.pullCount,
       won: isWinner,
       auraReward: 0,
-      moneyReward: 0,
+      moneyReward: isWinner ? pot : 0,
       isMultiplayer: true,
       partyId: game.partyId,
       totalPlayers: game.players.length,
@@ -281,10 +288,27 @@ const resolveJoinPrompt = async (partyId: string, io: Server) => {
 
   const members = await prisma.partyMember.findMany({
     where: { partyId, userId: { in: accepted } },
-    include: { user: { select: { id: true, username: true, usernameColor: true } } },
+    include: { user: { select: { id: true, username: true, usernameColor: true, money: true } } },
   });
 
-  const players: RRPlayer[] = members.map((m) => ({
+  // Deduct bid from each player (skip those who can't afford it)
+  const bidAmount = prompt.bidAmount;
+  const affordingMembers = bidAmount > 0
+    ? members.filter((m) => (m.user as any).money >= bidAmount)
+    : members;
+
+  if (affordingMembers.length < 2) {
+    io.to(`party:${partyId}`).emit('roulette:join-cancelled', { reason: 'Pas assez de joueurs avec la mise suffisante' });
+    return;
+  }
+
+  if (bidAmount > 0) {
+    for (const m of affordingMembers) {
+      await prisma.user.update({ where: { id: m.user.id }, data: { money: { decrement: bidAmount } } });
+    }
+  }
+
+  const players: RRPlayer[] = affordingMembers.map((m) => ({
     userId: m.user.id,
     username: m.user.username,
     usernameColor: m.user.usernameColor,
@@ -309,6 +333,7 @@ const resolveJoinPrompt = async (partyId: string, io: Server) => {
     lastEvent: null,
     turnTimer: null,
     turnStartTime: Date.now(),
+    bidAmount,
   };
 
   activeGames.set(partyId, game);
@@ -365,6 +390,7 @@ const resolvePlayAgainPrompt = (partyId: string, io: Server) => {
       lastEvent: null,
       turnTimer: null,
       turnStartTime: Date.now(),
+      bidAmount: 0,
     };
 
     activeGames.set(partyId, game);
@@ -383,10 +409,11 @@ export const setupRussianRouletteHandlers = (socket: Socket, io: Server) => {
     playerSockets.set(userId, socket.id);
   });
 
-  socket.on('roulette:start', async (data: { partyId: string }) => {
+  socket.on('roulette:start', async (data: { partyId: string; bidAmount?: number }) => {
     const userId = socket.data.userId as string | undefined;
     if (!userId) return;
     const { partyId } = data;
+    const bidAmount = Math.max(0, Math.floor(data.bidAmount ?? 0));
 
     try {
       const membership = await prisma.partyMember.findUnique({
@@ -421,6 +448,7 @@ export const setupRussianRouletteHandlers = (socket: Socket, io: Server) => {
         responses: new Map([[userId, true]]),
         memberIds,
         timer: null,
+        bidAmount,
       };
       pendingJoinPrompts.set(partyId, prompt);
       prompt.timer = setTimeout(() => resolveJoinPrompt(partyId, io), JOIN_TIMEOUT);
@@ -430,6 +458,7 @@ export const setupRussianRouletteHandlers = (socket: Socket, io: Server) => {
         leaderId: userId,
         timeLimit: JOIN_TIMEOUT,
         startTime: Date.now(),
+        bidAmount,
         members: partyMembers.map((m) => ({
           userId: m.user.id,
           username: m.user.username,
