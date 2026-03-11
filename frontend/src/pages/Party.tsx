@@ -16,6 +16,8 @@ import { cn } from '@/lib/utils';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { PageShell } from '@/components/layout/page-shell';
 import { UsernameDisplay } from '@/components/ui/username-display';
+import { useTheme } from '@/contexts/ThemeContext';
+import { resolveThemeImageUrl } from '@/lib/images';
 
 interface User {
   id: string;
@@ -85,6 +87,7 @@ const DEFAULT_PETIT_BAC_CATEGORIES = ['Prenom', 'Ville', 'Pays', 'Animal', 'Obje
 
 export default function Party() {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const navigate = useNavigate();
   const {
     currentParty,
@@ -351,7 +354,7 @@ export default function Party() {
                           const gameInfo = allGames.find((g) => g.id === partySelectedGame.gameId);
                           return gameInfo ? (
                             <img
-                              src={gameInfo.image}
+                              src={resolveThemeImageUrl(gameInfo.image, theme)}
                               alt={gameInfo.name}
                               className="h-10 w-10 rounded-md object-cover shrink-0"
                               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -432,7 +435,7 @@ export default function Party() {
                         )}
                       >
                         <img
-                          src={game.image}
+                          src={resolveThemeImageUrl(game.image, theme)}
                           alt={game.name}
                           className="h-full w-full object-cover"
                           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -466,7 +469,7 @@ export default function Party() {
                           <div className="flex items-center gap-3">
                             {gameInfo && (
                               <img
-                                src={gameInfo.image}
+                                src={resolveThemeImageUrl(gameInfo.image, theme)}
                                 alt={gameInfo.name}
                                 className="h-8 w-8 rounded-sm object-cover shrink-0"
                                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -492,7 +495,7 @@ export default function Party() {
                             >
                               {gameInfo && (
                                 <img
-                                  src={gameInfo.image}
+                                  src={resolveThemeImageUrl(gameInfo.image, theme)}
                                   alt={gameInfo.name}
                                   className="h-full w-full object-cover"
                                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}

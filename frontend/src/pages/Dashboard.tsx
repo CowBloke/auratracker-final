@@ -30,7 +30,9 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } f
 import { AreaChart, Area, XAxis, YAxis } from 'recharts';
 import GiftDialog from '@/components/gifts/GiftDialog';
 import ReferralClaimAnimation from '@/components/referrals/ReferralClaimAnimation';
+import { useTheme } from '@/contexts/ThemeContext';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
+import { resolveThemeImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -236,7 +238,7 @@ function SortableDashboardWidget({
   );
 }
 
-function ShortcutTile({ shortcut }: { shortcut: GameShortcut }) {
+function ShortcutTile({ shortcut, theme }: { shortcut: GameShortcut; theme: 'light' | 'dark' }) {
   return (
     <Link
       to={shortcut.path}
@@ -249,7 +251,7 @@ function ShortcutTile({ shortcut }: { shortcut: GameShortcut }) {
     >
       {shortcut.image ? (
         <img
-          src={shortcut.image}
+          src={resolveThemeImageUrl(shortcut.image, theme)}
           alt={shortcut.label}
           className="h-full w-full object-cover transition duration-200 group-hover:scale-[1.02]"
           loading="lazy"
@@ -288,6 +290,7 @@ function coerceVisibleDashboardWidgets(value: unknown): DashboardWidgetId[] | nu
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const {
     socket,
     fetchPublicParties,
@@ -1035,7 +1038,7 @@ export default function Dashboard() {
                         <div className="grid h-full grid-cols-2 grid-rows-2 gap-3">
                           {orderedShortcuts.length > 0 ? (
                             orderedShortcuts.map((shortcut) => (
-                              <ShortcutTile key={shortcut.id} shortcut={shortcut} />
+                              <ShortcutTile key={shortcut.id} shortcut={shortcut} theme={theme} />
                             ))
                           ) : (
                               <Card className="col-span-full border-dashed border-border/50 bg-muted/10 shadow-none">

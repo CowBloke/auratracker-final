@@ -13,6 +13,8 @@ export const BLOCKABLE_PAGES: BlockablePage[] = [
   { key: 'game-logic-lab', path: '/games/logic-lab', label: 'Logic Lab', category: 'Jeux' },
   { key: 'game-minesweeper', path: '/games/minesweeper', label: 'Démineur', category: 'Jeux' },
   { key: 'game-flappy-bird', path: '/games/flappy-bird', label: 'Flappy Bird', category: 'Jeux' },
+  { key: 'game-geometry-dash', path: '/games/geometry-dash', label: 'Geometry Dash', category: 'Jeux' },
+  { key: 'game-qs-watermelon', path: '/games/qs-watermelon', label: 'QS Watermelon', category: 'Jeux' },
   { key: 'game-casino', path: '/games/casino', label: 'Casino', category: 'Jeux' },
   { key: 'game-market', path: '/market', label: 'Shop', category: 'Général' },
   { key: 'game-aura-coin', path: '/games/aura-coin', label: 'Aura Coin', category: 'Jeux' },
