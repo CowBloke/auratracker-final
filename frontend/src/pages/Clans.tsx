@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Axe, Check, Crown, Loader2, LogOut, Plus, Send, Shield, Sparkles, Swords, Target, UserX, X } from 'lucide-react';
 import {
   ClanChatMessage,
