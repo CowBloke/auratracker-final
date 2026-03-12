@@ -11,7 +11,7 @@ import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { UserBadges } from '@/components/badges/UserBadges';
-import { BadgeSelector, BadgeHistory } from '@/components/badges/BadgeSelector';
+import { BadgeHistory } from '@/components/badges/BadgeSelector';
 import { ProfileBadgeSlots } from '@/components/badges/ProfileBadgeSlots';
 import { BadgeData } from '@/components/badges/BadgeIcon';
 
@@ -300,11 +300,6 @@ export default function Profile() {
         <CardContent className={SPACING.CARD_SPACING}>
           {isOwnProfile ? (
             <div className="space-y-6">
-              <BadgeSelector
-                userId={profileUser.id}
-                initialData={{ badges: userBadges, equippedBadge1Id, equippedBadge2Id }}
-                onBadgeEquipped={handleEquipBadge}
-              />
               <BadgeHistory badges={userBadges} />
             </div>
           ) : userBadges.length === 0 ? (

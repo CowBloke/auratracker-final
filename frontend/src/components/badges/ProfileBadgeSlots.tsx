@@ -126,8 +126,8 @@ export function ProfileBadgeSlots({
                 )}
               </div>
 
-              {/* 3-column badge grid — square tiles, no text */}
-              <div className="p-2 max-h-60 overflow-y-auto grid grid-cols-3 gap-1.5">
+              {/* 3-column badge grid — small square tiles, badge fills ~2/3 */}
+              <div className="p-1.5 max-h-60 overflow-y-auto grid grid-cols-3 gap-1">
                 {filteredBadges.length === 0 ? (
                   <p className="col-span-3 text-center text-xs text-muted-foreground py-4">
                     Aucun badge trouvé
@@ -144,7 +144,7 @@ export function ProfileBadgeSlots({
                         disabled={isOther}
                         onClick={() => !isOther && handleEquip(slot, b.id)}
                         className={cn(
-                          'aspect-square flex items-center justify-center rounded-md border transition-colors',
+                          'w-full aspect-square flex items-center justify-center rounded border transition-colors',
                           isCurrent
                             ? 'border-foreground bg-foreground/5'
                             : isOther
@@ -152,7 +152,7 @@ export function ProfileBadgeSlots({
                               : 'border-transparent hover:border-border hover:bg-muted/40',
                         )}
                       >
-                        <BadgeIcon badge={b as BadgeData} size="md" tooltipSide="top" />
+                        <BadgeIcon badge={b as BadgeData} size="lg" tooltipSide="top" />
                       </button>
                     );
                   })
