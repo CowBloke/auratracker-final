@@ -5888,10 +5888,21 @@ export default function Admin() {
                             <SelectItem value="TOP_3_MONEY">Top 3 Argent</SelectItem>
                             <SelectItem value="TOP_5_MONEY">Top 5 Argent</SelectItem>
                             <SelectItem value="TOP_10_MONEY">Top 10 Argent</SelectItem>
-                            <SelectItem value="GAME_HIGHSCORE_doodle_jump">Meilleur score Doodle Jump</SelectItem>
-                            <SelectItem value="GAME_HIGHSCORE_flappy_bird">Meilleur score Flappy Bird</SelectItem>
-                            <SelectItem value="GAME_HIGHSCORE_2048">Meilleur score 2048</SelectItem>
-                            <SelectItem value="GAME_HIGHSCORE_geometry_dash">Meilleur score Geometry Dash</SelectItem>
+                            <SelectItem value="GAME_HIGHSCORE_doodle_jump">🦘 Champion Doodle Jump</SelectItem>
+                            <SelectItem value="GAME_HIGHSCORE_doodle_jump_mort_subite">💀 Champion Doodle Jump Mort Subite</SelectItem>
+                            <SelectItem value="GAME_HIGHSCORE_flappy_bird">🐦 Champion Flappy Bird</SelectItem>
+                            <SelectItem value="GAME_HIGHSCORE_game_2048">🔢 Champion 2048</SelectItem>
+                            <SelectItem value="GAME_HIGHSCORE_geometry_dash">📐 Champion Geometry Dash</SelectItem>
+                            <SelectItem value="GAME_HIGHSCORE_qs_watermelon">🍉 Champion Watermelon</SelectItem>
+                            <SelectItem value="GAME_HIGHSCORE_solitaire">🃏 Champion Solitaire</SelectItem>
+                            <SelectItem value="GAME_HIGHSCORE_racer">🏎️ Champion Racer (meilleur temps)</SelectItem>
+                            <SelectItem value="GAME_HIGHSCORE_tetris">🧱 Champion Tetris</SelectItem>
+                            <SelectItem value="GAME_HIGHSCORE_knife_hit">🔪 Champion Knife Hit</SelectItem>
+                            <SelectItem value="GAME_HIGHSCORE_goyave_empire">🌿 Champion Goyave Empire</SelectItem>
+                            <SelectItem value="GAME_HIGHSCORE_logic_lab">🧠 Champion Logic Lab</SelectItem>
+                            <SelectItem value="GAME_HIGHSCORE_minesweeper">💣 Champion Démineur</SelectItem>
+                            <SelectItem value="GAME_HIGHSCORE_casino">🎰 Champion Casino</SelectItem>
+                            <SelectItem value="BOMBPARTY_TOP_WINS">💥 Champion Bomb Party (victoires)</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

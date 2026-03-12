@@ -145,12 +145,22 @@ const getQualifyingUserIds = async (key: string): Promise<Set<string>> => {
     return new Set(users.map((u) => u.id));
   }
   // GAME_HIGHSCORE_{gameType} – top-1 highscore for a specific game type
+  // racer uses ascending order (lower lapTime = better)
   if (key.startsWith('GAME_HIGHSCORE_')) {
     const gameType = key.slice('GAME_HIGHSCORE_'.length).toLowerCase();
+    const order = gameType === 'racer' ? 'asc' : 'desc';
     const stat = await prisma.gameStats.findFirst({
-      where: { gameType },
+      where: { gameType, highScore: { gt: 0 } },
       select: { userId: true },
-      orderBy: { highScore: 'desc' },
+      orderBy: { highScore: order },
+    });
+    return stat ? new Set([stat.userId]) : new Set();
+  }
+  // BOMBPARTY_TOP_WINS – top BombParty wins holder
+  if (key === 'BOMBPARTY_TOP_WINS') {
+    const stat = await prisma.bombPartyStats.findFirst({
+      select: { userId: true },
+      orderBy: { wins: 'desc' },
     });
     return stat ? new Set([stat.userId]) : new Set();
   }

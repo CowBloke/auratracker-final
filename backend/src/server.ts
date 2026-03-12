@@ -51,6 +51,7 @@ import { setupRussianRouletteHandlers } from './socket/russianroulette.js';
 // Logger
 import { initLogger } from './utils/logger.js';
 import { startAutoBadgeScheduler, stopAutoBadgeScheduler } from './utils/badgeAwards.js';
+import { ensureDefaultBadges } from './utils/seedBadges.js';
 
 // Initialize Prisma
 export const prisma = new PrismaClient();
@@ -273,6 +274,7 @@ const start = async () => {
     startOnlineCountBroadcast(io);
     startOnlineSnapshotRecording();
     startBombPartyCleanup(io);
+    await ensureDefaultBadges();
     startAutoBadgeScheduler();
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'EADDRINUSE') {
