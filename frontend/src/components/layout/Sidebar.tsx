@@ -221,7 +221,6 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                             </Avatar>
                             <div className="min-w-0 flex-1">
                               <UsernameDisplay
-                                userId={u.id}
                                 username={u.username}
                                 firstName={u.firstName}
                                 usernameColor={u.usernameColor}

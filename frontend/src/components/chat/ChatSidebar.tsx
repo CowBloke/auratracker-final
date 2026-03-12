@@ -356,7 +356,6 @@ export default function ChatSidebar() {
                       {msg.replyTo && (
                         <div className="mb-2 border-l-2 border-border/60 pl-2 text-xs text-muted-foreground">
                           <UsernameDisplay
-                            userId={msg.replyTo.userId}
                             username={msg.replyTo.username}
                             usernameColor={msg.replyTo.usernameColor}
                             className="block font-medium"
@@ -384,7 +383,7 @@ export default function ChatSidebar() {
                             !msg.usernameColor && (msg.userId === user?.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')
                           )}
                         >
-                          <UsernameDisplay userId={msg.userId} username={msg.username} usernameColor={msg.usernameColor} />
+                          <UsernameDisplay username={msg.username} usernameColor={msg.usernameColor} />
                         </Button>
                         {(msg.isTopMoney || msg.isTopAura) && (
                           <div className="flex items-center gap-1">
@@ -553,7 +552,6 @@ export default function ChatSidebar() {
               <div className="mb-2 flex items-start justify-between gap-3 rounded-md border border-border/60 bg-foreground/5 px-3 py-2 text-xs">
                 <div className="min-w-0">
                   <UsernameDisplay
-                    userId={replyTarget.userId}
                     username={replyTarget.username}
                     usernameColor={replyTarget.usernameColor}
                     className="block font-medium text-foreground/80"
@@ -614,7 +612,6 @@ export default function ChatSidebar() {
                             <div className="h-2 w-2 rounded-full bg-foreground/50" />
                           )}
                           <UsernameDisplay
-                            userId={candidate.userId}
                             username={candidate.username}
                             usernameColor={candidate.usernameColor}
                             className="truncate"

@@ -142,7 +142,6 @@ export default function Header() {
                         </Avatar>
                         <div className="min-w-0 flex-1">
                           <UsernameDisplay
-                            userId={u.id}
                             username={u.username}
                             firstName={u.firstName}
                             usernameColor={u.usernameColor}
@@ -201,7 +200,7 @@ export default function Header() {
                     </AvatarFallback>
                   </Avatar>
                   {user?.username ? (
-                    <UsernameDisplay userId={user.id} username={user.username} className="font-medium" />
+                    <UsernameDisplay username={user.username} className="font-medium" />
                   ) : null}
                 </Button>
               </DropdownMenuTrigger>

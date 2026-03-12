@@ -377,7 +377,7 @@ export default function Leaderboards() {
                                 "font-medium",
                                 ranking.userId === user?.id && "text-foreground"
                               )}>
-                                <UsernameDisplay userId={ranking.userId} username={ranking.username} usernameColor={ranking.usernameColor} />
+                                <UsernameDisplay username={ranking.username} usernameColor={ranking.usernameColor} />
                               </span>
                             </div>
                             <div className="flex items-center gap-2">

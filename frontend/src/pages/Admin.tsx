@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { adminApi, AdminBadge, AdminUser, AdminUserBadgeGrant, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, type BadgeStyle, type PublicBadge } from '../services/api';
+import { adminApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan } from '../services/api';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,7 +38,6 @@ import { resolveImageUrl } from '@/lib/images';
 import { ImagePicker } from '@/components/ui/image-picker';
 import { BLOCKABLE_PAGES } from '@/config/blockedPages';
 import { PageShell } from '@/components/layout/page-shell';
-import { UserBadgeChip, UserBadgesInline } from '@/components/ui/user-badges';
 
 // Effect types for items
 const EFFECT_TYPES = [
@@ -350,7 +349,7 @@ export default function Admin() {
   const [mutingUser, setMutingUser] = useState<string | null>(null);
   const [clearingChat, setClearingChat] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'inbox' | 'users' | 'badges' | 'clubs' | 'logs' | 'bans' | 'content' | 'communication' | 'settings' | 'activity'>('inbox');
+  const [activeTab, setActiveTab] = useState<'inbox' | 'users' | 'clubs' | 'logs' | 'bans' | 'content' | 'communication' | 'settings' | 'activity'>('inbox');
   const [commSubTab, setCommSubTab] = useState<'announcement' | 'login' | 'updates' | 'maintenance'>('announcement');
 
   // Activity tab state
@@ -384,33 +383,6 @@ export default function Admin() {
   const [addingInventoryItem, setAddingInventoryItem] = useState(false);
   const [updatingInventoryItem, setUpdatingInventoryItem] = useState<string | null>(null);
   const [removingInventoryItem, setRemovingInventoryItem] = useState<string | null>(null);
-
-  // Badges state
-  const [badges, setBadges] = useState<AdminBadge[]>([]);
-  const [loadingBadges, setLoadingBadges] = useState(false);
-  const [badgeDialogOpen, setBadgeDialogOpen] = useState(false);
-  const [editingBadge, setEditingBadge] = useState<AdminBadge | null>(null);
-  const [badgeForm, setBadgeForm] = useState<{ key: string; name: string; description: string; isActive: boolean; style: BadgeStyle; styleJson: string; styleJsonError: string | null }>(() => ({
-    key: '',
-    name: '',
-    description: '',
-    isActive: true,
-    style: { type: 'GRADIENT', gradient: 'linear-gradient(90deg,#7c3aed,#06b6d4)', textColor: '#ffffff', borderColor: 'rgba(255,255,255,0.25)', label: 'Badge' },
-    styleJson: JSON.stringify({ type: 'GRADIENT', gradient: 'linear-gradient(90deg,#7c3aed,#06b6d4)', textColor: '#ffffff', borderColor: 'rgba(255,255,255,0.25)', label: 'Badge' }, null, 2),
-    styleJsonError: null,
-  }));
-  const [savingBadge, setSavingBadge] = useState(false);
-  const [deactivatingBadge, setDeactivatingBadge] = useState<string | null>(null);
-
-  // Per-user badge assignment dialog
-  const [userBadgesDialogOpen, setUserBadgesDialogOpen] = useState(false);
-  const [userBadgesUser, setUserBadgesUser] = useState<AdminUser | null>(null);
-  const [userBadgeGrants, setUserBadgeGrants] = useState<AdminUserBadgeGrant[]>([]);
-  const [userBadgeSelection, setUserBadgeSelection] = useState<{ slot1: string | null; slot2: string | null }>({ slot1: null, slot2: null });
-  const [loadingUserBadges, setLoadingUserBadges] = useState(false);
-  const [grantBadgeId, setGrantBadgeId] = useState('');
-  const [grantingUserBadge, setGrantingUserBadge] = useState(false);
-  const [revokingUserBadge, setRevokingUserBadge] = useState<string | null>(null);
 
   // Clans state
   const [clans, setClans] = useState<AdminClan[]>([]);
@@ -738,7 +710,6 @@ export default function Admin() {
     fetchUsers();
     fetchClans();
     fetchItems();
-    fetchBadges();
     fetchShopCategories();
     fetchBugReports();
     fetchPendingUsers();
@@ -940,191 +911,6 @@ export default function Admin() {
       showMessage('error', 'Erreur lors du chargement des objets');
     } finally {
       setLoadingItems(false);
-    }
-  };
-
-  const fetchBadges = async () => {
-    try {
-      setLoadingBadges(true);
-      const res = await adminApi.getBadges();
-      setBadges(res.data.badges ?? []);
-    } catch (error) {
-      console.error('Failed to fetch badges:', error);
-      showMessage('error', 'Erreur lors du chargement des badges');
-    } finally {
-      setLoadingBadges(false);
-    }
-  };
-
-  const syncBadgeStyleJson = (style: BadgeStyle) => JSON.stringify(style ?? {}, null, 2);
-
-  const openCreateBadge = () => {
-    const initialStyle: BadgeStyle = {
-      type: 'GRADIENT',
-      gradient: 'linear-gradient(90deg,#7c3aed,#06b6d4)',
-      textColor: '#ffffff',
-      borderColor: 'rgba(255,255,255,0.25)',
-      label: 'Badge',
-    };
-    setEditingBadge(null);
-    setBadgeForm({
-      key: '',
-      name: '',
-      description: '',
-      isActive: true,
-      style: initialStyle,
-      styleJson: syncBadgeStyleJson(initialStyle),
-      styleJsonError: null,
-    });
-    setBadgeDialogOpen(true);
-  };
-
-  const openEditBadge = (badge: AdminBadge) => {
-    const style = badge.style ?? {};
-    setEditingBadge(badge);
-    setBadgeForm({
-      key: badge.key,
-      name: badge.name,
-      description: badge.description ?? '',
-      isActive: badge.isActive ?? true,
-      style,
-      styleJson: syncBadgeStyleJson(style),
-      styleJsonError: null,
-    });
-    setBadgeDialogOpen(true);
-  };
-
-  const updateBadgeStyle = (patch: Partial<BadgeStyle>) => {
-    setBadgeForm((prev) => {
-      const nextStyle = { ...(prev.style ?? {}), ...patch };
-      return { ...prev, style: nextStyle, styleJson: syncBadgeStyleJson(nextStyle), styleJsonError: null };
-    });
-  };
-
-  const updateBadgeStyleJson = (value: string) => {
-    setBadgeForm((prev) => {
-      let styleJsonError: string | null = null;
-      let nextStyle = prev.style;
-      try {
-        const parsed = JSON.parse(value);
-        if (parsed && typeof parsed === 'object') {
-          nextStyle = parsed as BadgeStyle;
-        } else {
-          styleJsonError = 'Le JSON doit être un objet';
-        }
-      } catch {
-        styleJsonError = 'JSON invalide';
-      }
-      return { ...prev, styleJson: value, style: nextStyle, styleJsonError };
-    });
-  };
-
-  const saveBadge = async () => {
-    const key = badgeForm.key.trim().toLowerCase();
-    const name = badgeForm.name.trim();
-    if (!key || !name) {
-      showMessage('error', 'Key et nom requis');
-      return;
-    }
-    if (badgeForm.styleJsonError) {
-      showMessage('error', 'Style JSON invalide');
-      return;
-    }
-    try {
-      setSavingBadge(true);
-      if (editingBadge) {
-        await adminApi.updateBadge(editingBadge.id, {
-          key,
-          name,
-          description: badgeForm.description.trim() || null,
-          isActive: badgeForm.isActive,
-          style: badgeForm.style,
-        });
-        showMessage('success', 'Badge mis à jour');
-      } else {
-        await adminApi.createBadge({
-          key,
-          name,
-          description: badgeForm.description.trim() || null,
-          isActive: badgeForm.isActive,
-          style: badgeForm.style,
-        });
-        showMessage('success', 'Badge créé');
-      }
-      setBadgeDialogOpen(false);
-      await fetchBadges();
-    } catch (error) {
-      console.error('Failed to save badge:', error);
-      showMessage('error', 'Erreur lors de la sauvegarde du badge');
-    } finally {
-      setSavingBadge(false);
-    }
-  };
-
-  const deactivateBadge = async (badgeId: string) => {
-    try {
-      setDeactivatingBadge(badgeId);
-      await adminApi.deactivateBadge(badgeId);
-      showMessage('success', 'Badge désactivé');
-      await fetchBadges();
-    } catch (error) {
-      console.error('Failed to deactivate badge:', error);
-      showMessage('error', 'Erreur lors de la désactivation du badge');
-    } finally {
-      setDeactivatingBadge(null);
-    }
-  };
-
-  const refreshUserBadges = async (userId: string) => {
-    const res = await adminApi.getUserBadges(userId);
-    setUserBadgeGrants(res.data.grants ?? []);
-    setUserBadgeSelection(res.data.selection ?? { slot1: null, slot2: null });
-  };
-
-  const openUserBadges = async (target: AdminUser) => {
-    try {
-      setUserBadgesUser(target);
-      setUserBadgesDialogOpen(true);
-      setGrantBadgeId('');
-      setLoadingUserBadges(true);
-      if (badges.length === 0) {
-        await fetchBadges();
-      }
-      await refreshUserBadges(target.id);
-    } catch (error) {
-      console.error('Failed to open user badges:', error);
-      showMessage('error', 'Erreur lors du chargement des badges utilisateur');
-    } finally {
-      setLoadingUserBadges(false);
-    }
-  };
-
-  const grantBadgeToUser = async () => {
-    if (!userBadgesUser || !grantBadgeId) return;
-    try {
-      setGrantingUserBadge(true);
-      await adminApi.grantUserBadge(userBadgesUser.id, grantBadgeId);
-      await refreshUserBadges(userBadgesUser.id);
-      setGrantBadgeId('');
-    } catch (error) {
-      console.error('Failed to grant badge:', error);
-      showMessage('error', 'Erreur lors de l’attribution du badge');
-    } finally {
-      setGrantingUserBadge(false);
-    }
-  };
-
-  const revokeBadgeFromUser = async (badgeId: string) => {
-    if (!userBadgesUser) return;
-    try {
-      setRevokingUserBadge(badgeId);
-      await adminApi.revokeUserBadge(userBadgesUser.id, badgeId);
-      await refreshUserBadges(userBadgesUser.id);
-    } catch (error) {
-      console.error('Failed to revoke badge:', error);
-      showMessage('error', 'Erreur lors de la révocation du badge');
-    } finally {
-      setRevokingUserBadge(null);
     }
   };
 
@@ -2165,10 +1951,6 @@ export default function Admin() {
             <Users className="h-4 w-4" />
             Utilisateurs
           </TabsTrigger>
-          <TabsTrigger value="badges" className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4" />
-            Badges
-          </TabsTrigger>
           <TabsTrigger value="clubs" className="flex items-center gap-2">
             <Crown className="h-4 w-4" />
             Clubs
@@ -2826,15 +2608,6 @@ export default function Admin() {
                             <Package className="h-4 w-4 mr-1" />
                             Inventaire
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => openUserBadges(u)}
-                            className="h-8 border-border/50"
-                          >
-                            <Sparkles className="h-4 w-4 mr-1" />
-                            Badges
-                          </Button>
 
                           {!u.isAdmin && (
                             <Button
@@ -2918,94 +2691,6 @@ export default function Admin() {
               })()}
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="badges" className={SPACING.SECTION_SPACING}>
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
-            <Card>
-              <CardHeader>
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                  <div>
-                    <CardDescription>Badges affichés à côté des pseudos</CardDescription>
-                    <p className="text-sm text-muted-foreground">{badges.length} badge(s)</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={fetchBadges} disabled={loadingBadges} className="h-8 border-border/50">
-                      <RefreshCw className={cn('h-4 w-4 mr-1', loadingBadges && 'animate-spin')} />
-                      Rafraîchir
-                    </Button>
-                    <Button size="sm" onClick={openCreateBadge} className="h-8">
-                      <Plus className="h-4 w-4 mr-1" />
-                      Nouveau badge
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {loadingBadges ? (
-                  <div className="py-10 text-center text-muted-foreground">
-                    <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                  </div>
-                ) : badges.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-10">Aucun badge</p>
-                ) : (
-                  <div className="divide-y divide-border/30 rounded-lg border border-border/30">
-                    {badges.map((b) => {
-                      const preview: PublicBadge = { id: b.id, key: b.key, name: b.name, description: b.description ?? null, style: b.style, isActive: b.isActive };
-                      return (
-                        <div key={b.id} className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className={cn(TYPOGRAPHY.BODY, 'font-semibold truncate')}>{b.name}</p>
-                              <span className={cn('text-[11px] px-2 py-0.5 rounded-full border', b.isActive ? 'border-green-500/40 text-green-400' : 'border-zinc-500/40 text-zinc-400')}>
-                                {b.isActive ? 'Actif' : 'Inactif'}
-                              </span>
-                              <span className="text-[11px] text-muted-foreground">
-                                {b.key}
-                              </span>
-                              <span className="text-[11px] text-muted-foreground">
-                                {b.grantsCount} attribution(s)
-                              </span>
-                            </div>
-                            {b.description ? (
-                              <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{b.description}</p>
-                            ) : null}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <UserBadgeChip badge={preview} />
-                            <Button size="sm" variant="outline" onClick={() => openEditBadge(b)} className="h-8 border-border/50">
-                              <Edit2 className="h-4 w-4 mr-1" />
-                              Modifier
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => deactivateBadge(b.id)}
-                              disabled={!b.isActive || deactivatingBadge === b.id}
-                              className={cn('h-8 border-destructive/50 text-destructive hover:bg-destructive/10', !b.isActive && 'opacity-50')}
-                            >
-                              {deactivatingBadge === b.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardDescription>Aide</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-muted-foreground">
-                <p>Les utilisateurs choisissent jusqu’à 2 badges sur leur page profil.</p>
-                <p>Attribue/révoque des badges via le bouton “Badges” dans l’onglet Utilisateurs.</p>
-                <p>Le champ “style” est un JSON (type, gradient/imageUrl, couleurs, padding, etc.).</p>
-              </CardContent>
-            </Card>
-          </div>
         </TabsContent>
 
         <TabsContent value="clubs" className={SPACING.SECTION_SPACING}>
@@ -4737,331 +4422,6 @@ export default function Admin() {
 
           <DialogFooter>
             <Button variant="outline" onClick={closeInventory}>
-              Fermer
-            </Button>
-          </DialogFooter>
-      </DialogContent>
-      </Dialog>
-
-      {/* Badge Create/Edit Dialog */}
-      <Dialog open={badgeDialogOpen} onOpenChange={setBadgeDialogOpen}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>{editingBadge ? 'Modifier le badge' : 'Créer un badge'}</DialogTitle>
-            <DialogDescription>
-              Les badges s’affichent à côté des pseudos. Les utilisateurs peuvent en afficher maximum 2.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-6 py-2 md:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Key (unique)</label>
-                  <Input
-                    value={badgeForm.key}
-                    onChange={(e) => setBadgeForm((prev) => ({ ...prev, key: e.target.value }))}
-                    placeholder="ex: founder_2026"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Nom</label>
-                  <Input
-                    value={badgeForm.name}
-                    onChange={(e) => setBadgeForm((prev) => ({ ...prev, name: e.target.value }))}
-                    placeholder="Fondateur"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Description (tooltip)</label>
-                <Textarea
-                  value={badgeForm.description}
-                  onChange={(e) => setBadgeForm((prev) => ({ ...prev, description: e.target.value }))}
-                  placeholder="S’affiche au survol du badge."
-                  className="min-h-[80px]"
-                />
-              </div>
-
-              <div className="flex items-center justify-between rounded-lg border border-border/30 bg-muted/10 p-3">
-                <div>
-                  <p className="text-sm font-medium">Actif</p>
-                  <p className="text-xs text-muted-foreground">Si désactivé, il ne s’affiche plus.</p>
-                </div>
-                <Switch checked={badgeForm.isActive} onCheckedChange={(v) => setBadgeForm((p) => ({ ...p, isActive: v }))} />
-              </div>
-
-              <div className="space-y-3 rounded-lg border border-border/30 p-4">
-                <p className="text-sm font-medium">Style rapide</p>
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Type</label>
-                    <Select
-                      value={(badgeForm.style?.type as string) || 'GRADIENT'}
-                      onValueChange={(value) => updateBadgeStyle({ type: value as BadgeStyle['type'] })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="GRADIENT">Gradient</SelectItem>
-                        <SelectItem value="IMAGE">Image</SelectItem>
-                        <SelectItem value="SOLID">Couleur</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Label affiché</label>
-                    <Input
-                      value={typeof badgeForm.style?.label === 'string' ? (badgeForm.style.label as string) : ''}
-                      onChange={(e) => updateBadgeStyle({ label: e.target.value })}
-                      placeholder="ex: OG"
-                    />
-                  </div>
-                </div>
-
-                {(badgeForm.style?.type ?? 'GRADIENT') === 'GRADIENT' && (
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Gradient (CSS)</label>
-                    <Input
-                      value={typeof badgeForm.style?.gradient === 'string' ? (badgeForm.style.gradient as string) : ''}
-                      onChange={(e) => updateBadgeStyle({ gradient: e.target.value })}
-                      placeholder="linear-gradient(90deg,#7c3aed,#06b6d4)"
-                    />
-                  </div>
-                )}
-                {(badgeForm.style?.type ?? 'GRADIENT') === 'IMAGE' && (
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Image URL</label>
-                    <Input
-                      value={typeof badgeForm.style?.imageUrl === 'string' ? (badgeForm.style.imageUrl as string) : ''}
-                      onChange={(e) => updateBadgeStyle({ imageUrl: e.target.value })}
-                      placeholder="https://..."
-                    />
-                  </div>
-                )}
-                {(badgeForm.style?.type ?? 'GRADIENT') === 'SOLID' && (
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Couleur de fond</label>
-                    <Input
-                      value={typeof badgeForm.style?.backgroundColor === 'string' ? (badgeForm.style.backgroundColor as string) : ''}
-                      onChange={(e) => updateBadgeStyle({ backgroundColor: e.target.value })}
-                      placeholder="#111827"
-                    />
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Couleur texte</label>
-                    <Input
-                      value={typeof badgeForm.style?.textColor === 'string' ? (badgeForm.style.textColor as string) : ''}
-                      onChange={(e) => updateBadgeStyle({ textColor: e.target.value })}
-                      placeholder="#fff"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Bordure</label>
-                    <Input
-                      value={typeof badgeForm.style?.borderColor === 'string' ? (badgeForm.style.borderColor as string) : ''}
-                      onChange={(e) => updateBadgeStyle({ borderColor: e.target.value })}
-                      placeholder="rgba(255,255,255,0.25)"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Taille texte</label>
-                    <Input
-                      type="number"
-                      min={8}
-                      max={14}
-                      value={typeof badgeForm.style?.fontSize === 'number' ? (badgeForm.style.fontSize as number) : 10}
-                      onChange={(e) => updateBadgeStyle({ fontSize: Number(e.target.value) || 10 })}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-medium text-muted-foreground">Style (JSON avancé)</label>
-                  {badgeForm.styleJsonError ? (
-                    <span className="text-xs text-destructive">{badgeForm.styleJsonError}</span>
-                  ) : null}
-                </div>
-                <Textarea
-                  value={badgeForm.styleJson}
-                  onChange={(e) => updateBadgeStyleJson(e.target.value)}
-                  className="min-h-[180px] font-mono text-xs"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <Card className="border-border/30">
-                <CardHeader>
-                  <CardDescription>Aperçu</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <UserBadgeChip
-                    badge={{
-                      id: editingBadge?.id ?? 'preview',
-                      key: badgeForm.key || 'preview',
-                      name: badgeForm.name || 'Badge',
-                      description: badgeForm.description || null,
-                      style: badgeForm.style,
-                      isActive: badgeForm.isActive,
-                    }}
-                  />
-                  <div className="text-xs text-muted-foreground">
-                    Survole le badge pour voir le “menu” (hover-card).
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setBadgeDialogOpen(false)} disabled={savingBadge}>
-              Annuler
-            </Button>
-            <Button onClick={saveBadge} disabled={savingBadge}>
-              {savingBadge ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-              Sauvegarder
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* User Badges Dialog */}
-      <Dialog
-        open={userBadgesDialogOpen}
-        onOpenChange={(open) => {
-          setUserBadgesDialogOpen(open);
-          if (!open) {
-            setUserBadgesUser(null);
-            setUserBadgeGrants([]);
-            setUserBadgeSelection({ slot1: null, slot2: null });
-            setGrantBadgeId('');
-          }
-        }}
-      >
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Badges de {userBadgesUser?.username ?? 'l’utilisateur'}</DialogTitle>
-            <DialogDescription>Attribue/révoque des badges. L’utilisateur choisit ensuite 2 badges sur son profil.</DialogDescription>
-          </DialogHeader>
-
-          {loadingUserBadges ? (
-            <div className="py-10 text-center text-muted-foreground">
-              <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-            </div>
-          ) : (
-            <div className="space-y-6 py-2">
-              <div className="rounded-lg border border-border/30 bg-muted/10 p-4">
-                <p className="text-xs font-medium text-muted-foreground mb-2">Sélection actuelle (slots)</p>
-                <div className="flex items-center justify-between gap-4">
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">Slot 1:</span>{' '}
-                    <span className="font-medium">
-                      {userBadgeSelection.slot1
-                        ? (userBadgeGrants.find((g) => g.id === userBadgeSelection.slot1)?.name ?? badges.find((b) => b.id === userBadgeSelection.slot1)?.name ?? '—')
-                        : 'Aucun'}
-                    </span>
-                  </div>
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">Slot 2:</span>{' '}
-                    <span className="font-medium">
-                      {userBadgeSelection.slot2
-                        ? (userBadgeGrants.find((g) => g.id === userBadgeSelection.slot2)?.name ?? badges.find((b) => b.id === userBadgeSelection.slot2)?.name ?? '—')
-                        : 'Aucun'}
-                    </span>
-                  </div>
-                  <UserBadgesInline
-                    badges={[
-                      ...(userBadgeSelection.slot1
-                        ? [userBadgeGrants.find((g) => g.id === userBadgeSelection.slot1) ?? badges.find((b) => b.id === userBadgeSelection.slot1)]
-                            .filter(Boolean) as PublicBadge[]
-                        : []),
-                      ...(userBadgeSelection.slot2
-                        ? [userBadgeGrants.find((g) => g.id === userBadgeSelection.slot2) ?? badges.find((b) => b.id === userBadgeSelection.slot2)]
-                            .filter(Boolean) as PublicBadge[]
-                        : []),
-                    ]}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-3 border border-border/30 rounded p-4">
-                <p className="text-sm text-muted-foreground">Attribuer un badge</p>
-                <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto] gap-3 items-end">
-                  <div className="space-y-2">
-                    <label className="text-xs text-muted-foreground">Badge</label>
-                    <Select value={grantBadgeId} onValueChange={setGrantBadgeId}>
-                      <SelectTrigger className="bg-transparent">
-                        <SelectValue placeholder="Choisir un badge" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {badges
-                          .filter((b) => b.isActive)
-                          .filter((b) => !userBadgeGrants.some((g) => g.id === b.id))
-                          .map((b) => (
-                            <SelectItem key={b.id} value={b.id}>
-                              {b.name} • {b.key}
-                            </SelectItem>
-                          ))}
-                        {badges.filter((b) => b.isActive).filter((b) => !userBadgeGrants.some((g) => g.id === b.id)).length === 0 ? (
-                          <SelectItem value="none" disabled>
-                            Aucun badge disponible
-                          </SelectItem>
-                        ) : null}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button onClick={grantBadgeToUser} disabled={!grantBadgeId || grantingUserBadge} className="h-9">
-                    {grantingUserBadge ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-                    Attribuer
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">Badges attribués</p>
-                  <span className="text-xs text-muted-foreground">{userBadgeGrants.length}</span>
-                </div>
-                {userBadgeGrants.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-6">Aucun badge attribué</p>
-                ) : (
-                  <div className="divide-y divide-border/30 rounded-lg border border-border/30">
-                    {userBadgeGrants.map((g) => (
-                      <div key={g.id} className="flex items-center justify-between gap-3 p-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">{g.name}</p>
-                          <p className="text-xs text-muted-foreground truncate">{g.key}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <UserBadgeChip badge={g} />
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => revokeBadgeFromUser(g.id)}
-                            disabled={revokingUserBadge === g.id}
-                            className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10"
-                          >
-                            {revokingUserBadge === g.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setUserBadgesDialogOpen(false)}>
               Fermer
             </Button>
           </DialogFooter>

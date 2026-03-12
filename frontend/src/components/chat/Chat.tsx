@@ -177,7 +177,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                             !msg.usernameColor && (msg.userId === user?.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')
                           )}
                         >
-                          <UsernameDisplay userId={msg.userId} username={msg.username} usernameColor={msg.usernameColor} />
+                          <UsernameDisplay username={msg.username} usernameColor={msg.usernameColor} />
                         </Button>
                         {(msg.isTopMoney || msg.isTopAura) && (
                           <div className="flex items-center gap-1">
@@ -359,7 +359,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                       >
                         <div className="w-1 h-1 rounded-full bg-foreground/50" />
                         <div className="min-w-0 flex-1">
-                          <UsernameDisplay userId={u.userId} username={u.username} usernameColor={u.usernameColor} className="block" />
+                          <UsernameDisplay username={u.username} className="block" />
                           {(() => {
                             const pageMeta = getPageMeta(u.currentPage);
                             const PageIcon = pageMeta.icon;

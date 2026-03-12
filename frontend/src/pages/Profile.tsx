@@ -1,19 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { badgesApi, usersApi, leaderboardsApi, auraCoinApi, bombPartyApi, BombPartyStats, type PublicBadge } from '../services/api';
+import { usersApi, leaderboardsApi, auraCoinApi, bombPartyApi, BombPartyStats } from '../services/api';
 import { Edit2, Save, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { UserBadgesInline } from '@/components/ui/user-badges';
-import { fetchCachedSelectedBadges, invalidateCachedSelectedBadges } from '@/lib/selected-badges';
 
 interface ProfileUser {
   id: string;
@@ -59,12 +56,6 @@ export default function Profile() {
   const [bioText, setBioText] = useState('');
   const [savingBio, setSavingBio] = useState(false);
 
-  // Badges (own profile only)
-  const [myBadges, setMyBadges] = useState<PublicBadge[]>([]);
-  const [badgeSelection, setBadgeSelection] = useState<{ slot1: string | null; slot2: string | null }>({ slot1: null, slot2: null });
-  const [loadingBadges, setLoadingBadges] = useState(false);
-  const [savingBadges, setSavingBadges] = useState(false);
-
   const targetUserId = userId || currentUser?.id;
   const isOwnProfile = targetUserId === currentUser?.id;
 
@@ -73,25 +64,6 @@ export default function Profile() {
       fetchProfile();
     }
   }, [targetUserId]);
-
-  useEffect(() => {
-    if (!isOwnProfile) return;
-    const fetchMyBadges = async () => {
-      try {
-        setLoadingBadges(true);
-        const res = await badgesApi.getMy();
-        setMyBadges(res.data.badges ?? []);
-        setBadgeSelection(res.data.selection ?? { slot1: null, slot2: null });
-      } catch (error) {
-        console.error('Failed to fetch my badges:', error);
-        setMyBadges([]);
-        setBadgeSelection({ slot1: null, slot2: null });
-      } finally {
-        setLoadingBadges(false);
-      }
-    };
-    fetchMyBadges();
-  }, [isOwnProfile]);
 
   const fetchProfile = async () => {
     try {
@@ -145,20 +117,6 @@ export default function Profile() {
   const handleCancelBio = () => {
     setBioText(profileUser?.bio || '');
     setEditingBio(false);
-  };
-
-  const handleSaveBadges = async () => {
-    if (!currentUser?.id) return;
-    setSavingBadges(true);
-    try {
-      await badgesApi.updateMySelection({ slot1BadgeId: badgeSelection.slot1, slot2BadgeId: badgeSelection.slot2 });
-      invalidateCachedSelectedBadges(currentUser.id);
-      await fetchCachedSelectedBadges(currentUser.id);
-    } catch (error) {
-      console.error('Failed to save badge selection:', error);
-    } finally {
-      setSavingBadges(false);
-    }
   };
 
   if (loading) {
@@ -224,7 +182,6 @@ export default function Profile() {
         
         <div className="flex-1 min-w-0">
           <UsernameDisplay
-            userId={profileUser.id}
             username={profileUser.username}
             firstName={profileUser.firstName}
             usernameColor={profileUser.usernameColor}
@@ -344,106 +301,6 @@ export default function Profile() {
         </CardContent>
       </Card>
 
-      {isOwnProfile && (
-        <Card>
-          <CardHeader>
-            <CardDescription>Badges affichés</CardDescription>
-          </CardHeader>
-          <CardContent className={SPACING.CARD_SPACING}>
-            {loadingBadges ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Chargement des badges...
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="min-w-[220px] space-y-1">
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Slot 1</p>
-                    <Select
-                      value={badgeSelection.slot1 ?? 'none'}
-                      onValueChange={(value) => {
-                        const next = value === 'none' ? null : value;
-                        setBadgeSelection((prev) => ({
-                          slot1: next,
-                          slot2: prev.slot2 === next ? null : prev.slot2,
-                        }));
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Aucun badge" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Aucun</SelectItem>
-                        {myBadges.map((b) => (
-                          <SelectItem key={b.id} value={b.id}>
-                            {b.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="min-w-[220px] space-y-1">
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Slot 2</p>
-                    <Select
-                      value={badgeSelection.slot2 ?? 'none'}
-                      onValueChange={(value) => {
-                        const next = value === 'none' ? null : value;
-                        setBadgeSelection((prev) => ({
-                          slot2: next,
-                          slot1: prev.slot1 === next ? null : prev.slot1,
-                        }));
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Aucun badge" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Aucun</SelectItem>
-                        {myBadges.map((b) => (
-                          <SelectItem key={b.id} value={b.id}>
-                            {b.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex-1 space-y-1">
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Aperçu</p>
-                    <UserBadgesInline
-                      badges={[
-                        ...(badgeSelection.slot1 ? [myBadges.find((b) => b.id === badgeSelection.slot1)].filter(Boolean) as PublicBadge[] : []),
-                        ...(badgeSelection.slot2 ? [myBadges.find((b) => b.id === badgeSelection.slot2)].filter(Boolean) as PublicBadge[] : []),
-                      ]}
-                      className="py-2"
-                    />
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
-                      {myBadges.length === 0 ? 'Aucun badge disponible (demande à un admin).' : 'Survole un badge pour voir sa description.'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setBadgeSelection({ slot1: null, slot2: null })}
-                    disabled={savingBadges}
-                  >
-                    Tout retirer
-                  </Button>
-                  <Button size="sm" onClick={handleSaveBadges} disabled={savingBadges}>
-                    {savingBadges ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
-                    Enregistrer
-                  </Button>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-8 md:gap-12">
