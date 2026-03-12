@@ -3,7 +3,7 @@ import { BadgeIcon, BadgeSlotEmpty, BadgeData } from './BadgeIcon';
 
 interface UserBadgesProps {
   badges: BadgeData[];          // 0-2 equipped badges
-  size?: 'xs' | 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   className?: string;
   tooltipSide?: 'top' | 'bottom' | 'left' | 'right';
   /** If true, show both slots even when empty (always 2 squares visible) */

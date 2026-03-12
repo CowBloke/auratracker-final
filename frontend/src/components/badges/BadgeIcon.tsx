@@ -44,16 +44,18 @@ const RARITY_LABELS: Record<string, string> = {
 
 interface BadgeIconProps {
   badge: BadgeData;
-  size?: 'xs' | 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   className?: string;
   tooltipSide?: 'top' | 'bottom' | 'left' | 'right';
 }
 
 const SIZES = {
-  xs: { box: 'w-[18px] h-[18px]', text: 'text-[10px]' },
-  sm: { box: 'w-5 h-5',           text: 'text-xs'     },
-  md: { box: 'w-6 h-6',           text: 'text-sm'     },
-  lg: { box: 'w-8 h-8',           text: 'text-base'   },
+  xs:  { box: 'w-[18px] h-[18px]', text: 'text-[10px]' },
+  sm:  { box: 'w-5 h-5',           text: 'text-xs'     },
+  md:  { box: 'w-6 h-6',           text: 'text-sm'     },
+  lg:  { box: 'w-8 h-8',           text: 'text-base'   },
+  xl:  { box: 'w-12 h-12',         text: 'text-2xl'    },
+  '2xl': { box: 'w-16 h-16',       text: 'text-3xl'    },
 };
 
 export function getBadgeBackground(badge: BadgeData): React.CSSProperties {
@@ -156,7 +158,7 @@ export function BadgeIcon({ badge, size = 'sm', className, tooltipSide = 'top' }
 }
 
 /** An empty badge slot — neutral placeholder square */
-export function BadgeSlotEmpty({ size = 'sm', className }: { size?: BadgeIconProps['size']; className?: string }) {
+export function BadgeSlotEmpty({ size = 'sm', className }: { size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl'; className?: string }) {
   const { box } = SIZES[size ?? 'sm'];
   return (
     <div

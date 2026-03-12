@@ -16,7 +16,8 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed-bombparty": "tsx prisma/seed-bombparty.ts",
-    "db:seed-basic": "tsx prisma/seed-basic.ts"
+    "db:seed-basic": "tsx prisma/seed-basic.ts",
+    "db:seed-badges": "tsx prisma/seed-badges.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

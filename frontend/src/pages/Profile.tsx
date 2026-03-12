@@ -11,7 +11,7 @@ import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { UserBadges } from '@/components/badges/UserBadges';
-import { BadgeSelector } from '@/components/badges/BadgeSelector';
+import { BadgeSelector, BadgeHistory } from '@/components/badges/BadgeSelector';
 import { BadgeData } from '@/components/badges/BadgeIcon';
 
 interface ProfileUser {
@@ -198,10 +198,10 @@ export default function Profile() {
         )}
         
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <UserBadges
               badges={equippedBadges}
-              size="md"
+              size="xl"
               tooltipSide="bottom"
               showEmptySlots={false}
             />
@@ -292,26 +292,21 @@ export default function Profile() {
         </CardHeader>
         <CardContent className={SPACING.CARD_SPACING}>
           {isOwnProfile ? (
-            <BadgeSelector userId={profileUser.id} />
+            <div className="space-y-6">
+              <BadgeSelector userId={profileUser.id} />
+              <BadgeHistory badges={userBadges} />
+            </div>
+          ) : userBadges.length === 0 ? (
+            <p className={TYPOGRAPHY.MUTED}>Aucun badge.</p>
           ) : (
-            userBadges.length === 0 ? (
-              <p className={TYPOGRAPHY.MUTED}>Aucun badge.</p>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Équipés :</span>
-                  <UserBadges badges={equippedBadges} size="md" showEmptySlots={false} />
+            <div className="space-y-5">
+              {equippedBadges.length > 0 && (
+                <div className="flex items-center gap-4">
+                  <UserBadges badges={equippedBadges} size="xl" showEmptySlots={false} tooltipSide="bottom" />
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {userBadges.map((badge) => (
-                    <div key={badge.id} className="flex flex-col items-center gap-1">
-                      <UserBadges badges={[badge]} size="md" showEmptySlots={false} tooltipSide="bottom" />
-                      <span className="text-[9px] text-muted-foreground max-w-[48px] truncate">{badge.name}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )
+              )}
+              <BadgeHistory badges={userBadges} />
+            </div>
           )}
         </CardContent>
       </Card>

@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { badgesApi, UserBadgeEntry } from '@/services/api';
 import { BadgeIcon, BadgeData } from './BadgeIcon';
-import { UserBadges } from './UserBadges';
 import { cn } from '@/lib/utils';
-import { Loader2, X, Check } from 'lucide-react';
+import { Loader2, X, Check, Search, Edit2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 interface BadgeSelectorProps {
   userId: string;
@@ -12,7 +13,7 @@ interface BadgeSelectorProps {
 
 /**
  * Badge equip UI for the profile page.
- * Shows the user's owned badges and lets them select which two to equip.
+ * Shows large equipped badge slots; clicking opens a 3-column search picker.
  */
 export function BadgeSelector({ userId, className }: BadgeSelectorProps) {
   const [badges, setBadges] = useState<UserBadgeEntry[]>([]);
@@ -21,6 +22,7 @@ export function BadgeSelector({ userId, className }: BadgeSelectorProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<1 | 2 | null>(null);
   const [activeSlot, setActiveSlot] = useState<1 | 2 | null>(null);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     fetchBadges();
@@ -47,12 +49,23 @@ export function BadgeSelector({ userId, className }: BadgeSelectorProps) {
       if (slot === 1) setEquippedSlot1(badgeId);
       else setEquippedSlot2(badgeId);
       setActiveSlot(null);
+      setSearch('');
     } catch (error) {
       console.error('Failed to equip badge:', error);
     } finally {
       setSaving(null);
     }
   };
+
+  const filteredBadges = useMemo(() => {
+    const q = search.toLowerCase();
+    if (!q) return badges;
+    return badges.filter(
+      (b) =>
+        b.name.toLowerCase().includes(q) ||
+        b.description.toLowerCase().includes(q),
+    );
+  }, [badges, search]);
 
   if (loading) {
     return (
@@ -75,47 +88,54 @@ export function BadgeSelector({ userId, className }: BadgeSelectorProps) {
   const equipped2 = badges.find((b) => b.id === equippedSlot2) ?? null;
 
   return (
-    <div className={cn('space-y-4', className)}>
-      {/* Current equipped preview */}
-      <div className="flex items-center gap-3">
-        <span className="text-sm text-muted-foreground">Badges équipés :</span>
-        <UserBadges badges={[equipped1, equipped2].filter(Boolean) as BadgeData[]} size="md" showEmptySlots />
-      </div>
-
-      {/* Slot selectors */}
-      <div className="flex items-center gap-2">
+    <div className={cn('space-y-5', className)}>
+      {/* Equipped slot buttons */}
+      <div className="flex items-end gap-5">
         {([1, 2] as const).map((slot) => {
-          const equippedId = slot === 1 ? equippedSlot1 : equippedSlot2;
-          const equippedBadge = badges.find((b) => b.id === equippedId) ?? null;
+          const equippedBadge = slot === 1 ? equipped1 : equipped2;
           const isActive = activeSlot === slot;
 
           return (
-            <div key={slot} className="flex flex-col items-center gap-1">
-              <span className="text-[10px] text-muted-foreground">Slot {slot}</span>
+            <div key={slot} className="flex flex-col items-center gap-1.5">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                Slot {slot}
+              </span>
               <button
                 type="button"
-                onClick={() => setActiveSlot(isActive ? null : slot)}
+                onClick={() => {
+                  setActiveSlot(isActive ? null : slot);
+                  setSearch('');
+                }}
                 className={cn(
-                  'w-10 h-10 rounded-md border-2 flex items-center justify-center transition-colors',
-                  isActive ? 'border-foreground' : 'border-border hover:border-foreground/50',
+                  'relative group w-14 h-14 rounded-md border-2 flex items-center justify-center transition-all',
+                  isActive
+                    ? 'border-foreground shadow-[0_0_0_3px_hsl(var(--foreground)/0.12)]'
+                    : 'border-border hover:border-foreground/60',
                 )}
               >
                 {saving === slot ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-5 h-5 animate-spin" />
                 ) : equippedBadge ? (
-                  <BadgeIcon badge={equippedBadge} size="md" />
+                  <>
+                    <BadgeIcon badge={equippedBadge} size="xl" />
+                    {/* edit overlay */}
+                    <div className="absolute inset-0 rounded-md bg-background/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                      <Edit2 className="w-4 h-4" />
+                    </div>
+                  </>
                 ) : (
-                  <span className="text-xs text-muted-foreground">+</span>
+                  <span className="text-xl text-muted-foreground">+</span>
                 )}
               </button>
               {equippedBadge && (
                 <button
                   type="button"
                   onClick={() => handleEquip(null, slot)}
-                  className="text-[10px] text-muted-foreground hover:text-foreground"
+                  className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5"
                   title="Déséquiper"
                 >
-                  <X className="w-3 h-3" />
+                  <X className="w-2.5 h-2.5" />
+                  retirer
                 </button>
               )}
             </div>
@@ -123,45 +143,108 @@ export function BadgeSelector({ userId, className }: BadgeSelectorProps) {
         })}
       </div>
 
-      {/* Badge picker panel */}
+      {/* 3-column badge picker */}
       {activeSlot !== null && (
-        <div className="border border-border rounded-md p-3">
-          <p className="text-xs text-muted-foreground mb-3">
-            Sélectionne un badge pour le slot {activeSlot} :
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {badges.map((badge) => {
-              const otherEquipped = activeSlot === 1 ? equippedSlot2 : equippedSlot1;
-              const isOtherSlot = badge.id === otherEquipped;
-              const isCurrentSlot = badge.id === (activeSlot === 1 ? equippedSlot1 : equippedSlot2);
+        <div className="border border-border rounded-md overflow-hidden">
+          {/* Picker header */}
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border/60 bg-muted/20">
+            <span className="text-xs font-medium text-muted-foreground">
+              Slot {activeSlot} — sélectionne un badge
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => { setActiveSlot(null); setSearch(''); }}
+            >
+              <X className="w-3.5 h-3.5" />
+            </Button>
+          </div>
 
-              return (
-                <button
-                  key={badge.id}
-                  type="button"
-                  disabled={isOtherSlot}
-                  onClick={() => !isOtherSlot && handleEquip(badge.id, activeSlot)}
-                  className={cn(
-                    'flex flex-col items-center gap-1 p-2 rounded-md border transition-colors',
-                    isCurrentSlot
-                      ? 'border-foreground bg-foreground/5'
-                      : isOtherSlot
-                        ? 'opacity-40 cursor-not-allowed border-border'
-                        : 'border-border hover:border-foreground/50 hover:bg-muted/50',
-                  )}
-                  title={badge.name}
-                >
-                  <BadgeIcon badge={badge} size="md" />
-                  <span className="text-[9px] text-muted-foreground max-w-[48px] truncate">
-                    {badge.name}
-                  </span>
-                  {isCurrentSlot && <Check className="w-3 h-3 text-foreground" />}
-                </button>
-              );
-            })}
+          {/* Search */}
+          <div className="px-3 py-2 border-b border-border/40">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/70 pointer-events-none" />
+              <Input
+                placeholder="Rechercher..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-8 pl-8 text-sm bg-transparent"
+                autoFocus
+              />
+            </div>
+          </div>
+
+          {/* 3-column grid */}
+          <div className="p-3 grid grid-cols-3 gap-2 max-h-64 overflow-y-auto">
+            {filteredBadges.length === 0 ? (
+              <p className="col-span-3 text-center text-xs text-muted-foreground py-4">
+                Aucun badge trouvé
+              </p>
+            ) : (
+              filteredBadges.map((badge) => {
+                const otherEquipped = activeSlot === 1 ? equippedSlot2 : equippedSlot1;
+                const isOtherSlot = badge.id === otherEquipped;
+                const isCurrentSlot =
+                  badge.id === (activeSlot === 1 ? equippedSlot1 : equippedSlot2);
+
+                return (
+                  <button
+                    key={badge.id}
+                    type="button"
+                    disabled={isOtherSlot}
+                    onClick={() => !isOtherSlot && handleEquip(badge.id, activeSlot)}
+                    className={cn(
+                      'flex flex-col items-center gap-1.5 p-2 rounded-md border transition-colors',
+                      isCurrentSlot
+                        ? 'border-foreground bg-foreground/5'
+                        : isOtherSlot
+                          ? 'opacity-40 cursor-not-allowed border-border'
+                          : 'border-border hover:border-foreground/50 hover:bg-muted/50',
+                    )}
+                  >
+                    <BadgeIcon badge={badge} size="lg" tooltipSide="top" />
+                    <span className="text-[10px] text-muted-foreground text-center leading-tight max-w-[64px] truncate">
+                      {badge.name}
+                    </span>
+                    {isCurrentSlot && <Check className="w-3 h-3 text-foreground shrink-0" />}
+                  </button>
+                );
+              })
+            )}
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Read-only list of all badges a user has earned, used as history. */
+export function BadgeHistory({
+  badges,
+  className,
+}: {
+  badges: UserBadgeEntry[];
+  className?: string;
+}) {
+  if (badges.length === 0) return null;
+
+  return (
+    <div className={cn('space-y-2', className)}>
+      <p className="text-xs text-muted-foreground uppercase tracking-wider">
+        Badges obtenus ({badges.length})
+      </p>
+      <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
+        {badges.map((badge) => (
+          <div key={badge.id} className="flex flex-col items-center gap-1">
+            <BadgeIcon badge={badge as BadgeData} size="lg" tooltipSide="bottom" />
+            <span className="text-[9px] text-muted-foreground text-center leading-tight max-w-[56px] truncate">
+              {badge.name}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

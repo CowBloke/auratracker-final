@@ -14,7 +14,17 @@ export type AutoConditionKey =
   | 'TOP_5_MONEY'
   | 'TOP_10_MONEY'
   | 'BOMBPARTY_TOP_WINS'
-  | `GAME_HIGHSCORE_${string}`;
+  | `GAME_HIGHSCORE_${string}`
+  // Achievement badges
+  | 'TRYHARDEUR'          // 100+ total games played across all types
+  | 'GRIND_200'           // 200+ total games played
+  | 'GAME_2048_TILE_2048' // reached 2048 tile in game_2048
+  | 'GAME_2048_TILE_4096' // reached 4096 tile in game_2048 (epic)
+  | 'SUDOKU_COMPLETED'    // completed at least one sudoku
+  | 'TOP_CASINO_LOSSES'   // user with the most casino losses
+  | 'CASINO_VETERAN'      // played 25+ casino games
+  | 'FLAPPY_BIRD_50'      // flappy bird score >= 50
+  | 'MINESWEEPER_WIN';    // won at least one minesweeper game
 
 // ─── Core award / revoke helpers ─────────────────────────────────────────────
 
@@ -188,6 +198,97 @@ const getQualifyingUserIds = async (key: string): Promise<Set<string>> => {
     });
     return stat ? new Set([stat.userId]) : new Set();
   }
+
+  // ── Achievement badges ──────────────────────────────────────────────────────
+
+  // TRYHARDEUR / GRIND_200 – total games played (all game types + bombparty)
+  if (key === 'TRYHARDEUR' || key === 'GRIND_200') {
+    const threshold = key === 'GRIND_200' ? 200 : 100;
+    const gameAgg = await prisma.gameStats.groupBy({
+      by: ['userId'],
+      _sum: { totalPlayed: true },
+    });
+    const bombStats = await prisma.bombPartyStats.findMany({
+      select: { userId: true, totalPlayed: true },
+    });
+    const totals = new Map<string, number>();
+    for (const g of gameAgg) {
+      totals.set(g.userId, (g._sum.totalPlayed ?? 0));
+    }
+    for (const b of bombStats) {
+      totals.set(b.userId, (totals.get(b.userId) ?? 0) + b.totalPlayed);
+    }
+    const result = new Set<string>();
+    for (const [userId, total] of totals) {
+      if (total >= threshold) result.add(userId);
+    }
+    return result;
+  }
+
+  // GAME_2048_TILE_2048 – reached the 2048 tile (highScore >= 2048 in game_2048)
+  if (key === 'GAME_2048_TILE_2048') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'game_2048', highScore: { gte: 2048 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  // GAME_2048_TILE_4096 – reached the 4096 tile (highScore >= 4096 in game_2048)
+  if (key === 'GAME_2048_TILE_4096') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'game_2048', highScore: { gte: 4096 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  // SUDOKU_COMPLETED – completed at least one sudoku grid
+  if (key === 'SUDOKU_COMPLETED') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'sudoku', wins: { gte: 1 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  // TOP_CASINO_LOSSES – user with the most casino losses
+  if (key === 'TOP_CASINO_LOSSES') {
+    const stat = await prisma.gameStats.findFirst({
+      where: { gameType: 'casino', losses: { gt: 0 } },
+      select: { userId: true },
+      orderBy: { losses: 'desc' },
+    });
+    return stat ? new Set([stat.userId]) : new Set();
+  }
+
+  // CASINO_VETERAN – played 25+ casino games
+  if (key === 'CASINO_VETERAN') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'casino', totalPlayed: { gte: 25 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  // FLAPPY_BIRD_50 – flappy bird highscore >= 50
+  if (key === 'FLAPPY_BIRD_50') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'flappy_bird', highScore: { gte: 50 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  // MINESWEEPER_WIN – won at least one minesweeper game
+  if (key === 'MINESWEEPER_WIN') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'minesweeper', wins: { gte: 1 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
   return new Set();
 };
 

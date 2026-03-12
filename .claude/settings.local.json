@@ -28,5 +28,6 @@
       "Bash(xargs ls:*)",
       "Bash(ls:*)"
     ]
-  }
+  },
+  "outputStyle": "default"
 }
