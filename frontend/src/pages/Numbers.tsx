@@ -29,7 +29,7 @@ type GamesPlayedRanking = {
 
 const gamesCatalog = [
   'Doodle Jump',
-  'Sudoku',
+  'Logic Lab',
   '2048',
   'Flappy Bird',
   'Casino',

@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { adminApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan } from '../services/api';
+import { adminApi, AdminBadge, AdminUser, AdminUserBadgeGrant, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, type BadgeStyle, type PublicBadge } from '../services/api';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Minus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, Inbox, Archive, UserCog, Crown, Swords, Send, Upload } from 'lucide-react';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Minus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, Inbox, Archive, UserCog, Crown, Swords, Send } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, ReferenceDot } from 'recharts';
 import {
   AlertDialog,
@@ -57,60 +57,6 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
 };
 
 const ANNOUNCEMENT_MAX_LENGTH = 120;
-const ADMIN_ARCHIVED_REGISTRATIONS_STORAGE_KEY = 'admin_archived_registrations';
-const ROLE_LABELS = {
-  USER: 'membre',
-  ADMIN: 'admin',
-  SUPER_ADMIN: 'super admin',
-} as const;
-
-type AdminRole = keyof typeof ROLE_LABELS;
-
-type ArchivedRegistration = PendingUser & {
-  registrationStatus: 'APPROVED' | 'REJECTED';
-  reviewedAt?: string;
-  importedFromLegacy?: boolean;
-};
-
-const parseLegacyArchivedRegistrations = (): ArchivedRegistration[] => {
-  try {
-    const raw = localStorage.getItem(ADMIN_ARCHIVED_REGISTRATIONS_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((entry): entry is ArchivedRegistration => (
-      entry &&
-      typeof entry === 'object' &&
-      typeof entry.id === 'string' &&
-      typeof entry.username === 'string' &&
-      typeof entry.email === 'string' &&
-      typeof entry.createdAt === 'string' &&
-      (entry.registrationStatus === 'APPROVED' || entry.registrationStatus === 'REJECTED')
-    ));
-  } catch {
-    return [];
-  }
-};
-
-const mapRegistrationReviewToArchivedRegistration = (review: RegistrationReview): ArchivedRegistration => ({
-  id: review.registrationUserId,
-  username: review.username,
-  firstName: review.firstName,
-  schoolLevel: review.schoolLevel,
-  classLetter: review.classLetter,
-  email: review.email,
-  motivationMessage: review.motivationMessage,
-  createdAt: review.registrationCreatedAt,
-  registrationStatus: review.status,
-  reviewedAt: review.reviewedAt,
-  importedFromLegacy: review.importedFromLegacy,
-});
-
-const getAdminRole = (user: Pick<AdminUser, 'isAdmin' | 'isSuperAdmin'>): AdminRole => {
-  if (user.isSuperAdmin) return 'SUPER_ADMIN';
-  if (user.isAdmin) return 'ADMIN';
-  return 'USER';
-};
 
 // Log type configuration with icons, colors and labels
 const LOG_TYPE_CONFIG: Record<string, { label: string; color: string; bgColor: string; borderColor: string; icon: React.ComponentType<{ className?: string }> }> = {
@@ -400,7 +346,6 @@ export default function Admin() {
   });
   const [editPassword, setEditPassword] = useState('');
   const [saving, setSaving] = useState(false);
-  const [updatingRoleUserId, setUpdatingRoleUserId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [mutingUser, setMutingUser] = useState<string | null>(null);
   const [clearingChat, setClearingChat] = useState(false);
@@ -517,9 +462,9 @@ export default function Admin() {
   const [loadingPending, setLoadingPending] = useState(false);
   const [approvingUser, setApprovingUser] = useState<string | null>(null);
   const [rejectingUser, setRejectingUser] = useState<string | null>(null);
-  const [archivedRegistrations, setArchivedRegistrations] = useState<ArchivedRegistration[]>([]);
-  const [importingArchivedRegistrations, setImportingArchivedRegistrations] = useState(false);
-  const [legacyArchivedRegistrationsCount, setLegacyArchivedRegistrationsCount] = useState(() => parseLegacyArchivedRegistrations().length);
+  const [archivedRegistrations, setArchivedRegistrations] = useState<(PendingUser & { registrationStatus: 'APPROVED' | 'REJECTED' })[]>(() => {
+    try { return JSON.parse(localStorage.getItem('admin_archived_registrations') || '[]'); } catch { return []; }
+  });
 
   // Ban appeals state
   const [banAppeals, setBanAppeals] = useState<BanAppeal[]>([]);
@@ -541,16 +486,6 @@ export default function Admin() {
   const [banDuration, setBanDuration] = useState(24);
   const [creatingBan, setCreatingBan] = useState(false);
   const [unbanning, setUnbanning] = useState<string | null>(null);
-
-  // Admin warnings state
-  const [warnings, setWarnings] = useState<AdminWarning[]>([]);
-  const [loadingWarnings, setLoadingWarnings] = useState(false);
-  const [warningDialogOpen, setWarningDialogOpen] = useState(false);
-  const [warningUserId, setWarningUserId] = useState<string>('');
-  const [warningMessage, setWarningMessage] = useState('');
-  const [warningSeverity, setWarningSeverity] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('MEDIUM');
-  const [creatingWarning, setCreatingWarning] = useState(false);
-  const [deletingWarning, setDeletingWarning] = useState<string | null>(null);
 
   // Logs state
   const [logs, setLogs] = useState<ActivityLog[]>([]);
@@ -807,9 +742,7 @@ export default function Admin() {
     fetchShopCategories();
     fetchBugReports();
     fetchPendingUsers();
-    fetchRegistrationReviews();
     fetchBans();
-    fetchWarnings();
     fetchBanAppeals();
     fetchNameChangeRequests();
     fetchLogs();
@@ -1281,16 +1214,6 @@ export default function Admin() {
     }
   };
 
-  const fetchRegistrationReviews = async () => {
-    try {
-      const res = await adminApi.getRegistrationReviews();
-      setArchivedRegistrations(res.data.registrationReviews.map(mapRegistrationReviewToArchivedRegistration));
-    } catch (error) {
-      console.error('Failed to fetch registration reviews:', error);
-      showMessage('error', 'Erreur lors du chargement des inscriptions archivées');
-    }
-  };
-
   const fetchBanAppeals = async () => {
     try {
       setLoadingAppeals(true);
@@ -1325,59 +1248,6 @@ export default function Admin() {
       showMessage('error', 'Erreur lors du chargement des bannissements');
     } finally {
       setLoadingBans(false);
-    }
-  };
-
-  const fetchWarnings = async () => {
-    try {
-      setLoadingWarnings(true);
-      const res = await adminApi.getWarnings();
-      setWarnings(res.data.warnings);
-    } catch (error) {
-      console.error('Failed to fetch warnings:', error);
-      showMessage('error', 'Erreur lors du chargement des avertissements');
-    } finally {
-      setLoadingWarnings(false);
-    }
-  };
-
-  const createWarning = async () => {
-    if (!warningUserId || !warningMessage.trim()) {
-      showMessage('error', 'Utilisateur et message requis');
-      return;
-    }
-    try {
-      setCreatingWarning(true);
-      const res = await adminApi.createWarning({
-        userId: warningUserId,
-        message: warningMessage.trim(),
-        severity: warningSeverity,
-      });
-      setWarnings((prev) => [res.data.warning, ...prev]);
-      setWarningDialogOpen(false);
-      setWarningUserId('');
-      setWarningMessage('');
-      setWarningSeverity('MEDIUM');
-      showMessage('success', res.data.message || 'Avertissement envoyé');
-    } catch (error) {
-      console.error('Failed to create warning:', error);
-      showMessage('error', 'Erreur lors de l\'envoi de l\'avertissement');
-    } finally {
-      setCreatingWarning(false);
-    }
-  };
-
-  const deleteWarning = async (id: string) => {
-    try {
-      setDeletingWarning(id);
-      await adminApi.deleteWarning(id);
-      setWarnings((prev) => prev.filter((w) => w.id !== id));
-      showMessage('success', 'Avertissement supprimé');
-    } catch (error) {
-      console.error('Failed to delete warning:', error);
-      showMessage('error', 'Erreur lors de la suppression');
-    } finally {
-      setDeletingWarning(null);
     }
   };
 
@@ -1756,34 +1626,21 @@ export default function Admin() {
     }
   };
 
-  const importArchivedRegistrations = async () => {
-    const legacyEntries = parseLegacyArchivedRegistrations();
-    if (legacyEntries.length === 0) {
-      showMessage('error', 'Aucune archive locale à importer');
-      setLegacyArchivedRegistrationsCount(0);
-      return;
-    }
-
-    setImportingArchivedRegistrations(true);
-    try {
-      const res = await adminApi.importRegistrationReviews(legacyEntries);
-      setArchivedRegistrations(res.data.registrationReviews.map(mapRegistrationReviewToArchivedRegistration));
-      localStorage.removeItem(ADMIN_ARCHIVED_REGISTRATIONS_STORAGE_KEY);
-      setLegacyArchivedRegistrationsCount(0);
-      showMessage('success', `${res.data.importedCount} archive${res.data.importedCount > 1 ? 's' : ''} importée${res.data.importedCount > 1 ? 's' : ''}`);
-    } catch (error: any) {
-      showMessage('error', error.response?.data?.error || 'Erreur lors de l\'import');
-    } finally {
-      setImportingArchivedRegistrations(false);
-    }
-  };
-
   const approveUser = async (id: string) => {
     setApprovingUser(id);
     try {
       await adminApi.approveUser(id);
-      setPendingUsers(prev => prev.filter(u => u.id !== id));
-      await fetchRegistrationReviews();
+      setPendingUsers(prev => {
+        const user = prev.find(u => u.id === id);
+        if (user) {
+          setArchivedRegistrations(arch => {
+            const updated = [{ ...user, registrationStatus: 'APPROVED' as const }, ...arch.filter(a => a.id !== id)];
+            localStorage.setItem('admin_archived_registrations', JSON.stringify(updated));
+            return updated;
+          });
+        }
+        return prev.filter(u => u.id !== id);
+      });
       showMessage('success', 'Utilisateur approuvé');
       // Refresh users list to include newly approved user
       fetchUsers();
@@ -1797,9 +1654,16 @@ export default function Admin() {
   const rejectUser = async (id: string) => {
     setRejectingUser(id);
     try {
+      const user = pendingUsers.find(u => u.id === id);
       await adminApi.rejectUser(id);
       setPendingUsers(prev => prev.filter(u => u.id !== id));
-      await fetchRegistrationReviews();
+      if (user) {
+        setArchivedRegistrations(arch => {
+          const updated = [{ ...user, registrationStatus: 'REJECTED' as const }, ...arch.filter(a => a.id !== id)];
+          localStorage.setItem('admin_archived_registrations', JSON.stringify(updated));
+          return updated;
+        });
+      }
       showMessage('success', 'Demande rejetée');
     } catch (error: any) {
       showMessage('error', error.response?.data?.error || 'Erreur');
@@ -2110,23 +1974,6 @@ export default function Admin() {
     }
   };
 
-  const updateUserRole = async (targetUser: AdminUser, role: AdminRole) => {
-    if (getAdminRole(targetUser) === role) {
-      return;
-    }
-
-    setUpdatingRoleUserId(targetUser.id);
-    try {
-      const res = await adminApi.updateUser(targetUser.id, { role });
-      setUsers(prev => prev.map(u => u.id === targetUser.id ? res.data.user : u));
-      showMessage('success', 'Role mis a jour');
-    } catch (error: any) {
-      showMessage('error', error.response?.data?.error || 'Erreur');
-    } finally {
-      setUpdatingRoleUserId(null);
-    }
-  };
-
   const toggleChatMute = async (u: AdminUser) => {
     setMutingUser(u.id);
     try {
@@ -2422,21 +2269,8 @@ export default function Admin() {
             return (
               <Card className="overflow-hidden">
                 <CardHeader className="border-b border-border/30 pb-3 shrink-0">
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center justify-between">
                     <CardDescription>Boîte de réception</CardDescription>
-                    {legacyArchivedRegistrationsCount > 0 && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={importArchivedRegistrations}
-                        disabled={importingArchivedRegistrations}
-                        className="h-8 gap-1.5"
-                      >
-                        {importingArchivedRegistrations ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                        Importer {legacyArchivedRegistrationsCount} archive{legacyArchivedRegistrationsCount > 1 ? 's' : ''} locale{legacyArchivedRegistrationsCount > 1 ? 's' : ''}
-                      </Button>
-                    )}
                     <div className={cn("flex items-center gap-2", TYPOGRAPHY.SMALL)}>
                       <Inbox className="h-4 w-4" />
                       <span>{allPending} en attente</span>
@@ -2828,7 +2662,7 @@ export default function Admin() {
                       key={u.id}
                       className={cn(
                         "py-4",
-                        u.isSuperAdmin ? "bg-amber-500/10" : u.isAdmin ? "bg-muted/20" : undefined
+                        u.isAdmin && "bg-muted/20"
                       )}
                     >
                   {editingUser === u.id ? (
@@ -2838,9 +2672,7 @@ export default function Admin() {
                         <div>
                           <span className="font-medium">{u.username}</span>
                           {u.isAdmin && (
-                            <span className={cn("ml-2 text-xs", u.isSuperAdmin ? "text-amber-400" : "text-amber-500")}>
-                              {u.isSuperAdmin ? 'super admin' : 'admin'}
-                            </span>
+                            <span className="ml-2 text-xs text-amber-500">admin</span>
                           )}
                           <p className="text-xs text-muted-foreground">{u.email}</p>
                         </div>
@@ -2944,20 +2776,9 @@ export default function Admin() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="font-medium truncate">{u.username}</span>
-                            <Select
-                              value={getAdminRole(u)}
-                              onValueChange={(value) => void updateUserRole(u, value as AdminRole)}
-                              disabled={updatingRoleUserId === u.id || user?.id === u.id}
-                            >
-                              <SelectTrigger className="h-7 w-[140px] border-border/50 bg-transparent text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="USER">{ROLE_LABELS.USER}</SelectItem>
-                                <SelectItem value="ADMIN">{ROLE_LABELS.ADMIN}</SelectItem>
-                                <SelectItem value="SUPER_ADMIN">{ROLE_LABELS.SUPER_ADMIN}</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            {u.isAdmin && (
+                              <span className="text-xs text-amber-500">admin</span>
+                            )}
                             {u.isChatMuted && (
                               <span className="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-400">
                                 muet
@@ -3015,7 +2836,7 @@ export default function Admin() {
                             Badges
                           </Button>
 
-                          {getAdminRole(u) === 'USER' && (
+                          {!u.isAdmin && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -3037,7 +2858,7 @@ export default function Admin() {
                             </Button>
                           )}
 
-                          {getAdminRole(u) === 'USER' && (
+                          {!u.isAdmin && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -3048,7 +2869,7 @@ export default function Admin() {
                             </Button>
                           )}
 
-                          {getAdminRole(u) === 'USER' && (
+                          {!u.isAdmin && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button
@@ -3891,207 +3712,6 @@ export default function Admin() {
               )}
             </CardContent>
           </Card>
-
-          {/* Admin Warnings Card */}
-          <Card className="mt-6">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardDescription>Avertissements admin</CardDescription>
-                <div className="flex items-center gap-4">
-                  <div className={cn("flex items-center gap-2", TYPOGRAPHY.SMALL)}>
-                    <AlertTriangle className="h-4 w-4" />
-                    <span>{warnings.filter(w => !w.isAcknowledged).length} non lus</span>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => setWarningDialogOpen(true)}
-                    className="h-8"
-                  >
-                    <Send className="h-4 w-4 mr-1" />
-                    Envoyer
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {loadingWarnings ? (
-                <div className="flex justify-center py-12">
-                  <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
-                </div>
-              ) : warnings.length === 0 ? (
-                <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
-                  Aucun avertissement envoyé
-                </p>
-              ) : (
-                <div className="divide-y divide-border/30">
-                  {warnings.map((warning) => (
-                    <div
-                      key={warning.id}
-                      className={cn(
-                        "py-4",
-                        warning.isAcknowledged && "opacity-60"
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="min-w-0 flex-1 space-y-2">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-medium">{warning.user.username}</span>
-                            <span className={cn(
-                              "text-xs px-2 py-0.5 rounded",
-                              warning.severity === 'HIGH'
-                                ? "bg-destructive/20 text-destructive"
-                                : warning.severity === 'MEDIUM'
-                                  ? "bg-amber-500/20 text-amber-400"
-                                  : "bg-blue-500/20 text-blue-400"
-                            )}>
-                              {warning.severity === 'HIGH' ? 'Grave' : warning.severity === 'MEDIUM' ? 'Moyen' : 'Info'}
-                            </span>
-                            {warning.isAcknowledged ? (
-                              <span className="text-xs px-2 py-0.5 rounded bg-green-500/20 text-green-400">
-                                Lu
-                              </span>
-                            ) : (
-                              <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
-                                Non lu
-                              </span>
-                            )}
-                          </div>
-
-                          <p className="text-sm text-muted-foreground">
-                            {warning.message}
-                          </p>
-
-                          <p className="text-xs text-muted-foreground">
-                            Par <span className="text-foreground">{warning.issuedBy.username}</span> • {new Date(warning.createdAt).toLocaleDateString('fr-FR', {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                            {warning.acknowledgedAt && (
-                              <span> • Lu le {new Date(warning.acknowledgedAt).toLocaleDateString('fr-FR', {
-                                day: 'numeric',
-                                month: 'short',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}</span>
-                            )}
-                          </p>
-                        </div>
-
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10"
-                              disabled={deletingWarning === warning.id}
-                            >
-                              {deletingWarning === warning.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Supprimer cet avertissement ?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                L'avertissement sera supprimé définitivement.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Annuler</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => deleteWarning(warning.id)}
-                                className="bg-destructive hover:bg-destructive/90"
-                              >
-                                Supprimer
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Warning Dialog */}
-          <Dialog open={warningDialogOpen} onOpenChange={setWarningDialogOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Envoyer un avertissement</DialogTitle>
-                <DialogDescription>
-                  L'utilisateur verra un popup qu'il devra confirmer avoir lu.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Utilisateur</label>
-                  <Select value={warningUserId} onValueChange={setWarningUserId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un utilisateur" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {users.map((u) => (
-                        <SelectItem key={u.id} value={u.id}>
-                          {u.username}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Sévérité</label>
-                  <Select value={warningSeverity} onValueChange={(v) => setWarningSeverity(v as 'LOW' | 'MEDIUM' | 'HIGH')}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="LOW">Information</SelectItem>
-                      <SelectItem value="MEDIUM">Avertissement</SelectItem>
-                      <SelectItem value="HIGH">Grave</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Message</label>
-                  <Textarea
-                    value={warningMessage}
-                    onChange={(e) => setWarningMessage(e.target.value)}
-                    placeholder="Entrez le message de l'avertissement..."
-                    rows={4}
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setWarningDialogOpen(false)}>
-                  Annuler
-                </Button>
-                <Button
-                  onClick={createWarning}
-                  disabled={creatingWarning || !warningUserId || !warningMessage.trim()}
-                >
-                  {creatingWarning ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Envoi...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="h-4 w-4 mr-2" />
-                      Envoyer
-                    </>
-                  )}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
         </TabsContent>
 
         <TabsContent value="logs" className={SPACING.CARD_SPACING}>

@@ -20,7 +20,6 @@ async function main() {
       email: ADMIN_EMAIL,
       passwordHash,
       isAdmin: true,
-      isSuperAdmin: true,
       isApproved: true,
       aura: BigInt(0),
       money: 0,

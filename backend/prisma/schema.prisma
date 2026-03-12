@@ -9,34 +9,34 @@ datasource db {
 
 // User Model
 model User {
-  id                 String    @id @default(uuid())
-  username           String    @unique
-  firstName          String? // Real first name
-  schoolLevel        String? // Seconde, Premiere, Terminale
-  classLetter        String? // A-G
-  email              String    @unique
-  passwordHash       String
-  aura               BigInt    @default(0)
-  money              Int       @default(1000)
-  auraCoinBalance    Float     @default(0) // Aura Coin balance for trading game
-  isAdmin            Boolean   @default(false)
-  isChatMuted        Boolean   @default(false)
-  isApproved         Boolean   @default(false) // Account must be approved by admin before login
-  dailyAuraGiven     Int       @default(0) // Aura given today
-  dailyAuraLimit     Int       @default(50) // Personal daily aura limit (default 50)
-  lastDailyReset     DateTime  @default(now()) // When daily allowance was last reset
-  dailyPassStreak    Int       @default(0) // Current daily pass streak
-  lastDailyPassClaim DateTime? // Last date when daily pass reward was claimed
-  usernameColor      String? // Custom username color for chat (hex)
-  profilePicture     String? // Custom profile picture URL for chat
-  bio                String? // User bio/description
-  motivationMessage  String? // Registration motivation shown to admins before approval
-  referralCode       String?   @unique
-  referredById       String?
-  referredAt         DateTime?
+  id                      String    @id @default(uuid())
+  username                String    @unique
+  firstName               String? // Real first name
+  schoolLevel             String? // Seconde, Premiere, Terminale
+  classLetter             String? // A-G
+  email                   String    @unique
+  passwordHash            String
+  aura                    BigInt    @default(0)
+  money                   Int       @default(1000)
+  auraCoinBalance         Float     @default(0) // Aura Coin balance for trading game
+  isAdmin                 Boolean   @default(false)
+  isChatMuted             Boolean   @default(false)
+  isApproved              Boolean   @default(false) // Account must be approved by admin before login
+  dailyAuraGiven          Int       @default(0) // Aura given today
+  dailyAuraLimit          Int       @default(50) // Personal daily aura limit (default 50)
+  lastDailyReset          DateTime  @default(now()) // When daily allowance was last reset
+  dailyPassStreak         Int       @default(0) // Current daily pass streak
+  lastDailyPassClaim      DateTime? // Last date when daily pass reward was claimed
+  usernameColor           String? // Custom username color for chat (hex)
+  profilePicture          String? // Custom profile picture URL for chat
+  bio                     String? // User bio/description
+  motivationMessage       String? // Registration motivation shown to admins before approval
+  referralCode            String?   @unique
+  referredById            String?
+  referredAt              DateTime?
   referralRewardGrantedAt DateTime?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
   // Relations
   ownedItems            UserItem[]
@@ -82,14 +82,67 @@ model User {
   receivedGifts Gift[] @relation("ReceivedGifts")
 
   // Notifications
-  notifications       Notification[]
-  dailyRacerRuns      DailyRacerRun[]
-  goyaveSave          GoyaveSave?
-  clanWarsWon         ClanWar[]                 @relation("ClanWarWinner")
+  notifications  Notification[]
+  dailyRacerRuns DailyRacerRun[]
+  goyaveSave     GoyaveSave?
+  clanWarsWon    ClanWar[]       @relation("ClanWarWinner")
 
   @@index([aura])
   @@index([money])
   @@index([referredById])
+}
+
+// ============================================
+// BADGES (cosmetics displayed next to usernames)
+// ============================================
+
+model Badge {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  name        String
+  description String?
+  style       String   @default("{}") // JSON: { type: "GRADIENT"|"IMAGE"|"SOLID", ... }
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  grants     UserBadgeGrant[]
+  selections UserBadgeSelection[]
+}
+
+// Badges a user owns (assigned by admins)
+model UserBadgeGrant {
+  id          String    @id @default(uuid())
+  userId      String
+  badgeId     String
+  grantedById String?
+  grantedAt   DateTime  @default(now())
+  revokedAt   DateTime?
+
+  user      User  @relation("UserBadgeGrants", fields: [userId], references: [id], onDelete: Cascade)
+  badge     Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  grantedBy User? @relation("BadgeGrantIssuer", fields: [grantedById], references: [id], onDelete: SetNull)
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+  @@index([badgeId])
+  @@index([revokedAt])
+}
+
+// The 2 displayed badge slots for a user
+model UserBadgeSelection {
+  id        String   @id @default(uuid())
+  userId    String
+  slot      Int // 1..2
+  badgeId   String?
+  updatedAt DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge? @relation(fields: [badgeId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, slot])
+  @@index([userId])
+  @@index([badgeId])
 }
 
 // Item Model
@@ -926,27 +979,5 @@ model Notification {
   @@index([userId, isRead])
   @@index([userId, isArchived])
   @@index([userId, createdAt])
-  @@index([createdAt])
-}
-
-// ============================================
-// ADMIN WARNING SYSTEM
-// ============================================
-
-// Admin warnings that display as mandatory popup modals
-model AdminWarning {
-  id             String    @id @default(uuid())
-  userId         String    // User receiving the warning
-  issuedById     String    // Admin who issued the warning
-  message        String    // Warning message content
-  severity       String    @default("MEDIUM") // LOW, MEDIUM, HIGH
-  isAcknowledged Boolean   @default(false)
-  acknowledgedAt DateTime?
-  createdAt      DateTime  @default(now())
-
-  user     User @relation("WarningsReceived", fields: [userId], references: [id], onDelete: Cascade)
-  issuedBy User @relation("WarningsIssued", fields: [issuedById], references: [id], onDelete: Cascade)
-
-  @@index([userId, isAcknowledged])
   @@index([createdAt])
 }

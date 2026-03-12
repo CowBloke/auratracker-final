@@ -90,7 +90,7 @@ const gameItems = [
   { to: '/games/bataille-navale', label: 'Bataille Navale', icon: Swords },
   { to: '/games/puissance-quatre', label: 'Puissance 4', icon: Gamepad2 },
   { to: '/games/doodle-jump', label: 'Doodle Jump', icon: ArrowUp },
-  { to: '/games/logic-lab', label: 'Sudoku', icon: Brain },
+  { to: '/games/logic-lab', label: 'Logic Lab', icon: Brain },
   { to: '/games/minesweeper', label: 'Démineur', icon: Bomb },
   { to: '/games/2048', label: '2048', icon: Gamepad2 },
   { to: '/games/flappy-bird', label: 'Flappy Bird', icon: Gamepad2 },

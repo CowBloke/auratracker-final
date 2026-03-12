@@ -391,7 +391,7 @@ router.get('/leaderboard', authMiddleware, async (req: AuthRequest, res: Respons
     const leaderboard = await prisma.user.findMany({
       where: { 
         auraCoinBalance: { gt: 0 },
-        isSuperAdmin: false,
+        isAdmin: false,
       },
       orderBy: { auraCoinBalance: 'desc' },
       take,

@@ -37,6 +37,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
   const [input, setInput] = useState('');
   const [showUsers, setShowUsers] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<TimeoutRef>(null);
   const lastMessageIdRef = useRef<string | null>(null);
   const sortedMessages = useMemo(() => {
@@ -49,6 +50,10 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
       }
       return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
     });
+  }, [messages]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   useEffect(() => {
@@ -136,7 +141,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
           <div className="flex-1 flex flex-col">
             <ScrollArea className="flex-1 px-6">
               <div className="space-y-3 py-3">
-                {[...sortedMessages].reverse().map((msg) => (
+                {sortedMessages.map((msg) => (
                   <div
                     key={msg.id}
                     className={cn(
@@ -297,6 +302,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                     </div>
                   </div>
                 ))}
+                <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
 

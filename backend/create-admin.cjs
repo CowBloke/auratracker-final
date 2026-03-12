@@ -13,7 +13,6 @@ async function createAdmin() {
     update: {
       passwordHash: hashedPassword,
       isAdmin: true,
-      isSuperAdmin: true,
       isApproved: true, // Keep this account usable as admin
     },
     create: {
@@ -21,7 +20,6 @@ async function createAdmin() {
       username: 'admin',
       passwordHash: hashedPassword,
       isAdmin: true,
-      isSuperAdmin: true,
       isApproved: true, // Auto-approve the admin
       aura: 0,
       money: 1000,
@@ -34,7 +32,6 @@ async function createAdmin() {
     email: admin.email,
     username: admin.username,
     isAdmin: admin.isAdmin,
-    isSuperAdmin: admin.isSuperAdmin,
     isApproved: admin.isApproved,
   });
 }

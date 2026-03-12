@@ -14,7 +14,6 @@ const STATIC_PAGE_META: Record<string, PageMeta> = {
   '/games/casino': { title: 'Casino', description: 'Roulette, slots et blackjack.' },
   '/market': { title: 'Shop', description: 'Boutique des objets, cosmetiques et bonus.' },
   '/games/aura-coin': { title: 'Aura Coin', description: 'Trading et positions à effet de levier.' },
-  '/games/russian-roulette': { title: 'Russian Roulette', description: 'Roulette russe multijoueur autour d\'une table sombre.' },
   '/games/bomb-party': { title: 'Bomb Party', description: 'Partie multijoueur basée sur les mots.' },
   '/games/poker': { title: 'Poker', description: "Table de poker avec paramètres de party." },
   '/games/petit-bac': { title: 'Petit Bac', description: 'Manches chronométrées par catégories.' },

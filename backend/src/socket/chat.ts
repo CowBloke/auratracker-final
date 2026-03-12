@@ -131,13 +131,13 @@ const summarizeReactions = (reactions: Array<{ emoji: string }>) => {
 const getTopLeaderboardIds = async () => {
   const [topMoney, topAura] = await Promise.all([
     prisma.user.findMany({
-      where: { isSuperAdmin: false },
+      where: { isAdmin: false },
       select: { id: true },
       orderBy: { money: 'desc' },
       take: 5,
     }),
     prisma.user.findMany({
-      where: { isSuperAdmin: false },
+      where: { isAdmin: false },
       select: { id: true },
       orderBy: { aura: 'desc' },
       take: 5,

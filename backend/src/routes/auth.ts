@@ -61,8 +61,7 @@ router.post('/register', validate(registerSchema), async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const isSuperAdmin = email === config.adminEmail;
-    const isAdmin = isSuperAdmin;
+    const isAdmin = email === config.adminEmail;
     const generatedReferralCode = await createUniqueReferralCode();
 
     await prisma.user.create({
@@ -75,7 +74,6 @@ router.post('/register', validate(registerSchema), async (req, res) => {
         passwordHash,
         motivationMessage: typeof motivationMessage === 'string' ? motivationMessage.trim() : motivationMessage,
         isAdmin,
-        isSuperAdmin,
         isApproved: isAdmin,
         money: 1000,
         referralCode: generatedReferralCode,
@@ -84,7 +82,7 @@ router.post('/register', validate(registerSchema), async (req, res) => {
       },
     });
 
-    logAuth('register', undefined, username, { email, isAdmin, isSuperAdmin, schoolLevel, classLetter, referredById: referrerId }, getIpAddress(req));
+    logAuth('register', undefined, username, { email, isAdmin, schoolLevel, classLetter, referredById: referrerId }, getIpAddress(req));
 
     res.status(201).json({
       success: true,
@@ -160,7 +158,7 @@ router.post('/login', validate(loginSchema), async (req, res) => {
     const token = generateToken(user.id, user.email);
     const ensuredReferralCode = await ensureUserReferralCode(user.id, user.referralCode);
 
-    logAuth('login', user.id, user.username, { isAdmin: user.isAdmin, isSuperAdmin: user.isSuperAdmin }, getIpAddress(req));
+    logAuth('login', user.id, user.username, { isAdmin: user.isAdmin }, getIpAddress(req));
 
     res.json({
       user: {
@@ -173,7 +171,6 @@ router.post('/login', validate(loginSchema), async (req, res) => {
         aura: user.aura,
         money: user.money,
         isAdmin: user.isAdmin,
-        isSuperAdmin: user.isSuperAdmin,
         usernameColor: user.usernameColor,
         profilePicture: user.profilePicture,
         referralCode: ensuredReferralCode,
@@ -220,7 +217,6 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
         aura: true,
         money: true,
         isAdmin: true,
-        isSuperAdmin: true,
         usernameColor: true,
         profilePicture: true,
         referralCode: true,
