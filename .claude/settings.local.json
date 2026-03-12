@@ -23,7 +23,8 @@
       "Bash(npm install:*)",
       "Bash(node:*)",
       "Bash(wc:*)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(cd \"C:\\\\Users\\\\cowbl\\\\source\\\\repos\\\\CRust\\\\auratracker-final\\\\frontend\" && npx tsc --noEmit 2>&1 | Select-String \"RussianRoulette\")"
     ]
   }
 }
