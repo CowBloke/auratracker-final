@@ -20,10 +20,26 @@ export interface BadgeData {
 }
 
 const RARITY_GLOW: Record<string, string> = {
-  legendary: '0 0 6px 1px rgba(234,179,8,0.6)',
-  epic:       '0 0 5px 1px rgba(168,85,247,0.5)',
-  rare:       '0 0 4px 1px rgba(59,130,246,0.5)',
-  uncommon:   '0 0 3px 1px rgba(34,197,94,0.4)',
+  legendary: '0 0 8px 2px rgba(234,179,8,0.7)',
+  epic:       '0 0 7px 1px rgba(168,85,247,0.6)',
+  rare:       '0 0 6px 1px rgba(59,130,246,0.55)',
+  uncommon:   '0 0 4px 1px rgba(34,197,94,0.45)',
+};
+
+const RARITY_TEXT_COLOR: Record<string, string> = {
+  legendary: '#facc15',
+  epic:      '#c084fc',
+  rare:      '#60a5fa',
+  uncommon:  '#4ade80',
+  common:    '#9ca3af',
+};
+
+const RARITY_LABELS: Record<string, string> = {
+  legendary: 'Légendaire',
+  epic:      'Épique',
+  rare:      'Rare',
+  uncommon:  'Peu commun',
+  common:    'Commun',
 };
 
 interface BadgeIconProps {
@@ -34,13 +50,13 @@ interface BadgeIconProps {
 }
 
 const SIZES = {
-  xs: { box: 'w-4 h-4', text: 'text-[8px]' },
-  sm: { box: 'w-5 h-5', text: 'text-[10px]' },
-  md: { box: 'w-6 h-6', text: 'text-xs'     },
-  lg: { box: 'w-8 h-8', text: 'text-sm'     },
+  xs: { box: 'w-[18px] h-[18px]', text: 'text-[10px]' },
+  sm: { box: 'w-5 h-5',           text: 'text-xs'     },
+  md: { box: 'w-6 h-6',           text: 'text-sm'     },
+  lg: { box: 'w-8 h-8',           text: 'text-base'   },
 };
 
-function getBadgeBackground(badge: BadgeData): React.CSSProperties {
+export function getBadgeBackground(badge: BadgeData): React.CSSProperties {
   if (badge.backgroundType === 'image' && badge.backgroundImage) {
     return {
       backgroundImage: `url(${badge.backgroundImage})`,
@@ -64,9 +80,10 @@ function getBadgeBackground(badge: BadgeData): React.CSSProperties {
 export function BadgeIcon({ badge, size = 'sm', className, tooltipSide = 'top' }: BadgeIconProps) {
   const { box, text } = SIZES[size];
   const boxShadow = RARITY_GLOW[badge.rarity] ?? undefined;
+  const rarityColor = RARITY_TEXT_COLOR[badge.rarity] ?? '#9ca3af';
 
   return (
-    <TooltipProvider delayDuration={150}>
+    <TooltipProvider delayDuration={120}>
       <Tooltip>
         <TooltipTrigger asChild>
           <div
@@ -77,7 +94,7 @@ export function BadgeIcon({ badge, size = 'sm', className, tooltipSide = 'top' }
             )}
             style={{
               ...getBadgeBackground(badge),
-              border: `1px solid ${badge.borderColor}`,
+              border: `1.5px solid ${badge.borderColor}`,
               boxShadow,
             }}
             aria-label={badge.name}
@@ -90,17 +107,48 @@ export function BadgeIcon({ badge, size = 'sm', className, tooltipSide = 'top' }
             </span>
           </div>
         </TooltipTrigger>
-        <TooltipContent side={tooltipSide} className="max-w-[220px] space-y-1">
-          <p className="font-semibold text-sm">{badge.name}</p>
-          <p className="text-xs text-muted-foreground">{badge.description}</p>
-          {badge.howToObtain && (
-            <p className="text-xs text-muted-foreground/70 italic">{badge.howToObtain}</p>
-          )}
-          {badge.obtainedAt && (
-            <p className="text-[10px] text-muted-foreground/50">
-              Obtenu le {new Date(badge.obtainedAt).toLocaleDateString('fr-FR')}
-            </p>
-          )}
+        <TooltipContent
+          side={tooltipSide}
+          sideOffset={6}
+          className="p-0 overflow-hidden max-w-[260px] border-0"
+          style={{ borderColor: badge.borderColor }}
+        >
+          {/* Coloured header strip */}
+          <div
+            className="flex items-center gap-3 px-3 py-2.5"
+            style={{ ...getBadgeBackground(badge), borderBottom: `1px solid ${badge.borderColor}55` }}
+          >
+            {/* Large icon preview */}
+            <div
+              className="w-12 h-12 rounded flex items-center justify-center flex-shrink-0"
+              style={{
+                background: 'rgba(0,0,0,0.25)',
+                border: `1.5px solid ${badge.borderColor}`,
+                boxShadow: RARITY_GLOW[badge.rarity] ?? undefined,
+              }}
+            >
+              <span className="text-2xl leading-none select-none">{badge.icon}</span>
+            </div>
+            <div className="min-w-0">
+              <p className="font-bold text-sm leading-tight text-white drop-shadow">{badge.name}</p>
+              <p className="text-[11px] font-medium mt-0.5" style={{ color: rarityColor }}>
+                {RARITY_LABELS[badge.rarity] ?? badge.rarity}
+              </p>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="px-3 py-2 space-y-1.5 bg-popover">
+            <p className="text-xs text-muted-foreground leading-snug">{badge.description}</p>
+            {badge.howToObtain && (
+              <p className="text-[11px] text-muted-foreground/70 italic leading-snug">{badge.howToObtain}</p>
+            )}
+            {badge.obtainedAt && (
+              <p className="text-[10px] text-muted-foreground/50 pt-0.5 border-t border-border/30">
+                Obtenu le {new Date(badge.obtainedAt).toLocaleDateString('fr-FR')}
+              </p>
+            )}
+          </div>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

@@ -3,12 +3,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
 import { PageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy, RotateCcw, Target, Zap } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { RotateCcw, Target, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
+import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 
 const CANVAS_SIZE = 420;
 const CENTER = CANVAS_SIZE / 2;
@@ -34,15 +35,6 @@ interface KnifeOnTarget {
 interface ActiveKnife {
   state: KnifeFlightState;
   y: number;
-}
-
-interface LeaderboardEntry {
-  id: string;
-  highScore: number;
-  user: {
-    id: string;
-    username: string;
-  };
 }
 
 interface WorldPalette {
@@ -431,7 +423,7 @@ export default function KnifeHit() {
   const [knivesLeft, setKnivesLeft] = useState(0);
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [leaderboard, setLeaderboard] = useState<GameLeaderboardEntry[]>([]);
   const [directionLabel, setDirectionLabel] = useState<'Horaire' | 'Antihoraire'>('Horaire');
   const [directionChangeInMs, setDirectionChangeInMs] = useState<number | null>(null);
   const [worldIndex, setWorldIndex] = useState(0);
@@ -1196,28 +1188,12 @@ export default function KnifeHit() {
           </GameFullscreenStage>
         </div>
 
-        <Card className={cn(isFullscreen && 'hidden')}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Trophy className="h-4 w-4" />
-              Classement
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="max-h-[420px] overflow-y-auto space-y-2">
-              {leaderboard.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Aucun score enregistre pour l’instant.</p>
-              ) : (
-                leaderboard.map((entry, index) => (
-                  <div key={entry.id} className="flex items-center justify-between rounded-xl border border-border/60 px-3 py-2">
-                    <p className="text-sm font-medium">#{index + 1} {entry.user.username}</p>
-                    <p className="text-sm text-muted-foreground">{entry.highScore}</p>
-                  </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <GameLeaderboard
+          entries={leaderboard}
+          currentUserId={user?.id}
+          maxHeight={420}
+          hidden={isFullscreen}
+        />
       </div>
     </PageShell>
   );

@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../server.js';
 import { authMiddleware, adminMiddleware, AuthRequest } from '../middleware/auth.js';
-import { awardBadge, revokeBadge, checkAndUpdateAutoBadges } from '../utils/badgeAwards.js';
+import { awardBadge, revokeBadge, checkAndUpdateAutoBadges, autoEquipDefaultBadges } from '../utils/badgeAwards.js';
 
 const router = Router();
 
@@ -324,11 +324,12 @@ router.get('/admin/all-users', authMiddleware, adminMiddleware, async (_req: Aut
 });
 
 // ─── Admin: POST /badges/check-auto ──────────────────────────────────────────
-// Manually trigger the auto-badge check
+// Manually trigger the auto-badge check + auto-equip pass
 router.post('/check-auto', authMiddleware, adminMiddleware, async (_req: AuthRequest, res: Response) => {
   try {
     await checkAndUpdateAutoBadges();
-    res.json({ success: true, message: 'Auto-badge check completed' });
+    await autoEquipDefaultBadges();
+    res.json({ success: true, message: 'Auto-badge check + auto-equip completed' });
   } catch (error) {
     console.error('POST /badges/check-auto error:', error);
     res.status(500).json({ error: 'Failed to run auto-badge check' });

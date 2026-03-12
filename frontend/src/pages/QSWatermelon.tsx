@@ -4,10 +4,10 @@ import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { UsernameDisplay } from '@/components/ui/username-display';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
+import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 import { cn } from '@/lib/utils';
-import { RotateCcw, Trophy, MousePointer2, Smartphone, X } from 'lucide-react';
+import { RotateCcw, MousePointer2, Smartphone } from 'lucide-react';
 import { gamesApi } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -47,16 +47,6 @@ interface FruitBody {
   radius: number;
   settledFrames: number;
   bornAt: number;
-}
-
-interface LeaderboardEntry {
-  id: string;
-  highScore: number;
-  user: {
-    id: string;
-    username: string;
-    usernameColor?: string | null;
-  };
 }
 
 const FRUITS: FruitDefinition[] = [
@@ -280,7 +270,7 @@ export default function QSWatermelon() {
   const [highestLevel, setHighestLevel] = useState(0);
   const [nextLevel, setNextLevel] = useState(nextLevelRef.current);
   const [queuedLevel, setQueuedLevel] = useState(queueLevelRef.current);
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [leaderboard, setLeaderboard] = useState<GameLeaderboardEntry[]>([]);
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
 
@@ -850,54 +840,14 @@ export default function QSWatermelon() {
           </GameFullscreenStage>
         </div>
 
-        <Card className={cn(isFullscreen && 'hidden')}>
-          <CardHeader className="px-4 py-3">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium">
-              <Trophy className="h-4 w-4 text-muted-foreground" />
-              Classement
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {leaderboard.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-muted-foreground">Aucun score enregistré</p>
-            ) : (
-              <div className="max-h-[420px] divide-y divide-border/20 overflow-y-auto">
-                {leaderboard.map((entry, index) => (
-                  <div
-                    key={entry.id}
-                    className={cn('group flex items-center gap-3 px-4 py-2.5', entry.user.id === user?.id && 'bg-muted/30')}
-                  >
-                    <span className={cn(
-                      'w-5 shrink-0 text-center text-xs tabular-nums',
-                      index === 0 ? 'font-bold text-yellow-500' :
-                      index === 1 ? 'text-muted-foreground' :
-                      index === 2 ? 'font-bold text-amber-600' : 'text-muted-foreground'
-                    )}>
-                      {index + 1}
-                    </span>
-                    <div className="min-w-0 flex-1 text-sm">
-                      <UsernameDisplay username={entry.user.username} usernameColor={entry.user.usernameColor} />
-                    </div>
-                    <span className="shrink-0 font-mono text-sm tabular-nums text-muted-foreground">
-                      {entry.highScore.toLocaleString()}
-                    </span>
-                    {user?.isAdmin && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteScore(entry.user.id)}
-                        className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100 text-destructive hover:bg-destructive/10"
-                        title="Supprimer ce score"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <GameLeaderboard
+          entries={leaderboard}
+          currentUserId={user?.id}
+          isAdmin={user?.isAdmin}
+          onDeleteScore={(userId) => handleDeleteScore(userId)}
+          maxHeight={420}
+          hidden={isFullscreen}
+        />
       </div>
     </PageShell>
   );

@@ -69,7 +69,7 @@ const getBatchEquippedBadges = async (userIds: string[]): Promise<Map<string, an
 
 const onlineUsers = new Map<string, OnlineUser>();
 
-type PublicOnlineUser = Omit<OnlineUser, 'socketId'>;
+type PublicOnlineUser = Omit<OnlineUser, 'socketId'> & { badges?: any[] };
 
 const MIN_ONLINE_RATIO = 0.1;
 
@@ -108,58 +108,48 @@ const toPublicOnlineUser = (user: OnlineUser): PublicOnlineUser => ({
 const buildDisplayedOnlineState = async (): Promise<{ users: PublicOnlineUser[]; count: number }> => {
   const realUsers = Array.from(onlineUsers.values()).map(toPublicOnlineUser);
 
+  let users: PublicOnlineUser[];
+
   if (!(await isFakeOnlineEnabled())) {
-    return { users: realUsers, count: realUsers.length };
+    users = realUsers;
+  } else {
+    const totalRegisteredUsers = await prisma.user.count({
+      where: { isApproved: true },
+    });
+
+    const minimumDisplayedOnline = Math.min(
+      totalRegisteredUsers,
+      Math.ceil(totalRegisteredUsers * MIN_ONLINE_RATIO)
+    );
+    const additionalUsersNeeded = Math.max(0, minimumDisplayedOnline - realUsers.length);
+
+    if (additionalUsersNeeded === 0) {
+      users = realUsers;
+    } else {
+      const connectedUserIds = realUsers.map((u) => u.userId);
+      const offlineCandidates = await prisma.user.findMany({
+        where: { isApproved: true, id: { notIn: connectedUserIds } },
+        select: { id: true, username: true, usernameColor: true, profilePicture: true },
+      });
+
+      const randomOfflineUsers = shuffle(offlineCandidates)
+        .slice(0, additionalUsersNeeded)
+        .map((u) => ({
+          userId: u.id,
+          username: u.username,
+          usernameColor: u.usernameColor,
+          profilePicture: u.profilePicture,
+          currentPage: null,
+        }));
+
+      users = [...realUsers, ...randomOfflineUsers];
+    }
   }
 
-  const totalRegisteredUsers = await prisma.user.count({
-    where: {
-      isApproved: true,
-    },
-  });
-
-  const minimumDisplayedOnline = Math.min(
-    totalRegisteredUsers,
-    Math.ceil(totalRegisteredUsers * MIN_ONLINE_RATIO)
-  );
-  const additionalUsersNeeded = Math.max(0, minimumDisplayedOnline - realUsers.length);
-
-  if (additionalUsersNeeded === 0) {
-    return {
-      users: realUsers,
-      count: realUsers.length,
-    };
-  }
-
-  const connectedUserIds = realUsers.map((user) => user.userId);
-  const offlineCandidates = await prisma.user.findMany({
-    where: {
-      isApproved: true,
-      id: {
-        notIn: connectedUserIds,
-      },
-    },
-    select: {
-      id: true,
-      username: true,
-      usernameColor: true,
-      profilePicture: true,
-    },
-  });
-
-  const randomOfflineUsers = shuffle(offlineCandidates)
-    .slice(0, additionalUsersNeeded)
-    .map((user) => ({
-      userId: user.id,
-      username: user.username,
-      usernameColor: user.usernameColor,
-      profilePicture: user.profilePicture,
-      currentPage: null,
-    }));
-
-  const users = [...realUsers, ...randomOfflineUsers];
+  // Attach equipped badges for all displayed users
+  const badgeMap = await getBatchEquippedBadges(users.map((u) => u.userId));
   return {
-    users,
+    users: users.map((u) => ({ ...u, badges: badgeMap.get(u.userId) ?? [] })),
     count: users.length,
   };
 };

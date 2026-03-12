@@ -50,7 +50,7 @@ import { setupRussianRouletteHandlers } from './socket/russianroulette.js';
 
 // Logger
 import { initLogger } from './utils/logger.js';
-import { startAutoBadgeScheduler, stopAutoBadgeScheduler } from './utils/badgeAwards.js';
+import { startAutoBadgeScheduler, stopAutoBadgeScheduler, autoEquipDefaultBadges } from './utils/badgeAwards.js';
 import { ensureDefaultBadges } from './utils/seedBadges.js';
 
 // Initialize Prisma
@@ -275,7 +275,7 @@ const start = async () => {
     startOnlineSnapshotRecording();
     startBombPartyCleanup(io);
     await ensureDefaultBadges();
-    startAutoBadgeScheduler();
+    startAutoBadgeScheduler(); // first run: awards + auto-equip immediately
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'EADDRINUSE') {
       console.error(`Failed to start server: port ${config.port} is already in use`);
