@@ -87,9 +87,60 @@ model User {
   goyaveSave          GoyaveSave?
   clanWarsWon         ClanWar[]                 @relation("ClanWarWinner")
 
+  // Admin Warning System
+  warningsReceived AdminWarning[] @relation("WarningsReceived")
+  warningsIssued   AdminWarning[] @relation("WarningsIssued")
+
   @@index([aura])
   @@index([money])
   @@index([referredById])
+}
+
+model Badge {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  name        String
+  description String?
+  style       String   @default("{}")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  grants     UserBadgeGrant[]
+  selections UserBadgeSelection[]
+}
+
+model UserBadgeGrant {
+  id          String   @id @default(uuid())
+  userId      String
+  badgeId     String
+  grantedById String?
+  grantedAt   DateTime @default(now())
+  revokedAt   DateTime?
+
+  user      User  @relation("UserBadgeGrants", fields: [userId], references: [id], onDelete: Cascade)
+  badge     Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  grantedBy User? @relation("BadgeGrantIssuer", fields: [grantedById], references: [id], onDelete: SetNull)
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+  @@index([badgeId])
+  @@index([revokedAt])
+}
+
+model UserBadgeSelection {
+  id        String   @id @default(uuid())
+  userId    String
+  slot      Int
+  badgeId   String?
+  updatedAt DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge? @relation(fields: [badgeId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, slot])
+  @@index([userId])
+  @@index([badgeId])
 }
 
 // Item Model
