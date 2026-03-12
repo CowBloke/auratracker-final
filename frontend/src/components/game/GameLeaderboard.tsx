@@ -68,6 +68,14 @@ function LeaderboardList({
             {index + 1}
           </span>
           <span className="flex-1 truncate text-sm flex items-center gap-1.5 min-w-0">
+            {entry.badges && entry.badges.length > 0 && (
+              <UserBadges
+                badges={entry.badges}
+                size="xs"
+                showEmptySlots={false}
+                tooltipSide="right"
+              />
+            )}
             <span
               className="truncate"
               style={entry.user.usernameColor ? { color: entry.user.usernameColor } : undefined}
@@ -76,14 +84,6 @@ function LeaderboardList({
             </span>
             {entry.user.id === currentUserId && (
               <span className="text-xs text-muted-foreground shrink-0">(toi)</span>
-            )}
-            {entry.badges && entry.badges.length > 0 && (
-              <UserBadges
-                badges={entry.badges}
-                size="xs"
-                showEmptySlots={false}
-                tooltipSide="right"
-              />
             )}
           </span>
           <span className="font-mono text-sm tabular-nums text-muted-foreground shrink-0">
