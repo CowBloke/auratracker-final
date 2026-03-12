@@ -28,7 +28,7 @@ export function UserBadges({
   if (!hasAny && !showEmptySlots) return null;
 
   return (
-    <div className={cn('flex items-center gap-0.5', className)}>
+    <div className={cn('flex items-center gap-0.5 shrink-0', className)}>
       {slot1
         ? <BadgeIcon badge={slot1} size={size} tooltipSide={tooltipSide} />
         : showEmptySlots && <BadgeSlotEmpty size={size} />

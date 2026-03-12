@@ -9,24 +9,42 @@ import { Button } from '@/components/ui/button';
 interface BadgeSelectorProps {
   userId: string;
   className?: string;
+  /** Pre-loaded badge data from parent (skips internal fetch) */
+  initialData?: {
+    badges: UserBadgeEntry[];
+    equippedBadge1Id: string | null;
+    equippedBadge2Id: string | null;
+  };
+  /** Called after a badge is equipped/unequipped */
+  onBadgeEquipped?: (slot: 1 | 2, badgeId: string | null) => void;
 }
 
 /**
- * Badge equip UI for the profile page.
+ * Badge equip UI for the profile badge card.
  * Shows large equipped badge slots; clicking opens a 3-column search picker.
+ * Can work standalone (fetches own data) or in controlled mode (via initialData).
  */
-export function BadgeSelector({ userId, className }: BadgeSelectorProps) {
-  const [badges, setBadges] = useState<UserBadgeEntry[]>([]);
-  const [equippedSlot1, setEquippedSlot1] = useState<string | null>(null);
-  const [equippedSlot2, setEquippedSlot2] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+export function BadgeSelector({ userId, className, initialData, onBadgeEquipped }: BadgeSelectorProps) {
+  const [badges, setBadges] = useState<UserBadgeEntry[]>(initialData?.badges ?? []);
+  const [equippedSlot1, setEquippedSlot1] = useState<string | null>(initialData?.equippedBadge1Id ?? null);
+  const [equippedSlot2, setEquippedSlot2] = useState<string | null>(initialData?.equippedBadge2Id ?? null);
+  const [loading, setLoading] = useState(!initialData);
   const [saving, setSaving] = useState<1 | 2 | null>(null);
   const [activeSlot, setActiveSlot] = useState<1 | 2 | null>(null);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    fetchBadges();
+    if (!initialData) fetchBadges();
   }, [userId]);
+
+  // Sync if parent updates initialData
+  useEffect(() => {
+    if (initialData) {
+      setBadges(initialData.badges);
+      setEquippedSlot1(initialData.equippedBadge1Id);
+      setEquippedSlot2(initialData.equippedBadge2Id);
+    }
+  }, [initialData]);
 
   const fetchBadges = async () => {
     try {
@@ -48,6 +66,7 @@ export function BadgeSelector({ userId, className }: BadgeSelectorProps) {
       await badgesApi.equip(slot, badgeId);
       if (slot === 1) setEquippedSlot1(badgeId);
       else setEquippedSlot2(badgeId);
+      onBadgeEquipped?.(slot, badgeId);
       setActiveSlot(null);
       setSearch('');
     } catch (error) {

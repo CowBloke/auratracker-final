@@ -9,23 +9,26 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import { FeaturesProvider } from './contexts/FeaturesContext';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as SonnerToaster } from '@/components/ui/sonner';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <ThemeProvider>
-        <AuthProvider>
-          <SocketProvider>
-            <NotificationProvider>
-              <FeaturesProvider>
-                <App />
-              </FeaturesProvider>
-              <Toaster />
-              <SonnerToaster />
-            </NotificationProvider>
-          </SocketProvider>
-        </AuthProvider>
+        <TooltipProvider delayDuration={120}>
+          <AuthProvider>
+            <SocketProvider>
+              <NotificationProvider>
+                <FeaturesProvider>
+                  <App />
+                </FeaturesProvider>
+                <Toaster />
+                <SonnerToaster />
+              </NotificationProvider>
+            </SocketProvider>
+          </AuthProvider>
+        </TooltipProvider>
       </ThemeProvider>
     </BrowserRouter>
   </React.StrictMode>,

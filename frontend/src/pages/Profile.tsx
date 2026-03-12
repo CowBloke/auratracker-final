@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { UserBadges } from '@/components/badges/UserBadges';
 import { BadgeSelector, BadgeHistory } from '@/components/badges/BadgeSelector';
+import { ProfileBadgeSlots } from '@/components/badges/ProfileBadgeSlots';
 import { BadgeData } from '@/components/badges/BadgeIcon';
 
 interface ProfileUser {
@@ -135,6 +136,11 @@ export default function Profile() {
     setEditingBio(false);
   };
 
+  const handleEquipBadge = (slot: 1 | 2, badgeId: string | null) => {
+    if (slot === 1) setEquippedBadge1Id(badgeId);
+    else setEquippedBadge2Id(badgeId);
+  };
+
   if (loading) {
     return (
       <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
@@ -199,11 +205,12 @@ export default function Profile() {
         
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3">
-            <UserBadges
-              badges={equippedBadges}
-              size="xl"
-              tooltipSide="bottom"
-              showEmptySlots={false}
+            <ProfileBadgeSlots
+              badges={userBadges}
+              equippedBadge1Id={equippedBadge1Id}
+              equippedBadge2Id={equippedBadge2Id}
+              editable={isOwnProfile}
+              onEquip={handleEquipBadge}
             />
             <UsernameDisplay
               username={profileUser.username}
@@ -293,7 +300,11 @@ export default function Profile() {
         <CardContent className={SPACING.CARD_SPACING}>
           {isOwnProfile ? (
             <div className="space-y-6">
-              <BadgeSelector userId={profileUser.id} />
+              <BadgeSelector
+                userId={profileUser.id}
+                initialData={{ badges: userBadges, equippedBadge1Id, equippedBadge2Id }}
+                onBadgeEquipped={handleEquipBadge}
+              />
               <BadgeHistory badges={userBadges} />
             </div>
           ) : userBadges.length === 0 ? (
