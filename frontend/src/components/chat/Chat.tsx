@@ -315,7 +315,10 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                         variant="ghost"
                         className="h-auto w-full justify-start gap-2 px-0 py-1 text-left text-xs text-muted-foreground"
                       >
-                        <div className="w-1 h-1 rounded-full bg-foreground/50" />
+                        <div className="w-1 h-1 rounded-full bg-foreground/50 shrink-0" />
+                        {u.badges && u.badges.length > 0 && (
+                          <UserBadges badges={u.badges} size="xs" showEmptySlots={false} tooltipSide="left" />
+                        )}
                         <div className="min-w-0 flex-1">
                           <UsernameDisplay username={u.username} className="block" />
                           {(() => {

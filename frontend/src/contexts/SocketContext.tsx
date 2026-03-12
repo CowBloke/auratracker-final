@@ -50,6 +50,7 @@ interface OnlineUser {
   usernameColor?: string | null;
   profilePicture?: string | null;
   currentPage?: string | null;
+  badges?: ChatBadge[];
 }
 
 interface DoodleSpectateSession {

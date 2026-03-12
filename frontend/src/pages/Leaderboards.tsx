@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { PageShell } from '@/components/layout/page-shell';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { UserBadges, BadgeData } from '@/components/badges/UserBadges';
 
 interface Ranking {
   rank: number;
@@ -19,6 +20,7 @@ interface Ranking {
   moneyValue?: number;
   wins?: number;
   totalPlayed?: number;
+  badges?: BadgeData[];
 }
 
 type StatItem = { label: string; value: string; hint?: string };
@@ -368,17 +370,22 @@ export default function Leaderboards() {
                               ranking.userId === user?.id && "bg-muted/30"
                             )}
                           >
-                            <div className="flex items-center gap-6">
-                              <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground w-8 tabular-nums")}>
+                            <div className="flex items-center gap-4">
+                              <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground w-8 tabular-nums shrink-0")}>
                                 {ranking.rank}
                               </span>
-                              <span className={cn(
-                                TYPOGRAPHY.BODY,
-                                "font-medium",
-                                ranking.userId === user?.id && "text-foreground"
-                              )}>
-                                <UsernameDisplay username={ranking.username} usernameColor={ranking.usernameColor} />
-                              </span>
+                              <div className="flex items-center gap-2">
+                                {ranking.badges && ranking.badges.length > 0 && (
+                                  <UserBadges badges={ranking.badges} size="xs" showEmptySlots={false} tooltipSide="right" />
+                                )}
+                                <span className={cn(
+                                  TYPOGRAPHY.BODY,
+                                  "font-medium",
+                                  ranking.userId === user?.id && "text-foreground"
+                                )}>
+                                  <UsernameDisplay username={ranking.username} usernameColor={ranking.usernameColor} />
+                                </span>
+                              </div>
                             </div>
                             <div className="flex items-center gap-2">
                               <span className={cn("tabular-nums", TYPOGRAPHY.MUTED)}>

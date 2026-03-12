@@ -2,6 +2,22 @@ import { Router, Response } from 'express';
 import { prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 
+const BADGE_SELECT = {
+  id: true,
+  name: true,
+  description: true,
+  howToObtain: true,
+  backgroundType: true,
+  backgroundColor: true,
+  backgroundGradient: true,
+  backgroundImage: true,
+  icon: true,
+  iconColor: true,
+  borderColor: true,
+  category: true,
+  rarity: true,
+} as const;
+
 const router = Router();
 
 type LeaderboardCategory =
@@ -482,6 +498,26 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
         return res.status(400).json({ error: 'Invalid category' });
     }
     
+    // Batch-fetch equipped badges for all ranked users
+    if (rankings.length > 0) {
+      const badgeUsers = await prisma.user.findMany({
+        where: { id: { in: rankings.map((r: any) => r.userId) } },
+        select: {
+          id: true,
+          equippedBadge1: { select: BADGE_SELECT },
+          equippedBadge2: { select: BADGE_SELECT },
+        },
+      });
+      const badgeMap = new Map(badgeUsers.map((u) => [
+        u.id,
+        [
+          ...(u.equippedBadge1 ? [u.equippedBadge1] : []),
+          ...(u.equippedBadge2 ? [u.equippedBadge2] : []),
+        ],
+      ]));
+      rankings = rankings.map((r: any) => ({ ...r, badges: badgeMap.get(r.userId) ?? [] }));
+    }
+
     // Get current user's rank if authenticated
     let userRank = null;
     if (req.user) {
