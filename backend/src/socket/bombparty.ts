@@ -2,6 +2,7 @@ import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
 import { checkQuestProgress } from '../routes/quests.js';
 import { logGame } from '../utils/logger.js';
+import { recheckBadgeForCondition } from '../utils/badgeAwards.js';
 import { readBombPartyDictionaryWords, resolveBombPartyLanguageFile } from '../utils/bombpartyDictionary.js';
 import { getBombPartyLanguageSetting, getBombPartyThreeLetterStartRound, getBombPartyWppSettings } from '../utils/bombpartySettings.js';
 
@@ -929,6 +930,11 @@ async function endGame(game: BombPartyGame, io: Server) {
     } catch (error) {
       console.error('Failed to update stats for player:', player.userId, error);
     }
+  }
+
+  // Recalculate BombParty champion badge immediately (non-blocking)
+  if (winner) {
+    void recheckBadgeForCondition('BOMBPARTY_TOP_WINS');
   }
 
   // Build game over data

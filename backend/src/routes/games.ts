@@ -4,6 +4,7 @@ import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { validate, gameCompleteSchema } from '../middleware/validation.js';
 import { logGame, logAdmin } from '../utils/logger.js';
 import { checkQuestProgress } from './quests.js';
+import { recheckBadgeForCondition } from '../utils/badgeAwards.js';
 
 const router = Router();
 const isDoodleJumpType = (gameType: string) => gameType === 'doodle_jump' || gameType === 'doodle_jump_mort_subite';
@@ -848,6 +849,8 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
         newHighScore: score,
         previousHighScore: currentStats?.highScore || 0,
       });
+      // Immediately recalculate the champion badge for this game (non-blocking)
+      void recheckBadgeForCondition(`GAME_HIGHSCORE_${gameType}`);
     }
 
     // Check quest progress

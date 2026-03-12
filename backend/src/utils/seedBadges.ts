@@ -240,7 +240,63 @@ const BOMBPARTY_BADGE: BadgeDef = {
   rarity: 'epic',
 };
 
+// ─── Membre AuraTracker ───────────────────────────────────────────────────────
+
+const MEMBER_BADGE: BadgeDef = {
+  autoConditionKey: 'MEMBER',
+  name: 'Membre AuraTracker',
+  description: 'Membre officiel de la communauté AuraTracker.',
+  howToObtain: 'Avoir un compte approuvé sur AuraTracker.',
+  icon: '🔰',
+  category: 'special',
+  backgroundType: 'gradient',
+  backgroundGradient: GRAD('#0f766e', '#14b8a6'),
+  backgroundColor: '#0f766e',
+  borderColor: '#2dd4bf',
+  iconColor: '#f0fdfa',
+  rarity: 'uncommon',
+};
+
+// ─── Class badges (3 levels × 7 letters = 21 badges) ─────────────────────────
+
+const LEVEL_GRAD: Record<string, { from: string; to: string; border: string }> = {
+  SECONDE:    { from: '#1e3a8a', to: '#3b82f6', border: '#93c5fd' },
+  PREMIERE:   { from: '#92400e', to: '#f59e0b', border: '#fcd34d' },
+  TERMINALE:  { from: '#7f1d1d', to: '#ef4444', border: '#fca5a5' },
+};
+
+const LEVEL_LABEL: Record<string, string> = {
+  SECONDE:   'Seconde',
+  PREMIERE:  'Première',
+  TERMINALE: 'Terminale',
+};
+
+const CLASS_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G'] as const;
+const LEVELS = ['SECONDE', 'PREMIERE', 'TERMINALE'] as const;
+
+const CLASS_BADGES: BadgeDef[] = LEVELS.flatMap((level) =>
+  CLASS_LETTERS.map((letter): BadgeDef => {
+    const g = LEVEL_GRAD[level];
+    return {
+      autoConditionKey: `CLASS_${level}_${letter}`,
+      name: `${LEVEL_LABEL[level]} ${letter}`,
+      description: `Élève en ${LEVEL_LABEL[level]} ${letter}.`,
+      howToObtain: `Être inscrit en ${LEVEL_LABEL[level]} ${letter}.`,
+      icon: letter,
+      category: 'special',
+      backgroundType: 'gradient',
+      backgroundGradient: GRAD(g.from, g.to),
+      backgroundColor: g.from,
+      borderColor: g.border,
+      iconColor: '#ffffff',
+      rarity: 'common',
+    };
+  }),
+);
+
 const ALL_DEFAULT_BADGES: BadgeDef[] = [
+  MEMBER_BADGE,
+  ...CLASS_BADGES,
   ...AURA_BADGES,
   ...MONEY_BADGES,
   ...GAME_BADGES,

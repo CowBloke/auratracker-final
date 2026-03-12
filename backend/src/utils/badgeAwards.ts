@@ -3,6 +3,8 @@ import { prisma } from '../server.js';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type AutoConditionKey =
+  | 'MEMBER'
+  | `CLASS_${string}`
   | 'TOP_1_AURA'
   | 'TOP_3_AURA'
   | 'TOP_5_AURA'
@@ -11,6 +13,7 @@ export type AutoConditionKey =
   | 'TOP_3_MONEY'
   | 'TOP_5_MONEY'
   | 'TOP_10_MONEY'
+  | 'BOMBPARTY_TOP_WINS'
   | `GAME_HIGHSCORE_${string}`;
 
 // ─── Core award / revoke helpers ─────────────────────────────────────────────
@@ -72,6 +75,27 @@ export const revokeBadge = async (userId: string, badgeId: string): Promise<bool
 // ─── Auto-badge helpers ───────────────────────────────────────────────────────
 
 const getQualifyingUserIds = async (key: string): Promise<Set<string>> => {
+  // Every approved user earns the MEMBER badge
+  if (key === 'MEMBER') {
+    const users = await prisma.user.findMany({
+      where: { isApproved: true },
+      select: { id: true },
+    });
+    return new Set(users.map((u) => u.id));
+  }
+  // CLASS_SECONDE_A, CLASS_PREMIERE_B, CLASS_TERMINALE_G, …
+  if (key.startsWith('CLASS_')) {
+    const rest = key.slice('CLASS_'.length); // e.g. "SECONDE_A"
+    const lastUnderscore = rest.lastIndexOf('_');
+    if (lastUnderscore === -1) return new Set();
+    const schoolLevel = rest.slice(0, lastUnderscore); // "SECONDE"
+    const classLetter = rest.slice(lastUnderscore + 1); // "A"
+    const users = await prisma.user.findMany({
+      where: { isApproved: true, schoolLevel, classLetter },
+      select: { id: true },
+    });
+    return new Set(users.map((u) => u.id));
+  }
   if (key === 'TOP_1_AURA') {
     const users = await prisma.user.findMany({
       where: { isSuperAdmin: false },
@@ -213,16 +237,159 @@ export const checkAndUpdateAutoBadges = async (): Promise<void> => {
   }
 };
 
+// ─── Targeted single-condition recheck ───────────────────────────────────────
+
+/**
+ * Re-evaluate exactly one automatic badge condition and update only the users
+ * whose membership changed. Also auto-equips newly awarded badges.
+ *
+ * Use this for immediate recalculations (e.g. on new highscore) instead of
+ * running the full checkAndUpdateAutoBadges() cycle.
+ */
+export const recheckBadgeForCondition = async (conditionKey: string): Promise<void> => {
+  try {
+    const badge = await prisma.badge.findFirst({
+      where: { autoConditionKey: conditionKey, isAutomatic: true, isActive: true },
+      select: { id: true, name: true },
+    });
+    if (!badge) return;
+
+    const qualifyingIds = await getQualifyingUserIds(conditionKey);
+
+    const current = await prisma.userBadge.findMany({
+      where: { badgeId: badge.id },
+      select: { userId: true },
+    });
+    const currentIds = new Set(current.map((ub) => ub.userId));
+
+    const affected = new Set<string>();
+
+    for (const userId of qualifyingIds) {
+      if (!currentIds.has(userId)) {
+        await awardBadge(userId, badge.id, `Automatiquement obtenu : ${badge.name}`);
+        affected.add(userId);
+      }
+    }
+
+    for (const userId of currentIds) {
+      if (!qualifyingIds.has(userId)) {
+        await revokeBadge(userId, badge.id);
+        affected.add(userId);
+      }
+    }
+
+    // Auto-equip for affected users only (fast — at most 2 users per highscore change)
+    if (affected.size > 0) {
+      await autoEquipForUsers([...affected]);
+    }
+  } catch (error) {
+    console.error(`recheckBadgeForCondition(${conditionKey}) error:`, error);
+  }
+};
+
+/** Auto-equip logic scoped to a specific list of user IDs. */
+export const autoEquipForUsers = async (userIds: string[]): Promise<void> => {
+  if (userIds.length === 0) return;
+  try {
+    const users = await prisma.user.findMany({
+      where: { id: { in: userIds }, isApproved: true },
+      select: {
+        id: true,
+        schoolLevel: true,
+        classLetter: true,
+        equippedBadge1Id: true,
+        equippedBadge2Id: true,
+        earnedBadges: {
+          select: { badge: { select: { id: true, autoConditionKey: true } } },
+        },
+      },
+    });
+
+    for (const user of users) {
+      if (user.equippedBadge1Id && user.equippedBadge2Id) continue;
+
+      const ownedByKey = new Map(
+        user.earnedBadges
+          .filter((ub) => ub.badge.autoConditionKey)
+          .map((ub) => [ub.badge.autoConditionKey!, ub.badge.id]),
+      );
+      const ownedIds = user.earnedBadges.map((ub) => ub.badge.id);
+
+      const classKey =
+        user.schoolLevel && user.classLetter
+          ? `CLASS_${user.schoolLevel}_${user.classLetter}`
+          : null;
+
+      const priority: string[] = [];
+      if (classKey && ownedByKey.has(classKey)) priority.push(ownedByKey.get(classKey)!);
+      if (ownedByKey.has('MEMBER')) priority.push(ownedByKey.get('MEMBER')!);
+      for (const id of ownedIds) {
+        if (!priority.includes(id)) priority.push(id);
+      }
+
+      const alreadyEquipped = new Set(
+        [user.equippedBadge1Id, user.equippedBadge2Id].filter(Boolean) as string[],
+      );
+      const candidates = priority.filter((id) => !alreadyEquipped.has(id));
+
+      const patch: { equippedBadge1Id?: string; equippedBadge2Id?: string } = {};
+
+      if (!user.equippedBadge1Id && candidates[0]) {
+        patch.equippedBadge1Id = candidates[0];
+        alreadyEquipped.add(candidates[0]);
+        candidates.shift();
+      }
+      if (!user.equippedBadge2Id) {
+        const next = candidates.find((id) => !alreadyEquipped.has(id));
+        if (next) patch.equippedBadge2Id = next;
+      }
+
+      if (Object.keys(patch).length > 0) {
+        await prisma.user.update({ where: { id: user.id }, data: patch });
+      }
+    }
+  } catch (error) {
+    console.error('autoEquipForUsers error:', error);
+  }
+};
+
+// ─── Auto-equip ──────────────────────────────────────────────────────────────
+
+/**
+ * For every approved user with at least one empty badge slot, fill it with:
+ *   Slot 1 priority: class badge → member badge → any earned badge
+ *   Slot 2 priority: member badge → any earned badge (different from slot 1)
+ *
+ * Already-equipped slots are never changed.
+ */
+export const autoEquipDefaultBadges = async (): Promise<void> => {
+  try {
+    const ids = await prisma.user.findMany({
+      where: { isApproved: true },
+      select: { id: true },
+    });
+    await autoEquipForUsers(ids.map((u) => u.id));
+    console.log('[badges] Auto-equip pass completed');
+  } catch (error) {
+    console.error('autoEquipDefaultBadges error:', error);
+  }
+};
+
 // ─── Scheduled runner ─────────────────────────────────────────────────────────
 
 let _autoBadgeTimer: ReturnType<typeof setInterval> | null = null;
 
-/** Start periodic auto-badge checks every 5 minutes. */
+const runFullBadgeCycle = async () => {
+  await checkAndUpdateAutoBadges();
+  await autoEquipDefaultBadges();
+};
+
+/** Start periodic auto-badge checks + auto-equip every 5 minutes. */
 export const startAutoBadgeScheduler = (): void => {
   if (_autoBadgeTimer) return;
-  void checkAndUpdateAutoBadges(); // run once immediately
+  void runFullBadgeCycle(); // run once immediately
   _autoBadgeTimer = setInterval(() => {
-    void checkAndUpdateAutoBadges();
+    void runFullBadgeCycle();
   }, 5 * 60_000);
 };
 
