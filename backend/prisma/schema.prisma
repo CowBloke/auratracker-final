@@ -91,6 +91,14 @@ model User {
   warningsReceived    AdminWarning[]            @relation("WarningsReceived")
   warningsIssued      AdminWarning[]            @relation("WarningsIssued")
 
+  // Badge System
+  equippedBadge1Id    String?
+  equippedBadge2Id    String?
+  equippedBadge1      Badge?                    @relation("UserEquippedBadge1", fields: [equippedBadge1Id], references: [id], onDelete: SetNull)
+  equippedBadge2      Badge?                    @relation("UserEquippedBadge2", fields: [equippedBadge2Id], references: [id], onDelete: SetNull)
+  earnedBadges        UserBadge[]
+  createdBadges       Badge[]                   @relation("BadgeCreator")
+
   @@index([aura])
   @@index([money])
   @@index([referredById])
@@ -955,6 +963,62 @@ model Notification {
   @@index([userId, isArchived])
   @@index([userId, createdAt])
   @@index([createdAt])
+}
+
+// ============================================
+// BADGE SYSTEM
+// ============================================
+
+model Badge {
+  id                 String   @id @default(uuid())
+  name               String
+  description        String
+  howToObtain        String?
+
+  // Visual customization
+  backgroundType     String   @default("solid")    // "solid" | "gradient" | "image"
+  backgroundColor    String   @default("#374151")
+  backgroundGradient String?  // JSON: {"from":"#hex","to":"#hex","direction":"to right"}
+  backgroundImage    String?  // URL for image background
+  icon               String   @default("⭐")       // emoji displayed in center
+  iconColor          String   @default("#ffffff")
+  borderColor        String   @default("#6b7280")
+
+  // Metadata
+  category           String   @default("special")  // "leaderboard" | "achievement" | "special" | "admin"
+  rarity             String   @default("common")   // "common" | "uncommon" | "rare" | "epic" | "legendary"
+  isAutomatic        Boolean  @default(false)       // Auto-assigned based on conditions
+  autoConditionKey   String?  // e.g. "TOP_1_AURA", "TOP_5_MONEY", "GAME_HIGHSCORE_DOODLE_JUMP"
+  isActive           Boolean  @default(true)
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  createdById        String?
+
+  createdBy          User?      @relation("BadgeCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  userBadges         UserBadge[]
+  equippedBySlot1    User[]     @relation("UserEquippedBadge1")
+  equippedBySlot2    User[]     @relation("UserEquippedBadge2")
+
+  @@index([category])
+  @@index([isAutomatic])
+  @@index([autoConditionKey])
+  @@index([isActive])
+}
+
+model UserBadge {
+  id             String   @id @default(uuid())
+  userId         String
+  badgeId        String
+  obtainedAt     DateTime @default(now())
+  obtainedReason String?
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+  @@index([badgeId])
 }
 
 // ============================================

@@ -33,6 +33,7 @@ import questsRoutes from './routes/quests.js';
 import solitaireRoutes from './routes/solitaire.js';
 import giftsRoutes from './routes/gifts.js';
 import notificationsRoutes from './routes/notifications.js';
+import badgesRoutes from './routes/badges.js';
 
 // Socket handlers
 import { setupChatHandlers, startOnlineCountBroadcast, startOnlineSnapshotRecording } from './socket/chat.js';
@@ -49,6 +50,7 @@ import { setupRussianRouletteHandlers } from './socket/russianroulette.js';
 
 // Logger
 import { initLogger } from './utils/logger.js';
+import { startAutoBadgeScheduler, stopAutoBadgeScheduler } from './utils/badgeAwards.js';
 
 // Initialize Prisma
 export const prisma = new PrismaClient();
@@ -98,6 +100,7 @@ app.use('/api/quests', questsRoutes);
 app.use('/api/solitaire', solitaireRoutes);
 app.use('/api/gifts', giftsRoutes);
 app.use('/api/notifications', notificationsRoutes);
+app.use('/api/badges', badgesRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -270,6 +273,7 @@ const start = async () => {
     startOnlineCountBroadcast(io);
     startOnlineSnapshotRecording();
     startBombPartyCleanup(io);
+    startAutoBadgeScheduler();
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'EADDRINUSE') {
       console.error(`Failed to start server: port ${config.port} is already in use`);
@@ -285,12 +289,14 @@ start();
 // Graceful shutdown
 process.on('SIGINT', async () => {
   stopAuraCoinEngine();
+  stopAutoBadgeScheduler();
   await prisma.$disconnect();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
   stopAuraCoinEngine();
+  stopAutoBadgeScheduler();
   await prisma.$disconnect();
   process.exit(0);
 });

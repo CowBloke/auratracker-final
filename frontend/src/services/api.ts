@@ -1411,4 +1411,57 @@ export const notificationsApi = {
 export const uploadUserImage = (data: { base64Data: string; mimeType: string }) =>
   api.post<{ imageUrl: string }>('/uploads/image', data);
 
+// ─── Badges API ───────────────────────────────────────────────────────────────
+
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  howToObtain?: string | null;
+  backgroundType: string;
+  backgroundColor: string;
+  backgroundGradient?: string | null;
+  backgroundImage?: string | null;
+  icon: string;
+  iconColor: string;
+  borderColor: string;
+  category: string;
+  rarity: string;
+  isAutomatic: boolean;
+  autoConditionKey?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  createdById?: string | null;
+}
+
+export interface UserBadgeEntry extends Badge {
+  obtainedAt: string;
+  obtainedReason?: string | null;
+}
+
+export interface UserBadgesResponse {
+  equippedBadge1Id: string | null;
+  equippedBadge2Id: string | null;
+  badges: UserBadgeEntry[];
+}
+
+export const badgesApi = {
+  getAll: () => api.get<{ badges: Badge[] }>('/badges'),
+  getById: (id: string) => api.get<{ badge: Badge }>(`/badges/${id}`),
+  getUserBadges: (userId: string) => api.get<UserBadgesResponse>(`/badges/user/${userId}`),
+  equip: (slot: 1 | 2, badgeId: string | null) =>
+    api.post<{ success: boolean }>('/badges/equip', { slot, badgeId }),
+  // Admin
+  create: (data: Partial<Badge>) => api.post<{ badge: Badge }>('/badges', data),
+  update: (id: string, data: Partial<Badge>) => api.put<{ badge: Badge }>(`/badges/${id}`, data),
+  delete: (id: string) => api.delete<{ success: boolean }>(`/badges/${id}`),
+  award: (data: { userId: string; badgeId: string; reason?: string }) =>
+    api.post<{ success: boolean; alreadyOwned: boolean }>('/badges/award', data),
+  revoke: (userId: string, badgeId: string) =>
+    api.delete<{ success: boolean }>(`/badges/revoke/${userId}/${badgeId}`),
+  getAllUsersAdmin: () => api.get<{ users: Array<{ id: string; username: string; equippedBadge1Id: string | null; equippedBadge2Id: string | null; badges: UserBadgeEntry[] }> }>('/badges/admin/all-users'),
+  checkAuto: () => api.post<{ success: boolean; message: string }>('/badges/check-auto'),
+};
+
 export default api;

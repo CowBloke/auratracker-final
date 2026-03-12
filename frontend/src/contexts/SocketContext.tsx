@@ -5,6 +5,22 @@ import { initSocket, connectSocket, disconnectSocket, chatEvents, partyEvents, g
 import { storeBanInfo } from '../services/ban';
 import { useAuth } from './AuthContext';
 
+export interface ChatBadge {
+  id: string;
+  name: string;
+  description: string;
+  howToObtain?: string | null;
+  backgroundType: string;
+  backgroundColor: string;
+  backgroundGradient?: string | null;
+  backgroundImage?: string | null;
+  icon: string;
+  iconColor: string;
+  borderColor: string;
+  category: string;
+  rarity: string;
+}
+
 interface ChatMessage {
   id: string;
   userId: string;
@@ -16,6 +32,7 @@ interface ChatMessage {
   pinnedAt?: string | null;
   isTopMoney?: boolean;
   isTopAura?: boolean;
+  badges: ChatBadge[];
   reactions: Array<{ emoji: string; count: number }>;
   replyTo?: {
     id: string;

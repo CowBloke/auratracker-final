@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { adminApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, RegistrationReview, AdminWarning } from '../services/api';
+import { adminApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, RegistrationReview, AdminWarning, badgesApi, Badge } from '../services/api';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,8 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Minus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, Inbox, Archive, UserCog, Crown, Swords, Send, Upload } from 'lucide-react';
+import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Minus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, Inbox, Archive, UserCog, Crown, Swords, Send, Upload, Award } from 'lucide-react';
+import { BadgeIcon } from '@/components/badges/BadgeIcon';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, ReferenceDot } from 'recharts';
 import {
   AlertDialog,
@@ -404,8 +405,100 @@ export default function Admin() {
   const [mutingUser, setMutingUser] = useState<string | null>(null);
   const [clearingChat, setClearingChat] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'inbox' | 'users' | 'clubs' | 'logs' | 'bans' | 'content' | 'communication' | 'settings' | 'activity'>('inbox');
+  const [activeTab, setActiveTab] = useState<'inbox' | 'users' | 'clubs' | 'logs' | 'bans' | 'content' | 'communication' | 'settings' | 'activity' | 'badges'>('inbox');
   const [commSubTab, setCommSubTab] = useState<'announcement' | 'login' | 'updates' | 'maintenance'>('announcement');
+
+  // ── Badge tab state ────────────────────────────────────────────────────────
+  const [badges, setBadges] = useState<Badge[]>([]);
+  const [badgesLoading, setBadgesLoading] = useState(false);
+  const [badgeFormOpen, setBadgeFormOpen] = useState(false);
+  const [editingBadge, setEditingBadge] = useState<Badge | null>(null);
+  const [badgeForm, setBadgeForm] = useState<Partial<Badge>>({
+    name: '', description: '', howToObtain: '',
+    backgroundType: 'solid', backgroundColor: '#374151',
+    backgroundGradient: '', backgroundImage: '',
+    icon: '⭐', iconColor: '#ffffff', borderColor: '#6b7280',
+    category: 'special', rarity: 'common',
+    isAutomatic: false, autoConditionKey: '', isActive: true,
+  });
+  const [awardBadgeUserId, setAwardBadgeUserId] = useState('');
+  const [awardBadgeId, setAwardBadgeId] = useState('');
+  const [awardBadgeReason, setAwardBadgeReason] = useState('');
+
+  const fetchBadges = async () => {
+    setBadgesLoading(true);
+    try {
+      const res = await badgesApi.getAll();
+      setBadges(res.data.badges);
+    } catch { /* non-critical */ }
+    finally { setBadgesLoading(false); }
+  };
+
+  const openCreateBadge = () => {
+    setEditingBadge(null);
+    setBadgeForm({
+      name: '', description: '', howToObtain: '',
+      backgroundType: 'solid', backgroundColor: '#374151',
+      backgroundGradient: '', backgroundImage: '',
+      icon: '⭐', iconColor: '#ffffff', borderColor: '#6b7280',
+      category: 'special', rarity: 'common',
+      isAutomatic: false, autoConditionKey: '', isActive: true,
+    });
+    setBadgeFormOpen(true);
+  };
+
+  const openEditBadge = (badge: Badge) => {
+    setEditingBadge(badge);
+    setBadgeForm({ ...badge });
+    setBadgeFormOpen(true);
+  };
+
+  const handleSaveBadge = async () => {
+    try {
+      if (editingBadge) {
+        await badgesApi.update(editingBadge.id, badgeForm);
+        showMessage('success', 'Badge mis à jour');
+      } else {
+        await badgesApi.create(badgeForm);
+        showMessage('success', 'Badge créé');
+      }
+      setBadgeFormOpen(false);
+      await fetchBadges();
+    } catch {
+      showMessage('error', 'Erreur lors de la sauvegarde du badge');
+    }
+  };
+
+  const handleDeleteBadge = async (badgeId: string) => {
+    try {
+      await badgesApi.delete(badgeId);
+      showMessage('success', 'Badge supprimé');
+      await fetchBadges();
+    } catch {
+      showMessage('error', 'Erreur lors de la suppression du badge');
+    }
+  };
+
+  const handleAwardBadge = async () => {
+    if (!awardBadgeUserId || !awardBadgeId) return;
+    try {
+      const res = await badgesApi.award({ userId: awardBadgeUserId, badgeId: awardBadgeId, reason: awardBadgeReason || undefined });
+      showMessage('success', res.data.alreadyOwned ? 'L\'utilisateur possède déjà ce badge' : 'Badge attribué');
+      setAwardBadgeUserId(''); setAwardBadgeId(''); setAwardBadgeReason('');
+    } catch {
+      showMessage('error', 'Erreur lors de l\'attribution du badge');
+    }
+  };
+
+  const handleCheckAutoBadges = async () => {
+    try {
+      await badgesApi.checkAuto();
+      showMessage('success', 'Vérification auto-badges effectuée');
+      await fetchBadges();
+    } catch {
+      showMessage('error', 'Erreur lors de la vérification');
+    }
+  };
 
   // Activity tab state
   type OnlineHistoryPoint = { timestamp: string; count: number; max: number; usernames: { userId: string; username: string }[] };
@@ -2143,6 +2236,13 @@ export default function Admin() {
             Activité
             {onlineStats && (
               <span className={TYPOGRAPHY.XS}>{onlineStats.current} en ligne</span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="badges" className="flex items-center gap-2" onClick={fetchBadges}>
+            <Award className="h-4 w-4" />
+            Badges
+            {badges.length > 0 && (
+              <span className={TYPOGRAPHY.XS}>{badges.length}</span>
             )}
           </TabsTrigger>
         </TabsList>
@@ -5481,6 +5581,344 @@ export default function Admin() {
             </CardContent>
           </Card>
 
+        </TabsContent>
+
+        {/* ── BADGES TAB ─────────────────────────────────────────────────────── */}
+        <TabsContent value="badges" className={SPACING.SECTION_SPACING}>
+          <div className="space-y-6">
+
+            {/* Header actions */}
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <h2 className={TYPOGRAPHY.H3}>Gestion des Badges</h2>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={handleCheckAutoBadges}>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Vérifier auto-badges
+                </Button>
+                <Button size="sm" onClick={openCreateBadge}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nouveau badge
+                </Button>
+              </div>
+            </div>
+
+            {/* Badge list */}
+            <Card>
+              <CardHeader>
+                <CardDescription>Tous les badges ({badges.length})</CardDescription>
+              </CardHeader>
+              <CardContent className={SPACING.CARD_SPACING}>
+                {badgesLoading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : badges.length === 0 ? (
+                  <p className={TYPOGRAPHY.MUTED}>Aucun badge. Clique sur "Nouveau badge" pour en créer un.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {badges.map((badge) => (
+                      <div key={badge.id} className="flex items-center gap-3 p-3 rounded-md border border-border/40 hover:bg-muted/30">
+                        <BadgeIcon badge={badge} size="md" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">{badge.name}</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${
+                              badge.rarity === 'legendary' ? 'border-yellow-500/40 text-yellow-400' :
+                              badge.rarity === 'epic' ? 'border-purple-500/40 text-purple-400' :
+                              badge.rarity === 'rare' ? 'border-blue-500/40 text-blue-400' :
+                              badge.rarity === 'uncommon' ? 'border-green-500/40 text-green-400' :
+                              'border-border/40 text-muted-foreground'
+                            }`}>{badge.rarity}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-border/40 text-muted-foreground">{badge.category}</span>
+                            {badge.isAutomatic && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-border/40 text-muted-foreground">
+                                auto: {badge.autoConditionKey}
+                              </span>
+                            )}
+                            {!badge.isActive && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/30">inactif</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate">{badge.description}</p>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditBadge(badge)}>
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Supprimer le badge</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Supprimer le badge "{badge.name}" ? Cette action est irréversible et retirera le badge de tous les utilisateurs.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteBadge(badge.id)} className="bg-destructive hover:bg-destructive/90">
+                                  Supprimer
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Award badge to user */}
+            <Card>
+              <CardHeader>
+                <CardDescription>Attribuer un badge à un utilisateur</CardDescription>
+              </CardHeader>
+              <CardContent className={SPACING.CARD_SPACING}>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <label className={TYPOGRAPHY.XS}>ID utilisateur</label>
+                    <Input
+                      placeholder="user-id ou username"
+                      value={awardBadgeUserId}
+                      onChange={(e) => setAwardBadgeUserId(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className={TYPOGRAPHY.XS}>Badge</label>
+                    <Select value={awardBadgeId} onValueChange={setAwardBadgeId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choisir un badge..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {badges.map((b) => (
+                          <SelectItem key={b.id} value={b.id}>
+                            <div className="flex items-center gap-2">
+                              <BadgeIcon badge={b} size="xs" />
+                              <span>{b.name}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className={TYPOGRAPHY.XS}>Raison (optionnel)</label>
+                    <Input
+                      placeholder="Raison de l'attribution..."
+                      value={awardBadgeReason}
+                      onChange={(e) => setAwardBadgeReason(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <Button className="mt-3" onClick={handleAwardBadge} disabled={!awardBadgeUserId || !awardBadgeId}>
+                  <Award className="w-4 h-4 mr-2" />
+                  Attribuer
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Badge create/edit dialog */}
+            <Dialog open={badgeFormOpen} onOpenChange={setBadgeFormOpen}>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>{editingBadge ? 'Modifier le badge' : 'Nouveau badge'}</DialogTitle>
+                  <DialogDescription>
+                    Personnalise l&apos;apparence et les propriétés du badge.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 py-2">
+                  {/* Live preview */}
+                  <div className="flex items-center gap-3 p-3 rounded-md bg-muted/30 border border-border/40">
+                    <BadgeIcon badge={{
+                      id: 'preview',
+                      name: badgeForm.name || 'Aperçu',
+                      description: badgeForm.description || '',
+                      backgroundType: badgeForm.backgroundType || 'solid',
+                      backgroundColor: badgeForm.backgroundColor || '#374151',
+                      backgroundGradient: badgeForm.backgroundGradient || null,
+                      backgroundImage: badgeForm.backgroundImage || null,
+                      icon: badgeForm.icon || '⭐',
+                      iconColor: badgeForm.iconColor || '#ffffff',
+                      borderColor: badgeForm.borderColor || '#6b7280',
+                      category: badgeForm.category || 'special',
+                      rarity: badgeForm.rarity || 'common',
+                    }} size="lg" />
+                    <div>
+                      <p className="text-sm font-medium">{badgeForm.name || 'Nom du badge'}</p>
+                      <p className="text-xs text-muted-foreground">{badgeForm.description || 'Description...'}</p>
+                    </div>
+                  </div>
+
+                  {/* Basic info */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className={TYPOGRAPHY.XS}>Nom *</label>
+                      <Input value={badgeForm.name ?? ''} onChange={(e) => setBadgeForm(f => ({ ...f, name: e.target.value }))} />
+                    </div>
+                    <div className="space-y-1">
+                      <label className={TYPOGRAPHY.XS}>Icône (emoji)</label>
+                      <Input value={badgeForm.icon ?? '⭐'} onChange={(e) => setBadgeForm(f => ({ ...f, icon: e.target.value }))} maxLength={4} />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className={TYPOGRAPHY.XS}>Description *</label>
+                    <Textarea value={badgeForm.description ?? ''} onChange={(e) => setBadgeForm(f => ({ ...f, description: e.target.value }))} rows={2} />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className={TYPOGRAPHY.XS}>Comment l&apos;obtenir</label>
+                    <Input value={badgeForm.howToObtain ?? ''} onChange={(e) => setBadgeForm(f => ({ ...f, howToObtain: e.target.value }))} placeholder="Ex: Être dans le top 5 de l'aura" />
+                  </div>
+
+                  {/* Visual: Background */}
+                  <div className="space-y-2">
+                    <label className={TYPOGRAPHY.XS}>Arrière-plan</label>
+                    <div className="flex gap-2">
+                      {(['solid', 'gradient', 'image'] as const).map((t) => (
+                        <Button key={t} variant={badgeForm.backgroundType === t ? 'default' : 'outline'} size="sm"
+                          onClick={() => setBadgeForm(f => ({ ...f, backgroundType: t }))}>
+                          {t === 'solid' ? 'Couleur unie' : t === 'gradient' ? 'Dégradé' : 'Image'}
+                        </Button>
+                      ))}
+                    </div>
+
+                    {badgeForm.backgroundType === 'solid' && (
+                      <div className="flex items-center gap-3">
+                        <input type="color" value={badgeForm.backgroundColor ?? '#374151'} onChange={(e) => setBadgeForm(f => ({ ...f, backgroundColor: e.target.value }))} className="h-8 w-16 rounded cursor-pointer border border-border" />
+                        <Input value={badgeForm.backgroundColor ?? '#374151'} onChange={(e) => setBadgeForm(f => ({ ...f, backgroundColor: e.target.value }))} className="w-32" placeholder="#374151" />
+                      </div>
+                    )}
+
+                    {badgeForm.backgroundType === 'gradient' && (
+                      <div className="space-y-2">
+                        <p className={TYPOGRAPHY.XS}>JSON: {"{"}"from":"#hex","to":"#hex","direction":"to right"{"}"}</p>
+                        <Textarea
+                          value={badgeForm.backgroundGradient ?? ''}
+                          onChange={(e) => setBadgeForm(f => ({ ...f, backgroundGradient: e.target.value }))}
+                          placeholder='{"from":"#7c3aed","to":"#2563eb","direction":"to bottom right"}'
+                          rows={2}
+                        />
+                      </div>
+                    )}
+
+                    {badgeForm.backgroundType === 'image' && (
+                      <Input
+                        value={badgeForm.backgroundImage ?? ''}
+                        onChange={(e) => setBadgeForm(f => ({ ...f, backgroundImage: e.target.value }))}
+                        placeholder="URL de l'image de fond..."
+                      />
+                    )}
+                  </div>
+
+                  {/* Visual: Colors */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className={TYPOGRAPHY.XS}>Couleur de l&apos;icône</label>
+                      <div className="flex items-center gap-2">
+                        <input type="color" value={badgeForm.iconColor ?? '#ffffff'} onChange={(e) => setBadgeForm(f => ({ ...f, iconColor: e.target.value }))} className="h-8 w-16 rounded cursor-pointer border border-border" />
+                        <Input value={badgeForm.iconColor ?? '#ffffff'} onChange={(e) => setBadgeForm(f => ({ ...f, iconColor: e.target.value }))} className="w-32" />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className={TYPOGRAPHY.XS}>Couleur de bordure</label>
+                      <div className="flex items-center gap-2">
+                        <input type="color" value={badgeForm.borderColor ?? '#6b7280'} onChange={(e) => setBadgeForm(f => ({ ...f, borderColor: e.target.value }))} className="h-8 w-16 rounded cursor-pointer border border-border" />
+                        <Input value={badgeForm.borderColor ?? '#6b7280'} onChange={(e) => setBadgeForm(f => ({ ...f, borderColor: e.target.value }))} className="w-32" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Metadata */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className={TYPOGRAPHY.XS}>Catégorie</label>
+                      <Select value={badgeForm.category ?? 'special'} onValueChange={(v) => setBadgeForm(f => ({ ...f, category: v }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="leaderboard">Classement</SelectItem>
+                          <SelectItem value="achievement">Succès</SelectItem>
+                          <SelectItem value="special">Spécial</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className={TYPOGRAPHY.XS}>Rareté</label>
+                      <Select value={badgeForm.rarity ?? 'common'} onValueChange={(v) => setBadgeForm(f => ({ ...f, rarity: v }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="common">Commun</SelectItem>
+                          <SelectItem value="uncommon">Peu commun</SelectItem>
+                          <SelectItem value="rare">Rare</SelectItem>
+                          <SelectItem value="epic">Épique</SelectItem>
+                          <SelectItem value="legendary">Légendaire</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Auto condition */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        checked={badgeForm.isAutomatic ?? false}
+                        onCheckedChange={(v) => setBadgeForm(f => ({ ...f, isAutomatic: v }))}
+                      />
+                      <label className={TYPOGRAPHY.XS}>Attribution automatique</label>
+                    </div>
+                    {badgeForm.isAutomatic && (
+                      <div className="space-y-1">
+                        <label className={TYPOGRAPHY.XS}>Condition (autoConditionKey)</label>
+                        <Select value={badgeForm.autoConditionKey ?? ''} onValueChange={(v) => setBadgeForm(f => ({ ...f, autoConditionKey: v }))}>
+                          <SelectTrigger><SelectValue placeholder="Choisir une condition..." /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="TOP_1_AURA">Top 1 Aura</SelectItem>
+                            <SelectItem value="TOP_3_AURA">Top 3 Aura</SelectItem>
+                            <SelectItem value="TOP_5_AURA">Top 5 Aura</SelectItem>
+                            <SelectItem value="TOP_10_AURA">Top 10 Aura</SelectItem>
+                            <SelectItem value="TOP_1_MONEY">Top 1 Argent</SelectItem>
+                            <SelectItem value="TOP_3_MONEY">Top 3 Argent</SelectItem>
+                            <SelectItem value="TOP_5_MONEY">Top 5 Argent</SelectItem>
+                            <SelectItem value="TOP_10_MONEY">Top 10 Argent</SelectItem>
+                            <SelectItem value="GAME_HIGHSCORE_doodle_jump">Meilleur score Doodle Jump</SelectItem>
+                            <SelectItem value="GAME_HIGHSCORE_flappy_bird">Meilleur score Flappy Bird</SelectItem>
+                            <SelectItem value="GAME_HIGHSCORE_2048">Meilleur score 2048</SelectItem>
+                            <SelectItem value="GAME_HIGHSCORE_geometry_dash">Meilleur score Geometry Dash</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Active */}
+                  <div className="flex items-center gap-3">
+                    <Switch
+                      checked={badgeForm.isActive ?? true}
+                      onCheckedChange={(v) => setBadgeForm(f => ({ ...f, isActive: v }))}
+                    />
+                    <label className={TYPOGRAPHY.XS}>Badge actif (visible et attribuable)</label>
+                  </div>
+                </div>
+
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setBadgeFormOpen(false)}>Annuler</Button>
+                  <Button onClick={handleSaveBadge} disabled={!badgeForm.name || !badgeForm.description}>
+                    <Save className="w-4 h-4 mr-2" />
+                    {editingBadge ? 'Mettre à jour' : 'Créer'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+          </div>
         </TabsContent>
 
         </Tabs>
