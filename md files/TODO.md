@@ -17,6 +17,11 @@
 - toast shop inventaire achat utilisé
 - voir qui a réagit dans le chat
 - confirmation toast shop
+- badges 
+- rejoindre clan existant ou crer avec potes
+- shop rotating
+- shop coloré soldes, boites
+- chat : images, give, achievments
 
 ## à FIX
 
