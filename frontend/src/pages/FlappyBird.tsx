@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { gamesApi } from '../services/api';
-import { Play, RotateCcw, Trophy, X } from 'lucide-react';
+import { Play, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
+import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 
 // ============================================
 // GAME CONSTANTS
@@ -35,15 +36,6 @@ interface Pipe {
   topHeight: number;
   bottomY: number;
   passed: boolean;
-}
-
-interface LeaderboardEntry {
-  id: string;
-  highScore: number;
-  user: {
-    id: string;
-    username: string;
-  };
 }
 
 // ============================================
@@ -103,7 +95,7 @@ export default function FlappyBird() {
   const [started, setStarted] = useState(false);
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [leaderboard, setLeaderboard] = useState<GameLeaderboardEntry[]>([]);
 
   // Fetch stats and leaderboard on mount
   useEffect(() => {
@@ -539,51 +531,14 @@ export default function FlappyBird() {
       </div>
 
       {/* ── Right column — leaderboard ── */}
-      <Card className={cn(isFullscreen && 'hidden')}>
-        <CardHeader className="px-4 py-3">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Trophy className="h-4 w-4 text-muted-foreground" />
-            Classement
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {leaderboard.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground">Aucun score</p>
-          ) : (
-            <div className="divide-y divide-border/20 max-h-[560px] overflow-y-auto">
-              {leaderboard.map((entry, index) => (
-                <div
-                  key={entry.id}
-                  className={cn('flex items-center gap-3 px-4 py-2.5 group', entry.user.id === user?.id && 'bg-muted/30')}
-                >
-                  <span className={cn('w-5 text-center text-xs tabular-nums shrink-0',
-                    index === 0 ? 'text-yellow-500 font-bold' :
-                    index === 1 ? 'text-muted-foreground' :
-                    index === 2 ? 'text-amber-600 font-bold' : 'text-muted-foreground'
-                  )}>
-                    {index + 1}
-                  </span>
-                  <span className="flex-1 truncate text-sm">
-                    {entry.user.username}
-                    {entry.user.id === user?.id && <span className="ml-1 text-xs text-muted-foreground">(toi)</span>}
-                  </span>
-                  <span className="text-sm tabular-nums text-muted-foreground shrink-0">{entry.highScore}</span>
-                  {user?.isAdmin && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDeleteScore(entry.user.id, entry.user.username)}
-                      className="opacity-0 group-hover:opacity-100 h-6 w-6 text-destructive hover:bg-destructive/10 shrink-0"
-                    >
-                      <X className="w-3 h-3" />
-                    </Button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <GameLeaderboard
+        entries={leaderboard}
+        currentUserId={user?.id}
+        isAdmin={user?.isAdmin}
+        onDeleteScore={handleDeleteScore}
+        maxHeight={560}
+        hidden={isFullscreen}
+      />
 
     </div>
   );

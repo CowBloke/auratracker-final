@@ -935,13 +935,29 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
   }
 });
 
+const BADGE_SELECT = {
+  id: true,
+  name: true,
+  description: true,
+  howToObtain: true,
+  backgroundType: true,
+  backgroundColor: true,
+  backgroundGradient: true,
+  backgroundImage: true,
+  icon: true,
+  iconColor: true,
+  borderColor: true,
+  category: true,
+  rarity: true,
+} as const;
+
 // Get game leaderboard
 router.get('/:gameType/leaderboard', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { gameType } = req.params;
     const { limit = '20' } = req.query;
 
-    const rankings = await prisma.gameStats.findMany({
+    const rawRankings = await prisma.gameStats.findMany({
       where: { gameType, user: { isSuperAdmin: false } },
       orderBy: { highScore: gameType === 'racer' ? 'asc' : 'desc' },
       take: parseInt(limit as string),
@@ -954,6 +970,27 @@ router.get('/:gameType/leaderboard', authMiddleware, async (req: AuthRequest, re
         },
       },
     });
+
+    // Attach equipped badges
+    let rankings: any[] = rawRankings;
+    if (rawRankings.length > 0) {
+      const badgeUsers = await prisma.user.findMany({
+        where: { id: { in: rawRankings.map((r) => r.user.id) } },
+        select: {
+          id: true,
+          equippedBadge1: { select: BADGE_SELECT },
+          equippedBadge2: { select: BADGE_SELECT },
+        },
+      });
+      const badgeMap = new Map(badgeUsers.map((u) => [
+        u.id,
+        [
+          ...(u.equippedBadge1 ? [u.equippedBadge1] : []),
+          ...(u.equippedBadge2 ? [u.equippedBadge2] : []),
+        ],
+      ]));
+      rankings = rawRankings.map((r) => ({ ...r, badges: badgeMap.get(r.user.id) ?? [] }));
+    }
 
     res.json({ rankings });
   } catch (error) {

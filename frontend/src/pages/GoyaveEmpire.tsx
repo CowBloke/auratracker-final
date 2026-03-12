@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
-import { X } from 'lucide-react';
+import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -46,12 +46,6 @@ interface SaveState {
   upgrades: string[];
   lastTick: number;
   cashOutScore: number;
-}
-
-interface LeaderboardEntry {
-  id: string;
-  highScore: number;
-  user: { id: string; username: string };
 }
 
 // ---- Data ----
@@ -197,7 +191,7 @@ export default function GoyaveEmpire() {
 
   const [save, setSave] = useState<SaveState>(() => loadSave());
   const [offlineGuavas, setOfflineGuavas] = useState<number | null>(null);
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [leaderboard, setLeaderboard] = useState<GameLeaderboardEntry[]>([]);
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isCashingOut, setIsCashingOut] = useState(false);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
@@ -586,37 +580,13 @@ export default function GoyaveEmpire() {
               </div>
             ) : (
               /* Leaderboard */
-              leaderboard.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground text-sm">Aucun score enregistré</div>
-              ) : (
-                <div className="divide-y divide-border/20">
-                  {leaderboard.map((entry, index) => (
-                    <div
-                      key={entry.id}
-                      className={`flex items-center gap-3 px-4 py-3 group ${entry.user.id === user?.id ? 'bg-primary/10' : ''}`}
-                    >
-                      <span className={`w-5 text-center font-mono text-sm flex-shrink-0 ${
-                        index === 0 ? 'text-yellow-500 font-bold' :
-                        index === 1 ? 'text-gray-400 font-bold' :
-                        index === 2 ? 'text-amber-600 font-bold' :
-                        'text-muted-foreground'
-                      }`}>
-                        {index + 1}
-                      </span>
-                      <span className="flex-1 truncate text-sm">{entry.user.username}</span>
-                      <span className="font-mono text-xs tabular-nums text-muted-foreground">{fmt(entry.highScore)}</span>
-                      {user?.isAdmin && (
-                        <button
-                          onClick={() => handleDeleteScore(entry.user.id, entry.user.username)}
-                          className="opacity-0 group-hover:opacity-100 p-1 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-all"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )
+              <GameLeaderboard
+                entries={leaderboard}
+                currentUserId={user?.id}
+                isAdmin={user?.isAdmin}
+                onDeleteScore={handleDeleteScore}
+                noCard
+              />
             )}
           </div>
         </div>

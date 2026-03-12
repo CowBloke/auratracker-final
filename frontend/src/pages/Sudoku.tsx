@@ -6,18 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Brain, Eraser, RefreshCcw, Target, Trophy } from 'lucide-react';
+import { Brain, Eraser, RefreshCcw, Target } from 'lucide-react';
 import { GameFullscreenButton } from '@/components/game/GameFullscreenButton';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
-
-type LeaderboardEntry = {
-  id: string;
-  highScore: number;
-  user: {
-    id: string;
-    username: string;
-  };
-};
+import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 
 type Difficulty = 'easy' | 'medium' | 'hard' | 'expert';
 type Grid = number[][];
@@ -269,7 +261,7 @@ export default function Sudoku() {
   const [selectedCell, setSelectedCell] = useState<CellPosition>({ row: 0, column: 0 });
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [highScore, setHighScore] = useState(0);
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [leaderboard, setLeaderboard] = useState<GameLeaderboardEntry[]>([]);
   const [hintsUsed, setHintsUsed] = useState(0);
   const [mistakesFound, setMistakesFound] = useState(0);
   const [showConflicts, setShowConflicts] = useState(false);
@@ -679,26 +671,13 @@ export default function Sudoku() {
         </div>
 
         {/* RIGHT: Leaderboard */}
-        <Card className={cn(isFullscreen && 'hidden')}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Trophy className="h-4 w-4" />
-              Leaderboard
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {leaderboard.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Aucun score enregistre pour le moment.</p>
-            ) : (
-              leaderboard.slice(0, 10).map((entry, index) => (
-                <div key={entry.id} className="flex items-center justify-between rounded-xl border border-border/60 px-3 py-2">
-                  <p className="text-sm font-medium">#{index + 1} {entry.user.username}</p>
-                  <p className="text-sm text-muted-foreground">{entry.highScore}</p>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
+        <GameLeaderboard
+          entries={leaderboard}
+          currentUserId={user?.id}
+          title="Classement"
+          maxHeight={420}
+          hidden={isFullscreen}
+        />
       </div>
     </PageShell>
   );

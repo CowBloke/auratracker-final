@@ -5,11 +5,11 @@ import { PageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { UsernameDisplay } from '@/components/ui/username-display';
 import { cn } from '@/lib/utils';
-import { Bomb, Flag, RotateCcw, Trophy, X } from 'lucide-react';
+import { Bomb, Flag, RotateCcw } from 'lucide-react';
 import { GameFullscreenButton } from '@/components/game/GameFullscreenButton';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
+import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 
 type DifficultyKey = 'debutant' | 'intermediaire' | 'expert';
 type GameStatus = 'ready' | 'playing' | 'won' | 'lost';
@@ -29,16 +29,6 @@ interface Cell {
   isRevealed: boolean;
   isFlagged: boolean;
   adjacentMines: number;
-}
-
-interface LeaderboardEntry {
-  id: string;
-  highScore: number;
-  user: {
-    id: string;
-    username: string;
-    usernameColor?: string | null;
-  };
 }
 
 const GAME_TYPE = 'minesweeper';
@@ -215,7 +205,7 @@ export default function Minesweeper() {
   const [highScore, setHighScore] = useState(0);
   const [totalPlayed, setTotalPlayed] = useState(0);
   const [wins, setWins] = useState(0);
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [leaderboard, setLeaderboard] = useState<GameLeaderboardEntry[]>([]);
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [lastScore, setLastScore] = useState(0);
@@ -645,50 +635,14 @@ export default function Minesweeper() {
         </div>
 
         {/* RIGHT: Leaderboard */}
-        <Card className={cn(isFullscreen && 'hidden')}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Trophy className="h-4 w-4" />
-              Classement
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="max-h-[420px] overflow-y-auto space-y-2">
-              {leaderboard.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Aucun score enregistre pour le moment.</p>
-              ) : (
-                leaderboard.map((entry, index) => (
-                  <div
-                    key={entry.id}
-                    className={cn(
-                      'flex items-center gap-3 rounded-xl border border-border/60 px-3 py-2',
-                      entry.user.id === user?.id && 'bg-muted/40'
-                    )}
-                  >
-                    <span className="w-5 text-center text-xs tabular-nums text-muted-foreground">{index + 1}</span>
-                    <UsernameDisplay
-                      username={entry.user.username}
-                      usernameColor={entry.user.usernameColor}
-                      className="min-w-0 flex-1 truncate text-sm"
-                    />
-                    <span className="text-sm font-medium tabular-nums">{entry.highScore}</span>
-                    {user?.isAdmin && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive hover:bg-destructive/10"
-                        onClick={() => handleDeleteScore(entry.user.id)}
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <GameLeaderboard
+          entries={leaderboard}
+          currentUserId={user?.id}
+          isAdmin={user?.isAdmin}
+          onDeleteScore={(userId) => handleDeleteScore(userId)}
+          maxHeight={420}
+          hidden={isFullscreen}
+        />
       </div>
     </PageShell>
   );
