@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { badgesApi, UserBadgeEntry } from '@/services/api';
 import { BadgeIcon, BadgeData } from './BadgeIcon';
 import { cn } from '@/lib/utils';
-import { Loader2, X, Check, Search, Edit2 } from 'lucide-react';
+import { Loader2, X, Search, Edit2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
@@ -195,8 +195,8 @@ export function BadgeSelector({ userId, className, initialData, onBadgeEquipped 
             </div>
           </div>
 
-          {/* 3-column grid */}
-          <div className="p-3 grid grid-cols-3 gap-2 max-h-64 overflow-y-auto">
+          {/* 3-column grid — square tiles, no text */}
+          <div className="p-2 grid grid-cols-3 gap-1.5 max-h-64 overflow-y-auto">
             {filteredBadges.length === 0 ? (
               <p className="col-span-3 text-center text-xs text-muted-foreground py-4">
                 Aucun badge trouvé
@@ -215,19 +215,15 @@ export function BadgeSelector({ userId, className, initialData, onBadgeEquipped 
                     disabled={isOtherSlot}
                     onClick={() => !isOtherSlot && handleEquip(badge.id, activeSlot)}
                     className={cn(
-                      'flex flex-col items-center gap-1.5 p-2 rounded-md border transition-colors',
+                      'aspect-square flex items-center justify-center rounded-md border transition-colors',
                       isCurrentSlot
                         ? 'border-foreground bg-foreground/5'
                         : isOtherSlot
-                          ? 'opacity-40 cursor-not-allowed border-border'
-                          : 'border-border hover:border-foreground/50 hover:bg-muted/50',
+                          ? 'opacity-30 cursor-not-allowed border-transparent'
+                          : 'border-transparent hover:border-border hover:bg-muted/40',
                     )}
                   >
                     <BadgeIcon badge={badge} size="lg" tooltipSide="top" />
-                    <span className="text-[10px] text-muted-foreground text-center leading-tight max-w-[64px] truncate">
-                      {badge.name}
-                    </span>
-                    {isCurrentSlot && <Check className="w-3 h-3 text-foreground shrink-0" />}
                   </button>
                 );
               })
@@ -250,20 +246,10 @@ export function BadgeHistory({
   if (badges.length === 0) return null;
 
   return (
-    <div className={cn('space-y-2', className)}>
-      <p className="text-xs text-muted-foreground uppercase tracking-wider">
-        Badges obtenus ({badges.length})
-      </p>
-      <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
-        {badges.map((badge) => (
-          <div key={badge.id} className="flex flex-col items-center gap-1">
-            <BadgeIcon badge={badge as BadgeData} size="lg" tooltipSide="bottom" />
-            <span className="text-[9px] text-muted-foreground text-center leading-tight max-w-[56px] truncate">
-              {badge.name}
-            </span>
-          </div>
-        ))}
-      </div>
+    <div className={cn('flex flex-wrap gap-1', className)}>
+      {badges.map((badge) => (
+        <BadgeIcon key={badge.id} badge={badge as BadgeData} size="lg" tooltipSide="bottom" />
+      ))}
     </div>
   );
 }
