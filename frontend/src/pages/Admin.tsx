@@ -5733,189 +5733,255 @@ export default function Admin() {
                   </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-4 py-2">
-                  {/* Live preview */}
-                  <div className="flex items-center gap-3 p-3 rounded-md bg-muted/30 border border-border/40">
-                    <BadgeIcon badge={{
-                      id: 'preview',
-                      name: badgeForm.name || 'Aperçu',
-                      description: badgeForm.description || '',
-                      backgroundType: badgeForm.backgroundType || 'solid',
-                      backgroundColor: badgeForm.backgroundColor || '#374151',
-                      backgroundGradient: badgeForm.backgroundGradient || null,
-                      backgroundImage: badgeForm.backgroundImage || null,
-                      icon: badgeForm.icon || '⭐',
-                      iconColor: badgeForm.iconColor || '#ffffff',
-                      borderColor: badgeForm.borderColor || '#6b7280',
-                      category: badgeForm.category || 'special',
-                      rarity: badgeForm.rarity || 'common',
-                    }} size="lg" />
-                    <div>
-                      <p className="text-sm font-medium">{badgeForm.name || 'Nom du badge'}</p>
-                      <p className="text-xs text-muted-foreground">{badgeForm.description || 'Description...'}</p>
+                <div className="space-y-5 py-2">
+                  {/* Preview + Basic Info */}
+                  <div className="flex gap-4 items-start p-4 rounded-lg bg-muted/20 border border-border/40">
+                    <div className="flex flex-col items-center gap-1.5 shrink-0">
+                      <BadgeIcon badge={{
+                        id: 'preview',
+                        name: badgeForm.name || 'Aperçu',
+                        description: badgeForm.description || '',
+                        backgroundType: badgeForm.backgroundType || 'solid',
+                        backgroundColor: badgeForm.backgroundColor || '#374151',
+                        backgroundGradient: badgeForm.backgroundGradient || null,
+                        backgroundImage: badgeForm.backgroundImage || null,
+                        icon: badgeForm.icon || '⭐',
+                        iconColor: badgeForm.iconColor || '#ffffff',
+                        borderColor: badgeForm.borderColor || '#6b7280',
+                        category: badgeForm.category || 'special',
+                        rarity: badgeForm.rarity || 'common',
+                      }} size="lg" />
+                      <p className="text-[11px] text-muted-foreground text-center w-20 truncate">{badgeForm.name || 'Aperçu'}</p>
                     </div>
-                  </div>
-
-                  {/* Basic info */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className={TYPOGRAPHY.XS}>Nom *</label>
-                      <Input value={badgeForm.name ?? ''} onChange={(e) => setBadgeForm(f => ({ ...f, name: e.target.value }))} />
-                    </div>
-                    <div className="space-y-1">
-                      <label className={TYPOGRAPHY.XS}>Icône (emoji)</label>
-                      <Input value={badgeForm.icon ?? '⭐'} onChange={(e) => setBadgeForm(f => ({ ...f, icon: e.target.value }))} maxLength={4} />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className={TYPOGRAPHY.XS}>Description *</label>
-                    <Textarea value={badgeForm.description ?? ''} onChange={(e) => setBadgeForm(f => ({ ...f, description: e.target.value }))} rows={2} />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className={TYPOGRAPHY.XS}>Comment l&apos;obtenir</label>
-                    <Input value={badgeForm.howToObtain ?? ''} onChange={(e) => setBadgeForm(f => ({ ...f, howToObtain: e.target.value }))} placeholder="Ex: Être dans le top 5 de l'aura" />
-                  </div>
-
-                  {/* Visual: Background */}
-                  <div className="space-y-2">
-                    <label className={TYPOGRAPHY.XS}>Arrière-plan</label>
-                    <div className="flex gap-2">
-                      {(['solid', 'gradient', 'image'] as const).map((t) => (
-                        <Button key={t} variant={badgeForm.backgroundType === t ? 'default' : 'outline'} size="sm"
-                          onClick={() => setBadgeForm(f => ({ ...f, backgroundType: t }))}>
-                          {t === 'solid' ? 'Couleur unie' : t === 'gradient' ? 'Dégradé' : 'Image'}
-                        </Button>
-                      ))}
-                    </div>
-
-                    {badgeForm.backgroundType === 'solid' && (
-                      <div className="flex items-center gap-3">
-                        <input type="color" value={badgeForm.backgroundColor ?? '#374151'} onChange={(e) => setBadgeForm(f => ({ ...f, backgroundColor: e.target.value }))} className="h-8 w-16 rounded cursor-pointer border border-border" />
-                        <Input value={badgeForm.backgroundColor ?? '#374151'} onChange={(e) => setBadgeForm(f => ({ ...f, backgroundColor: e.target.value }))} className="w-32" placeholder="#374151" />
+                    <div className="flex-1 space-y-2.5 min-w-0">
+                      <div className="flex gap-2 items-end">
+                        <div className="flex-1 space-y-1 min-w-0">
+                          <label className={TYPOGRAPHY.XS}>Nom *</label>
+                          <Input value={badgeForm.name ?? ''} onChange={(e) => setBadgeForm(f => ({ ...f, name: e.target.value }))} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className={TYPOGRAPHY.XS}>Icône</label>
+                          <Input value={badgeForm.icon ?? '⭐'} onChange={(e) => setBadgeForm(f => ({ ...f, icon: e.target.value }))} maxLength={4} className="w-16 text-center text-lg" />
+                        </div>
                       </div>
-                    )}
-
-                    {badgeForm.backgroundType === 'gradient' && (
-                      <div className="space-y-2">
-                        <p className={TYPOGRAPHY.XS}>JSON: {"{"}"from":"#hex","to":"#hex","direction":"to right"{"}"}</p>
-                        <Textarea
-                          value={badgeForm.backgroundGradient ?? ''}
-                          onChange={(e) => setBadgeForm(f => ({ ...f, backgroundGradient: e.target.value }))}
-                          placeholder='{"from":"#7c3aed","to":"#2563eb","direction":"to bottom right"}'
-                          rows={2}
-                        />
-                      </div>
-                    )}
-
-                    {badgeForm.backgroundType === 'image' && (
-                      <Input
-                        value={badgeForm.backgroundImage ?? ''}
-                        onChange={(e) => setBadgeForm(f => ({ ...f, backgroundImage: e.target.value }))}
-                        placeholder="URL de l'image de fond..."
-                      />
-                    )}
-                  </div>
-
-                  {/* Visual: Colors */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className={TYPOGRAPHY.XS}>Couleur de l&apos;icône</label>
-                      <div className="flex items-center gap-2">
-                        <input type="color" value={badgeForm.iconColor ?? '#ffffff'} onChange={(e) => setBadgeForm(f => ({ ...f, iconColor: e.target.value }))} className="h-8 w-16 rounded cursor-pointer border border-border" />
-                        <Input value={badgeForm.iconColor ?? '#ffffff'} onChange={(e) => setBadgeForm(f => ({ ...f, iconColor: e.target.value }))} className="w-32" />
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <label className={TYPOGRAPHY.XS}>Couleur de bordure</label>
-                      <div className="flex items-center gap-2">
-                        <input type="color" value={badgeForm.borderColor ?? '#6b7280'} onChange={(e) => setBadgeForm(f => ({ ...f, borderColor: e.target.value }))} className="h-8 w-16 rounded cursor-pointer border border-border" />
-                        <Input value={badgeForm.borderColor ?? '#6b7280'} onChange={(e) => setBadgeForm(f => ({ ...f, borderColor: e.target.value }))} className="w-32" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Metadata */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className={TYPOGRAPHY.XS}>Catégorie</label>
-                      <Select value={badgeForm.category ?? 'special'} onValueChange={(v) => setBadgeForm(f => ({ ...f, category: v }))}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="leaderboard">Classement</SelectItem>
-                          <SelectItem value="achievement">Succès</SelectItem>
-                          <SelectItem value="special">Spécial</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1">
-                      <label className={TYPOGRAPHY.XS}>Rareté</label>
-                      <Select value={badgeForm.rarity ?? 'common'} onValueChange={(v) => setBadgeForm(f => ({ ...f, rarity: v }))}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="common">Commun</SelectItem>
-                          <SelectItem value="uncommon">Peu commun</SelectItem>
-                          <SelectItem value="rare">Rare</SelectItem>
-                          <SelectItem value="epic">Épique</SelectItem>
-                          <SelectItem value="legendary">Légendaire</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* Auto condition */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-3">
-                      <Switch
-                        checked={badgeForm.isAutomatic ?? false}
-                        onCheckedChange={(v) => setBadgeForm(f => ({ ...f, isAutomatic: v }))}
-                      />
-                      <label className={TYPOGRAPHY.XS}>Attribution automatique</label>
-                    </div>
-                    {badgeForm.isAutomatic && (
                       <div className="space-y-1">
-                        <label className={TYPOGRAPHY.XS}>Condition (autoConditionKey)</label>
-                        <Select value={badgeForm.autoConditionKey ?? ''} onValueChange={(v) => setBadgeForm(f => ({ ...f, autoConditionKey: v }))}>
-                          <SelectTrigger><SelectValue placeholder="Choisir une condition..." /></SelectTrigger>
+                        <label className={TYPOGRAPHY.XS}>Description *</label>
+                        <Textarea value={badgeForm.description ?? ''} onChange={(e) => setBadgeForm(f => ({ ...f, description: e.target.value }))} rows={2} />
+                      </div>
+                      <div className="space-y-1">
+                        <label className={TYPOGRAPHY.XS}>Comment l&apos;obtenir</label>
+                        <Input value={badgeForm.howToObtain ?? ''} onChange={(e) => setBadgeForm(f => ({ ...f, howToObtain: e.target.value }))} placeholder="Ex: Être dans le top 5 de l'aura" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Apparence */}
+                  <div className="space-y-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Apparence</p>
+
+                    {/* Background type */}
+                    <div className="space-y-2.5">
+                      <div className="flex gap-2">
+                        {(['solid', 'gradient', 'image'] as const).map((t) => (
+                          <Button key={t} variant={badgeForm.backgroundType === t ? 'default' : 'outline'} size="sm"
+                            onClick={() => setBadgeForm(f => ({ ...f, backgroundType: t }))}>
+                            {t === 'solid' ? 'Couleur unie' : t === 'gradient' ? 'Dégradé' : 'Image'}
+                          </Button>
+                        ))}
+                      </div>
+
+                      {badgeForm.backgroundType === 'solid' && (
+                        <div className="space-y-1">
+                          <label className={TYPOGRAPHY.XS}>Couleur de fond</label>
+                          <div className="flex items-center gap-2">
+                            <label className="cursor-pointer shrink-0">
+                              <div className="h-9 w-9 rounded-md border border-border shadow-sm transition-transform hover:scale-105" style={{ backgroundColor: badgeForm.backgroundColor ?? '#374151' }} />
+                              <input type="color" value={badgeForm.backgroundColor ?? '#374151'} onChange={(e) => setBadgeForm(f => ({ ...f, backgroundColor: e.target.value }))} className="sr-only" />
+                            </label>
+                            <Input value={badgeForm.backgroundColor ?? '#374151'} onChange={(e) => setBadgeForm(f => ({ ...f, backgroundColor: e.target.value }))} className="flex-1 font-mono" placeholder="#374151" />
+                          </div>
+                        </div>
+                      )}
+
+                      {badgeForm.backgroundType === 'gradient' && (() => {
+                        const _g = (() => { try { return JSON.parse(badgeForm.backgroundGradient ?? '{}'); } catch { return {}; } })();
+                        const gradFrom = (_g.from as string) ?? '#374151';
+                        const gradTo = (_g.to as string) ?? '#6b7280';
+                        const gradDir = (_g.direction as string) ?? 'to bottom right';
+                        const setGrad = (field: string, val: string) => {
+                          const cur = (() => { try { return JSON.parse(badgeForm.backgroundGradient ?? '{}'); } catch { return {}; } })();
+                          setBadgeForm(f => ({ ...f, backgroundGradient: JSON.stringify({ ...cur, [field]: val }) }));
+                        };
+                        return (
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-3 gap-2 items-end">
+                              <div className="space-y-1">
+                                <label className={TYPOGRAPHY.XS}>Depuis</label>
+                                <div className="flex items-center gap-1.5">
+                                  <label className="cursor-pointer shrink-0">
+                                    <div className="h-8 w-8 rounded-md border border-border shadow-sm transition-transform hover:scale-105" style={{ backgroundColor: gradFrom }} />
+                                    <input type="color" value={gradFrom} onChange={(e) => setGrad('from', e.target.value)} className="sr-only" />
+                                  </label>
+                                  <Input value={gradFrom} onChange={(e) => setGrad('from', e.target.value)} className="font-mono text-xs min-w-0" />
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                <label className={TYPOGRAPHY.XS}>Vers</label>
+                                <div className="flex items-center gap-1.5">
+                                  <label className="cursor-pointer shrink-0">
+                                    <div className="h-8 w-8 rounded-md border border-border shadow-sm transition-transform hover:scale-105" style={{ backgroundColor: gradTo }} />
+                                    <input type="color" value={gradTo} onChange={(e) => setGrad('to', e.target.value)} className="sr-only" />
+                                  </label>
+                                  <Input value={gradTo} onChange={(e) => setGrad('to', e.target.value)} className="font-mono text-xs min-w-0" />
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                <label className={TYPOGRAPHY.XS}>Direction</label>
+                                <Select value={gradDir} onValueChange={(v) => setGrad('direction', v)}>
+                                  <SelectTrigger><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="to right">→ Droite</SelectItem>
+                                    <SelectItem value="to left">← Gauche</SelectItem>
+                                    <SelectItem value="to bottom">↓ Bas</SelectItem>
+                                    <SelectItem value="to top">↑ Haut</SelectItem>
+                                    <SelectItem value="to bottom right">↘ Bas droite</SelectItem>
+                                    <SelectItem value="to bottom left">↙ Bas gauche</SelectItem>
+                                    <SelectItem value="to top right">↗ Haut droite</SelectItem>
+                                    <SelectItem value="to top left">↖ Haut gauche</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                            <div className="h-6 rounded-md border border-border/40" style={{ background: `linear-gradient(${gradDir}, ${gradFrom}, ${gradTo})` }} />
+                          </div>
+                        );
+                      })()}
+
+                      {badgeForm.backgroundType === 'image' && (
+                        <ImagePicker
+                          value={badgeForm.backgroundImage ?? ''}
+                          onChange={(url) => setBadgeForm(f => ({ ...f, backgroundImage: url }))}
+                          uploadFn={uploadItemImageFile}
+                          placeholder="URL de l'image de fond..."
+                        />
+                      )}
+                    </div>
+
+                    {/* Icon + Border colors */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className={TYPOGRAPHY.XS}>Couleur de l&apos;icône</label>
+                        <div className="flex items-center gap-2">
+                          <label className="cursor-pointer shrink-0">
+                            <div className="h-9 w-9 rounded-md border border-border shadow-sm transition-transform hover:scale-105" style={{ backgroundColor: badgeForm.iconColor ?? '#ffffff' }} />
+                            <input type="color" value={badgeForm.iconColor ?? '#ffffff'} onChange={(e) => setBadgeForm(f => ({ ...f, iconColor: e.target.value }))} className="sr-only" />
+                          </label>
+                          <Input value={badgeForm.iconColor ?? '#ffffff'} onChange={(e) => setBadgeForm(f => ({ ...f, iconColor: e.target.value }))} className="flex-1 font-mono" />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className={TYPOGRAPHY.XS}>Couleur de bordure</label>
+                        <div className="flex items-center gap-2">
+                          <label className="cursor-pointer shrink-0">
+                            <div className="h-9 w-9 rounded-md border border-border shadow-sm transition-transform hover:scale-105" style={{ backgroundColor: badgeForm.borderColor ?? '#6b7280' }} />
+                            <input type="color" value={badgeForm.borderColor ?? '#6b7280'} onChange={(e) => setBadgeForm(f => ({ ...f, borderColor: e.target.value }))} className="sr-only" />
+                          </label>
+                          <Input value={badgeForm.borderColor ?? '#6b7280'} onChange={(e) => setBadgeForm(f => ({ ...f, borderColor: e.target.value }))} className="flex-1 font-mono" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Paramètres */}
+                  <div className="space-y-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Paramètres</p>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className={TYPOGRAPHY.XS}>Catégorie</label>
+                        <Select value={badgeForm.category ?? 'special'} onValueChange={(v) => setBadgeForm(f => ({ ...f, category: v }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="TOP_1_AURA">Top 1 Aura</SelectItem>
-                            <SelectItem value="TOP_3_AURA">Top 3 Aura</SelectItem>
-                            <SelectItem value="TOP_5_AURA">Top 5 Aura</SelectItem>
-                            <SelectItem value="TOP_10_AURA">Top 10 Aura</SelectItem>
-                            <SelectItem value="TOP_1_MONEY">Top 1 Argent</SelectItem>
-                            <SelectItem value="TOP_3_MONEY">Top 3 Argent</SelectItem>
-                            <SelectItem value="TOP_5_MONEY">Top 5 Argent</SelectItem>
-                            <SelectItem value="TOP_10_MONEY">Top 10 Argent</SelectItem>
-                            <SelectItem value="GAME_HIGHSCORE_doodle_jump">🦘 Champion Doodle Jump</SelectItem>
-                            <SelectItem value="GAME_HIGHSCORE_doodle_jump_mort_subite">💀 Champion Doodle Jump Mort Subite</SelectItem>
-                            <SelectItem value="GAME_HIGHSCORE_flappy_bird">🐦 Champion Flappy Bird</SelectItem>
-                            <SelectItem value="GAME_HIGHSCORE_game_2048">🔢 Champion 2048</SelectItem>
-                            <SelectItem value="GAME_HIGHSCORE_geometry_dash">📐 Champion Geometry Dash</SelectItem>
-                            <SelectItem value="GAME_HIGHSCORE_qs_watermelon">🍉 Champion Watermelon</SelectItem>
-                            <SelectItem value="GAME_HIGHSCORE_solitaire">🃏 Champion Solitaire</SelectItem>
-                            <SelectItem value="GAME_HIGHSCORE_racer">🏎️ Champion Racer (meilleur temps)</SelectItem>
-                            <SelectItem value="GAME_HIGHSCORE_tetris">🧱 Champion Tetris</SelectItem>
-                            <SelectItem value="GAME_HIGHSCORE_knife_hit">🔪 Champion Knife Hit</SelectItem>
-                            <SelectItem value="GAME_HIGHSCORE_goyave_empire">🌿 Champion Goyave Empire</SelectItem>
-                            <SelectItem value="GAME_HIGHSCORE_logic_lab">🧠 Champion Logic Lab</SelectItem>
-                            <SelectItem value="GAME_HIGHSCORE_minesweeper">💣 Champion Démineur</SelectItem>
-                            <SelectItem value="GAME_HIGHSCORE_casino">🎰 Champion Casino</SelectItem>
-                            <SelectItem value="BOMBPARTY_TOP_WINS">💥 Champion Bomb Party (victoires)</SelectItem>
+                            <SelectItem value="leaderboard">Classement</SelectItem>
+                            <SelectItem value="achievement">Succès</SelectItem>
+                            <SelectItem value="special">Spécial</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
-                    )}
-                  </div>
+                      <div className="space-y-1">
+                        <label className={TYPOGRAPHY.XS}>Rareté</label>
+                        <Select value={badgeForm.rarity ?? 'common'} onValueChange={(v) => setBadgeForm(f => ({ ...f, rarity: v }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="common">Commun</SelectItem>
+                            <SelectItem value="uncommon">Peu commun</SelectItem>
+                            <SelectItem value="rare">Rare</SelectItem>
+                            <SelectItem value="epic">Épique</SelectItem>
+                            <SelectItem value="legendary">Légendaire</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
 
-                  {/* Active */}
-                  <div className="flex items-center gap-3">
-                    <Switch
-                      checked={badgeForm.isActive ?? true}
-                      onCheckedChange={(v) => setBadgeForm(f => ({ ...f, isActive: v }))}
-                    />
-                    <label className={TYPOGRAPHY.XS}>Badge actif (visible et attribuable)</label>
+                    {/* Auto condition */}
+                    {editingBadge?.isAutomatic ? (
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/30 border border-border/40 text-xs text-muted-foreground">
+                        <Sparkles className="w-3.5 h-3.5 shrink-0 text-primary/60" />
+                        <span>Badge automatique — condition&nbsp;: <span className="font-mono text-foreground">{editingBadge.autoConditionKey}</span></span>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-3">
+                          <Switch
+                            checked={badgeForm.isAutomatic ?? false}
+                            onCheckedChange={(v) => setBadgeForm(f => ({ ...f, isAutomatic: v }))}
+                          />
+                          <label className={TYPOGRAPHY.XS}>Attribution automatique</label>
+                        </div>
+                        {badgeForm.isAutomatic && (
+                          <div className="space-y-1">
+                            <label className={TYPOGRAPHY.XS}>Condition</label>
+                            <Select value={badgeForm.autoConditionKey ?? ''} onValueChange={(v) => setBadgeForm(f => ({ ...f, autoConditionKey: v }))}>
+                              <SelectTrigger><SelectValue placeholder="Choisir une condition..." /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="TOP_1_AURA">Top 1 Aura</SelectItem>
+                                <SelectItem value="TOP_3_AURA">Top 3 Aura</SelectItem>
+                                <SelectItem value="TOP_5_AURA">Top 5 Aura</SelectItem>
+                                <SelectItem value="TOP_10_AURA">Top 10 Aura</SelectItem>
+                                <SelectItem value="TOP_1_MONEY">Top 1 Argent</SelectItem>
+                                <SelectItem value="TOP_3_MONEY">Top 3 Argent</SelectItem>
+                                <SelectItem value="TOP_5_MONEY">Top 5 Argent</SelectItem>
+                                <SelectItem value="TOP_10_MONEY">Top 10 Argent</SelectItem>
+                                <SelectItem value="GAME_HIGHSCORE_doodle_jump">🦘 Champion Doodle Jump</SelectItem>
+                                <SelectItem value="GAME_HIGHSCORE_doodle_jump_mort_subite">💀 Champion Doodle Jump Mort Subite</SelectItem>
+                                <SelectItem value="GAME_HIGHSCORE_flappy_bird">🐦 Champion Flappy Bird</SelectItem>
+                                <SelectItem value="GAME_HIGHSCORE_game_2048">🔢 Champion 2048</SelectItem>
+                                <SelectItem value="GAME_HIGHSCORE_geometry_dash">📐 Champion Geometry Dash</SelectItem>
+                                <SelectItem value="GAME_HIGHSCORE_qs_watermelon">🍉 Champion Watermelon</SelectItem>
+                                <SelectItem value="GAME_HIGHSCORE_solitaire">🃏 Champion Solitaire</SelectItem>
+                                <SelectItem value="GAME_HIGHSCORE_racer">🏎️ Champion Racer (meilleur temps)</SelectItem>
+                                <SelectItem value="GAME_HIGHSCORE_tetris">🧱 Champion Tetris</SelectItem>
+                                <SelectItem value="GAME_HIGHSCORE_knife_hit">🔪 Champion Knife Hit</SelectItem>
+                                <SelectItem value="GAME_HIGHSCORE_goyave_empire">🌿 Champion Goyave Empire</SelectItem>
+                                <SelectItem value="GAME_HIGHSCORE_logic_lab">🧠 Champion Logic Lab</SelectItem>
+                                <SelectItem value="GAME_HIGHSCORE_minesweeper">💣 Champion Démineur</SelectItem>
+                                <SelectItem value="GAME_HIGHSCORE_casino">🎰 Champion Casino</SelectItem>
+                                <SelectItem value="BOMBPARTY_TOP_WINS">💥 Champion Bomb Party (victoires)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        checked={badgeForm.isActive ?? true}
+                        onCheckedChange={(v) => setBadgeForm(f => ({ ...f, isActive: v }))}
+                      />
+                      <label className={TYPOGRAPHY.XS}>Badge actif (visible et attribuable)</label>
+                    </div>
                   </div>
                 </div>
 
