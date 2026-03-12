@@ -11,8 +11,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/compon
 import { cn } from '@/lib/utils';
 import { getPageMeta } from './presence';
 import { resolveImageUrl } from '@/lib/images';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { UsernameDisplay } from '@/components/ui/username-display';
+import { UserBadges } from '@/components/badges/UserBadges';
 
 type TimeoutRef = ReturnType<typeof setTimeout> | null;
 
@@ -163,6 +163,12 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                             }}
                           />
                         )}
+                        <UserBadges
+                          badges={msg.badges ?? []}
+                          size="xs"
+                          tooltipSide="top"
+                          showEmptySlots={false}
+                        />
                         <Button
                           type="button"
                           onClick={() => navigate(`/profile/${msg.userId}`)}
@@ -172,50 +178,8 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                             !msg.usernameColor && (msg.userId === user?.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')
                           )}
                         >
-                          <UsernameDisplay userId={msg.userId} username={msg.username} usernameColor={msg.usernameColor} />
+                          <UsernameDisplay username={msg.username} usernameColor={msg.usernameColor} />
                         </Button>
-                        {(msg.isTopMoney || msg.isTopAura) && (
-                          <div className="flex items-center gap-1">
-                            {msg.isTopMoney && (
-                              <TooltipProvider delayDuration={200}>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <span className="inline-flex min-w-6 items-center justify-center rounded-full border border-border/60 px-1.5 text-[9px] font-semibold text-muted-foreground cursor-help">
-                                      Argent
-                                    </span>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <div className="space-y-1">
-                                      <p className="font-medium">Top 5 Argent</p>
-                                      <p className="text-xs text-muted-foreground">
-                                        Ce joueur fait partie des 5 joueurs avec le plus d'argent
-                                      </p>
-                                    </div>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            )}
-                            {msg.isTopAura && (
-                              <TooltipProvider delayDuration={200}>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <span className="inline-flex min-w-6 items-center justify-center rounded-full border border-border/60 px-1.5 text-[9px] font-semibold text-muted-foreground cursor-help">
-                                      Aura
-                                    </span>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <div className="space-y-1">
-                                      <p className="font-medium">Top 5 Aura</p>
-                                      <p className="text-xs text-muted-foreground">
-                                        Ce joueur fait partie des 5 joueurs avec le plus d'aura
-                                      </p>
-                                    </div>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            )}
-                          </div>
-                        )}
                         <span className="text-[10px] text-muted-foreground/60 tabular-nums">
                           {formatTime(msg.timestamp)}
                         </span>
@@ -353,7 +317,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                       >
                         <div className="w-1 h-1 rounded-full bg-foreground/50" />
                         <div className="min-w-0 flex-1">
-                          <UsernameDisplay userId={u.userId} username={u.username} usernameColor={u.usernameColor} className="block" />
+                          <UsernameDisplay username={u.username} className="block" />
                           {(() => {
                             const pageMeta = getPageMeta(u.currentPage);
                             const PageIcon = pageMeta.icon;

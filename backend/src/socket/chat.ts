@@ -11,6 +11,62 @@ interface OnlineUser {
   currentPage?: string | null;
 }
 
+const BADGE_SELECT = {
+  id: true,
+  name: true,
+  description: true,
+  howToObtain: true,
+  backgroundType: true,
+  backgroundColor: true,
+  backgroundGradient: true,
+  backgroundImage: true,
+  icon: true,
+  iconColor: true,
+  borderColor: true,
+  category: true,
+  rarity: true,
+} as const;
+
+/** Fetch the two equipped badges for a user (returns array of 0-2 items). */
+const getUserEquippedBadges = async (userId: string) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      equippedBadge1: { select: BADGE_SELECT },
+      equippedBadge2: { select: BADGE_SELECT },
+    },
+  });
+  if (!user) return [];
+  const badges = [];
+  if (user.equippedBadge1) badges.push(user.equippedBadge1);
+  if (user.equippedBadge2) badges.push(user.equippedBadge2);
+  return badges;
+};
+
+/**
+ * Batch-fetch equipped badges for multiple user IDs.
+ * Returns a map of userId → badges array.
+ */
+const getBatchEquippedBadges = async (userIds: string[]): Promise<Map<string, any[]>> => {
+  if (userIds.length === 0) return new Map();
+  const users = await prisma.user.findMany({
+    where: { id: { in: userIds } },
+    select: {
+      id: true,
+      equippedBadge1: { select: BADGE_SELECT },
+      equippedBadge2: { select: BADGE_SELECT },
+    },
+  });
+  const map = new Map<string, any[]>();
+  for (const u of users) {
+    const badges = [];
+    if (u.equippedBadge1) badges.push(u.equippedBadge1);
+    if (u.equippedBadge2) badges.push(u.equippedBadge2);
+    map.set(u.id, badges);
+  }
+  return map;
+};
+
 const onlineUsers = new Map<string, OnlineUser>();
 
 type PublicOnlineUser = Omit<OnlineUser, 'socketId'>;
@@ -343,7 +399,11 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
         },
       },
     });
-    
+
+    // Batch-fetch equipped badges for all unique senders
+    const uniqueSenderIds = [...new Set(messages.map((m) => m.userId))];
+    const badgeMap = await getBatchEquippedBadges(uniqueSenderIds);
+
     socket.emit('chat:history', {
       messages: messages.reverse().map((m) => ({
         id: m.id,
@@ -356,6 +416,7 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
         pinnedAt: m.pinnedAt ? m.pinnedAt.toISOString() : null,
         isTopMoney: topMoneyIds.has(m.userId),
         isTopAura: topAuraIds.has(m.userId),
+        badges: badgeMap.get(m.userId) ?? [],
         reactions: summarizeReactions(m.reactions),
         replyTo: m.replyTo
           ? {
@@ -459,7 +520,10 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     });
 
     // Broadcast to all in chat with cosmetics
-    const { topMoneyIds, topAuraIds } = await getTopLeaderboardIds();
+    const [{ topMoneyIds, topAuraIds }, senderBadges] = await Promise.all([
+      getTopLeaderboardIds(),
+      getUserEquippedBadges(userId),
+    ]);
 
     io.to('global-chat').emit('chat:message', {
       id: savedMessage.id,
@@ -472,6 +536,7 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
       pinnedAt: null,
       isTopMoney: topMoneyIds.has(userId),
       isTopAura: topAuraIds.has(userId),
+      badges: senderBadges,
       reactions: [],
       replyTo: replyTo
         ? {

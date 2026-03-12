@@ -243,7 +243,6 @@ export default function DoodleJump() {
   const skinImagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
   const [isMortSubite, setIsMortSubite] = useState(false);
   const [isMultiplayer, setIsMultiplayer] = useState(true);
-  const [isJoiningMultiplayer, setIsJoiningMultiplayer] = useState(false);
   const [spectatorCount, setSpectatorCount] = useState(0);
   const [spectatingHost, setSpectatingHost] = useState<{ hostUserId: string; hostUsername: string } | null>(null);
   const [multiplayerRoster, setMultiplayerRoster] = useState<DoodleMultiplayerRosterItem[]>([]);
@@ -384,7 +383,6 @@ export default function DoodleJump() {
     pendingMultiplayerStartRef.current = false;
     multiplayerDisplayPlayersRef.current.clear();
     setMultiplayerRoster([]);
-    setIsJoiningMultiplayer(false);
   }, [socket]);
 
   // ============================================
@@ -465,11 +463,6 @@ export default function DoodleJump() {
   // GAME INITIALIZATION
   // ============================================
   const initGame = useCallback(() => {
-    cancelAnimationFrame(animationRef.current);
-    moveLeftRef.current = false;
-    moveRightRef.current = false;
-    setIsJoiningMultiplayer(false);
-
     if (spectatingRef.current) {
       socket?.emit('doodle:spectate-leave');
       clearSpectateState(true);
@@ -477,17 +470,14 @@ export default function DoodleJump() {
 
     if (socket && user && isMultiplayer && !spectatingRef.current) {
       const expectedRoomId = `doodle:multiplayer:${selectedMode}:${new Date().toISOString().slice(0, 10)}`;
-      const hasExpectedRoom = multiplayerRoomIdRef.current === expectedRoomId;
-      const hasSeed = multiplayerSeedRef.current !== null;
-      // Don't block "Rejouer" just because the socket is temporarily disconnected.
-      // If we already have the day's room+seed, we can start immediately and re-join on reconnect.
       const needsJoin =
-        !hasExpectedRoom ||
-        !hasSeed ||
-        (socket.connected && multiplayerSocketIdRef.current !== socket.id);
+        !socket.connected ||
+        !multiplayerRoomIdRef.current ||
+        multiplayerRoomIdRef.current !== expectedRoomId ||
+        multiplayerSeedRef.current === null ||
+        multiplayerSocketIdRef.current !== socket.id;
       if (needsJoin) {
         pendingMultiplayerStartRef.current = true;
-        setIsJoiningMultiplayer(true);
         socket.emit('doodle:multiplayer-join', { mode: selectedMode });
         return;
       }
@@ -534,7 +524,6 @@ export default function DoodleJump() {
     setIsNewHighScore(false);
     setSpectatorCount(0);
     lastBroadcastAtRef.current = 0;
-    setIsJoiningMultiplayer(false);
 
     socket?.emit('doodle:spectate-start', { mode: selectedMode });
     socket?.emit('doodle:spectate-frame', { frame: buildSpectateFrame(performance.now(), false) });
@@ -1226,7 +1215,6 @@ export default function DoodleJump() {
       seed: number;
       players: DoodleMultiplayerNetState[];
     }) => {
-      setIsJoiningMultiplayer(false);
       multiplayerRoomIdRef.current = data.roomId;
       multiplayerSocketIdRef.current = socket.id ?? null;
       multiplayerSeedRef.current = data.seed;
@@ -1337,7 +1325,6 @@ export default function DoodleJump() {
 
     const handleReconnect = () => {
       pendingMultiplayerStartRef.current = true;
-      setIsJoiningMultiplayer(true);
       socket.emit('doodle:multiplayer-join', { mode: started ? activeModeRef.current : selectedMode });
     };
 
@@ -1595,11 +1582,10 @@ export default function DoodleJump() {
               <Button
                 variant="ghost"
                 onClick={initGame}
-                disabled={isJoiningMultiplayer}
                 className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
               >
                 <Play className="w-4 h-4" />
-                {isJoiningMultiplayer ? 'Connexion…' : 'Jouer'}
+                Jouer
               </Button>
             </div>
           )}
@@ -1623,11 +1609,10 @@ export default function DoodleJump() {
               <Button
                 variant="ghost"
                 onClick={initGame}
-                disabled={isJoiningMultiplayer}
                 className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors mx-auto"
               >
                 <RotateCcw className="w-4 h-4" />
-                {isJoiningMultiplayer ? 'Connexion…' : 'Rejouer'}
+                Rejouer
               </Button>
               </div>
             </div>

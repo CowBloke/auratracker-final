@@ -1,189 +1,338 @@
 import { Router, Response } from 'express';
 import { prisma } from '../server.js';
-import { authMiddleware, AuthRequest } from '../middleware/auth.js';
-import { validate, updateMyBadgeSelectionSchema } from '../middleware/validation.js';
+import { authMiddleware, adminMiddleware, AuthRequest } from '../middleware/auth.js';
+import { awardBadge, revokeBadge, checkAndUpdateAutoBadges } from '../utils/badgeAwards.js';
 
 const router = Router();
 
-type BadgeStyle = Record<string, unknown>;
+// ─── Shared badge select shape ────────────────────────────────────────────────
+const BADGE_SELECT = {
+  id: true,
+  name: true,
+  description: true,
+  howToObtain: true,
+  backgroundType: true,
+  backgroundColor: true,
+  backgroundGradient: true,
+  backgroundImage: true,
+  icon: true,
+  iconColor: true,
+  borderColor: true,
+  category: true,
+  rarity: true,
+  isAutomatic: true,
+  autoConditionKey: true,
+  isActive: true,
+  createdAt: true,
+  updatedAt: true,
+  createdById: true,
+} as const;
 
-const safeParseStyle = (style: string): BadgeStyle => {
+const serializeBadge = (b: any) => ({
+  ...b,
+  createdAt: b.createdAt?.toISOString?.() ?? b.createdAt,
+  updatedAt: b.updatedAt?.toISOString?.() ?? b.updatedAt,
+});
+
+// ─── GET /badges ──────────────────────────────────────────────────────────────
+// Public — returns all active badges (admin: all badges)
+router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const parsed = JSON.parse(style);
-    if (parsed && typeof parsed === 'object') return parsed as BadgeStyle;
-    return {};
-  } catch {
-    return {};
-  }
-};
-
-const toPublicBadge = (badge: { id: string; key: string; name: string; description: string | null; style: string }) => {
-  return {
-    id: badge.id,
-    key: badge.key,
-    name: badge.name,
-    description: badge.description,
-    style: safeParseStyle(badge.style),
-  };
-};
-
-// Get displayed (selected) badges for many users (used for username rendering)
-router.get('/selected', authMiddleware, async (req: AuthRequest, res: Response) => {
-  try {
-    const raw = typeof req.query.userIds === 'string' ? req.query.userIds : '';
-    const userIds = raw
-      .split(',')
-      .map((id) => id.trim())
-      .filter(Boolean);
-
-    if (userIds.length === 0) {
-      return res.json({ users: {} });
-    }
-
-    if (userIds.length > 100) {
-      return res.status(400).json({ error: 'Too many userIds (max 100)' });
-    }
-
-    const selections = await prisma.userBadgeSelection.findMany({
-      where: {
-        userId: { in: userIds },
-        slot: { in: [1, 2] },
-        badgeId: { not: null },
-        badge: {
-          isActive: true,
-        },
-      },
-      select: {
-        userId: true,
-        slot: true,
-        badge: {
-          select: {
-            id: true,
-            key: true,
-            name: true,
-            description: true,
-            style: true,
-            isActive: true,
-          },
-        },
-      },
-      orderBy: [{ userId: 'asc' }, { slot: 'asc' }],
+    const isAdmin = req.user?.isAdmin ?? false;
+    const badges = await prisma.badge.findMany({
+      where: isAdmin ? {} : { isActive: true },
+      select: BADGE_SELECT,
+      orderBy: [{ category: 'asc' }, { name: 'asc' }],
     });
-
-    const users: Record<string, ReturnType<typeof toPublicBadge>[]> = {};
-
-    for (const row of selections) {
-      if (!row.badge || !row.badge.isActive) continue;
-      (users[row.userId] ??= []).push(toPublicBadge(row.badge));
-    }
-
-    return res.json({ users });
+    res.json({ badges: badges.map(serializeBadge) });
   } catch (error) {
-    console.error('Get selected badges error:', error);
-    return res.status(500).json({ error: 'Failed to get selected badges' });
+    console.error('GET /badges error:', error);
+    res.status(500).json({ error: 'Failed to fetch badges' });
   }
 });
 
-// List current user's granted badges + current selection
-router.get('/my', authMiddleware, async (req: AuthRequest, res: Response) => {
+// ─── GET /badges/:id ──────────────────────────────────────────────────────────
+router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const userId = req.user!.id;
+    const badge = await prisma.badge.findUnique({
+      where: { id: req.params.id },
+      select: {
+        ...BADGE_SELECT,
+        _count: { select: { userBadges: true } },
+      },
+    });
+    if (!badge) return res.status(404).json({ error: 'Badge not found' });
+    res.json({ badge: serializeBadge(badge) });
+  } catch (error) {
+    console.error('GET /badges/:id error:', error);
+    res.status(500).json({ error: 'Failed to fetch badge' });
+  }
+});
 
-    const [grants, selections] = await Promise.all([
-      prisma.userBadgeGrant.findMany({
-        where: {
-          userId,
-          revokedAt: null,
-          badge: { isActive: true },
-        },
-        select: {
-          badge: {
-            select: {
-              id: true,
-              key: true,
-              name: true,
-              description: true,
-              style: true,
-              isActive: true,
-            },
-          },
-        },
-        orderBy: {
-          badge: { name: 'asc' },
-        },
+// ─── GET /badges/user/:userId ─────────────────────────────────────────────────
+// Returns the badges a user has earned + which slots they have equipped
+router.get('/user/:userId', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { userId } = req.params;
+
+    const [user, userBadges] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: { equippedBadge1Id: true, equippedBadge2Id: true },
       }),
-      prisma.userBadgeSelection.findMany({
-        where: { userId, slot: { in: [1, 2] } },
-        select: { slot: true, badgeId: true },
+      prisma.userBadge.findMany({
+        where: { userId },
+        include: { badge: { select: BADGE_SELECT } },
+        orderBy: { obtainedAt: 'desc' },
       }),
     ]);
 
-    const selection: { slot1: string | null; slot2: string | null } = { slot1: null, slot2: null };
-    for (const s of selections) {
-      if (s.slot === 1) selection.slot1 = s.badgeId;
-      if (s.slot === 2) selection.slot2 = s.badgeId;
-    }
+    if (!user) return res.status(404).json({ error: 'User not found' });
 
-    return res.json({
-      badges: grants
-        .map((g) => g.badge)
-        .filter((b): b is NonNullable<typeof b> => Boolean(b && b.isActive))
-        .map(toPublicBadge),
-      selection,
+    res.json({
+      equippedBadge1Id: user.equippedBadge1Id,
+      equippedBadge2Id: user.equippedBadge2Id,
+      badges: userBadges.map((ub) => ({
+        ...serializeBadge(ub.badge),
+        obtainedAt: ub.obtainedAt.toISOString(),
+        obtainedReason: ub.obtainedReason,
+      })),
     });
   } catch (error) {
-    console.error('Get my badges error:', error);
-    return res.status(500).json({ error: 'Failed to get my badges' });
+    console.error('GET /badges/user/:userId error:', error);
+    res.status(500).json({ error: 'Failed to fetch user badges' });
   }
 });
 
-// Update current user's 2 selected badges (must be granted)
-router.put('/my/selection', authMiddleware, validate(updateMyBadgeSelectionSchema), async (req: AuthRequest, res: Response) => {
+// ─── POST /badges/equip ───────────────────────────────────────────────────────
+// Body: { slot: 1 | 2, badgeId: string | null }
+// badgeId null = unequip that slot
+router.post('/equip', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const userId = req.user!.id;
-    const { slot1BadgeId, slot2BadgeId } = req.body as { slot1BadgeId: string | null; slot2BadgeId: string | null };
+    if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+    const { slot, badgeId } = req.body as { slot: 1 | 2; badgeId: string | null };
 
-    const chosen = [slot1BadgeId, slot2BadgeId].filter((id): id is string => Boolean(id));
-    if (new Set(chosen).size !== chosen.length) {
-      return res.status(400).json({ error: 'You cannot select the same badge twice' });
+    if (slot !== 1 && slot !== 2) {
+      return res.status(400).json({ error: 'slot must be 1 or 2' });
     }
 
-    if (chosen.length > 0) {
-      const owned = await prisma.userBadgeGrant.findMany({
-        where: {
-          userId,
-          revokedAt: null,
-          badgeId: { in: chosen },
-          badge: { isActive: true },
-        },
-        select: { badgeId: true },
+    if (badgeId !== null && typeof badgeId !== 'string') {
+      return res.status(400).json({ error: 'badgeId must be a string or null' });
+    }
+
+    if (badgeId !== null) {
+      // Verify user owns this badge
+      const owned = await prisma.userBadge.findUnique({
+        where: { userId_badgeId: { userId: req.user.id, badgeId } },
       });
-      const ownedIds = new Set(owned.map((o) => o.badgeId));
-      const missing = chosen.filter((id) => !ownedIds.has(id));
-      if (missing.length > 0) {
-        return res.status(400).json({ error: 'Some selected badges are not available for this user' });
+      if (!owned) return res.status(403).json({ error: 'You do not own this badge' });
+
+      // Prevent equipping the same badge in both slots
+      const currentUser = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { equippedBadge1Id: true, equippedBadge2Id: true },
+      });
+      if (
+        (slot === 1 && currentUser?.equippedBadge2Id === badgeId) ||
+        (slot === 2 && currentUser?.equippedBadge1Id === badgeId)
+      ) {
+        return res.status(400).json({ error: 'Cannot equip the same badge in both slots' });
       }
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.userBadgeSelection.upsert({
-        where: { userId_slot: { userId, slot: 1 } },
-        create: { userId, slot: 1, badgeId: slot1BadgeId },
-        update: { badgeId: slot1BadgeId },
-      });
-      await tx.userBadgeSelection.upsert({
-        where: { userId_slot: { userId, slot: 2 } },
-        create: { userId, slot: 2, badgeId: slot2BadgeId },
-        update: { badgeId: slot2BadgeId },
-      });
+    const field = slot === 1 ? 'equippedBadge1Id' : 'equippedBadge2Id';
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { [field]: badgeId },
     });
 
-    return res.json({ success: true });
+    res.json({ success: true });
   } catch (error) {
-    console.error('Update my badge selection error:', error);
-    return res.status(500).json({ error: 'Failed to update badge selection' });
+    console.error('POST /badges/equip error:', error);
+    res.status(500).json({ error: 'Failed to equip badge' });
+  }
+});
+
+// ─── Admin: POST /badges ──────────────────────────────────────────────────────
+router.post('/', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const {
+      name, description, howToObtain,
+      backgroundType, backgroundColor, backgroundGradient, backgroundImage,
+      icon, iconColor, borderColor,
+      category, rarity, isAutomatic, autoConditionKey, isActive,
+    } = req.body;
+
+    if (!name || !description) {
+      return res.status(400).json({ error: 'name and description are required' });
+    }
+
+    const badge = await prisma.badge.create({
+      data: {
+        name, description,
+        howToObtain: howToObtain ?? null,
+        backgroundType: backgroundType ?? 'solid',
+        backgroundColor: backgroundColor ?? '#374151',
+        backgroundGradient: backgroundGradient ?? null,
+        backgroundImage: backgroundImage ?? null,
+        icon: icon ?? '⭐',
+        iconColor: iconColor ?? '#ffffff',
+        borderColor: borderColor ?? '#6b7280',
+        category: category ?? 'special',
+        rarity: rarity ?? 'common',
+        isAutomatic: isAutomatic ?? false,
+        autoConditionKey: autoConditionKey ?? null,
+        isActive: isActive ?? true,
+        createdById: req.user!.id,
+      },
+      select: BADGE_SELECT,
+    });
+
+    res.status(201).json({ badge: serializeBadge(badge) });
+  } catch (error) {
+    console.error('POST /badges error:', error);
+    res.status(500).json({ error: 'Failed to create badge' });
+  }
+});
+
+// ─── Admin: PUT /badges/:id ───────────────────────────────────────────────────
+router.put('/:id', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const {
+      name, description, howToObtain,
+      backgroundType, backgroundColor, backgroundGradient, backgroundImage,
+      icon, iconColor, borderColor,
+      category, rarity, isAutomatic, autoConditionKey, isActive,
+    } = req.body;
+
+    const badge = await prisma.badge.update({
+      where: { id: req.params.id },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(description !== undefined && { description }),
+        ...(howToObtain !== undefined && { howToObtain }),
+        ...(backgroundType !== undefined && { backgroundType }),
+        ...(backgroundColor !== undefined && { backgroundColor }),
+        ...(backgroundGradient !== undefined && { backgroundGradient }),
+        ...(backgroundImage !== undefined && { backgroundImage }),
+        ...(icon !== undefined && { icon }),
+        ...(iconColor !== undefined && { iconColor }),
+        ...(borderColor !== undefined && { borderColor }),
+        ...(category !== undefined && { category }),
+        ...(rarity !== undefined && { rarity }),
+        ...(isAutomatic !== undefined && { isAutomatic }),
+        ...(autoConditionKey !== undefined && { autoConditionKey }),
+        ...(isActive !== undefined && { isActive }),
+      },
+      select: BADGE_SELECT,
+    });
+
+    res.json({ badge: serializeBadge(badge) });
+  } catch (error: any) {
+    if (error?.code === 'P2025') return res.status(404).json({ error: 'Badge not found' });
+    console.error('PUT /badges/:id error:', error);
+    res.status(500).json({ error: 'Failed to update badge' });
+  }
+});
+
+// ─── Admin: DELETE /badges/:id ────────────────────────────────────────────────
+router.delete('/:id', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    await prisma.badge.delete({ where: { id: req.params.id } });
+    res.json({ success: true });
+  } catch (error: any) {
+    if (error?.code === 'P2025') return res.status(404).json({ error: 'Badge not found' });
+    console.error('DELETE /badges/:id error:', error);
+    res.status(500).json({ error: 'Failed to delete badge' });
+  }
+});
+
+// ─── Admin: POST /badges/award ────────────────────────────────────────────────
+// Body: { userId, badgeId, reason? }
+router.post('/award', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { userId, badgeId, reason } = req.body as {
+      userId: string; badgeId: string; reason?: string;
+    };
+    if (!userId || !badgeId) {
+      return res.status(400).json({ error: 'userId and badgeId are required' });
+    }
+
+    const [userExists, badgeExists] = await Promise.all([
+      prisma.user.findUnique({ where: { id: userId }, select: { id: true } }),
+      prisma.badge.findUnique({ where: { id: badgeId }, select: { id: true } }),
+    ]);
+    if (!userExists) return res.status(404).json({ error: 'User not found' });
+    if (!badgeExists) return res.status(404).json({ error: 'Badge not found' });
+
+    const awarded = await awardBadge(userId, badgeId, reason ?? `Attribué par un admin`);
+    res.json({ success: true, alreadyOwned: !awarded });
+  } catch (error) {
+    console.error('POST /badges/award error:', error);
+    res.status(500).json({ error: 'Failed to award badge' });
+  }
+});
+
+// ─── Admin: DELETE /badges/revoke/:userId/:badgeId ────────────────────────────
+router.delete('/revoke/:userId/:badgeId', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { userId, badgeId } = req.params;
+    const revoked = await revokeBadge(userId, badgeId);
+    if (!revoked) return res.status(404).json({ error: 'User does not own this badge' });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('DELETE /badges/revoke error:', error);
+    res.status(500).json({ error: 'Failed to revoke badge' });
+  }
+});
+
+// ─── Admin: GET /badges/admin/all-users ──────────────────────────────────────
+// Returns all users with their equipped badges (for admin overview)
+router.get('/admin/all-users', authMiddleware, adminMiddleware, async (_req: AuthRequest, res: Response) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        username: true,
+        equippedBadge1Id: true,
+        equippedBadge2Id: true,
+        earnedBadges: {
+          include: { badge: { select: BADGE_SELECT } },
+          orderBy: { obtainedAt: 'desc' },
+        },
+      },
+      orderBy: { username: 'asc' },
+    });
+
+    res.json({
+      users: users.map((u) => ({
+        id: u.id,
+        username: u.username,
+        equippedBadge1Id: u.equippedBadge1Id,
+        equippedBadge2Id: u.equippedBadge2Id,
+        badges: u.earnedBadges.map((ub: any) => ({
+          ...serializeBadge(ub.badge),
+          obtainedAt: ub.obtainedAt.toISOString(),
+          obtainedReason: ub.obtainedReason,
+        })),
+      })),
+    });
+  } catch (error) {
+    console.error('GET /badges/admin/all-users error:', error);
+    res.status(500).json({ error: 'Failed to fetch user badge data' });
+  }
+});
+
+// ─── Admin: POST /badges/check-auto ──────────────────────────────────────────
+// Manually trigger the auto-badge check
+router.post('/check-auto', authMiddleware, adminMiddleware, async (_req: AuthRequest, res: Response) => {
+  try {
+    await checkAndUpdateAutoBadges();
+    res.json({ success: true, message: 'Auto-badge check completed' });
+  } catch (error) {
+    console.error('POST /badges/check-auto error:', error);
+    res.status(500).json({ error: 'Failed to run auto-badge check' });
   }
 });
 
 export default router;
-

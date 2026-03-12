@@ -86,42 +86,6 @@ export const usersApi = {
   acknowledgeWarning: (id: string) => api.post<{ success: boolean; message: string }>(`/users/warnings/${id}/acknowledge`),
 };
 
-export type BadgeStyle = {
-  type?: 'GRADIENT' | 'IMAGE' | 'SOLID';
-  gradient?: string;
-  imageUrl?: string;
-  backgroundColor?: string;
-  textColor?: string;
-  borderColor?: string;
-  borderWidth?: number;
-  borderRadius?: number;
-  paddingX?: number;
-  paddingY?: number;
-  fontSize?: number;
-  label?: string;
-  [key: string]: unknown;
-};
-
-export interface PublicBadge {
-  id: string;
-  key: string;
-  name: string;
-  description: string | null;
-  style: BadgeStyle;
-  isActive?: boolean;
-}
-
-export const badgesApi = {
-  getSelected: (userIds: string[]) =>
-    api.get<{ users: Record<string, PublicBadge[]> }>('/badges/selected', {
-      params: { userIds: userIds.join(',') },
-    }),
-  getMy: () =>
-    api.get<{ badges: PublicBadge[]; selection: { slot1: string | null; slot2: string | null } }>('/badges/my'),
-  updateMySelection: (data: { slot1BadgeId: string | null; slot2BadgeId: string | null }) =>
-    api.put<{ success: boolean }>('/badges/my/selection', data),
-};
-
 export interface UserUpdatePopup {
   id: string;
   title: string;
@@ -671,17 +635,6 @@ export interface AdminUser {
   updatedAt: string;
 }
 
-export interface AdminBadge extends PublicBadge {
-  createdAt: string;
-  updatedAt: string;
-  grantsCount: number;
-}
-
-export interface AdminUserBadgeGrant extends PublicBadge {
-  grantedAt: string;
-  grantedById: string | null;
-}
-
 export interface AdminUpdatePopup {
   id: string;
   title: string;
@@ -961,19 +914,6 @@ export const adminApi = {
     api.patch<{ item?: AdminInventoryItem; removed?: boolean }>(`/admin/users/${id}/inventory/${userItemId}`, data),
   deleteUserInventoryItem: (id: string, userItemId: string) =>
     api.delete<{ success: boolean }>(`/admin/users/${id}/inventory/${userItemId}`),
-  // Badges management
-  getBadges: () => api.get<{ badges: AdminBadge[] }>('/admin/badges'),
-  createBadge: (data: { key: string; name: string; description?: string | null; style: BadgeStyle; isActive?: boolean }) =>
-    api.post<{ badge: PublicBadge }>('/admin/badges', data),
-  updateBadge: (id: string, data: Partial<{ key: string; name: string; description: string | null; style: BadgeStyle; isActive: boolean }>) =>
-    api.put<{ badge: PublicBadge }>(`/admin/badges/${id}`, data),
-  deactivateBadge: (id: string) => api.delete<{ success: boolean }>(`/admin/badges/${id}`),
-  getUserBadges: (userId: string) =>
-    api.get<{ grants: AdminUserBadgeGrant[]; selection: { slot1: string | null; slot2: string | null } }>(`/admin/users/${userId}/badges`),
-  grantUserBadge: (userId: string, badgeId: string) =>
-    api.post<{ success: boolean }>(`/admin/users/${userId}/badges/grant`, { badgeId }),
-  revokeUserBadge: (userId: string, badgeId: string) =>
-    api.delete<{ success: boolean }>(`/admin/users/${userId}/badges/grant/${badgeId}`),
   clearChat: () =>
     runRareAction({ action: 'chat_clear' }) as Promise<{ data: { success: boolean; message: string; messagesDeleted: number } }>,
   // Pending users management
@@ -1470,5 +1410,58 @@ export const notificationsApi = {
 // Upload an image as any authenticated user (suggestions, clans, profile pictures, polymarket, etc.)
 export const uploadUserImage = (data: { base64Data: string; mimeType: string }) =>
   api.post<{ imageUrl: string }>('/uploads/image', data);
+
+// ─── Badges API ───────────────────────────────────────────────────────────────
+
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  howToObtain?: string | null;
+  backgroundType: string;
+  backgroundColor: string;
+  backgroundGradient?: string | null;
+  backgroundImage?: string | null;
+  icon: string;
+  iconColor: string;
+  borderColor: string;
+  category: string;
+  rarity: string;
+  isAutomatic: boolean;
+  autoConditionKey?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  createdById?: string | null;
+}
+
+export interface UserBadgeEntry extends Badge {
+  obtainedAt: string;
+  obtainedReason?: string | null;
+}
+
+export interface UserBadgesResponse {
+  equippedBadge1Id: string | null;
+  equippedBadge2Id: string | null;
+  badges: UserBadgeEntry[];
+}
+
+export const badgesApi = {
+  getAll: () => api.get<{ badges: Badge[] }>('/badges'),
+  getById: (id: string) => api.get<{ badge: Badge }>(`/badges/${id}`),
+  getUserBadges: (userId: string) => api.get<UserBadgesResponse>(`/badges/user/${userId}`),
+  equip: (slot: 1 | 2, badgeId: string | null) =>
+    api.post<{ success: boolean }>('/badges/equip', { slot, badgeId }),
+  // Admin
+  create: (data: Partial<Badge>) => api.post<{ badge: Badge }>('/badges', data),
+  update: (id: string, data: Partial<Badge>) => api.put<{ badge: Badge }>(`/badges/${id}`, data),
+  delete: (id: string) => api.delete<{ success: boolean }>(`/badges/${id}`),
+  award: (data: { userId: string; badgeId: string; reason?: string }) =>
+    api.post<{ success: boolean; alreadyOwned: boolean }>('/badges/award', data),
+  revoke: (userId: string, badgeId: string) =>
+    api.delete<{ success: boolean }>(`/badges/revoke/${userId}/${badgeId}`),
+  getAllUsersAdmin: () => api.get<{ users: Array<{ id: string; username: string; equippedBadge1Id: string | null; equippedBadge2Id: string | null; badges: UserBadgeEntry[] }> }>('/badges/admin/all-users'),
+  checkAuto: () => api.post<{ success: boolean; message: string }>('/badges/check-auto'),
+};
 
 export default api;

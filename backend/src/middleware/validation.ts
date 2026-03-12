@@ -91,12 +91,6 @@ export const adminRareActionSchema = z.discriminatedUnion('action', [
   }),
 ]);
 
-// Badges schemas
-export const updateMyBadgeSelectionSchema = z.object({
-  slot1BadgeId: z.string().uuid().nullable(),
-  slot2BadgeId: z.string().uuid().nullable(),
-});
-
 // Game schemas
 export const gameCompleteSchema = z.object({
   score: z.number().int().min(0),

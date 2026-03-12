@@ -1,19 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { badgesApi, usersApi, leaderboardsApi, auraCoinApi, bombPartyApi, BombPartyStats, type PublicBadge } from '../services/api';
+import { usersApi, leaderboardsApi, auraCoinApi, bombPartyApi, BombPartyStats, badgesApi, UserBadgeEntry } from '../services/api';
 import { Edit2, Save, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
 import { UsernameDisplay } from '@/components/ui/username-display';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { UserBadgesInline } from '@/components/ui/user-badges';
-import { fetchCachedSelectedBadges, invalidateCachedSelectedBadges } from '@/lib/selected-badges';
+import { UserBadges } from '@/components/badges/UserBadges';
+import { BadgeSelector } from '@/components/badges/BadgeSelector';
+import { BadgeData } from '@/components/badges/BadgeIcon';
 
 interface ProfileUser {
   id: string;
@@ -59,11 +58,10 @@ export default function Profile() {
   const [bioText, setBioText] = useState('');
   const [savingBio, setSavingBio] = useState(false);
 
-  // Badges (own profile only)
-  const [myBadges, setMyBadges] = useState<PublicBadge[]>([]);
-  const [badgeSelection, setBadgeSelection] = useState<{ slot1: string | null; slot2: string | null }>({ slot1: null, slot2: null });
-  const [loadingBadges, setLoadingBadges] = useState(false);
-  const [savingBadges, setSavingBadges] = useState(false);
+  // Badge state
+  const [userBadges, setUserBadges] = useState<UserBadgeEntry[]>([]);
+  const [equippedBadge1Id, setEquippedBadge1Id] = useState<string | null>(null);
+  const [equippedBadge2Id, setEquippedBadge2Id] = useState<string | null>(null);
 
   const targetUserId = userId || currentUser?.id;
   const isOwnProfile = targetUserId === currentUser?.id;
@@ -73,25 +71,6 @@ export default function Profile() {
       fetchProfile();
     }
   }, [targetUserId]);
-
-  useEffect(() => {
-    if (!isOwnProfile) return;
-    const fetchMyBadges = async () => {
-      try {
-        setLoadingBadges(true);
-        const res = await badgesApi.getMy();
-        setMyBadges(res.data.badges ?? []);
-        setBadgeSelection(res.data.selection ?? { slot1: null, slot2: null });
-      } catch (error) {
-        console.error('Failed to fetch my badges:', error);
-        setMyBadges([]);
-        setBadgeSelection({ slot1: null, slot2: null });
-      } finally {
-        setLoadingBadges(false);
-      }
-    };
-    fetchMyBadges();
-  }, [isOwnProfile]);
 
   const fetchProfile = async () => {
     try {
@@ -104,6 +83,15 @@ export default function Profile() {
       setProfileUser(userRes.data.user);
       setRankings(rankingsRes.data.rankings);
       setBioText(userRes.data.user.bio || '');
+
+      try {
+        const badgesRes = await badgesApi.getUserBadges(targetUserId!);
+        setUserBadges(badgesRes.data.badges);
+        setEquippedBadge1Id(badgesRes.data.equippedBadge1Id);
+        setEquippedBadge2Id(badgesRes.data.equippedBadge2Id);
+      } catch {
+        // Badges are non-critical
+      }
 
       try {
         const bombPartyRes = await bombPartyApi.getStats(targetUserId!);
@@ -147,20 +135,6 @@ export default function Profile() {
     setEditingBio(false);
   };
 
-  const handleSaveBadges = async () => {
-    if (!currentUser?.id) return;
-    setSavingBadges(true);
-    try {
-      await badgesApi.updateMySelection({ slot1BadgeId: badgeSelection.slot1, slot2BadgeId: badgeSelection.slot2 });
-      invalidateCachedSelectedBadges(currentUser.id);
-      await fetchCachedSelectedBadges(currentUser.id);
-    } catch (error) {
-      console.error('Failed to save badge selection:', error);
-    } finally {
-      setSavingBadges(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
@@ -195,8 +169,9 @@ export default function Profile() {
   const totalMoneyValue = auraCoinValue !== null
     ? profileUser.money + auraCoinValue
     : null;
-  const isTopMoney = (rankings?.money?.rank ?? Number.POSITIVE_INFINITY) <= 5;
-  const isTopAura = (rankings?.aura?.rank ?? Number.POSITIVE_INFINITY) <= 5;
+  const equippedBadge1 = userBadges.find((b) => b.id === equippedBadge1Id) ?? null;
+  const equippedBadge2 = userBadges.find((b) => b.id === equippedBadge2Id) ?? null;
+  const equippedBadges = [equippedBadge1, equippedBadge2].filter(Boolean) as BadgeData[];
 
   return (
     <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
@@ -223,56 +198,21 @@ export default function Profile() {
         )}
         
         <div className="flex-1 min-w-0">
-          <UsernameDisplay
-            userId={profileUser.id}
-            username={profileUser.username}
-            firstName={profileUser.firstName}
-            usernameColor={profileUser.usernameColor}
-            className={cn(TYPOGRAPHY.H1, "md:text-7xl")}
-            labelClassName="text-sm md:text-base text-muted-foreground"
-          />
-          {(isTopMoney || isTopAura) && (
-            <div className="mt-3 flex items-center gap-1">
-              {isTopMoney && (
-                <TooltipProvider delayDuration={200}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="inline-flex min-w-7 items-center justify-center rounded-full border border-border/60 px-2 py-1 text-[10px] font-semibold text-muted-foreground cursor-help">
-                        Argent
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <div className="space-y-1">
-                        <p className="font-medium">Top 5 Argent</p>
-                        <p className="text-xs text-muted-foreground">
-                          Ce joueur fait partie des 5 joueurs avec le plus d'argent
-                        </p>
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-              {isTopAura && (
-                <TooltipProvider delayDuration={200}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="inline-flex min-w-7 items-center justify-center rounded-full border border-border/60 px-2 py-1 text-[10px] font-semibold text-muted-foreground cursor-help">
-                        Aura
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <div className="space-y-1">
-                        <p className="font-medium">Top 5 Aura</p>
-                        <p className="text-xs text-muted-foreground">
-                          Ce joueur fait partie des 5 joueurs avec le plus d'aura
-                        </p>
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <UserBadges
+              badges={equippedBadges}
+              size="md"
+              tooltipSide="bottom"
+              showEmptySlots={false}
+            />
+            <UsernameDisplay
+              username={profileUser.username}
+              firstName={profileUser.firstName}
+              usernameColor={profileUser.usernameColor}
+              className={cn(TYPOGRAPHY.H1, "md:text-7xl")}
+              labelClassName="text-sm md:text-base text-muted-foreground"
+            />
+          </div>
             <p className={cn(TYPOGRAPHY.SMALL, "mt-2")}>
               Membre depuis {new Date(profileUser.createdAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
             </p>
@@ -344,106 +284,37 @@ export default function Profile() {
         </CardContent>
       </Card>
 
-      {isOwnProfile && (
-        <Card>
-          <CardHeader>
-            <CardDescription>Badges affichés</CardDescription>
-          </CardHeader>
-          <CardContent className={SPACING.CARD_SPACING}>
-            {loadingBadges ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Chargement des badges...
-              </div>
+
+      {/* Badges Section */}
+      <Card>
+        <CardHeader>
+          <CardDescription>Badges</CardDescription>
+        </CardHeader>
+        <CardContent className={SPACING.CARD_SPACING}>
+          {isOwnProfile ? (
+            <BadgeSelector userId={profileUser.id} />
+          ) : (
+            userBadges.length === 0 ? (
+              <p className={TYPOGRAPHY.MUTED}>Aucun badge.</p>
             ) : (
-              <div className="space-y-4">
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="min-w-[220px] space-y-1">
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Slot 1</p>
-                    <Select
-                      value={badgeSelection.slot1 ?? 'none'}
-                      onValueChange={(value) => {
-                        const next = value === 'none' ? null : value;
-                        setBadgeSelection((prev) => ({
-                          slot1: next,
-                          slot2: prev.slot2 === next ? null : prev.slot2,
-                        }));
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Aucun badge" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Aucun</SelectItem>
-                        {myBadges.map((b) => (
-                          <SelectItem key={b.id} value={b.id}>
-                            {b.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="min-w-[220px] space-y-1">
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Slot 2</p>
-                    <Select
-                      value={badgeSelection.slot2 ?? 'none'}
-                      onValueChange={(value) => {
-                        const next = value === 'none' ? null : value;
-                        setBadgeSelection((prev) => ({
-                          slot2: next,
-                          slot1: prev.slot1 === next ? null : prev.slot1,
-                        }));
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Aucun badge" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Aucun</SelectItem>
-                        {myBadges.map((b) => (
-                          <SelectItem key={b.id} value={b.id}>
-                            {b.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex-1 space-y-1">
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Aperçu</p>
-                    <UserBadgesInline
-                      badges={[
-                        ...(badgeSelection.slot1 ? [myBadges.find((b) => b.id === badgeSelection.slot1)].filter(Boolean) as PublicBadge[] : []),
-                        ...(badgeSelection.slot2 ? [myBadges.find((b) => b.id === badgeSelection.slot2)].filter(Boolean) as PublicBadge[] : []),
-                      ]}
-                      className="py-2"
-                    />
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
-                      {myBadges.length === 0 ? 'Aucun badge disponible (demande à un admin).' : 'Survole un badge pour voir sa description.'}
-                    </p>
-                  </div>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Équipés :</span>
+                  <UserBadges badges={equippedBadges} size="md" showEmptySlots={false} />
                 </div>
-
-                <div className="flex items-center justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setBadgeSelection({ slot1: null, slot2: null })}
-                    disabled={savingBadges}
-                  >
-                    Tout retirer
-                  </Button>
-                  <Button size="sm" onClick={handleSaveBadges} disabled={savingBadges}>
-                    {savingBadges ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
-                    Enregistrer
-                  </Button>
+                <div className="flex flex-wrap gap-2">
+                  {userBadges.map((badge) => (
+                    <div key={badge.id} className="flex flex-col items-center gap-1">
+                      <UserBadges badges={[badge]} size="md" showEmptySlots={false} tooltipSide="bottom" />
+                      <span className="text-[9px] text-muted-foreground max-w-[48px] truncate">{badge.name}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+            )
+          )}
+        </CardContent>
+      </Card>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-8 md:gap-12">
