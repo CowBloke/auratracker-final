@@ -20,6 +20,7 @@ model User {
   money              Int       @default(1000)
   auraCoinBalance    Float     @default(0) // Aura Coin balance for trading game
   isAdmin            Boolean   @default(false)
+  isSuperAdmin       Boolean   @default(false)
   isChatMuted        Boolean   @default(false)
   isApproved         Boolean   @default(false) // Account must be approved by admin before login
   dailyAuraGiven     Int       @default(0) // Aura given today
@@ -85,9 +86,39 @@ model User {
   goyaveSave          GoyaveSave?
   clanWarsWon         ClanWar[]                 @relation("ClanWarWinner")
 
+  // Registration Reviews
+  registrationReviews RegistrationReview[]      @relation("RegistrationReviewReviewer")
+
+  // Admin Warnings
+  warningsReceived    AdminWarning[]            @relation("WarningsReceived")
+  warningsIssued      AdminWarning[]            @relation("WarningsIssued")
+
   @@index([aura])
   @@index([money])
   @@index([referredById])
+}
+
+model RegistrationReview {
+  id                    String   @id @default(uuid())
+  registrationUserId    String   @unique
+  username              String
+  firstName             String?
+  schoolLevel           String?
+  classLetter           String?
+  email                 String
+  motivationMessage     String?
+  registrationCreatedAt DateTime
+  status                String
+  reviewedAt            DateTime @default(now())
+  reviewedById          String?
+  importedFromLegacy    Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  reviewedBy User? @relation("RegistrationReviewReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([status, reviewedAt])
+  @@index([reviewedAt])
 }
 
 // Item Model
@@ -925,5 +956,27 @@ model Notification {
   @@index([userId, isRead])
   @@index([userId, isArchived])
   @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+// ============================================
+// ADMIN WARNING SYSTEM
+// ============================================
+
+// Admin warnings that display as mandatory popup modals
+model AdminWarning {
+  id             String    @id @default(uuid())
+  userId         String    // User receiving the warning
+  issuedById     String    // Admin who issued the warning
+  message        String    // Warning message content
+  severity       String    @default("MEDIUM") // LOW, MEDIUM, HIGH
+  isAcknowledged Boolean   @default(false)
+  acknowledgedAt DateTime?
+  createdAt      DateTime  @default(now())
+
+  user     User @relation("WarningsReceived", fields: [userId], references: [id], onDelete: Cascade)
+  issuedBy User @relation("WarningsIssued", fields: [issuedById], references: [id], onDelete: Cascade)
+
+  @@index([userId, isAcknowledged])
   @@index([createdAt])
 }
