@@ -3220,140 +3220,146 @@ export default function Admin() {
           </div>
         </TabsContent>
 
-        <TabsContent value="content" className={SPACING.SECTION_SPACING}>
-          {/* Categories management */}
-          <Card>
-            <CardHeader>
-              <CardDescription>Catégories de la boutique</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {loadingCategories ? (
-                <div className="flex justify-center py-6">
-                  <div className="w-1 h-6 bg-foreground/20 animate-pulse" />
-                </div>
-              ) : (
-                <>
-                  <div className="flex flex-wrap gap-2">
-                    {shopCategories.map((cat) => (
-                      <div key={cat.id} className="flex items-center gap-1 rounded-md border border-border/50 px-2 py-1 text-sm">
-                        <span className="font-mono text-xs text-muted-foreground">{cat.id}</span>
-                        <span className="mx-1 text-muted-foreground/40">|</span>
-                        <span>{cat.label}</span>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => removeShopCategory(cat.id)}
-                          disabled={savingCategories}
-                          className="h-5 w-5 p-0 ml-1 text-muted-foreground hover:text-destructive"
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex gap-2">
-                    <Input
-                      value={newCategoryId}
-                      onChange={(e) => setNewCategoryId(e.target.value)}
-                      placeholder="Identifiant (ex. doodle skin)"
-                      className="bg-transparent flex-1"
-                    />
-                    <Input
-                      value={newCategoryLabel}
-                      onChange={(e) => setNewCategoryLabel(e.target.value)}
-                      placeholder="Libellé (ex: Skins Doodle)"
-                      className="bg-transparent flex-1"
-                      onKeyDown={(e) => e.key === 'Enter' && addShopCategory()}
-                    />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={addShopCategory}
-                      disabled={savingCategories || !newCategoryId.trim() || !newCategoryLabel.trim()}
-                      className="h-9 px-3"
-                    >
-                      {savingCategories ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
+        <TabsContent value="content">
+          <div className="flex gap-6 items-start">
 
-          {/* DJ Skin rotation control */}
-          {(() => {
-            const djRotatingItems = items.filter(item => {
-              try {
-                const effect = JSON.parse(item.effect || '{}');
-                return effect.type === 'DOODLE_JUMP_SKIN' && effect.shopType === 'rotating';
-              } catch { return false; }
-            });
-            return (
-              <Card className="border-violet-500/20 bg-gradient-to-br from-violet-950/20 to-transparent">
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <Gamepad2 className="h-4 w-4 text-violet-400" />
-                    <CardDescription className="text-violet-300">Skin Doodle Jump — rotation forcée</CardDescription>
-                  </div>
+            {/* ── Sidebar ── */}
+            <div className="w-72 shrink-0 space-y-4 sticky top-4">
+
+              {/* Categories */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardDescription>Catégories</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  {djForcedSkinLoading ? (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Chargement...
+                <CardContent className="space-y-3">
+                  {loadingCategories ? (
+                    <div className="flex justify-center py-4">
+                      <div className="w-1 h-6 bg-foreground/20 animate-pulse" />
                     </div>
-                  ) : djRotatingItems.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">Aucun skin dans le pool de rotation. Créez des skins avec le placement <em>🔥 Pool de rotation</em>.</p>
                   ) : (
-                    <div className="flex flex-wrap items-end gap-3">
-                      <div className="flex-1 min-w-[200px] space-y-1.5">
-                        <label className="text-xs font-medium text-muted-foreground">Forcer un skin dans la rotation du jour</label>
-                        <Select value={djForcedSkinSelected} onValueChange={setDjForcedSkinSelected}>
-                          <SelectTrigger className="bg-transparent border-violet-500/30">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__none__">🎲 Rotation normale (aléatoire)</SelectItem>
-                            {djRotatingItems.map(item => (
-                              <SelectItem key={item.id} value={item.id}>
-                                🔥 {item.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {djForcedSkinId && djForcedSkinId !== '__none__' && (
-                          <p className="text-xs text-violet-400">
-                            Actuellement forcé : {djRotatingItems.find(i => i.id === djForcedSkinId)?.name ?? djForcedSkinId}
-                          </p>
-                        )}
+                    <>
+                      <div className="space-y-1">
+                        {shopCategories.map((cat) => (
+                          <div key={cat.id} className="flex items-center justify-between rounded-md border border-border/30 px-2 py-1.5 text-sm">
+                            <div className="min-w-0">
+                              <span className="font-medium truncate block">{cat.label}</span>
+                              <span className="font-mono text-xs text-muted-foreground">{cat.id}</span>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => removeShopCategory(cat.id)}
+                              disabled={savingCategories}
+                              className="h-6 w-6 p-0 shrink-0 text-muted-foreground hover:text-destructive"
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ))}
                       </div>
-                      <Button
-                        size="sm"
-                        onClick={saveDjForcedSkin}
-                        disabled={djForcedSkinSaving}
-                        className="bg-gradient-to-r from-violet-500 to-indigo-600 hover:from-violet-400 hover:to-indigo-500 text-white border-0"
-                      >
-                        {djForcedSkinSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                        <span className="ml-2">Appliquer</span>
-                      </Button>
-                    </div>
+                      <div className="space-y-2 pt-1 border-t border-border/30">
+                        <Input
+                          value={newCategoryId}
+                          onChange={(e) => setNewCategoryId(e.target.value)}
+                          placeholder="Identifiant"
+                          className="bg-transparent h-8 text-xs"
+                        />
+                        <div className="flex gap-2">
+                          <Input
+                            value={newCategoryLabel}
+                            onChange={(e) => setNewCategoryLabel(e.target.value)}
+                            placeholder="Libellé"
+                            className="bg-transparent h-8 text-xs flex-1"
+                            onKeyDown={(e) => e.key === 'Enter' && addShopCategory()}
+                          />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={addShopCategory}
+                            disabled={savingCategories || !newCategoryId.trim() || !newCategoryLabel.trim()}
+                            className="h-8 w-8 p-0 shrink-0"
+                          >
+                            {savingCategories ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                          </Button>
+                        </div>
+                      </div>
+                    </>
                   )}
                 </CardContent>
               </Card>
-            );
-          })()}
 
-          {/* Items list */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardDescription>Objets de la boutique</CardDescription>
-                <Button size="sm" variant="outline" onClick={openCreateItemDialog} className="h-8 w-8 p-0">
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
+              {/* DJ Skin rotation control */}
+              {(() => {
+                const djRotatingItems = items.filter(item => {
+                  try {
+                    const effect = JSON.parse(item.effect || '{}');
+                    return effect.type === 'DOODLE_JUMP_SKIN' && effect.shopType === 'rotating';
+                  } catch { return false; }
+                });
+                return (
+                  <Card className="border-violet-500/20 bg-gradient-to-b from-violet-950/20 to-transparent">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center gap-2">
+                        <Gamepad2 className="h-3.5 w-3.5 text-violet-400" />
+                        <CardDescription className="text-violet-300">Skin forcé du jour</CardDescription>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {djForcedSkinLoading ? (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Chargement...
+                        </div>
+                      ) : djRotatingItems.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">Aucun skin dans le pool. Créez des skins avec le placement <em>🔥 Pool de rotation</em>.</p>
+                      ) : (
+                        <>
+                          <Select value={djForcedSkinSelected} onValueChange={setDjForcedSkinSelected}>
+                            <SelectTrigger className="bg-transparent border-violet-500/30 text-xs h-8">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">🎲 Rotation aléatoire</SelectItem>
+                              {djRotatingItems.map(item => (
+                                <SelectItem key={item.id} value={item.id}>
+                                  🔥 {item.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {djForcedSkinId && djForcedSkinId !== '__none__' && (
+                            <p className="text-xs text-violet-400">
+                              Forcé : {djRotatingItems.find(i => i.id === djForcedSkinId)?.name ?? djForcedSkinId}
+                            </p>
+                          )}
+                          <Button
+                            size="sm"
+                            onClick={saveDjForcedSkin}
+                            disabled={djForcedSkinSaving}
+                            className="w-full bg-gradient-to-r from-violet-500 to-indigo-600 hover:from-violet-400 hover:to-indigo-500 text-white border-0 h-8 text-xs"
+                          >
+                            {djForcedSkinSaving ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <Save className="h-3 w-3 mr-1.5" />}
+                            Appliquer
+                          </Button>
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })()}
+            </div>
+
+            {/* ── Main: Items list ── */}
+            <Card className="flex-1 min-w-0">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardDescription>Objets de la boutique</CardDescription>
+                  <Button size="sm" variant="outline" onClick={openCreateItemDialog} className="h-8 w-8 p-0">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
               {loadingItems ? (
                 <div className="flex justify-center py-12">
                   <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
@@ -3438,6 +3444,7 @@ export default function Admin() {
               })()}
             </CardContent>
           </Card>
+          </div>{/* end flex sidebar layout */}
         </TabsContent>
 
         <TabsContent value="settings" className={SPACING.SECTION_SPACING}>

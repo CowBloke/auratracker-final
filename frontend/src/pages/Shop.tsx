@@ -487,31 +487,7 @@ function DoodleJumpShopSection({
       ) : (
         <div className="space-y-8">
 
-          {/* Static / permanent skins */}
-          {hasStatic && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-500/15 px-3 py-1 text-xs font-bold text-violet-300 border border-violet-500/25">
-                  <Star className="h-3.5 w-3.5" />
-                  SKINS PERMANENTS
-                </span>
-                <span className="text-xs text-muted-foreground">Toujours disponibles</span>
-              </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {staticSkins.map(item => (
-                  <DjSkinCard
-                    key={item.id}
-                    item={item}
-                    user={user}
-                    buyingItemId={buyingItemId}
-                    onPurchase={onPurchase}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Rotating / daily skins */}
+          {/* Rotating / daily skins — first */}
           {hasRotating && (
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-3">
@@ -529,6 +505,30 @@ function DoodleJumpShopSection({
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {rotatingSkins.map(item => (
+                  <DjSkinCard
+                    key={item.id}
+                    item={item}
+                    user={user}
+                    buyingItemId={buyingItemId}
+                    onPurchase={onPurchase}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Static / permanent skins — below */}
+          {hasStatic && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-500/15 px-3 py-1 text-xs font-bold text-violet-300 border border-violet-500/25">
+                  <Star className="h-3.5 w-3.5" />
+                  SKINS PERMANENTS
+                </span>
+                <span className="text-xs text-muted-foreground">Toujours disponibles</span>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {staticSkins.map(item => (
                   <DjSkinCard
                     key={item.id}
                     item={item}
@@ -694,29 +694,6 @@ export default function Shop() {
     <PageShell>
       <div className="space-y-6">
 
-        {/* ── Shop header ── */}
-        <div className="relative overflow-hidden rounded-2xl border border-border/30 bg-gradient-to-br from-background via-muted/5 to-background p-6">
-          {/* Decorative blobs */}
-          <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-violet-500/5 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-blue-500/5 blur-3xl" />
-
-          <div className="relative flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-black tracking-tight text-foreground">
-                Boutique
-              </h1>
-              <p className="mt-0.5 text-sm text-muted-foreground">Dépense tes gains avec sagesse</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="inline-flex items-center gap-2 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-2.5">
-                <Coins className="h-4 w-4 text-amber-400" />
-                <span className="text-sm text-amber-400/70">Solde</span>
-                <span className="text-lg font-black tabular-nums text-amber-300">${user?.money ?? 0}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* ── Feedback message ── */}
         {message && (
           <div className={cn(
@@ -729,8 +706,8 @@ export default function Shop() {
           </div>
         )}
 
-        {/* ── Category filter tabs ── */}
-        <div className="flex flex-wrap gap-2">
+        {/* ── Category filter tabs + balance ── */}
+        <div className="flex flex-wrap items-center gap-2">
           {VIRTUAL_FILTERS.map(entry => {
             const cfg = entry.value === 'ALL'
               ? null
@@ -760,6 +737,11 @@ export default function Shop() {
               </button>
             );
           })}
+          {/* Balance badge — right-aligned in the same row */}
+          <div className="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-1.5 text-sm">
+            <Coins className="h-3.5 w-3.5 text-amber-400" />
+            <span className="font-bold tabular-nums text-amber-300">${user?.money ?? 0}</span>
+          </div>
         </div>
 
         {/* ── Content ── */}
