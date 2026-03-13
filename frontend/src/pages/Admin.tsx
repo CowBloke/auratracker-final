@@ -49,7 +49,24 @@ const EFFECT_TYPES = [
   { value: 'BONUS_MONEY', label: 'Bonus Argent', description: 'Donne un bonus d\'argent à l\'utilisation' },
   { value: 'DOODLE_JUMP_SKIN', label: 'Skin Doodle Jump', description: 'Débloque un skin personnalisé dans Doodle Jump (sélectionner une image pour le skin)' },
   { value: 'GIFT', label: 'Cadeau', description: 'L\'objet est un cadeau : l\'acheteur choisit un destinataire et le lui envoie directement.' },
+  { value: 'CLAN_TAG_UNLOCK', label: 'Tag de clan', description: 'Débloque le tag de clan pour le clan du chef acheteur. Un clan ne peut l\'acheter qu\'une fois.' },
+  { value: 'AWARD_BADGE', label: 'Badge', description: 'Donne un badge spécifique au joueur lors de l\'utilisation. L\'image boutique est générée automatiquement.' },
 ];
+
+const generateBadgeSvgDataUrl = (badge: Badge): string => {
+  let fill = badge.backgroundColor ?? '#374151';
+  let gradientDef = '';
+  if (badge.backgroundType === 'gradient' && badge.backgroundGradient) {
+    try {
+      const g = JSON.parse(badge.backgroundGradient) as { from: string; to: string; direction?: string };
+      const isVert = (g.direction ?? 'to right').includes('bottom');
+      gradientDef = `<defs><linearGradient id="g" x1="0" y1="0" x2="${isVert ? '0' : '1'}" y2="${isVert ? '1' : '0'}"><stop offset="0%" stop-color="${g.from}"/><stop offset="100%" stop-color="${g.to}"/></linearGradient></defs>`;
+      fill = 'url(#g)';
+    } catch { /* use solid */ }
+  }
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56">${gradientDef}<rect width="56" height="56" rx="4" fill="${fill}" stroke="${badge.borderColor ?? '#6b7280'}" stroke-width="1.5"/><text x="28" y="39" text-anchor="middle" font-size="26" font-family="Apple Color Emoji,Segoe UI Emoji,sans-serif">${badge.icon ?? '⭐'}</text></svg>`;
+  return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
+};
 
 const ITEM_TYPE_LABELS: Record<string, string> = {
   CONSUMABLE: 'Consommable',
@@ -352,6 +369,7 @@ interface ItemFormData {
   bonusMoney?: number;
   skinImageUrl?: string;
   skinShopType?: 'none' | 'static' | 'rotating';
+  badgeId?: string;
 }
 
 const defaultItemForm: ItemFormData = {
@@ -366,6 +384,7 @@ const defaultItemForm: ItemFormData = {
   bonusMoney: 0,
   skinImageUrl: '',
   skinShopType: 'none',
+  badgeId: '',
 };
 
 interface UpdatePopupFormData {
@@ -1891,7 +1910,7 @@ export default function Admin() {
   };
 
   // Parse effect string to get type and value
-  const parseEffect = (effectStr: string | null): { type: string; value: string; bonusAura?: number; bonusMoney?: number; skinImageUrl?: string; skinShopType?: 'none' | 'static' | 'rotating' } => {
+  const parseEffect = (effectStr: string | null): { type: string; value: string; bonusAura?: number; bonusMoney?: number; skinImageUrl?: string; skinShopType?: 'none' | 'static' | 'rotating'; badgeId?: string } => {
     if (!effectStr) return { type: 'USERNAME_COLOR', value: '' };
     try {
       const effect = JSON.parse(effectStr);
@@ -1907,6 +1926,7 @@ export default function Admin() {
         bonusMoney: effect.bonusMoney,
         skinImageUrl: effect.skinImageUrl || '',
         skinShopType: (effect.shopType as 'none' | 'static' | 'rotating') || 'none',
+        badgeId: effect.badgeId || '',
       };
     } catch {
       return { type: 'USERNAME_COLOR', value: '' };
@@ -1923,7 +1943,7 @@ export default function Admin() {
   // Open dialog for editing item
   const openEditItemDialog = (item: ShopItem) => {
     setEditingItem(item);
-    const { type: effectType, value: effectValue, bonusAura, bonusMoney, skinImageUrl, skinShopType } = parseEffect(item.effect);
+    const { type: effectType, value: effectValue, bonusAura, bonusMoney, skinImageUrl, skinShopType, badgeId } = parseEffect(item.effect);
     setItemForm({
       name: item.name,
       description: item.description,
@@ -1936,6 +1956,7 @@ export default function Admin() {
       bonusMoney: bonusMoney || 0,
       skinImageUrl: skinImageUrl || '',
       skinShopType: skinShopType || 'none',
+      badgeId: badgeId || '',
     });
     setItemDialogOpen(true);
   };
@@ -1958,11 +1979,20 @@ export default function Admin() {
       } else if (itemForm.effectType === 'DOODLE_JUMP_SKIN') {
         const shopType = itemForm.skinShopType && itemForm.skinShopType !== 'none' ? itemForm.skinShopType : undefined;
         effect = JSON.stringify({ type: 'DOODLE_JUMP_SKIN', skinImageUrl: itemForm.skinImageUrl || '', ...(shopType ? { shopType } : {}) });
+      } else if (itemForm.effectType === 'AWARD_BADGE') {
+        effect = JSON.stringify({ type: 'AWARD_BADGE', badgeId: itemForm.badgeId || '' });
       } else {
         effect = JSON.stringify({ type: itemForm.effectType, value: itemForm.effectValue });
       }
 
-      const uploadedUrl = itemForm.imageUrl.trim() || undefined;
+      // For badge items, auto-generate the shop image from the badge if none set
+      let resolvedImageUrl = itemForm.imageUrl.trim();
+      if (itemForm.effectType === 'AWARD_BADGE' && itemForm.badgeId && !resolvedImageUrl) {
+        const selectedBadge = badges.find(b => b.id === itemForm.badgeId);
+        if (selectedBadge) resolvedImageUrl = generateBadgeSvgDataUrl(selectedBadge);
+      }
+
+      const uploadedUrl = resolvedImageUrl || undefined;
 
       const data = {
         name: itemForm.name.trim(),
@@ -5318,6 +5348,7 @@ export default function Admin() {
                         bonusMoney: 0,
                         skinImageUrl: '',
                         skinShopType: 'none',
+                        badgeId: '',
                       }));
                     }}
                   >
@@ -5394,7 +5425,44 @@ export default function Admin() {
                   </div>
                 )}
 
-                {itemForm.effectType !== 'BONUS_AURA' && itemForm.effectType !== 'BONUS_MONEY' && itemForm.effectType !== 'DOODLE_JUMP_SKIN' && (
+                {itemForm.effectType === 'AWARD_BADGE' && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Badge à attribuer</label>
+                    <div className="max-h-48 overflow-y-auto rounded border border-border/40 bg-muted/10 p-2">
+                      {badges.length === 0 ? (
+                        <p className="text-xs text-muted-foreground p-2">Aucun badge disponible.</p>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-1">
+                          {badges.filter(b => b.isActive).map((badge) => (
+                            <button
+                              key={badge.id}
+                              type="button"
+                              onClick={() => {
+                                const svg = generateBadgeSvgDataUrl(badge);
+                                setItemForm(prev => ({ ...prev, badgeId: badge.id, imageUrl: prev.imageUrl || svg }));
+                              }}
+                              className={cn(
+                                'flex items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors hover:bg-muted/40',
+                                itemForm.badgeId === badge.id ? 'bg-muted/60 ring-1 ring-border' : '',
+                              )}
+                            >
+                              <BadgeIcon badge={badge} size="xs" />
+                              <span className="truncate font-medium">{badge.name}</span>
+                              <span className="ml-auto shrink-0 text-muted-foreground">{badge.rarity}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {itemForm.badgeId && (
+                      <p className="text-xs text-muted-foreground">
+                        Sélectionné : {badges.find(b => b.id === itemForm.badgeId)?.name ?? itemForm.badgeId}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {itemForm.effectType !== 'BONUS_AURA' && itemForm.effectType !== 'BONUS_MONEY' && itemForm.effectType !== 'DOODLE_JUMP_SKIN' && itemForm.effectType !== 'CLAN_TAG_UNLOCK' && itemForm.effectType !== 'AWARD_BADGE' && (
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-muted-foreground">Valeur de l'effet</label>
                     <Input

@@ -111,10 +111,13 @@ export default function Inventory() {
     const effect = parseEffect(userItem.item.effect);
     
     // Handle upgrade items
-    if (userItem.item.type === 'UPGRADE' && effect?.type === 'CLAN_TAG_UNLOCK') {
-      setClanTagItem(userItem);
-      setClanTagDialogOpen(true);
-      return;
+    if (userItem.item.type === 'UPGRADE') {
+      if (effect?.type === 'CLAN_TAG_UNLOCK') {
+        setClanTagItem(userItem);
+        setClanTagDialogOpen(true);
+        return;
+      }
+      // AWARD_BADGE and other upgrades fall through to the generic use flow below
     }
 
     // Handle cosmetic items that need user input
@@ -150,6 +153,9 @@ export default function Inventory() {
         }
         if (response.data.effect.bonusMoney) {
           effectText += ` • +$${response.data.effect.bonusMoney}`;
+        }
+        if (response.data.effect.type === 'AWARD_BADGE' && response.data.effect.badgeName) {
+          effectText += ` • Badge "${response.data.effect.badgeName}" obtenu`;
         }
       }
       
@@ -298,6 +304,8 @@ export default function Inventory() {
         return <Package className="w-4 h-4" />;
       case 'CLAN_TAG_UNLOCK':
         return <Tag className="w-4 h-4" />;
+      case 'AWARD_BADGE':
+        return <Package className="w-4 h-4" />;
       default:
         return null;
     }
@@ -314,6 +322,8 @@ export default function Inventory() {
         return 'Skin Doodle Jump';
       case 'CLAN_TAG_UNLOCK':
         return 'Tag de clan';
+      case 'AWARD_BADGE':
+        return 'Badge';
       case 'BONUS_AURA':
         return `+${effect.value || '?'} aura`;
       case 'BONUS_MONEY':
@@ -437,7 +447,7 @@ export default function Inventory() {
                             )}
                           </Button>
                         </div>
-                      ) : (userItem.item.type === 'CONSUMABLE' || (userItem.item.type === 'COSMETIC' && !isDoodleJumpSkin) || (userItem.item.type === 'UPGRADE' && parseEffect(userItem.item.effect)?.type === 'CLAN_TAG_UNLOCK')) ? (
+                      ) : (userItem.item.type === 'CONSUMABLE' || (userItem.item.type === 'COSMETIC' && !isDoodleJumpSkin) || (userItem.item.type === 'UPGRADE' && (parseEffect(userItem.item.effect)?.type === 'CLAN_TAG_UNLOCK' || parseEffect(userItem.item.effect)?.type === 'AWARD_BADGE'))) ? (
                         <Button
                           onClick={() => handleUseItem(userItem)}
                           disabled={using === userItem.id}

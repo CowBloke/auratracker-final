@@ -5,6 +5,7 @@ import { validate, createItemSchema, purchaseSchema, useItemSchema } from '../mi
 import { logMarketplace } from '../utils/logger.js';
 import { isAllowedImageUrl } from '../utils/uploads.js';
 import { createNotification } from '../utils/notifications.js';
+import { awardBadge } from '../utils/badgeAwards.js';
 
 const router = Router();
 
@@ -373,6 +374,30 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
         });
 
         return res.json({ success: true, effect: { type: 'CLAN_TAG_UNLOCK' } });
+      }
+
+      if (effect.type === 'AWARD_BADGE') {
+        const { badgeId } = effect;
+        if (!badgeId) {
+          return res.status(400).json({ error: 'Badge non configuré.' });
+        }
+
+        const badge = await prisma.badge.findUnique({ where: { id: badgeId }, select: { id: true, name: true } });
+        if (!badge) {
+          return res.status(404).json({ error: 'Badge introuvable.' });
+        }
+
+        await prisma.$transaction(async (tx) => {
+          if (userItem.quantity > 1) {
+            await tx.userItem.update({ where: { id: userItemId }, data: { quantity: { decrement: 1 } } });
+          } else {
+            await tx.userItem.delete({ where: { id: userItemId } });
+          }
+        });
+
+        await awardBadge(req.user.id, badgeId, `shop:${userItem.item.name}`);
+
+        return res.json({ success: true, effect: { type: 'AWARD_BADGE', badgeName: badge.name } });
       }
     }
 
