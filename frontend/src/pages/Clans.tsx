@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Axe, Check, Crown, Loader2, LogOut, Plus, Send, Shield, Sparkles, Swords, Tag, Target, UserX, X } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ClanChatMessage,
   ClanDetail,
@@ -217,6 +218,9 @@ export default function Clans() {
   const [tagText, setTagText] = useState('');
   const [tagStyle, setTagStyle] = useState<ClanTagStyle>(DEFAULT_CLAN_TAG_STYLE);
   const [savingTag, setSavingTag] = useState(false);
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<'info' | 'guerre'>('info');
 
   useEffect(() => {
     void fetchClans();
@@ -563,7 +567,7 @@ export default function Clans() {
       console.error('Failed to send clan chat message:', error);
       toast({
         title: 'Erreur',
-        description: error.response?.data?.error || 'Impossible d’envoyer le message.',
+        description: error.response?.data?.error || "Impossible d'envoyer le message.",
         variant: 'destructive',
       });
     } finally {
@@ -686,456 +690,192 @@ export default function Clans() {
                 </Card>
               ) : (
                 <>
+                  {/* Compact clan header */}
                   <Card className={panelClassName}>
-                    <CardContent className="space-y-6 p-6">
-                      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-                        <div className="flex items-start gap-4">
-                          <Avatar className="h-20 w-20 rounded-2xl border border-border/50 bg-muted/20">
-                            <AvatarImage src={resolveImageUrl(selectedClan.imageUrl)} alt={selectedClan.name} />
-                            <AvatarFallback className="rounded-2xl text-xl">{getAvatarFallback(selectedClan.name)}</AvatarFallback>
-                          </Avatar>
-                          <div className="space-y-3">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h1 className="text-3xl font-semibold tracking-tight">{selectedClan.name}</h1>
-                              <Badge variant={selectedClan.isPublic ? 'secondary' : 'outline'}>
-                                {selectedClan.isPublic ? 'Ouvert' : 'Privé'}
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <Avatar className="h-12 w-12 shrink-0 rounded-xl border border-border/50 bg-muted/20">
+                          <AvatarImage src={resolveImageUrl(selectedClan.imageUrl)} alt={selectedClan.name} />
+                          <AvatarFallback className="rounded-xl text-base">{getAvatarFallback(selectedClan.name)}</AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h1 className="text-xl font-semibold tracking-tight">{selectedClan.name}</h1>
+                            <Badge variant={selectedClan.isPublic ? 'secondary' : 'outline'}>
+                              {selectedClan.isPublic ? 'Ouvert' : 'Privé'}
+                            </Badge>
+                            {selectedClan.viewer.isLeader ? (
+                              <Badge className="gap-1">
+                                <Crown className="h-3 w-3" />
+                                Chef
                               </Badge>
-                              {selectedClan.viewer.isLeader ? (
-                                <Badge className="gap-1">
-                                  <Crown className="h-3.5 w-3.5" />
-                                  Chef
-                                </Badge>
-                              ) : null}
-                            </div>
-                            <p className="max-w-2xl text-sm text-muted-foreground">
-                              {selectedClan.description || 'Aucune description pour le moment.'}
-                            </p>
-                            <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-                              <span>{selectedClan.memberCount}/{selectedClan.maxMembers} membres</span>
-                              <span>•</span>
-                              <span>{formatAura(selectedClan.totalAura)} aura cumulée</span>
-                              <span>•</span>
-                              <span>Créé le {formatDate(selectedClan.createdAt)}</span>
-                            </div>
+                            ) : null}
+                          </div>
+                          <p className="line-clamp-1 text-sm text-muted-foreground">
+                            {selectedClan.description || 'Aucune description.'}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                            <UsernameDisplay username={selectedClan.leader.username} usernameColor={selectedClan.leader.usernameColor} />
+                            <span>•</span>
+                            <span>{selectedClan.memberCount}/{selectedClan.maxMembers} membres</span>
+                            <span>•</span>
+                            <span>{formatAura(selectedClan.totalAura)} aura</span>
                           </div>
                         </div>
-
-                        <div className="flex flex-wrap gap-2">
-                          {selectedClan.warHub.canDeclareWar ? (
-                            <Button onClick={() => setWarDialogOpen(true)}>
-                              <Swords className="mr-2 h-4 w-4" />
-                              Déclarer une guerre
-                            </Button>
-                          ) : null}
+                        <div className="flex shrink-0 flex-wrap gap-2">
                           {canJoinSelectedClan ? (
-                            <Button onClick={handleJoin} disabled={actionLoading || selectedClan.viewer.hasPendingRequest}>
-                              {actionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                              {selectedClan.viewer.hasPendingRequest ? 'Demande en attente' : 'Rejoindre'}
+                            <Button size="sm" onClick={handleJoin} disabled={actionLoading || selectedClan.viewer.hasPendingRequest}>
+                              {actionLoading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+                              {selectedClan.viewer.hasPendingRequest ? 'En attente' : 'Rejoindre'}
                             </Button>
                           ) : null}
                           {selectedClan.viewer.isMember ? (
-                            <Button variant="outline" onClick={handleLeave} disabled={actionLoading}>
-                              <LogOut className="mr-2 h-4 w-4" />
+                            <Button size="sm" variant="outline" onClick={handleLeave} disabled={actionLoading}>
+                              <LogOut className="mr-1.5 h-3.5 w-3.5" />
                               Quitter
                             </Button>
                           ) : null}
                         </div>
                       </div>
-
-                      <div className="grid gap-4 md:grid-cols-3">
-                        <div className={mutedPanelClassName}>
-                          <div className="space-y-3 p-4">
-                            <p className="text-xs text-muted-foreground">Chef</p>
-                            <div className="flex items-center gap-3">
-                              <Avatar>
-                                <AvatarImage src={resolveImageUrl(selectedClan.leader.profilePicture)} alt={selectedClan.leader.username} />
-                                <AvatarFallback>{getAvatarFallback(selectedClan.leader.username)}</AvatarFallback>
-                              </Avatar>
-                              <UsernameDisplay username={selectedClan.leader.username} usernameColor={selectedClan.leader.usernameColor} />
-                            </div>
-                          </div>
-                        </div>
-                        <div className={mutedPanelClassName}>
-                          <div className="space-y-3 p-4">
-                            <p className="text-xs text-muted-foreground">Éligibilité guerre</p>
-                            <div className="text-sm">
-                              {selectedClan.memberCount >= selectedClan.warHub.minimumMembersRequired
-                                ? 'Le clan peut participer aux guerres.'
-                                : `Il faut ${selectedClan.warHub.minimumMembersRequired} membres minimum.`}
-                            </div>
-                          </div>
-                        </div>
-                        <div className={mutedPanelClassName}>
-                          <div className="space-y-3 p-4">
-                            <p className="text-xs text-muted-foreground">Cooldown</p>
-                            <div className="text-sm">
-                              {selectedClan.warHub.cooldownEndsAt
-                                ? `Disponible dans ${formatCountdown(selectedClan.warHub.cooldownEndsAt)}`
-                                : 'Le clan peut repartir au combat.'}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
                     </CardContent>
                   </Card>
 
-                  {selectedWar ? (
-                    <Card className={panelClassName}>
-                      <div className="border-b border-border/50 p-6">
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant={getStatusVariant(selectedWar.status)}>{getStatusLabel(selectedWar.status)}</Badge>
-                              <span className="text-sm text-muted-foreground">Objectif {selectedWar.targetScore} points</span>
-                            </div>
-                            <h2 className="mt-2 text-2xl font-semibold tracking-tight">
-                              {selectedWar.attackerClan.name} vs {selectedWar.defenderClan.name}
-                            </h2>
-                            <p className="mt-2 text-sm text-muted-foreground">
-                              {selectedWar.status === 'PREPARING'
-                                ? `La guerre démarre dans ${formatCountdown(selectedWar.startsAt)}.`
-                                : selectedWar.status === 'ACTIVE'
-                                  ? `Fin prévue dans ${formatCountdown(selectedWar.endsAt)}.`
-                                  : `Terminée le ${formatDate(selectedWar.completedAt)}.`}
-                            </p>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-3 text-center">
-                            <div className={mutedPanelClassName}>
-                              <div className="px-4 py-3">
-                                <div className="text-xs text-muted-foreground">{selectedWar.attackerClan.name}</div>
-                                <div className="mt-1 text-3xl font-semibold tabular-nums">{selectedWar.attackerScore}</div>
-                              </div>
-                            </div>
-                            <div className={mutedPanelClassName}>
-                              <div className="px-4 py-3">
-                                <div className="text-xs text-muted-foreground">{selectedWar.defenderClan.name}</div>
-                                <div className="mt-1 text-3xl font-semibold tabular-nums">{selectedWar.defenderScore}</div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <CardContent className="space-y-6 p-6">
-                        {isOwnClan ? (
-                          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-                            <div className={mutedPanelClassName}>
-                              <div className="space-y-4 p-4">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <h3 className="font-medium">Centre de commandement</h3>
-                                    <p className="text-sm text-muted-foreground">
-                                      {selectedWar.status === 'PREPARING'
-                                        ? 'Utilise la phase de préparation pour monter tes structures.'
-                                        : 'Coordonne les attaques et surveille la pression adverse.'}
-                                    </p>
-                                  </div>
-                                  <Badge variant="secondary">{selectedWar.viewerSide === 'ATTACKER' ? 'Attaquant' : 'Défenseur'}</Badge>
-                                </div>
-
-                                <div className="grid gap-3 md:grid-cols-2">
-                                  <div className={panelClassName}>
-                                    <div className="space-y-1 p-4">
-                                      <div className="text-xs text-muted-foreground">Endurance (24h)</div>
-                                      <div className="text-2xl font-semibold tabular-nums">
-                                        {selectedWar.viewerActions.staminaRemaining}/{selectedWar.viewerActions.staminaCap}
-                                      </div>
-                                      <p className="text-sm text-muted-foreground">
-                                        {selectedWar.viewerActions.staminaUsed} consommée(s) sur les dernières 24h.
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <div className={panelClassName}>
-                                    <div className="space-y-1 p-4">
-                                      <div className="text-xs text-muted-foreground">Fortifications</div>
-                                      <div className="text-2xl font-semibold tabular-nums">
-                                        {selectedWar.viewerActions.fortificationsRemaining}/{selectedWar.viewerActions.fortificationsCap}
-                                      </div>
-                                      <p className="text-sm text-muted-foreground">
-                                        Chaque membre peut renforcer deux fois par guerre.
-                                      </p>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {selectedWar.status === 'ACTIVE' ? (
-                                  <div className="grid gap-3 md:grid-cols-3">
-                                    {selectedClan.warHub.attackTypes.map((attack) => (
-                                      <button
-                                        key={attack.type}
-                                        type="button"
-                                        onClick={() => handleAttack(attack.type)}
-                                        disabled={!canAttack || warActionKey === `attack:${attack.type}`}
-                                        className={cn(
-                                          'rounded-2xl border px-4 py-4 text-left transition-colors hover:bg-muted/30 disabled:cursor-not-allowed disabled:opacity-60',
-                                          getAttackColor(attack.type)
-                                        )}
-                                      >
-                                        <div className="flex items-center justify-between">
-                                          <span className="font-medium">{attack.label}</span>
-                                          <Badge variant="outline">-{attack.staminaCost} end.</Badge>
-                                        </div>
-                                        <p className="mt-2 text-sm text-muted-foreground">{attack.description}</p>
-                                        <div className="mt-3 text-xs text-muted-foreground">
-                                          {attack.minPoints}-{attack.maxPoints} pts • {attack.structureDamage} dégâts structure
-                                        </div>
-                                      </button>
-                                    ))}
-                                  </div>
-                                ) : null}
-                              </div>
-                            </div>
-
-                            <div className={mutedPanelClassName}>
-                              <div className="space-y-3 p-4">
-                                <h3 className="font-medium">Récompenses</h3>
-                                <div className="rounded-2xl border border-border/50 bg-emerald-500/5 p-3 text-sm">
-                                  <div className="font-medium">Victoire</div>
-                                  <div className="mt-1 text-muted-foreground">
-                                    +{selectedWar.rewardTable.winner.money} money et +{selectedWar.rewardTable.winner.aura} aura par membre.
-                                  </div>
-                                </div>
-                                <div className="rounded-2xl border border-border/50 bg-background p-3 text-sm">
-                                  <div className="font-medium">Défaite / égalité</div>
-                                  <div className="mt-1 text-muted-foreground">
-                                    +{selectedWar.rewardTable.loser.money} money et +{selectedWar.rewardTable.loser.aura} aura par membre.
-                                  </div>
-                                </div>
-                                {selectedWar.winnerClan ? (
-                                  <Alert>
-                                    <Sparkles className="h-4 w-4" />
-                                    <AlertTitle>Vainqueur</AlertTitle>
-                                    <AlertDescription>
-                                      {selectedWar.winnerClan.name}
-                                      {selectedWar.winnerUser ? ` • MVP: ${selectedWar.winnerUser.username}` : ''}
-                                    </AlertDescription>
-                                  </Alert>
-                                ) : null}
-                              </div>
-                            </div>
-                          </div>
+                  {/* Tabs: Infos / Guerre */}
+                  <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'info' | 'guerre')}>
+                    <TabsList className="w-full">
+                      <TabsTrigger value="info" className="flex-1">Infos</TabsTrigger>
+                      <TabsTrigger value="guerre" className="flex-1">
+                        Guerre
+                        {selectedWar && selectedWar.status !== 'COMPLETED' ? (
+                          <Badge variant={getStatusVariant(selectedWar.status)} className="ml-2 h-4 px-1 text-[10px]">
+                            {getStatusLabel(selectedWar.status)}
+                          </Badge>
                         ) : null}
+                      </TabsTrigger>
+                    </TabsList>
 
-                        <div className="grid gap-6 xl:grid-cols-2">
-                          <div className="space-y-4">
-                            <div>
-                              <div className="mb-3 flex items-center gap-2">
-                                <Shield className="h-4 w-4 text-muted-foreground" />
-                                <h3 className="font-medium">Défenses de {getWarOwnSide(selectedWar, selectedClan.id).name}</h3>
-                              </div>
-                              <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-1">
-                                {getWarDefenseSet(selectedWar, selectedClan.id).map((defense) => (
-                                  <DefenseCard
-                                    key={defense.type}
-                                    defense={defense}
-                                    canFortify={canFortify}
-                                    fortifying={warActionKey === `fortify:${defense.type}`}
-                                    onFortify={() => handleFortify(defense.type)}
-                                  />
-                                ))}
-                              </div>
-                            </div>
-
-                            <div>
-                              <div className="mb-3 flex items-center gap-2">
-                                <Target className="h-4 w-4 text-muted-foreground" />
-                                <h3 className="font-medium">Défenses ennemies</h3>
-                              </div>
-                              <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-1">
-                                {getWarEnemyDefenseSet(selectedWar, selectedClan.id).map((defense) => (
-                                  <DefenseCard
-                                    key={defense.type}
-                                    defense={defense}
-                                    canFortify={false}
-                                    fortifying={false}
-                                    onFortify={() => undefined}
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="space-y-4">
-                            <Card className={panelClassName}>
-                              <CardContent className="space-y-3 p-4">
-                                <SectionTitle title="Journal des attaques" />
-                                {selectedWar.recentAttacks.length === 0 ? (
-                                  <div className="text-sm text-muted-foreground">Aucune attaque enregistrée.</div>
-                                ) : (
-                                  selectedWar.recentAttacks.map((attack) => (
-                                    <div key={attack.id} className="rounded-2xl border border-border/50 bg-muted/15 p-3">
-                                      <div className="flex items-start justify-between gap-3">
-                                        <div>
-                                          <div className="flex flex-wrap items-center gap-2">
-                                            <Badge variant="outline">{attack.attackLabel}</Badge>
-                                            <span className="text-sm font-medium">
-                                              {attack.attackingClan.name} → {attack.targetClan.name}
-                                            </span>
-                                          </div>
-                                          <div className="mt-2 text-sm text-muted-foreground">
-                                            <UsernameDisplay username={attack.user.username} usernameColor={attack.user.usernameColor} /> a infligé{' '}
-                                            <span className="font-medium text-foreground">{attack.finalPoints} pts</span>
-                                            {attack.structureDamage > 0 ? ` et ${attack.structureDamage} dégâts structure.` : '.'}
-                                          </div>
-                                        </div>
-                                        <span className="text-xs text-muted-foreground">{formatDate(attack.createdAt)}</span>
-                                      </div>
-                                    </div>
-                                  ))
-                                )}
-                              </CardContent>
-                            </Card>
-
-                            <Card className={panelClassName}>
-                              <CardContent className="space-y-3 p-4">
-                                <SectionTitle title="Journal des fortifications" />
-                                {selectedWar.recentFortifications.length === 0 ? (
-                                  <div className="text-sm text-muted-foreground">Aucun renfort pour l’instant.</div>
-                                ) : (
-                                  selectedWar.recentFortifications.map((entry) => (
-                                    <div key={entry.id} className="rounded-2xl border border-border/50 bg-muted/15 p-3">
-                                      <div className="flex items-start justify-between gap-3">
-                                        <div className="text-sm">
-                                          <UsernameDisplay username={entry.user.username} usernameColor={entry.user.usernameColor} /> a renforcé{' '}
-                                          <span className="font-medium">{entry.defenseLabel}</span>
-                                          {entry.levelAdded > 0 ? ` (+${entry.levelAdded} niveau)` : ''}
-                                          {entry.durabilityAdded > 0 ? `, +${entry.durabilityAdded} durabilité` : ''}.
-                                        </div>
-                                        <span className="text-xs text-muted-foreground">{formatDate(entry.createdAt)}</span>
-                                      </div>
-                                    </div>
-                                  ))
-                                )}
-                              </CardContent>
-                            </Card>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <Alert>
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertTitle>Pas de guerre en cours</AlertTitle>
-                      <AlertDescription>
-                        {selectedClan.warHub.canDeclareWar
-                          ? 'Le chef peut choisir un clan adverse et lancer une phase de préparation.'
-                          : selectedClan.warHub.cooldownEndsAt
-                            ? `Le clan récupère encore jusqu’au ${formatDate(selectedClan.warHub.cooldownEndsAt)}.`
-                            : `Le clan doit atteindre ${selectedClan.warHub.minimumMembersRequired} membres pour entrer en guerre.`}
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
-                  {selectedClan.viewer.isMember ? (
-                    <Card className={panelClassName}>
-                      <CardContent className="space-y-4 p-4">
-                        <SectionTitle title="Chat du clan" description="Conversation interne du clan." />
-                        <div className="max-h-[420px] space-y-3 overflow-y-auto rounded-2xl border border-border/50 bg-muted/15 p-3">
-                          {chatLoading ? (
-                            <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Chargement des messages...
-                            </div>
-                          ) : chatMessages.length === 0 ? (
-                            <div className="py-10 text-center text-sm text-muted-foreground">
-                              Aucun message pour le moment. Lance la conversation.
-                            </div>
-                          ) : (
-                            [...chatMessages].reverse().map((entry) => {
-                              const isOwnMessage = entry.user.id === user?.id;
-                              return (
-                                <div
-                                  key={entry.id}
-                                  className={cn('flex', isOwnMessage ? 'justify-end' : 'justify-start')}
-                                >
-                                  <div
-                                    className={cn(
-                                      'max-w-[85%] rounded-2xl border border-border/50 px-4 py-3',
-                                      isOwnMessage ? 'border-primary/20 bg-primary/10' : 'bg-background'
-                                    )}
-                                  >
-                                    <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
-                                      <UsernameDisplay username={entry.user.username} usernameColor={entry.user.usernameColor} />
-                                      <span>•</span>
-                                      <span>{formatDate(entry.createdAt)}</span>
-                                    </div>
-                                    <p className="whitespace-pre-wrap break-words text-sm">{entry.message}</p>
+                    {/* ── Info tab ── */}
+                    <TabsContent value="info" className="mt-4 space-y-4">
+                      {/* Roster */}
+                      <Card className={panelClassName}>
+                        <CardContent className="space-y-2 p-4">
+                          <SectionTitle title="Membres" description={`${selectedClan.memberCount}/${selectedClan.maxMembers}`} />
+                          {selectedClan.members.map((member) => (
+                            <div key={member.id} className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-muted/15 px-3 py-2">
+                              <div className="flex items-center gap-2.5">
+                                <Avatar className="h-7 w-7">
+                                  <AvatarImage src={resolveImageUrl(member.profilePicture)} alt={member.username} />
+                                  <AvatarFallback>{getAvatarFallback(member.username)}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <div className="flex items-center gap-1.5 text-sm">
+                                    <UsernameDisplay
+                                      username={member.username}
+                                      usernameColor={member.usernameColor}
+                                      clanTag={selectedClan.tagUnlocked && selectedClan.tagText ? { text: selectedClan.tagText, style: parseClanTagStyle(selectedClan.tagStyle) } : null}
+                                    />
+                                    {member.isLeader ? <Crown className="h-3.5 w-3.5 text-amber-500" /> : null}
                                   </div>
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
-
-                        <form onSubmit={handleSendChatMessage} className="space-y-3">
-                          <Textarea
-                            value={chatDraft}
-                            onChange={(event) => setChatDraft(event.target.value.slice(0, 400))}
-                            rows={3}
-                            placeholder="Écris à ton clan..."
-                            disabled={chatSending}
-                          />
-                          <div className="flex items-center justify-between gap-3">
-                            <span className="text-xs text-muted-foreground">{chatDraft.trim().length}/400</span>
-                            <Button type="submit" disabled={chatSending || !chatDraft.trim()}>
-                              {chatSending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                              Envoyer
-                            </Button>
-                          </div>
-                        </form>
-                      </CardContent>
-                    </Card>
-                  ) : null}
-
-                  <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-                    <Card className={panelClassName}>
-                      <CardContent className="space-y-3 p-4">
-                        <SectionTitle title="Roster" description="Tous les membres du clan." />
-                        {selectedClan.members.map((member) => (
-                          <div key={member.id} className="flex items-center justify-between gap-3 rounded-2xl border border-border/50 bg-muted/15 p-3">
-                            <div className="flex items-center gap-3">
-                              <Avatar>
-                                <AvatarImage src={resolveImageUrl(member.profilePicture)} alt={member.username} />
-                                <AvatarFallback>{getAvatarFallback(member.username)}</AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <UsernameDisplay
-                                    username={member.username}
-                                    usernameColor={member.usernameColor}
-                                    clanTag={selectedClan.tagUnlocked && selectedClan.tagText ? { text: selectedClan.tagText, style: parseClanTagStyle(selectedClan.tagStyle) } : null}
-                                  />
-                                  {member.isLeader ? <Crown className="h-4 w-4 text-amber-500" /> : null}
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {formatAura(member.aura)} aura • rejoint le {formatDate(member.joinedAt)}
+                                  <div className="text-xs text-muted-foreground">{formatAura(member.aura)} aura</div>
                                 </div>
                               </div>
+                              {selectedClan.viewer.isLeader && !member.isLeader ? (
+                                <Button variant="ghost" size="sm" onClick={() => handleRemoveMember(member.userId)} disabled={actionLoading}>
+                                  <UserX className="h-3.5 w-3.5" />
+                                </Button>
+                              ) : null}
                             </div>
-                            {selectedClan.viewer.isLeader && !member.isLeader ? (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleRemoveMember(member.userId)}
-                                disabled={actionLoading}
-                              >
-                                <UserX className="mr-2 h-4 w-4" />
-                                Retirer
-                              </Button>
-                            ) : null}
-                          </div>
-                        ))}
-                      </CardContent>
-                    </Card>
+                          ))}
+                        </CardContent>
+                      </Card>
 
-                    <div className="space-y-6">
+                      {/* Candidatures (leader only) */}
+                      {selectedClan.viewer.isLeader && selectedClan.joinRequests.length > 0 ? (
+                        <Card className={panelClassName}>
+                          <CardContent className="space-y-2 p-4">
+                            <SectionTitle title="Candidatures" description={`${selectedClan.joinRequests.length} en attente`} />
+                            {selectedClan.joinRequests.map((request) => (
+                              <div key={request.id} className="flex items-center gap-3 rounded-xl border border-border/50 bg-muted/15 px-3 py-2">
+                                <Avatar className="h-7 w-7">
+                                  <AvatarImage src={resolveImageUrl(request.profilePicture)} alt={request.username} />
+                                  <AvatarFallback>{getAvatarFallback(request.username)}</AvatarFallback>
+                                </Avatar>
+                                <div className="min-w-0 flex-1">
+                                  <UsernameDisplay username={request.username} usernameColor={request.usernameColor} />
+                                  <div className="text-xs text-muted-foreground">{formatAura(request.aura)} aura</div>
+                                </div>
+                                <div className="flex gap-1.5">
+                                  <Button size="sm" onClick={() => handleRequestAction(request.id, 'accept')} disabled={actionLoading}>
+                                    <Check className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button size="sm" variant="outline" onClick={() => handleRequestAction(request.id, 'reject')} disabled={actionLoading}>
+                                    <X className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </CardContent>
+                        </Card>
+                      ) : null}
+
+                      {/* Chat (members only) */}
+                      {selectedClan.viewer.isMember ? (
+                        <Card className={panelClassName}>
+                          <CardContent className="space-y-3 p-4">
+                            <SectionTitle title="Chat du clan" />
+                            <div className="max-h-[300px] space-y-2 overflow-y-auto rounded-xl border border-border/50 bg-muted/15 p-3">
+                              {chatLoading ? (
+                                <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Chargement...
+                                </div>
+                              ) : chatMessages.length === 0 ? (
+                                <div className="py-8 text-center text-sm text-muted-foreground">Lance la conversation.</div>
+                              ) : (
+                                [...chatMessages].reverse().map((entry) => {
+                                  const isOwnMessage = entry.user.id === user?.id;
+                                  return (
+                                    <div key={entry.id} className={cn('flex', isOwnMessage ? 'justify-end' : 'justify-start')}>
+                                      <div className={cn('max-w-[85%] rounded-xl border border-border/50 px-3 py-2', isOwnMessage ? 'border-primary/20 bg-primary/10' : 'bg-background')}>
+                                        <div className="mb-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                                          <UsernameDisplay username={entry.user.username} usernameColor={entry.user.usernameColor} />
+                                          <span>•</span>
+                                          <span>{formatDate(entry.createdAt)}</span>
+                                        </div>
+                                        <p className="whitespace-pre-wrap break-words text-sm">{entry.message}</p>
+                                      </div>
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+                            <form onSubmit={handleSendChatMessage} className="space-y-2">
+                              <Textarea
+                                value={chatDraft}
+                                onChange={(event) => setChatDraft(event.target.value.slice(0, 400))}
+                                rows={2}
+                                placeholder="Écris à ton clan..."
+                                disabled={chatSending}
+                              />
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-xs text-muted-foreground">{chatDraft.trim().length}/400</span>
+                                <Button type="submit" size="sm" disabled={chatSending || !chatDraft.trim()}>
+                                  {chatSending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Send className="mr-1.5 h-3.5 w-3.5" />}
+                                  Envoyer
+                                </Button>
+                              </div>
+                            </form>
+                          </CardContent>
+                        </Card>
+                      ) : null}
+
+                      {/* Tag editor (leader only) */}
                       {selectedClan.viewer.isLeader ? (
                         <Card className={panelClassName}>
                           <CardContent className="space-y-4 p-4">
                             <SectionTitle
                               title="Tag du clan"
-                              description={selectedClan.tagUnlocked ? 'Personnalise le tag affiché après les noms des membres.' : 'Débloque le tag dans le shop pour le personnaliser.'}
+                              description={selectedClan.tagUnlocked ? 'Personnalise le tag affiché après les noms.' : 'Débloque dans le shop.'}
                             />
                             {!selectedClan.tagUnlocked ? (
                               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -1144,7 +884,6 @@ export default function Clans() {
                               </div>
                             ) : (
                               <div className="space-y-4">
-                                {/* Preview */}
                                 <div className="flex items-center gap-2 rounded-lg bg-muted/30 p-3">
                                   <span className="text-sm text-muted-foreground">Aperçu :</span>
                                   <span className="font-medium">Nom</span>
@@ -1154,141 +893,55 @@ export default function Clans() {
                                     <span className="text-xs text-muted-foreground italic">aucun texte</span>
                                   )}
                                 </div>
-
-                                {/* Tag text */}
                                 <div className="space-y-1">
                                   <label className="text-xs font-medium text-muted-foreground">Texte (1–6 caractères)</label>
-                                  <Input
-                                    value={tagText}
-                                    onChange={(e) => setTagText(e.target.value.slice(0, 6))}
-                                    maxLength={6}
-                                    placeholder="OG"
-                                    className="w-28 font-mono"
-                                  />
+                                  <Input value={tagText} onChange={(e) => setTagText(e.target.value.slice(0, 6))} maxLength={6} placeholder="OG" className="w-28 font-mono" />
                                 </div>
-
-                                {/* Background type */}
                                 <div className="space-y-1">
                                   <label className="text-xs font-medium text-muted-foreground">Fond</label>
                                   <div className="flex gap-2">
                                     {(['solid', 'gradient'] as const).map((type) => (
-                                      <Button
-                                        key={type}
-                                        size="sm"
-                                        variant={tagStyle.backgroundType === type ? 'default' : 'outline'}
-                                        onClick={() => setTagStyle((s) => ({ ...s, backgroundType: type }))}
-                                      >
+                                      <Button key={type} size="sm" variant={tagStyle.backgroundType === type ? 'default' : 'outline'} onClick={() => setTagStyle((s) => ({ ...s, backgroundType: type }))}>
                                         {type === 'solid' ? 'Uni' : 'Dégradé'}
                                       </Button>
                                     ))}
                                   </div>
                                 </div>
-
-                                {/* Background color */}
                                 {tagStyle.backgroundType === 'solid' ? (
                                   <div className="space-y-1">
                                     <label className="text-xs font-medium text-muted-foreground">Couleur de fond</label>
                                     <div className="flex flex-wrap gap-1.5">
                                       {TAG_PRESET_COLORS.map((c) => (
-                                        <button
-                                          key={c}
-                                          onClick={() => setTagStyle((s) => ({ ...s, backgroundColor: c }))}
-                                          className={cn(
-                                            'h-5 w-5 rounded-full border-2 transition-transform hover:scale-110',
-                                            tagStyle.backgroundColor === c ? 'border-foreground scale-110' : 'border-transparent',
-                                          )}
-                                          style={{ backgroundColor: c }}
-                                        />
+                                        <button key={c} onClick={() => setTagStyle((s) => ({ ...s, backgroundColor: c }))} className={cn('h-5 w-5 rounded-full border-2 transition-transform hover:scale-110', tagStyle.backgroundColor === c ? 'border-foreground scale-110' : 'border-transparent')} style={{ backgroundColor: c }} />
                                       ))}
-                                      <input
-                                        type="color"
-                                        value={tagStyle.backgroundColor}
-                                        onChange={(e) => setTagStyle((s) => ({ ...s, backgroundColor: e.target.value }))}
-                                        className="h-5 w-5 cursor-pointer rounded border p-0"
-                                      />
+                                      <input type="color" value={tagStyle.backgroundColor} onChange={(e) => setTagStyle((s) => ({ ...s, backgroundColor: e.target.value }))} className="h-5 w-5 cursor-pointer rounded border p-0" />
                                     </div>
                                   </div>
                                 ) : (
                                   <div className="space-y-1">
                                     <label className="text-xs font-medium text-muted-foreground">Couleurs du dégradé</label>
                                     <div className="flex items-center gap-2">
-                                      <input
-                                        type="color"
-                                        value={(() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}').from ?? '#374151'; } catch { return '#374151'; } })()}
-                                        onChange={(e) => {
-                                          const cur = (() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}'); } catch { return { from: '#374151', to: '#6366f1', direction: 'to right' }; } })();
-                                          setTagStyle((s) => ({ ...s, backgroundGradient: JSON.stringify({ ...cur, from: e.target.value }) }));
-                                        }}
-                                        className="h-6 w-6 cursor-pointer rounded border p-0"
-                                      />
+                                      <input type="color" value={(() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}').from ?? '#374151'; } catch { return '#374151'; } })()} onChange={(e) => { const cur = (() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}'); } catch { return { from: '#374151', to: '#6366f1', direction: 'to right' }; } })(); setTagStyle((s) => ({ ...s, backgroundGradient: JSON.stringify({ ...cur, from: e.target.value }) })); }} className="h-6 w-6 cursor-pointer rounded border p-0" />
                                       <span className="text-xs text-muted-foreground">→</span>
-                                      <input
-                                        type="color"
-                                        value={(() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}').to ?? '#6366f1'; } catch { return '#6366f1'; } })()}
-                                        onChange={(e) => {
-                                          const cur = (() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}'); } catch { return { from: '#374151', to: '#6366f1', direction: 'to right' }; } })();
-                                          setTagStyle((s) => ({ ...s, backgroundGradient: JSON.stringify({ ...cur, to: e.target.value }) }));
-                                        }}
-                                        className="h-6 w-6 cursor-pointer rounded border p-0"
-                                      />
+                                      <input type="color" value={(() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}').to ?? '#6366f1'; } catch { return '#6366f1'; } })()} onChange={(e) => { const cur = (() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}'); } catch { return { from: '#374151', to: '#6366f1', direction: 'to right' }; } })(); setTagStyle((s) => ({ ...s, backgroundGradient: JSON.stringify({ ...cur, to: e.target.value }) })); }} className="h-6 w-6 cursor-pointer rounded border p-0" />
                                     </div>
                                   </div>
                                 )}
-
-                                {/* Text color */}
                                 <div className="space-y-1">
                                   <label className="text-xs font-medium text-muted-foreground">Couleur du texte</label>
                                   <div className="flex flex-wrap gap-1.5">
-                                    {TAG_PRESET_COLORS.map((c) => (
-                                      <button
-                                        key={c}
-                                        onClick={() => setTagStyle((s) => ({ ...s, textColor: c }))}
-                                        className={cn(
-                                          'h-5 w-5 rounded-full border-2 transition-transform hover:scale-110',
-                                          tagStyle.textColor === c ? 'border-foreground scale-110' : 'border-transparent',
-                                        )}
-                                        style={{ backgroundColor: c }}
-                                      />
-                                    ))}
-                                    <input
-                                      type="color"
-                                      value={tagStyle.textColor}
-                                      onChange={(e) => setTagStyle((s) => ({ ...s, textColor: e.target.value }))}
-                                      className="h-5 w-5 cursor-pointer rounded border p-0"
-                                    />
+                                    {TAG_PRESET_COLORS.map((c) => (<button key={c} onClick={() => setTagStyle((s) => ({ ...s, textColor: c }))} className={cn('h-5 w-5 rounded-full border-2 transition-transform hover:scale-110', tagStyle.textColor === c ? 'border-foreground scale-110' : 'border-transparent')} style={{ backgroundColor: c }} />))}
+                                    <input type="color" value={tagStyle.textColor} onChange={(e) => setTagStyle((s) => ({ ...s, textColor: e.target.value }))} className="h-5 w-5 cursor-pointer rounded border p-0" />
                                   </div>
                                 </div>
-
-                                {/* Border color */}
                                 <div className="space-y-1">
                                   <label className="text-xs font-medium text-muted-foreground">Couleur de bordure</label>
                                   <div className="flex flex-wrap gap-1.5">
-                                    {TAG_PRESET_COLORS.map((c) => (
-                                      <button
-                                        key={c}
-                                        onClick={() => setTagStyle((s) => ({ ...s, borderColor: c }))}
-                                        className={cn(
-                                          'h-5 w-5 rounded-full border-2 transition-transform hover:scale-110',
-                                          tagStyle.borderColor === c ? 'border-foreground scale-110' : 'border-transparent',
-                                        )}
-                                        style={{ backgroundColor: c }}
-                                      />
-                                    ))}
-                                    <input
-                                      type="color"
-                                      value={tagStyle.borderColor}
-                                      onChange={(e) => setTagStyle((s) => ({ ...s, borderColor: e.target.value }))}
-                                      className="h-5 w-5 cursor-pointer rounded border p-0"
-                                    />
+                                    {TAG_PRESET_COLORS.map((c) => (<button key={c} onClick={() => setTagStyle((s) => ({ ...s, borderColor: c }))} className={cn('h-5 w-5 rounded-full border-2 transition-transform hover:scale-110', tagStyle.borderColor === c ? 'border-foreground scale-110' : 'border-transparent')} style={{ backgroundColor: c }} />))}
+                                    <input type="color" value={tagStyle.borderColor} onChange={(e) => setTagStyle((s) => ({ ...s, borderColor: e.target.value }))} className="h-5 w-5 cursor-pointer rounded border p-0" />
                                   </div>
                                 </div>
-
-                                <Button
-                                  onClick={saveTag}
-                                  disabled={savingTag || !tagText.trim()}
-                                  size="sm"
-                                  className="w-full"
-                                >
+                                <Button onClick={saveTag} disabled={savingTag || !tagText.trim()} size="sm" className="w-full">
                                   {savingTag ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                                   Sauvegarder
                                 </Button>
@@ -1297,44 +950,290 @@ export default function Clans() {
                           </CardContent>
                         </Card>
                       ) : null}
+                    </TabsContent>
 
-                      {selectedClan.viewer.isLeader && selectedClan.joinRequests.length > 0 ? (
-                        <Card className={panelClassName}>
-                          <CardContent className="space-y-3 p-4">
-                            <SectionTitle title="Candidatures" description="Demandes en attente." />
-                            {selectedClan.joinRequests.map((request) => (
-                              <div key={request.id} className="rounded-2xl border border-border/50 bg-muted/15 p-3">
-                                <div className="flex items-center gap-3">
-                                  <Avatar>
-                                    <AvatarImage src={resolveImageUrl(request.profilePicture)} alt={request.username} />
-                                    <AvatarFallback>{getAvatarFallback(request.username)}</AvatarFallback>
-                                  </Avatar>
-                                  <div className="min-w-0 flex-1">
-                                    <UsernameDisplay username={request.username} usernameColor={request.usernameColor} />
-                                    <div className="text-xs text-muted-foreground">
-                                      {formatAura(request.aura)} aura • {formatDate(request.requestedAt)}
-                                    </div>
+                    {/* ── Guerre tab ── */}
+                    <TabsContent value="guerre" className="mt-4 space-y-4">
+                      {/* War status bar */}
+                      <Card className={panelClassName}>
+                        <CardContent className="p-4">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex flex-wrap gap-3">
+                              <div className={mutedPanelClassName}>
+                                <div className="px-3 py-2">
+                                  <div className="text-xs text-muted-foreground">Éligibilité</div>
+                                  <div className="text-sm">
+                                    {selectedClan.memberCount >= selectedClan.warHub.minimumMembersRequired
+                                      ? 'Éligible'
+                                      : `${selectedClan.warHub.minimumMembersRequired} membres requis`}
                                   </div>
                                 </div>
-                                <div className="mt-3 flex gap-2">
-                                  <Button size="sm" onClick={() => handleRequestAction(request.id, 'accept')} disabled={actionLoading}>
-                                    <Check className="mr-2 h-4 w-4" />
-                                    Accepter
-                                  </Button>
-                                  <Button size="sm" variant="outline" onClick={() => handleRequestAction(request.id, 'reject')} disabled={actionLoading}>
-                                    <X className="mr-2 h-4 w-4" />
-                                    Refuser
-                                  </Button>
+                              </div>
+                              <div className={mutedPanelClassName}>
+                                <div className="px-3 py-2">
+                                  <div className="text-xs text-muted-foreground">Cooldown</div>
+                                  <div className="text-sm">
+                                    {selectedClan.warHub.cooldownEndsAt
+                                      ? `Disponible dans ${formatCountdown(selectedClan.warHub.cooldownEndsAt)}`
+                                      : 'Disponible'}
+                                  </div>
                                 </div>
                               </div>
-                            ))}
+                            </div>
+                            {selectedClan.warHub.canDeclareWar ? (
+                              <Button onClick={() => setWarDialogOpen(true)}>
+                                <Swords className="mr-2 h-4 w-4" />
+                                Déclarer une guerre
+                              </Button>
+                            ) : null}
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Active war */}
+                      {selectedWar ? (
+                        <Card className={panelClassName}>
+                          <div className="border-b border-border/50 p-6">
+                            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant={getStatusVariant(selectedWar.status)}>{getStatusLabel(selectedWar.status)}</Badge>
+                                  <span className="text-sm text-muted-foreground">Objectif {selectedWar.targetScore} points</span>
+                                </div>
+                                <h2 className="mt-2 text-2xl font-semibold tracking-tight">
+                                  {selectedWar.attackerClan.name} vs {selectedWar.defenderClan.name}
+                                </h2>
+                                <p className="mt-2 text-sm text-muted-foreground">
+                                  {selectedWar.status === 'PREPARING'
+                                    ? `La guerre démarre dans ${formatCountdown(selectedWar.startsAt)}.`
+                                    : selectedWar.status === 'ACTIVE'
+                                      ? `Fin prévue dans ${formatCountdown(selectedWar.endsAt)}.`
+                                      : `Terminée le ${formatDate(selectedWar.completedAt)}.`}
+                                </p>
+                              </div>
+                              <div className="grid grid-cols-2 gap-3 text-center">
+                                <div className={mutedPanelClassName}>
+                                  <div className="px-4 py-3">
+                                    <div className="text-xs text-muted-foreground">{selectedWar.attackerClan.name}</div>
+                                    <div className="mt-1 text-3xl font-semibold tabular-nums">{selectedWar.attackerScore}</div>
+                                  </div>
+                                </div>
+                                <div className={mutedPanelClassName}>
+                                  <div className="px-4 py-3">
+                                    <div className="text-xs text-muted-foreground">{selectedWar.defenderClan.name}</div>
+                                    <div className="mt-1 text-3xl font-semibold tabular-nums">{selectedWar.defenderScore}</div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <CardContent className="space-y-6 p-6">
+                            {isOwnClan ? (
+                              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+                                <div className={mutedPanelClassName}>
+                                  <div className="space-y-4 p-4">
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <h3 className="font-medium">Centre de commandement</h3>
+                                        <p className="text-sm text-muted-foreground">
+                                          {selectedWar.status === 'PREPARING'
+                                            ? 'Utilise la phase de préparation pour monter tes structures.'
+                                            : 'Coordonne les attaques et surveille la pression adverse.'}
+                                        </p>
+                                      </div>
+                                      <Badge variant="secondary">{selectedWar.viewerSide === 'ATTACKER' ? 'Attaquant' : 'Défenseur'}</Badge>
+                                    </div>
+                                    <div className="grid gap-3 md:grid-cols-2">
+                                      <div className={panelClassName}>
+                                        <div className="space-y-1 p-4">
+                                          <div className="text-xs text-muted-foreground">Endurance (24h)</div>
+                                          <div className="text-2xl font-semibold tabular-nums">
+                                            {selectedWar.viewerActions.staminaRemaining}/{selectedWar.viewerActions.staminaCap}
+                                          </div>
+                                          <p className="text-sm text-muted-foreground">
+                                            {selectedWar.viewerActions.staminaUsed} consommée(s) sur les dernières 24h.
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <div className={panelClassName}>
+                                        <div className="space-y-1 p-4">
+                                          <div className="text-xs text-muted-foreground">Fortifications</div>
+                                          <div className="text-2xl font-semibold tabular-nums">
+                                            {selectedWar.viewerActions.fortificationsRemaining}/{selectedWar.viewerActions.fortificationsCap}
+                                          </div>
+                                          <p className="text-sm text-muted-foreground">
+                                            Chaque membre peut renforcer deux fois par guerre.
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    {selectedWar.status === 'ACTIVE' ? (
+                                      <div className="grid gap-3 md:grid-cols-3">
+                                        {selectedClan.warHub.attackTypes.map((attack) => (
+                                          <button
+                                            key={attack.type}
+                                            type="button"
+                                            onClick={() => handleAttack(attack.type)}
+                                            disabled={!canAttack || warActionKey === `attack:${attack.type}`}
+                                            className={cn(
+                                              'rounded-2xl border px-4 py-4 text-left transition-colors hover:bg-muted/30 disabled:cursor-not-allowed disabled:opacity-60',
+                                              getAttackColor(attack.type)
+                                            )}
+                                          >
+                                            <div className="flex items-center justify-between">
+                                              <span className="font-medium">{attack.label}</span>
+                                              <Badge variant="outline">-{attack.staminaCost} end.</Badge>
+                                            </div>
+                                            <p className="mt-2 text-sm text-muted-foreground">{attack.description}</p>
+                                            <div className="mt-3 text-xs text-muted-foreground">
+                                              {attack.minPoints}-{attack.maxPoints} pts • {attack.structureDamage} dégâts structure
+                                            </div>
+                                          </button>
+                                        ))}
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                </div>
+                                <div className={mutedPanelClassName}>
+                                  <div className="space-y-3 p-4">
+                                    <h3 className="font-medium">Récompenses</h3>
+                                    <div className="rounded-2xl border border-border/50 bg-emerald-500/5 p-3 text-sm">
+                                      <div className="font-medium">Victoire</div>
+                                      <div className="mt-1 text-muted-foreground">
+                                        +{selectedWar.rewardTable.winner.money} money et +{selectedWar.rewardTable.winner.aura} aura par membre.
+                                      </div>
+                                    </div>
+                                    <div className="rounded-2xl border border-border/50 bg-background p-3 text-sm">
+                                      <div className="font-medium">Défaite / égalité</div>
+                                      <div className="mt-1 text-muted-foreground">
+                                        +{selectedWar.rewardTable.loser.money} money et +{selectedWar.rewardTable.loser.aura} aura par membre.
+                                      </div>
+                                    </div>
+                                    {selectedWar.winnerClan ? (
+                                      <Alert>
+                                        <Sparkles className="h-4 w-4" />
+                                        <AlertTitle>Vainqueur</AlertTitle>
+                                        <AlertDescription>
+                                          {selectedWar.winnerClan.name}
+                                          {selectedWar.winnerUser ? ` • MVP: ${selectedWar.winnerUser.username}` : ''}
+                                        </AlertDescription>
+                                      </Alert>
+                                    ) : null}
+                                  </div>
+                                </div>
+                              </div>
+                            ) : null}
+                            <div className="grid gap-6 xl:grid-cols-2">
+                              <div className="space-y-4">
+                                <div>
+                                  <div className="mb-3 flex items-center gap-2">
+                                    <Shield className="h-4 w-4 text-muted-foreground" />
+                                    <h3 className="font-medium">Défenses de {getWarOwnSide(selectedWar, selectedClan.id).name}</h3>
+                                  </div>
+                                  <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-1">
+                                    {getWarDefenseSet(selectedWar, selectedClan.id).map((defense) => (
+                                      <DefenseCard
+                                        key={defense.type}
+                                        defense={defense}
+                                        canFortify={canFortify}
+                                        fortifying={warActionKey === `fortify:${defense.type}`}
+                                        onFortify={() => handleFortify(defense.type)}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className="mb-3 flex items-center gap-2">
+                                    <Target className="h-4 w-4 text-muted-foreground" />
+                                    <h3 className="font-medium">Défenses ennemies</h3>
+                                  </div>
+                                  <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-1">
+                                    {getWarEnemyDefenseSet(selectedWar, selectedClan.id).map((defense) => (
+                                      <DefenseCard
+                                        key={defense.type}
+                                        defense={defense}
+                                        canFortify={false}
+                                        fortifying={false}
+                                        onFortify={() => undefined}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="space-y-4">
+                                <Card className={panelClassName}>
+                                  <CardContent className="space-y-3 p-4">
+                                    <SectionTitle title="Journal des attaques" />
+                                    {selectedWar.recentAttacks.length === 0 ? (
+                                      <div className="text-sm text-muted-foreground">Aucune attaque enregistrée.</div>
+                                    ) : (
+                                      selectedWar.recentAttacks.map((attack) => (
+                                        <div key={attack.id} className="rounded-2xl border border-border/50 bg-muted/15 p-3">
+                                          <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                              <div className="flex flex-wrap items-center gap-2">
+                                                <Badge variant="outline">{attack.attackLabel}</Badge>
+                                                <span className="text-sm font-medium">
+                                                  {attack.attackingClan.name} → {attack.targetClan.name}
+                                                </span>
+                                              </div>
+                                              <div className="mt-2 text-sm text-muted-foreground">
+                                                <UsernameDisplay username={attack.user.username} usernameColor={attack.user.usernameColor} /> a infligé{' '}
+                                                <span className="font-medium text-foreground">{attack.finalPoints} pts</span>
+                                                {attack.structureDamage > 0 ? ` et ${attack.structureDamage} dégâts structure.` : '.'}
+                                              </div>
+                                            </div>
+                                            <span className="text-xs text-muted-foreground">{formatDate(attack.createdAt)}</span>
+                                          </div>
+                                        </div>
+                                      ))
+                                    )}
+                                  </CardContent>
+                                </Card>
+                                <Card className={panelClassName}>
+                                  <CardContent className="space-y-3 p-4">
+                                    <SectionTitle title="Journal des fortifications" />
+                                    {selectedWar.recentFortifications.length === 0 ? (
+                                      <div className="text-sm text-muted-foreground">Aucun renfort pour l'instant.</div>
+                                    ) : (
+                                      selectedWar.recentFortifications.map((entry) => (
+                                        <div key={entry.id} className="rounded-2xl border border-border/50 bg-muted/15 p-3">
+                                          <div className="flex items-start justify-between gap-3">
+                                            <div className="text-sm">
+                                              <UsernameDisplay username={entry.user.username} usernameColor={entry.user.usernameColor} /> a renforcé{' '}
+                                              <span className="font-medium">{entry.defenseLabel}</span>
+                                              {entry.levelAdded > 0 ? ` (+${entry.levelAdded} niveau)` : ''}
+                                              {entry.durabilityAdded > 0 ? `, +${entry.durabilityAdded} durabilité` : ''}.
+                                            </div>
+                                            <span className="text-xs text-muted-foreground">{formatDate(entry.createdAt)}</span>
+                                          </div>
+                                        </div>
+                                      ))
+                                    )}
+                                  </CardContent>
+                                </Card>
+                              </div>
+                            </div>
                           </CardContent>
                         </Card>
-                      ) : null}
+                      ) : (
+                        <Alert>
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertTitle>Pas de guerre en cours</AlertTitle>
+                          <AlertDescription>
+                            {selectedClan.warHub.canDeclareWar
+                              ? 'Le chef peut choisir un clan adverse et lancer une phase de préparation.'
+                              : selectedClan.warHub.cooldownEndsAt
+                                ? `Le clan récupère encore jusqu'au ${formatDate(selectedClan.warHub.cooldownEndsAt)}.`
+                                : `Le clan doit atteindre ${selectedClan.warHub.minimumMembersRequired} membres pour entrer en guerre.`}
+                          </AlertDescription>
+                        </Alert>
+                      )}
 
+                      {/* War history */}
                       <Card className={panelClassName}>
                         <CardContent className="space-y-3 p-4">
-                          <SectionTitle title="Historique des guerres" description="Conflits terminés du clan." />
+                          <SectionTitle title="Historique des guerres" description="Conflits terminés." />
                           {selectedClan.warHub.history.length === 0 ? (
                             <div className="text-sm text-muted-foreground">Aucune guerre terminée pour ce clan.</div>
                           ) : (
@@ -1360,8 +1259,8 @@ export default function Clans() {
                           )}
                         </CardContent>
                       </Card>
-                    </div>
-                  </div>
+                    </TabsContent>
+                  </Tabs>
                 </>
               )}
             </div>
@@ -1393,7 +1292,7 @@ export default function Clans() {
                 onChange={(event) => setDescription(event.target.value)}
                 maxLength={300}
                 rows={4}
-                placeholder="Décris l’identité, le style de jeu et l’objectif du clan."
+                placeholder="Décris l'identité, le style de jeu et l'objectif du clan."
               />
             </div>
             <div className="space-y-2">
