@@ -1937,6 +1937,7 @@ export default function Admin() {
   const openCreateItemDialog = () => {
     setEditingItem(null);
     setItemForm(defaultItemForm);
+    if (badges.length === 0) fetchBadges();
     setItemDialogOpen(true);
   };
 
@@ -1958,6 +1959,7 @@ export default function Admin() {
       skinShopType: skinShopType || 'none',
       badgeId: badgeId || '',
     });
+    if (badges.length === 0) fetchBadges();
     setItemDialogOpen(true);
   };
 
@@ -2081,6 +2083,7 @@ export default function Admin() {
     setBadgeModalUserId(userId);
     setBadgeModalBadgeId('');
     setBadgeModalReason('');
+    if (badges.length === 0) fetchBadges();
     setBadgeModalOpen(true);
   };
 
