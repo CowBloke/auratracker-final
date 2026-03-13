@@ -127,6 +127,11 @@ interface DoodleMultiplayerDisplayState extends DoodleMultiplayerNetState {
   displayWorldY: number;
   displayVelocity: number;
   deadFallStarted: boolean;
+  // Interpolation: previous snapshot and timing
+  prevX: number;
+  prevWorldY: number;
+  lastUpdateTime: number;
+  prevUpdateTime: number;
 }
 
 interface DoodleMultiplayerRosterItem {
@@ -706,19 +711,23 @@ export default function DoodleJump() {
     // Draw multiplayer players in the same world space
     for (const remote of multiplayerDisplayPlayersRef.current.values()) {
       if (user && remote.userId === user.id) continue;
-      const liveLerp = remote.isDead ? 0.2 : 0.3;
-      remote.displayX += (remote.x - remote.displayX) * liveLerp;
       if (remote.isDead) {
         if (!remote.deadFallStarted) {
           remote.deadFallStarted = true;
           remote.displayVelocity = Math.max(1, remote.velocity);
         }
         remote.displayVelocity += GRAVITY * GAME_SPEED * 0.9;
+        remote.displayX += (remote.x - remote.displayX) * 0.15;
         remote.displayWorldY -= remote.displayVelocity * 0.7;
       } else {
         remote.deadFallStarted = false;
-        remote.displayWorldY += (remote.worldY - remote.displayWorldY) * liveLerp;
         remote.displayVelocity = remote.velocity;
+        // Time-based interpolation between the two most recent network snapshots
+        const now = performance.now();
+        const interval = Math.max(16, remote.lastUpdateTime - remote.prevUpdateTime);
+        const alpha = Math.min(1, (now - remote.lastUpdateTime) / interval);
+        remote.displayX = remote.prevX + (remote.x - remote.prevX) * alpha;
+        remote.displayWorldY = remote.prevWorldY + (remote.worldY - remote.prevWorldY) * alpha;
       }
 
       const remoteLocalY = remote.displayWorldY - worldOffsetRef.current;
@@ -1170,6 +1179,7 @@ export default function DoodleJump() {
       if (player.userId === user.id) return;
       ensureSkinImageLoaded(player.selectedSkin, player.selectedSkinImageUrl);
       const existing = multiplayerDisplayPlayersRef.current.get(player.userId);
+      const now = performance.now();
       if (!existing) {
         multiplayerDisplayPlayersRef.current.set(player.userId, {
           ...player,
@@ -1177,10 +1187,19 @@ export default function DoodleJump() {
           displayWorldY: player.worldY,
           displayVelocity: player.velocity,
           deadFallStarted: player.isDead,
+          prevX: player.x,
+          prevWorldY: player.worldY,
+          lastUpdateTime: now,
+          prevUpdateTime: now - 50,
         });
         return;
       }
       const wasDead = existing.isDead;
+      // Shift current snapshot to previous before applying new one
+      existing.prevX = existing.displayX;
+      existing.prevWorldY = existing.displayWorldY;
+      existing.prevUpdateTime = existing.lastUpdateTime;
+      existing.lastUpdateTime = now;
       existing.username = player.username;
       existing.usernameColor = player.usernameColor ?? null;
       existing.score = player.score;
@@ -1194,9 +1213,6 @@ export default function DoodleJump() {
       if (!wasDead && player.isDead) {
         existing.deadFallStarted = false;
         existing.displayVelocity = Math.max(player.velocity, 1);
-      }
-      if (!player.isDead) {
-        existing.displayWorldY = player.worldY;
       }
     };
 
