@@ -11,7 +11,8 @@ type ChessResult =
   | 'draw'
   | 'insufficient_material'
   | 'threefold_repetition'
-  | 'resignation';
+  | 'resignation'
+  | 'timeout';
 
 interface ChessPlayer {
   userId: string;
@@ -37,6 +38,9 @@ interface ChessGame {
     promotion?: string;
     captured?: string;
   } | null;
+  timeWhite: number;
+  timeBlack: number;
+  lastMoveTimestamp: number;
 }
 
 interface PendingJoinPrompt {
@@ -63,6 +67,30 @@ const pendingJoinPrompts = new Map<string, PendingJoinPrompt>();
 const pendingPlayAgainPrompts = new Map<string, PendingPlayAgainPrompt>();
 const JOIN_PROMPT_TIMEOUT = 10000;
 const PLAY_AGAIN_TIMEOUT = 20000;
+
+const GAME_TIME_MS = 10 * 60 * 1000; // 10 minutes per player
+
+function getCapturedPieces(engine: Chess) {
+  const history = engine.history({ verbose: true });
+  const byWhite: string[] = [];
+  const byBlack: string[] = [];
+  for (const move of history) {
+    if (move.captured) {
+      (move.color === 'w' ? byWhite : byBlack).push(move.captured);
+    }
+  }
+  return { byWhite, byBlack };
+}
+
+function calculateTimers(game: ChessGame) {
+  if (game.phase !== 'playing') return { timeWhite: game.timeWhite, timeBlack: game.timeBlack };
+  const elapsed = Date.now() - game.lastMoveTimestamp;
+  const turn = game.engine.turn();
+  return {
+    timeWhite: turn === 'w' ? Math.max(0, game.timeWhite - elapsed) : game.timeWhite,
+    timeBlack: turn === 'b' ? Math.max(0, game.timeBlack - elapsed) : game.timeBlack,
+  };
+}
 
 function serializeBoard(engine: Chess) {
   return engine.board().map((row) =>
@@ -92,6 +120,7 @@ function getLegalMoves(game: ChessGame, userId: string) {
 }
 
 function serializeState(game: ChessGame, userId: string) {
+  const { timeWhite, timeBlack } = calculateTimers(game);
   return {
     partyId: game.partyId,
     board: serializeBoard(game.engine),
@@ -104,6 +133,9 @@ function serializeState(game: ChessGame, userId: string) {
     isDraw: game.result !== null && game.winnerId === null,
     lastMove: game.lastMove,
     legalMoves: getLegalMoves(game, userId),
+    capturedPieces: getCapturedPieces(game.engine),
+    timeWhite,
+    timeBlack,
     players: game.players.map((player) => ({
       userId: player.userId,
       username: player.username,
@@ -293,6 +325,9 @@ function createGame(partyId: string, members: Array<{ user: { id: string; userna
     result: null,
     isActive: true,
     lastMove: null,
+    timeWhite: GAME_TIME_MS,
+    timeBlack: GAME_TIME_MS,
+    lastMoveTimestamp: Date.now(),
   };
 }
 
@@ -543,6 +578,16 @@ export const setupChessHandlers = (socket: Socket, io: Server) => {
         return;
       }
 
+      // Update timer for the player who just moved
+      const now = Date.now();
+      const elapsed = now - game.lastMoveTimestamp;
+      if (move.color === 'w') {
+        game.timeWhite = Math.max(0, game.timeWhite - elapsed);
+      } else {
+        game.timeBlack = Math.max(0, game.timeBlack - elapsed);
+      }
+      game.lastMoveTimestamp = now;
+
       game.lastMove = {
         from: move.from,
         to: move.to,
@@ -552,6 +597,18 @@ export const setupChessHandlers = (socket: Socket, io: Server) => {
         promotion: move.promotion,
         captured: move.captured,
       };
+
+      // Check timeout
+      if (move.color === 'w' && game.timeWhite <= 0) {
+        const blackPlayer = game.players.find((p) => p.color === 'b');
+        if (blackPlayer) await endGame(game, io, blackPlayer.userId, 'timeout');
+        return;
+      }
+      if (move.color === 'b' && game.timeBlack <= 0) {
+        const whitePlayer = game.players.find((p) => p.color === 'w');
+        if (whitePlayer) await endGame(game, io, whitePlayer.userId, 'timeout');
+        return;
+      }
 
       if (game.engine.isCheckmate()) {
         await endGame(game, io, userId, 'checkmate');
@@ -594,6 +651,26 @@ export const setupChessHandlers = (socket: Socket, io: Server) => {
     if (!opponent) return;
 
     await endGame(game, io, opponent.userId, 'resignation');
+  });
+
+  socket.on('chess:timeout', async (data: { partyId: string }) => {
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const game = activeGames.get(data.partyId);
+    if (!game || !game.isActive) return;
+
+    const player = game.players.find((p) => p.userId === userId);
+    if (!player) return;
+
+    // Verify the player's time is actually up (5s grace for network lag)
+    const elapsed = Date.now() - game.lastMoveTimestamp;
+    const remaining = player.color === 'w'
+      ? game.timeWhite - elapsed
+      : game.timeBlack - elapsed;
+    if (remaining > 5000) return;
+
+    const winner = game.players.find((p) => p.userId !== userId);
+    if (winner) await endGame(game, io, winner.userId, 'timeout');
   });
 
   socket.on('chess:leave', (data: { partyId: string }) => {

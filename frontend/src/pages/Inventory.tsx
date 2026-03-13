@@ -66,6 +66,7 @@ export default function Inventory() {
   // Clan tag unlock state
   const [clanTagDialogOpen, setClanTagDialogOpen] = useState(false);
   const [clanTagItem, setClanTagItem] = useState<UserItem | null>(null);
+  const [clanTagError, setClanTagError] = useState<string | null>(null);
 
   // Color picker state
   const [colorDialogOpen, setColorDialogOpen] = useState(false);
@@ -279,17 +280,17 @@ export default function Inventory() {
     if (!clanTagItem) return;
     try {
       setUsing(clanTagItem.id);
-      setMessage(null);
+      setClanTagError(null);
       await marketplaceApi.useItem(clanTagItem.id);
       await fetchInventory();
       setMessage({ type: 'success', text: 'Tag de clan débloqué ! Configure-le dans les paramètres de ton clan.' });
       setTimeout(() => setMessage(null), 5000);
       setClanTagDialogOpen(false);
+      setClanTagItem(null);
     } catch (error: any) {
-      setMessage({ type: 'error', text: error.response?.data?.error || 'Échec' });
+      setClanTagError(error.response?.data?.error || 'Échec');
     } finally {
       setUsing(null);
-      setClanTagItem(null);
     }
   };
 
@@ -620,7 +621,10 @@ export default function Inventory() {
       </Dialog>
 
       {/* Clan Tag Unlock Dialog */}
-      <Dialog open={clanTagDialogOpen} onOpenChange={setClanTagDialogOpen}>
+      <Dialog open={clanTagDialogOpen} onOpenChange={(open) => {
+        setClanTagDialogOpen(open);
+        if (!open) { setClanTagItem(null); setClanTagError(null); }
+      }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className={cn(TYPOGRAPHY.H5, "flex items-center gap-2")}>
@@ -631,6 +635,9 @@ export default function Inventory() {
               Cela débloquera le tag pour ton clan. Tu pourras ensuite le personnaliser dans les paramètres du clan. Action irréversible.
             </DialogDescription>
           </DialogHeader>
+          {clanTagError && (
+            <p className="text-sm text-destructive px-1">{clanTagError}</p>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setClanTagDialogOpen(false)}>
               Annuler

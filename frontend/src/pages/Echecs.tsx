@@ -23,7 +23,8 @@ type ChessResult =
   | 'draw'
   | 'insufficient_material'
   | 'threefold_repetition'
-  | 'resignation';
+  | 'resignation'
+  | 'timeout';
 
 interface ChessPiece {
   type: PieceType;
@@ -59,6 +60,9 @@ interface ChessState {
   isDraw: boolean;
   lastMove: ChessMoveSummary | null;
   legalMoves: Record<string, string[]>;
+  capturedPieces: { byWhite: string[]; byBlack: string[] };
+  timeWhite: number;
+  timeBlack: number;
   players: ChessPlayer[];
 }
 
@@ -81,11 +85,32 @@ const RESULT_LABELS: Record<ChessResult, string> = {
   insufficient_material: 'Nulle par matériel insuffisant',
   threefold_repetition: 'Nulle par répétition',
   resignation: 'Abandon',
+  timeout: 'Temps écoulé',
 };
 
 const PROMO_MAP: Record<string, PromotionPiece> = {
   wQ: 'q', bQ: 'q', wR: 'r', bR: 'r', wB: 'b', bB: 'b', wN: 'n', bN: 'n',
 };
+
+const PIECE_VALUES: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+const SORT_ORDER: Record<string, number> = { q: 0, r: 1, b: 2, n: 3, p: 4 };
+
+// Symbols for pieces captured by white (i.e. black pieces white took)
+const BLACK_SYMBOLS: Record<string, string> = { p: '♟', n: '♞', b: '♝', r: '♜', q: '♛' };
+// Symbols for pieces captured by black (i.e. white pieces black took)
+const WHITE_SYMBOLS: Record<string, string> = { p: '♙', n: '♘', b: '♗', r: '♖', q: '♕' };
+
+function formatTime(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function materialAdvantage(mine: string[], theirs: string[]): number {
+  const sum = (arr: string[]) => arr.reduce((acc, p) => acc + (PIECE_VALUES[p] ?? 0), 0);
+  return sum(mine) - sum(theirs);
+}
 
 export default function Echecs() {
   const { user, refreshUser } = useAuth();
@@ -102,6 +127,18 @@ export default function Echecs() {
   const [error, setError] = useState<string | null>(null);
   const [pendingPromotion, setPendingPromotion] = useState<{ from: string; to: string } | null>(null);
 
+  // Premove state
+  const [premove, setPremove] = useState<{ from: string; to: string; promotion?: PromotionPiece } | null>(null);
+  const [premoveSource, setPremoveSource] = useState<string | null>(null);
+  const premoveRef = useRef<{ from: string; to: string; promotion?: PromotionPiece } | null>(null);
+  premoveRef.current = premove;
+
+  // Timer display state
+  const [displayTimeWhite, setDisplayTimeWhite] = useState(0);
+  const [displayTimeBlack, setDisplayTimeBlack] = useState(0);
+  const serverTimeRef = useRef<{ white: number; black: number; receivedAt: number } | null>(null);
+  const timeoutSentRef = useRef(false);
+
   const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
   const myPlayer = gameState?.players.find((p) => p.userId === user?.id) ?? null;
   const opponent = gameState?.players.find((p) => p.userId !== user?.id) ?? null;
@@ -113,7 +150,17 @@ export default function Echecs() {
     try { return new Chess(gameState.fen); } catch { return null; }
   }, [gameState?.fen]);
 
-  // Responsive board: fill container width up to viewport height
+  // Order players: opponent first, me second (opponent at top like a chess board)
+  const orderedPlayers = useMemo(() => {
+    if (!gameState) return [];
+    return [...gameState.players].sort((a, b) => {
+      if (a.userId === user?.id) return 1;
+      if (b.userId === user?.id) return -1;
+      return 0;
+    });
+  }, [gameState?.players, user?.id]);
+
+  // Responsive board
   useEffect(() => {
     const el = boardContainerRef.current;
     if (!el) return;
@@ -127,7 +174,7 @@ export default function Echecs() {
     ro.observe(el);
     window.addEventListener('resize', update);
     return () => { ro.disconnect(); window.removeEventListener('resize', update); };
-  }, [gameState != null]); // re-attach when game starts (layout changes)
+  }, [gameState != null]);
 
   // Socket events
   useEffect(() => {
@@ -139,9 +186,27 @@ export default function Echecs() {
       setSelectedSquare(null);
       setPendingPromotion(null);
       setError(null);
+      serverTimeRef.current = {
+        white: state.timeWhite,
+        black: state.timeBlack,
+        receivedAt: Date.now(),
+      };
+      setDisplayTimeWhite(state.timeWhite);
+      setDisplayTimeBlack(state.timeBlack);
+      if (state.phase === 'playing' && !state.lastMove) {
+        // Fresh game — reset timeout flag
+        timeoutSentRef.current = false;
+      }
     };
     const onGameOver = (data: GameOverData) => { setGameOver(data); refreshUser(); };
-    const onLeft = () => { setGameState(null); setSelectedSquare(null); setPendingPromotion(null); };
+    const onLeft = () => {
+      setGameState(null);
+      setSelectedSquare(null);
+      setPendingPromotion(null);
+      setPremove(null);
+      setPremoveSource(null);
+      timeoutSentRef.current = false;
+    };
     const onError = (data: { message: string }) => { setError(data.message); setPendingPromotion(null); };
 
     socket.on('chess:state', onState);
@@ -156,6 +221,52 @@ export default function Echecs() {
     };
   }, [socket, user, refreshUser]);
 
+  // Real-time timer countdown
+  useEffect(() => {
+    if (!gameState || gameState.phase !== 'playing') return;
+    const interval = setInterval(() => {
+      if (!serverTimeRef.current) return;
+      const elapsed = Date.now() - serverTimeRef.current.receivedAt;
+      const turn = gameState.turn;
+      if (turn === 'w') {
+        const t = Math.max(0, serverTimeRef.current.white - elapsed);
+        setDisplayTimeWhite(t);
+        if (t === 0 && myPlayer?.color === 'w' && !timeoutSentRef.current && socket && currentParty) {
+          timeoutSentRef.current = true;
+          socket.emit('chess:timeout', { partyId: currentParty.id });
+        }
+      } else {
+        const t = Math.max(0, serverTimeRef.current.black - elapsed);
+        setDisplayTimeBlack(t);
+        if (t === 0 && myPlayer?.color === 'b' && !timeoutSentRef.current && socket && currentParty) {
+          timeoutSentRef.current = true;
+          socket.emit('chess:timeout', { partyId: currentParty.id });
+        }
+      }
+    }, 100);
+    return () => clearInterval(interval);
+  }, [gameState?.turn, gameState?.phase]);
+
+  // Execute premove when it becomes our turn
+  const prevIsMyTurnRef = useRef(false);
+  useEffect(() => {
+    const wasMyTurn = prevIsMyTurnRef.current;
+    prevIsMyTurnRef.current = !!isMyTurn;
+
+    if (isMyTurn && !wasMyTurn) {
+      const pm = premoveRef.current;
+      if (pm && gameState && socket && currentParty) {
+        const legalMoves = gameState.legalMoves[pm.from] ?? [];
+        if (legalMoves.includes(pm.to)) {
+          socket.emit('chess:move', { partyId: currentParty.id, from: pm.from, to: pm.to, promotion: pm.promotion ?? 'q' });
+          setSelectedSquare(null);
+        }
+        setPremove(null);
+        setPremoveSource(null);
+      }
+    }
+  }, [isMyTurn]);
+
   const sendMove = useCallback((from: string, to: string, promotion?: PromotionPiece) => {
     if (!socket || !currentParty) return;
     socket.emit('chess:move', { partyId: currentParty.id, from, to, promotion });
@@ -164,9 +275,22 @@ export default function Echecs() {
 
   // Drag & drop handler
   const onPieceDrop = useCallback((source: string, target: string, piece: string): boolean => {
-    if (!gameState || !myPlayer || !isMyTurn) return false;
+    if (!gameState || !myPlayer) return false;
+
+    if (!isMyTurn) {
+      // Set premove via drag
+      if (piece[0].toLowerCase() === myPlayer.color) {
+        setPremove({ from: source, to: target });
+        setPremoveSource(null);
+      }
+      return false;
+    }
+
+    // Clear premove on normal move
+    setPremove(null);
+    setPremoveSource(null);
+
     if (!gameState.legalMoves[source]?.includes(target)) return false;
-    // Promotion: show dialog, snap back piece until chosen
     const isPromo = (piece === 'wP' && target[1] === '8') || (piece === 'bP' && target[1] === '1');
     if (isPromo) {
       setPendingPromotion({ from: source, to: target });
@@ -178,7 +302,35 @@ export default function Echecs() {
 
   // Click-to-move handler
   const onSquareClick = useCallback((square: string) => {
-    if (!gameState || !myPlayer || !isMyTurn) return;
+    if (!gameState || !myPlayer) return;
+
+    if (!isMyTurn) {
+      // Premove selection
+      if (premoveSource) {
+        if (square === premoveSource) {
+          setPremoveSource(null);
+        } else {
+          const piece = chess?.get(premoveSource as Square);
+          if (piece && piece.color === myPlayer.color) {
+            const isPromo = piece.type === 'p' &&
+              ((piece.color === 'w' && square[1] === '8') || (piece.color === 'b' && square[1] === '1'));
+            setPremove({ from: premoveSource, to: square, promotion: isPromo ? 'q' : undefined });
+          }
+          setPremoveSource(null);
+        }
+      } else {
+        const piece = chess?.get(square as Square);
+        if (piece && piece.color === myPlayer.color) {
+          setPremoveSource(square);
+          setPremove(null);
+        }
+      }
+      return;
+    }
+
+    // Clear premove when making a real move
+    setPremove(null);
+    setPremoveSource(null);
 
     if (selectedSquare && gameState.legalMoves[selectedSquare]?.includes(square)) {
       const piece = chess?.get(selectedSquare as Square);
@@ -200,7 +352,7 @@ export default function Echecs() {
     } else {
       setSelectedSquare(null);
     }
-  }, [gameState, myPlayer, isMyTurn, selectedSquare, chess, sendMove]);
+  }, [gameState, myPlayer, isMyTurn, selectedSquare, chess, sendMove, premoveSource]);
 
   // Promotion piece selected from built-in dialog
   const onPromotionPieceSelect = useCallback((piece?: string): boolean => {
@@ -229,8 +381,16 @@ export default function Echecs() {
       }
     }
 
+    // Premove highlights
+    if (premoveSource) {
+      styles[premoveSource] = { backgroundColor: 'rgba(0, 180, 200, 0.5)' };
+    }
+    if (premove) {
+      styles[premove.from] = { backgroundColor: 'rgba(0, 180, 200, 0.4)' };
+      styles[premove.to] = { backgroundColor: 'rgba(0, 180, 200, 0.4)' };
+    }
+
     if (gameState?.inCheck && gameState.phase === 'playing' && chess) {
-      // Highlight king in check
       const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
       for (let rank = 1; rank <= 8; rank++) {
         for (const file of files) {
@@ -244,7 +404,7 @@ export default function Echecs() {
     }
 
     return styles;
-  }, [selectedSquare, gameState, chess]);
+  }, [selectedSquare, gameState, chess, premove, premoveSource]);
 
   const handleStart = () => {
     if (!socket || !currentParty) return;
@@ -261,6 +421,7 @@ export default function Echecs() {
     if (gameState.phase === 'finished' && gameState.result) return RESULT_LABELS[gameState.result];
     if (isMyTurn && gameState.inCheck) return 'À toi — tu es en échec !';
     if (isMyTurn) return 'À toi de jouer.';
+    if (premove) return 'Pré-coup en attente…';
     if (gameState.inCheck) return `${opponent?.username ?? "L'adversaire"} est en échec.`;
     return `Tour des ${gameState.turn === 'w' ? 'blancs' : 'noirs'}.`;
   })();
@@ -411,7 +572,7 @@ export default function Echecs() {
   return (
     <PageShell size="wide">
       <div className="flex flex-col gap-4">
-        {/* Compact toolbar — no title, just action buttons + status */}
+        {/* Toolbar */}
         <div className="flex items-center gap-2 flex-wrap">
           <Button asChild variant="outline" size="sm">
             <Link to="/games" className="inline-flex items-center gap-1.5">
@@ -429,8 +590,7 @@ export default function Echecs() {
         </div>
 
         {/* Board + sidebar */}
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
-          {/* Board container: fills available width, capped by viewport height */}
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
           <div ref={boardContainerRef} className="w-full flex justify-center lg:justify-start">
             <Chessboard
               boardWidth={boardWidth}
@@ -440,7 +600,7 @@ export default function Echecs() {
               onSquareClick={onSquareClick as any}
               customSquareStyles={customSquareStyles as any}
               isDraggablePiece={({ piece }: { piece: string }) => {
-                if (!isMyTurn || !myPlayer) return false;
+                if (!myPlayer) return false;
                 return piece[0] === myPlayer.color;
               }}
               animationDuration={180}
@@ -459,42 +619,73 @@ export default function Echecs() {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-4">
-            <Card>
-              <CardContent className="p-4 space-y-3">
-                {gameState.players.map((player) => {
-                  const isCurrent = gameState.turn === player.color && gameState.phase === 'playing';
-                  return (
-                    <div
-                      key={player.userId}
-                      className={cn(
-                        'rounded-lg border p-3 transition-colors',
-                        isCurrent ? 'border-foreground bg-muted/40' : 'border-border/40'
-                      )}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div>
-                          <div className="font-medium flex items-center gap-1 flex-wrap">
-                            <UsernameDisplay username={player.username} usernameColor={player.usernameColor} />
-                            {player.userId === user?.id && (
-                              <span className="text-xs text-muted-foreground">(toi)</span>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            {player.color === 'w' ? 'Blancs' : 'Noirs'}
-                          </p>
-                        </div>
-                        <div className="flex flex-col items-end gap-1 text-xs text-muted-foreground">
-                          {player.color === 'w' ? <Crown className="h-4 w-4" /> : <Swords className="h-4 w-4" />}
-                          <span>{isCurrent ? 'Au tour' : 'En attente'}</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
+          <div className="space-y-3">
+            {/* Player cards (opponent first, me second) */}
+            {orderedPlayers.map((player) => {
+              const isCurrent = gameState.turn === player.color && gameState.phase === 'playing';
+              const isMe = player.userId === user?.id;
+              const timeMs = player.color === 'w' ? displayTimeWhite : displayTimeBlack;
+              const timeStr = formatTime(timeMs);
+              const lowTime = timeMs < 30000 && gameState.phase === 'playing';
+              const captured = player.color === 'w'
+                ? gameState.capturedPieces?.byWhite ?? []
+                : gameState.capturedPieces?.byBlack ?? [];
+              const otherCaptured = player.color === 'w'
+                ? gameState.capturedPieces?.byBlack ?? []
+                : gameState.capturedPieces?.byWhite ?? [];
+              const adv = materialAdvantage(captured, otherCaptured);
 
+              return (
+                <div
+                  key={player.userId}
+                  className={cn(
+                    'rounded-lg border p-3 transition-colors',
+                    isCurrent ? 'border-foreground bg-muted/40' : 'border-border/40'
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium flex items-center gap-1 flex-wrap">
+                        <UsernameDisplay username={player.username} usernameColor={player.usernameColor} />
+                        {isMe && <span className="text-xs text-muted-foreground">(toi)</span>}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {player.color === 'w' ? 'Blancs' : 'Noirs'}
+                      </p>
+                      {captured.length > 0 && (
+                        <div className="flex flex-wrap gap-0.5 mt-1">
+                          {[...captured]
+                            .sort((a, b) => (SORT_ORDER[a] ?? 5) - (SORT_ORDER[b] ?? 5))
+                            .map((p, i) => (
+                              <span key={i} className="text-xs text-muted-foreground">
+                                {(player.color === 'w' ? BLACK_SYMBOLS : WHITE_SYMBOLS)[p] ?? p}
+                              </span>
+                            ))}
+                          {adv > 0 && (
+                            <span className="text-xs text-muted-foreground ml-0.5">+{adv}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <span
+                        className={cn(
+                          'text-xl font-mono font-semibold tabular-nums',
+                          lowTime ? 'text-red-500' : 'text-foreground'
+                        )}
+                      >
+                        {timeStr}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {isCurrent ? 'Au tour' : 'En attente'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Last move */}
             <Card>
               <CardContent className="p-4 space-y-2">
                 <h2 className="text-sm text-muted-foreground">Dernier coup</h2>
@@ -512,6 +703,11 @@ export default function Echecs() {
                   <div className="rounded-lg border border-border/40 px-3 py-2 text-sm text-muted-foreground">
                     Tu joues les {myPlayer.color === 'w' ? 'blancs' : 'noirs'}.
                     {gameState.inCheck && gameState.phase === 'playing' && ' Un roi est en échec.'}
+                  </div>
+                )}
+                {premove && (
+                  <div className="rounded-lg border border-cyan-500/40 bg-cyan-500/5 px-3 py-2 text-xs text-cyan-400">
+                    Pré-coup : {premove.from} → {premove.to}
                   </div>
                 )}
               </CardContent>
