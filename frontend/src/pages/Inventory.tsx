@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { marketplaceApi, uploadUserImage } from '../services/api';
 import { ImagePicker } from '@/components/ui/image-picker';
-import { Loader2, Palette, Camera, Package } from 'lucide-react';
+import { Loader2, Palette, Camera, Package, Tag } from 'lucide-react';
 import { cn, humanizeUiLabel } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,6 +63,10 @@ export default function Inventory() {
   const [chucking, setChucking] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Clan tag unlock state
+  const [clanTagDialogOpen, setClanTagDialogOpen] = useState(false);
+  const [clanTagItem, setClanTagItem] = useState<UserItem | null>(null);
+
   // Color picker state
   const [colorDialogOpen, setColorDialogOpen] = useState(false);
   const [colorPickerItem, setColorPickerItem] = useState<UserItem | null>(null);
@@ -106,6 +110,13 @@ export default function Inventory() {
     
     const effect = parseEffect(userItem.item.effect);
     
+    // Handle upgrade items
+    if (userItem.item.type === 'UPGRADE' && effect?.type === 'CLAN_TAG_UNLOCK') {
+      setClanTagItem(userItem);
+      setClanTagDialogOpen(true);
+      return;
+    }
+
     // Handle cosmetic items that need user input
     if (userItem.item.type === 'COSMETIC' && effect) {
       if (effect.type === 'USERNAME_COLOR') {
@@ -258,6 +269,24 @@ export default function Inventory() {
     }
   };
 
+  const applyClanTagUnlock = async () => {
+    if (!clanTagItem) return;
+    try {
+      setUsing(clanTagItem.id);
+      setMessage(null);
+      await marketplaceApi.useItem(clanTagItem.id);
+      await fetchInventory();
+      setMessage({ type: 'success', text: 'Tag de clan débloqué ! Configure-le dans les paramètres de ton clan.' });
+      setTimeout(() => setMessage(null), 5000);
+      setClanTagDialogOpen(false);
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.response?.data?.error || 'Échec' });
+    } finally {
+      setUsing(null);
+      setClanTagItem(null);
+    }
+  };
+
   const getEffectIcon = (effect: ItemEffect | null) => {
     if (!effect) return null;
     switch (effect.type) {
@@ -267,6 +296,8 @@ export default function Inventory() {
         return <Camera className="w-4 h-4" />;
       case 'DOODLE_JUMP_SKIN':
         return <Package className="w-4 h-4" />;
+      case 'CLAN_TAG_UNLOCK':
+        return <Tag className="w-4 h-4" />;
       default:
         return null;
     }
@@ -281,6 +312,8 @@ export default function Inventory() {
         return 'Photo de profil';
       case 'DOODLE_JUMP_SKIN':
         return 'Skin Doodle Jump';
+      case 'CLAN_TAG_UNLOCK':
+        return 'Tag de clan';
       case 'BONUS_AURA':
         return `+${effect.value || '?'} aura`;
       case 'BONUS_MONEY':
@@ -404,7 +437,7 @@ export default function Inventory() {
                             )}
                           </Button>
                         </div>
-                      ) : (userItem.item.type === 'CONSUMABLE' || (userItem.item.type === 'COSMETIC' && !isDoodleJumpSkin)) ? (
+                      ) : (userItem.item.type === 'CONSUMABLE' || (userItem.item.type === 'COSMETIC' && !isDoodleJumpSkin) || (userItem.item.type === 'UPGRADE' && parseEffect(userItem.item.effect)?.type === 'CLAN_TAG_UNLOCK')) ? (
                         <Button
                           onClick={() => handleUseItem(userItem)}
                           disabled={using === userItem.id}
@@ -571,6 +604,30 @@ export default function Inventory() {
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : null}
               Appliquer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Clan Tag Unlock Dialog */}
+      <Dialog open={clanTagDialogOpen} onOpenChange={setClanTagDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className={cn(TYPOGRAPHY.H5, "flex items-center gap-2")}>
+              <Tag className="w-5 h-5" />
+              Débloquer le tag de clan
+            </DialogTitle>
+            <DialogDescription>
+              Cela débloquera le tag pour ton clan. Tu pourras ensuite le personnaliser dans les paramètres du clan. Action irréversible.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setClanTagDialogOpen(false)}>
+              Annuler
+            </Button>
+            <Button onClick={applyClanTagUnlock} disabled={using !== null}>
+              {using ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Débloquer
             </Button>
           </DialogFooter>
         </DialogContent>

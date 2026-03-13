@@ -403,6 +403,9 @@ export interface ClanSummary {
     usernameColor: string | null;
     profilePicture: string | null;
   };
+  tagUnlocked: boolean;
+  tagText: string | null;
+  tagStyle: string | null;
 }
 
 export interface ClanMember {
@@ -616,6 +619,8 @@ export const clansApi = {
     api.post(`/clans/${clanId}/requests/${requestId}/reject`),
   removeMember: (clanId: string, userId: string) =>
     api.delete(`/clans/${clanId}/members/${userId}`),
+  updateTag: (id: string, data: { tagText?: string; tagStyle?: object }) =>
+    api.put<{ success: boolean; tagText: string | null; tagStyle: string | null }>(`/clans/${id}/tag`, data),
 };
 
 // Admin API

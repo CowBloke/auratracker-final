@@ -291,6 +291,9 @@ const mapClanSummary = (clan: ClanWithMembers | ClanDetailPayload) => ({
   totalAura: getClanTotalAura(clan),
   createdAt: clan.createdAt,
   leader: clan.owner,
+  tagUnlocked: clan.tagUnlocked,
+  tagText: clan.tagText ?? null,
+  tagStyle: clan.tagStyle ?? null,
 });
 
 const getClanDefenseLevel = (defenses: ClanWarCurrentPayload['defenses'] | ClanWarHistoryPayload['defenses'], clanId: string, type: DefenseType) => {
@@ -1846,6 +1849,45 @@ router.delete('/:id/members/:targetUserId', authMiddleware, async (req: AuthRequ
   } catch (error) {
     console.error('Remove clan member error:', error);
     res.status(500).json({ error: 'Failed to remove member' });
+  }
+});
+
+// Update clan tag text and style (leader only, requires tagUnlocked)
+router.put('/:id/tag', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+
+    const membership = await getClanMembership(id, userId);
+    if (!membership) return res.status(403).json({ error: 'Not a member' });
+    if (!membership.isLeader) return res.status(403).json({ error: 'Seul le chef peut modifier le tag.' });
+
+    const clan = await prisma.clan.findUnique({ where: { id }, select: { tagUnlocked: true } });
+    if (!clan) return res.status(404).json({ error: 'Clan not found' });
+    if (!clan.tagUnlocked) return res.status(400).json({ error: 'Tag non débloqué pour ce clan.' });
+
+    const { tagText, tagStyle } = req.body;
+
+    if (tagText !== undefined) {
+      const text = typeof tagText === 'string' ? tagText.trim() : '';
+      if (text.length < 1 || text.length > 6) {
+        return res.status(400).json({ error: 'Le tag doit contenir entre 1 et 6 caractères.' });
+      }
+    }
+
+    const updated = await prisma.clan.update({
+      where: { id },
+      data: {
+        tagText: tagText !== undefined ? (tagText as string).trim() : undefined,
+        tagStyle: tagStyle !== undefined ? JSON.stringify(tagStyle) : undefined,
+      },
+    });
+
+    res.json({ success: true, tagText: updated.tagText, tagStyle: updated.tagStyle });
+  } catch (error) {
+    console.error('Update clan tag error:', error);
+    res.status(500).json({ error: 'Failed to update clan tag' });
   }
 });
 

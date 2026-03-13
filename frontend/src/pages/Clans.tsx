@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Axe, Check, Crown, Loader2, LogOut, Plus, Send, Shield, Sparkles, Swords, Target, UserX, X } from 'lucide-react';
+import { AlertTriangle, Axe, Check, Crown, Loader2, LogOut, Plus, Send, Shield, Sparkles, Swords, Tag, Target, UserX, X } from 'lucide-react';
 import {
   ClanChatMessage,
   ClanDetail,
@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { UsernameDisplay } from '@/components/ui/username-display';
+import { ClanTag, ClanTagStyle, DEFAULT_CLAN_TAG_STYLE, parseClanTagStyle } from '@/components/clans/ClanTag';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { SPACING, TYPOGRAPHY } from '@/lib/design-system';
@@ -181,6 +182,13 @@ const DefenseCard = ({
   </Card>
 );
 
+const TAG_PRESET_COLORS = [
+  '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16',
+  '#22c55e', '#10b981', '#06b6d4', '#3b82f6', '#6366f1',
+  '#8b5cf6', '#d946ef', '#ec4899', '#ffffff', '#e5e7eb',
+  '#a1a1aa', '#374151', '#1f2937', '#111827', '#000000',
+];
+
 export default function Clans() {
   const { user } = useAuth();
   const [clans, setClans] = useState<ClanSummary[]>([]);
@@ -205,6 +213,11 @@ export default function Clans() {
   const [imageUrl, setImageUrl] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Tag editor state
+  const [tagText, setTagText] = useState('');
+  const [tagStyle, setTagStyle] = useState<ClanTagStyle>(DEFAULT_CLAN_TAG_STYLE);
+  const [savingTag, setSavingTag] = useState(false);
+
   useEffect(() => {
     void fetchClans();
   }, []);
@@ -219,6 +232,13 @@ export default function Clans() {
     if (!selectedClanId) return;
     void fetchClanDetail(selectedClanId);
   }, [selectedClanId]);
+
+  useEffect(() => {
+    if (selectedClan?.tagUnlocked) {
+      setTagText(selectedClan.tagText ?? '');
+      setTagStyle(parseClanTagStyle(selectedClan.tagStyle));
+    }
+  }, [selectedClan?.id]);
 
   useEffect(() => {
     if (!selectedClanId || !selectedClan?.viewer.isMember) {
@@ -269,6 +289,20 @@ export default function Clans() {
     });
     const res = await uploadUserImage({ base64Data, mimeType: file.type });
     return res.data.imageUrl;
+  };
+
+  const saveTag = async () => {
+    if (!selectedClan) return;
+    try {
+      setSavingTag(true);
+      await clansApi.updateTag(selectedClan.id, { tagText: tagText.trim(), tagStyle });
+      await fetchClanDetail(selectedClan.id);
+      toast({ title: 'Tag sauvegardé' });
+    } catch (error: any) {
+      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de sauvegarder.', variant: 'destructive' });
+    } finally {
+      setSavingTag(false);
+    }
   };
 
   const fetchClans = async () => {
@@ -1067,7 +1101,11 @@ export default function Clans() {
                               </Avatar>
                               <div>
                                 <div className="flex items-center gap-2">
-                                  <UsernameDisplay username={member.username} usernameColor={member.usernameColor} />
+                                  <UsernameDisplay
+                                    username={member.username}
+                                    usernameColor={member.usernameColor}
+                                    clanTag={selectedClan.tagUnlocked && selectedClan.tagText ? { text: selectedClan.tagText, style: parseClanTagStyle(selectedClan.tagStyle) } : null}
+                                  />
                                   {member.isLeader ? <Crown className="h-4 w-4 text-amber-500" /> : null}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
@@ -1092,6 +1130,174 @@ export default function Clans() {
                     </Card>
 
                     <div className="space-y-6">
+                      {selectedClan.viewer.isLeader ? (
+                        <Card className={panelClassName}>
+                          <CardContent className="space-y-4 p-4">
+                            <SectionTitle
+                              title="Tag du clan"
+                              description={selectedClan.tagUnlocked ? 'Personnalise le tag affiché après les noms des membres.' : 'Débloque le tag dans le shop pour le personnaliser.'}
+                            />
+                            {!selectedClan.tagUnlocked ? (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Tag className="h-4 w-4" />
+                                <span>Non débloqué — disponible dans la boutique.</span>
+                              </div>
+                            ) : (
+                              <div className="space-y-4">
+                                {/* Preview */}
+                                <div className="flex items-center gap-2 rounded-lg bg-muted/30 p-3">
+                                  <span className="text-sm text-muted-foreground">Aperçu :</span>
+                                  <span className="font-medium">Nom</span>
+                                  {tagText.trim() ? (
+                                    <ClanTag tag={{ text: tagText.trim(), style: tagStyle }} />
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground italic">aucun texte</span>
+                                  )}
+                                </div>
+
+                                {/* Tag text */}
+                                <div className="space-y-1">
+                                  <label className="text-xs font-medium text-muted-foreground">Texte (1–6 caractères)</label>
+                                  <Input
+                                    value={tagText}
+                                    onChange={(e) => setTagText(e.target.value.slice(0, 6))}
+                                    maxLength={6}
+                                    placeholder="OG"
+                                    className="w-28 font-mono"
+                                  />
+                                </div>
+
+                                {/* Background type */}
+                                <div className="space-y-1">
+                                  <label className="text-xs font-medium text-muted-foreground">Fond</label>
+                                  <div className="flex gap-2">
+                                    {(['solid', 'gradient'] as const).map((type) => (
+                                      <Button
+                                        key={type}
+                                        size="sm"
+                                        variant={tagStyle.backgroundType === type ? 'default' : 'outline'}
+                                        onClick={() => setTagStyle((s) => ({ ...s, backgroundType: type }))}
+                                      >
+                                        {type === 'solid' ? 'Uni' : 'Dégradé'}
+                                      </Button>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* Background color */}
+                                {tagStyle.backgroundType === 'solid' ? (
+                                  <div className="space-y-1">
+                                    <label className="text-xs font-medium text-muted-foreground">Couleur de fond</label>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {TAG_PRESET_COLORS.map((c) => (
+                                        <button
+                                          key={c}
+                                          onClick={() => setTagStyle((s) => ({ ...s, backgroundColor: c }))}
+                                          className={cn(
+                                            'h-5 w-5 rounded-full border-2 transition-transform hover:scale-110',
+                                            tagStyle.backgroundColor === c ? 'border-foreground scale-110' : 'border-transparent',
+                                          )}
+                                          style={{ backgroundColor: c }}
+                                        />
+                                      ))}
+                                      <input
+                                        type="color"
+                                        value={tagStyle.backgroundColor}
+                                        onChange={(e) => setTagStyle((s) => ({ ...s, backgroundColor: e.target.value }))}
+                                        className="h-5 w-5 cursor-pointer rounded border p-0"
+                                      />
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-1">
+                                    <label className="text-xs font-medium text-muted-foreground">Couleurs du dégradé</label>
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="color"
+                                        value={(() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}').from ?? '#374151'; } catch { return '#374151'; } })()}
+                                        onChange={(e) => {
+                                          const cur = (() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}'); } catch { return { from: '#374151', to: '#6366f1', direction: 'to right' }; } })();
+                                          setTagStyle((s) => ({ ...s, backgroundGradient: JSON.stringify({ ...cur, from: e.target.value }) }));
+                                        }}
+                                        className="h-6 w-6 cursor-pointer rounded border p-0"
+                                      />
+                                      <span className="text-xs text-muted-foreground">→</span>
+                                      <input
+                                        type="color"
+                                        value={(() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}').to ?? '#6366f1'; } catch { return '#6366f1'; } })()}
+                                        onChange={(e) => {
+                                          const cur = (() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}'); } catch { return { from: '#374151', to: '#6366f1', direction: 'to right' }; } })();
+                                          setTagStyle((s) => ({ ...s, backgroundGradient: JSON.stringify({ ...cur, to: e.target.value }) }));
+                                        }}
+                                        className="h-6 w-6 cursor-pointer rounded border p-0"
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Text color */}
+                                <div className="space-y-1">
+                                  <label className="text-xs font-medium text-muted-foreground">Couleur du texte</label>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {TAG_PRESET_COLORS.map((c) => (
+                                      <button
+                                        key={c}
+                                        onClick={() => setTagStyle((s) => ({ ...s, textColor: c }))}
+                                        className={cn(
+                                          'h-5 w-5 rounded-full border-2 transition-transform hover:scale-110',
+                                          tagStyle.textColor === c ? 'border-foreground scale-110' : 'border-transparent',
+                                        )}
+                                        style={{ backgroundColor: c }}
+                                      />
+                                    ))}
+                                    <input
+                                      type="color"
+                                      value={tagStyle.textColor}
+                                      onChange={(e) => setTagStyle((s) => ({ ...s, textColor: e.target.value }))}
+                                      className="h-5 w-5 cursor-pointer rounded border p-0"
+                                    />
+                                  </div>
+                                </div>
+
+                                {/* Border color */}
+                                <div className="space-y-1">
+                                  <label className="text-xs font-medium text-muted-foreground">Couleur de bordure</label>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {TAG_PRESET_COLORS.map((c) => (
+                                      <button
+                                        key={c}
+                                        onClick={() => setTagStyle((s) => ({ ...s, borderColor: c }))}
+                                        className={cn(
+                                          'h-5 w-5 rounded-full border-2 transition-transform hover:scale-110',
+                                          tagStyle.borderColor === c ? 'border-foreground scale-110' : 'border-transparent',
+                                        )}
+                                        style={{ backgroundColor: c }}
+                                      />
+                                    ))}
+                                    <input
+                                      type="color"
+                                      value={tagStyle.borderColor}
+                                      onChange={(e) => setTagStyle((s) => ({ ...s, borderColor: e.target.value }))}
+                                      className="h-5 w-5 cursor-pointer rounded border p-0"
+                                    />
+                                  </div>
+                                </div>
+
+                                <Button
+                                  onClick={saveTag}
+                                  disabled={savingTag || !tagText.trim()}
+                                  size="sm"
+                                  className="w-full"
+                                >
+                                  {savingTag ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                  Sauvegarder
+                                </Button>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ) : null}
+
                       {selectedClan.viewer.isLeader && selectedClan.joinRequests.length > 0 ? (
                         <Card className={panelClassName}>
                           <CardContent className="space-y-3 p-4">

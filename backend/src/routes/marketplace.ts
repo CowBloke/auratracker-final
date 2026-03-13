@@ -343,6 +343,39 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
       });
     }
     
+    // UPGRADE items
+    if (userItem.item.type === 'UPGRADE' && effect) {
+      if (effect.type === 'CLAN_TAG_UNLOCK') {
+        const membership = await prisma.clanMember.findUnique({
+          where: { userId: req.user.id },
+          select: { clanId: true, isLeader: true },
+        });
+
+        if (!membership) {
+          return res.status(400).json({ error: 'Tu n\'es pas dans un clan.' });
+        }
+        if (!membership.isLeader) {
+          return res.status(400).json({ error: 'Seul le chef de clan peut débloquer un tag.' });
+        }
+
+        const clan = await prisma.clan.findUnique({ where: { id: membership.clanId }, select: { tagUnlocked: true } });
+        if (clan?.tagUnlocked) {
+          return res.status(400).json({ error: 'Le tag est déjà débloqué pour ce clan.' });
+        }
+
+        await prisma.$transaction(async (tx) => {
+          await tx.clan.update({ where: { id: membership.clanId }, data: { tagUnlocked: true } });
+          if (userItem.quantity > 1) {
+            await tx.userItem.update({ where: { id: userItemId }, data: { quantity: { decrement: 1 } } });
+          } else {
+            await tx.userItem.delete({ where: { id: userItemId } });
+          }
+        });
+
+        return res.json({ success: true, effect: { type: 'CLAN_TAG_UNLOCK' } });
+      }
+    }
+
     // Other item types
     res.json({
       success: true,

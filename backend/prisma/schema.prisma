@@ -264,6 +264,9 @@ model Clan {
   isPublic    Boolean  @default(true)
   maxMembers  Int      @default(5)
   ownerId     String
+  tagUnlocked Boolean  @default(false)
+  tagText     String?
+  tagStyle    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

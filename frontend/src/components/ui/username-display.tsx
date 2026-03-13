@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { ClanTag, ClanTagData } from '@/components/clans/ClanTag';
 
 interface UsernameDisplayProps {
   username: string;
@@ -7,6 +8,7 @@ interface UsernameDisplayProps {
   className?: string;
   usernameClassName?: string;
   labelClassName?: string;
+  clanTag?: ClanTagData | null;
   /** @deprecated label is now driven by firstName prop */
   showLabel?: boolean;
 }
@@ -18,6 +20,7 @@ export function UsernameDisplay({
   className,
   usernameClassName,
   labelClassName,
+  clanTag,
 }: UsernameDisplayProps) {
   const label = firstName?.trim() || null;
   return (
@@ -28,6 +31,7 @@ export function UsernameDisplay({
       >
         {username}
       </span>
+      {clanTag ? <ClanTag tag={clanTag} /> : null}
       {label ? (
         <span className={cn('shrink-0 text-[10px] text-muted-foreground', labelClassName)}>
           {' '}{label}
