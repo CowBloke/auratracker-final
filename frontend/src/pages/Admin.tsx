@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
@@ -405,6 +406,15 @@ export default function Admin() {
   const [updatingRoleUserId, setUpdatingRoleUserId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [mutingUser, setMutingUser] = useState<string | null>(null);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editModalUser, setEditModalUser] = useState<AdminUser | null>(null);
+  const [badgeModalOpen, setBadgeModalOpen] = useState(false);
+  const [badgeModalUserId, setBadgeModalUserId] = useState('');
+  const [badgeModalBadgeId, setBadgeModalBadgeId] = useState('');
+  const [badgeModalReason, setBadgeModalReason] = useState('');
+  const [massDeleteOpen, setMassDeleteOpen] = useState(false);
+  const [massBanTargetIds, setMassBanTargetIds] = useState<string[]>([]);
   const [clearingChat, setClearingChat] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [activeTab, setActiveTab] = useState<'inbox' | 'users' | 'clubs' | 'logs' | 'bans' | 'content' | 'communication' | 'settings' | 'activity' | 'badges'>('inbox');
@@ -1638,14 +1648,19 @@ export default function Admin() {
 
     setCreatingBan(true);
     try {
-      await adminApi.createBan({
-        userId: banUserId,
-        reason: banReason,
-        type: banType,
-        durationHours: banType === 'TEMPORARY' ? banDuration : undefined,
-      });
-      showMessage('success', 'Utilisateur banni avec succès');
+      const targetIds = massBanTargetIds.length > 0 ? massBanTargetIds : [banUserId];
+      for (const uid of targetIds) {
+        await adminApi.createBan({
+          userId: uid,
+          reason: banReason,
+          type: banType,
+          durationHours: banType === 'TEMPORARY' ? banDuration : undefined,
+        });
+      }
+      showMessage('success', massBanTargetIds.length > 0 ? `${massBanTargetIds.length} utilisateur(s) bannis` : 'Utilisateur banni avec succès');
       setBanDialogOpen(false);
+      setMassBanTargetIds([]);
+      if (massBanTargetIds.length > 0) setSelectedUserIds([]);
       fetchBans();
       fetchUsers();
     } catch (error: any) {
@@ -1991,6 +2006,7 @@ export default function Admin() {
 
   const startEditing = (u: AdminUser) => {
     setEditingUser(u.id);
+    setEditModalUser(u);
     setEditValues({
       username: u.username,
       firstName: u.firstName || '',
@@ -2000,10 +2016,13 @@ export default function Admin() {
       dailyAuraLimit: u.dailyAuraLimit,
     });
     setEditPassword('');
+    setEditModalOpen(true);
   };
 
   const cancelEditing = () => {
     setEditingUser(null);
+    setEditModalUser(null);
+    setEditModalOpen(false);
     setEditPassword('');
   };
 
@@ -2017,6 +2036,8 @@ export default function Admin() {
       const res = await adminApi.updateUser(id, payload);
       setUsers(prev => prev.map(u => u.id === id ? res.data.user : u));
       setEditingUser(null);
+      setEditModalUser(null);
+      setEditModalOpen(false);
       setEditPassword('');
       showMessage('success', 'Utilisateur mis à jour');
     } catch (error: any) {
@@ -2024,6 +2045,70 @@ export default function Admin() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const openBadgeModal = (userId: string) => {
+    setBadgeModalUserId(userId);
+    setBadgeModalBadgeId('');
+    setBadgeModalReason('');
+    setBadgeModalOpen(true);
+  };
+
+  const handleBadgeModalAward = async () => {
+    if (!badgeModalBadgeId) return;
+    const targetIds = badgeModalUserId ? [badgeModalUserId] : selectedUserIds;
+    try {
+      for (const uid of targetIds) {
+        await badgesApi.award({ userId: uid, badgeId: badgeModalBadgeId, reason: badgeModalReason || undefined });
+      }
+      showMessage('success', `Badge attribué à ${targetIds.length} utilisateur(s)`);
+      setBadgeModalOpen(false);
+      setBadgeModalUserId('');
+      setBadgeModalBadgeId('');
+      setBadgeModalReason('');
+      if (!badgeModalUserId) setSelectedUserIds([]);
+    } catch {
+      showMessage('error', 'Erreur lors de l\'attribution du badge');
+    }
+  };
+
+  const massMuteUsers = async () => {
+    try {
+      for (const uid of selectedUserIds) {
+        const u = users.find(usr => usr.id === uid);
+        if (u && !u.isChatMuted) {
+          const res = await adminApi.updateUser(uid, { isChatMuted: true });
+          setUsers(prev => prev.map(usr => usr.id === uid ? res.data.user : usr));
+        }
+      }
+      showMessage('success', `${selectedUserIds.length} utilisateur(s) muté(s)`);
+      setSelectedUserIds([]);
+    } catch {
+      showMessage('error', 'Erreur lors du mute en masse');
+    }
+  };
+
+  const massDeleteUsers = async () => {
+    const ids = [...selectedUserIds];
+    try {
+      for (const uid of ids) {
+        await adminApi.deleteUser(uid);
+        setUsers(prev => prev.filter(u => u.id !== uid));
+      }
+      showMessage('success', `${ids.length} utilisateur(s) supprimé(s)`);
+      setSelectedUserIds([]);
+      setMassDeleteOpen(false);
+    } catch {
+      showMessage('error', 'Erreur lors de la suppression en masse');
+    }
+  };
+
+  const openMassBanDialog = () => {
+    setMassBanTargetIds([...selectedUserIds]);
+    setBanReason('');
+    setBanType('TEMPORARY');
+    setBanDuration(24);
+    setBanDialogOpen(true);
   };
 
   const updateUserRole = async (targetUser: AdminUser, role: AdminRole) => {
@@ -2713,15 +2798,46 @@ export default function Admin() {
           <Card>
             <CardHeader>
               {/* Search Bar */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Rechercher par pseudo ou prénom..."
-                  value={userSearchQuery}
-                  onChange={(e) => setUserSearchQuery(e.target.value)}
-                  className="pl-9 bg-transparent border-border/50 h-9"
-                />
+              <div className="flex items-center gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Rechercher par pseudo ou prénom..."
+                    value={userSearchQuery}
+                    onChange={(e) => setUserSearchQuery(e.target.value)}
+                    className="pl-9 bg-transparent border-border/50 h-9"
+                  />
+                </div>
+                {selectedUserIds.length > 0 && (
+                  <Button size="sm" variant="outline" onClick={() => setSelectedUserIds([])} className="h-9 border-border/50 shrink-0">
+                    <X className="h-4 w-4 mr-1" />
+                    Annuler ({selectedUserIds.length})
+                  </Button>
+                )}
               </div>
+
+              {/* Bulk action bar */}
+              {selectedUserIds.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 pt-3 mt-1 border-t border-border/30">
+                  <span className="text-xs text-muted-foreground">{selectedUserIds.length} sélectionné(s) :</span>
+                  <Button size="sm" onClick={() => openBadgeModal('')} className="h-7 bg-violet-600 hover:bg-violet-700 text-white text-xs gap-1.5">
+                    <Award className="h-3.5 w-3.5" />
+                    Badge
+                  </Button>
+                  <Button size="sm" onClick={massMuteUsers} className="h-7 bg-amber-600 hover:bg-amber-700 text-white text-xs gap-1.5">
+                    <ShieldOff className="h-3.5 w-3.5" />
+                    Mute
+                  </Button>
+                  <Button size="sm" onClick={openMassBanDialog} className="h-7 bg-orange-600 hover:bg-orange-700 text-white text-xs gap-1.5">
+                    <BanIcon className="h-3.5 w-3.5" />
+                    Bannir
+                  </Button>
+                  <Button size="sm" onClick={() => setMassDeleteOpen(true)} className="h-7 bg-destructive hover:bg-destructive/90 text-white text-xs gap-1.5">
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Supprimer
+                  </Button>
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -2730,277 +2846,209 @@ export default function Admin() {
                 </div>
               ) : (() => {
                 const filteredUsers = userSearchQuery.trim()
-                  ? users.filter(u => 
+                  ? users.filter(u =>
                       u.username.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
                       (u.firstName || '').toLowerCase().includes(userSearchQuery.toLowerCase())
                     )
                   : users;
-                
+
+                const selectableUsers = filteredUsers.filter(u => !u.isSuperAdmin && u.id !== user?.id);
+                const allSelected = selectableUsers.length > 0 && selectableUsers.every(u => selectedUserIds.includes(u.id));
+
                 return filteredUsers.length === 0 ? (
                   <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
                     {userSearchQuery.trim() ? 'Aucun utilisateur trouvé' : 'Aucun utilisateur'}
                   </p>
                 ) : (
                   <div className="divide-y divide-border/30">
-                    {filteredUsers.map((u) => (
-                    <div
-                      key={u.id}
-                      className={cn(
-                        "py-4",
-                        u.isSuperAdmin ? "bg-amber-500/10" : u.isAdmin ? "bg-muted/20" : undefined
-                      )}
-                    >
-                  {editingUser === u.id ? (
-                    // Edit mode
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="font-medium">{u.username}</span>
-                          {u.isAdmin && (
-                            <span className={cn("ml-2 text-xs", u.isSuperAdmin ? "text-amber-400" : "text-amber-500")}>
-                              {u.isSuperAdmin ? 'super admin' : 'admin'}
-                            </span>
-                          )}
-                          <p className="text-xs text-muted-foreground">{u.email}</p>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={cancelEditing}
-                            className="h-8 border-border/50"
-                          >
-                            Annuler
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => saveUser(u.id)}
-                            disabled={saving}
-                            className="h-8"
-                          >
-                            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-1">
-                        <label className="text-xs text-muted-foreground">Pseudo</label>
-                        <Input
-                          type="text"
-                          value={editValues.username}
-                          onChange={(e) => setEditValues(prev => ({ ...prev, username: e.target.value }))}
-                          className="h-9 bg-transparent border-border/50"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-xs text-muted-foreground">Prénom</label>
-                        <Input
-                          type="text"
-                          value={editValues.firstName}
-                          onChange={(e) => setEditValues(prev => ({ ...prev, firstName: e.target.value }))}
-                          className="h-9 bg-transparent border-border/50"
-                          placeholder="Non défini"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-4 gap-4">
-                        <div className="space-y-1">
-                          <label className="text-xs text-muted-foreground">Aura</label>
-                          <Input
-                            type="number"
-                            value={editValues.aura}
-                            onChange={(e) => setEditValues(prev => ({ ...prev, aura: parseInt(e.target.value) || 0 }))}
-                            className="h-9 bg-transparent border-border/50"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs text-muted-foreground">Argent</label>
-                          <Input
-                            type="number"
-                            value={editValues.money}
-                            onChange={(e) => setEditValues(prev => ({ ...prev, money: parseInt(e.target.value) || 0 }))}
-                            className="h-9 bg-transparent border-border/50"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs text-muted-foreground">Aura Coin</label>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={editValues.auraCoinBalance}
-                            onChange={(e) => setEditValues(prev => ({ ...prev, auraCoinBalance: parseFloat(e.target.value) || 0 }))}
-                            className="h-9 bg-transparent border-border/50"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs text-muted-foreground">Limite aura/jour</label>
-                          <Input
-                            type="number"
-                            value={editValues.dailyAuraLimit}
-                            onChange={(e) => setEditValues(prev => ({ ...prev, dailyAuraLimit: parseInt(e.target.value) || 0 }))}
-                            className="h-9 bg-transparent border-border/50"
-                            min={0}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-xs text-muted-foreground">Nouveau mot de passe</label>
-                        <Input
-                          type="password"
-                          value={editPassword}
-                          onChange={(e) => setEditPassword(e.target.value)}
-                          className="h-9 bg-transparent border-border/50"
-                          placeholder="Laisser vide pour ne pas changer"
-                        />
-                      </div>
+                    {/* Select-all header row */}
+                    <div className="flex items-center gap-3 py-2">
+                      <Checkbox
+                        checked={allSelected ? true : selectedUserIds.length > 0 ? 'indeterminate' : false}
+                        onCheckedChange={(checked) => {
+                          if (checked) setSelectedUserIds(selectableUsers.map(u => u.id));
+                          else setSelectedUserIds([]);
+                        }}
+                      />
+                      <span className="text-xs text-muted-foreground">Tout sélectionner ({selectableUsers.length})</span>
                     </div>
-                  ) : (
-                    // Display mode
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-6 min-w-0">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium truncate">{u.username}</span>
-                            <Select
-                              value={getAdminRole(u)}
-                              onValueChange={(value) => void updateUserRole(u, value as AdminRole)}
-                              disabled={updatingRoleUserId === u.id || user?.id === u.id}
-                            >
-                              <SelectTrigger className="h-7 w-[140px] border-border/50 bg-transparent text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="USER">{ROLE_LABELS.USER}</SelectItem>
-                                <SelectItem value="ADMIN">{ROLE_LABELS.ADMIN}</SelectItem>
-                                <SelectItem value="SUPER_ADMIN">{ROLE_LABELS.SUPER_ADMIN}</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            {u.isChatMuted && (
-                              <span className="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-400">
-                                muet
-                              </span>
+
+                    {filteredUsers.map((u) => (
+                      <div
+                        key={u.id}
+                        className={cn(
+                          "py-3",
+                          u.isSuperAdmin ? "bg-amber-500/10" : u.isAdmin ? "bg-muted/20" : undefined
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          {/* Checkbox */}
+                          <div className="w-4 shrink-0">
+                            {!u.isSuperAdmin && u.id !== user?.id && (
+                              <Checkbox
+                                checked={selectedUserIds.includes(u.id)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) setSelectedUserIds(prev => [...prev, u.id]);
+                                  else setSelectedUserIds(prev => prev.filter(id => id !== u.id));
+                                }}
+                              />
                             )}
                           </div>
-                          <p className="text-xs text-muted-foreground truncate">{u.email}</p>
-                          <p className="text-xs text-muted-foreground/80 truncate">
-                            Prénom: {u.firstName ? u.firstName : 'Non défini'}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-6">
-                        <div className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
-                          <div className="text-right">
-                            <p className="tabular-nums">{u.aura.toLocaleString()} aura</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="tabular-nums">${u.money.toLocaleString()}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="tabular-nums">{u.auraCoinBalance.toFixed(2)} AuraCoin</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="tabular-nums">{u.dailyAuraGiven}/{u.dailyAuraLimit} donné</p>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => startEditing(u)}
-                            className="h-8 border-border/50"
-                          >
-                            Modifier
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => openInventory(u)}
-                            className="h-8 border-border/50"
-                          >
-                            <Package className="h-4 w-4 mr-1" />
-                            Inventaire
-                          </Button>
 
-                          {getAdminRole(u) === 'USER' && (
+                          {/* User info — compact single-line */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                              <span className="font-medium text-sm">{u.username}</span>
+                              {u.firstName && (
+                                <span className="text-xs text-muted-foreground/70">({u.firstName})</span>
+                              )}
+                              <span className="text-muted-foreground/30 text-xs select-none">·</span>
+                              <span className="text-xs text-muted-foreground/60 truncate">{u.email}</span>
+                              {u.isSuperAdmin ? (
+                                <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-medium shrink-0">
+                                  <Crown className="h-2.5 w-2.5" />super admin
+                                </span>
+                              ) : u.isAdmin ? (
+                                <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 shrink-0">
+                                  <Shield className="h-2.5 w-2.5" />admin
+                                </span>
+                              ) : null}
+                              {u.isChatMuted && (
+                                <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 shrink-0">muet</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Stats */}
+                          <div className="hidden xl:flex items-center gap-1.5 shrink-0">
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-purple-500/15 text-purple-400 text-xs tabular-nums font-medium">
+                              <TrendingUp className="h-3 w-3" />
+                              {u.aura.toLocaleString()}
+                            </span>
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-500/15 text-green-400 text-xs tabular-nums font-medium">
+                              <Coins className="h-3 w-3" />
+                              {u.money.toLocaleString()}
+                            </span>
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted/60 text-muted-foreground text-xs tabular-nums">
+                              <CalendarRange className="h-3 w-3" />
+                              {u.dailyAuraGiven}/{u.dailyAuraLimit}
+                            </span>
+                          </div>
+
+                          {/* Action buttons */}
+                          <div className="flex items-center gap-1 shrink-0">
+                            {/* Edit */}
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => toggleChatMute(u)}
-                              disabled={mutingUser === u.id}
-                              className={cn(
-                                "h-8 border-border/50",
-                                u.isChatMuted && "border-amber-500/50 text-amber-500 hover:bg-amber-500/10"
-                              )}
+                              onClick={() => startEditing(u)}
+                              className="h-8 w-8 p-0 border-blue-500/50 text-blue-400 hover:bg-blue-500/10"
+                              title="Modifier"
                             >
-                              {mutingUser === u.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <>
-                                  <ShieldOff className="h-4 w-4 mr-1" />
-                                  {u.isChatMuted ? 'Démute' : 'Mute'}
-                                </>
-                              )}
+                              <Edit2 className="h-3.5 w-3.5" />
                             </Button>
-                          )}
 
-                          {getAdminRole(u) === 'USER' && (
+                            {/* Inventory */}
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => openBanDialog(u.id)}
-                              className="h-8 border-amber-500/50 text-amber-500 hover:bg-amber-500/10"
+                              onClick={() => openInventory(u)}
+                              className="h-8 w-8 p-0 border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
+                              title="Inventaire"
                             >
-                              <BanIcon className="h-4 w-4" />
+                              <Package className="h-3.5 w-3.5" />
                             </Button>
-                          )}
 
-                          {getAdminRole(u) === 'USER' && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10"
-                                  disabled={deleting === u.id}
-                                >
-                                  {deleting === u.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Trash2 className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle className="flex items-center gap-2">
-                                    <AlertTriangle className="h-5 w-5 text-destructive" />
-                                    Supprimer {u.username} ?
-                                  </AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Cette action est irréversible. Toutes les données de l'utilisateur seront définitivement supprimées (messages, transferts, statistiques, inventaire, etc.).
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => deleteUser(u.id)}
-                                    className="bg-destructive hover:bg-destructive/90"
+                            {/* Badge */}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openBadgeModal(u.id)}
+                              className="h-8 w-8 p-0 border-violet-500/50 text-violet-400 hover:bg-violet-500/10"
+                              title="Attribuer badge"
+                            >
+                              <Award className="h-3.5 w-3.5" />
+                            </Button>
+
+                            {/* Mute */}
+                            {getAdminRole(u) === 'USER' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => toggleChatMute(u)}
+                                disabled={mutingUser === u.id}
+                                title={u.isChatMuted ? 'Démuter' : 'Muter'}
+                                className={cn(
+                                  "h-8 w-8 p-0",
+                                  u.isChatMuted
+                                    ? "border-amber-500/50 text-amber-400 bg-amber-500/10 hover:bg-amber-500/20"
+                                    : "border-amber-500/50 text-amber-400 hover:bg-amber-500/10"
+                                )}
+                              >
+                                {mutingUser === u.id ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <ShieldOff className="h-3.5 w-3.5" />
+                                )}
+                              </Button>
+                            )}
+
+                            {/* Ban */}
+                            {getAdminRole(u) === 'USER' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openBanDialog(u.id)}
+                                className="h-8 w-8 p-0 border-orange-500/50 text-orange-400 hover:bg-orange-500/10"
+                                title="Bannir"
+                              >
+                                <BanIcon className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+
+                            {/* Delete */}
+                            {getAdminRole(u) === 'USER' && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 w-8 p-0 border-destructive/50 text-destructive hover:bg-destructive/10"
+                                    disabled={deleting === u.id}
+                                    title="Supprimer"
                                   >
-                                    Supprimer
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          )}
+                                    {deleting === u.id ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    )}
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle className="flex items-center gap-2">
+                                      <AlertTriangle className="h-5 w-5 text-destructive" />
+                                      Supprimer {u.username} ?
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Cette action est irréversible. Toutes les données de l'utilisateur seront définitivement supprimées (messages, transferts, statistiques, inventaire, etc.).
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => deleteUser(u.id)}
+                                      className="bg-destructive hover:bg-destructive/90"
+                                    >
+                                      Supprimer
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
-                </div>
                     ))}
                   </div>
                 );
@@ -4793,6 +4841,172 @@ export default function Admin() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit User Modal */}
+      <Dialog open={editModalOpen} onOpenChange={(open) => { if (!open) cancelEditing(); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Modifier {editModalUser?.username}</DialogTitle>
+            <DialogDescription>{editModalUser?.email}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            {/* Identity */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-blue-400 flex items-center gap-1"><UserCog className="h-3 w-3" />Pseudo</label>
+                <div className="relative">
+                  <UserCog className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-blue-400/60 pointer-events-none" />
+                  <Input type="text" value={editValues.username} onChange={(e) => setEditValues(prev => ({ ...prev, username: e.target.value }))} className="h-9 bg-transparent border-blue-500/30 focus-visible:ring-blue-500/30 pl-8" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-blue-400 flex items-center gap-1"><Users className="h-3 w-3" />Prénom</label>
+                <div className="relative">
+                  <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-blue-400/60 pointer-events-none" />
+                  <Input type="text" value={editValues.firstName} onChange={(e) => setEditValues(prev => ({ ...prev, firstName: e.target.value }))} className="h-9 bg-transparent border-blue-500/30 focus-visible:ring-blue-500/30 pl-8" placeholder="Non défini" />
+                </div>
+              </div>
+            </div>
+
+            {/* Role */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-amber-400 flex items-center gap-1"><Shield className="h-3 w-3" />Rôle</label>
+              <Select
+                value={editModalUser ? getAdminRole(editModalUser) : 'USER'}
+                onValueChange={(value) => editModalUser && void updateUserRole(editModalUser, value as AdminRole)}
+                disabled={updatingRoleUserId === editModalUser?.id || user?.id === editModalUser?.id}
+              >
+                <SelectTrigger className="h-9 border-amber-500/30 bg-transparent">
+                  <Shield className="h-3.5 w-3.5 text-amber-400/60 mr-2" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USER">{ROLE_LABELS.USER}</SelectItem>
+                  <SelectItem value="ADMIN">{ROLE_LABELS.ADMIN}</SelectItem>
+                  <SelectItem value="SUPER_ADMIN">{ROLE_LABELS.SUPER_ADMIN}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Economy */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-purple-400 flex items-center gap-1"><TrendingUp className="h-3 w-3" />Aura</label>
+                <div className="relative">
+                  <TrendingUp className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-purple-400/60 pointer-events-none" />
+                  <Input type="number" value={editValues.aura} onChange={(e) => setEditValues(prev => ({ ...prev, aura: parseInt(e.target.value) || 0 }))} className="h-9 bg-transparent border-purple-500/30 focus-visible:ring-purple-500/30 pl-8" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-green-400 flex items-center gap-1"><Coins className="h-3 w-3" />Argent</label>
+                <div className="relative">
+                  <Coins className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-green-400/60 pointer-events-none" />
+                  <Input type="number" value={editValues.money} onChange={(e) => setEditValues(prev => ({ ...prev, money: parseInt(e.target.value) || 0 }))} className="h-9 bg-transparent border-green-500/30 focus-visible:ring-green-500/30 pl-8" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-yellow-400 flex items-center gap-1"><Coins className="h-3 w-3" />AuraCoin</label>
+                <div className="relative">
+                  <Coins className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-yellow-400/60 pointer-events-none" />
+                  <Input type="number" step="0.01" value={editValues.auraCoinBalance} onChange={(e) => setEditValues(prev => ({ ...prev, auraCoinBalance: parseFloat(e.target.value) || 0 }))} className="h-9 bg-transparent border-yellow-500/30 focus-visible:ring-yellow-500/30 pl-8" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-slate-400 flex items-center gap-1"><CalendarRange className="h-3 w-3" />Limite/jour</label>
+                <div className="relative">
+                  <CalendarRange className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400/60 pointer-events-none" />
+                  <Input type="number" value={editValues.dailyAuraLimit} onChange={(e) => setEditValues(prev => ({ ...prev, dailyAuraLimit: parseInt(e.target.value) || 0 }))} className="h-9 bg-transparent border-slate-500/30 focus-visible:ring-slate-500/30 pl-8" min={0} />
+                </div>
+              </div>
+            </div>
+
+            {/* Password */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1"><Eye className="h-3 w-3" />Nouveau mot de passe</label>
+              <div className="relative">
+                <Eye className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50 pointer-events-none" />
+                <Input type="password" value={editPassword} onChange={(e) => setEditPassword(e.target.value)} className="h-9 bg-transparent border-border/40 pl-8" placeholder="Laisser vide pour ne pas changer" />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={cancelEditing}>Annuler</Button>
+            <Button onClick={() => editingUser && saveUser(editingUser)} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+              Sauvegarder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Badge Award Modal */}
+      <Dialog open={badgeModalOpen} onOpenChange={(open) => { if (!open) { setBadgeModalOpen(false); setBadgeModalUserId(''); setBadgeModalBadgeId(''); setBadgeModalReason(''); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Attribuer un badge</DialogTitle>
+            <DialogDescription>
+              {badgeModalUserId
+                ? `Attribution à ${users.find(u => u.id === badgeModalUserId)?.username || badgeModalUserId}`
+                : `Attribution à ${selectedUserIds.length} utilisateur(s) sélectionné(s)`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Badge</label>
+              <Select value={badgeModalBadgeId} onValueChange={setBadgeModalBadgeId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choisir un badge..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {badges.map(b => (
+                    <SelectItem key={b.id} value={b.id}>
+                      {b.icon} {b.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Raison (optionnel)</label>
+              <Input
+                placeholder="Raison de l'attribution..."
+                value={badgeModalReason}
+                onChange={(e) => setBadgeModalReason(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setBadgeModalOpen(false); setBadgeModalUserId(''); setBadgeModalBadgeId(''); setBadgeModalReason(''); }}>
+              Annuler
+            </Button>
+            <Button onClick={handleBadgeModalAward} disabled={!badgeModalBadgeId} className="bg-violet-600 hover:bg-violet-700">
+              <Award className="h-4 w-4 mr-2" />
+              Attribuer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Mass Delete Confirmation */}
+      <AlertDialog open={massDeleteOpen} onOpenChange={setMassDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Supprimer {selectedUserIds.length} utilisateur(s) ?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est irréversible. Toutes les données de ces utilisateurs seront définitivement supprimées.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={massDeleteUsers} className="bg-destructive hover:bg-destructive/90">
+              Supprimer tout
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* User Inventory Dialog */}
       <Dialog
