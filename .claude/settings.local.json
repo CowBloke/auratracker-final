@@ -26,7 +26,8 @@
       "Bash(xargs grep:*)",
       "Bash(cd \"C:\\\\Users\\\\cowbl\\\\source\\\\repos\\\\CRust\\\\auratracker-final\\\\frontend\" && npx tsc --noEmit 2>&1 | Select-String \"RussianRoulette\")",
       "Bash(xargs ls:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(grep -r DOODLE_JUMP_SKIN /c/Users/cowbl/source/repos/CRust/auratracker-final --include=*.ts --include=*.tsx)"
     ]
   },
   "outputStyle": "default"

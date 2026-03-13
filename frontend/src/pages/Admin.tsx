@@ -350,6 +350,7 @@ interface ItemFormData {
   bonusAura?: number;
   bonusMoney?: number;
   skinImageUrl?: string;
+  skinShopType?: 'none' | 'static' | 'rotating';
 }
 
 const defaultItemForm: ItemFormData = {
@@ -363,6 +364,7 @@ const defaultItemForm: ItemFormData = {
   bonusAura: 0,
   bonusMoney: 0,
   skinImageUrl: '',
+  skinShopType: 'none',
 };
 
 interface UpdatePopupFormData {
@@ -556,6 +558,12 @@ export default function Admin() {
   const [itemForm, setItemForm] = useState<ItemFormData>(defaultItemForm);
   const [savingItem, setSavingItem] = useState(false);
   const [deletingItem, setDeletingItem] = useState<string | null>(null);
+
+  // DJ forced skin state
+  const [djForcedSkinId, setDjForcedSkinId] = useState<string | null>(null);
+  const [djForcedSkinLoading, setDjForcedSkinLoading] = useState(false);
+  const [djForcedSkinSaving, setDjForcedSkinSaving] = useState(false);
+  const [djForcedSkinSelected, setDjForcedSkinSelected] = useState<string>('__none__');
 
   // Shop categories state
   const [shopCategories, setShopCategories] = useState<ShopCategory[]>([
@@ -868,6 +876,7 @@ export default function Admin() {
     fetchUsers();
     fetchClans();
     fetchItems();
+    fetchDjForcedSkin();
     fetchShopCategories();
     fetchBugReports();
     fetchPendingUsers();
@@ -1064,13 +1073,38 @@ export default function Admin() {
   const fetchItems = async () => {
     try {
       setLoadingItems(true);
-      const res = await adminApi.getItems();
-      setItems(res.data.items);
+      const [itemsRes] = await Promise.all([
+        adminApi.getItems(),
+      ]);
+      setItems(itemsRes.data.items);
     } catch (error) {
       console.error('Failed to fetch items:', error);
       showMessage('error', 'Erreur lors du chargement des objets');
     } finally {
       setLoadingItems(false);
+    }
+  };
+
+  const fetchDjForcedSkin = async () => {
+    setDjForcedSkinLoading(true);
+    try {
+      const res = await adminApi.getDjForcedSkin();
+      setDjForcedSkinId(res.data.itemId);
+      setDjForcedSkinSelected(res.data.itemId ?? '__none__');
+    } catch { /**/ } finally {
+      setDjForcedSkinLoading(false);
+    }
+  };
+
+  const saveDjForcedSkin = async () => {
+    setDjForcedSkinSaving(true);
+    try {
+      const id = djForcedSkinSelected === '__none__' ? null : djForcedSkinSelected;
+      const res = await adminApi.setDjForcedSkin(id);
+      setDjForcedSkinId(res.data.itemId);
+      showMessage('success', id ? 'Skin forcé appliqué' : 'Rotation normale rétablie');
+    } catch { showMessage('error', 'Erreur'); } finally {
+      setDjForcedSkinSaving(false);
     }
   };
 
@@ -1842,7 +1876,7 @@ export default function Admin() {
   };
 
   // Parse effect string to get type and value
-  const parseEffect = (effectStr: string | null): { type: string; value: string; bonusAura?: number; bonusMoney?: number; skinImageUrl?: string } => {
+  const parseEffect = (effectStr: string | null): { type: string; value: string; bonusAura?: number; bonusMoney?: number; skinImageUrl?: string; skinShopType?: 'none' | 'static' | 'rotating' } => {
     if (!effectStr) return { type: 'USERNAME_COLOR', value: '' };
     try {
       const effect = JSON.parse(effectStr);
@@ -1857,6 +1891,7 @@ export default function Admin() {
         bonusAura: effect.bonusAura,
         bonusMoney: effect.bonusMoney,
         skinImageUrl: effect.skinImageUrl || '',
+        skinShopType: (effect.shopType as 'none' | 'static' | 'rotating') || 'none',
       };
     } catch {
       return { type: 'USERNAME_COLOR', value: '' };
@@ -1873,7 +1908,7 @@ export default function Admin() {
   // Open dialog for editing item
   const openEditItemDialog = (item: ShopItem) => {
     setEditingItem(item);
-    const { type: effectType, value: effectValue, bonusAura, bonusMoney, skinImageUrl } = parseEffect(item.effect);
+    const { type: effectType, value: effectValue, bonusAura, bonusMoney, skinImageUrl, skinShopType } = parseEffect(item.effect);
     setItemForm({
       name: item.name,
       description: item.description,
@@ -1885,6 +1920,7 @@ export default function Admin() {
       bonusAura: bonusAura || 0,
       bonusMoney: bonusMoney || 0,
       skinImageUrl: skinImageUrl || '',
+      skinShopType: skinShopType || 'none',
     });
     setItemDialogOpen(true);
   };
@@ -1905,7 +1941,8 @@ export default function Admin() {
       } else if (itemForm.effectType === 'BONUS_MONEY') {
         effect = JSON.stringify({ bonusMoney: itemForm.bonusMoney || 0 });
       } else if (itemForm.effectType === 'DOODLE_JUMP_SKIN') {
-        effect = JSON.stringify({ type: 'DOODLE_JUMP_SKIN', skinImageUrl: itemForm.skinImageUrl || '' });
+        const shopType = itemForm.skinShopType && itemForm.skinShopType !== 'none' ? itemForm.skinShopType : undefined;
+        effect = JSON.stringify({ type: 'DOODLE_JUMP_SKIN', skinImageUrl: itemForm.skinImageUrl || '', ...(shopType ? { shopType } : {}) });
       } else {
         effect = JSON.stringify({ type: itemForm.effectType, value: itemForm.effectValue });
       }
@@ -3242,6 +3279,69 @@ export default function Admin() {
               )}
             </CardContent>
           </Card>
+
+          {/* DJ Skin rotation control */}
+          {(() => {
+            const djRotatingItems = items.filter(item => {
+              try {
+                const effect = JSON.parse(item.effect || '{}');
+                return effect.type === 'DOODLE_JUMP_SKIN' && effect.shopType === 'rotating';
+              } catch { return false; }
+            });
+            return (
+              <Card className="border-violet-500/20 bg-gradient-to-br from-violet-950/20 to-transparent">
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Gamepad2 className="h-4 w-4 text-violet-400" />
+                    <CardDescription className="text-violet-300">Skin Doodle Jump — rotation forcée</CardDescription>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {djForcedSkinLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Chargement...
+                    </div>
+                  ) : djRotatingItems.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Aucun skin dans le pool de rotation. Créez des skins avec le placement <em>🔥 Pool de rotation</em>.</p>
+                  ) : (
+                    <div className="flex flex-wrap items-end gap-3">
+                      <div className="flex-1 min-w-[200px] space-y-1.5">
+                        <label className="text-xs font-medium text-muted-foreground">Forcer un skin dans la rotation du jour</label>
+                        <Select value={djForcedSkinSelected} onValueChange={setDjForcedSkinSelected}>
+                          <SelectTrigger className="bg-transparent border-violet-500/30">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">🎲 Rotation normale (aléatoire)</SelectItem>
+                            {djRotatingItems.map(item => (
+                              <SelectItem key={item.id} value={item.id}>
+                                🔥 {item.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {djForcedSkinId && djForcedSkinId !== '__none__' && (
+                          <p className="text-xs text-violet-400">
+                            Actuellement forcé : {djRotatingItems.find(i => i.id === djForcedSkinId)?.name ?? djForcedSkinId}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={saveDjForcedSkin}
+                        disabled={djForcedSkinSaving}
+                        className="bg-gradient-to-r from-violet-500 to-indigo-600 hover:from-violet-400 hover:to-indigo-500 text-white border-0"
+                      >
+                        {djForcedSkinSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                        <span className="ml-2">Appliquer</span>
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {/* Items list */}
           <Card>
@@ -4996,6 +5096,7 @@ export default function Admin() {
                         bonusAura: 0,
                         bonusMoney: 0,
                         skinImageUrl: '',
+                        skinShopType: 'none',
                       }));
                     }}
                   >
@@ -5042,14 +5143,33 @@ export default function Admin() {
                 )}
 
                 {itemForm.effectType === 'DOODLE_JUMP_SKIN' && (
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Image du skin</label>
-                    <ImagePicker
-                      value={itemForm.skinImageUrl || ''}
-                      onChange={(url) => setItemForm(prev => ({ ...prev, skinImageUrl: url }))}
-                      uploadFn={uploadItemImageFile}
-                    />
-                    <p className="text-xs text-muted-foreground">Cette image sera utilisée comme sprite du personnage dans Doodle Jump.</p>
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">Image du skin</label>
+                      <ImagePicker
+                        value={itemForm.skinImageUrl || ''}
+                        onChange={(url) => setItemForm(prev => ({ ...prev, skinImageUrl: url }))}
+                        uploadFn={uploadItemImageFile}
+                      />
+                      <p className="text-xs text-muted-foreground">Cette image sera utilisée comme sprite du personnage dans Doodle Jump.</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">Placement dans la boutique DJ</label>
+                      <Select
+                        value={itemForm.skinShopType || 'none'}
+                        onValueChange={(value) => setItemForm(prev => ({ ...prev, skinShopType: value as 'none' | 'static' | 'rotating' }))}
+                      >
+                        <SelectTrigger className="bg-transparent">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Non placé (invisible en boutique)</SelectItem>
+                          <SelectItem value="static">⭐ Boutique permanente</SelectItem>
+                          <SelectItem value="rotating">🔥 Pool de rotation quotidienne</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">Choisir si ce skin apparaît en permanence ou dans la rotation du jour.</p>
+                    </div>
                   </div>
                 )}
 

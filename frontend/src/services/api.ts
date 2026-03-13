@@ -167,6 +167,8 @@ export const marketplaceApi = {
     api.post<{ success: boolean; moneyEarned: number }>('/marketplace/sell-gift-item', { userItemId }),
   chuckGiftItem: (userItemId: string) =>
     api.post<{ success: boolean }>('/marketplace/chuck-gift-item', { userItemId }),
+  getDoodleSkins: () =>
+    api.get<{ static: ShopItem[]; rotating: ShopItem[]; nextRefresh: string }>('/marketplace/doodle-skins'),
   // Admin
   createItem: (data: {
     name: string;
@@ -942,6 +944,10 @@ export const adminApi = {
     effect?: string;
   }) => api.put<{ item: ShopItem }>(`/admin/items/${id}`, data),
   deleteItem: (id: string) => api.delete<{ success: boolean }>(`/admin/items/${id}`),
+  // Doodle Jump skin rotation control
+  getDjForcedSkin: () => api.get<{ itemId: string | null }>('/marketplace/admin/dj-forced-skin'),
+  setDjForcedSkin: (itemId: string | null) =>
+    api.post<{ success: boolean; itemId: string | null }>('/marketplace/admin/dj-force-skin', { itemId }),
   // Shop categories management
   getShopCategories: () => api.get<{ categories: ShopCategory[] }>('/admin/shop-categories'),
   updateShopCategories: (categories: ShopCategory[]) =>

@@ -481,15 +481,111 @@ router.put('/admin/item/:id', authMiddleware, adminMiddleware, async (req: AuthR
 router.delete('/admin/item/:id', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    
+
     await prisma.item.delete({
       where: { id },
     });
-    
+
     res.json({ success: true });
   } catch (error) {
     console.error('Delete item error:', error);
     res.status(500).json({ error: 'Failed to delete item' });
+  }
+});
+
+// GET /doodle-skins — returns static + daily rotating DJ skins
+router.get('/doodle-skins', authMiddleware, async (_req: AuthRequest, res: Response) => {
+  try {
+    const allItems = await prisma.item.findMany({
+      where: { effect: { contains: 'DOODLE_JUMP_SKIN' } },
+    });
+
+    const staticItems: typeof allItems = [];
+    const rotatingPool: typeof allItems = [];
+
+    for (const item of allItems) {
+      try {
+        const effect = JSON.parse(item.effect || '{}');
+        if (effect.type === 'DOODLE_JUMP_SKIN') {
+          if (effect.shopType === 'static') staticItems.push(item);
+          else if (effect.shopType === 'rotating') rotatingPool.push(item);
+        }
+      } catch { /* skip invalid JSON */ }
+    }
+
+    // Deterministic daily rotation seeded by YYYY-M-D
+    const now = new Date();
+    const dateKey = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+    let seed = 0;
+    for (const ch of dateKey) seed = ((seed * 31 + ch.charCodeAt(0)) >>> 0);
+
+    const seededRandom = () => {
+      seed = ((seed * 1664525 + 1013904223) >>> 0);
+      return seed / 4294967296;
+    };
+
+    // Fisher-Yates shuffle with seeded random
+    const shuffled = [...rotatingPool];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(seededRandom() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    let daily = shuffled.slice(0, 3);
+
+    // Forced skin: inject into rotation if not already present
+    const forcedSetting = await prisma.gameSettings.findUnique({ where: { key: 'dj_skin_forced_id' } });
+    if (forcedSetting?.value) {
+      const forcedId = forcedSetting.value;
+      const forced = rotatingPool.find(i => i.id === forcedId);
+      if (forced && !daily.find(i => i.id === forcedId)) {
+        daily = [forced, ...daily.slice(0, 2)];
+      }
+    }
+
+    // Next refresh: midnight tonight (local server time → UTC)
+    const nextRefresh = new Date();
+    nextRefresh.setDate(nextRefresh.getDate() + 1);
+    nextRefresh.setHours(0, 0, 0, 0);
+
+    res.json({ static: staticItems, rotating: daily, nextRefresh: nextRefresh.toISOString() });
+  } catch (error) {
+    console.error('Get doodle skins error:', error);
+    res.status(500).json({ error: 'Failed to get doodle skins' });
+  }
+});
+
+// Admin: Get forced DJ skin
+router.get('/admin/dj-forced-skin', authMiddleware, adminMiddleware, async (_req: AuthRequest, res: Response) => {
+  try {
+    const setting = await prisma.gameSettings.findUnique({ where: { key: 'dj_skin_forced_id' } });
+    res.json({ itemId: setting?.value || null });
+  } catch (error) {
+    console.error('Get DJ forced skin error:', error);
+    res.status(500).json({ error: 'Failed to get forced skin' });
+  }
+});
+
+// Admin: Set or clear forced DJ skin
+router.post('/admin/dj-force-skin', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { itemId } = req.body;
+
+    if (!itemId) {
+      await prisma.gameSettings.deleteMany({ where: { key: 'dj_skin_forced_id' } });
+      return res.json({ success: true, itemId: null });
+    }
+
+    await prisma.gameSettings.upsert({
+      where: { key: 'dj_skin_forced_id' },
+      create: { key: 'dj_skin_forced_id', value: itemId },
+      update: { value: itemId },
+    });
+
+    res.json({ success: true, itemId });
+  } catch (error) {
+    console.error('Set DJ forced skin error:', error);
+    res.status(500).json({ error: 'Failed to set forced skin' });
   }
 });
 
