@@ -126,7 +126,7 @@ const GAME_REWARDS = {
     ],
   },
   knife_hit: {
-    minScoreForReward: 5,
+    minScoreForReward: 35,
     scoreTiers: [
       { minScore: 0, moneyReward: 0, auraBonus: 0 },
       { minScore: 5, moneyReward: 15, auraBonus: 1 },
