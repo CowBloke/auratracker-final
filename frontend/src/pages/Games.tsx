@@ -19,7 +19,7 @@ const games = [
     description: 'Assis autour d\'une table sombre, chacun tire à son tour. Le dernier en vie gagne.',
     type: 'Party',
     requiresParty: true,
-    emoji: '🔫',
+    image: '/images/games/rouletterusse.png',
   },
   {
     id: 'bomb-party',
