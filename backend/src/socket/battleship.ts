@@ -2,6 +2,7 @@ import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
 import { checkQuestProgress } from '../routes/quests.js';
 import { logGame } from '../utils/logger.js';
+import { duelPartyIds, deleteDuelParty } from './duelParties.js';
 
 interface BattleshipPlayer {
   userId: string;
@@ -270,6 +271,12 @@ async function endGame(game: BattleshipGame, io: Server, winnerId: string) {
     winnerId: winner.userId,
     winnerUsername: winner.username,
   });
+
+  if (duelPartyIds.has(game.partyId)) {
+    activeGames.delete(game.partyId);
+    await deleteDuelParty(game.partyId, io);
+    return;
+  }
 
   const playAgainPrompt: PendingPlayAgainPrompt = {
     partyId: game.partyId,

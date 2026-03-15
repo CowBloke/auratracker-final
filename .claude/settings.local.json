@@ -29,7 +29,8 @@
       "Bash(ls:*)",
       "Bash(grep -r DOODLE_JUMP_SKIN /c/Users/cowbl/source/repos/CRust/auratracker-final --include=*.ts --include=*.tsx)",
       "Bash(cd \"C:\\\\Users\\\\cowbl\\\\Me\\\\Coding\\\\AuraTracker\\\\auratracker.final\\\\frontend\" && python -c \"\nwith open\\('src/pages/Clans.tsx', 'rb'\\) as f:\n    content = f.read\\(\\)\nlines = content.split\\(b'\\\\n'\\)\nfor i, line in enumerate\\(lines[700:720], start=701\\):\n    has_curly = any\\(b in line for b in [b'\\\\xe2\\\\x80\\\\x98', b'\\\\xe2\\\\x80\\\\x99', b'\\\\xe2\\\\x80\\\\x9c', b'\\\\xe2\\\\x80\\\\x9d']\\)\n    if has_curly:\n        print\\(f'Line {i}: {line}'\\)\n\")",
-      "Bash(find /c/Users/cowbl/Me/Coding/AuraTracker/auratracker.final -name \"*chess*\" -o -name \"*Echecs*\" | grep -E '\\\\.\\(tsx?|jsx?\\)$' | head -20)"
+      "Bash(find /c/Users/cowbl/Me/Coding/AuraTracker/auratracker.final -name \"*chess*\" -o -name \"*Echecs*\" | grep -E '\\\\.\\(tsx?|jsx?\\)$' | head -20)",
+      "Bash(grep -r \"setupDuelHandlers\\\\|duel.*routes\\\\|\\\\/api\\\\/duels\" /c/Users/cowbl/Me/Coding/AuraTracker/auratracker.final/backend/src --include=\"*.ts\" 2>/dev/null | head -20)"
     ]
   },
   "outputStyle": "default"
