@@ -3,6 +3,7 @@ import { Chess, type Square, type PieceSymbol } from 'chess.js';
 import { prisma } from '../server.js';
 import { checkQuestProgress } from '../routes/quests.js';
 import { logGame } from '../utils/logger.js';
+import { duelPartyIds, deleteDuelParty } from './duelParties.js';
 
 type ChessColor = 'w' | 'b';
 type ChessResult =
@@ -374,6 +375,7 @@ async function resolvePlayAgainPrompt(partyId: string, io: Server) {
 
   if (acceptedIds.length < 2) {
     io.to(`party:${partyId}`).emit('chess:play-again-cancelled', {});
+    if (duelPartyIds.has(partyId)) await deleteDuelParty(partyId, io);
     return;
   }
 
@@ -385,6 +387,7 @@ async function resolvePlayAgainPrompt(partyId: string, io: Server) {
 
   if (members.length !== 2) {
     io.to(`party:${partyId}`).emit('chess:play-again-cancelled', {});
+    if (duelPartyIds.has(partyId)) await deleteDuelParty(partyId, io);
     return;
   }
 

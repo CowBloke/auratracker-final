@@ -2,6 +2,7 @@ import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
 import { checkQuestProgress } from '../routes/quests.js';
 import { logGame } from '../utils/logger.js';
+import { duelPartyIds, deleteDuelParty } from './duelParties.js';
 
 interface BattleshipPlayer {
   userId: string;
@@ -578,6 +579,7 @@ async function resolvePlayAgainPrompt(partyId: string, io: Server) {
     io.to(`party:${partyId}`).emit('battleship:play-again-cancelled', {
       reason: 'Not enough players want to play again (need 2)',
     });
+    if (duelPartyIds.has(partyId)) await deleteDuelParty(partyId, io);
     return;
   }
 
@@ -598,6 +600,7 @@ async function resolvePlayAgainPrompt(partyId: string, io: Server) {
     io.to(`party:${partyId}`).emit('battleship:play-again-cancelled', {
       reason: 'Not enough players in party to play again',
     });
+    if (duelPartyIds.has(partyId)) await deleteDuelParty(partyId, io);
     return;
   }
 

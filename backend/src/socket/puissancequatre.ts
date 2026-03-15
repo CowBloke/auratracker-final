@@ -2,6 +2,7 @@ import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
 import { checkQuestProgress } from '../routes/quests.js';
 import { logGame } from '../utils/logger.js';
+import { duelPartyIds, deleteDuelParty } from './duelParties.js';
 
 const ROWS = 6;
 const COLS = 7;
@@ -235,6 +236,7 @@ async function resolvePlayAgainPrompt(partyId: string, io: Server) {
 
   if (playAgainUserIds.length < 2) {
     io.to(`party:${partyId}`).emit('p4:play-again-cancelled', {});
+    if (duelPartyIds.has(partyId)) await deleteDuelParty(partyId, io);
     return;
   }
 
@@ -246,6 +248,7 @@ async function resolvePlayAgainPrompt(partyId: string, io: Server) {
 
   if (members.length !== 2) {
     io.to(`party:${partyId}`).emit('p4:play-again-cancelled', {});
+    if (duelPartyIds.has(partyId)) await deleteDuelParty(partyId, io);
     return;
   }
 

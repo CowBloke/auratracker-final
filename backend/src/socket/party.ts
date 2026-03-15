@@ -8,7 +8,6 @@ import { sendActiveChessState, sendPendingChessPlayAgainPrompt } from './chess.j
 import { logParty } from '../utils/logger.js';
 import { checkQuestProgress } from '../routes/quests.js';
 import { createNotification } from '../utils/notifications.js';
-import { duelPartyIds } from './duelParties.js';
 
 interface PartyInvite {
   partyId: string;
@@ -921,21 +920,6 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
       
       // Leave socket room
       socket.leave(`party:${partyId}`);
-
-      // Duel parties are temporary — disband immediately when any member leaves
-      if (duelPartyIds.has(partyId)) {
-        duelPartyIds.delete(partyId);
-        clearPartyGameState(partyId);
-        io.to(`party:${partyId}`).emit('party:disbanded');
-        for (const member of membership.party.members) {
-          if (member.userId === userId) continue;
-          const sid = userSockets.get(member.userId);
-          if (sid) io.sockets.sockets.get(sid)?.leave(`party:${partyId}`);
-        }
-        await prisma.party.delete({ where: { id: partyId } });
-        socket.emit('party:left');
-        return;
-      }
 
       // Log party leave
       logParty('party_leave', userId, membership.user.username, {
