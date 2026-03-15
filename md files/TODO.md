@@ -5,13 +5,7 @@
 
 - bouton créer clans scroll fix amine
 
-- UI roulette
-- mode fullscreen pour tous les jeux
-- solitaire with
-- knife hit rotation plusen valeur
 - notif chat party et ajouter notif cha clans et ajouter message chef clan
-- UI clans
-- textes majuscules
 - FLUIDITE MULTIJOUEURS
 - notif inobox polymarket ancien chemin
 - toast shop inventaire achat utilisé
@@ -22,6 +16,9 @@
 - shop rotating
 - shop coloré soldes, boites
 - chat : images, give, achievments
+- plafond goyavge jump
+- racer gain
+ -geometry dash
 
 ## à FIX
 
