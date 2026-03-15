@@ -2,7 +2,6 @@ import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
 import { checkQuestProgress } from '../routes/quests.js';
 import { logGame } from '../utils/logger.js';
-import { duelPartyIds, deleteDuelParty } from './duelParties.js';
 
 const ROWS = 6;
 const COLS = 7;
@@ -201,12 +200,6 @@ async function endGame(game: P4Game, io: Server, winnerId: string | null) {
     }
   } catch (error) {
     console.error('p4:endGame error:', error);
-  }
-
-  if (duelPartyIds.has(game.partyId)) {
-    activeGames.delete(game.partyId);
-    await deleteDuelParty(game.partyId, io);
-    return;
   }
 
   // Play again prompt

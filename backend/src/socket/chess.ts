@@ -3,7 +3,6 @@ import { Chess, type Square, type PieceSymbol } from 'chess.js';
 import { prisma } from '../server.js';
 import { checkQuestProgress } from '../routes/quests.js';
 import { logGame } from '../utils/logger.js';
-import { duelPartyIds, deleteDuelParty } from './duelParties.js';
 
 type ChessColor = 'w' | 'b';
 type ChessResult =
@@ -272,12 +271,6 @@ async function endGame(game: ChessGame, io: Server, winnerId: string | null, res
     }
   } catch (error) {
     console.error('chess:endGame error:', error);
-  }
-
-  if (duelPartyIds.has(game.partyId)) {
-    activeGames.delete(game.partyId);
-    await deleteDuelParty(game.partyId, io);
-    return;
   }
 
   const prompt: PendingPlayAgainPrompt = {
