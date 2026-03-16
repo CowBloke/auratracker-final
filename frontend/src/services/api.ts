@@ -185,7 +185,7 @@ export const marketplaceApi = {
 export const gamesApi = {
   getStats: (gameType: string, userId: string) =>
     api.get(`/games/${gameType}/stats/${userId}`),
-  complete: (gameType: string, data: { score: number; won: boolean; duration?: number; bet?: number; netGain?: number }) =>
+  complete: (gameType: string, data: { score: number; won: boolean; duration?: number; bet?: number; netGain?: number; maxTile?: number; difficulty?: string }) =>
     api.post(`/games/${gameType}/complete`, data),
   getLeaderboard: (gameType: string, limit?: number) =>
     api.get(`/games/${gameType}/leaderboard`, { params: { limit } }),
@@ -1441,6 +1441,7 @@ export interface Badge {
   isAutomatic: boolean;
   autoConditionKey?: string | null;
   isActive: boolean;
+  isHidden: boolean;
   createdAt: string;
   updatedAt: string;
   createdById?: string | null;

@@ -308,6 +308,7 @@ export default function Minesweeper() {
         score,
         won,
         duration,
+        difficulty,
       });
 
       setRewards({
@@ -324,7 +325,7 @@ export default function Minesweeper() {
       console.error('Failed to submit minesweeper result:', error);
       submitLockRef.current = false;
     }
-  }, [fetchLeaderboard, refreshUser, user]);
+  }, [difficulty, fetchLeaderboard, refreshUser, user]);
 
   const finishGame = useCallback((won: boolean, nextBoard: Cell[][]) => {
     const duration = startTimeRef.current ? Math.max(1, Math.floor((Date.now() - startTimeRef.current) / 1000)) : elapsedSeconds;

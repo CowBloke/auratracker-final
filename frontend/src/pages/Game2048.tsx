@@ -310,12 +310,14 @@ export default function Game2048() {
   // Handle game over
   const handleGameOver = useCallback(async () => {
     const finalScore = scoreRef.current;
+    const finalMaxTile = getHighestTile(tilesRef.current);
     setGameOver(true);
-    
+
     try {
       const response = await gamesApi.complete('game_2048', {
         score: finalScore,
         won: won, // Only true if player reached 2048 tile
+        maxTile: finalMaxTile,
       });
       
       setRewards({

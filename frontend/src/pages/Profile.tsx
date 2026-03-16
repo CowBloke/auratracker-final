@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { usersApi, leaderboardsApi, auraCoinApi, bombPartyApi, BombPartyStats, badgesApi, UserBadgeEntry } from '../services/api';
+import { usersApi, leaderboardsApi, auraCoinApi, bombPartyApi, BombPartyStats, badgesApi, Badge, UserBadgeEntry } from '../services/api';
 import { Edit2, Save, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,7 +11,7 @@ import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { UserBadges } from '@/components/badges/UserBadges';
-import { BadgeHistory } from '@/components/badges/BadgeSelector';
+import { BadgeCatalog } from '@/components/badges/BadgeSelector';
 import { ProfileBadgeSlots } from '@/components/badges/ProfileBadgeSlots';
 import { BadgeData } from '@/components/badges/BadgeIcon';
 
@@ -61,6 +61,7 @@ export default function Profile() {
 
   // Badge state
   const [userBadges, setUserBadges] = useState<UserBadgeEntry[]>([]);
+  const [allBadges, setAllBadges] = useState<Badge[]>([]);
   const [equippedBadge1Id, setEquippedBadge1Id] = useState<string | null>(null);
   const [equippedBadge2Id, setEquippedBadge2Id] = useState<string | null>(null);
 
@@ -86,8 +87,12 @@ export default function Profile() {
       setBioText(userRes.data.user.bio || '');
 
       try {
-        const badgesRes = await badgesApi.getUserBadges(targetUserId!);
+        const [badgesRes, allBadgesRes] = await Promise.all([
+          badgesApi.getUserBadges(targetUserId!),
+          badgesApi.getAll(),
+        ]);
         setUserBadges(badgesRes.data.badges);
+        setAllBadges(allBadgesRes.data.badges);
         setEquippedBadge1Id(badgesRes.data.equippedBadge1Id);
         setEquippedBadge2Id(badgesRes.data.equippedBadge2Id);
       } catch {
@@ -298,21 +303,21 @@ export default function Profile() {
           <CardDescription>Badges</CardDescription>
         </CardHeader>
         <CardContent className={SPACING.CARD_SPACING}>
-          {isOwnProfile ? (
-            <div className="space-y-6">
-              <BadgeHistory badges={userBadges} />
+          {!isOwnProfile && equippedBadges.length > 0 && (
+            <div className="flex items-center gap-4 mb-5">
+              <UserBadges badges={equippedBadges} size="xl" showEmptySlots={false} tooltipSide="bottom" />
             </div>
-          ) : userBadges.length === 0 ? (
-            <p className={TYPOGRAPHY.MUTED}>Aucun badge.</p>
+          )}
+          {allBadges.length > 0 ? (
+            <BadgeCatalog allBadges={allBadges} earnedBadges={userBadges} />
+          ) : userBadges.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {userBadges.map((badge) => (
+                <div key={badge.id} className="w-9 h-9" />
+              ))}
+            </div>
           ) : (
-            <div className="space-y-5">
-              {equippedBadges.length > 0 && (
-                <div className="flex items-center gap-4">
-                  <UserBadges badges={equippedBadges} size="xl" showEmptySlots={false} tooltipSide="bottom" />
-                </div>
-              )}
-              <BadgeHistory badges={userBadges} />
-            </div>
+            <p className={TYPOGRAPHY.MUTED}>Aucun badge.</p>
           )}
         </CardContent>
       </Card>

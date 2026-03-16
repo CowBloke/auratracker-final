@@ -920,7 +920,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
       
       // Leave socket room
       socket.leave(`party:${partyId}`);
-      
+
       // Log party leave
       logParty('party_leave', userId, membership.user.username, {
         partyId,

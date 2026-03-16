@@ -272,12 +272,6 @@ async function endGame(game: BattleshipGame, io: Server, winnerId: string) {
     winnerUsername: winner.username,
   });
 
-  if (duelPartyIds.has(game.partyId)) {
-    activeGames.delete(game.partyId);
-    await deleteDuelParty(game.partyId, io);
-    return;
-  }
-
   const playAgainPrompt: PendingPlayAgainPrompt = {
     partyId: game.partyId,
     responses: new Map(),
@@ -585,6 +579,7 @@ async function resolvePlayAgainPrompt(partyId: string, io: Server) {
     io.to(`party:${partyId}`).emit('battleship:play-again-cancelled', {
       reason: 'Not enough players want to play again (need 2)',
     });
+    if (duelPartyIds.has(partyId)) await deleteDuelParty(partyId, io);
     return;
   }
 
@@ -605,6 +600,7 @@ async function resolvePlayAgainPrompt(partyId: string, io: Server) {
     io.to(`party:${partyId}`).emit('battleship:play-again-cancelled', {
       reason: 'Not enough players in party to play again',
     });
+    if (duelPartyIds.has(partyId)) await deleteDuelParty(partyId, io);
     return;
   }
 

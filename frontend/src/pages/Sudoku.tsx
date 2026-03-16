@@ -447,6 +447,7 @@ export default function Sudoku() {
         score: finalScore,
         won: true,
         duration: elapsedSeconds,
+        difficulty,
       });
 
       setRewards({

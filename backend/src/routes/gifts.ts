@@ -3,6 +3,7 @@ import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { logEconomy } from '../utils/logger.js';
 import { createNotification } from '../utils/notifications.js';
+import { awardBadgeByKey } from '../utils/badgeAwards.js';
 
 const router = Router();
 
@@ -222,6 +223,14 @@ router.post('/send', authMiddleware, async (req: AuthRequest, res: Response) => 
       auraSentLast24h: auraSentLast24h + auraAmount,
     });
 
+    // GENEROUS badge: track gift sent and award badge
+    await prisma.gameStats.upsert({
+      where: { userId_gameType: { userId: req.user.id, gameType: 'gifts_sent' } },
+      create: { userId: req.user.id, gameType: 'gifts_sent', wins: 1, losses: 0, highScore: 0, totalPlayed: 1 },
+      update: { wins: { increment: 1 }, totalPlayed: { increment: 1 } },
+    });
+    void awardBadgeByKey(req.user.id, 'GENEROUS', 'A offert un cadeau à quelqu\'un');
+
     res.json({ gift });
   } catch (error) {
     console.error('Send gift error:', error);
@@ -405,6 +414,14 @@ router.post('/send-item', authMiddleware, async (req: AuthRequest, res: Response
       itemName: item.name,
       moneySpent: item.price,
     });
+
+    // GENEROUS badge: track gift sent and award badge
+    await prisma.gameStats.upsert({
+      where: { userId_gameType: { userId: req.user.id, gameType: 'gifts_sent' } },
+      create: { userId: req.user.id, gameType: 'gifts_sent', wins: 1, losses: 0, highScore: 0, totalPlayed: 1 },
+      update: { wins: { increment: 1 }, totalPlayed: { increment: 1 } },
+    });
+    void awardBadgeByKey(req.user.id, 'GENEROUS', 'A offert un cadeau à quelqu\'un');
 
     res.json({ gift, newBalance: updatedSender });
   } catch (error) {

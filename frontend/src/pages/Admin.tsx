@@ -450,7 +450,7 @@ export default function Admin() {
     backgroundGradient: '', backgroundImage: '',
     icon: '⭐', iconColor: '#ffffff', borderColor: '#6b7280',
     category: 'special', rarity: 'common',
-    isAutomatic: false, autoConditionKey: '', isActive: true,
+    isAutomatic: false, autoConditionKey: '', isActive: true, isHidden: false,
   });
   const [awardBadgeUserId, setAwardBadgeUserId] = useState('');
   const [awardBadgeId, setAwardBadgeId] = useState('');
@@ -473,7 +473,7 @@ export default function Admin() {
       backgroundGradient: '', backgroundImage: '',
       icon: '⭐', iconColor: '#ffffff', borderColor: '#6b7280',
       category: 'special', rarity: 'common',
-      isAutomatic: false, autoConditionKey: '', isActive: true,
+      isAutomatic: false, autoConditionKey: '', isActive: true, isHidden: false,
     });
     setBadgeFormOpen(true);
   };
@@ -6393,6 +6393,14 @@ export default function Admin() {
                         onCheckedChange={(v) => setBadgeForm(f => ({ ...f, isActive: v }))}
                       />
                       <label className={TYPOGRAPHY.XS}>Badge actif (visible et attribuable)</label>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        checked={badgeForm.isHidden ?? false}
+                        onCheckedChange={(v) => setBadgeForm(f => ({ ...f, isHidden: v }))}
+                      />
+                      <label className={TYPOGRAPHY.XS}>Achievement caché — s'affiche comme ??? sur les profils avant d'être obtenu</label>
                     </div>
                   </div>
                 </div>
