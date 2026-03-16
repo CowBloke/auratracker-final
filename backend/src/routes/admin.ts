@@ -13,6 +13,7 @@ import { recalculateBombPartyPrompts } from '../utils/bombpartyPrompts.js';
 import { getOnlineCount, getOnlineUsers } from '../socket/chat.js';
 import { createNotification } from '../utils/notifications.js';
 import { sendBugReportReplyEmail } from '../utils/email.js';
+import { awardBadgeByKey } from '../utils/badgeAwards.js';
 import { getReferralRewardAmount, REFERRAL_REWARD_SETTING_KEY } from '../utils/referrals.js';
 
 const router = Router();
@@ -1474,6 +1475,14 @@ router.post('/bugs', authMiddleware, async (req: AuthRequest, res: Response) => 
       bugReportId: bugReport.id,
       title: bugReport.title,
     });
+
+    // BUG_REPORTER badge: track report and award badge
+    await prisma.gameStats.upsert({
+      where: { userId_gameType: { userId: req.user!.id, gameType: 'bug_report' } },
+      create: { userId: req.user!.id, gameType: 'bug_report', wins: 1, losses: 0, highScore: 0, totalPlayed: 1 },
+      update: { wins: { increment: 1 }, totalPlayed: { increment: 1 } },
+    });
+    void awardBadgeByKey(req.user!.id, 'BUG_REPORTER', 'A reporté un bug');
 
     res.status(201).json({ bugReport });
   } catch (error) {

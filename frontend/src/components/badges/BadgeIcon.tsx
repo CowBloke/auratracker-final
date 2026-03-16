@@ -15,6 +15,7 @@ export interface BadgeData {
   borderColor: string;
   category: string;
   rarity: string;
+  isHidden?: boolean;
   obtainedAt?: string | null;
   obtainedReason?: string | null;
 }
@@ -47,6 +48,7 @@ interface BadgeIconProps {
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   className?: string;
   tooltipSide?: 'top' | 'bottom' | 'left' | 'right';
+  locked?: boolean; // True if user doesn't own this badge
 }
 
 const SIZES = {
@@ -79,11 +81,108 @@ export function getBadgeBackground(badge: BadgeData): React.CSSProperties {
   return { backgroundColor: badge.backgroundColor };
 }
 
-export function BadgeIcon({ badge, size = 'sm', className, tooltipSide = 'top' }: BadgeIconProps) {
+export function BadgeIcon({ badge, size = 'sm', className, tooltipSide = 'top', locked = false }: BadgeIconProps) {
   const { box, text } = SIZES[size];
-  const boxShadow = RARITY_GLOW[badge.rarity] ?? undefined;
+  const boxShadow = !locked ? (RARITY_GLOW[badge.rarity] ?? undefined) : undefined;
   const rarityColor = RARITY_TEXT_COLOR[badge.rarity] ?? '#9ca3af';
 
+  // Hidden locked badge: show as ???
+  if (locked && badge.isHidden) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div
+            className={cn(
+              box,
+              'rounded-sm flex items-center justify-center cursor-help flex-shrink-0 select-none',
+              className,
+            )}
+            style={{
+              backgroundColor: '#1f2937',
+              border: '1.5px solid #374151',
+            }}
+            aria-label="Badge mystère"
+          >
+            <span className={cn(text, 'leading-none pointer-events-none text-muted-foreground/40 font-bold')}>
+              ?
+            </span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side={tooltipSide} sideOffset={6} className="p-0 overflow-hidden max-w-[260px] border-0">
+          <div className="flex items-center gap-3 px-3 py-2.5" style={{ backgroundColor: '#1f2937', borderBottom: '1px solid #37415155' }}>
+            <div className="w-12 h-12 rounded flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(0,0,0,0.4)', border: '1.5px solid #374151' }}>
+              <span className="text-2xl leading-none select-none text-muted-foreground/40 font-bold">?</span>
+            </div>
+            <div className="min-w-0">
+              <p className="font-bold text-sm leading-tight text-muted-foreground drop-shadow">???</p>
+              <p className="text-[11px] font-medium mt-0.5 text-muted-foreground/50">Achievement caché</p>
+            </div>
+          </div>
+          <div className="px-3 py-2 bg-popover">
+            <p className="text-xs text-muted-foreground/50 italic">Continuez à jouer pour découvrir cet achievement.</p>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  // Locked (non-hidden) badge: shown darkened with unlock condition
+  if (locked) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div
+            className={cn(
+              box,
+              'rounded-sm flex items-center justify-center cursor-help flex-shrink-0 select-none opacity-30 grayscale',
+              className,
+            )}
+            style={{
+              ...getBadgeBackground(badge),
+              border: `1.5px solid ${badge.borderColor}`,
+            }}
+            aria-label={badge.name}
+          >
+            <span
+              className={cn(text, 'leading-none pointer-events-none')}
+              style={{ color: badge.iconColor }}
+            >
+              {badge.icon}
+            </span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side={tooltipSide} sideOffset={6} className="p-0 overflow-hidden max-w-[260px] border-0" style={{ borderColor: badge.borderColor }}>
+          <div
+            className="flex items-center gap-3 px-3 py-2.5 opacity-60"
+            style={{ ...getBadgeBackground(badge), borderBottom: `1px solid ${badge.borderColor}55` }}
+          >
+            <div
+              className="w-12 h-12 rounded flex items-center justify-center flex-shrink-0"
+              style={{ background: 'rgba(0,0,0,0.25)', border: `1.5px solid ${badge.borderColor}` }}
+            >
+              <span className="text-2xl leading-none select-none">{badge.icon}</span>
+            </div>
+            <div className="min-w-0">
+              <p className="font-bold text-sm leading-tight text-white drop-shadow">{badge.name}</p>
+              <p className="text-[11px] font-medium mt-0.5" style={{ color: rarityColor }}>
+                {RARITY_LABELS[badge.rarity] ?? badge.rarity} · <span className="text-muted-foreground/70">Non obtenu</span>
+              </p>
+            </div>
+          </div>
+          <div className="px-3 py-2 space-y-1.5 bg-popover">
+            <p className="text-xs text-muted-foreground leading-snug">{badge.description}</p>
+            {badge.howToObtain && (
+              <p className="text-[11px] text-muted-foreground/70 italic leading-snug">
+                🔒 {badge.howToObtain}
+              </p>
+            )}
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  // Unlocked badge (normal)
   return (
     <Tooltip>
       <TooltipTrigger asChild>

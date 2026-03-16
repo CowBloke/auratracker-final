@@ -23,6 +23,7 @@ const BADGE_SELECT = {
   isAutomatic: true,
   autoConditionKey: true,
   isActive: true,
+  isHidden: true,
   createdAt: true,
   updatedAt: true,
   createdById: true,
@@ -160,7 +161,7 @@ router.post('/', authMiddleware, adminMiddleware, async (req: AuthRequest, res: 
       name, description, howToObtain,
       backgroundType, backgroundColor, backgroundGradient, backgroundImage,
       icon, iconColor, borderColor,
-      category, rarity, isAutomatic, autoConditionKey, isActive,
+      category, rarity, isAutomatic, autoConditionKey, isActive, isHidden,
     } = req.body;
 
     if (!name || !description) {
@@ -183,6 +184,7 @@ router.post('/', authMiddleware, adminMiddleware, async (req: AuthRequest, res: 
         isAutomatic: isAutomatic ?? false,
         autoConditionKey: autoConditionKey ?? null,
         isActive: isActive ?? true,
+        isHidden: isHidden ?? false,
         createdById: req.user!.id,
       },
       select: BADGE_SELECT,
@@ -202,7 +204,7 @@ router.put('/:id', authMiddleware, adminMiddleware, async (req: AuthRequest, res
       name, description, howToObtain,
       backgroundType, backgroundColor, backgroundGradient, backgroundImage,
       icon, iconColor, borderColor,
-      category, rarity, isAutomatic, autoConditionKey, isActive,
+      category, rarity, isAutomatic, autoConditionKey, isActive, isHidden,
     } = req.body;
 
     const badge = await prisma.badge.update({
@@ -223,6 +225,7 @@ router.put('/:id', authMiddleware, adminMiddleware, async (req: AuthRequest, res
         ...(isAutomatic !== undefined && { isAutomatic }),
         ...(autoConditionKey !== undefined && { autoConditionKey }),
         ...(isActive !== undefined && { isActive }),
+        ...(isHidden !== undefined && { isHidden }),
       },
       select: BADGE_SELECT,
     });

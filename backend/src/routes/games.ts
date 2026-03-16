@@ -4,7 +4,7 @@ import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { validate, gameCompleteSchema } from '../middleware/validation.js';
 import { logGame, logAdmin } from '../utils/logger.js';
 import { checkQuestProgress } from './quests.js';
-import { recheckBadgeForCondition } from '../utils/badgeAwards.js';
+import { recheckBadgeForCondition, awardBadgeByKey } from '../utils/badgeAwards.js';
 
 const router = Router();
 const isDoodleJumpType = (gameType: string) => gameType === 'doodle_jump' || gameType === 'doodle_jump_mort_subite';
@@ -678,7 +678,7 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
     }
     
     const { gameType } = req.params;
-    const { score, won, duration, bet, netGain } = req.body;
+    const { score, won, duration, bet, netGain, maxTile, difficulty } = req.body;
     
     // Get current user balance and stats
     const currentUser = await prisma.user.findUnique({
@@ -851,6 +851,81 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       });
       // Immediately recalculate the champion badge for this game (non-blocking)
       void recheckBadgeForCondition(`GAME_HIGHSCORE_${gameType}`);
+    }
+
+    // ── Achievement badge checks ─────────────────────────────────────────────
+
+    // 2048 tile tracking: also upsert a game_2048_tile stat with the max tile as highScore
+    if (gameType === 'game_2048' && maxTile && typeof maxTile === 'number' && maxTile > 0) {
+      const currentTileStat = await prisma.gameStats.findUnique({
+        where: { userId_gameType: { userId: req.user.id, gameType: 'game_2048_tile' } },
+        select: { highScore: true },
+      });
+      const isNewTileRecord = !currentTileStat || maxTile > currentTileStat.highScore;
+      await prisma.gameStats.upsert({
+        where: { userId_gameType: { userId: req.user.id, gameType: 'game_2048_tile' } },
+        create: { userId: req.user.id, gameType: 'game_2048_tile', wins: 0, losses: 0, highScore: maxTile, totalPlayed: 1 },
+        update: {
+          totalPlayed: { increment: 1 },
+          highScore: isNewTileRecord ? maxTile : undefined,
+        },
+      });
+      if (maxTile >= 2048) void recheckBadgeForCondition('GAME_2048_TILE_2048');
+      if (maxTile >= 4096) void recheckBadgeForCondition('GAME_2048_TILE_4096');
+    }
+
+    // Sudoku difficulty badge tracking (logic_lab with difficulty param)
+    if (gameType === 'logic_lab' && won && difficulty && typeof difficulty === 'string') {
+      const diffKey = difficulty.toLowerCase();
+      const sudokuGameType = `logic_lab_${diffKey}`;
+      await prisma.gameStats.upsert({
+        where: { userId_gameType: { userId: req.user.id, gameType: sudokuGameType } },
+        create: { userId: req.user.id, gameType: sudokuGameType, wins: 1, losses: 0, highScore: score, totalPlayed: 1 },
+        update: { wins: { increment: 1 }, totalPlayed: { increment: 1 }, highScore: score > (currentStats?.highScore ?? 0) ? score : undefined },
+      });
+      const condMap: Record<string, string> = { easy: 'SUDOKU_EASY', medium: 'SUDOKU_MEDIUM', hard: 'SUDOKU_HARD', expert: 'SUDOKU_EXPERT' };
+      if (condMap[diffKey]) void recheckBadgeForCondition(condMap[diffKey]);
+      void recheckBadgeForCondition('SUDOKU_COMPLETED');
+    }
+
+    // Minesweeper difficulty badge tracking
+    if (gameType === 'minesweeper' && won && difficulty && typeof difficulty === 'string') {
+      const diffKey = difficulty.toLowerCase();
+      const minesweeperGameType = `minesweeper_${diffKey}`;
+      await prisma.gameStats.upsert({
+        where: { userId_gameType: { userId: req.user.id, gameType: minesweeperGameType } },
+        create: { userId: req.user.id, gameType: minesweeperGameType, wins: 1, losses: 0, highScore: score, totalPlayed: 1 },
+        update: { wins: { increment: 1 }, totalPlayed: { increment: 1 }, highScore: score > (currentStats?.highScore ?? 0) ? score : undefined },
+      });
+      const condMap: Record<string, string> = { debutant: 'MINESWEEPER_DEBUTANT', intermediaire: 'MINESWEEPER_INTERMEDIAIRE', expert: 'MINESWEEPER_EXPERT' };
+      if (condMap[diffKey]) void recheckBadgeForCondition(condMap[diffKey]);
+      void recheckBadgeForCondition('MINESWEEPER_WIN');
+    }
+
+    // Solitaire win badge
+    if (gameType === 'solitaire' && won) {
+      void recheckBadgeForCondition('SOLITAIRE_WIN');
+    }
+
+    // Racer completion badge (any valid lap time submitted)
+    if (gameType === 'racer') {
+      void recheckBadgeForCondition('RACER_LAP');
+    }
+
+    // Casino big bet badges
+    if (gameType === 'casino' && bet && typeof bet === 'number') {
+      const thresholds = [10000, 20000, 50000, 100000];
+      for (const threshold of thresholds) {
+        if (bet >= threshold) {
+          const betGameType = `casino_bet_${threshold}`;
+          await prisma.gameStats.upsert({
+            where: { userId_gameType: { userId: req.user.id, gameType: betGameType } },
+            create: { userId: req.user.id, gameType: betGameType, wins: 1, losses: 0, highScore: bet, totalPlayed: 1 },
+            update: { wins: { increment: 1 }, totalPlayed: { increment: 1 }, highScore: bet > 0 ? Math.max(bet, 0) : undefined },
+          });
+          void recheckBadgeForCondition(`CASINO_BET_${threshold}`);
+        }
+      }
     }
 
     // Check quest progress

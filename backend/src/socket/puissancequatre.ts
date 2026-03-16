@@ -2,6 +2,7 @@ import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
 import { checkQuestProgress } from '../routes/quests.js';
 import { logGame } from '../utils/logger.js';
+import { recheckBadgeForCondition } from '../utils/badgeAwards.js';
 import { duelPartyIds, deleteDuelParty } from './duelParties.js';
 
 const ROWS = 6;
@@ -157,6 +158,21 @@ async function endGame(game: P4Game, io: Server, winnerId: string | null) {
       await checkQuestProgress(winnerId, 'PLAY_GAMES', 1);
       await checkQuestProgress(winnerId, 'WIN_GAMES', 1);
       await checkQuestProgress(loser.userId, 'PLAY_GAMES', 1);
+
+      // Track puissance 4 stats for badge
+      await Promise.all([
+        prisma.gameStats.upsert({
+          where: { userId_gameType: { userId: winnerId, gameType: 'puissance_4' } },
+          create: { userId: winnerId, gameType: 'puissance_4', wins: 1, losses: 0, highScore: 1, totalPlayed: 1 },
+          update: { wins: { increment: 1 }, totalPlayed: { increment: 1 } },
+        }),
+        prisma.gameStats.upsert({
+          where: { userId_gameType: { userId: loser.userId, gameType: 'puissance_4' } },
+          create: { userId: loser.userId, gameType: 'puissance_4', wins: 0, losses: 1, highScore: 0, totalPlayed: 1 },
+          update: { losses: { increment: 1 }, totalPlayed: { increment: 1 } },
+        }),
+      ]);
+      void recheckBadgeForCondition('PUISSANCE_4_WIN');
 
       io.to(`party:${game.partyId}`).emit('p4:game-over', {
         winnerId,

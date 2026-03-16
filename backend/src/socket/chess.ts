@@ -3,6 +3,7 @@ import { Chess, type Square, type PieceSymbol } from 'chess.js';
 import { prisma } from '../server.js';
 import { checkQuestProgress } from '../routes/quests.js';
 import { logGame } from '../utils/logger.js';
+import { recheckBadgeForCondition } from '../utils/badgeAwards.js';
 import { duelPartyIds, deleteDuelParty } from './duelParties.js';
 
 type ChessColor = 'w' | 'b';
@@ -205,6 +206,21 @@ async function endGame(game: ChessGame, io: Server, winnerId: string | null, res
       await checkQuestProgress(winner.userId, 'WIN_GAMES', 1);
       await checkQuestProgress(loser.userId, 'PLAY_GAMES', 1);
 
+      // Track chess stats for badge
+      await Promise.all([
+        prisma.gameStats.upsert({
+          where: { userId_gameType: { userId: winner.userId, gameType: 'chess' } },
+          create: { userId: winner.userId, gameType: 'chess', wins: 1, losses: 0, highScore: 1, totalPlayed: 1 },
+          update: { wins: { increment: 1 }, totalPlayed: { increment: 1 } },
+        }),
+        prisma.gameStats.upsert({
+          where: { userId_gameType: { userId: loser.userId, gameType: 'chess' } },
+          create: { userId: loser.userId, gameType: 'chess', wins: 0, losses: 1, highScore: 0, totalPlayed: 1 },
+          update: { losses: { increment: 1 }, totalPlayed: { increment: 1 } },
+        }),
+      ]);
+      void recheckBadgeForCondition('CHESS_WIN');
+
       io.to(`party:${game.partyId}`).emit('chess:game-over', {
         winnerId: winner.userId,
         winnerUsername: winner.username,
@@ -258,6 +274,11 @@ async function endGame(game: ChessGame, io: Server, winnerId: string | null, res
 
       for (const player of game.players) {
         await checkQuestProgress(player.userId, 'PLAY_GAMES', 1);
+        await prisma.gameStats.upsert({
+          where: { userId_gameType: { userId: player.userId, gameType: 'chess' } },
+          create: { userId: player.userId, gameType: 'chess', wins: 0, losses: 0, highScore: 0, totalPlayed: 1 },
+          update: { totalPlayed: { increment: 1 } },
+        });
       }
 
       io.to(`party:${game.partyId}`).emit('chess:game-over', {

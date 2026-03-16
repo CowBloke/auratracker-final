@@ -15,22 +15,41 @@ export type AutoConditionKey =
   | 'TOP_10_MONEY'
   | 'BOMBPARTY_TOP_WINS'
   | `GAME_HIGHSCORE_${string}`
-  // Achievement badges
-  | 'TRYHARDEUR'          // 100+ total games played across all types
-  | 'GRIND_200'           // 200+ total games played
-  | 'GAME_2048_TILE_2048' // reached 2048 tile in game_2048
-  | 'GAME_2048_TILE_4096' // reached 4096 tile in game_2048 (epic)
-  | 'SUDOKU_COMPLETED'    // completed at least one sudoku
-  | 'TOP_CASINO_LOSSES'   // user with the most casino losses
-  | 'CASINO_VETERAN'      // played 25+ casino games
-  | 'FLAPPY_BIRD_50'      // flappy bird score >= 50
-  | 'MINESWEEPER_WIN';    // won at least one minesweeper game
+  // Achievement badges (auto-checked via scheduler or direct award)
+  | 'TRYHARDEUR'              // 100+ total games played across all types
+  | 'GRIND_200'               // 200+ total games played
+  | 'GAME_2048_TILE_2048'     // made the 2048 tile (tracked via game_2048_tile gameType)
+  | 'GAME_2048_TILE_4096'     // made the 4096 tile (tracked via game_2048_tile gameType)
+  | 'SUDOKU_COMPLETED'        // completed at least one sudoku
+  | 'TOP_CASINO_LOSSES'       // user with the most casino losses
+  | 'CASINO_VETERAN'          // played 25+ casino games
+  | 'FLAPPY_BIRD_50'          // flappy bird score >= 50
+  | 'MINESWEEPER_WIN'         // won at least one minesweeper game
+  // Direct-award achievement badges (awarded at event time, never auto-revoked)
+  | 'CASINO_BET_10000'        // bet >= 10,000 in a single casino bet
+  | 'CASINO_BET_20000'        // bet >= 20,000 in a single casino bet
+  | 'CASINO_BET_50000'        // bet >= 50,000 in a single casino bet
+  | 'CASINO_BET_100000'       // bet >= 100,000 in a single casino bet
+  | 'NUIT_BLANCHE'            // connected between 3:00–4:00 AM
+  | 'SUDOKU_EASY'             // completed at least one easy sudoku
+  | 'SUDOKU_MEDIUM'           // completed at least one medium sudoku
+  | 'SUDOKU_HARD'             // completed at least one hard sudoku
+  | 'SUDOKU_EXPERT'           // completed at least one expert sudoku
+  | 'MINESWEEPER_DEBUTANT'    // won at least one débutant minesweeper
+  | 'MINESWEEPER_INTERMEDIAIRE' // won at least one intermédiaire minesweeper
+  | 'MINESWEEPER_EXPERT'      // won at least one expert minesweeper
+  | 'SOLITAIRE_WIN'           // won at least one game of solitaire
+  | 'RACER_LAP'               // completed a lap of racer
+  | 'CHESS_WIN'               // won a game of chess
+  | 'GENEROUS'                // gifted something to someone
+  | 'BUG_REPORTER'            // reported a bug
+  | 'PUISSANCE_4_WIN';        // won a game of puissance 4
 
 // ─── Core award / revoke helpers ─────────────────────────────────────────────
 
 /**
  * Award a badge to a user. Safe to call even if the user already has the badge.
- * Returns the UserBadge record (newly created or existing).
+ * Returns true if newly awarded, false if already owned.
  */
 export const awardBadge = async (
   userId: string,
@@ -49,6 +68,34 @@ export const awardBadge = async (
     return true;
   } catch (error) {
     console.error('badgeAwards.awardBadge error:', error);
+    return false;
+  }
+};
+
+/**
+ * Award a badge to a user by its autoConditionKey (if the badge exists and is active).
+ * Safe to call even if already owned. Returns true if newly awarded.
+ * Used for event-driven one-time awards.
+ */
+export const awardBadgeByKey = async (
+  userId: string,
+  conditionKey: string,
+  reason?: string,
+): Promise<boolean> => {
+  try {
+    const badge = await prisma.badge.findFirst({
+      where: { autoConditionKey: conditionKey, isActive: true },
+      select: { id: true, name: true },
+    });
+    if (!badge) return false;
+
+    const awarded = await awardBadge(userId, badge.id, reason ?? `Automatiquement obtenu : ${badge.name}`);
+    if (awarded) {
+      await autoEquipForUsers([userId]);
+    }
+    return awarded;
+  } catch (error) {
+    console.error(`awardBadgeByKey(${conditionKey}) error:`, error);
     return false;
   }
 };
@@ -225,28 +272,58 @@ const getQualifyingUserIds = async (key: string): Promise<Set<string>> => {
     return result;
   }
 
-  // GAME_2048_TILE_2048 – reached the 2048 tile (highScore >= 2048 in game_2048)
+  // GAME_2048_TILE_2048 – actually made the 2048 tile (tracked via game_2048_tile gameType)
   if (key === 'GAME_2048_TILE_2048') {
     const stats = await prisma.gameStats.findMany({
-      where: { gameType: 'game_2048', highScore: { gte: 2048 } },
+      where: { gameType: 'game_2048_tile', highScore: { gte: 2048 } },
       select: { userId: true },
     });
     return new Set(stats.map((s) => s.userId));
   }
 
-  // GAME_2048_TILE_4096 – reached the 4096 tile (highScore >= 4096 in game_2048)
+  // GAME_2048_TILE_4096 – actually made the 4096 tile (tracked via game_2048_tile gameType)
   if (key === 'GAME_2048_TILE_4096') {
     const stats = await prisma.gameStats.findMany({
-      where: { gameType: 'game_2048', highScore: { gte: 4096 } },
+      where: { gameType: 'game_2048_tile', highScore: { gte: 4096 } },
       select: { userId: true },
     });
     return new Set(stats.map((s) => s.userId));
   }
 
-  // SUDOKU_COMPLETED – completed at least one sudoku grid
+  // SUDOKU_COMPLETED – completed at least one sudoku grid (any difficulty)
   if (key === 'SUDOKU_COMPLETED') {
     const stats = await prisma.gameStats.findMany({
-      where: { gameType: 'sudoku', wins: { gte: 1 } },
+      where: { gameType: 'logic_lab', wins: { gte: 1 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  // Sudoku difficulty badges – tracked via separate game type per difficulty
+  if (key === 'SUDOKU_EASY') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'logic_lab_easy', wins: { gte: 1 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+  if (key === 'SUDOKU_MEDIUM') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'logic_lab_medium', wins: { gte: 1 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+  if (key === 'SUDOKU_HARD') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'logic_lab_hard', wins: { gte: 1 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+  if (key === 'SUDOKU_EXPERT') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'logic_lab_expert', wins: { gte: 1 } },
       select: { userId: true },
     });
     return new Set(stats.map((s) => s.userId));
@@ -271,6 +348,36 @@ const getQualifyingUserIds = async (key: string): Promise<Set<string>> => {
     return new Set(stats.map((s) => s.userId));
   }
 
+  // Casino big bet badges – tracked via separate game type
+  if (key === 'CASINO_BET_10000') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'casino_bet_10000', wins: { gte: 1 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+  if (key === 'CASINO_BET_20000') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'casino_bet_20000', wins: { gte: 1 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+  if (key === 'CASINO_BET_50000') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'casino_bet_50000', wins: { gte: 1 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+  if (key === 'CASINO_BET_100000') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'casino_bet_100000', wins: { gte: 1 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
   // FLAPPY_BIRD_50 – flappy bird highscore >= 50
   if (key === 'FLAPPY_BIRD_50') {
     const stats = await prisma.gameStats.findMany({
@@ -280,10 +387,96 @@ const getQualifyingUserIds = async (key: string): Promise<Set<string>> => {
     return new Set(stats.map((s) => s.userId));
   }
 
-  // MINESWEEPER_WIN – won at least one minesweeper game
+  // MINESWEEPER_WIN – won at least one minesweeper game (any difficulty)
   if (key === 'MINESWEEPER_WIN') {
     const stats = await prisma.gameStats.findMany({
       where: { gameType: 'minesweeper', wins: { gte: 1 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  // Minesweeper difficulty badges – tracked via separate game type per difficulty
+  if (key === 'MINESWEEPER_DEBUTANT') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'minesweeper_debutant', wins: { gte: 1 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+  if (key === 'MINESWEEPER_INTERMEDIAIRE') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'minesweeper_intermediaire', wins: { gte: 1 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+  if (key === 'MINESWEEPER_EXPERT') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'minesweeper_expert', wins: { gte: 1 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  // SOLITAIRE_WIN – won at least one solitaire game
+  if (key === 'SOLITAIRE_WIN') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'solitaire', wins: { gte: 1 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  // RACER_LAP – completed at least one lap of racer
+  if (key === 'RACER_LAP') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'racer', totalPlayed: { gte: 1 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  // CHESS_WIN – won at least one chess game
+  if (key === 'CHESS_WIN') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'chess', wins: { gte: 1 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  // PUISSANCE_4_WIN – won at least one game of puissance 4
+  if (key === 'PUISSANCE_4_WIN') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'puissance_4', wins: { gte: 1 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  // GENEROUS – gifted something to at least one person
+  if (key === 'GENEROUS') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'gifts_sent', wins: { gte: 1 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  // BUG_REPORTER – reported at least one bug
+  if (key === 'BUG_REPORTER') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'bug_report', wins: { gte: 1 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  // NUIT_BLANCHE – connected between 3:00–4:00 AM
+  if (key === 'NUIT_BLANCHE') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'nuit_blanche', wins: { gte: 1 } },
       select: { userId: true },
     });
     return new Set(stats.map((s) => s.userId));

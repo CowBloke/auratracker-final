@@ -50,7 +50,7 @@ import { setupRussianRouletteHandlers } from './socket/russianroulette.js';
 
 // Logger
 import { initLogger } from './utils/logger.js';
-import { startAutoBadgeScheduler, stopAutoBadgeScheduler, autoEquipDefaultBadges } from './utils/badgeAwards.js';
+import { startAutoBadgeScheduler, stopAutoBadgeScheduler, autoEquipDefaultBadges, awardBadgeByKey } from './utils/badgeAwards.js';
 import { ensureDefaultBadges } from './utils/seedBadges.js';
 
 // Initialize Prisma
@@ -185,6 +185,20 @@ io.on('connection', (socket) => {
   // Join personal room for targeted notifications
   if (socket.data.userId) {
     socket.join(`user:${socket.data.userId}`);
+
+    // NUIT_BLANCHE: award badge if connected between 3:00 and 4:00 AM (local server time)
+    const hour = new Date().getHours();
+    if (hour === 3) {
+      void (async () => {
+        const userId = socket.data.userId as string;
+        await prisma.gameStats.upsert({
+          where: { userId_gameType: { userId, gameType: 'nuit_blanche' } },
+          create: { userId, gameType: 'nuit_blanche', wins: 1, losses: 0, highScore: 0, totalPlayed: 1 },
+          update: { wins: { increment: 1 }, totalPlayed: { increment: 1 } },
+        });
+        void awardBadgeByKey(userId, 'NUIT_BLANCHE', 'Connecté à 3h du matin');
+      })();
+    }
   }
 
   socket.use(async (packet, next) => {
