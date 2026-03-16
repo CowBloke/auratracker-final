@@ -2,23 +2,27 @@
 - envoyer mails quand accepté sur le site avec présentation : Resend vérifier si domaine = saintdo
 - seasons : space + scoby and wallace
 - harmoniser replay et multiplayer games
-
 - bouton créer clans scroll fix amine
-
 - notif chat party et ajouter notif cha clans et ajouter message chef clan
-- FLUIDITE MULTIJOUEURS
 - notif inobox polymarket ancien chemin
-- toast shop inventaire achat utilisé
+- toast shop inventaire achat utilisé/- confirmation toast shop
 - voir qui a réagit dans le chat
-- confirmation toast shop
-- badges 
 - rejoindre clan existant ou crer avec potes
-- shop rotating
-- shop coloré soldes, boites
 - chat : images, give, achievments
-- plafond goyavge jump
+- plafond goyavge empire
 - racer gain
- -geometry dash
+- geometry dash
+- logs pass reward
+- logs des jeux et tous les logs qui manquent
+- stats comme activités pour les jeux
+- revoir bugs signalés
+- widget clan
+- widget live vert
+- switch code de parraingae admin
+- pasdebloquer skin quon a deja doivent pas apparaitre pour acheter dasn shop
+- bulle notif chatbox party
+- socket 
+- nous quii decidons le cours de l'auracoin
 
 ## à FIX
 
@@ -37,9 +41,7 @@
 - do .md ai rules (ui : shadcn only, consistency, etc.)
 
 
-- skins qui s'affichent en multijoueur et en spectate
 - un type d'item qui te permet de mettre une banière derrière les messages de tous les membres de clan comme on avait dit (du coup une nouvelle catégorie dans le shop pour les upgrades de clan).
-- suppression de la party temporaire quand tu duel quelqu'un en appuyant sur le bouton duel des pages.
 - apparemment meme en essayant j'ai pas fix le solitaire donc si tu peux
 - bouton fullscreen sur les jeux (genre la le 2048 est tout petit).
 - des updates instantanés (quand tu reçois un message dans l'inbox l'icone rouge s'affiche direct, les parties s'actualisent direct et tt : dit a chat d'utiliser des websockets et d'envoyer les changements de façon optimisée pour que ça crash pas le site).
