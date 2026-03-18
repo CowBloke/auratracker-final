@@ -4,6 +4,7 @@ import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { logAdmin } from '../utils/logger.js';
 import { isAllowedImageUrl } from '../utils/uploads.js';
 import { createNotification } from '../utils/notifications.js';
+import { awardBadgeByKey } from '../utils/badgeAwards.js';
 
 const router = Router();
 
@@ -493,6 +494,8 @@ router.post('/suggestions/:id/approve', authMiddleware, requireAdmin, async (req
       icon: 'badge-check',
     }).catch(() => {});
 
+    awardBadgeByKey(suggestion.userId, 'POLYMARKET_SUGGESTION_ACCEPTED').catch(() => {});
+
     res.json({ event });
   } catch (error) {
     console.error('Approve suggestion error:', error);
@@ -705,6 +708,8 @@ router.post('/bets', authMiddleware, async (req: AuthRequest, res: Response) => 
       },
     });
 
+    awardBadgeByKey(req.user!.id, 'POLYMARKET_BETTOR').catch(() => {});
+
     createNotification({
       userId: req.user!.id,
       type: 'SYSTEM',
@@ -813,6 +818,8 @@ router.post('/events/:id/resolve', authMiddleware, requireAdmin, async (req: Aut
         link: '/games/polymarket',
         icon: 'trending-up',
       }).catch(() => {});
+
+      awardBadgeByKey(bet.userId, 'POLYMARKET_WIN').catch(() => {});
     }
 
     const losingBets = event.bets.filter((bet) => bet.prediction !== resolution);

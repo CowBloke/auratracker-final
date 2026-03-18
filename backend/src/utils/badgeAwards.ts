@@ -43,7 +43,10 @@ export type AutoConditionKey =
   | 'CHESS_WIN'               // won a game of chess
   | 'GENEROUS'                // gifted something to someone
   | 'BUG_REPORTER'            // reported a bug
-  | 'PUISSANCE_4_WIN';        // won a game of puissance 4
+  | 'PUISSANCE_4_WIN'         // won a game of puissance 4
+  | 'POLYMARKET_SUGGESTION_ACCEPTED' // suggestion polymarket acceptée
+  | 'POLYMARKET_BETTOR'       // a placé un pari polymarket
+  | 'POLYMARKET_WIN';         // a gagné un pari polymarket
 
 // ─── Core award / revoke helpers ─────────────────────────────────────────────
 
