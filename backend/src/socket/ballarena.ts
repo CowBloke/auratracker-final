@@ -13,10 +13,12 @@ export const BALL_RADIUS = 22;
 export const PREP_TIME_MS = 10_000;
 const GAME_TIME_LIMIT_MS = 25_000;
 export const MAX_SPEED = 400; // game units per second
-const FRICTION = 0.9988; // velocity multiplier per 16 ms tick
+const FRICTION = 0.984; // velocity multiplier per 16 ms tick
 const SIM_STEP_MS = 16;
 const BROADCAST_EVERY_N_TICKS = 4; // broadcast every ~64 ms ≈ 15 fps
 export const EXIT_THRESHOLD = ARENA_RADIUS - BALL_RADIUS; // 218
+const STALEMATE_SPEED_THRESHOLD = 6; // px/s — both balls below this → new round
+const STALEMATE_TICKS_MIN = 60;    // wait at least ~1s before checking
 
 const INITIAL_POSITIONS: [[number, number], [number, number]] = [
   [200, 300], // player index 0 (left)
@@ -56,6 +58,8 @@ interface BallArenaGame {
   prepTimeout: NodeJS.Timeout | null;
   gameTimeout: NodeJS.Timeout | null;
   tickCount: number;
+  replayFrames: number[][];
+  round: number;
 }
 
 interface PendingJoinPrompt {
@@ -144,6 +148,7 @@ function serializeState(game: BallArenaGame) {
     playStartTime: game.playStartTime,
     winnerId: game.winnerId,
     isDraw: game.isDraw,
+    round: game.round,
     players: game.players.map((p, i) => ({
       userId: p.userId,
       username: p.username,
@@ -165,6 +170,27 @@ function emitState(game: BallArenaGame, io: Server) {
   io.to(`party:${game.partyId}`).emit('ballarena:state', serializeState(game));
 }
 
+// ─── Stalemate reset ──────────────────────────────────────────────────────────
+function resetForNewRound(game: BallArenaGame, io: Server) {
+  game.round++;
+  game.phase = 'prep';
+  game.prepStartTime = Date.now();
+  game.playStartTime = null;
+
+  for (let i = 0; i < game.balls.length; i++) {
+    // Keep current position — balls stay where they stopped
+    game.balls[i].vx = 0;
+    game.balls[i].vy = 0;
+    game.balls[i].plannedVx = 0;
+    game.balls[i].plannedVy = 0;
+    game.balls[i].hasSetDirection = false;
+    game.balls[i].isOut = false;
+  }
+
+  emitState(game, io);
+  game.prepTimeout = setTimeout(() => startSimulation(game, io), PREP_TIME_MS);
+}
+
 // ─── Simulation ───────────────────────────────────────────────────────────────
 function startSimulation(game: BallArenaGame, io: Server) {
   if (game.phase !== 'prep') return;
@@ -184,7 +210,20 @@ function startSimulation(game: BallArenaGame, io: Server) {
     ball.vy = ball.plannedVy;
   }
 
+  // Send dedicated sim-start so clients can run physics locally
+  io.to(`party:${game.partyId}`).emit('ballarena:sim-start', {
+    partyId: game.partyId,
+    balls: game.balls.map((b) => ({ x: b.x, y: b.y, vx: b.vx, vy: b.vy, isOut: b.isOut })),
+  });
+
   emitState(game, io);
+
+  // Reset replay and record initial frame
+  game.replayFrames = [];
+  game.replayFrames.push([
+    game.balls[0].x, game.balls[0].y, 0,
+    game.balls[1].x, game.balls[1].y, 0,
+  ]);
 
   game.tickCount = 0;
   game.simInterval = setInterval(() => {
@@ -196,8 +235,12 @@ function startSimulation(game: BallArenaGame, io: Server) {
     simStep(game.balls);
     game.tickCount++;
 
+    // Record replay frames (no live broadcast — client runs physics locally)
     if (game.tickCount % BROADCAST_EVERY_N_TICKS === 0) {
-      emitState(game, io);
+      game.replayFrames.push([
+        game.balls[0].x, game.balls[0].y, game.balls[0].isOut ? 1 : 0,
+        game.balls[1].x, game.balls[1].y, game.balls[1].isOut ? 1 : 0,
+      ]);
     }
 
     const b0Out = game.balls[0].isOut;
@@ -214,6 +257,17 @@ function startSimulation(game: BallArenaGame, io: Server) {
         winnerId = game.players[0].userId;
       }
       endGame(game, io, winnerId, isDraw);
+      return;
+    }
+
+    // Stalemate: both balls stopped, nobody out → new round
+    if (game.tickCount >= STALEMATE_TICKS_MIN) {
+      const s0 = Math.sqrt(game.balls[0].vx ** 2 + game.balls[0].vy ** 2);
+      const s1 = Math.sqrt(game.balls[1].vx ** 2 + game.balls[1].vy ** 2);
+      if (s0 < STALEMATE_SPEED_THRESHOLD && s1 < STALEMATE_SPEED_THRESHOLD) {
+        stopSimulation(game);
+        resetForNewRound(game, io);
+      }
     }
   }, SIM_STEP_MS);
 
@@ -298,6 +352,8 @@ async function endGame(
         winnerUsername: winner.username,
         isDraw: false,
         rewards: { winner: winnerReward, loser: loserReward },
+        replayFrames: game.replayFrames,
+        players: game.players.map((p) => ({ userId: p.userId, username: p.username, usernameColor: p.usernameColor, playerIndex: p.playerIndex })),
       });
 
       logGame('game_complete', winner.userId, winner.username, {
@@ -332,6 +388,8 @@ async function endGame(
         winnerUsername: null,
         isDraw: true,
         rewards: { draw: drawReward },
+        replayFrames: game.replayFrames,
+        players: game.players.map((p) => ({ userId: p.userId, username: p.username, usernameColor: p.usernameColor, playerIndex: p.playerIndex })),
       });
     }
   } catch (error) {
@@ -460,6 +518,8 @@ function createGame(
     prepTimeout: null,
     gameTimeout: null,
     tickCount: 0,
+    replayFrames: [],
+    round: 1,
   };
 }
 
@@ -634,6 +694,17 @@ export const setupBallArenaHandlers = (socket: Socket, io: Server) => {
     game.balls[playerIdx].hasSetDirection = true;
 
     emitState(game, io);
+
+    // Early start when both players have chosen
+    const allSet = game.balls.every((b) => b.hasSetDirection);
+    if (allSet) {
+      if (game.prepTimeout) {
+        clearTimeout(game.prepTimeout);
+        game.prepTimeout = null;
+      }
+      // 1.5s grace period so both players see the "confirmed" state
+      game.prepTimeout = setTimeout(() => startSimulation(game, io), 1500);
+    }
   });
 
   socket.on('ballarena:leave', (data: { partyId: string }) => {

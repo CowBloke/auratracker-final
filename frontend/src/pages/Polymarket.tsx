@@ -5,7 +5,7 @@ import { ImagePicker } from '@/components/ui/image-picker';
 import {
   Loader2, Plus, Calendar,
   CheckCircle2, XCircle, DollarSign, Users,
-  Check, X
+  Check, X, ChevronDown
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -70,6 +70,28 @@ export default function Polymarket() {
   const [resolution, setResolution] = useState<'YES' | 'NO'>('YES');
   const [createEventImageUrl, setCreateEventImageUrl] = useState('');
   const [editEventImageUrl, setEditEventImageUrl] = useState('');
+  const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
+  const [expandedEventBets, setExpandedEventBets] = useState<Record<string, PolymarketBet[]>>({});
+  const [loadingEventBets, setLoadingEventBets] = useState<Record<string, boolean>>({});
+
+  const toggleEventExpand = async (eventId: string) => {
+    if (expandedEventId === eventId) {
+      setExpandedEventId(null);
+      return;
+    }
+    setExpandedEventId(eventId);
+    if (expandedEventBets[eventId] === undefined) {
+      setLoadingEventBets((prev) => ({ ...prev, [eventId]: true }));
+      try {
+        const res = await polymarketApi.getEvent(eventId);
+        setExpandedEventBets((prev) => ({ ...prev, [eventId]: res.data.event.bets || [] }));
+      } catch {
+        setExpandedEventBets((prev) => ({ ...prev, [eventId]: [] }));
+      } finally {
+        setLoadingEventBets((prev) => ({ ...prev, [eventId]: false }));
+      }
+    }
+  };
 
   const uploadPolymarketImageFile = async (file: File): Promise<string> => {
     const base64Data = await new Promise<string>((resolve, reject) => {
@@ -423,8 +445,6 @@ export default function Polymarket() {
                 const totalYes = event.totalYes || 0;
                 const totalNo = event.totalNo || 0;
                 const totalVolume = totalYes + totalNo;
-                const yesPercent = totalVolume > 0 ? (totalYes / totalVolume) * 100 : 50;
-                const noPercent = totalVolume > 0 ? (totalNo / totalVolume) * 100 : 50;
                 
                 return (
                   <Card key={event.id} className="overflow-hidden">
@@ -473,10 +493,14 @@ export default function Polymarket() {
                               </div>
                             </div>
                             <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                              <div className="flex items-center gap-1">
+                              <button
+                                className="flex items-center gap-1 hover:text-foreground transition-colors"
+                                onClick={() => toggleEventExpand(event.id)}
+                              >
                                 <Users className="h-4 w-4" />
                                 <span>{event.betCount || 0} paris</span>
-                              </div>
+                                <ChevronDown className={cn("h-3 w-3 transition-transform", expandedEventId === event.id && "rotate-180")} />
+                              </button>
                               <div className="flex items-center gap-1">
                                 <DollarSign className="h-4 w-4" />
                                 <span>{event.totalVolume || 0} total</span>
@@ -532,9 +556,54 @@ export default function Polymarket() {
                             <span>Non {totalNo}</span>
                           </div>
                           <div className="h-2 w-full rounded-full overflow-hidden bg-muted flex">
-                            <div className="h-full bg-green-500" style={{ width: `${yesPercent}%` }} />
-                            <div className="h-full bg-red-500" style={{ width: `${noPercent}%` }} />
+                            {totalVolume === 0 ? (
+                              <>
+                                <div className="h-full bg-green-500/40 flex-1" />
+                                <div className="h-full bg-red-500/40 flex-1" />
+                              </>
+                            ) : (event.bets && event.bets.length > 0) ? (
+                              [
+                                ...event.bets.filter((b) => b.prediction === 'YES'),
+                                ...event.bets.filter((b) => b.prediction === 'NO'),
+                              ].map((bet, i) => (
+                                <div
+                                  key={i}
+                                  className={cn('h-full', bet.prediction === 'YES' ? 'bg-green-500' : 'bg-red-500')}
+                                  style={{ width: `${(bet.amount / totalVolume) * 100}%`, borderRight: '1px solid rgba(0,0,0,0.08)' }}
+                                />
+                              ))
+                            ) : (
+                              <>
+                                <div className="h-full bg-green-500" style={{ width: `${(totalYes / totalVolume) * 100}%` }} />
+                                <div className="h-full bg-red-500" style={{ width: `${(totalNo / totalVolume) * 100}%` }} />
+                              </>
+                            )}
                           </div>
+                          {expandedEventId === event.id && (
+                            <div className="pt-1 space-y-1 max-h-36 overflow-y-auto">
+                              {loadingEventBets[event.id] ? (
+                                <div className="flex justify-center py-1">
+                                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                                </div>
+                              ) : (expandedEventBets[event.id] || []).length === 0 ? (
+                                <p className="text-xs text-muted-foreground">Aucun pari</p>
+                              ) : (
+                                (expandedEventBets[event.id] || []).map((bet) => (
+                                  <div key={bet.id} className="flex items-center justify-between text-xs py-0.5">
+                                    <div className="flex items-center gap-2">
+                                      <span className={cn('font-medium', bet.prediction === 'YES' ? 'text-green-500' : 'text-red-500')}>
+                                        {bet.prediction === 'YES' ? 'Oui' : 'Non'}
+                                      </span>
+                                      <span style={{ color: bet.user?.usernameColor || undefined }}>
+                                        {bet.user?.username || '?'}
+                                      </span>
+                                    </div>
+                                    <span className="tabular-nums text-muted-foreground">{bet.amount}</span>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -858,16 +927,16 @@ export default function Polymarket() {
                   value={suggestedYesOdds}
                   onChange={(e) => setSuggestedYesOdds(e.target.value)}
                   placeholder="Oui (ex: 1.5)"
-                  step="0.1"
-                  min="1.01"
+                  step="any"
+                  min="1.001"
                 />
                 <Input
                   type="number"
                   value={suggestedNoOdds}
                   onChange={(e) => setSuggestedNoOdds(e.target.value)}
                   placeholder="Non (ex: 2.0)"
-                  step="0.1"
-                  min="1.01"
+                  step="any"
+                  min="1.001"
                 />
               </div>
             </div>
@@ -985,8 +1054,8 @@ export default function Polymarket() {
                 value={yesOdds}
                 onChange={(e) => setYesOdds(e.target.value)}
                 placeholder="1.5"
-                step="0.1"
-                min="1.01"
+                step="any"
+                min="1.001"
                 required
               />
             </div>
@@ -997,8 +1066,8 @@ export default function Polymarket() {
                 value={noOdds}
                 onChange={(e) => setNoOdds(e.target.value)}
                 placeholder="2.0"
-                step="0.1"
-                min="1.01"
+                step="any"
+                min="1.001"
                 required
               />
             </div>
@@ -1128,8 +1197,8 @@ export default function Polymarket() {
                   <Input
                     name="yesOdds"
                     type="number"
-                    step="0.1"
-                    min="1.01"
+                    step="any"
+                    min="1.001"
                     defaultValue={selectedEventForEdit.yesOdds}
                     required
                   />
@@ -1139,8 +1208,8 @@ export default function Polymarket() {
                   <Input
                     name="noOdds"
                     type="number"
-                    step="0.1"
-                    min="1.01"
+                    step="any"
+                    min="1.001"
                     defaultValue={selectedEventForEdit.noOdds}
                     required
                   />
@@ -1238,11 +1307,11 @@ export default function Polymarket() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium">Cote Oui</label>
-                <Input name="yesOdds" type="number" step="0.1" min="1.01" required />
+                <Input name="yesOdds" type="number" step="any" min="1.001" required />
               </div>
               <div>
                 <label className="text-sm font-medium">Cote Non</label>
-                <Input name="noOdds" type="number" step="0.1" min="1.01" required />
+                <Input name="noOdds" type="number" step="any" min="1.001" required />
               </div>
             </div>
             <div className="flex justify-end gap-2">
