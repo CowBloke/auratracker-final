@@ -23,6 +23,8 @@
 - bulle notif chatbox party
 - socket 
 - nous quii decidons le cours de l'auracoin
+- historique gdc
+- mécanique gdc
 
 ## à FIX
 
