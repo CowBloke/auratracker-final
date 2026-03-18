@@ -178,8 +178,7 @@ function resetForNewRound(game: BallArenaGame, io: Server) {
   game.playStartTime = null;
 
   for (let i = 0; i < game.balls.length; i++) {
-    game.balls[i].x = INITIAL_POSITIONS[i][0];
-    game.balls[i].y = INITIAL_POSITIONS[i][1];
+    // Keep current position — balls stay where they stopped
     game.balls[i].vx = 0;
     game.balls[i].vy = 0;
     game.balls[i].plannedVx = 0;
