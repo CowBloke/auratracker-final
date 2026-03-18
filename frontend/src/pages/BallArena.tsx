@@ -444,19 +444,8 @@ export default function BallArena() {
       } else if (!clientSimRef.current) {
         // Reconnect mid-game: re-seed sim from server state
         seedClientSim(state.players.map((p) => ({ x: p.x, y: p.y, vx: p.vx, vy: p.vy, isOut: p.isOut })));
-      } else {
-        // Periodic correction: snap only if drift is large
-        const sim = clientSimRef.current;
-        state.players.forEach((sp, i) => {
-          const cb = sim.balls[i];
-          if (!cb) return;
-          const err = Math.sqrt((sp.x - cb.x) ** 2 + (sp.y - cb.y) ** 2);
-          if (err > 25) {
-            cb.x = sp.x; cb.y = sp.y; cb.vx = sp.vx; cb.vy = sp.vy; cb.isOut = sp.isOut;
-            sim.prevBalls[i] = { x: sp.x, y: sp.y, isOut: sp.isOut };
-          }
-        });
       }
+      // Otherwise: sim is running, trust it completely — no corrections
     };
 
     const onGameOver = (data: GameOverData) => {

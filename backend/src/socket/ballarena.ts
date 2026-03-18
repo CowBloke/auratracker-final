@@ -235,8 +235,8 @@ function startSimulation(game: BallArenaGame, io: Server) {
     simStep(game.balls);
     game.tickCount++;
 
+    // Record replay frames (no live broadcast — client runs physics locally)
     if (game.tickCount % BROADCAST_EVERY_N_TICKS === 0) {
-      emitState(game, io);
       game.replayFrames.push([
         game.balls[0].x, game.balls[0].y, game.balls[0].isOut ? 1 : 0,
         game.balls[1].x, game.balls[1].y, game.balls[1].isOut ? 1 : 0,
