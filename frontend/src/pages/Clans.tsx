@@ -1269,53 +1269,59 @@ export default function Clans() {
       </PageShell>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Créer un clan</DialogTitle>
-            <DialogDescription>Coût: 100 money. Le chef devient automatiquement le premier membre.</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleCreateClan} className="space-y-4">
-            {formError ? (
-              <Alert variant="destructive">
-                <AlertTitle>Erreur</AlertTitle>
-                <AlertDescription>{formError}</AlertDescription>
-              </Alert>
-            ) : null}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Nom</label>
-              <Input value={name} onChange={(event) => setName(event.target.value)} maxLength={32} placeholder="Les Veilleurs" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Description</label>
-              <Textarea
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                maxLength={300}
-                rows={4}
-                placeholder="Décris l'identité, le style de jeu et l'objectif du clan."
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Emblème</label>
-              <ImagePicker
-                value={imageUrl}
-                onChange={setImageUrl}
-                uploadFn={uploadClanImageFile}
-                disabled={creating}
-              />
-            </div>
-            <div className="flex items-center justify-between rounded-lg border p-3">
-              <div>
-                <div className="font-medium">Clan public</div>
-                <div className="text-sm text-muted-foreground">Si désactivé, les joueurs devront envoyer une candidature.</div>
+        <DialogContent className="max-h-[85vh] overflow-hidden p-0 sm:max-w-lg">
+          <div className="flex max-h-[85vh] flex-col">
+            <DialogHeader className="shrink-0 border-b px-6 py-5 pr-12">
+              <DialogTitle>Créer un clan</DialogTitle>
+              <DialogDescription>Coût: 100 money. Le chef devient automatiquement le premier membre.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleCreateClan} className="flex min-h-0 flex-1 flex-col">
+              <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
+                {formError ? (
+                  <Alert variant="destructive">
+                    <AlertTitle>Erreur</AlertTitle>
+                    <AlertDescription>{formError}</AlertDescription>
+                  </Alert>
+                ) : null}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Nom</label>
+                  <Input value={name} onChange={(event) => setName(event.target.value)} maxLength={32} placeholder="Les Veilleurs" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Description</label>
+                  <Textarea
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
+                    maxLength={300}
+                    rows={4}
+                    placeholder="Décris l'identité, le style de jeu et l'objectif du clan."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Emblème</label>
+                  <ImagePicker
+                    value={imageUrl}
+                    onChange={setImageUrl}
+                    uploadFn={uploadClanImageFile}
+                    disabled={creating}
+                  />
+                </div>
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <div>
+                    <div className="font-medium">Clan public</div>
+                    <div className="text-sm text-muted-foreground">Si désactivé, les joueurs devront envoyer une candidature.</div>
+                  </div>
+                  <Switch checked={isPublic} onCheckedChange={setIsPublic} />
+                </div>
               </div>
-              <Switch checked={isPublic} onCheckedChange={setIsPublic} />
-            </div>
-            <Button type="submit" className="w-full" disabled={creating}>
-              {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-              Créer le clan
-            </Button>
-          </form>
+              <div className="shrink-0 border-t px-6 py-4">
+                <Button type="submit" className="w-full" disabled={creating}>
+                  {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                  Créer le clan
+                </Button>
+              </div>
+            </form>
+          </div>
         </DialogContent>
       </Dialog>
 

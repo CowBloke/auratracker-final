@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { adminApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, RegistrationReview, AdminWarning, badgesApi, Badge } from '../services/api';
+import { adminApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown } from '../services/api';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Minus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, Inbox, Archive, UserCog, Crown, Swords, Send, Upload, Award } from 'lucide-react';
 import { BadgeIcon } from '@/components/badges/BadgeIcon';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, ReferenceDot } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, ReferenceDot, LineChart, Line, Tooltip as RechartsTooltip, Legend, BarChart, Bar } from 'recharts';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,6 +40,7 @@ import { resolveImageUrl } from '@/lib/images';
 import { ImagePicker } from '@/components/ui/image-picker';
 import { BLOCKABLE_PAGES } from '@/config/blockedPages';
 import { PageShell } from '@/components/layout/page-shell';
+import { getPageMetaForPath } from '@/lib/page-meta';
 
 // Effect types for items
 const EFFECT_TYPES = [
@@ -164,6 +165,7 @@ const ACTION_LABELS: Record<string, string> = {
   transfer: 'Transfert',
   gift_aura: 'Don d\'aura',
   balance_change: 'Modification solde',
+  pass_reward: 'Récompense pass',
   // Party
   party_create: 'Groupe créé',
   party_join: 'Rejoint groupe',
@@ -252,6 +254,7 @@ const GAME_TYPE_LABELS: Record<string, string> = {
 };
 
 const MULTIPLAYER_GAME_TYPES = new Set(['bombparty', 'petit_bac', 'poker', 'battleship']);
+const ACTIVITY_BREAKDOWN_COLORS = ['#2563eb', '#f97316', '#10b981', '#eab308', '#8b5cf6', '#ef4444'];
 
 const toNumber = (value: unknown): number | null => {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -536,12 +539,16 @@ export default function Admin() {
   type ActivityChartPoint = OnlineHistoryPoint & { ts: number };
   type ActivityHoverState = { cursorTs: number; point: ActivityChartPoint };
   type OnlineStats = { current: number; allTimeRecord: number; allTimeRecordAt: string | null; avg1d: number; avg7d: number; avg30d: number; peak1d: number; peak7d: number; peak30d: number };
+  type ActivityBreakdownChartPoint = { hour: number; hourLabel: string; total: number } & Record<string, string | number>;
   const [activityPeriod, setActivityPeriod] = useState<'day' | 'week' | 'month' | 'custom' | 'specific'>('day');
   const [activityCustomStart, setActivityCustomStart] = useState('');
   const [activityCustomEnd, setActivityCustomEnd] = useState('');
   const [activitySpecificDay, setActivitySpecificDay] = useState('');
   const [activityHistory, setActivityHistory] = useState<{ data: OnlineHistoryPoint[]; peak: number; peakAt: string | null } | null>(null);
   const [onlineStats, setOnlineStats] = useState<OnlineStats | null>(null);
+  const [activityBreakdownDay, setActivityBreakdownDay] = useState(() => new Date().toISOString().slice(0, 10));
+  const [activityBreakdown, setActivityBreakdown] = useState<AdminActivityBreakdown | null>(null);
+  const [loadingActivityBreakdown, setLoadingActivityBreakdown] = useState(false);
   const [loadingActivity, setLoadingActivity] = useState(false);
   const [snapshotting, setSnapshotting] = useState(false);
   const [hoveredActivity, setHoveredActivity] = useState<ActivityHoverState | null>(null);
@@ -692,6 +699,8 @@ export default function Admin() {
   const [savingFakeOnline, setSavingFakeOnline] = useState(false);
   const [announcementMessage, setAnnouncementMessage] = useState('');
   const [savingAnnouncement, setSavingAnnouncement] = useState(false);
+  const [referralEnabled, setReferralEnabled] = useState(true);
+  const [savingReferralEnabled, setSavingReferralEnabled] = useState(false);
   const [referralRewardAmount, setReferralRewardAmount] = useState('250');
   const [savingReferralReward, setSavingReferralReward] = useState(false);
   const [loginMessage, setLoginMessage] = useState('');
@@ -919,7 +928,20 @@ export default function Admin() {
     fetchSettings();
     fetchUpdatePopups();
     fetchActivity('day');
+    fetchActivityBreakdown(new Date().toISOString().slice(0, 10));
   }, []);
+
+  const fetchActivityBreakdown = async (date = activityBreakdownDay) => {
+    try {
+      setLoadingActivityBreakdown(true);
+      const res = await adminApi.getActivityBreakdown(date);
+      setActivityBreakdown(res.data);
+    } catch (error) {
+      console.error('Failed to fetch activity breakdown:', error);
+    } finally {
+      setLoadingActivityBreakdown(false);
+    }
+  };
 
   const setActivityDomain = (domain: [number, number] | null) => {
     activityZoomDomainRef.current = domain;
@@ -1443,6 +1465,7 @@ export default function Admin() {
       setLoadingSettings(true);
       const res = await adminApi.getSettings();
       setAnnouncementMessage(res.data.settings.topbar_announcement || '');
+      setReferralEnabled(res.data.settings.referral_enabled !== 'false');
       setReferralRewardAmount(res.data.settings.referral_reward_amount || '250');
       setMaintenanceMessage(res.data.settings.maintenance_message || '');
       setBlockedMessage(res.data.settings.blocked_message || '');
@@ -1617,6 +1640,23 @@ export default function Admin() {
       showMessage('error', 'Erreur lors de la sauvegarde de la recompense');
     } finally {
       setSavingReferralReward(false);
+    }
+  };
+
+  const saveReferralEnabled = async (value: boolean) => {
+    const previousValue = referralEnabled;
+    try {
+      setReferralEnabled(value);
+      setSavingReferralEnabled(true);
+      await adminApi.updateSetting('referral_enabled', value ? 'true' : 'false');
+      refreshFeatures();
+      showMessage('success', value ? 'Parrainage active' : 'Parrainage desactive');
+    } catch (error) {
+      setReferralEnabled(previousValue);
+      console.error('Failed to save referral enabled setting:', error);
+      showMessage('error', 'Erreur lors de la sauvegarde du parrainage');
+    } finally {
+      setSavingReferralEnabled(false);
     }
   };
 
@@ -2328,6 +2368,22 @@ export default function Admin() {
     );
   });
 
+  const pageBreakdownKeys = activityBreakdown?.topPages.map((entry) => entry.page) ?? [];
+  const pageBreakdownData: ActivityBreakdownChartPoint[] = activityBreakdown?.pageSeries.map((entry) => ({
+    hour: entry.hour,
+    hourLabel: entry.hourLabel,
+    total: entry.total,
+    ...entry.values,
+  })) ?? [];
+  const gameBreakdownKeys = activityBreakdown?.topGames.map((entry) => entry.gameType) ?? [];
+  const gameBreakdownData: ActivityBreakdownChartPoint[] = activityBreakdown?.gameSeries.map((entry) => ({
+    hour: entry.hour,
+    hourLabel: entry.hourLabel,
+    total: entry.total,
+    ...entry.values,
+  })) ?? [];
+
+
   return (
     <>
     <PageShell>
@@ -2386,7 +2442,7 @@ export default function Admin() {
             <Shield className="h-4 w-4" />
             Paramètres
           </TabsTrigger>
-          <TabsTrigger value="activity" className="flex items-center gap-2" onClick={() => fetchActivity(activityPeriod)}>
+          <TabsTrigger value="activity" className="flex items-center gap-2" onClick={() => { fetchActivity(activityPeriod); fetchActivityBreakdown(activityBreakdownDay); }}>
             <Activity className="h-4 w-4" />
             Activité
             {onlineStats && (
@@ -3555,6 +3611,20 @@ export default function Admin() {
               <CardDescription>Parrainage</CardDescription>
             </CardHeader>
             <CardContent className={SPACING.CARD_SPACING}>
+              <div className="flex items-center justify-between rounded-xl border border-border/50 bg-muted/20 px-4 py-4">
+                <div className="space-y-1">
+                  <h3 className="font-medium">Activer le systeme de parrainage</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Coupe l&apos;usage des codes de parrainage sur l&apos;inscription et masque le module cote joueur.
+                  </p>
+                </div>
+                <Switch
+                  checked={referralEnabled}
+                  disabled={savingReferralEnabled}
+                  onCheckedChange={saveReferralEnabled}
+                />
+              </div>
+
               <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div className="space-y-2">
                   <h3 className="font-medium">Recompense fixe par inscription validee</h3>
@@ -3574,10 +3644,11 @@ export default function Admin() {
                       min={0}
                       step={1}
                       value={referralRewardAmount}
+                      disabled={!referralEnabled}
                       onChange={(event) => setReferralRewardAmount(event.target.value)}
                     />
                   </div>
-                  <Button onClick={saveReferralReward} disabled={savingReferralReward}>
+                  <Button onClick={saveReferralReward} disabled={savingReferralReward || !referralEnabled}>
                     {savingReferralReward ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -5992,6 +6063,203 @@ export default function Admin() {
               )}
             </CardContent>
           </Card>
+
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <Card className="border-border/40">
+              <CardHeader className="space-y-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-semibold text-sm">Pages sur la journée</span>
+                    </div>
+                    <CardDescription>
+                      Présence moyenne par page heure par heure.
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="date"
+                      value={activityBreakdownDay}
+                      onChange={(e) => setActivityBreakdownDay(e.target.value)}
+                      className="h-8 w-auto text-xs"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 px-3 text-xs"
+                      onClick={() => fetchActivityBreakdown(activityBreakdownDay)}
+                      disabled={!activityBreakdownDay || loadingActivityBreakdown}
+                    >
+                      {loadingActivityBreakdown ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Appliquer'}
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {loadingActivityBreakdown && !activityBreakdown ? (
+                  <div className="flex justify-center py-16">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : pageBreakdownKeys.length > 0 ? (
+                  <>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={pageBreakdownData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis
+                          dataKey="hourLabel"
+                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                          axisLine={false}
+                          tickLine={false}
+                          interval={1}
+                        />
+                        <YAxis
+                          allowDecimals={false}
+                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={28}
+                        />
+                        <RechartsTooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--background))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '0.75rem',
+                          }}
+                          formatter={(value: number, name: string) => [
+                            `${value} joueur${value > 1 ? 's' : ''}`,
+                            getPageMetaForPath(name).title,
+                          ]}
+                          labelFormatter={(label) => `${label}`}
+                        />
+                        <Legend
+                          formatter={(value) => getPageMetaForPath(value).title}
+                          wrapperStyle={{ fontSize: '12px' }}
+                        />
+                        {pageBreakdownKeys.map((page: string, index: number) => (
+                          <Line
+                            key={page}
+                            type="monotone"
+                            dataKey={page}
+                            stroke={ACTIVITY_BREAKDOWN_COLORS[index % ACTIVITY_BREAKDOWN_COLORS.length]}
+                            strokeWidth={2}
+                            dot={false}
+                            name={page}
+                            isAnimationActive={false}
+                          />
+                        ))}
+                      </LineChart>
+                    </ResponsiveContainer>
+
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {activityBreakdown?.topPages.map((entry, index) => (
+                        <div key={entry.page} className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/10 px-3 py-2 text-xs">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <span
+                              className="h-2.5 w-2.5 rounded-full"
+                              style={{ backgroundColor: ACTIVITY_BREAKDOWN_COLORS[index % ACTIVITY_BREAKDOWN_COLORS.length] }}
+                            />
+                            <span className="truncate">{getPageMetaForPath(entry.page).title}</span>
+                          </div>
+                          <span className="tabular-nums text-muted-foreground">{entry.total}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <p className="py-12 text-center text-sm text-muted-foreground">
+                    Pas encore assez de snapshots avec la page courante pour cette date.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/40">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Gamepad2 className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-semibold text-sm">Jeux par heure</span>
+                </div>
+                <CardDescription>
+                  Nombre d’actions de jeu enregistrées par heure sur la date choisie.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {loadingActivityBreakdown && !activityBreakdown ? (
+                  <div className="flex justify-center py-16">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : gameBreakdownKeys.length > 0 ? (
+                  <>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={gameBreakdownData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                        <XAxis
+                          dataKey="hourLabel"
+                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                          axisLine={false}
+                          tickLine={false}
+                          interval={1}
+                        />
+                        <YAxis
+                          allowDecimals={false}
+                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={28}
+                        />
+                        <RechartsTooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--background))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '0.75rem',
+                          }}
+                          formatter={(value: number, name: string) => [
+                            `${value} action${value > 1 ? 's' : ''}`,
+                            GAME_TYPE_LABELS[name] ?? humanizeUiLabel(name),
+                          ]}
+                          labelFormatter={(label) => `${label}`}
+                        />
+                        <Legend
+                          formatter={(value) => GAME_TYPE_LABELS[value] ?? humanizeUiLabel(value)}
+                          wrapperStyle={{ fontSize: '12px' }}
+                        />
+                        {gameBreakdownKeys.map((gameType: string, index: number) => (
+                          <Bar
+                            key={gameType}
+                            dataKey={gameType}
+                            stackId="games"
+                            fill={ACTIVITY_BREAKDOWN_COLORS[index % ACTIVITY_BREAKDOWN_COLORS.length]}
+                            radius={index === gameBreakdownKeys.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                            isAnimationActive={false}
+                          />
+                        ))}
+                      </BarChart>
+                    </ResponsiveContainer>
+
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {activityBreakdown?.topGames.map((entry, index) => (
+                        <div key={entry.gameType} className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/10 px-3 py-2 text-xs">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <span
+                              className="h-2.5 w-2.5 rounded-full"
+                              style={{ backgroundColor: ACTIVITY_BREAKDOWN_COLORS[index % ACTIVITY_BREAKDOWN_COLORS.length] }}
+                            />
+                            <span className="truncate">{GAME_TYPE_LABELS[entry.gameType] ?? humanizeUiLabel(entry.gameType)}</span>
+                          </div>
+                          <span className="tabular-nums text-muted-foreground">{entry.total}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <p className="py-12 text-center text-sm text-muted-foreground">
+                    Aucun log de jeu disponible pour cette date.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
         </TabsContent>
 

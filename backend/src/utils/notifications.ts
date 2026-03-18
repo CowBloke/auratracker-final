@@ -5,6 +5,7 @@ export type NotificationType =
   | 'MONEY_RECEIVED'
   | 'GIFT_RECEIVED'
   | 'ITEM_RECEIVED'
+  | 'CLAN_MESSAGE'
   | 'CLAN_INVITE'
   | 'CLAN_JOIN_REQUEST'
   | 'CLAN_JOIN_ACCEPTED'
@@ -30,12 +31,74 @@ export interface CreateNotificationOptions {
   icon?: string;
 }
 
+export function normalizeNotificationLink(link?: string | null) {
+  if (link === '/games/polymarket') return '/polymarket';
+  return link ?? null;
+}
+
+interface NotificationLike {
+  id: string;
+  userId: string;
+  type: string;
+  title: string;
+  body: string;
+  data: string | Record<string, unknown> | null;
+  link: string | null;
+  icon: string | null;
+  isRead: boolean;
+  readAt: Date | string | null;
+  isArchived: boolean;
+  archivedAt: Date | string | null;
+  createdAt: Date | string;
+}
+
+export function serializeNotification(notification: NotificationLike) {
+  const parsedData = typeof notification.data === 'string'
+    ? JSON.parse(notification.data)
+    : notification.data ?? null;
+
+  return {
+    id: notification.id,
+    userId: notification.userId,
+    type: notification.type,
+    title: notification.title,
+    body: notification.body,
+    data: parsedData,
+    link: normalizeNotificationLink(notification.link),
+    icon: notification.icon,
+    isRead: notification.isRead,
+    readAt: notification.readAt
+      ? (notification.readAt instanceof Date ? notification.readAt.toISOString() : notification.readAt)
+      : null,
+    isArchived: notification.isArchived,
+    archivedAt: notification.archivedAt
+      ? (notification.archivedAt instanceof Date ? notification.archivedAt.toISOString() : notification.archivedAt)
+      : null,
+    createdAt: notification.createdAt instanceof Date
+      ? notification.createdAt.toISOString()
+      : notification.createdAt,
+  };
+}
+
+export function emitNotificationCreated(notification: NotificationLike) {
+  io.to(`user:${notification.userId}`).emit('notification:new', serializeNotification(notification));
+}
+
+export function emitNotificationUpdated(notification: NotificationLike) {
+  io.to(`user:${notification.userId}`).emit('notification:updated', serializeNotification(notification));
+}
+
+export function emitNotificationDeleted(userId: string, id: string) {
+  io.to(`user:${userId}`).emit('notification:deleted', { id });
+}
+
 /**
  * Persist a notification in the database and push it in real-time via Socket.io.
  * Returns the created notification record.
  */
 export async function createNotification(opts: CreateNotificationOptions) {
   const { userId, type, title, body, data, link, icon } = opts;
+  const normalizedLink = normalizeNotificationLink(link);
 
   const notification = await prisma.notification.create({
     data: {
@@ -44,23 +107,12 @@ export async function createNotification(opts: CreateNotificationOptions) {
       title,
       body,
       data: data ? JSON.stringify(data) : null,
-      link: link ?? null,
+      link: normalizedLink,
       icon: icon ?? null,
     },
   });
 
-  // Real-time push — the front-end joins its own user room on socket connect
-  io.to(`user:${userId}`).emit('notification:new', {
-    id: notification.id,
-    type: notification.type,
-    title: notification.title,
-    body: notification.body,
-    data: data ?? null,
-    link: notification.link,
-    icon: notification.icon,
-    isRead: false,
-    createdAt: notification.createdAt.toISOString(),
-  });
+  emitNotificationCreated(notification);
 
   return notification;
 }

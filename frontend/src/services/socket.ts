@@ -39,8 +39,8 @@ export const chatEvents = {
   join: (userId: string, username: string, currentPage?: string) => {
     socket?.emit('chat:join', { userId, username, currentPage });
   },
-  sendMessage: (userId: string, message: string, replyToId?: string | null) => {
-    socket?.emit('chat:message', { userId, message, replyToId });
+  sendMessage: (userId: string, message?: string, replyToId?: string | null, imageUrl?: string | null) => {
+    socket?.emit('chat:message', { userId, message, replyToId, imageUrl });
   },
   react: (userId: string, messageId: string, emoji: string) => {
     socket?.emit('chat:reaction', { userId, messageId, emoji });

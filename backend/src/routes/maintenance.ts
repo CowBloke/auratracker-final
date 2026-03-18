@@ -10,6 +10,7 @@ const BLOCKED_PAGES_KEY = 'blocked_pages';
 const BLOCKED_MESSAGE_KEY = 'blocked_message';
 const LOGIN_MESSAGE_KEY = 'login_message';
 const LOGIN_REGISTER_CTA_ENABLED_KEY = 'login_register_cta_enabled';
+const REFERRAL_ENABLED_KEY = 'referral_enabled';
 
 router.get('/', async (_req, res) => {
   try {
@@ -22,6 +23,7 @@ router.get('/', async (_req, res) => {
       blockedMessageSetting,
       loginMessageSetting,
       loginRegisterCtaEnabledSetting,
+      referralEnabledSetting,
     ] = await Promise.all([
       prisma.gameSettings.findUnique({ where: { key: MAINTENANCE_ENABLED_KEY } }),
       prisma.gameSettings.findUnique({ where: { key: MAINTENANCE_MESSAGE_KEY } }),
@@ -31,6 +33,7 @@ router.get('/', async (_req, res) => {
       prisma.gameSettings.findUnique({ where: { key: BLOCKED_MESSAGE_KEY } }),
       prisma.gameSettings.findUnique({ where: { key: LOGIN_MESSAGE_KEY } }),
       prisma.gameSettings.findUnique({ where: { key: LOGIN_REGISTER_CTA_ENABLED_KEY } }),
+      prisma.gameSettings.findUnique({ where: { key: REFERRAL_ENABLED_KEY } }),
     ]);
 
     const message = messageSetting?.value ?? '';
@@ -80,6 +83,7 @@ router.get('/', async (_req, res) => {
       blockedMessage: blockedMessageSetting?.value ?? '',
       loginMessage: loginMessageSetting?.value ?? '',
       loginRegisterCtaEnabled: loginRegisterCtaEnabledSetting?.value !== 'false',
+      referralEnabled: referralEnabledSetting?.value !== 'false',
     });
   } catch (error) {
     console.error('Get maintenance status error:', error);

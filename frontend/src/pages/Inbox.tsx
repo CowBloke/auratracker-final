@@ -48,6 +48,7 @@ const TYPE_ICON: Record<string, React.FC<{ className?: string }>> = {
   MONEY_RECEIVED:     ({ className }) => <DollarSign className={className} />,
   GIFT_RECEIVED:      ({ className }) => <Gift className={className} />,
   ITEM_RECEIVED:      ({ className }) => <Package className={className} />,
+  CLAN_MESSAGE:       ({ className }) => <MessageSquare className={className} />,
   CLAN_JOIN_REQUEST:  ({ className }) => <Users className={className} />,
   CLAN_JOIN_ACCEPTED: ({ className }) => <Users className={className} />,
   CLAN_JOIN_REJECTED: ({ className }) => <Users className={className} />,
@@ -96,7 +97,7 @@ const ICON_NAME_MAP: Record<string, React.FC<{ className?: string }>> = {
 };
 
 // ── Sidebar categories ──────────────────────────────────────────────────────
-const CLAN_TYPES = ['CLAN_JOIN_REQUEST', 'CLAN_JOIN_ACCEPTED', 'CLAN_JOIN_REJECTED', 'CLAN_WAR_DECLARED', 'CLAN_WAR_COMPLETED', 'CLAN_WAR_WON', 'CLAN_WAR_LOST'];
+const CLAN_TYPES = ['CLAN_MESSAGE', 'CLAN_JOIN_REQUEST', 'CLAN_JOIN_ACCEPTED', 'CLAN_JOIN_REJECTED', 'CLAN_WAR_DECLARED', 'CLAN_WAR_COMPLETED', 'CLAN_WAR_WON', 'CLAN_WAR_LOST'];
 const POLY_TYPES = ['POLYMARKET_WIN', 'POLYMARKET_LOSS'];
 const SYS_TYPES  = ['ADMIN', 'SYSTEM'];
 

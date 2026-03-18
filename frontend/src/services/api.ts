@@ -228,6 +228,12 @@ export interface DailyRacerSubmitResponse {
     trackDate: string;
     createdAt: string;
   };
+  rewards: {
+    money: number;
+    aura: number;
+    isFirstRunToday: boolean;
+    isNewDailyBest: boolean;
+  };
   isNewDailyBest: boolean;
   bestLapTimeMs: number;
 }
@@ -894,6 +900,30 @@ export interface LogStats {
   byType: Record<string, number>;
 }
 
+export interface AdminActivityBreakdown {
+  date: string;
+  pageSeries: Array<{
+    hour: number;
+    hourLabel: string;
+    total: number;
+    values: Record<string, number>;
+  }>;
+  topPages: Array<{
+    page: string;
+    total: number;
+  }>;
+  gameSeries: Array<{
+    hour: number;
+    hourLabel: string;
+    total: number;
+    values: Record<string, number>;
+  }>;
+  topGames: Array<{
+    gameType: string;
+    total: number;
+  }>;
+}
+
 type AdminRareAction =
   | { action: 'chat_clear' }
   | { action: 'deploy' }
@@ -987,6 +1017,8 @@ export const adminApi = {
     gameType?: string;
   }) => api.get<Blob>('/admin/logs/download', { params, responseType: 'blob' }),
   getLogStats: () => api.get<LogStats>('/admin/logs/stats'),
+  getActivityBreakdown: (date: string) =>
+    api.get<AdminActivityBreakdown>('/admin/activity-breakdown', { params: { date } }),
   // Game settings management
   getSettings: () => api.get<{ settings: Record<string, string> }>('/admin/settings'),
   updateSettings: (settings: Record<string, string | number>) =>
@@ -1086,6 +1118,7 @@ export const maintenanceApi = {
     blockedMessage?: string;
     loginMessage?: string;
     loginRegisterCtaEnabled?: boolean;
+    referralEnabled?: boolean;
   }>('/maintenance'),
 };
 

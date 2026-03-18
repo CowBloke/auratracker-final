@@ -936,6 +936,23 @@ router.post('/:id/chat', authMiddleware, async (req: AuthRequest, res: Response)
       return res.status(403).json({ error: 'Tu dois etre membre du clan pour ecrire dans ce chat.' });
     }
 
+    const clanMembers = await prisma.clanMember.findMany({
+      where: { clanId: id },
+      select: {
+        userId: true,
+        user: {
+          select: {
+            username: true,
+          },
+        },
+        clan: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
     const createdMessage = await prisma.clanMessage.create({
       data: {
         clanId: id,
@@ -974,6 +991,35 @@ router.post('/:id/chat', authMiddleware, async (req: AuthRequest, res: Response)
           },
         });
       }
+    }
+
+    const sender = clanMembers.find((member) => member.userId === userId);
+    const recipientIds = clanMembers
+      .map((member) => member.userId)
+      .filter((memberUserId) => memberUserId !== userId);
+
+    if (sender && recipientIds.length > 0) {
+      const preview = message.length > 120 ? `${message.slice(0, 117)}...` : message;
+
+      Promise.all(
+        recipientIds.map((recipientId) =>
+          createNotification({
+            userId: recipientId,
+            type: 'CLAN_MESSAGE',
+            title: `Nouveau message dans ${sender.clan.name}`,
+            body: `${sender.user.username}: ${preview}`,
+            data: {
+              clanId: id,
+              clanName: sender.clan.name,
+              senderId: userId,
+              senderUsername: sender.user.username,
+              messageId: createdMessage.id,
+            },
+            link: '/clans',
+            icon: 'message-square',
+          })
+        )
+      ).catch(() => {});
     }
 
     res.status(201).json({

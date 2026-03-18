@@ -129,7 +129,7 @@ router.post('/suggestions', authMiddleware, async (req: AuthRequest, res: Respon
           title: suggestion.title,
           authorId: suggestion.user.id,
         },
-        link: '/games/polymarket',
+        link: '/polymarket',
         icon: 'chart-no-axes-column',
       })
     ));
@@ -490,7 +490,7 @@ router.post('/suggestions/:id/approve', authMiddleware, requireAdmin, async (req
         suggestionId: suggestion.id,
         eventId: event.id,
       },
-      link: '/games/polymarket',
+      link: '/polymarket',
       icon: 'badge-check',
     }).catch(() => {});
 
@@ -539,7 +539,7 @@ router.post('/suggestions/:id/reject', authMiddleware, requireAdmin, async (req:
       data: {
         suggestionId: suggestion.id,
       },
-      link: '/games/polymarket',
+      link: '/polymarket',
       icon: 'badge-x',
     }).catch(() => {});
 
@@ -721,7 +721,7 @@ router.post('/bets', authMiddleware, async (req: AuthRequest, res: Response) => 
         prediction,
         amount,
       },
-      link: '/games/polymarket',
+      link: '/polymarket',
       icon: 'chart-no-axes-column',
     }).catch(() => {});
 
@@ -815,7 +815,7 @@ router.post('/events/:id/resolve', authMiddleware, requireAdmin, async (req: Aut
           resolution,
           payoutAmount,
         },
-        link: '/games/polymarket',
+        link: '/polymarket',
         icon: 'trending-up',
       }).catch(() => {});
 
@@ -835,7 +835,7 @@ router.post('/events/:id/resolve', authMiddleware, requireAdmin, async (req: Aut
           resolution,
           amount: bet.amount,
         },
-        link: '/games/polymarket',
+        link: '/polymarket',
         icon: 'trending-down',
       })
     ));

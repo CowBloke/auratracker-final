@@ -20,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TYPOGRAPHY } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { CenteredShell } from '@/components/layout/centered-shell';
+import { useFeatures } from '@/contexts/FeaturesContext';
 
 const SCHOOL_LEVELS = [
   { value: 'SECONDE', label: 'Seconde' },
@@ -64,6 +65,8 @@ export default function Register() {
   const [success, setSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [searchParams] = useSearchParams();
+  const { maintenanceStatus, maintenanceLoading } = useFeatures();
+  const referralEnabled = maintenanceStatus.referralEnabled;
 
   const form = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
@@ -92,7 +95,7 @@ export default function Register() {
         email: data.email,
         password: data.password,
         motivationMessage: data.motivationMessage,
-        referralCode: data.referralCode?.trim() ? data.referralCode.trim() : undefined,
+        referralCode: referralEnabled && data.referralCode?.trim() ? data.referralCode.trim() : undefined,
       });
       setSuccessMessage(response.data.message || '');
       setSuccess(true);
@@ -251,25 +254,27 @@ export default function Register() {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="referralCode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <Input
-                        type="text"
-                        placeholder="Code de parrainage (optionnel)"
-                        className="h-12 border-border/50 text-center uppercase tracking-[0.24em]"
-                        {...field}
-                        value={field.value || ''}
-                        onChange={(event) => field.onChange(event.target.value.toUpperCase())}
-                      />
-                    </FormControl>
-                    <FormMessage className="text-center" />
-                  </FormItem>
-                )}
-              />
+              {!maintenanceLoading && referralEnabled && (
+                <FormField
+                  control={form.control}
+                  name="referralCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Input
+                          type="text"
+                          placeholder="Code de parrainage (optionnel)"
+                          className="h-12 border-border/50 text-center uppercase tracking-[0.24em]"
+                          {...field}
+                          value={field.value || ''}
+                          onChange={(event) => field.onChange(event.target.value.toUpperCase())}
+                        />
+                      </FormControl>
+                      <FormMessage className="text-center" />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <FormField
                 control={form.control}

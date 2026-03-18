@@ -16,6 +16,18 @@ const DEFAULT_SHOP_CATEGORIES = [
   { id: 'GIFT', label: 'Cadeaux' },
 ];
 
+const parseItemEffect = (effect: string | null) => {
+  if (!effect) return null;
+  try {
+    return JSON.parse(effect) as { type?: string };
+  } catch {
+    return null;
+  }
+};
+
+const isDoodleJumpSkinItem = (item: { effect: string | null }) =>
+  parseItemEffect(item.effect)?.type === 'DOODLE_JUMP_SKIN';
+
 // Get shop categories (public)
 router.get('/categories', authMiddleware, async (_req: AuthRequest, res: Response) => {
   try {
@@ -82,6 +94,25 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
     
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (isDoodleJumpSkinItem(item)) {
+      if (quantity !== 1) {
+        return res.status(400).json({ error: 'Skin purchases are limited to one at a time' });
+      }
+
+      const existingSkin = await prisma.userItem.findUnique({
+        where: {
+          userId_itemId: {
+            userId: req.user.id,
+            itemId,
+          },
+        },
+      });
+
+      if (existingSkin) {
+        return res.status(400).json({ error: 'You already own this skin' });
+      }
     }
     
     const totalPrice = item.price * quantity;

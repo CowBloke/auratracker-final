@@ -1,6 +1,7 @@
 import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
 import { logChat } from '../utils/logger.js';
+import { isAllowedImageUrl } from '../utils/uploads.js';
 
 interface OnlineUser {
   userId: string;
@@ -166,12 +167,25 @@ const sendDisplayedOnlineState = async (socket: Socket) => {
   socket.emit('users:online-count', { count });
 };
 
-const summarizeReactions = (reactions: Array<{ emoji: string }>) => {
-  const counts = new Map<string, number>();
+const summarizeReactions = (
+  reactions: Array<{ emoji: string; user?: { username: string } | null }>
+) => {
+  const grouped = new Map<string, { count: number; users: string[] }>();
+
   reactions.forEach((reaction) => {
-    counts.set(reaction.emoji, (counts.get(reaction.emoji) ?? 0) + 1);
+    const existing = grouped.get(reaction.emoji) ?? { count: 0, users: [] };
+    existing.count += 1;
+    if (reaction.user?.username) {
+      existing.users.push(reaction.user.username);
+    }
+    grouped.set(reaction.emoji, existing);
   });
-  return Array.from(counts.entries()).map(([emoji, count]) => ({ emoji, count }));
+
+  return Array.from(grouped.entries()).map(([emoji, data]) => ({
+    emoji,
+    count: data.count,
+    users: data.users,
+  }));
 };
 
 const getTopLeaderboardIds = async () => {
@@ -194,6 +208,111 @@ const getTopLeaderboardIds = async () => {
     topMoneyIds: new Set(topMoney.map((u) => u.id)),
     topAuraIds: new Set(topAura.map((u) => u.id)),
   };
+};
+
+const CHAT_SYSTEM_USERNAME = 'AuraTracker';
+
+const formatGameScoreForChat = (gameType: string, score: number) => {
+  if (gameType === 'racer') {
+    return `${score.toLocaleString('fr-FR', {
+      minimumFractionDigits: score % 1 === 0 ? 0 : 2,
+      maximumFractionDigits: 2,
+    })} s`;
+  }
+
+  return score.toLocaleString('fr-FR');
+};
+
+const buildChatMessagePayload = async (
+  message: any,
+  leaderboardState?: { topMoneyIds: Set<string>; topAuraIds: Set<string> }
+) => {
+  const senderId = typeof message.userId === 'string' ? message.userId : null;
+  const [leaderboards, senderBadges] = await Promise.all([
+    leaderboardState ? Promise.resolve(leaderboardState) : getTopLeaderboardIds(),
+    senderId ? getUserEquippedBadges(senderId) : Promise.resolve([]),
+  ]);
+
+  return {
+    id: message.id,
+    type: message.type ?? 'user',
+    userId: senderId,
+    username: message.user?.username ?? CHAT_SYSTEM_USERNAME,
+    usernameColor: message.user?.usernameColor ?? null,
+    profilePicture: message.user?.profilePicture ?? null,
+    message: message.message,
+    imageUrl: message.imageUrl ?? null,
+    pinned: message.pinned ?? false,
+    pinnedAt: message.pinnedAt ? message.pinnedAt.toISOString() : null,
+    isTopMoney: senderId ? leaderboards.topMoneyIds.has(senderId) : false,
+    isTopAura: senderId ? leaderboards.topAuraIds.has(senderId) : false,
+    badges: senderBadges,
+    reactions: summarizeReactions(message.reactions ?? []),
+    replyTo: message.replyTo
+      ? {
+          id: message.replyTo.id,
+          userId: message.replyTo.userId ?? null,
+          username: message.replyTo.user?.username ?? CHAT_SYSTEM_USERNAME,
+          usernameColor: message.replyTo.user?.usernameColor ?? null,
+          message: message.replyTo.message,
+          imageUrl: message.replyTo.imageUrl ?? null,
+        }
+      : null,
+    timestamp: message.createdAt.toISOString(),
+  };
+};
+
+export const createAndBroadcastSystemMessage = async (io: Server, message: string) => {
+  const savedMessage = await prisma.chatMessage.create({
+    data: {
+      type: 'system',
+      message,
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          username: true,
+          usernameColor: true,
+          profilePicture: true,
+        },
+      },
+      reactions: {
+        select: {
+          emoji: true,
+          user: {
+            select: {
+              username: true,
+            },
+          },
+        },
+      },
+      replyTo: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              usernameColor: true,
+              profilePicture: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  io.to('global-chat').emit('chat:message', await buildChatMessagePayload(savedMessage));
+};
+
+export const announceGameRecordBroken = async (
+  io: Server,
+  data: { username: string; gameLabel: string; score: number; gameType: string }
+) => {
+  await createAndBroadcastSystemMessage(
+    io,
+    `${data.username} a battu le record sur ${data.gameLabel} avec ${formatGameScoreForChat(data.gameType, data.score)}.`
+  );
 };
 
 export const startOnlineCountBroadcast = (io: Server) => {
@@ -282,7 +401,11 @@ export const startOnlineSnapshotRecording = () => _rescheduleHeartbeat();
 
 export const getOnlineCount = () => onlineUsers.size;
 export const getOnlineUsers = () =>
-  Array.from(onlineUsers.values()).map(u => ({ userId: u.userId, username: u.username }));
+  Array.from(onlineUsers.values()).map(u => ({
+    userId: u.userId,
+    username: u.username,
+    currentPage: u.currentPage ?? null,
+  }));
 
 export const setupChatHandlers = (socket: Socket, io: Server) => {
   // Join chat
@@ -374,6 +497,11 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
         reactions: {
           select: {
             emoji: true,
+            user: {
+              select: {
+                username: true,
+              },
+            },
           },
         },
         replyTo: {
@@ -383,6 +511,7 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
                 id: true,
                 username: true,
                 usernameColor: true,
+                profilePicture: true,
               },
             },
           },
@@ -391,30 +520,33 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     });
 
     // Batch-fetch equipped badges for all unique senders
-    const uniqueSenderIds = [...new Set(messages.map((m) => m.userId))];
+    const uniqueSenderIds = [...new Set(messages.map((m) => m.userId).filter((id): id is string => Boolean(id)))];
     const badgeMap = await getBatchEquippedBadges(uniqueSenderIds);
 
     socket.emit('chat:history', {
       messages: messages.reverse().map((m) => ({
         id: m.id,
-        userId: m.userId,
-        username: m.user.username,
-        usernameColor: m.user.usernameColor,
-        profilePicture: m.user.profilePicture,
+        type: m.type ?? 'user',
+        userId: m.userId ?? null,
+        username: m.user?.username ?? CHAT_SYSTEM_USERNAME,
+        usernameColor: m.user?.usernameColor ?? null,
+        profilePicture: m.user?.profilePicture ?? null,
         message: m.message,
+        imageUrl: m.imageUrl ?? null,
         pinned: m.pinned,
         pinnedAt: m.pinnedAt ? m.pinnedAt.toISOString() : null,
-        isTopMoney: topMoneyIds.has(m.userId),
-        isTopAura: topAuraIds.has(m.userId),
-        badges: badgeMap.get(m.userId) ?? [],
+        isTopMoney: m.userId ? topMoneyIds.has(m.userId) : false,
+        isTopAura: m.userId ? topAuraIds.has(m.userId) : false,
+        badges: m.userId ? badgeMap.get(m.userId) ?? [] : [],
         reactions: summarizeReactions(m.reactions),
         replyTo: m.replyTo
           ? {
               id: m.replyTo.id,
-              userId: m.replyTo.userId,
-              username: m.replyTo.user.username,
-              usernameColor: m.replyTo.user.usernameColor,
+              userId: m.replyTo.userId ?? null,
+              username: m.replyTo.user?.username ?? CHAT_SYSTEM_USERNAME,
+              usernameColor: m.replyTo.user?.usernameColor ?? null,
               message: m.replyTo.message,
+              imageUrl: m.replyTo.imageUrl ?? null,
             }
           : null,
         timestamp: m.createdAt.toISOString(),
@@ -425,13 +557,19 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
   });
   
   // Send message
-  socket.on('chat:message', async (data: { message: string; replyToId?: string | null }) => {
+  socket.on('chat:message', async (data: { message?: string; imageUrl?: string | null; replyToId?: string | null }) => {
     const userId = socket.data.userId as string | undefined;
     if (!userId) return;
-    const { message, replyToId } = data;
+    const rawMessage = typeof data.message === 'string' ? data.message.trim() : '';
+    const imageUrl = typeof data.imageUrl === 'string' && isAllowedImageUrl(data.imageUrl) ? data.imageUrl : null;
+    const replyToId = data.replyToId;
 
     const user = onlineUsers.get(userId);
     if (!user) return;
+
+    if (!rawMessage && !imageUrl) {
+      return;
+    }
 
     // Check if user is banned before allowing message
     const activeBan = await prisma.ban.findFirst({
@@ -497,48 +635,56 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     const savedMessage = await prisma.chatMessage.create({
       data: {
         userId,
-        message,
+        type: 'user',
+        message: rawMessage,
+        imageUrl,
         replyToId: replyTo?.id ?? null,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            usernameColor: true,
+            profilePicture: true,
+          },
+        },
+        reactions: {
+          select: {
+            emoji: true,
+            user: {
+              select: {
+                username: true,
+              },
+            },
+          },
+        },
+        replyTo: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                usernameColor: true,
+                profilePicture: true,
+              },
+            },
+          },
+        },
       },
     });
     
     // Log message sent
     logChat('message_sent', userId, user.username, {
       messageId: savedMessage.id,
-      messageLength: message.length,
+      messageLength: rawMessage.length,
+      hasImage: Boolean(imageUrl),
       hasReply: !!replyTo,
     });
 
     // Broadcast to all in chat with cosmetics
-    const [{ topMoneyIds, topAuraIds }, senderBadges] = await Promise.all([
-      getTopLeaderboardIds(),
-      getUserEquippedBadges(userId),
-    ]);
-
-    io.to('global-chat').emit('chat:message', {
-      id: savedMessage.id,
-      userId,
-      username: user.username,
-      usernameColor: dbUser?.usernameColor,
-      profilePicture: dbUser?.profilePicture,
-      message,
-      pinned: false,
-      pinnedAt: null,
-      isTopMoney: topMoneyIds.has(userId),
-      isTopAura: topAuraIds.has(userId),
-      badges: senderBadges,
-      reactions: [],
-      replyTo: replyTo
-        ? {
-            id: replyTo.id,
-            userId: replyTo.userId,
-            username: replyTo.user.username,
-            usernameColor: replyTo.user.usernameColor,
-            message: replyTo.message,
-          }
-        : null,
-      timestamp: savedMessage.createdAt.toISOString(),
-    });
+    const leaderboardState = await getTopLeaderboardIds();
+    io.to('global-chat').emit('chat:message', await buildChatMessagePayload(savedMessage, leaderboardState));
     
     // Cleanup old messages (keep last 1000)
     const messageCount = await prisma.chatMessage.count();
@@ -626,18 +772,21 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
       });
     }
 
-    const reactionCounts = await prisma.chatReaction.groupBy({
-      by: ['emoji'],
+    const reactionDetails = await prisma.chatReaction.findMany({
       where: { messageId },
-      _count: { emoji: true },
+      select: {
+        emoji: true,
+        user: {
+          select: {
+            username: true,
+          },
+        },
+      },
     });
 
     io.to('global-chat').emit('chat:reactions-updated', {
       messageId,
-      reactions: reactionCounts.map((entry) => ({
-        emoji: entry.emoji,
-        count: entry._count.emoji,
-      })),
+      reactions: summarizeReactions(reactionDetails),
     });
   });
 
@@ -706,7 +855,7 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
       // Log message deletion
       logChat('message_deleted', adminId, admin.isAdmin ? 'admin' : undefined, {
         deletedMessageId: messageId,
-        originalAuthor: messageToDelete?.user.username,
+        originalAuthor: messageToDelete?.user?.username ?? CHAT_SYSTEM_USERNAME,
         originalAuthorId: messageToDelete?.userId,
       });
 

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../../contexts/SocketContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { Send, X, MoreHorizontal, Pin, PinOff, Reply } from 'lucide-react';
+import { Send, X, MoreHorizontal, Pin, PinOff, Reply, ImagePlus } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -22,6 +22,8 @@ import { resolveImageUrl } from '@/lib/images';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { Textarea } from '@/components/ui/textarea';
+import { UserBadges } from '@/components/badges/UserBadges';
+import { uploadUserImage } from '@/services/api';
 
 type TimeoutRef = ReturnType<typeof setTimeout> | null;
 type ReplyTarget = {
@@ -52,6 +54,11 @@ const REACTION_OPTIONS = [
   { value: '😡', label: 'Grr' },
 ];
 
+const getReactionUsersLabel = (users: string[]) => {
+  if (users.length === 0) return 'Aucune reaction';
+  return users.length === 1 ? `${users[0]} a reagi` : `${users.join(', ')} ont reagi`;
+};
+
 export default function ChatSidebar() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -74,8 +81,11 @@ export default function ChatSidebar() {
   const [mentionState, setMentionState] = useState<MentionState | null>(null);
   const [mentionIndex, setMentionIndex] = useState(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<TimeoutRef>(null);
+  const [imageUrl, setImageUrl] = useState('');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const mentionMap = new Map<string, MentionableUser>();
   const sortedMessages = useMemo(() => {
     return [...messages].sort((a, b) => {
@@ -99,7 +109,7 @@ export default function ChatSidebar() {
   });
 
   messages.forEach((m) => {
-    if (!mentionMap.has(m.username.toLowerCase())) {
+    if (m.userId && !mentionMap.has(m.username.toLowerCase())) {
       mentionMap.set(m.username.toLowerCase(), {
         userId: m.userId,
         username: m.username,
@@ -173,6 +183,38 @@ export default function ChatSidebar() {
     return `${text.slice(0, 120)}...`;
   };
 
+  const readFileAsBase64 = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = typeof reader.result === 'string' ? reader.result : '';
+        const base64 = result.includes(',') ? result.split(',')[1] : result;
+        if (!base64) {
+          reject(new Error('Invalid image payload'));
+          return;
+        }
+        resolve(base64);
+      };
+      reader.onerror = () => reject(reader.error ?? new Error('Failed to read image'));
+      reader.readAsDataURL(file);
+    });
+
+  const handleImageSelection = async (file: File | null) => {
+    if (!file || isUploadingImage) return;
+    if (!file.type.startsWith('image/')) return;
+
+    try {
+      setIsUploadingImage(true);
+      const base64Data = await readFileAsBase64(file);
+      const response = await uploadUserImage({ base64Data, mimeType: file.type });
+      setImageUrl(response.data.imageUrl);
+    } catch (error) {
+      console.error('Failed to upload chat image:', error);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
   const parsePartyInvite = (text: string) => {
     const prefix = '[[party-invite:';
     if (!text.startsWith(prefix)) return null;
@@ -226,9 +268,10 @@ export default function ChatSidebar() {
   };
 
   const sendCurrentMessage = () => {
-    if (input.trim()) {
-      sendMessage(input.trim(), replyTarget?.id ?? null);
+    if (input.trim() || imageUrl) {
+      sendMessage(input.trim(), replyTarget?.id ?? null, imageUrl || null);
       setInput('');
+      setImageUrl('');
       setReplyTarget(null);
       setMentionState(null);
       setTyping(false);
@@ -283,7 +326,7 @@ export default function ChatSidebar() {
 
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (input.trim()) {
+      if (input.trim() || imageUrl) {
         sendCurrentMessage();
       }
     }
@@ -323,6 +366,7 @@ export default function ChatSidebar() {
             <div className="space-y-3 py-4">
               {sortedMessages.map((msg) => {
                 const invite = parsePartyInvite(msg.message);
+                const isSystemMessage = msg.type === 'system';
                 const isSameParty = invite && currentParty?.id === invite.partyId;
                 const isOtherParty = invite && currentParty && currentParty.id !== invite.partyId;
                 const isPendingInvite = invite?.visibility === 'private' && pendingJoinRequests.includes(invite.partyId);
@@ -342,13 +386,15 @@ export default function ChatSidebar() {
                     key={msg.id}
                     className={cn(
                       "flex flex-col group",
-                      msg.userId === user?.id && 'items-end'
+                      msg.userId === user?.id && !isSystemMessage && 'items-end'
                     )}
                   >
                     <div
                       className={cn(
                         "max-w-[90%] px-3 py-2 rounded-lg",
-                        msg.userId === user?.id
+                        isSystemMessage
+                          ? 'border border-amber-500/30 bg-amber-500/10'
+                          : msg.userId === user?.id
                           ? 'bg-foreground/10'
                           : 'bg-muted'
                       )}
@@ -360,7 +406,9 @@ export default function ChatSidebar() {
                             usernameColor={msg.replyTo.usernameColor}
                             className="block font-medium"
                           />
-                          <span className="block whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{getSnippet(msg.replyTo.message)}</span>
+                          <span className="block whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                            {getSnippet(msg.replyTo.message || (msg.replyTo.imageUrl ? '[image]' : ''))}
+                          </span>
                         </div>
                       )}
                       <div className="flex items-center gap-2 mb-1">
@@ -374,18 +422,32 @@ export default function ChatSidebar() {
                             }}
                           />
                         )}
-                        <Button
-                          type="button"
-                          onClick={() => navigate(`/profile/${msg.userId}`)}
-                          variant="link"
-                          className={cn(
-                            "h-auto px-0 py-0 text-xs font-medium",
-                            !msg.usernameColor && (msg.userId === user?.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')
-                          )}
-                        >
-                          <UsernameDisplay username={msg.username} usernameColor={msg.usernameColor} />
-                        </Button>
-                        {(msg.isTopMoney || msg.isTopAura) && (
+                        {msg.userId ? (
+                          <Button
+                            type="button"
+                            onClick={() => navigate(`/profile/${msg.userId}`)}
+                            variant="link"
+                            className={cn(
+                              "h-auto px-0 py-0 text-xs font-medium",
+                              !msg.usernameColor && (msg.userId === user?.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')
+                            )}
+                          >
+                            <UsernameDisplay username={msg.username} usernameColor={msg.usernameColor} />
+                          </Button>
+                        ) : (
+                          <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                            {msg.username}
+                          </span>
+                        )}
+                        {msg.badges.length > 0 && (
+                          <UserBadges
+                            badges={msg.badges}
+                            size="xs"
+                            tooltipSide="top"
+                            showEmptySlots={false}
+                          />
+                        )}
+                        {(msg.isTopMoney || msg.isTopAura) && !isSystemMessage && (
                           <div className="flex items-center gap-1">
                             {msg.isTopMoney && (
                               <TooltipProvider delayDuration={200}>
@@ -434,6 +496,8 @@ export default function ChatSidebar() {
                           <Pin className="h-3 w-3 text-muted-foreground" />
                         )}
                         <div className="ml-auto flex items-center gap-2">
+                          {!isSystemMessage && (
+                            <>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
@@ -482,10 +546,10 @@ export default function ChatSidebar() {
                             onClick={() =>
                               setReplyTarget({
                                 id: msg.id,
-                                userId: msg.userId,
+                                userId: msg.userId ?? '',
                                 username: msg.username,
                                 usernameColor: msg.usernameColor,
-                                message: msg.message,
+                                message: msg.message || (msg.imageUrl ? '[image]' : ''),
                               })
                             }
                             variant="ghost"
@@ -495,6 +559,8 @@ export default function ChatSidebar() {
                           >
                             <Reply className="h-3.5 w-3.5" />
                           </Button>
+                            </>
+                          )}
                         </div>
                       </div>
                       {invite ? (
@@ -518,7 +584,20 @@ export default function ChatSidebar() {
                           </Button>
                         </div>
                       ) : (
-                        <p className="text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{renderMessageContent(msg.message)}</p>
+                        <div className="space-y-2">
+                          {msg.message && (
+                            <p className="text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                              {renderMessageContent(msg.message)}
+                            </p>
+                          )}
+                          {msg.imageUrl && (
+                            <img
+                              src={resolveImageUrl(msg.imageUrl)}
+                              alt={`Image envoyee par ${msg.username}`}
+                              className="max-h-72 w-full rounded-md border border-border/50 object-cover"
+                            />
+                          )}
+                        </div>
                       )}
                       {msg.reactions.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1">
@@ -526,6 +605,8 @@ export default function ChatSidebar() {
                             <span
                               key={`${msg.id}-${reaction.emoji}`}
                               className="inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-0.5 text-[10px] text-muted-foreground"
+                              title={getReactionUsersLabel(reaction.users)}
+                              aria-label={getReactionUsersLabel(reaction.users)}
                             >
                               <span>{reaction.emoji}</span>
                               <span className="tabular-nums">{reaction.count}</span>
@@ -548,6 +629,16 @@ export default function ChatSidebar() {
           )}
 
           <form onSubmit={handleSubmit} className="p-3 border-t border-border/40">
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                void handleImageSelection(e.target.files?.[0] || null);
+                e.currentTarget.value = '';
+              }}
+            />
             {replyTarget && (
               <div className="mb-2 flex items-start justify-between gap-3 rounded-md border border-border/60 bg-foreground/5 px-3 py-2 text-xs">
                 <div className="min-w-0">
@@ -564,6 +655,24 @@ export default function ChatSidebar() {
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6 text-muted-foreground"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
+            {imageUrl && (
+              <div className="mb-2 relative overflow-hidden rounded-md border border-border/60 bg-background/60 p-2">
+                <img
+                  src={resolveImageUrl(imageUrl)}
+                  alt="Apercu de l'image"
+                  className="max-h-40 w-full rounded object-cover"
+                />
+                <Button
+                  type="button"
+                  onClick={() => setImageUrl('')}
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-3 top-3 h-7 w-7 rounded-full border border-border/60 bg-background/85"
                 >
                   <X className="h-3.5 w-3.5" />
                 </Button>
@@ -623,8 +732,19 @@ export default function ChatSidebar() {
                 )}
               </div>
               <Button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                disabled={isUploadingImage}
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 text-muted-foreground"
+                title={isUploadingImage ? "Upload de l'image..." : "Ajouter une image"}
+              >
+                <ImagePlus className="h-3.5 w-3.5" />
+              </Button>
+              <Button
                 type="submit"
-                disabled={!input.trim()}
+                disabled={(!input.trim() && !imageUrl) || isUploadingImage}
                 variant="outline"
                 size="icon"
                 className="h-9 w-9 text-muted-foreground"

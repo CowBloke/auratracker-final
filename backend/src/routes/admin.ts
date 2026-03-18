@@ -14,7 +14,12 @@ import { getOnlineCount, getOnlineUsers } from '../socket/chat.js';
 import { createNotification } from '../utils/notifications.js';
 import { sendBugReportReplyEmail } from '../utils/email.js';
 import { awardBadgeByKey } from '../utils/badgeAwards.js';
-import { getReferralRewardAmount, REFERRAL_REWARD_SETTING_KEY } from '../utils/referrals.js';
+import {
+  getReferralRewardAmount,
+  isReferralEnabled,
+  REFERRAL_ENABLED_SETTING_KEY,
+  REFERRAL_REWARD_SETTING_KEY,
+} from '../utils/referrals.js';
 
 const router = Router();
 const ANNOUNCEMENT_KEY = 'topbar_announcement';
@@ -106,6 +111,61 @@ const buildLogWhereClause = (query: Record<string, unknown>) => {
   }
 
   return where;
+};
+
+const PAGE_BREAKDOWN_LIMIT = 6;
+const GAME_BREAKDOWN_LIMIT = 6;
+
+type HourBucket = {
+  hour: number;
+  hourLabel: string;
+  total: number;
+  sampleCount: number;
+  values: Record<string, number>;
+};
+
+const createHourlyBuckets = (): HourBucket[] =>
+  Array.from({ length: 24 }, (_, hour) => ({
+    hour,
+    hourLabel: `${String(hour).padStart(2, '0')}h`,
+    total: 0,
+    sampleCount: 0,
+    values: {},
+  }));
+
+const roundToSingleDecimal = (value: number) => Math.round(value * 10) / 10;
+
+const normalizeTrackedPagePath = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const withoutHash = trimmed.split('#')[0] ?? trimmed;
+  const withoutQuery = withoutHash.split('?')[0] ?? withoutHash;
+  if (!withoutQuery) return null;
+
+  let normalized = withoutQuery.startsWith('/') ? withoutQuery : `/${withoutQuery}`;
+  if (normalized.length > 1) {
+    normalized = normalized.replace(/\/+$/, '');
+  }
+
+  if (normalized.startsWith('/profile/')) {
+    return '/profile/:id';
+  }
+
+  return normalized;
+};
+
+const extractGameTypeFromMetadata = (metadata: string | null): string | null => {
+  if (!metadata) return null;
+  try {
+    const parsed = JSON.parse(metadata) as Record<string, unknown>;
+    return typeof parsed.gameType === 'string' && parsed.gameType.trim() !== ''
+      ? parsed.gameType
+      : null;
+  } catch {
+    return null;
+  }
 };
 
 // Middleware to check if user is admin
@@ -273,6 +333,14 @@ router.post('/registration-reviews/import-local', authMiddleware, requireAdmin, 
       importedCount: entries.length,
       registrationReviews: result.registrationReviews.map(serializeRegistrationReview),
     });
+
+    logAdmin('registration_reviews_import', req.user!.id, req.user!.username, undefined, undefined, {
+      importedCount: entries.length,
+      statuses: entries.reduce<Record<string, number>>((acc, entry) => {
+        acc[entry.status] = (acc[entry.status] ?? 0) + 1;
+        return acc;
+      }, {}),
+    });
   } catch (error) {
     console.error('Admin import registration reviews error:', error);
     res.status(500).json({ error: 'Failed to import registration reviews' });
@@ -309,7 +377,10 @@ router.post('/users/:id/approve', authMiddleware, requireAdmin, async (req: Auth
       return res.status(400).json({ error: 'User already approved' });
     }
 
-    const rewardAmount = await getReferralRewardAmount();
+    const [rewardAmount, referralsEnabled] = await Promise.all([
+      getReferralRewardAmount(),
+      isReferralEnabled(),
+    ]);
 
     const result = await prisma.$transaction(async (tx) => {
       let rewardGrantedToReferrer: { id: string; username: string } | null = null;
@@ -358,9 +429,8 @@ router.post('/users/:id/approve', authMiddleware, requireAdmin, async (req: Auth
         });
 
         if (referrer) {
-          rewardGrantedToReferrer = referrer;
-
-          if (rewardAmount > 0) {
+          if (referralsEnabled && rewardAmount > 0) {
+            rewardGrantedToReferrer = referrer;
             await tx.user.update({
               where: { id },
               data: {
@@ -561,6 +631,12 @@ router.post('/items', authMiddleware, requireAdmin, async (req: AuthRequest, res
         effect: typeof effect === 'string' ? effect : JSON.stringify(effect),
       },
     });
+
+    logAdmin('item_create', req.user!.id, req.user!.username, item.id, item.name, {
+      type: item.type,
+      price: item.price,
+      imageUrl: item.imageUrl,
+    });
     
     res.status(201).json({ item });
   } catch (error) {
@@ -579,6 +655,23 @@ router.put('/items/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
       return res.status(400).json({ error: 'Image must be uploaded or a valid URL' });
     }
     
+    const existingItem = await prisma.item.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        type: true,
+        price: true,
+        imageUrl: true,
+        effect: true,
+      },
+    });
+
+    if (!existingItem) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+
     const item = await prisma.item.update({
       where: { id },
       data: {
@@ -588,6 +681,25 @@ router.put('/items/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
         price: parseInt(price) || 0,
         imageUrl,
         effect: typeof effect === 'string' ? effect : JSON.stringify(effect),
+      },
+    });
+
+    logAdmin('item_update', req.user!.id, req.user!.username, item.id, item.name, {
+      previousValues: {
+        name: existingItem.name,
+        description: existingItem.description,
+        type: existingItem.type,
+        price: existingItem.price,
+        imageUrl: existingItem.imageUrl,
+        effect: existingItem.effect,
+      },
+      newValues: {
+        name: item.name,
+        description: item.description,
+        type: item.type,
+        price: item.price,
+        imageUrl: item.imageUrl,
+        effect: item.effect,
       },
     });
     
@@ -602,9 +714,22 @@ router.put('/items/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
 router.delete('/items/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    
+    const item = await prisma.item.findUnique({
+      where: { id },
+      select: { id: true, name: true, type: true, price: true },
+    });
+
+    if (!item) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+
     await prisma.item.delete({
       where: { id },
+    });
+
+    logAdmin('item_delete', req.user!.id, req.user!.username, item.id, item.name, {
+      type: item.type,
+      price: item.price,
     });
     
     res.json({ success: true });
@@ -645,6 +770,12 @@ router.put('/shop-categories', authMiddleware, requireAdmin, async (req: AuthReq
       create: { key: 'shop_categories', value: JSON.stringify(categories) },
       update: { value: JSON.stringify(categories) },
     });
+
+    logAdmin('shop_categories_update', req.user!.id, req.user!.username, undefined, undefined, {
+      count: categories.length,
+      categories,
+    });
+
     res.json({ categories });
   } catch (error) {
     console.error('Admin update shop categories error:', error);
@@ -1237,7 +1368,14 @@ router.patch('/users/:id/inventory/:userItemId', authMiddleware, requireAdmin, a
 
     const userItem = await prisma.userItem.findUnique({
       where: { id: userItemId },
-      select: { id: true, userId: true },
+      include: {
+        item: {
+          select: { id: true, name: true },
+        },
+        user: {
+          select: { username: true },
+        },
+      },
     });
 
     if (!userItem || userItem.userId !== id) {
@@ -1248,6 +1386,13 @@ router.patch('/users/:id/inventory/:userItemId', authMiddleware, requireAdmin, a
 
     if (parsedQuantity <= 0) {
       await prisma.userItem.delete({ where: { id: userItemId } });
+      logAdmin('inventory_remove', req.user!.id, req.user!.username, id, userItem.user.username, {
+        userItemId,
+        itemId: userItem.item.id,
+        itemName: userItem.item.name,
+        previousQuantity: userItem.quantity,
+        removedViaQuantityPatch: true,
+      });
       return res.json({ removed: true });
     }
 
@@ -1255,6 +1400,14 @@ router.patch('/users/:id/inventory/:userItemId', authMiddleware, requireAdmin, a
       where: { id: userItemId },
       data: { quantity: parsedQuantity },
       include: { item: true },
+    });
+
+    logAdmin('inventory_update', req.user!.id, req.user!.username, id, userItem.user.username, {
+      userItemId,
+      itemId: updatedItem.item.id,
+      itemName: updatedItem.item.name,
+      previousQuantity: userItem.quantity,
+      newQuantity: updatedItem.quantity,
     });
 
     res.json({ item: updatedItem });
@@ -1271,7 +1424,14 @@ router.delete('/users/:id/inventory/:userItemId', authMiddleware, requireAdmin, 
 
     const userItem = await prisma.userItem.findUnique({
       where: { id: userItemId },
-      select: { id: true, userId: true },
+      include: {
+        item: {
+          select: { id: true, name: true },
+        },
+        user: {
+          select: { username: true },
+        },
+      },
     });
 
     if (!userItem || userItem.userId !== id) {
@@ -1279,6 +1439,13 @@ router.delete('/users/:id/inventory/:userItemId', authMiddleware, requireAdmin, 
     }
 
     await prisma.userItem.delete({ where: { id: userItemId } });
+
+    logAdmin('inventory_remove', req.user!.id, req.user!.username, id, userItem.user.username, {
+      userItemId,
+      itemId: userItem.item.id,
+      itemName: userItem.item.name,
+      previousQuantity: userItem.quantity,
+    });
 
     res.json({ success: true });
   } catch (error) {
@@ -1527,6 +1694,22 @@ router.put('/bugs/:id', authMiddleware, requireAdmin, async (req: AuthRequest, r
       return res.status(400).json({ error: 'adminReply must be a string' });
     }
 
+    const existingBugReport = await prisma.bugReport.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        adminReply: true,
+      },
+    });
+
+    if (!existingBugReport) {
+      return res.status(404).json({ error: 'Bug report not found' });
+    }
+
+    const reply = adminReply?.trim();
+
     const bugReport = await prisma.bugReport.update({
       where: { id },
       data: {
@@ -1545,8 +1728,15 @@ router.put('/bugs/:id', authMiddleware, requireAdmin, async (req: AuthRequest, r
       },
     });
 
+    logAdmin('bug_report_update', req.user!.id, req.user!.username, bugReport.id, bugReport.title, {
+      previousStatus: existingBugReport.status,
+      newStatus: bugReport.status,
+      replyAdded: Boolean(reply),
+      previousReply: existingBugReport.adminReply,
+      newReply: bugReport.adminReply,
+    });
+
     // If there's a reply, notify the user in-app and by email
-    const reply = adminReply?.trim();
     if (reply) {
       const notifBody = status === 'DONE'
         ? `Votre bug "${bugReport.title}" a été résolu.\n\n${reply}`
@@ -1583,9 +1773,29 @@ router.put('/bugs/:id', authMiddleware, requireAdmin, async (req: AuthRequest, r
 router.delete('/bugs/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
+    const bugReport = await prisma.bugReport.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        title: true,
+        userId: true,
+        user: {
+          select: { username: true },
+        },
+      },
+    });
+
+    if (!bugReport) {
+      return res.status(404).json({ error: 'Bug report not found' });
+    }
 
     await prisma.bugReport.delete({
       where: { id },
+    });
+
+    logAdmin('bug_report_delete', req.user!.id, req.user!.username, bugReport.userId, bugReport.user.username, {
+      bugReportId: bugReport.id,
+      title: bugReport.title,
     });
 
     res.json({ success: true });
@@ -2042,6 +2252,10 @@ router.put('/settings/:key', authMiddleware, requireAdmin, async (req: AuthReque
       }
     }
 
+    if (key === REFERRAL_ENABLED_SETTING_KEY && !['true', 'false'].includes(normalizedValue)) {
+      return res.status(400).json({ error: 'Referral enabled must be true or false' });
+    }
+
     const setting = await prisma.gameSettings.upsert({
       where: { key },
       create: { key, value: normalizedValue },
@@ -2124,6 +2338,11 @@ router.put('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, r
           errors.push(`${key}: Referral reward must be a non-negative integer`);
           continue;
         }
+      }
+
+      if (key === REFERRAL_ENABLED_SETTING_KEY && !['true', 'false'].includes(normalizedValue)) {
+        errors.push(`${key}: Referral enabled must be true or false`);
+        continue;
       }
 
       updates.push({ key, value: normalizedValue });
@@ -2448,6 +2667,13 @@ router.post('/update-popups/upload-image', authMiddleware, requireAdmin, async (
     fs.writeFileSync(absolutePath, buffer);
 
     const imageUrl = `/api/uploads/update-popups/${fileName}`;
+
+    logAdmin('update_popup_image_upload', req.user!.id, req.user!.username, undefined, fileName, {
+      imageUrl,
+      mimeType,
+      sizeBytes: buffer.byteLength,
+    });
+
     res.status(201).json({ imageUrl });
   } catch (error) {
     console.error('Admin upload update popup image error:', error);
@@ -2487,6 +2713,13 @@ router.post('/items/upload-image', authMiddleware, requireAdmin, async (req: Aut
     fs.writeFileSync(absolutePath, buffer);
 
     const imageUrl = `/api/uploads/items/${fileName}`;
+
+    logAdmin('item_image_upload', req.user!.id, req.user!.username, undefined, fileName, {
+      imageUrl,
+      mimeType,
+      sizeBytes: buffer.byteLength,
+    });
+
     res.status(201).json({ imageUrl });
   } catch (error) {
     console.error('Admin upload item image error:', error);
@@ -2611,7 +2844,7 @@ router.put('/gift-templates/:id', authMiddleware, requireAdmin, async (req: Auth
       },
     });
 
-    logAdmin('gift_template_update', req.user?.id, req.user?.username, id, name, { price });
+    logAdmin('gift_template_update', req.user?.id, req.user?.username, id, template.name, { price: template.price });
 
     res.json({ template });
   } catch (error) {
@@ -2639,15 +2872,152 @@ router.delete('/gift-templates/:id', authMiddleware, requireAdmin, async (req: A
 // ========== ONLINE ACTIVITY / PLAYER HISTORY ==========
 
 // POST /api/admin/online-snapshot — take an immediate snapshot
-router.post('/online-snapshot', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response) => {
+router.post('/online-snapshot', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const count = getOnlineCount();
-    const usernames = JSON.stringify(getOnlineUsers());
+    const onlineUsers = getOnlineUsers();
+    const usernames = JSON.stringify(onlineUsers);
     await prisma.onlineSnapshot.create({ data: { count, usernames } });
+
+    logAdmin('online_snapshot_create', req.user!.id, req.user!.username, undefined, undefined, {
+      count,
+      userIds: onlineUsers.map((user) => user.userId),
+      usernames: onlineUsers.map((user) => user.username),
+    });
+
     res.json({ success: true, count });
   } catch (error) {
     console.error('Manual snapshot error:', error);
     res.status(500).json({ error: 'Failed to create snapshot' });
+  }
+});
+
+router.get('/activity-breakdown', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const rawDate = typeof req.query.date === 'string' ? req.query.date.trim() : '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+      return res.status(400).json({ error: 'date must be provided in YYYY-MM-DD format' });
+    }
+
+    const start = new Date(`${rawDate}T00:00:00`);
+    const end = new Date(`${rawDate}T23:59:59.999`);
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return res.status(400).json({ error: 'Invalid date' });
+    }
+
+    const [snapshots, gameLogs] = await Promise.all([
+      prisma.onlineSnapshot.findMany({
+        where: { createdAt: { gte: start, lte: end } },
+        orderBy: { createdAt: 'asc' },
+        select: { createdAt: true, usernames: true },
+      }),
+      prisma.log.findMany({
+        where: {
+          type: 'GAME',
+          action: { in: ['game_complete', 'game_reward', 'casino_bet'] },
+          createdAt: { gte: start, lte: end },
+        },
+        orderBy: { createdAt: 'asc' },
+        select: { createdAt: true, metadata: true },
+      }),
+    ]);
+
+    const pageBuckets = createHourlyBuckets();
+    const pageTotals = new Map<string, number>();
+
+    for (const snapshot of snapshots) {
+      let users: Array<{ currentPage?: string | null }> = [];
+      try {
+        const parsed = JSON.parse(snapshot.usernames) as unknown;
+        if (Array.isArray(parsed)) {
+          users = parsed.filter((entry): entry is { currentPage?: string | null } => (
+            typeof entry === 'object' && entry !== null
+          ));
+        }
+      } catch {
+        users = [];
+      }
+
+      const bucket = pageBuckets[snapshot.createdAt.getHours()];
+      bucket.sampleCount += 1;
+
+      const counts = new Map<string, number>();
+      for (const user of users) {
+        const normalizedPage = normalizeTrackedPagePath(user.currentPage);
+        if (!normalizedPage) continue;
+        counts.set(normalizedPage, (counts.get(normalizedPage) ?? 0) + 1);
+      }
+
+      for (const [page, count] of counts.entries()) {
+        bucket.values[page] = (bucket.values[page] ?? 0) + count;
+        bucket.total += count;
+        pageTotals.set(page, (pageTotals.get(page) ?? 0) + count);
+      }
+    }
+
+    const topPages = Array.from(pageTotals.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, PAGE_BREAKDOWN_LIMIT)
+      .map(([page, total]) => ({ page, total: roundToSingleDecimal(total) }));
+    const topPageSet = new Set(topPages.map((entry) => entry.page));
+
+    const pageSeries = pageBuckets.map((bucket) => {
+      const values: Record<string, number> = {};
+      for (const page of topPageSet) {
+        const rawValue = bucket.values[page] ?? 0;
+        values[page] = bucket.sampleCount > 0 ? roundToSingleDecimal(rawValue / bucket.sampleCount) : 0;
+      }
+      return {
+        hour: bucket.hour,
+        hourLabel: bucket.hourLabel,
+        total: bucket.sampleCount > 0 ? roundToSingleDecimal(bucket.total / bucket.sampleCount) : 0,
+        values,
+      };
+    });
+
+    const gameBuckets = createHourlyBuckets();
+    const gameTotals = new Map<string, number>();
+
+    for (const log of gameLogs) {
+      const gameType = extractGameTypeFromMetadata(log.metadata);
+      if (!gameType) continue;
+
+      const bucket = gameBuckets[log.createdAt.getHours()];
+      bucket.values[gameType] = (bucket.values[gameType] ?? 0) + 1;
+      bucket.total += 1;
+      gameTotals.set(gameType, (gameTotals.get(gameType) ?? 0) + 1);
+    }
+
+    const topGames = Array.from(gameTotals.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, GAME_BREAKDOWN_LIMIT)
+      .map(([gameType, total]) => ({ gameType, total }));
+    const topGameSet = new Set(topGames.map((entry) => entry.gameType));
+
+    const gameSeries = gameBuckets.map((bucket) => {
+      const values: Record<string, number> = {};
+      for (const gameType of topGameSet) {
+        values[gameType] = bucket.values[gameType] ?? 0;
+      }
+      return {
+        hour: bucket.hour,
+        hourLabel: bucket.hourLabel,
+        total: bucket.total,
+        values,
+      };
+    });
+
+    res.json({
+      date: rawDate,
+      pageSeries,
+      topPages,
+      gameSeries,
+      topGames,
+    });
+  } catch (error) {
+    console.error('Admin activity breakdown error:', error);
+    res.status(500).json({ error: 'Failed to fetch activity breakdown' });
   }
 });
 
@@ -2956,6 +3326,11 @@ router.put('/name-change-requests/:id', authMiddleware, requireAdmin, async (req
       logAdmin('username_change', req.user!.id, undefined, request.userId, request.user.username, {
         from: request.currentUsername,
         to: request.requestedUsername,
+      });
+    } else {
+      logAdmin('username_change_reject', req.user!.id, req.user!.username, request.userId, request.user.username, {
+        from: request.currentUsername,
+        requested: request.requestedUsername,
       });
     }
 

@@ -5,9 +5,27 @@ import { validate, gameCompleteSchema } from '../middleware/validation.js';
 import { logGame, logAdmin } from '../utils/logger.js';
 import { checkQuestProgress } from './quests.js';
 import { recheckBadgeForCondition, awardBadgeByKey } from '../utils/badgeAwards.js';
+import { announceGameRecordBroken } from '../socket/chat.js';
 
 const router = Router();
 const isDoodleJumpType = (gameType: string) => gameType === 'doodle_jump' || gameType === 'doodle_jump_mort_subite';
+
+const GAME_CHAT_LABELS: Record<string, string> = {
+  doodle_jump: 'Doodle Jump',
+  doodle_jump_mort_subite: 'Doodle Jump Mort Subite',
+  game_2048: '2048',
+  flappy_bird: 'Flappy Bird',
+  chrome_dino: 'Chrome Dino',
+  geometry_dash: 'Geometry Dash',
+  qs_watermelon: 'QS Watermelon',
+  solitaire: 'Solitaire',
+  racer: 'Racer',
+  tetris: 'Tetris',
+  knife_hit: 'Knife Hit',
+  goyave_empire: 'Goyave Empire',
+  logic_lab: 'Sudoku',
+  minesweeper: 'Minesweeper',
+};
 
 function getUtcDayStart(date = new Date()): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
@@ -118,12 +136,15 @@ const GAME_REWARDS = {
     // Score is lap time in seconds (lower is better)
     // Rewards are based on how fast the lap was completed
     scoreTiers: [
-      { maxTime: 180, moneyReward: 20, auraBonus: 2 },      // > 3min: slow lap
-      { maxTime: 120, moneyReward: 50, auraBonus: 5 },      // 2-3min: decent lap
-      { maxTime: 90, moneyReward: 100, auraBonus: 10 },     // 1.5-2min: good lap
-      { maxTime: 60, moneyReward: 200, auraBonus: 25 },     // 1-1.5min: great lap
-      { maxTime: 45, moneyReward: 500, auraBonus: 50 },      // < 1min: excellent lap
+      { maxTime: 45, moneyReward: 500, auraBonus: 50 },       // < 45s: excellent lap
+      { maxTime: 60, moneyReward: 200, auraBonus: 25 },       // < 1min: great lap
+      { maxTime: 90, moneyReward: 100, auraBonus: 10 },       // 1-1.5min: good lap
+      { maxTime: 120, moneyReward: 50, auraBonus: 5 },        // 1.5-2min: decent lap
+      { maxTime: 180, moneyReward: 20, auraBonus: 2 },        // 2-3min: slow lap
+      { maxTime: Number.POSITIVE_INFINITY, moneyReward: 8, auraBonus: 1 }, // > 3min: completion reward
     ],
+    dailyFirstRunReward: { money: 15, aura: 1 },
+    dailyBestBonus: { money: 35, aura: 6 },
   },
   tetris: {
     minScoreForReward: 1000, // Minimum score to get rewards
@@ -409,8 +430,8 @@ function calculateRacerRewards(score: number, isNewHighScore: boolean, won: bool
   const config = GAME_REWARDS.racer;
 
   // Find the appropriate tier for this lap time (lower time = better tier)
-  // Tiers are ordered from fastest to slowest
-  let selectedTier = config.scoreTiers[config.scoreTiers.length - 1]; // Default to slowest tier
+  // Tiers are ordered from fastest to slowest.
+  let selectedTier = config.scoreTiers[config.scoreTiers.length - 1];
   for (let i = 0; i < config.scoreTiers.length; i++) {
     if (score <= config.scoreTiers[i].maxTime) {
       selectedTier = config.scoreTiers[i];
@@ -647,15 +668,48 @@ router.post('/daily/racer/complete', authMiddleware, async (req: AuthRequest, re
       orderBy: [{ lapTimeMs: 'asc' }, { createdAt: 'asc' }],
     });
 
-    const run = await prisma.dailyRacerRun.create({
-      data: {
-        userId: req.user.id,
-        trackDate,
-        lapTimeMs,
-      },
-    });
-
     const isNewDailyBest = !previousBest || lapTimeMs < previousBest.lapTimeMs;
+    const isFirstRunToday = !previousBest;
+    const bonusConfig = GAME_REWARDS.racer;
+    const dailyMoneyReward =
+      (isFirstRunToday ? bonusConfig.dailyFirstRunReward.money : 0) +
+      (isNewDailyBest ? bonusConfig.dailyBestBonus.money : 0);
+    const dailyAuraReward =
+      (isFirstRunToday ? bonusConfig.dailyFirstRunReward.aura : 0) +
+      (isNewDailyBest ? bonusConfig.dailyBestBonus.aura : 0);
+
+    const [run, user] = await prisma.$transaction([
+      prisma.dailyRacerRun.create({
+        data: {
+          userId: req.user.id,
+          trackDate,
+          lapTimeMs,
+        },
+      }),
+      prisma.user.update({
+        where: { id: req.user.id },
+        data: {
+          money: { increment: dailyMoneyReward },
+          aura: { increment: dailyAuraReward },
+        },
+      }),
+    ]);
+
+    if (dailyMoneyReward > 0 || dailyAuraReward > 0) {
+      io.emit('economy:balance-update', {
+        userId: req.user.id,
+        aura: user.aura,
+        money: user.money,
+      });
+      logGame('game_reward', req.user.id, req.user.username, {
+        gameType: 'racer_daily',
+        lapTimeMs,
+        isFirstRunToday,
+        isNewDailyBest,
+        auraReward: dailyAuraReward,
+        moneyReward: dailyMoneyReward,
+      });
+    }
 
     return res.json({
       success: true,
@@ -664,6 +718,12 @@ router.post('/daily/racer/complete', authMiddleware, async (req: AuthRequest, re
         lapTimeMs: run.lapTimeMs,
         trackDate: run.trackDate.toISOString(),
         createdAt: run.createdAt.toISOString(),
+      },
+      rewards: {
+        money: dailyMoneyReward,
+        aura: dailyAuraReward,
+        isFirstRunToday,
+        isNewDailyBest,
       },
       isNewDailyBest,
       bestLapTimeMs: isNewDailyBest ? lapTimeMs : previousBest.lapTimeMs,
@@ -740,6 +800,18 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
           userId: req.user.id,
           gameType,
         },
+      },
+    });
+
+    const previousGlobalBest = await prisma.gameStats.findFirst({
+      where: {
+        gameType,
+        ...(gameType === 'racer' ? { highScore: { gt: 0 } } : {}),
+      },
+      orderBy: { highScore: gameType === 'racer' ? 'asc' : 'desc' },
+      select: {
+        userId: true,
+        highScore: true,
       },
     });
     
@@ -893,6 +965,19 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       });
       // Immediately recalculate the champion badge for this game (non-blocking)
       void recheckBadgeForCondition(`GAME_HIGHSCORE_${gameType}`);
+    }
+
+    const isNewGlobalRecord = gameType === 'racer'
+      ? !previousGlobalBest || previousGlobalBest.highScore === 0 || score < previousGlobalBest.highScore
+      : !previousGlobalBest || score > previousGlobalBest.highScore;
+
+    if (isNewHighScore && isNewGlobalRecord && GAME_CHAT_LABELS[gameType]) {
+      void announceGameRecordBroken(io, {
+        username: currentUser.username,
+        gameLabel: GAME_CHAT_LABELS[gameType],
+        score,
+        gameType,
+      });
     }
 
     // ── Achievement badge checks ─────────────────────────────────────────────

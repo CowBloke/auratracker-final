@@ -5,6 +5,36 @@ import { useSocket } from '@/contexts/SocketContext';
 import { useAuth } from '@/contexts/AuthContext';
 
 const CHAT_SIDEBAR_STORAGE_KEY = 'chat-sidebar-open';
+const CHAT_LAST_READ_STORAGE_KEY = 'global-chat-last-read';
+
+type StoredLastRead = {
+  messageId: string | null;
+  timestamp: string | null;
+};
+
+const readLastReadState = (): StoredLastRead => {
+  if (typeof window === 'undefined') {
+    return { messageId: null, timestamp: null };
+  }
+
+  try {
+    const raw = localStorage.getItem(CHAT_LAST_READ_STORAGE_KEY);
+    if (!raw) return { messageId: null, timestamp: null };
+
+    const parsed = JSON.parse(raw) as Partial<StoredLastRead>;
+    return {
+      messageId: typeof parsed.messageId === 'string' ? parsed.messageId : null,
+      timestamp: typeof parsed.timestamp === 'string' ? parsed.timestamp : null,
+    };
+  } catch {
+    return { messageId: null, timestamp: null };
+  }
+};
+
+const persistLastReadState = (value: StoredLastRead) => {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(CHAT_LAST_READ_STORAGE_KEY, JSON.stringify(value));
+};
 
 // Contexte partagé pour l'état de la sidebar de chat
 const ChatSidebarContext = createContext<{
@@ -29,30 +59,66 @@ export function ChatSidebarProvider({ children }: { children: ReactNode }) {
     return stored !== null ? stored === 'true' : false;
   });
   const [unreadCount, setUnreadCount] = useState(0);
-  const lastMessageIdRef = useRef<string | null>(null);
+  const hasInitializedUnreadRef = useRef(false);
+  const lastReadRef = useRef<StoredLastRead>(readLastReadState());
 
   useEffect(() => {
     localStorage.setItem(CHAT_SIDEBAR_STORAGE_KEY, String(open));
   }, [open]);
 
   useEffect(() => {
-    if (open) {
+    if (!user) {
+      hasInitializedUnreadRef.current = false;
+      lastReadRef.current = { messageId: null, timestamp: null };
       setUnreadCount(0);
-      if (messages.length > 0) {
-        lastMessageIdRef.current = messages[messages.length - 1].id;
-      }
+      return;
     }
-  }, [open, messages]);
 
-  useEffect(() => {
-    if (!open && messages.length > 0) {
-      const lastMessage = messages[messages.length - 1];
-      if (lastMessage.id !== lastMessageIdRef.current && lastMessage.userId !== user?.id) {
-        setUnreadCount((prev) => prev + 1);
-        lastMessageIdRef.current = lastMessage.id;
+    if (messages.length === 0) {
+      setUnreadCount(0);
+      return;
+    }
+
+    const lastMessage = messages[messages.length - 1];
+    const markCurrentMessagesAsRead = () => {
+      const nextLastRead = {
+        messageId: lastMessage.id,
+        timestamp: lastMessage.timestamp,
+      };
+      lastReadRef.current = nextLastRead;
+      persistLastReadState(nextLastRead);
+      setUnreadCount(0);
+    };
+
+    if (!hasInitializedUnreadRef.current) {
+      hasInitializedUnreadRef.current = true;
+
+      if (!lastReadRef.current.messageId && !lastReadRef.current.timestamp) {
+        markCurrentMessagesAsRead();
+        return;
       }
     }
-  }, [messages, open, user?.id]);
+
+    if (open) {
+      markCurrentMessagesAsRead();
+      return;
+    }
+
+    const { messageId: lastReadMessageId, timestamp: lastReadTimestamp } = lastReadRef.current;
+    const lastReadIndex = lastReadMessageId
+      ? messages.findIndex((message) => message.id === lastReadMessageId)
+      : -1;
+
+    const unreadMessages =
+      lastReadIndex >= 0
+        ? messages.slice(lastReadIndex + 1)
+        : messages.filter((message) => {
+            if (!lastReadTimestamp) return false;
+            return new Date(message.timestamp).getTime() > new Date(lastReadTimestamp).getTime();
+          });
+
+    setUnreadCount(unreadMessages.filter((message) => message.userId !== user.id).length);
+  }, [messages, open, user]);
 
   return (
     <ChatSidebarContext.Provider value={{ open, setOpen, unreadCount }}>

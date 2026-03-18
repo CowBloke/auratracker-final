@@ -4,6 +4,7 @@ import { prisma } from '../server.js';
 
 export const DEFAULT_REFERRAL_REWARD = 250;
 export const REFERRAL_REWARD_SETTING_KEY = 'referral_reward_amount';
+export const REFERRAL_ENABLED_SETTING_KEY = 'referral_enabled';
 
 const REFERRAL_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const REFERRAL_CODE_LENGTH = 8;
@@ -89,4 +90,13 @@ export async function getReferralRewardAmount(client: PrismaLike = prisma): Prom
   }
 
   return parsedValue;
+}
+
+export async function isReferralEnabled(client: PrismaLike = prisma): Promise<boolean> {
+  const setting = await client.gameSettings.findUnique({
+    where: { key: REFERRAL_ENABLED_SETTING_KEY },
+    select: { value: true },
+  });
+
+  return setting?.value !== 'false';
 }

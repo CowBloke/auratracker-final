@@ -23,23 +23,26 @@ export interface ChatBadge {
 
 interface ChatMessage {
   id: string;
-  userId: string;
+  type?: 'user' | 'system';
+  userId: string | null;
   username: string;
   usernameColor?: string | null;
   profilePicture?: string | null;
   message: string;
+  imageUrl?: string | null;
   pinned: boolean;
   pinnedAt?: string | null;
   isTopMoney?: boolean;
   isTopAura?: boolean;
   badges: ChatBadge[];
-  reactions: Array<{ emoji: string; count: number }>;
+  reactions: Array<{ emoji: string; count: number; users: string[] }>;
   replyTo?: {
     id: string;
-    userId: string;
+    userId: string | null;
     username: string;
     usernameColor?: string | null;
     message: string;
+    imageUrl?: string | null;
   } | null;
   timestamp: string;
 }
@@ -543,7 +546,7 @@ interface SocketContextType {
   onlineUsers: OnlineUser[];
   onlineCount: number;
   typingUsers: TypingUser[];
-  sendMessage: (message: string, replyToId?: string | null) => void;
+  sendMessage: (message?: string, replyToId?: string | null, imageUrl?: string | null) => void;
   reactToMessage: (messageId: string, emoji: string) => void;
   setTyping: (isTyping: boolean) => void;
   setCurrentPage: (page: string) => void;
@@ -837,7 +840,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setMessages((prev) => prev.filter((m) => m.id !== data.messageId));
       });
 
-      s.on('chat:reactions-updated', (data: { messageId: string; reactions: Array<{ emoji: string; count: number }> }) => {
+      s.on('chat:reactions-updated', (data: { messageId: string; reactions: Array<{ emoji: string; count: number; users: string[] }> }) => {
         setMessages((prev) =>
           prev.map((message) =>
             message.id === data.messageId
@@ -1660,9 +1663,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user?.id, user?.username, logout, navigate]);
 
-  const sendMessage = (message: string, replyToId?: string | null) => {
+  const sendMessage = (message?: string, replyToId?: string | null, imageUrl?: string | null) => {
     if (user) {
-      chatEvents.sendMessage(user.id, message, replyToId);
+      chatEvents.sendMessage(user.id, message, replyToId, imageUrl);
     }
   };
 

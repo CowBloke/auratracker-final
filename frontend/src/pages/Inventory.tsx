@@ -18,6 +18,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { resolveImageUrl } from '@/lib/images';
 import { PageShell } from '@/components/layout/page-shell';
+import { toast } from 'sonner';
 
 interface UserItem {
   id: string;
@@ -61,7 +62,6 @@ export default function Inventory() {
   const [using, setUsing] = useState<string | null>(null);
   const [selling, setSelling] = useState<string | null>(null);
   const [chucking, setChucking] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Clan tag unlock state
   const [clanTagDialogOpen, setClanTagDialogOpen] = useState(false);
@@ -141,7 +141,6 @@ export default function Inventory() {
     // Regular consumable items
     try {
       setUsing(userItem.id);
-      setMessage(null);
       
       const response = await marketplaceApi.useItem(userItem.id);
       await refreshUser();
@@ -160,13 +159,9 @@ export default function Inventory() {
         }
       }
       
-      setMessage({ type: 'success', text: effectText });
-      setTimeout(() => setMessage(null), 3000);
+      toast.success(effectText);
     } catch (error: any) {
-      setMessage({
-        type: 'error',
-        text: error.response?.data?.error || 'Échec',
-      });
+      toast.error(error.response?.data?.error || 'Echec');
     } finally {
       setUsing(null);
     }
@@ -175,15 +170,15 @@ export default function Inventory() {
   const handleSellGiftItem = async (userItem: UserItem) => {
     if (selling) return;
     setSelling(userItem.id);
-    setMessage(null);
     try {
       const res = await marketplaceApi.sellGiftItem(userItem.id);
       await fetchInventory();
       await refreshUser();
-      setMessage({ type: 'success', text: `Vendu pour $${res.data.moneyEarned}` });
-      setTimeout(() => setMessage(null), 3000);
+      toast.success('Objet vendu', {
+        description: `Tu as recupere $${res.data.moneyEarned}.`,
+      });
     } catch (error: any) {
-      setMessage({ type: 'error', text: error.response?.data?.error || 'Échec' });
+      toast.error(error.response?.data?.error || 'Echec');
     } finally {
       setSelling(null);
     }
@@ -192,14 +187,14 @@ export default function Inventory() {
   const handleChuckGiftItem = async (userItem: UserItem) => {
     if (chucking) return;
     setChucking(userItem.id);
-    setMessage(null);
     try {
       await marketplaceApi.chuckGiftItem(userItem.id);
       await fetchInventory();
-      setMessage({ type: 'success', text: `${userItem.item.name} jeté` });
-      setTimeout(() => setMessage(null), 3000);
+      toast.success('Objet jete', {
+        description: `${userItem.item.name} a ete retire de ton inventaire.`,
+      });
     } catch (error: any) {
-      setMessage({ type: 'error', text: error.response?.data?.error || 'Échec' });
+      toast.error(error.response?.data?.error || 'Echec');
     } finally {
       setChucking(null);
     }
@@ -211,20 +206,17 @@ export default function Inventory() {
     
     try {
       setUsing(colorPickerItem.id);
-      setMessage(null);
       
       await marketplaceApi.useItem(colorPickerItem.id, { color: selectedColor });
       await refreshUser();
       await fetchInventory();
       
-      setMessage({ type: 'success', text: `Couleur de pseudo appliquée : ${selectedColor}` });
-      setTimeout(() => setMessage(null), 3000);
+      toast.success('Couleur de pseudo appliquee', {
+        description: selectedColor,
+      });
       setColorDialogOpen(false);
     } catch (error: any) {
-      setMessage({
-        type: 'error',
-        text: error.response?.data?.error || 'Échec',
-      });
+      toast.error(error.response?.data?.error || 'Echec');
     } finally {
       setUsing(null);
       setColorPickerItem(null);
@@ -253,7 +245,6 @@ export default function Inventory() {
     
     try {
       setUsing(imageItem.id);
-      setMessage(null);
 
       if (!imageUrl.trim()) return;
       const finalUrl = imageUrl.trim();
@@ -262,14 +253,10 @@ export default function Inventory() {
       await refreshUser();
       await fetchInventory();
       
-      setMessage({ type: 'success', text: 'Photo de profil appliquée' });
-      setTimeout(() => setMessage(null), 3000);
+      toast.success('Photo de profil appliquee');
       setImageDialogOpen(false);
     } catch (error: any) {
-      setMessage({
-        type: 'error',
-        text: error.response?.data?.error || 'Échec',
-      });
+      toast.error(error.response?.data?.error || 'Echec');
     } finally {
       setUsing(null);
       setImageItem(null);
@@ -283,8 +270,9 @@ export default function Inventory() {
       setClanTagError(null);
       await marketplaceApi.useItem(clanTagItem.id);
       await fetchInventory();
-      setMessage({ type: 'success', text: 'Tag de clan débloqué ! Configure-le dans les paramètres de ton clan.' });
-      setTimeout(() => setMessage(null), 5000);
+      toast.success('Tag de clan debloque !', {
+        description: 'Configure-le ensuite dans les parametres du clan.',
+      });
       setClanTagDialogOpen(false);
       setClanTagItem(null);
     } catch (error: any) {
@@ -347,15 +335,6 @@ export default function Inventory() {
   return (
     <PageShell>
       <div className={SPACING.PAGE_CONTENT}>
-      {/* Message */}
-      {message && (
-        <p className={cn(
-          TYPOGRAPHY.SMALL,
-          message.type === 'success' ? 'text-foreground' : 'text-destructive'
-        )}>
-          {message.text}
-        </p>
-      )}
       <div className={SPACING.SECTION_SPACING}>
 
         {/* Items */}

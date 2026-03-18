@@ -432,14 +432,16 @@ model ClanWarFortification {
 // Chat Messages
 model ChatMessage {
   id        String    @id @default(uuid())
-  userId    String
+  userId    String?
+  type      String    @default("user")
   message   String
+  imageUrl  String?
   replyToId String?
   pinned    Boolean   @default(false)
   pinnedAt  DateTime?
   createdAt DateTime  @default(now())
 
-  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
   replyTo   ChatMessage?   @relation("ChatMessageReply", fields: [replyToId], references: [id], onDelete: SetNull)
   replies   ChatMessage[]  @relation("ChatMessageReply")
   reactions ChatReaction[]

@@ -448,6 +448,7 @@ export default function Racer() {
   const [started, setStarted] = useState(false);
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isNewDailyBest, setIsNewDailyBest] = useState(false);
+  const [rewardSummary, setRewardSummary] = useState<string | null>(null);
   const [leaderboard, setLeaderboard] = useState<DailyRacerLeaderboardEntry[]>([]);
   const [imagesLoaded, setImagesLoaded] = useState(false);
   const [speed, setSpeed] = useState(0);
@@ -804,6 +805,7 @@ export default function Racer() {
     setStarted(true);
     setRewards(null);
     setIsNewDailyBest(false);
+    setRewardSummary(null);
     gameRunningRef.current = true;
     lastTimeRef.current = 0;
   }, [imagesLoaded, resetRoad]);
@@ -1017,13 +1019,24 @@ export default function Racer() {
           gamesApi.submitDailyRacerRun(lapTimeMs),
         ]);
 
+        const totalMoneyReward = rewardResponse.data.moneyReward + (dailyResponse.data.rewards?.money ?? 0);
+        const totalAuraReward = rewardResponse.data.auraReward + (dailyResponse.data.rewards?.aura ?? 0);
         setRewards({
-          aura: rewardResponse.data.auraReward,
-          money: rewardResponse.data.moneyReward,
+          aura: totalAuraReward,
+          money: totalMoneyReward,
         });
         setIsNewDailyBest(dailyResponse.data.isNewDailyBest);
         setDailyBestLapTimeMs(dailyResponse.data.bestLapTimeMs);
         setDailyRunCount((prev) => prev + 1);
+        setRewardSummary(
+          [
+            rewardResponse.data.moneyReward > 0 || rewardResponse.data.auraReward > 0 ? 'tour complete' : null,
+            dailyResponse.data.rewards?.isFirstRunToday ? 'premiere tentative du jour' : null,
+            dailyResponse.data.rewards?.isNewDailyBest ? 'meilleur tour perso du jour' : null,
+          ]
+            .filter(Boolean)
+            .join(' + ')
+        );
 
         if (dailyResponse.data.bestLapTimeMs > 0) {
           fastestLapTimeRef.current = dailyResponse.data.bestLapTimeMs / 1000;
@@ -1363,6 +1376,8 @@ export default function Racer() {
                   </div>
 
                   {isNewDailyBest && <p className="text-sm text-foreground">Nouveau record du jour !</p>}
+
+                  {rewardSummary && <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{rewardSummary}</p>}
 
                   {rewards && (rewards.money > 0 || rewards.aura > 0) && (
                     <p className="text-sm text-muted-foreground">

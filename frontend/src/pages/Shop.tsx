@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { marketplaceApi, giftsApi, usersApi, ShopItem, ShopCategory } from '../services/api';
+import { marketplaceApi, giftsApi, usersApi, ShopItem, ShopCategory, AdminInventoryItem } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { PageShell } from '@/components/layout/page-shell';
 import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
+import { toast } from 'sonner';
 import {
   Coins, Loader2, Package, Gift, Send, Sparkles, Zap, TrendingUp,
   Timer, Flame, Star, Gamepad2, RotateCcw, ShoppingCart,
@@ -106,6 +107,8 @@ const getSkinImageUrl = (effect: string | null): string | null => {
   } catch { /**/ }
   return null;
 };
+
+const isDoodleJumpSkin = (item: { effect: string | null }) => parseEffectType(item.effect) === 'DOODLE_JUMP_SKIN';
 
 // ─── Doodle Jump Canvas Preview ────────────────────────────────────────────────
 
@@ -257,12 +260,14 @@ function ShopCard({
   item,
   user,
   buyingItemId,
+  ownedSkinItemIds,
   onPurchase,
   onSend,
 }: {
   item: ShopItem;
   user: ReturnType<typeof useAuth>['user'];
   buyingItemId: string | null;
+  ownedSkinItemIds: Set<string>;
   onPurchase: (item: ShopItem) => void;
   onSend: (item: ShopItem) => void;
 }) {
@@ -272,6 +277,7 @@ function ShopCard({
   const skinUrl = getSkinImageUrl(item.effect);
   const cfg = CATEGORY_CFG[item.type] ?? FALLBACK_CFG;
   const isBuying = buyingItemId === item.id;
+  const isOwnedSkin = isDoodleJumpSkin(item) && ownedSkinItemIds.has(item.id);
 
   const renderMedia = () => {
     if (skinUrl) return <DoodleJumpSkinPreview skinImageUrl={skinUrl} />;
@@ -349,10 +355,10 @@ function ShopCard({
           ) : (
             <button
               onClick={() => onPurchase(item)}
-              disabled={!canAfford || isBuying}
+              disabled={!canAfford || isBuying || isOwnedSkin}
               className={cn(
                 'w-full rounded-lg py-2 text-sm font-semibold transition-all duration-150',
-                canAfford && !isBuying
+                canAfford && !isBuying && !isOwnedSkin
                   ? cn(cfg.buyBtn)
                   : 'bg-muted/20 text-muted-foreground/50 cursor-not-allowed border border-border/20',
               )}
@@ -360,6 +366,8 @@ function ShopCard({
               <span className="flex items-center justify-center gap-2">
                 {isBuying ? (
                   <><Loader2 className="h-4 w-4 animate-spin" /> Achat...</>
+                ) : isOwnedSkin ? (
+                  'Deja possede'
                 ) : canAfford ? (
                   <><ShoppingCart className="h-4 w-4" /> Acheter</>
                 ) : (
@@ -380,16 +388,19 @@ function DjSkinCard({
   item,
   user,
   buyingItemId,
+  ownedSkinItemIds,
   onPurchase,
 }: {
   item: ShopItem;
   user: ReturnType<typeof useAuth>['user'];
   buyingItemId: string | null;
+  ownedSkinItemIds: Set<string>;
   onPurchase: (item: ShopItem) => void;
 }) {
   const canAfford = (user?.money ?? 0) >= item.price;
   const skinUrl = getSkinImageUrl(item.effect);
   const isBuying = buyingItemId === item.id;
+  const isOwnedSkin = ownedSkinItemIds.has(item.id);
 
   return (
     <Card className="group overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-violet-900/20 border-violet-500/10">
@@ -411,10 +422,10 @@ function DjSkinCard({
           <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>
           <button
             onClick={() => onPurchase(item)}
-            disabled={!canAfford || isBuying}
+            disabled={!canAfford || isBuying || isOwnedSkin}
             className={cn(
               'w-full rounded-lg py-2 text-sm font-semibold transition-all duration-150',
-              canAfford && !isBuying
+              canAfford && !isBuying && !isOwnedSkin
                 ? 'bg-gradient-to-r from-violet-500 to-indigo-600 hover:from-violet-400 hover:to-indigo-500 text-white shadow-md shadow-violet-900/40'
                 : 'bg-muted/20 text-muted-foreground/50 cursor-not-allowed border border-border/20',
             )}
@@ -422,6 +433,8 @@ function DjSkinCard({
             <span className="flex items-center justify-center gap-2">
               {isBuying
                 ? <><Loader2 className="h-4 w-4 animate-spin" /> Achat...</>
+                : isOwnedSkin
+                  ? 'Deja possede'
                 : canAfford
                   ? <><Gamepad2 className="h-4 w-4" /> Débloquer</>
                   : 'Solde insuffisant'
@@ -439,10 +452,12 @@ function DjSkinCard({
 function DoodleJumpShopSection({
   user,
   buyingItemId,
+  ownedSkinItemIds,
   onPurchase,
 }: {
   user: ReturnType<typeof useAuth>['user'];
   buyingItemId: string | null;
+  ownedSkinItemIds: Set<string>;
   onPurchase: (item: ShopItem) => void;
 }) {
   const [staticSkins, setStaticSkins] = useState<ShopItem[]>([]);
@@ -510,6 +525,7 @@ function DoodleJumpShopSection({
                     item={item}
                     user={user}
                     buyingItemId={buyingItemId}
+                    ownedSkinItemIds={ownedSkinItemIds}
                     onPurchase={onPurchase}
                   />
                 ))}
@@ -534,6 +550,7 @@ function DoodleJumpShopSection({
                     item={item}
                     user={user}
                     buyingItemId={buyingItemId}
+                    ownedSkinItemIds={ownedSkinItemIds}
                     onPurchase={onPurchase}
                   />
                 ))}
@@ -559,10 +576,10 @@ export default function Shop() {
   const { user, updateBalance } = useAuth();
   const [filter, setFilter] = useState<string>('ALL');
   const [items, setItems] = useState<ShopItem[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<AdminInventoryItem[]>([]);
   const [categories, setCategories] = useState<ShopCategory[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
   const [buyingItemId, setBuyingItemId] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Gift dialog
   const [sendDialogItem, setSendDialogItem] = useState<ShopItem | null>(null);
@@ -576,22 +593,33 @@ export default function Shop() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [itemsRes, categoriesRes] = await Promise.all([
+        const inventoryRequest = user?.id
+          ? marketplaceApi.getInventory(user.id)
+          : Promise.resolve({ data: { items: [] as AdminInventoryItem[] } });
+        const [itemsRes, categoriesRes, inventoryRes] = await Promise.all([
           marketplaceApi.getItems({ limit: 100 }),
           marketplaceApi.getCategories(),
+          inventoryRequest,
         ]);
         setItems(itemsRes.data.items || []);
+        setInventoryItems(inventoryRes.data.items || []);
         if (categoriesRes.data.categories?.length) {
           setCategories(categoriesRes.data.categories);
         }
       } catch {
-        setMessage({ type: 'error', text: 'Impossible de charger la boutique.' });
+        toast.error('Impossible de charger la boutique.');
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  }, []);
+  }, [user?.id]);
+
+  const ownedSkinItemIds = useMemo(() => new Set(
+    inventoryItems
+      .filter(entry => isDoodleJumpSkin(entry.item))
+      .map(entry => entry.item.id),
+  ), [inventoryItems]);
 
   const fetchUsers = useCallback(async () => {
     setLoadingUsers(true);
@@ -642,21 +670,40 @@ export default function Shop() {
 
   const handlePurchase = async (item: ShopItem) => {
     if (!user || buyingItemId) return;
+    if (isDoodleJumpSkin(item) && ownedSkinItemIds.has(item.id)) {
+      toast.error('Tu possedes deja ce skin.');
+      return;
+    }
     setBuyingItemId(item.id);
-    setMessage(null);
     try {
       const response = await marketplaceApi.purchase({ itemId: item.id, quantity: 1 });
       updateBalance(response.data.newBalance.aura, response.data.newBalance.money);
-      const isDj = parseEffectType(item.effect) === 'DOODLE_JUMP_SKIN';
-      setMessage({
-        type: 'success',
-        text: isDj
-          ? `Skin "${item.name}" débloqué ! Disponible dans Doodle Jump.`
-          : `${item.name} ajouté à ton inventaire.`,
+      setInventoryItems(prev => {
+        if (prev.some(entry => entry.item.id === item.id)) return prev;
+        return [
+          {
+            id: response.data.item.id,
+            quantity: response.data.item.quantity,
+            acquiredAt: response.data.item.acquiredAt,
+            item: response.data.item.item,
+          },
+          ...prev,
+        ];
       });
+      const isDj = parseEffectType(item.effect) === 'DOODLE_JUMP_SKIN';
+      toast.success(
+        isDj
+          ? `Skin "${item.name}" débloqué !`
+          : 'Achat confirme',
+        {
+          description: isDj
+            ? 'Disponible dans Doodle Jump.'
+            : `${item.name} a ete ajoute a ton inventaire.`,
+        },
+      );
     } catch (error: unknown) {
       const err = error as { response?: { data?: { error?: string } } };
-      setMessage({ type: 'error', text: err.response?.data?.error || 'Achat impossible.' });
+      toast.error(err.response?.data?.error || 'Achat impossible.');
     } finally {
       setBuyingItemId(null);
     }
@@ -666,7 +713,6 @@ export default function Shop() {
     setSendDialogItem(item);
     setSelectedReceiver('');
     setGiftMessage('');
-    setMessage(null);
     fetchUsers();
   };
 
@@ -681,10 +727,12 @@ export default function Shop() {
       });
       updateBalance(res.data.newBalance.aura, res.data.newBalance.money);
       setSendDialogItem(null);
-      setMessage({ type: 'success', text: `"${sendDialogItem.name}" envoyé !` });
+      toast.success('Cadeau envoye', {
+        description: `"${sendDialogItem.name}" a bien ete envoye.`,
+      });
     } catch (error: unknown) {
       const err = error as { response?: { data?: { error?: string } } };
-      setMessage({ type: 'error', text: err.response?.data?.error || 'Envoi impossible.' });
+      toast.error(err.response?.data?.error || 'Envoi impossible.');
     } finally {
       setSendingGift(false);
     }
@@ -693,18 +741,6 @@ export default function Shop() {
   return (
     <PageShell>
       <div className="space-y-6">
-
-        {/* ── Feedback message ── */}
-        {message && (
-          <div className={cn(
-            'rounded-xl border px-4 py-3 text-sm font-medium',
-            message.type === 'success'
-              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
-              : 'border-destructive/30 bg-destructive/10 text-destructive',
-          )}>
-            {message.text}
-          </div>
-        )}
 
         {/* ── Category filter tabs + balance ── */}
         <div className="flex flex-wrap items-center gap-2">
@@ -757,6 +793,7 @@ export default function Shop() {
               <DoodleJumpShopSection
                 user={user}
                 buyingItemId={buyingItemId}
+                ownedSkinItemIds={ownedSkinItemIds}
                 onPurchase={handlePurchase}
               />
             )}
@@ -792,6 +829,7 @@ export default function Shop() {
                         item={item}
                         user={user}
                         buyingItemId={buyingItemId}
+                        ownedSkinItemIds={ownedSkinItemIds}
                         onPurchase={handlePurchase}
                         onSend={openSendDialog}
                       />
@@ -811,6 +849,7 @@ export default function Shop() {
                         item={item}
                         user={user}
                         buyingItemId={buyingItemId}
+                        ownedSkinItemIds={ownedSkinItemIds}
                         onPurchase={handlePurchase}
                         onSend={openSendDialog}
                       />

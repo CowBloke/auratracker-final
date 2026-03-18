@@ -6,7 +6,13 @@ import { config } from '../config/index.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { validate, registerSchema, loginSchema } from '../middleware/validation.js';
 import { logAuth } from '../utils/logger.js';
-import { createUniqueReferralCode, ensureUserReferralCode, getReferralRewardAmount, normalizeReferralCode } from '../utils/referrals.js';
+import {
+  createUniqueReferralCode,
+  ensureUserReferralCode,
+  getReferralRewardAmount,
+  isReferralEnabled,
+  normalizeReferralCode,
+} from '../utils/referrals.js';
 
 const getIpAddress = (req: Request | AuthRequest): string | null => {
   const forwarded = req.headers['x-forwarded-for'];
@@ -30,7 +36,8 @@ const generateToken = (userId: string, email: string): string => {
 router.post('/register', validate(registerSchema), async (req, res) => {
   try {
     const { username, firstName, schoolLevel, classLetter, email, password, motivationMessage } = req.body;
-    const referralCode = normalizeReferralCode(req.body.referralCode);
+    const referralsEnabled = await isReferralEnabled();
+    const referralCode = referralsEnabled ? normalizeReferralCode(req.body.referralCode) : null;
 
     const existingUser = await prisma.user.findFirst({
       where: {
@@ -244,6 +251,11 @@ router.get('/referral-summary', authMiddleware, async (req: AuthRequest, res: Re
   try {
     if (!req.user) {
       return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const referralsEnabled = await isReferralEnabled();
+    if (!referralsEnabled) {
+      return res.status(404).json({ error: 'Referral system disabled' });
     }
 
     const referralCode = await ensureUserReferralCode(req.user.id, req.user.referralCode);

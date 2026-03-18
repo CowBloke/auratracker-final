@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { createNotification } from '../utils/notifications.js';
+import { logEconomy } from '../utils/logger.js';
 
 const router = Router();
 
@@ -185,6 +186,17 @@ router.post('/claim', authMiddleware, async (req: AuthRequest, res: Response) =>
       link: '/pass',
       icon: 'calendar-check',
     }).catch(() => {});
+
+    logEconomy('pass_reward', req.user.id, req.user.username, undefined, undefined, {
+      reward,
+      streak: newStreak,
+      claimDay,
+      nextReward,
+      previousStreak: user.dailyPassStreak || 0,
+      lastClaimAt: user.lastDailyPassClaim?.toISOString() || null,
+      claimedAt: now.toISOString(),
+      newMoneyBalance: updatedUser.money,
+    });
 
     res.json({
       success: true,

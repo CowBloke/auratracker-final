@@ -17,7 +17,7 @@ export type LogType =
 export type AuthAction = 'login' | 'logout' | 'register' | 'login_failed' | 'login_banned';
 export type ChatAction = 'message_sent' | 'message_deleted';
 export type GameAction = 'game_complete' | 'game_reward' | 'casino_bet' | 'highscore';
-export type EconomyAction = 'transfer' | 'gift_aura' | 'balance_change' | 'quest_reward';
+export type EconomyAction = 'transfer' | 'gift_aura' | 'balance_change' | 'quest_reward' | 'pass_reward';
 export type PartyAction = 'party_create' | 'party_join' | 'party_leave' | 'party_disband' | 'party_kick' | 'party_invite';
 export type SuggestionAction = 'suggestion_create' | 'suggestion_vote' | 'suggestion_comment' | 'suggestion_delete' | 'suggestion_status' | 'suggestion_rating' | 'bug_report';
 export type MarketplaceAction =
@@ -28,7 +28,7 @@ export type MarketplaceAction =
   | 'listing_create'
   | 'listing_sold'
   | 'listing_cancel';
-export type AdminAction = 'user_update' | 'user_delete' | 'user_approve' | 'user_reject' | 'inventory_add' | 'inventory_update' | 'inventory_remove' | 'chat_clear' | 'stats_delete' | 'badge_create' | 'badge_assign' | 'badge_remove' | 'setting_update' | 'settings_bulk_update' | 'extreme_aura_reset' | 'deploy_trigger' | 'polymarket_event_create' | 'polymarket_event_update' | 'polymarket_event_resolve' | 'polymarket_suggestion_approve' | 'polymarket_suggestion_reject' | 'gift_template_create' | 'gift_template_update' | 'gift_template_delete' | 'bombparty_prompts_recalculate' | 'update_popup_create' | 'update_popup_update' | 'update_popup_delete' | 'appeal_reject' | 'username_change' | 'clan_update' | 'clan_transfer_leadership' | 'clan_delete' | 'warning_create' | 'warning_delete';
+export type AdminAction = 'user_update' | 'user_delete' | 'user_approve' | 'user_reject' | 'registration_reviews_import' | 'inventory_add' | 'inventory_update' | 'inventory_remove' | 'item_create' | 'item_update' | 'item_delete' | 'item_image_upload' | 'shop_categories_update' | 'chat_clear' | 'stats_delete' | 'badge_create' | 'badge_assign' | 'badge_remove' | 'setting_update' | 'settings_bulk_update' | 'extreme_aura_reset' | 'deploy_trigger' | 'polymarket_event_create' | 'polymarket_event_update' | 'polymarket_event_resolve' | 'polymarket_suggestion_approve' | 'polymarket_suggestion_reject' | 'gift_template_create' | 'gift_template_update' | 'gift_template_delete' | 'bombparty_prompts_recalculate' | 'update_popup_create' | 'update_popup_update' | 'update_popup_delete' | 'update_popup_image_upload' | 'bug_report_update' | 'bug_report_delete' | 'online_snapshot_create' | 'appeal_reject' | 'username_change' | 'username_change_reject' | 'clan_update' | 'clan_transfer_leadership' | 'clan_delete' | 'warning_create' | 'warning_delete';
 export type BanAction = 'ban_create' | 'ban_remove';
 export type AuraCoinAction =
   | 'auracoin_buy'

@@ -8,6 +8,7 @@ interface MaintenanceStatus {
   endDate: string | null;
   disabledPages: string[];
   blockedMessage: string;
+  referralEnabled: boolean;
 }
 
 const DEFAULT_STATUS: MaintenanceStatus = {
@@ -17,6 +18,7 @@ const DEFAULT_STATUS: MaintenanceStatus = {
   endDate: null,
   disabledPages: [],
   blockedMessage: '',
+  referralEnabled: true,
 };
 
 interface FeaturesContextValue {
@@ -45,6 +47,7 @@ export function FeaturesProvider({ children }: { children: React.ReactNode }) {
         endDate: res.data.endDate || null,
         disabledPages: res.data.blockedPages || [],
         blockedMessage: res.data.blockedMessage || '',
+        referralEnabled: res.data.referralEnabled !== false,
       });
     } catch {
       setMaintenanceStatus(DEFAULT_STATUS);

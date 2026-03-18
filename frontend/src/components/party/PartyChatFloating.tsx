@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MessageCircle, Minimize2, Send, Users } from 'lucide-react';
 import { useSocket } from '@/contexts/SocketContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { UsernameDisplay } from '@/components/ui/username-display';
@@ -12,14 +13,61 @@ interface PartyChatFloatingProps {
 }
 
 export default function PartyChatFloating({ rightOffset }: PartyChatFloatingProps) {
+  const { user } = useAuth();
   const { currentParty, partyMembers, partyMessages, sendPartyMessage } = useSocket();
   const [minimized, setMinimized] = useState(false);
   const [message, setMessage] = useState('');
+  const [unreadCount, setUnreadCount] = useState(0);
   const endRef = useRef<HTMLDivElement | null>(null);
+  const lastMessageIdRef = useRef<string | null>(null);
+  const initializedRef = useRef(false);
+  const partyIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [partyMessages, minimized]);
+
+  useEffect(() => {
+    if (partyIdRef.current !== currentParty?.id) {
+      partyIdRef.current = currentParty?.id ?? null;
+      lastMessageIdRef.current = null;
+      initializedRef.current = false;
+      setUnreadCount(0);
+    }
+  }, [currentParty?.id]);
+
+  useEffect(() => {
+    const lastMessage = partyMessages[partyMessages.length - 1];
+
+    if (!lastMessage) {
+      initializedRef.current = true;
+      if (!minimized) {
+        setUnreadCount(0);
+      }
+      return;
+    }
+
+    if (!initializedRef.current) {
+      lastMessageIdRef.current = lastMessage.id;
+      initializedRef.current = true;
+      if (!minimized) {
+        setUnreadCount(0);
+      }
+      return;
+    }
+
+    if (!minimized) {
+      setUnreadCount(0);
+      lastMessageIdRef.current = lastMessage.id;
+      return;
+    }
+
+    if (lastMessage.id !== lastMessageIdRef.current && lastMessage.userId !== user?.id) {
+      setUnreadCount((prev) => prev + 1);
+    }
+
+    lastMessageIdRef.current = lastMessage.id;
+  }, [partyMessages, minimized, user?.id]);
 
   if (!currentParty) return null;
 
@@ -51,8 +99,13 @@ export default function PartyChatFloating({ rightOffset }: PartyChatFloatingProp
             onClick={() => setMinimized((value) => !value)}
             className="flex min-w-0 items-center gap-3 text-left"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
+            <div className="relative flex h-9 w-9 items-center justify-center rounded-full bg-muted">
               <MessageCircle className="h-4 w-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 flex items-center justify-center rounded-full bg-red-500 text-[10px] font-medium text-white">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-medium">{title}</p>

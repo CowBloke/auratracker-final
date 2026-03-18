@@ -30,6 +30,11 @@ const REACTION_OPTIONS = [
   { value: '😡', label: 'Grr' },
 ];
 
+const getReactionUsersLabel = (users: string[]) => {
+  if (users.length === 0) return 'Aucune reaction';
+  return users.length === 1 ? `${users[0]} a reagi` : `${users.join(', ')} ont reagi`;
+};
+
 export default function Chat({ isOpen, onToggle }: ChatProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -251,6 +256,8 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                             <span
                               key={`${msg.id}-${reaction.emoji}`}
                               className="inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-0.5 text-[10px] text-muted-foreground"
+                              title={getReactionUsersLabel(reaction.users)}
+                              aria-label={getReactionUsersLabel(reaction.users)}
                             >
                               <span>{reaction.emoji}</span>
                               <span className="tabular-nums">{reaction.count}</span>
