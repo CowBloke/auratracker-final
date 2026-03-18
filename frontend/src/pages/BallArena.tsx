@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
-import { ArrowLeft, LogOut, Play, Search, Swords, Trophy } from 'lucide-react';
+import { ArrowLeft, LogOut, Pause, Play, RotateCcw, Search, Swords, Trophy } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -50,6 +50,13 @@ interface BallArenaState {
   players: BallArenaPlayerState[];
 }
 
+interface ReplayPlayer {
+  userId: string;
+  username: string;
+  usernameColor?: string | null;
+  playerIndex: 0 | 1;
+}
+
 interface GameOverData {
   winnerId: string | null;
   winnerUsername: string | null;
@@ -59,6 +66,8 @@ interface GameOverData {
     loser?: { aura: number; money: number };
     draw?: { aura: number; money: number };
   };
+  replayFrames?: number[][];
+  players?: ReplayPlayer[];
 }
 
 // ─── Canvas rendering ─────────────────────────────────────────────────────────
@@ -779,69 +788,221 @@ function PostGameModals({
   setGameOver: (v: GameOverData | null) => void;
   gameState: BallArenaState | null;
 }) {
+  const [showReplay, setShowReplay] = useState(false);
+
   return (
-    <Dialog open={!!gameOver} onOpenChange={() => setGameOver(null)}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="font-normal flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-yellow-500" />
-            Partie terminée
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-6 py-4">
-          {gameOver?.isDraw ? (
-            <div className="text-center">
-              <p className="text-2xl font-light">Égalité !</p>
-              {gameOver.rewards.draw && (
-                <p className="text-sm text-muted-foreground mt-2">
-                  +{gameOver.rewards.draw.aura} aura · +{gameOver.rewards.draw.money}$
-                </p>
-              )}
-            </div>
-          ) : (
-            <>
+    <>
+      <Dialog open={!!gameOver && !showReplay} onOpenChange={() => setGameOver(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-normal flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-yellow-500" />
+              Partie terminée
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            {gameOver?.isDraw ? (
               <div className="text-center">
-                <p className="text-sm text-muted-foreground">Gagnant</p>
-                {gameOver?.winnerUsername && (
-                  <UsernameDisplay
-                    username={gameOver.winnerUsername}
-                    className="justify-center text-2xl font-light"
-                  />
+                <p className="text-2xl font-light">Égalité !</p>
+                {gameOver.rewards.draw && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    +{gameOver.rewards.draw.aura} aura · +{gameOver.rewards.draw.money}$
+                  </p>
                 )}
               </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between py-3 px-3 border rounded border-yellow-500/50 bg-yellow-500/5">
+            ) : (
+              <>
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Gagnant</p>
                   {gameOver?.winnerUsername && (
-                    <UsernameDisplay username={gameOver.winnerUsername} className="font-medium" />
+                    <UsernameDisplay
+                      username={gameOver.winnerUsername}
+                      className="justify-center text-2xl font-light"
+                    />
                   )}
-                  <div className="text-sm">
-                    {gameOver?.rewards.winner && (
-                      <>
-                        <span className="text-purple-400">+{gameOver.rewards.winner.aura} aura </span>
-                        <span className="text-green-400">+{gameOver.rewards.winner.money}$</span>
-                      </>
-                    )}
-                  </div>
                 </div>
-                {(() => {
-                  const loser = gameState?.players.find((p) => p.userId !== gameOver?.winnerId);
-                  return loser ? (
-                    <div className="flex items-center justify-between py-3 px-3 border rounded border-border/30">
-                      <UsernameDisplay username={loser.username} usernameColor={loser.usernameColor} className="font-medium" />
-                      <div className="text-sm">
-                        {gameOver?.rewards.loser && (
-                          <span className="text-green-400">+{gameOver.rewards.loser.money}$</span>
-                        )}
-                      </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between py-3 px-3 border rounded border-yellow-500/50 bg-yellow-500/5">
+                    {gameOver?.winnerUsername && (
+                      <UsernameDisplay username={gameOver.winnerUsername} className="font-medium" />
+                    )}
+                    <div className="text-sm">
+                      {gameOver?.rewards.winner && (
+                        <>
+                          <span className="text-purple-400">+{gameOver.rewards.winner.aura} aura </span>
+                          <span className="text-green-400">+{gameOver.rewards.winner.money}$</span>
+                        </>
+                      )}
                     </div>
-                  ) : null;
-                })()}
-              </div>
-            </>
-          )}
+                  </div>
+                  {(() => {
+                    const loser = gameState?.players.find((p) => p.userId !== gameOver?.winnerId);
+                    return loser ? (
+                      <div className="flex items-center justify-between py-3 px-3 border rounded border-border/30">
+                        <UsernameDisplay username={loser.username} usernameColor={loser.usernameColor} className="font-medium" />
+                        <div className="text-sm">
+                          {gameOver?.rewards.loser && (
+                            <span className="text-green-400">+{gameOver.rewards.loser.money}$</span>
+                          )}
+                        </div>
+                      </div>
+                    ) : null;
+                  })()}
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0 flex-col sm:flex-row">
+            {gameOver?.replayFrames && gameOver.replayFrames.length > 1 && (
+              <Button variant="outline" onClick={() => setShowReplay(true)} className="w-full gap-2">
+                <RotateCcw className="h-4 w-4" />
+                Revoir le match
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => setGameOver(null)} className="w-full border-foreground">
+              Fermer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {gameOver && showReplay && (
+        <ReplayModal
+          replayFrames={gameOver.replayFrames ?? []}
+          players={gameOver.players ?? []}
+          onClose={() => setShowReplay(false)}
+        />
+      )}
+    </>
+  );
+}
+
+// ─── Replay modal ──────────────────────────────────────────────────────────────
+function ReplayModal({
+  replayFrames,
+  players,
+  onClose,
+}: {
+  replayFrames: number[][];
+  players: ReplayPlayer[];
+  onClose: () => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const frameRef = useRef(0);
+  const [currentFrame, setCurrentFrame] = useState(0);
+  const [playing, setPlaying] = useState(true);
+  const [speed, setSpeed] = useState(1);
+
+  const totalFrames = replayFrames.length;
+
+  const drawFrame = useCallback((frameIdx: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const frame = replayFrames[Math.min(frameIdx, totalFrames - 1)];
+    if (!frame) return;
+    const balls: RenderBall[] = [
+      { x: frame[0], y: frame[1], isOut: frame[2] === 1, playerIndex: 0, hasSetDirection: true, plannedVx: 0, plannedVy: 0 },
+      { x: frame[3], y: frame[4], isOut: frame[5] === 1, playerIndex: 1, hasSetDirection: true, plannedVx: 0, plannedVy: 0 },
+    ];
+    drawScene(canvas, balls, null, 'playing');
+  }, [replayFrames, totalFrames]);
+
+  useEffect(() => {
+    if (!playing) return;
+    const interval = setInterval(() => {
+      const next = frameRef.current + 1;
+      if (next >= totalFrames) {
+        setPlaying(false);
+        return;
+      }
+      frameRef.current = next;
+      setCurrentFrame(next);
+      drawFrame(next);
+    }, Math.round(64 / speed));
+    return () => clearInterval(interval);
+  }, [playing, speed, drawFrame, totalFrames]);
+
+  // Draw initial frame on mount
+  useEffect(() => {
+    frameRef.current = 0;
+    setCurrentFrame(0);
+    drawFrame(0);
+  }, [drawFrame]);
+
+  const handleScrub = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = Number(e.target.value);
+    frameRef.current = f;
+    setCurrentFrame(f);
+    drawFrame(f);
+    setPlaying(false);
+  };
+
+  const handleRestart = () => {
+    frameRef.current = 0;
+    setCurrentFrame(0);
+    drawFrame(0);
+    setPlaying(true);
+  };
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-lg p-4">
+        <DialogHeader>
+          <DialogTitle className="font-normal text-sm flex items-center gap-2">
+            <RotateCcw className="h-4 w-4" />
+            Replay
+            <span className="text-xs text-muted-foreground ml-auto">
+              {players.map((p, i) => (
+                <span key={p.userId}>
+                  {i > 0 && ' · '}
+                  <span style={{ color: PLAYER_COLORS[p.playerIndex] }}>●</span> {p.username}
+                </span>
+              ))}
+            </span>
+          </DialogTitle>
+        </DialogHeader>
+
+        <canvas
+          ref={canvasRef}
+          width={600}
+          height={600}
+          className="rounded-full w-full aspect-square"
+          style={{ imageRendering: 'pixelated' }}
+        />
+
+        <div className="space-y-2 pt-1">
+          <input
+            type="range"
+            min={0}
+            max={Math.max(0, totalFrames - 1)}
+            value={currentFrame}
+            onChange={handleScrub}
+            className="w-full h-1 accent-blue-500"
+          />
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="ghost" onClick={() => setPlaying((p) => !p)} className="gap-1.5 px-3">
+              {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+              {playing ? 'Pause' : 'Play'}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={handleRestart} className="gap-1.5 px-3">
+              <RotateCcw className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              size="sm"
+              variant={speed === 2 ? 'secondary' : 'ghost'}
+              onClick={() => setSpeed((s) => (s === 1 ? 2 : 1))}
+              className="px-3 ml-1"
+            >
+              {speed}×
+            </Button>
+            <span className="text-xs text-muted-foreground ml-auto">
+              {currentFrame + 1} / {totalFrames}
+            </span>
+          </div>
         </div>
+
         <DialogFooter>
-          <Button variant="outline" onClick={() => setGameOver(null)} className="w-full border-foreground">
+          <Button variant="outline" onClick={onClose} className="w-full">
             Fermer
           </Button>
         </DialogFooter>

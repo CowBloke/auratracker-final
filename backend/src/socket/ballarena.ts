@@ -13,7 +13,7 @@ export const BALL_RADIUS = 22;
 export const PREP_TIME_MS = 10_000;
 const GAME_TIME_LIMIT_MS = 25_000;
 export const MAX_SPEED = 400; // game units per second
-const FRICTION = 0.9988; // velocity multiplier per 16 ms tick
+const FRICTION = 0.992; // velocity multiplier per 16 ms tick
 const SIM_STEP_MS = 16;
 const BROADCAST_EVERY_N_TICKS = 4; // broadcast every ~64 ms ≈ 15 fps
 export const EXIT_THRESHOLD = ARENA_RADIUS - BALL_RADIUS; // 218
@@ -56,6 +56,7 @@ interface BallArenaGame {
   prepTimeout: NodeJS.Timeout | null;
   gameTimeout: NodeJS.Timeout | null;
   tickCount: number;
+  replayFrames: number[][];
 }
 
 interface PendingJoinPrompt {
@@ -186,6 +187,13 @@ function startSimulation(game: BallArenaGame, io: Server) {
 
   emitState(game, io);
 
+  // Reset replay and record initial frame
+  game.replayFrames = [];
+  game.replayFrames.push([
+    game.balls[0].x, game.balls[0].y, 0,
+    game.balls[1].x, game.balls[1].y, 0,
+  ]);
+
   game.tickCount = 0;
   game.simInterval = setInterval(() => {
     if (game.phase !== 'playing') {
@@ -198,6 +206,10 @@ function startSimulation(game: BallArenaGame, io: Server) {
 
     if (game.tickCount % BROADCAST_EVERY_N_TICKS === 0) {
       emitState(game, io);
+      game.replayFrames.push([
+        game.balls[0].x, game.balls[0].y, game.balls[0].isOut ? 1 : 0,
+        game.balls[1].x, game.balls[1].y, game.balls[1].isOut ? 1 : 0,
+      ]);
     }
 
     const b0Out = game.balls[0].isOut;
@@ -298,6 +310,8 @@ async function endGame(
         winnerUsername: winner.username,
         isDraw: false,
         rewards: { winner: winnerReward, loser: loserReward },
+        replayFrames: game.replayFrames,
+        players: game.players.map((p) => ({ userId: p.userId, username: p.username, usernameColor: p.usernameColor, playerIndex: p.playerIndex })),
       });
 
       logGame('game_complete', winner.userId, winner.username, {
@@ -332,6 +346,8 @@ async function endGame(
         winnerUsername: null,
         isDraw: true,
         rewards: { draw: drawReward },
+        replayFrames: game.replayFrames,
+        players: game.players.map((p) => ({ userId: p.userId, username: p.username, usernameColor: p.usernameColor, playerIndex: p.playerIndex })),
       });
     }
   } catch (error) {
@@ -460,6 +476,7 @@ function createGame(
     prepTimeout: null,
     gameTimeout: null,
     tickCount: 0,
+    replayFrames: [],
   };
 }
 
