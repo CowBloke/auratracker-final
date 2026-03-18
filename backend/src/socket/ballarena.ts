@@ -210,6 +210,12 @@ function startSimulation(game: BallArenaGame, io: Server) {
     ball.vy = ball.plannedVy;
   }
 
+  // Send dedicated sim-start so clients can run physics locally
+  io.to(`party:${game.partyId}`).emit('ballarena:sim-start', {
+    partyId: game.partyId,
+    balls: game.balls.map((b) => ({ x: b.x, y: b.y, vx: b.vx, vy: b.vy, isOut: b.isOut })),
+  });
+
   emitState(game, io);
 
   // Reset replay and record initial frame

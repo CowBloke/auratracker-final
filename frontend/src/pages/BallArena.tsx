@@ -18,6 +18,9 @@ const ARENA_RADIUS = 240;
 const BALL_RADIUS = 22;
 const MAX_SPEED = 400;
 const MAX_DRAG_DIST = 120;
+const FRICTION = 0.984;
+const SIM_STEP_MS = 16;
+const EXIT_THRESHOLD = ARENA_RADIUS - BALL_RADIUS; // 218
 
 const PLAYER_COLORS = ['#3b82f6', '#f97316'] as const;
 const PLAYER_GLOW = ['rgba(59,130,246,0.5)', 'rgba(249,115,22,0.5)'] as const;
@@ -68,6 +71,52 @@ interface GameOverData {
   };
   replayFrames?: number[][];
   players?: ReplayPlayer[];
+}
+
+// ─── Client-side physics (mirrors server exactly) ─────────────────────────────
+interface SimBall { x: number; y: number; vx: number; vy: number; isOut: boolean }
+
+interface ClientSim {
+  balls: SimBall[];
+  prevBalls: { x: number; y: number; isOut: boolean }[];
+  accumMs: number;
+}
+
+function simDist(ax: number, ay: number, bx: number, by: number) {
+  return Math.sqrt((ax - bx) ** 2 + (ay - by) ** 2);
+}
+
+function clientSimStep(balls: SimBall[]): void {
+  const dt = SIM_STEP_MS / 1000;
+  for (const ball of balls) {
+    if (ball.isOut) continue;
+    ball.x += ball.vx * dt;
+    ball.y += ball.vy * dt;
+    ball.vx *= FRICTION;
+    ball.vy *= FRICTION;
+  }
+  const [b0, b1] = balls;
+  if (!b0.isOut && !b1.isOut) {
+    const d = simDist(b0.x, b0.y, b1.x, b1.y);
+    if (d < BALL_RADIUS * 2 && d > 0.001) {
+      const nx = (b1.x - b0.x) / d;
+      const ny = (b1.y - b0.y) / d;
+      const dvx = b0.vx - b1.vx;
+      const dvy = b0.vy - b1.vy;
+      const p = dvx * nx + dvy * ny;
+      if (p > 0) {
+        b0.vx -= p * nx; b0.vy -= p * ny;
+        b1.vx += p * nx; b1.vy += p * ny;
+        const overlap = BALL_RADIUS * 2 - d;
+        b0.x -= nx * overlap * 0.5; b0.y -= ny * overlap * 0.5;
+        b1.x += nx * overlap * 0.5; b1.y += ny * overlap * 0.5;
+      }
+    }
+  }
+  for (const ball of balls) {
+    if (ball.isOut) continue;
+    if (simDist(ball.x, ball.y, ARENA_CX, ARENA_CY) > EXIT_THRESHOLD) ball.isOut = true;
+  }
 }
 
 // ─── Canvas rendering ─────────────────────────────────────────────────────────
@@ -354,6 +403,7 @@ export default function BallArena() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lastStateRef = useRef<{ state: BallArenaState; receivedAt: number } | null>(null);
   const animFrameRef = useRef<number | null>(null);
+  const clientSimRef = useRef<ClientSim | null>(null);
 
   const dragRef = useRef<{ active: boolean; ballIdx: number; ex: number; ey: number } | null>(null);
   const [dragTick, setDragTick] = useState(0);
@@ -361,36 +411,76 @@ export default function BallArena() {
   const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
   const myPlayer = gameState?.players.find((p) => p.userId === user?.id);
 
+  // ── Client sim helpers ────────────────────────────────────────────────────
+  const stopClientSim = () => { clientSimRef.current = null; };
+
+  const seedClientSim = (balls: Array<{ x: number; y: number; vx: number; vy: number; isOut?: boolean }>) => {
+    const simBalls: SimBall[] = balls.map((b) => ({ x: b.x, y: b.y, vx: b.vx, vy: b.vy, isOut: b.isOut ?? false }));
+    clientSimRef.current = {
+      balls: simBalls,
+      prevBalls: simBalls.map((b) => ({ x: b.x, y: b.y, isOut: b.isOut })),
+      accumMs: 0,
+    };
+  };
+
   // ── Socket events ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (!socket || !user) return;
 
     socket.emit('ballarena:register');
 
+    const onSimStart = (data: { partyId: string; balls: Array<{ x: number; y: number; vx: number; vy: number; isOut: boolean }> }) => {
+      seedClientSim(data.balls);
+    };
+
     const onState = (state: BallArenaState) => {
       setGameState(state);
       lastStateRef.current = { state, receivedAt: Date.now() };
       setError(null);
+
+      if (state.phase !== 'playing') {
+        // Round ended or game done — stop local sim
+        stopClientSim();
+      } else if (!clientSimRef.current) {
+        // Reconnect mid-game: re-seed sim from server state
+        seedClientSim(state.players.map((p) => ({ x: p.x, y: p.y, vx: p.vx, vy: p.vy, isOut: p.isOut })));
+      } else {
+        // Periodic correction: snap only if drift is large
+        const sim = clientSimRef.current;
+        state.players.forEach((sp, i) => {
+          const cb = sim.balls[i];
+          if (!cb) return;
+          const err = Math.sqrt((sp.x - cb.x) ** 2 + (sp.y - cb.y) ** 2);
+          if (err > 25) {
+            cb.x = sp.x; cb.y = sp.y; cb.vx = sp.vx; cb.vy = sp.vy; cb.isOut = sp.isOut;
+            sim.prevBalls[i] = { x: sp.x, y: sp.y, isOut: sp.isOut };
+          }
+        });
+      }
     };
 
     const onGameOver = (data: GameOverData) => {
+      stopClientSim();
       setGameOver(data);
       refreshUser();
     };
 
-    const onLeft = () => setGameState(null);
+    const onLeft = () => { stopClientSim(); setGameState(null); };
     const onError = (data: { message: string }) => setError(data.message);
 
+    socket.on('ballarena:sim-start', onSimStart);
     socket.on('ballarena:state', onState);
     socket.on('ballarena:game-over', onGameOver);
     socket.on('ballarena:left', onLeft);
     socket.on('ballarena:error', onError);
 
     return () => {
+      socket.off('ballarena:sim-start', onSimStart);
       socket.off('ballarena:state', onState);
       socket.off('ballarena:game-over', onGameOver);
       socket.off('ballarena:left', onLeft);
       socket.off('ballarena:error', onError);
+      stopClientSim();
     };
   }, [socket, user, refreshUser]);
 
@@ -410,15 +500,44 @@ export default function BallArena() {
     if (!canvasRef.current || !gameState) return;
     const canvas = canvasRef.current;
     const myPlayerIndex = myPlayer?.playerIndex ?? null;
+    let lastRafTime = performance.now();
 
-    const render = () => {
+    const render = (now: number) => {
       const ref = lastStateRef.current;
       if (!ref) { animFrameRef.current = requestAnimationFrame(render); return; }
 
       const { state, receivedAt } = ref;
       let renderedBalls: RenderBall[];
 
-      if (state.phase === 'playing') {
+      const sim = clientSimRef.current;
+      if (state.phase === 'playing' && sim) {
+        // Advance client physics using elapsed time accumulator
+        const elapsed = now - lastRafTime;
+        lastRafTime = now;
+        sim.accumMs = Math.min(sim.accumMs + elapsed, SIM_STEP_MS * 8); // cap to prevent spiral
+
+        while (sim.accumMs >= SIM_STEP_MS) {
+          sim.prevBalls = sim.balls.map((b) => ({ x: b.x, y: b.y, isOut: b.isOut }));
+          clientSimStep(sim.balls);
+          sim.accumMs -= SIM_STEP_MS;
+        }
+
+        // Sub-step interpolation for smooth 60fps between physics ticks
+        const alpha = sim.accumMs / SIM_STEP_MS;
+        renderedBalls = sim.balls.map((b, i) => {
+          const prev = sim.prevBalls[i];
+          return {
+            x: prev.x + (b.x - prev.x) * alpha,
+            y: prev.y + (b.y - prev.y) * alpha,
+            isOut: b.isOut,
+            playerIndex: (state.players[i]?.playerIndex ?? i) as 0 | 1,
+            hasSetDirection: true,
+            plannedVx: 0, plannedVy: 0,
+          };
+        });
+      } else if (state.phase === 'playing') {
+        // Fallback: linear extrapolation until sim-start arrives
+        lastRafTime = now;
         const dt = Math.min((Date.now() - receivedAt) / 1000, 0.5);
         renderedBalls = state.players.map((p) => ({
           x: p.isOut ? p.x : p.x + p.vx * dt,
@@ -427,6 +546,7 @@ export default function BallArena() {
           hasSetDirection: p.hasSetDirection, plannedVx: p.plannedVx, plannedVy: p.plannedVy,
         }));
       } else {
+        lastRafTime = now;
         renderedBalls = state.players.map((p) => ({
           x: p.x, y: p.y, isOut: p.isOut, playerIndex: p.playerIndex,
           hasSetDirection: p.hasSetDirection, plannedVx: p.plannedVx, plannedVy: p.plannedVy,
