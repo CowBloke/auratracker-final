@@ -16,8 +16,6 @@ const ARENA_CX = 300;
 const ARENA_CY = 300;
 const ARENA_RADIUS = 240;
 const BALL_RADIUS = 22;
-const EXIT_THRESHOLD = ARENA_RADIUS - BALL_RADIUS; // 218
-const PREP_TIME_MS = 10_000;
 const MAX_SPEED = 400;
 const MAX_DRAG_DIST = 120; // canvas units (= game units since canvas is 600x600)
 
@@ -64,15 +62,13 @@ interface GameOverData {
 }
 
 // ─── Canvas rendering ─────────────────────────────────────────────────────────
-interface RenderBall { x: number; y: number; isOut: boolean; playerIndex: 0 | 1 }
+interface RenderBall { x: number; y: number; isOut: boolean; playerIndex: 0 | 1; hasSetDirection: boolean; plannedVx: number; plannedVy: number; }
 
 function drawScene(
   canvas: HTMLCanvasElement,
   balls: RenderBall[],
   dragArrow: { ballIdx: number; ex: number; ey: number } | null,
-  localDirSet: boolean,
   phase: 'prep' | 'playing' | 'finished',
-  hasServerDirSet: boolean,
 ) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
@@ -411,9 +407,7 @@ export default function BallArena() {
         canvas,
         renderedBalls,
         drag?.active ? { ballIdx: drag.ballIdx, ex: drag.ex, ey: drag.ey } : null,
-        myPlayer?.hasSetDirection ?? false,
         state.phase,
-        false,
       );
 
       animFrameRef.current = requestAnimationFrame(render);
