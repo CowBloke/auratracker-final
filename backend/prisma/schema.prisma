@@ -183,7 +183,7 @@ model GameStats {
   gameType    String // "doodle_jump", "casino"
   wins        Int    @default(0)
   losses      Int    @default(0)
-  highScore   Int    @default(0)
+  highScore   Float  @default(0)
   totalPlayed Int    @default(0)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
