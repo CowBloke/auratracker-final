@@ -26,7 +26,7 @@ interface Ranking {
 type StatItem = { label: string; value: string; hint?: string };
 type StatSection = { title: string; items: StatItem[] };
 
-type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'doodle_jump_mort_subite' | 'game_2048' | 'flappy_bird' | 'solitaire' | 'racer' | 'tetris' | 'knife_hit' | 'minesweeper' | 'casino' | 'casino_losses' | 'games_played' | 'bombparty';
+type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'doodle_jump_mort_subite' | 'game_2048' | 'flappy_bird' | 'chrome_dino' | 'solitaire' | 'racer' | 'tetris' | 'knife_hit' | 'minesweeper' | 'casino' | 'casino_losses' | 'games_played' | 'bombparty';
 type View = Category | 'nombres';
 
 const categories: { id: Category; name: string; valueLabel: string; icon: typeof Zap }[] = [
@@ -38,6 +38,7 @@ const categories: { id: Category; name: string; valueLabel: string; icon: typeof
   { id: 'doodle_jump_mort_subite', name: 'Doodle Jump - Mort subite', valueLabel: 'score', icon: Skull },
   { id: 'game_2048', name: '2048', valueLabel: 'score', icon: Layers },
   { id: 'flappy_bird', name: 'Flappy Bird', valueLabel: 'score', icon: Wind },
+  { id: 'chrome_dino', name: 'Chrome Dino', valueLabel: 'score', icon: Gamepad2 },
   { id: 'solitaire', name: 'Solitaire', valueLabel: 'score', icon: Diamond },
   { id: 'racer', name: 'Racer', valueLabel: 'temps', icon: Timer },
   { id: 'tetris', name: 'Tetris', valueLabel: 'score', icon: LayoutGrid },
@@ -50,12 +51,13 @@ const categories: { id: Category; name: string; valueLabel: string; icon: typeof
 ];
 
 const economyCategories: Category[] = ['aura', 'money', 'total_money', 'auracoin'];
-const gameCategories: Category[] = ['doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird', 'solitaire', 'racer', 'tetris', 'knife_hit', 'minesweeper', 'casino', 'casino_losses', 'bombparty', 'games_played'];
+const gameCategories: Category[] = ['doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird', 'chrome_dino', 'solitaire', 'racer', 'tetris', 'knife_hit', 'minesweeper', 'casino', 'casino_losses', 'bombparty', 'games_played'];
 const deletableGameCategories: Partial<Record<Category, string>> = {
   doodle_jump: 'doodle_jump',
   doodle_jump_mort_subite: 'doodle_jump_mort_subite',
   game_2048: 'game_2048',
   flappy_bird: 'flappy_bird',
+  chrome_dino: 'chrome_dino',
   solitaire: 'solitaire',
   racer: 'racer',
   tetris: 'tetris',
@@ -64,7 +66,7 @@ const deletableGameCategories: Partial<Record<Category, string>> = {
   casino: 'casino',
 };
 
-const gamesCatalog = ['Doodle Jump', 'Démineur', '2048', 'Flappy Bird', 'Casino', 'Bomb Party', 'Poker', 'Petit Bac', 'Bataille Navale', 'Solitaire', 'Racer', 'Tetris', 'Knife Hit', 'Polymarket'];
+const gamesCatalog = ['Doodle Jump', 'Démineur', '2048', 'Flappy Bird', 'Chrome Dino', 'Casino', 'Bomb Party', 'Poker', 'Petit Bac', 'Bataille Navale', 'Solitaire', 'Racer', 'Tetris', 'Knife Hit', 'Polymarket'];
 
 const formatNumber = (value: number, digits = 0) =>
   value.toLocaleString('fr-FR', { minimumFractionDigits: digits, maximumFractionDigits: digits });

@@ -11,6 +11,7 @@ const STATIC_PAGE_META: Record<string, PageMeta> = {
   '/games/logic-lab': { title: 'Sudoku', description: 'Sudoku 9x9 avec grilles générées et plusieurs niveaux.' },
   '/games/2048': { title: '2048', description: 'Fusionne les tuiles et améliore ton record.' },
   '/games/flappy-bird': { title: 'Flappy Bird', description: 'Session arcade rapide avec classement.' },
+  '/games/chrome-dino': { title: 'Chrome Dino', description: 'Runner endless inspiré du jeu hors-ligne de Chrome.' },
   '/games/casino': { title: 'Casino', description: 'Roulette, slots et blackjack.' },
   '/market': { title: 'Shop', description: 'Boutique des objets, cosmetiques et bonus.' },
   '/games/aura-coin': { title: 'Aura Coin', description: 'Trading et positions à effet de levier.' },

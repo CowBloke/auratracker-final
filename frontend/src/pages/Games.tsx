@@ -99,6 +99,14 @@ const games = [
     image: '/images/games/flappybird.png',
   },
   {
+    id: 'chrome-dino',
+    pageKey: 'game-chrome-dino',
+    name: 'Chrome Dino',
+    description: 'Runner désertique façon hors-ligne Chrome: saute, baisse-toi et tiens la vitesse le plus longtemps possible.',
+    type: 'Arcade',
+    emoji: '🦖',
+  },
+  {
     id: 'geometry-dash',
     pageKey: 'game-geometry-dash',
     name: 'Geometry Dash',

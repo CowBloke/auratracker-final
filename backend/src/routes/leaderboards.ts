@@ -28,6 +28,7 @@ type LeaderboardCategory =
   | 'doodle_jump_mort_subite'
   | 'game_2048'
   | 'flappy_bird'
+  | 'chrome_dino'
   | 'solitaire'
   | 'racer'
   | 'tetris'
@@ -204,6 +205,29 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
       case 'flappy_bird':
         rankings = await prisma.gameStats.findMany({
           where: { gameType: 'flappy_bird', user: { isSuperAdmin: false } },
+          select: {
+            userId: true,
+            highScore: true,
+            user: {
+              select: { username: true, usernameColor: true },
+            },
+          },
+          orderBy: { highScore: 'desc' },
+          take: parseInt(limit as string),
+          skip: parseInt(offset as string),
+        });
+        rankings = rankings.map((s, i) => ({
+          rank: parseInt(offset as string) + i + 1,
+          userId: s.userId,
+          username: s.user.username,
+          usernameColor: s.user.usernameColor,
+          value: s.highScore,
+        }));
+        break;
+
+      case 'chrome_dino':
+        rankings = await prisma.gameStats.findMany({
+          where: { gameType: 'chrome_dino', user: { isSuperAdmin: false } },
           select: {
             userId: true,
             highScore: true,
@@ -598,6 +622,25 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
           const higherScores = await prisma.gameStats.count({
             where: {
               gameType: 'game_2048',
+              highScore: { gt: userStats.highScore },
+              user: { isSuperAdmin: false },
+            },
+          });
+          userRank = higherScores + 1;
+        }
+      } else if (category === 'chrome_dino') {
+        const userStats = await prisma.gameStats.findUnique({
+          where: {
+            userId_gameType: {
+              userId: req.user.id,
+              gameType: 'chrome_dino',
+            },
+          },
+        });
+        if (userStats) {
+          const higherScores = await prisma.gameStats.count({
+            where: {
+              gameType: 'chrome_dino',
               highScore: { gt: userStats.highScore },
               user: { isSuperAdmin: false },
             },
