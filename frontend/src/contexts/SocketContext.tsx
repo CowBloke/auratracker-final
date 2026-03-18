@@ -493,7 +493,7 @@ interface IncomingDuelChallenge {
   challengerId: string;
   challengerUsername: string;
   challengerUsernameColor?: string | null;
-  gameType: 'chess' | 'battleship' | 'p4';
+  gameType: 'chess' | 'battleship' | 'p4' | 'ballarena';
   timeLimit: number;
   sentAt: number;
 }
@@ -501,7 +501,7 @@ interface IncomingDuelChallenge {
 interface OutgoingDuelChallenge {
   targetId: string;
   targetUsername: string;
-  gameType: 'chess' | 'battleship' | 'p4';
+  gameType: 'chess' | 'battleship' | 'p4' | 'ballarena';
 }
 
 interface ActiveJoinPrompt {
@@ -638,7 +638,7 @@ interface SocketContextType {
   // Duel challenges
   incomingDuelChallenge: IncomingDuelChallenge | null;
   outgoingDuelChallenge: OutgoingDuelChallenge | null;
-  challengeUserToDuel: (targetId: string, targetUsername: string, gameType: 'chess' | 'battleship' | 'p4') => void;
+  challengeUserToDuel: (targetId: string, targetUsername: string, gameType: 'chess' | 'battleship' | 'p4' | 'ballarena') => void;
   acceptDuelChallenge: () => void;
   declineDuelChallenge: () => void;
   cancelDuelChallenge: () => void;
@@ -1951,7 +1951,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     setRouletteGame(null);
   };
 
-  const challengeUserToDuel = (targetId: string, targetUsername: string, gameType: 'chess' | 'battleship' | 'p4') => {
+  const challengeUserToDuel = (targetId: string, targetUsername: string, gameType: 'chess' | 'battleship' | 'p4' | 'ballarena') => {
     if (!user) return;
     setOutgoingDuelChallenge({ targetId, targetUsername, gameType });
     duelEvents.challenge(targetId, gameType);

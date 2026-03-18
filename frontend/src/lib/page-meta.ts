@@ -24,6 +24,7 @@ const STATIC_PAGE_META: Record<string, PageMeta> = {
   '/games/tetris': { title: 'Tetris', description: 'Session puzzle et classement.' },
   '/games/knife-hit': { title: 'Knife Hit', description: 'Timing arcade et classement.' },
   '/games/echecs': { title: 'Échecs', description: 'Duel complet avec règles officielles.' },
+  '/games/ball-arena': { title: 'Ball Arena', description: "Duel physique : propulse ton adversaire hors de l'arène." },
   '/games/goyave-empire': { title: 'Goyave Empire', description: 'Idle farming : récolte des goyaves et bâtis ton empire.' },
   '/polymarket': { title: 'Polymarket', description: 'Marché de prédictions communautaire.' },
   '/leaderboards': { title: 'Classements', description: 'Classements économie et jeux.' },

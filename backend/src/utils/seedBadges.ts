@@ -691,6 +691,21 @@ const NEW_ACHIEVEMENT_BADGES: BadgeDef[] = [
     iconColor: '#fff1f2',
     rarity: 'common',
   },
+  // Ball Arena champion
+  {
+    autoConditionKey: 'BALL_ARENA_WIN',
+    name: 'Boulet de Canon',
+    description: 'A expulsé son adversaire de l\'arène.',
+    howToObtain: 'Gagne une partie de Ball Arena.',
+    icon: '🎱',
+    category: 'achievement',
+    backgroundType: 'gradient',
+    backgroundGradient: GRAD('#0e7490', '#06b6d4'),
+    backgroundColor: '#0e7490',
+    borderColor: '#67e8f9',
+    iconColor: '#ecfeff',
+    rarity: 'common',
+  },
 ];
 
 const ALL_DEFAULT_BADGES: BadgeDef[] = [

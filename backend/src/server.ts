@@ -47,6 +47,7 @@ import { setupPuissanceQuatreHandlers } from './socket/puissancequatre.js';
 import { setupChessHandlers } from './socket/chess.js';
 import { setupDuelHandlers } from './socket/duel.js';
 import { setupRussianRouletteHandlers } from './socket/russianroulette.js';
+import { setupBallArenaHandlers } from './socket/ballarena.js';
 
 // Logger
 import { initLogger } from './utils/logger.js';
@@ -254,6 +255,7 @@ io.on('connection', (socket) => {
   setupChessHandlers(socket, io);
   setupDuelHandlers(socket, io);
   setupRussianRouletteHandlers(socket, io);
+  setupBallArenaHandlers(socket, io);
 
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.id}`);
