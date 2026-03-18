@@ -424,8 +424,6 @@ export default function Polymarket() {
                 const totalYes = event.totalYes || 0;
                 const totalNo = event.totalNo || 0;
                 const totalVolume = totalYes + totalNo;
-                const yesPercent = totalVolume > 0 ? (totalYes / totalVolume) * 100 : 50;
-                const noPercent = totalVolume > 0 ? (totalNo / totalVolume) * 100 : 50;
                 
                 return (
                   <Card key={event.id} className="overflow-hidden">
