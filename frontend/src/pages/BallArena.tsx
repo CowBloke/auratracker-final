@@ -70,14 +70,6 @@ interface GameOverData {
   players?: ReplayPlayer[];
 }
 
-interface PlayAgainPromptData {
-  partyId: string;
-  timeLimit: number;
-  startTime: number;
-  players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
-  responses: Array<{ userId: string; playAgain: boolean }>;
-}
-
 // ─── Canvas rendering ─────────────────────────────────────────────────────────
 interface RenderBall {
   x: number; y: number; isOut: boolean; playerIndex: 0 | 1;
@@ -356,8 +348,6 @@ export default function BallArena() {
   const [challengeSearch, setChallengeSearch] = useState('');
   const [gameState, setGameState] = useState<BallArenaState | null>(null);
   const [gameOver, setGameOver] = useState<GameOverData | null>(null);
-  const [playAgainPrompt, setPlayAgainPrompt] = useState<PlayAgainPromptData | null>(null);
-  const [playAgainResponded, setPlayAgainResponded] = useState(false);
   const [prepSecsLeft, setPrepSecsLeft] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
@@ -388,36 +378,17 @@ export default function BallArena() {
       refreshUser();
     };
 
-    const onPlayAgainPrompt = (data: PlayAgainPromptData) => {
-      setPlayAgainPrompt(data);
-      setPlayAgainResponded(false);
-    };
-
-    const onPlayAgainUpdate = (data: { partyId: string; responses: Array<{ userId: string; playAgain: boolean }> }) => {
-      setPlayAgainPrompt((prev) => prev ? { ...prev, responses: data.responses } : prev);
-    };
-
-    const onPlayAgainCancelled = () => {
-      setPlayAgainPrompt(null);
-    };
-
     const onLeft = () => setGameState(null);
     const onError = (data: { message: string }) => setError(data.message);
 
     socket.on('ballarena:state', onState);
     socket.on('ballarena:game-over', onGameOver);
-    socket.on('ballarena:play-again-prompt', onPlayAgainPrompt);
-    socket.on('ballarena:play-again-response-update', onPlayAgainUpdate);
-    socket.on('ballarena:play-again-cancelled', onPlayAgainCancelled);
     socket.on('ballarena:left', onLeft);
     socket.on('ballarena:error', onError);
 
     return () => {
       socket.off('ballarena:state', onState);
       socket.off('ballarena:game-over', onGameOver);
-      socket.off('ballarena:play-again-prompt', onPlayAgainPrompt);
-      socket.off('ballarena:play-again-response-update', onPlayAgainUpdate);
-      socket.off('ballarena:play-again-cancelled', onPlayAgainCancelled);
       socket.off('ballarena:left', onLeft);
       socket.off('ballarena:error', onError);
     };
@@ -532,12 +503,6 @@ export default function BallArena() {
     dragRef.current = null;
     setDragTick((t) => t + 1);
   }, [socket, currentParty, myPlayer, gameState]);
-
-  const handlePlayAgainResponse = (playAgain: boolean) => {
-    if (!socket || !currentParty) return;
-    socket.emit('ballarena:play-again-response', { partyId: currentParty.id, playAgain });
-    setPlayAgainResponded(true);
-  };
 
   const handleStart = () => {
     if (!socket || !currentParty) return;
@@ -666,9 +631,7 @@ export default function BallArena() {
           <div className="text-center text-muted-foreground py-8">En attente que le leader lance la partie...</div>
         )}
 
-        <PostGameModals gameOver={gameOver} setGameOver={setGameOver} gameState={gameState}
-          playAgainPrompt={playAgainPrompt} playAgainResponded={playAgainResponded}
-          onPlayAgainResponse={handlePlayAgainResponse} />
+        <PostGameModals gameOver={gameOver} setGameOver={setGameOver} gameState={gameState} />
       </PageShell>
     );
   }
@@ -775,9 +738,7 @@ export default function BallArena() {
         </p>
       )}
 
-      <PostGameModals gameOver={gameOver} setGameOver={setGameOver} gameState={gameState}
-        playAgainPrompt={playAgainPrompt} playAgainResponded={playAgainResponded}
-        onPlayAgainResponse={handlePlayAgainResponse} />
+      <PostGameModals gameOver={gameOver} setGameOver={setGameOver} gameState={gameState} />
     </PageShell>
   );
 }
@@ -787,16 +748,10 @@ function PostGameModals({
   gameOver,
   setGameOver,
   gameState,
-  playAgainPrompt,
-  playAgainResponded,
-  onPlayAgainResponse,
 }: {
   gameOver: GameOverData | null;
   setGameOver: (v: GameOverData | null) => void;
   gameState: BallArenaState | null;
-  playAgainPrompt: PlayAgainPromptData | null;
-  playAgainResponded: boolean;
-  onPlayAgainResponse: (playAgain: boolean) => void;
 }) {
   const { user } = useAuth();
   const [showReplay, setShowReplay] = useState(false);
@@ -857,24 +812,6 @@ function PostGameModals({
                 </div>
               </>
             )}
-
-            {/* Play again prompt inside the game-over dialog */}
-            {playAgainPrompt && !playAgainResponded && (
-              <div className="border-t pt-4 space-y-3">
-                <p className="text-sm text-center text-muted-foreground">
-                  Rejouer ? ({playAgainPrompt.responses.filter((r) => r.playAgain).length} prêt{playAgainPrompt.responses.filter((r) => r.playAgain).length !== 1 ? 's' : ''})
-                </p>
-                <div className="flex gap-2">
-                  <Button className="flex-1" onClick={() => onPlayAgainResponse(true)}>Rejouer</Button>
-                  <Button variant="outline" className="flex-1" onClick={() => onPlayAgainResponse(false)}>Quitter</Button>
-                </div>
-              </div>
-            )}
-            {playAgainPrompt && playAgainResponded && (
-              <p className="text-xs text-muted-foreground text-center border-t pt-4">
-                En attente de l'adversaire…
-              </p>
-            )}
           </div>
           <DialogFooter className="gap-2 sm:gap-0 flex-col sm:flex-row">
             {gameOver?.replayFrames && gameOver.replayFrames.length > 1 && (
@@ -882,11 +819,9 @@ function PostGameModals({
                 <RotateCcw className="h-4 w-4" />Revoir le match
               </Button>
             )}
-            {!playAgainPrompt && (
-              <Button variant="outline" onClick={() => setGameOver(null)} className="w-full border-foreground">
-                Fermer
-              </Button>
-            )}
+            <Button variant="outline" onClick={() => setGameOver(null)} className="w-full border-foreground">
+              Fermer
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

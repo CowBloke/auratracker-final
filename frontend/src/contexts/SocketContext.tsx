@@ -417,6 +417,14 @@ interface P4PlayAgainPrompt {
   responses: Array<{ userId: string; playAgain: boolean }>;
 }
 
+interface BallArenaPlayAgainPrompt {
+  partyId: string;
+  timeLimit: number;
+  startTime: number;
+  players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+  responses: Array<{ userId: string; playAgain: boolean }>;
+}
+
 interface BattleshipPlayAgainPrompt {
   partyId: string;
   timeLimit: number;
@@ -612,6 +620,9 @@ interface SocketContextType {
   respondToP4JoinPrompt: (accepted: boolean) => void;
   p4PlayAgainPrompt: P4PlayAgainPrompt | null;
   respondToP4PlayAgainPrompt: (playAgain: boolean) => void;
+  // Ball Arena
+  ballArenaPlayAgainPrompt: BallArenaPlayAgainPrompt | null;
+  respondToBallArenaPlayAgainPrompt: (playAgain: boolean) => void;
   // Battleship
   battleshipPlayAgainPrompt: BattleshipPlayAgainPrompt | null;
   respondToBattleshipPlayAgainPrompt: (playAgain: boolean) => void;
@@ -697,6 +708,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   // Puissance 4 state
   const [p4JoinPrompt, setP4JoinPrompt] = useState<P4JoinPrompt | null>(null);
   const [p4PlayAgainPrompt, setP4PlayAgainPrompt] = useState<P4PlayAgainPrompt | null>(null);
+
+  // Ball Arena state
+  const [ballArenaPlayAgainPrompt, setBallArenaPlayAgainPrompt] = useState<BallArenaPlayAgainPrompt | null>(null);
 
   // Battleship state
   const [battleshipPlayAgainPrompt, setBattleshipPlayAgainPrompt] = useState<BattleshipPlayAgainPrompt | null>(null);
@@ -1445,6 +1459,38 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setP4PlayAgainPrompt(null);
       });
 
+      // Ball Arena play-again events
+      s.on('ballarena:state', () => {
+        setBallArenaPlayAgainPrompt(null);
+      });
+
+      s.on('ballarena:play-again-prompt', (data: {
+        partyId: string;
+        timeLimit: number;
+        startTime?: number;
+        players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+        responses?: Array<{ userId: string; playAgain: boolean }>;
+      }) => {
+        setBallArenaPlayAgainPrompt({
+          partyId: data.partyId,
+          timeLimit: data.timeLimit,
+          startTime: data.startTime ?? Date.now(),
+          players: data.players,
+          responses: data.responses || [],
+        });
+      });
+
+      s.on('ballarena:play-again-response-update', (data: {
+        partyId: string;
+        responses: Array<{ userId: string; playAgain: boolean }>;
+      }) => {
+        setBallArenaPlayAgainPrompt((prev) => prev ? { ...prev, responses: data.responses } : null);
+      });
+
+      s.on('ballarena:play-again-cancelled', () => {
+        setBallArenaPlayAgainPrompt(null);
+      });
+
       // Battleship play-again events
       s.on('battleship:play-again-prompt', (data: {
         partyId: string;
@@ -1898,6 +1944,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const respondToBallArenaPlayAgainPrompt = (playAgain: boolean) => {
+    if (socket && ballArenaPlayAgainPrompt) {
+      socket.emit('ballarena:play-again-response', { partyId: ballArenaPlayAgainPrompt.partyId, playAgain });
+    }
+  };
+
   const respondToBattleshipPlayAgainPrompt = (playAgain: boolean) => {
     if (socket && battleshipPlayAgainPrompt && user) {
       socket.emit('battleship:play-again-response', {
@@ -2018,6 +2070,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       });
     } else if (roulettePlayAgainPrompt && socket) {
       socket.emit('roulette:play-again-response', { partyId: roulettePlayAgainPrompt.partyId, playAgain });
+    } else if (ballArenaPlayAgainPrompt && socket) {
+      socket.emit('ballarena:play-again-response', { partyId: ballArenaPlayAgainPrompt.partyId, playAgain });
     }
   };
 
@@ -2188,8 +2242,19 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         startTime: roulettePlayAgainPrompt.startTime,
       };
     }
+    if (ballArenaPlayAgainPrompt) {
+      return {
+        gameType: 'ballarena',
+        settingsText: 'Ball Arena',
+        partyId: ballArenaPlayAgainPrompt.partyId,
+        players: ballArenaPlayAgainPrompt.players,
+        responses: ballArenaPlayAgainPrompt.responses,
+        timeLimit: ballArenaPlayAgainPrompt.timeLimit,
+        startTime: ballArenaPlayAgainPrompt.startTime,
+      };
+    }
     return null;
-  }, [bombPartyPlayAgainPrompt, pokerPlayAgainPrompt, petitBacPlayAgainPrompt, p4PlayAgainPrompt, battleshipPlayAgainPrompt, chessPlayAgainPrompt, roulettePlayAgainPrompt]);
+  }, [bombPartyPlayAgainPrompt, pokerPlayAgainPrompt, petitBacPlayAgainPrompt, p4PlayAgainPrompt, battleshipPlayAgainPrompt, chessPlayAgainPrompt, roulettePlayAgainPrompt, ballArenaPlayAgainPrompt]);
 
   return (
     <SocketContext.Provider
@@ -2271,6 +2336,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         respondToP4JoinPrompt,
         p4PlayAgainPrompt,
         respondToP4PlayAgainPrompt,
+        ballArenaPlayAgainPrompt,
+        respondToBallArenaPlayAgainPrompt,
         battleshipPlayAgainPrompt,
         respondToBattleshipPlayAgainPrompt,
         chessJoinPrompt,
