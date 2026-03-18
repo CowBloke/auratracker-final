@@ -8,12 +8,13 @@ const GAME_NAMES: Record<string, string> = {
   chess: 'Échecs',
   battleship: 'Bataille Navale',
   p4: 'Puissance 4',
+  ballarena: 'Ball Arena',
 };
 
 interface DuelChallengePopupProps {
   challengerUsername: string;
   challengerUsernameColor?: string | null;
-  gameType: 'chess' | 'battleship' | 'p4';
+  gameType: 'chess' | 'battleship' | 'p4' | 'ballarena';
   timeLimit: number;
   sentAt: number;
   onAccept: () => void;

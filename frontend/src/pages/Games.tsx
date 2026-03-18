@@ -188,6 +188,15 @@ const games = [
     requiresParty: true,
     image: '/images/games/chess.png',
   },
+  {
+    id: 'ball-arena',
+    pageKey: 'game-ball-arena',
+    name: 'Ball Arena',
+    description: "Vise et propulse ton adversaire hors de l'arène. Glisse pour choisir direction et puissance.",
+    type: 'Duel',
+    requiresParty: true,
+    emoji: '🎱',
+  },
 ];
 
 const tabConfig: Array<{ id: GamesTab; label: string }> = [
@@ -268,6 +277,9 @@ export default function Games() {
     }
     if (gameId === 'puissance-quatre') {
       return '/games/puissance-quatre';
+    }
+    if (gameId === 'ball-arena') {
+      return '/games/ball-arena';
     }
     if (gameId === 'echecs') {
       return '/games/echecs';

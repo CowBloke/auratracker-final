@@ -208,16 +208,16 @@ export const battleshipEvents = {
 
 // Duel events
 export const duelEvents = {
-  challenge: (targetId: string, gameType: 'chess' | 'battleship' | 'p4') => {
+  challenge: (targetId: string, gameType: 'chess' | 'battleship' | 'p4' | 'ballarena') => {
     socket?.emit('duel:challenge', { targetId, gameType });
   },
-  accept: (challengerId: string, gameType: 'chess' | 'battleship' | 'p4') => {
+  accept: (challengerId: string, gameType: 'chess' | 'battleship' | 'p4' | 'ballarena') => {
     socket?.emit('duel:accept', { challengerId, gameType });
   },
-  decline: (challengerId: string, gameType: 'chess' | 'battleship' | 'p4') => {
+  decline: (challengerId: string, gameType: 'chess' | 'battleship' | 'p4' | 'ballarena') => {
     socket?.emit('duel:decline', { challengerId, gameType });
   },
-  cancel: (targetId: string, gameType: 'chess' | 'battleship' | 'p4') => {
+  cancel: (targetId: string, gameType: 'chess' | 'battleship' | 'p4' | 'ballarena') => {
     socket?.emit('duel:cancel', { targetId, gameType });
   },
 };

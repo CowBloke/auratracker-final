@@ -3,10 +3,11 @@ import { prisma } from '../server.js';
 import { startDirectChessGame } from './chess.js';
 import { startDirectBattleshipGame } from './battleship.js';
 import { startDirectP4Game } from './puissancequatre.js';
+import { startDirectBallArenaGame } from './ballarena.js';
 import { emitPartyChatHistory } from './party.js';
 import { duelPartyIds } from './duelParties.js';
 
-type DuelGameType = 'chess' | 'battleship' | 'p4';
+type DuelGameType = 'chess' | 'battleship' | 'p4' | 'ballarena';
 
 interface DuelChallenge {
   challengerId: string;
@@ -28,6 +29,7 @@ const GAME_ROUTES: Record<DuelGameType, string> = {
   chess: '/games/echecs',
   battleship: '/games/bataille-navale',
   p4: '/games/puissance-quatre',
+  ballarena: '/games/ball-arena',
 };
 
 export const setupDuelHandlers = (socket: Socket, io: Server) => {
@@ -37,7 +39,7 @@ export const setupDuelHandlers = (socket: Socket, io: Server) => {
     if (!userId || !username) return;
 
     const { targetId, gameType } = data;
-    if (!['chess', 'battleship', 'p4'].includes(gameType)) return;
+    if (!['chess', 'battleship', 'p4', 'ballarena'].includes(gameType)) return;
     if (userId === targetId) return;
 
     // Cancel any existing challenge from this challenger to this target for this game type
@@ -162,6 +164,8 @@ export const setupDuelHandlers = (socket: Socket, io: Server) => {
         startDirectBattleshipGame(party.id, gamePlayers, io);
       } else if (gameType === 'p4') {
         startDirectP4Game(party.id, gamePlayers, io);
+      } else if (gameType === 'ballarena') {
+        startDirectBallArenaGame(party.id, gamePlayers, io);
       }
 
       // Notify challenger that challenge was accepted

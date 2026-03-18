@@ -314,7 +314,7 @@ export default function GoyaveEmpire() {
 
   const handleCashOut = useCallback(async () => {
     if (!user || isCashingOut) return;
-    const score = Math.floor(saveRef.current.totalGuavas);
+    const score = Math.min(Math.floor(saveRef.current.totalGuavas), 2_000_000_000);
     if (score < 100) return;
     setIsCashingOut(true);
     try {

@@ -38,6 +38,7 @@ import KnifeHit from './pages/KnifeHit';
 import GoyaveEmpire from './pages/GoyaveEmpire';
 import PuissanceQuatre from './pages/PuissanceQuatre';
 import Echecs from './pages/Echecs';
+import BallArena from './pages/BallArena';
 import Sudoku from './pages/Sudoku';
 import Inbox from './pages/Inbox';
 import Blocked from './pages/Blocked';
@@ -170,6 +171,7 @@ function App() {
         <Route path="games/goyave-empire" element={<GoyaveEmpire />} />
         <Route path="games/puissance-quatre" element={<PuissanceQuatre />} />
         <Route path="games/echecs" element={<Echecs />} />
+        <Route path="games/ball-arena" element={<BallArena />} />
         <Route path="games/logic-lab" element={<Sudoku />} />
         <Route path="games/russian-roulette" element={<RussianRoulette />} />
         <Route path="polymarket" element={<Polymarket />} />
