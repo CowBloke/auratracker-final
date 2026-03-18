@@ -32,7 +32,8 @@
       "Bash(find /c/Users/cowbl/Me/Coding/AuraTracker/auratracker.final -name \"*chess*\" -o -name \"*Echecs*\" | grep -E '\\\\.\\(tsx?|jsx?\\)$' | head -20)",
       "Bash(grep -r \"setupDuelHandlers\\\\|duel.*routes\\\\|\\\\/api\\\\/duels\" /c/Users/cowbl/Me/Coding/AuraTracker/auratracker.final/backend/src --include=\"*.ts\" 2>/dev/null | head -20)",
       "Bash(grep -E \"\\\\.\\(ts|tsx|js|jsx\\)$\")",
-      "Bash(echo \"EXIT:$?\")"
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(npx tsx:*)"
     ]
   },
   "outputStyle": "default"

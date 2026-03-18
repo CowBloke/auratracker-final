@@ -71,6 +71,27 @@ export default function Polymarket() {
   const [createEventImageUrl, setCreateEventImageUrl] = useState('');
   const [editEventImageUrl, setEditEventImageUrl] = useState('');
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
+  const [expandedEventBets, setExpandedEventBets] = useState<Record<string, PolymarketBet[]>>({});
+  const [loadingEventBets, setLoadingEventBets] = useState<Record<string, boolean>>({});
+
+  const toggleEventExpand = async (eventId: string) => {
+    if (expandedEventId === eventId) {
+      setExpandedEventId(null);
+      return;
+    }
+    setExpandedEventId(eventId);
+    if (expandedEventBets[eventId] === undefined) {
+      setLoadingEventBets((prev) => ({ ...prev, [eventId]: true }));
+      try {
+        const res = await polymarketApi.getEvent(eventId);
+        setExpandedEventBets((prev) => ({ ...prev, [eventId]: res.data.event.bets || [] }));
+      } catch {
+        setExpandedEventBets((prev) => ({ ...prev, [eventId]: [] }));
+      } finally {
+        setLoadingEventBets((prev) => ({ ...prev, [eventId]: false }));
+      }
+    }
+  };
 
   const uploadPolymarketImageFile = async (file: File): Promise<string> => {
     const base64Data = await new Promise<string>((resolve, reject) => {
@@ -474,7 +495,7 @@ export default function Polymarket() {
                             <div className="flex items-center gap-4 text-sm text-muted-foreground">
                               <button
                                 className="flex items-center gap-1 hover:text-foreground transition-colors"
-                                onClick={() => setExpandedEventId(expandedEventId === event.id ? null : event.id)}
+                                onClick={() => toggleEventExpand(event.id)}
                               >
                                 <Users className="h-4 w-4" />
                                 <span>{event.betCount || 0} paris</span>
@@ -540,25 +561,34 @@ export default function Polymarket() {
                                 <div className="h-full bg-green-500/40 flex-1" />
                                 <div className="h-full bg-red-500/40 flex-1" />
                               </>
-                            ) : (
+                            ) : (event.bets && event.bets.length > 0) ? (
                               [
-                                ...(event.bets || []).filter((b) => b.prediction === 'YES'),
-                                ...(event.bets || []).filter((b) => b.prediction === 'NO'),
+                                ...event.bets.filter((b) => b.prediction === 'YES'),
+                                ...event.bets.filter((b) => b.prediction === 'NO'),
                               ].map((bet, i) => (
                                 <div
                                   key={i}
                                   className={cn('h-full', bet.prediction === 'YES' ? 'bg-green-500' : 'bg-red-500')}
-                                  style={{ width: `${(bet.amount / totalVolume) * 100}%`, borderRight: '1px solid rgba(255,255,255,0.12)' }}
+                                  style={{ width: `${(bet.amount / totalVolume) * 100}%`, borderRight: '1px solid rgba(0,0,0,0.08)' }}
                                 />
                               ))
+                            ) : (
+                              <>
+                                <div className="h-full bg-green-500" style={{ width: `${(totalYes / totalVolume) * 100}%` }} />
+                                <div className="h-full bg-red-500" style={{ width: `${(totalNo / totalVolume) * 100}%` }} />
+                              </>
                             )}
                           </div>
                           {expandedEventId === event.id && (
                             <div className="pt-1 space-y-1 max-h-36 overflow-y-auto">
-                              {allBets.filter((b) => b.eventId === event.id).length === 0 ? (
-                                <p className="text-xs text-muted-foreground">Aucun pari visible</p>
+                              {loadingEventBets[event.id] ? (
+                                <div className="flex justify-center py-1">
+                                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                                </div>
+                              ) : (expandedEventBets[event.id] || []).length === 0 ? (
+                                <p className="text-xs text-muted-foreground">Aucun pari</p>
                               ) : (
-                                allBets.filter((b) => b.eventId === event.id).map((bet) => (
+                                (expandedEventBets[event.id] || []).map((bet) => (
                                   <div key={bet.id} className="flex items-center justify-between text-xs py-0.5">
                                     <div className="flex items-center gap-2">
                                       <span className={cn('font-medium', bet.prediction === 'YES' ? 'text-green-500' : 'text-red-500')}>
