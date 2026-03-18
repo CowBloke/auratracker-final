@@ -25,6 +25,12 @@
 - nous quii decidons le cours de l'auracoin
 - historique gdc
 - mécanique gdc
+- teps duel
+- spec echecs
+- on voit pas tout le monde sur le doodle jump
+- railer
+- débloquer goyave empire
+- azerty clavier chat
 
 ## à FIX
 
