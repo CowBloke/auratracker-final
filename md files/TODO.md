@@ -9,6 +9,8 @@
 - railer
 - débloquer goyave empire
 - azerty clavier chat
+- confettis spectate et bombes
+- chat décallé
 
 ## à FIX
 
