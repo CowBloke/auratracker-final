@@ -323,12 +323,13 @@ export default function Clans() {
   };
 
   const activateTagFromInventory = async () => {
-    if (!clanTagUserItemId || !selectedClan) return;
+    const itemId = clanTagUserItemId;
+    if (!itemId || !selectedClan) return;
     try {
       setActivatingTag(true);
-      await marketplaceApi.useItem(clanTagUserItemId);
-      // Silent refresh so the tab doesn't flash/unmount; useEffect clears clanTagUserItemId once tagUnlocked becomes true
-      await fetchClanDetail(selectedClan.id, true);
+      await marketplaceApi.useItem(itemId);
+      // Directly mark as unlocked — no network round-trip needed
+      setSelectedClan((prev) => prev ? { ...prev, tagUnlocked: true } : null);
       toast({ title: 'Tag de clan débloqué !', description: 'Personnalise-le maintenant.' });
     } catch (error: any) {
       toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible d\'activer.', variant: 'destructive' });
