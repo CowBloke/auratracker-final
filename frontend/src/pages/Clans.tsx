@@ -9,6 +9,7 @@ import {
   ClanWarGamesStatus,
   ClanWarState,
   clansApi,
+  marketplaceApi,
   uploadUserImage,
 } from '@/services/api';
 import { MemoryGame } from '@/components/clans/war-games/MemoryGame';
@@ -188,9 +189,11 @@ export default function Clans() {
   const [tagText, setTagText] = useState('');
   const [tagStyle, setTagStyle] = useState<ClanTagStyle>(DEFAULT_CLAN_TAG_STYLE);
   const [savingTag, setSavingTag] = useState(false);
+  const [clanTagUserItemId, setClanTagUserItemId] = useState<string | null>(null);
+  const [activatingTag, setActivatingTag] = useState(false);
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<'info' | 'guerre'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'guerre' | 'tag'>('info');
 
   // War games
   const [gameStatus, setGameStatus] = useState<ClanWarGamesStatus | null>(null);
@@ -229,10 +232,8 @@ export default function Clans() {
   }, [selectedClanId]);
 
   useEffect(() => {
-    if (selectedClan?.tagUnlocked) {
-      setTagText(selectedClan.tagText ?? '');
-      setTagStyle(parseClanTagStyle(selectedClan.tagStyle));
-    }
+    setTagText(selectedClan?.tagText ?? '');
+    setTagStyle(parseClanTagStyle(selectedClan?.tagUnlocked ? selectedClan.tagStyle : null));
   }, [selectedClan?.id]);
 
   useEffect(() => {
@@ -256,6 +257,21 @@ export default function Clans() {
       setGameStatus(null);
     }
   }, [selectedClanId, selectedClan?.viewer.isMember, fetchGameStatus]);
+
+  // Check if the leader has a clan tag unlock item in their inventory
+  useEffect(() => {
+    if (!user || !selectedClan?.viewer.isLeader || selectedClan.tagUnlocked) {
+      setClanTagUserItemId(null);
+      return;
+    }
+    marketplaceApi.getInventory(user.id).then((res) => {
+      const items: { id: string; item: { effect?: string } }[] = res.data.items ?? [];
+      const tagItem = items.find((ui) => {
+        try { return JSON.parse(ui.item.effect ?? '{}').type === 'CLAN_TAG_UNLOCK'; } catch { return false; }
+      });
+      setClanTagUserItemId(tagItem?.id ?? null);
+    }).catch(() => setClanTagUserItemId(null));
+  }, [user, selectedClan?.id, selectedClan?.viewer.isLeader, selectedClan?.tagUnlocked]);
 
 
   const selectedClanSummary = useMemo(
@@ -303,6 +319,21 @@ export default function Clans() {
       toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de sauvegarder.', variant: 'destructive' });
     } finally {
       setSavingTag(false);
+    }
+  };
+
+  const activateTagFromInventory = async () => {
+    if (!clanTagUserItemId) return;
+    try {
+      setActivatingTag(true);
+      await marketplaceApi.useItem(clanTagUserItemId);
+      setClanTagUserItemId(null);
+      await fetchClanDetail(selectedClan!.id);
+      toast({ title: 'Tag de clan débloqué !', description: 'Personnalise-le maintenant.' });
+    } catch (error: any) {
+      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible d\'activer.', variant: 'destructive' });
+    } finally {
+      setActivatingTag(false);
     }
   };
 
@@ -766,10 +797,19 @@ export default function Clans() {
                     </CardContent>
                   </Card>
 
-                  {/* Tabs: Infos / Guerre */}
-                  <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'info' | 'guerre')}>
+                  {/* Tabs: Infos / Tag / Guerre */}
+                  <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'info' | 'guerre' | 'tag')}>
                     <TabsList className="w-full">
                       <TabsTrigger value="info" className="flex-1">Infos</TabsTrigger>
+                      {selectedClan.viewer.isLeader && (selectedClan.tagUnlocked || !!clanTagUserItemId) ? (
+                        <TabsTrigger value="tag" className="flex-1">
+                          <Tag className="mr-1.5 h-3.5 w-3.5" />
+                          Tag
+                          {!selectedClan.tagUnlocked && clanTagUserItemId ? (
+                            <span className="ml-1.5 h-1.5 w-1.5 rounded-full bg-primary" />
+                          ) : null}
+                        </TabsTrigger>
+                      ) : null}
                       <TabsTrigger value="guerre" className="flex-1">
                         Guerre
                         {selectedWar && selectedWar.status !== 'COMPLETED' ? (
@@ -895,87 +935,97 @@ export default function Clans() {
                         </Card>
                       ) : null}
 
-                      {/* Tag editor (leader only) */}
-                      {selectedClan.viewer.isLeader ? (
-                        <Card className={panelClassName}>
-                          <CardContent className="space-y-4 p-4">
-                            <SectionTitle
-                              title="Tag du clan"
-                              description={selectedClan.tagUnlocked ? 'Personnalise le tag affiché après les noms.' : 'Débloque dans le shop.'}
-                            />
-                            {!selectedClan.tagUnlocked ? (
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Tag className="h-4 w-4" />
-                                <span>Non débloqué — disponible dans la boutique.</span>
+                    </TabsContent>
+
+                    {/* ── Tag tab ── */}
+                    <TabsContent value="tag" className="mt-4 space-y-4">
+                      <Card className={panelClassName}>
+                        <CardContent className="space-y-4 p-4">
+                          <SectionTitle
+                            title="Tag du clan"
+                            description={selectedClan.tagUnlocked ? 'Personnalise le tag affiché après les noms des membres.' : 'Utilise ton item pour débloquer le tag.'}
+                          />
+                          {!selectedClan.tagUnlocked ? (
+                            <div className="space-y-4">
+                              <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-muted/15 p-4">
+                                <Tag className="h-5 w-5 shrink-0 text-muted-foreground" />
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-medium">Tag de clan non débloqué</p>
+                                  <p className="text-xs text-muted-foreground">Tu possèdes l'item dans ton inventaire. Active-le pour personnaliser le tag.</p>
+                                </div>
                               </div>
-                            ) : (
-                              <div className="space-y-4">
-                                <div className="flex items-center gap-2 rounded-lg bg-muted/30 p-3">
-                                  <span className="text-sm text-muted-foreground">Aperçu :</span>
-                                  <span className="font-medium">Nom</span>
-                                  {tagText.trim() ? (
-                                    <ClanTag tag={{ text: tagText.trim(), style: tagStyle }} />
-                                  ) : (
-                                    <span className="text-xs text-muted-foreground italic">aucun texte</span>
-                                  )}
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-xs font-medium text-muted-foreground">Texte (1–6 caractères)</label>
-                                  <Input value={tagText} onChange={(e) => setTagText(e.target.value.slice(0, 6))} maxLength={6} placeholder="OG" className="w-28 font-mono" />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-xs font-medium text-muted-foreground">Fond</label>
-                                  <div className="flex gap-2">
-                                    {(['solid', 'gradient'] as const).map((type) => (
-                                      <Button key={type} size="sm" variant={tagStyle.backgroundType === type ? 'default' : 'outline'} onClick={() => setTagStyle((s) => ({ ...s, backgroundType: type }))}>
-                                        {type === 'solid' ? 'Uni' : 'Dégradé'}
-                                      </Button>
-                                    ))}
-                                  </div>
-                                </div>
-                                {tagStyle.backgroundType === 'solid' ? (
-                                  <div className="space-y-1">
-                                    <label className="text-xs font-medium text-muted-foreground">Couleur de fond</label>
-                                    <div className="flex flex-wrap gap-1.5">
-                                      {TAG_PRESET_COLORS.map((c) => (
-                                        <button key={c} onClick={() => setTagStyle((s) => ({ ...s, backgroundColor: c }))} className={cn('h-5 w-5 rounded-full border-2 transition-transform hover:scale-110', tagStyle.backgroundColor === c ? 'border-foreground scale-110' : 'border-transparent')} style={{ backgroundColor: c }} />
-                                      ))}
-                                      <input type="color" value={tagStyle.backgroundColor} onChange={(e) => setTagStyle((s) => ({ ...s, backgroundColor: e.target.value }))} className="h-5 w-5 cursor-pointer rounded border p-0" />
-                                    </div>
-                                  </div>
+                              <Button onClick={activateTagFromInventory} disabled={activatingTag} className="w-full">
+                                {activatingTag ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Tag className="mr-2 h-4 w-4" />}
+                                Activer le tag de clan
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="space-y-4">
+                              <div className="flex items-center gap-2 rounded-lg bg-muted/30 p-3">
+                                <span className="text-sm text-muted-foreground">Aperçu :</span>
+                                <span className="font-medium">Nom</span>
+                                {tagText.trim() ? (
+                                  <ClanTag tag={{ text: tagText.trim(), style: tagStyle }} />
                                 ) : (
-                                  <div className="space-y-1">
-                                    <label className="text-xs font-medium text-muted-foreground">Couleurs du dégradé</label>
-                                    <div className="flex items-center gap-2">
-                                      <input type="color" value={(() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}').from ?? '#374151'; } catch { return '#374151'; } })()} onChange={(e) => { const cur = (() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}'); } catch { return { from: '#374151', to: '#6366f1', direction: 'to right' }; } })(); setTagStyle((s) => ({ ...s, backgroundGradient: JSON.stringify({ ...cur, from: e.target.value }) })); }} className="h-6 w-6 cursor-pointer rounded border p-0" />
-                                      <span className="text-xs text-muted-foreground">→</span>
-                                      <input type="color" value={(() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}').to ?? '#6366f1'; } catch { return '#6366f1'; } })()} onChange={(e) => { const cur = (() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}'); } catch { return { from: '#374151', to: '#6366f1', direction: 'to right' }; } })(); setTagStyle((s) => ({ ...s, backgroundGradient: JSON.stringify({ ...cur, to: e.target.value }) })); }} className="h-6 w-6 cursor-pointer rounded border p-0" />
-                                    </div>
-                                  </div>
+                                  <span className="text-xs text-muted-foreground italic">aucun texte</span>
                                 )}
-                                <div className="space-y-1">
-                                  <label className="text-xs font-medium text-muted-foreground">Couleur du texte</label>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    {TAG_PRESET_COLORS.map((c) => (<button key={c} onClick={() => setTagStyle((s) => ({ ...s, textColor: c }))} className={cn('h-5 w-5 rounded-full border-2 transition-transform hover:scale-110', tagStyle.textColor === c ? 'border-foreground scale-110' : 'border-transparent')} style={{ backgroundColor: c }} />))}
-                                    <input type="color" value={tagStyle.textColor} onChange={(e) => setTagStyle((s) => ({ ...s, textColor: e.target.value }))} className="h-5 w-5 cursor-pointer rounded border p-0" />
-                                  </div>
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-xs font-medium text-muted-foreground">Couleur de bordure</label>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    {TAG_PRESET_COLORS.map((c) => (<button key={c} onClick={() => setTagStyle((s) => ({ ...s, borderColor: c }))} className={cn('h-5 w-5 rounded-full border-2 transition-transform hover:scale-110', tagStyle.borderColor === c ? 'border-foreground scale-110' : 'border-transparent')} style={{ backgroundColor: c }} />))}
-                                    <input type="color" value={tagStyle.borderColor} onChange={(e) => setTagStyle((s) => ({ ...s, borderColor: e.target.value }))} className="h-5 w-5 cursor-pointer rounded border p-0" />
-                                  </div>
-                                </div>
-                                <Button onClick={saveTag} disabled={savingTag || !tagText.trim()} size="sm" className="w-full">
-                                  {savingTag ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                  Sauvegarder
-                                </Button>
                               </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      ) : null}
+                              <div className="space-y-1">
+                                <label className="text-xs font-medium text-muted-foreground">Texte (1–6 caractères)</label>
+                                <Input value={tagText} onChange={(e) => setTagText(e.target.value.slice(0, 6))} maxLength={6} placeholder="OG" className="w-28 font-mono" />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-xs font-medium text-muted-foreground">Fond</label>
+                                <div className="flex gap-2">
+                                  {(['solid', 'gradient'] as const).map((type) => (
+                                    <Button key={type} size="sm" variant={tagStyle.backgroundType === type ? 'default' : 'outline'} onClick={() => setTagStyle((s) => ({ ...s, backgroundType: type }))}>
+                                      {type === 'solid' ? 'Uni' : 'Dégradé'}
+                                    </Button>
+                                  ))}
+                                </div>
+                              </div>
+                              {tagStyle.backgroundType === 'solid' ? (
+                                <div className="space-y-1">
+                                  <label className="text-xs font-medium text-muted-foreground">Couleur de fond</label>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {TAG_PRESET_COLORS.map((c) => (
+                                      <button key={c} onClick={() => setTagStyle((s) => ({ ...s, backgroundColor: c }))} className={cn('h-5 w-5 rounded-full border-2 transition-transform hover:scale-110', tagStyle.backgroundColor === c ? 'border-foreground scale-110' : 'border-transparent')} style={{ backgroundColor: c }} />
+                                    ))}
+                                    <input type="color" value={tagStyle.backgroundColor} onChange={(e) => setTagStyle((s) => ({ ...s, backgroundColor: e.target.value }))} className="h-5 w-5 cursor-pointer rounded border p-0" />
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="space-y-1">
+                                  <label className="text-xs font-medium text-muted-foreground">Couleurs du dégradé</label>
+                                  <div className="flex items-center gap-2">
+                                    <input type="color" value={(() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}').from ?? '#374151'; } catch { return '#374151'; } })()} onChange={(e) => { const cur = (() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}'); } catch { return { from: '#374151', to: '#6366f1', direction: 'to right' }; } })(); setTagStyle((s) => ({ ...s, backgroundGradient: JSON.stringify({ ...cur, from: e.target.value }) })); }} className="h-6 w-6 cursor-pointer rounded border p-0" />
+                                    <span className="text-xs text-muted-foreground">→</span>
+                                    <input type="color" value={(() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}').to ?? '#6366f1'; } catch { return '#6366f1'; } })()} onChange={(e) => { const cur = (() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}'); } catch { return { from: '#374151', to: '#6366f1', direction: 'to right' }; } })(); setTagStyle((s) => ({ ...s, backgroundGradient: JSON.stringify({ ...cur, to: e.target.value }) })); }} className="h-6 w-6 cursor-pointer rounded border p-0" />
+                                  </div>
+                                </div>
+                              )}
+                              <div className="space-y-1">
+                                <label className="text-xs font-medium text-muted-foreground">Couleur du texte</label>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {TAG_PRESET_COLORS.map((c) => (<button key={c} onClick={() => setTagStyle((s) => ({ ...s, textColor: c }))} className={cn('h-5 w-5 rounded-full border-2 transition-transform hover:scale-110', tagStyle.textColor === c ? 'border-foreground scale-110' : 'border-transparent')} style={{ backgroundColor: c }} />))}
+                                  <input type="color" value={tagStyle.textColor} onChange={(e) => setTagStyle((s) => ({ ...s, textColor: e.target.value }))} className="h-5 w-5 cursor-pointer rounded border p-0" />
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-xs font-medium text-muted-foreground">Couleur de bordure</label>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {TAG_PRESET_COLORS.map((c) => (<button key={c} onClick={() => setTagStyle((s) => ({ ...s, borderColor: c }))} className={cn('h-5 w-5 rounded-full border-2 transition-transform hover:scale-110', tagStyle.borderColor === c ? 'border-foreground scale-110' : 'border-transparent')} style={{ backgroundColor: c }} />))}
+                                  <input type="color" value={tagStyle.borderColor} onChange={(e) => setTagStyle((s) => ({ ...s, borderColor: e.target.value }))} className="h-5 w-5 cursor-pointer rounded border p-0" />
+                                </div>
+                              </div>
+                              <Button onClick={saveTag} disabled={savingTag || !tagText.trim()} size="sm" className="w-full">
+                                {savingTag ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Sauvegarder
+                              </Button>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
                     </TabsContent>
 
                     {/* ── Guerre tab ── */}
