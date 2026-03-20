@@ -323,12 +323,12 @@ export default function Clans() {
   };
 
   const activateTagFromInventory = async () => {
-    if (!clanTagUserItemId) return;
+    if (!clanTagUserItemId || !selectedClan) return;
     try {
       setActivatingTag(true);
       await marketplaceApi.useItem(clanTagUserItemId);
-      setClanTagUserItemId(null);
-      await fetchClanDetail(selectedClan!.id);
+      // Silent refresh so the tab doesn't flash/unmount; useEffect clears clanTagUserItemId once tagUnlocked becomes true
+      await fetchClanDetail(selectedClan.id, true);
       toast({ title: 'Tag de clan débloqué !', description: 'Personnalise-le maintenant.' });
     } catch (error: any) {
       toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible d\'activer.', variant: 'destructive' });
@@ -356,20 +356,20 @@ export default function Clans() {
     }
   };
 
-  const fetchClanDetail = async (clanId: string) => {
+  const fetchClanDetail = async (clanId: string, silent = false) => {
     try {
-      setDetailLoading(true);
+      if (!silent) setDetailLoading(true);
       const res = await clansApi.getById(clanId);
       setSelectedClan(res.data.clan);
     } catch (error) {
       console.error('Failed to fetch clan detail:', error);
-      toast({
+      if (!silent) toast({
         title: 'Erreur',
         description: 'Impossible de charger ce clan.',
         variant: 'destructive',
       });
     } finally {
-      setDetailLoading(false);
+      if (!silent) setDetailLoading(false);
     }
   };
 
