@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { UserBadges } from '@/components/badges/UserBadges';
 import type { BadgeData } from '@/components/badges/BadgeIcon';
 import { ClanTag, toClanTagData } from '@/components/clans/ClanTag';
+import { PlayerHoverCard } from '@/components/ui/player-hover-card';
 
 export interface GameLeaderboardEntry {
   id: string;
@@ -78,13 +79,20 @@ function LeaderboardList({
                 tooltipSide="right"
               />
             )}
-            <span
-              className="truncate"
-              style={entry.user.usernameColor ? { color: entry.user.usernameColor } : undefined}
+            <PlayerHoverCard
+              userId={entry.user.id}
+              username={entry.user.username}
+              usernameColor={entry.user.usernameColor}
+              clanTag={toClanTagData(entry.user.clanTag)}
             >
-              {entry.user.username}
-            </span>
-            {entry.user.clanTag ? <ClanTag tag={toClanTagData(entry.user.clanTag)!} /> : null}
+              <span
+                className="truncate"
+                style={entry.user.usernameColor ? { color: entry.user.usernameColor } : undefined}
+              >
+                {entry.user.username}
+              </span>
+              {entry.user.clanTag ? <ClanTag tag={toClanTagData(entry.user.clanTag)!} /> : null}
+            </PlayerHoverCard>
             {entry.user.id === currentUserId && (
               <span className="text-xs text-muted-foreground shrink-0">(toi)</span>
             )}

@@ -10,6 +10,7 @@ import { PageShell } from '@/components/layout/page-shell';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { UserBadges, BadgeData } from '@/components/badges/UserBadges';
+import { PlayerHoverCard } from '@/components/ui/player-hover-card';
 
 interface Ranking {
   rank: number;
@@ -381,13 +382,14 @@ export default function Leaderboards() {
                                 {ranking.badges && ranking.badges.length > 0 && (
                                   <UserBadges badges={ranking.badges} size="xs" showEmptySlots={false} tooltipSide="right" />
                                 )}
-                                <span className={cn(
-                                  TYPOGRAPHY.BODY,
-                                  "font-medium",
-                                  ranking.userId === user?.id && "text-foreground"
-                                )}>
+                                <PlayerHoverCard
+                                  userId={ranking.userId}
+                                  username={ranking.username}
+                                  usernameColor={ranking.usernameColor}
+                                  className={cn(TYPOGRAPHY.BODY, "font-medium", ranking.userId === user?.id && "text-foreground")}
+                                >
                                   <UsernameDisplay username={ranking.username} usernameColor={ranking.usernameColor} />
-                                </span>
+                                </PlayerHoverCard>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">

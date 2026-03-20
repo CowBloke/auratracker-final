@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { InboxDropdown } from '@/components/inbox/InboxDropdown';
+import { PlayerHoverCard } from '@/components/ui/player-hover-card';
 
 export function SiteHeader() {
   const { user } = useAuth();
@@ -354,10 +355,16 @@ export function SiteHeader() {
                               )}
                             />
                             <span className={cn(member.userId === user?.id && 'font-medium')}>
-                              <UsernameDisplay
+                              <PlayerHoverCard
+                                userId={member.userId}
                                 username={member.username}
                                 usernameColor={member.usernameColor}
-                              />
+                              >
+                                <UsernameDisplay
+                                  username={member.username}
+                                  usernameColor={member.usernameColor}
+                                />
+                              </PlayerHoverCard>
                               {member.isLeader && ' *'}
                             </span>
                           </div>
@@ -511,11 +518,18 @@ export function SiteHeader() {
                                     )}
                                     title={u.isPageActive ? 'Utilisateur actif sur la page' : 'Utilisateur en arrière-plan'}
                                   />
-                                  <UsernameDisplay
+                                  <PlayerHoverCard
+                                    userId={u.userId}
                                     username={u.username}
                                     usernameColor={u.usernameColor}
-                                    className="block"
-                                  />
+                                    profilePicture={u.profilePicture}
+                                  >
+                                    <UsernameDisplay
+                                      username={u.username}
+                                      usernameColor={u.usernameColor}
+                                      className="block"
+                                    />
+                                  </PlayerHoverCard>
                                 </span>
                                 {(() => {
                                   const pageMeta = getPageMeta(u.currentPage);

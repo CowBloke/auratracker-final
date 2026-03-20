@@ -14,6 +14,7 @@ import { resolveImageUrl } from '@/lib/images';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { UserBadges } from '@/components/badges/UserBadges';
 import { toClanTagData } from '@/components/clans/ClanTag';
+import { PlayerHoverCard } from '@/components/ui/player-hover-card';
 
 type TimeoutRef = ReturnType<typeof setTimeout> | null;
 
@@ -175,17 +176,19 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                           tooltipSide="top"
                           showEmptySlots={false}
                         />
-                        <Button
-                          type="button"
-                          onClick={() => navigate(`/profile/${msg.userId}`)}
-                          variant="link"
+                        <PlayerHoverCard
+                          userId={msg.userId!}
+                          username={msg.username}
+                          usernameColor={msg.usernameColor}
+                          clanTag={toClanTagData(msg.clanTag)}
+                          profilePicture={msg.profilePicture}
                           className={cn(
-                            "h-auto px-0 py-0 text-xs font-medium",
+                            "text-xs font-medium",
                             !msg.usernameColor && (msg.userId === user?.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')
                           )}
                         >
                           <UsernameDisplay username={msg.username} usernameColor={msg.usernameColor} clanTag={toClanTagData(msg.clanTag)} />
-                        </Button>
+                        </PlayerHoverCard>
                         <span className="text-[10px] text-muted-foreground/60 tabular-nums">
                           {formatTime(msg.timestamp)}
                         </span>
@@ -336,7 +339,9 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                               )}
                               title={u.isPageActive ? 'Utilisateur actif sur la page' : 'Utilisateur en arrière-plan'}
                             />
-                            <UsernameDisplay username={u.username} className="block" clanTag={toClanTagData(u.clanTag)} />
+                            <PlayerHoverCard userId={u.userId} username={u.username} usernameColor={u.usernameColor} clanTag={toClanTagData(u.clanTag)}>
+                            <UsernameDisplay username={u.username} usernameColor={u.usernameColor} className="block" clanTag={toClanTagData(u.clanTag)} />
+                          </PlayerHoverCard>
                           </span>
                           {(() => {
                             const pageMeta = getPageMeta(u.currentPage);
