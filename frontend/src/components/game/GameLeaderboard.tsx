@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { UserBadges } from '@/components/badges/UserBadges';
 import type { BadgeData } from '@/components/badges/BadgeIcon';
+import { ClanTag, toClanTagData } from '@/components/clans/ClanTag';
 
 export interface GameLeaderboardEntry {
   id: string;
@@ -12,6 +13,7 @@ export interface GameLeaderboardEntry {
     id: string;
     username: string;
     usernameColor?: string | null;
+    clanTag?: { text: string; style: string | null } | null;
   };
   badges?: BadgeData[];
 }
@@ -82,6 +84,7 @@ function LeaderboardList({
             >
               {entry.user.username}
             </span>
+            {entry.user.clanTag ? <ClanTag tag={toClanTagData(entry.user.clanTag)!} /> : null}
             {entry.user.id === currentUserId && (
               <span className="text-xs text-muted-foreground shrink-0">(toi)</span>
             )}

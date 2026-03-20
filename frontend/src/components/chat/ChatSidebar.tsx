@@ -23,6 +23,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { Textarea } from '@/components/ui/textarea';
 import { UserBadges } from '@/components/badges/UserBadges';
+import { toClanTagData } from '@/components/clans/ClanTag';
 import { uploadUserImage } from '@/services/api';
 
 type TimeoutRef = ReturnType<typeof setTimeout> | null;
@@ -432,7 +433,7 @@ export default function ChatSidebar() {
                               !msg.usernameColor && (msg.userId === user?.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')
                             )}
                           >
-                            <UsernameDisplay username={msg.username} usernameColor={msg.usernameColor} />
+                            <UsernameDisplay username={msg.username} usernameColor={msg.usernameColor} clanTag={toClanTagData(msg.clanTag)} />
                           </Button>
                         ) : (
                           <span className="text-xs font-medium text-amber-700 dark:text-amber-300">

@@ -1216,17 +1216,24 @@ router.get('/:gameType/leaderboard', authMiddleware, async (req: AuthRequest, re
       },
     });
 
-    // Attach equipped badges
+    // Attach equipped badges and clan tags
     let rankings: any[] = rawRankings;
     if (rawRankings.length > 0) {
-      const badgeUsers = await prisma.user.findMany({
-        where: { id: { in: rawRankings.map((r) => r.user.id) } },
-        select: {
-          id: true,
-          equippedBadge1: { select: BADGE_SELECT },
-          equippedBadge2: { select: BADGE_SELECT },
-        },
-      });
+      const userIds = rawRankings.map((r) => r.user.id);
+      const [badgeUsers, clanMemberships] = await Promise.all([
+        prisma.user.findMany({
+          where: { id: { in: userIds } },
+          select: {
+            id: true,
+            equippedBadge1: { select: BADGE_SELECT },
+            equippedBadge2: { select: BADGE_SELECT },
+          },
+        }),
+        prisma.clanMember.findMany({
+          where: { userId: { in: userIds } },
+          select: { userId: true, clan: { select: { tagUnlocked: true, tagText: true, tagStyle: true } } },
+        }),
+      ]);
       const badgeMap = new Map(badgeUsers.map((u) => [
         u.id,
         [
@@ -1234,7 +1241,16 @@ router.get('/:gameType/leaderboard', authMiddleware, async (req: AuthRequest, re
           ...(u.equippedBadge2 ? [u.equippedBadge2] : []),
         ],
       ]));
-      rankings = rawRankings.map((r) => ({ ...r, badges: badgeMap.get(r.user.id) ?? [] }));
+      const clanTagMap = new Map(
+        clanMemberships
+          .filter((m) => m.clan?.tagUnlocked && m.clan?.tagText)
+          .map((m) => [m.userId, { text: m.clan!.tagText!, style: m.clan!.tagStyle }])
+      );
+      rankings = rawRankings.map((r) => ({
+        ...r,
+        badges: badgeMap.get(r.user.id) ?? [],
+        user: { ...r.user, clanTag: clanTagMap.get(r.user.id) ?? null },
+      }));
     }
 
     res.json({ rankings });

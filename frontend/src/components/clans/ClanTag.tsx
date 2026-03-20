@@ -29,6 +29,12 @@ export function parseClanTagStyle(styleJson: string | null | undefined): ClanTag
   }
 }
 
+/** Convert raw wire-format clan tag to ClanTagData for rendering. */
+export function toClanTagData(raw: { text: string; style: string | null } | null | undefined): ClanTagData | null {
+  if (!raw?.text) return null;
+  return { text: raw.text, style: parseClanTagStyle(raw.style) };
+}
+
 function getClanTagBackground(style: ClanTagStyle): React.CSSProperties {
   if (style.backgroundType === 'gradient' && style.backgroundGradient) {
     try {

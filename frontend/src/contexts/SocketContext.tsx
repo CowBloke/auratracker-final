@@ -35,6 +35,7 @@ interface ChatMessage {
   isTopMoney?: boolean;
   isTopAura?: boolean;
   badges: ChatBadge[];
+  clanTag?: { text: string; style: string | null } | null;
   reactions: Array<{ emoji: string; count: number; users: string[] }>;
   replyTo?: {
     id: string;
@@ -55,6 +56,7 @@ interface OnlineUser {
   currentPage?: string | null;
   isPageActive?: boolean;
   badges?: ChatBadge[];
+  clanTag?: { text: string; style: string | null } | null;
 }
 
 interface DoodleSpectateSession {

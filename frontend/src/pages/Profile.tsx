@@ -11,6 +11,7 @@ import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { UserBadges } from '@/components/badges/UserBadges';
+import { toClanTagData } from '@/components/clans/ClanTag';
 import { BadgeCatalog } from '@/components/badges/BadgeSelector';
 import { ProfileBadgeSlots } from '@/components/badges/ProfileBadgeSlots';
 import { BadgeData } from '@/components/badges/BadgeIcon';
@@ -26,6 +27,7 @@ interface ProfileUser {
   profilePicture?: string | null;
   bio?: string | null;
   createdAt: string;
+  clanTag?: { text: string; style: string | null } | null;
   auraCoinStats?: {
     transactionCount: number;
     totalMoney: number;
@@ -221,6 +223,7 @@ export default function Profile() {
               username={profileUser.username}
               firstName={profileUser.firstName}
               usernameColor={profileUser.usernameColor}
+              clanTag={toClanTagData(profileUser.clanTag)}
               className={cn(TYPOGRAPHY.H1, "md:text-7xl")}
               labelClassName="text-sm md:text-base text-muted-foreground"
             />

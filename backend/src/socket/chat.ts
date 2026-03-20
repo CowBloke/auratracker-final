@@ -29,6 +29,34 @@ const BADGE_SELECT = {
   rarity: true,
 } as const;
 
+type ClanTagWire = { text: string; style: string | null };
+
+/** Fetch the clan tag for a user (null if none or tag not unlocked). */
+const getUserClanTag = async (userId: string): Promise<ClanTagWire | null> => {
+  const membership = await prisma.clanMember.findUnique({
+    where: { userId },
+    select: { clan: { select: { tagUnlocked: true, tagText: true, tagStyle: true } } },
+  });
+  if (!membership?.clan?.tagUnlocked || !membership.clan.tagText) return null;
+  return { text: membership.clan.tagText, style: membership.clan.tagStyle };
+};
+
+/** Batch-fetch clan tags for multiple user IDs. */
+const getBatchClanTags = async (userIds: string[]): Promise<Map<string, ClanTagWire>> => {
+  if (userIds.length === 0) return new Map();
+  const memberships = await prisma.clanMember.findMany({
+    where: { userId: { in: userIds } },
+    select: { userId: true, clan: { select: { tagUnlocked: true, tagText: true, tagStyle: true } } },
+  });
+  const map = new Map<string, ClanTagWire>();
+  for (const m of memberships) {
+    if (m.clan?.tagUnlocked && m.clan?.tagText) {
+      map.set(m.userId, { text: m.clan.tagText, style: m.clan.tagStyle });
+    }
+  }
+  return map;
+};
+
 /** Fetch the two equipped badges for a user (returns array of 0-2 items). */
 const getUserEquippedBadges = async (userId: string) => {
   const user = await prisma.user.findUnique({
@@ -150,10 +178,18 @@ const buildDisplayedOnlineState = async (): Promise<{ users: PublicOnlineUser[];
     }
   }
 
-  // Attach equipped badges for all displayed users
-  const badgeMap = await getBatchEquippedBadges(users.map((u) => u.userId));
+  // Attach equipped badges and clan tags for all displayed users
+  const userIds = users.map((u) => u.userId);
+  const [badgeMap, clanTagMap] = await Promise.all([
+    getBatchEquippedBadges(userIds),
+    getBatchClanTags(userIds),
+  ]);
   return {
-    users: users.map((u) => ({ ...u, badges: badgeMap.get(u.userId) ?? [] })),
+    users: users.map((u) => ({
+      ...u,
+      badges: badgeMap.get(u.userId) ?? [],
+      clanTag: clanTagMap.get(u.userId) ?? null,
+    })),
     count: users.length,
   };
 };
@@ -231,9 +267,10 @@ const buildChatMessagePayload = async (
   leaderboardState?: { topMoneyIds: Set<string>; topAuraIds: Set<string> }
 ) => {
   const senderId = typeof message.userId === 'string' ? message.userId : null;
-  const [leaderboards, senderBadges] = await Promise.all([
+  const [leaderboards, senderBadges, senderClanTag] = await Promise.all([
     leaderboardState ? Promise.resolve(leaderboardState) : getTopLeaderboardIds(),
     senderId ? getUserEquippedBadges(senderId) : Promise.resolve([]),
+    senderId ? getUserClanTag(senderId) : Promise.resolve(null),
   ]);
 
   return {
@@ -250,6 +287,7 @@ const buildChatMessagePayload = async (
     isTopMoney: senderId ? leaderboards.topMoneyIds.has(senderId) : false,
     isTopAura: senderId ? leaderboards.topAuraIds.has(senderId) : false,
     badges: senderBadges,
+    clanTag: senderClanTag,
     reactions: summarizeReactions(message.reactions ?? []),
     replyTo: message.replyTo
       ? {

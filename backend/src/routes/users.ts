@@ -128,7 +128,7 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     
-    const [user, auraCoinAggregate] = await Promise.all([
+    const [user, auraCoinAggregate, clanMembership] = await Promise.all([
       prisma.user.findUnique({
         where: { id },
         select: {
@@ -160,15 +160,24 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
         _count: { _all: true },
         _sum: { moneyAmount: true },
       }),
+      prisma.clanMember.findUnique({
+        where: { userId: id },
+        select: { clan: { select: { tagUnlocked: true, tagText: true, tagStyle: true } } },
+      }),
     ]);
-    
+
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    
+
+    const clanTag = (clanMembership?.clan?.tagUnlocked && clanMembership?.clan?.tagText)
+      ? { text: clanMembership.clan.tagText, style: clanMembership.clan.tagStyle }
+      : null;
+
     res.json({
       user: {
         ...user,
+        clanTag,
         auraCoinStats: {
           transactionCount: auraCoinAggregate._count._all,
           totalMoney: auraCoinAggregate._sum.moneyAmount ?? 0,
