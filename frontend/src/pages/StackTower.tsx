@@ -35,22 +35,30 @@ class Stage {
   private renderer: THREE.WebGLRenderer;
   private light: THREE.DirectionalLight;
   private softLight: THREE.AmbientLight;
+  private containerWidth: number = STAGE_WIDTH;
+  private containerHeight: number = STAGE_HEIGHT;
+  private resizeTimeout: number | null = null;
 
   constructor() {
     this.container = document.getElementById('game') as HTMLElement;
 
     this.renderer = new THREE.WebGLRenderer({
-      antialias: true,
+      antialias: false,
       alpha: false,
+      powerPreference: 'high-performance',
     });
 
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    // Use default STAGE dimensions, will resize on first proper measurement
+    this.renderer.setSize(STAGE_WIDTH, STAGE_HEIGHT);
     this.renderer.setClearColor('#D0CBC7', 1);
+    this.renderer.domElement.style.width = '100%';
+    this.renderer.domElement.style.height = '100%';
+    this.renderer.domElement.style.display = 'block';
     this.container.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
 
-    const aspect = window.innerWidth / window.innerHeight;
+    const aspect = STAGE_WIDTH / STAGE_HEIGHT;
     const d = 20;
     this.camera = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, -100, 1000);
     this.camera.position.x = 2;
@@ -67,7 +75,8 @@ class Stage {
     this.scene.add(this.softLight);
 
     window.addEventListener('resize', this.onResize);
-    this.onResize();
+    // Do initial resize after small delay to allow layout to settle
+    setTimeout(() => this.onResize(), 100);
   }
 
   setCamera(y: number, speed = 0.3) {
@@ -83,13 +92,23 @@ class Stage {
   }
 
   onResize = () => {
-    const viewSize = 30;
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.camera.left = window.innerWidth / -viewSize;
-    this.camera.right = window.innerWidth / viewSize;
-    this.camera.top = window.innerHeight / viewSize;
-    this.camera.bottom = window.innerHeight / -viewSize;
-    this.camera.updateProjectionMatrix();
+    if (this.container) {
+      const rect = this.container.getBoundingClientRect();
+      const width = rect.width > 0 ? rect.width : this.containerWidth;
+      const height = rect.height > 0 ? rect.height : this.containerHeight;
+      
+      this.containerWidth = width;
+      this.containerHeight = height;
+      
+      this.renderer.setSize(width, height);
+      
+      const viewSize = 30;
+      this.camera.left = width / -viewSize;
+      this.camera.right = width / viewSize;
+      this.camera.top = height / viewSize;
+      this.camera.bottom = height / -viewSize;
+      this.camera.updateProjectionMatrix();
+    }
   };
 
   render = () => {
