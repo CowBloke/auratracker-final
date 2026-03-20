@@ -11,6 +11,8 @@
 - azerty clavier chat
 - saisons
 - parties ouvertes avec matchmaking
+- confettis spectate et bombes
+- chat décallé
 
 ## à FIX
 
@@ -27,6 +29,7 @@
 - panels confirmation
 - hiérarchie des titres sur les pages et consistence
 - do .md ai rules (ui : shadcn only, consistency, etc.)
+- racer milieme
 
 
 - un type d'item qui te permet de mettre une banière derrière les messages de tous les membres de clan comme on avait dit (du coup une nouvelle catégorie dans le shop pour les upgrades de clan).
