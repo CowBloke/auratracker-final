@@ -1,5 +1,5 @@
 import { Outlet, useLocation } from 'react-router-dom';
-import { useEffect, type CSSProperties } from 'react';
+import { useEffect, useRef, type CSSProperties } from 'react';
 import { ChatSidebarProvider, ChatSidebarWrapper, useChatSidebar } from '../chat/ChatSidebarWrapper';
 import ChatBubble from '../chat/ChatBubble';
 import UpdatePopupModal from './UpdatePopupModal';
@@ -41,12 +41,17 @@ export default function Layout() {
   const { connected, setCurrentPage, activeJoinPrompt, activeReplayPrompt, respondToGameJoinPrompt, respondToGameReplayPrompt, incomingDuelChallenge, acceptDuelChallenge, declineDuelChallenge } = useSocket();
   const { user } = useAuth();
   const location = useLocation();
+  const mainRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (connected) {
       setCurrentPage(location.pathname);
     }
   }, [connected, location.pathname, setCurrentPage]);
+
+  useEffect(() => {
+    mainRef.current?.scrollTo(0, 0);
+  }, [location.pathname]);
 
   return (
     <ChatSidebarProvider>
@@ -64,7 +69,7 @@ export default function Layout() {
           <SidebarInset>
             <SiteHeader />
             <div className="@container/main flex flex-1 flex-col">
-              <main className="flex-1 overflow-auto">
+              <main ref={mainRef} className="flex-1 overflow-auto">
                 <div className={cn('mx-auto flex w-full flex-1 flex-col pt-6 lg:pt-8', CONTAINER.DEFAULT)}>
                   <Outlet />
                 </div>
