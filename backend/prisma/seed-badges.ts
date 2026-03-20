@@ -169,6 +169,24 @@ const BADGES = [
     autoConditionKey: 'MINESWEEPER_WIN',
   },
 
+  // ── Game champions (top highscore holders) ───────────────────────────────────
+  {
+    key: 'GAME_HIGHSCORE_FRUIT_NINJA',
+    name: 'Ninja des Fruits',
+    description: 'Détient le meilleur score de Fruit Ninja. Lame rapide, réflexes parfaits.',
+    howToObtain: 'Avoir le meilleur score de Fruit Ninja sur la plateforme.',
+    icon: '🍉',
+    iconColor: '#ffffff',
+    backgroundType: 'gradient',
+    backgroundGradient: JSON.stringify({ from: '#166534', to: '#dc2626', direction: 'to bottom right' }),
+    backgroundColor: '#166534',
+    borderColor: '#4ade80',
+    category: 'special',
+    rarity: 'epic',
+    isAutomatic: true,
+    autoConditionKey: 'GAME_HIGHSCORE_FRUIT_NINJA',
+  },
+
   // ── Polymarket ───────────────────────────────────────────────────────────────
   {
     key: 'POLYMARKET_SUGGESTION_ACCEPTED',
