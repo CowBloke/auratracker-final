@@ -427,7 +427,7 @@ export default function Inventory() {
                             )}
                           </Button>
                         </div>
-                      ) : (userItem.item.type === 'CONSUMABLE' || (userItem.item.type === 'COSMETIC' && !isDoodleJumpSkin) || userItem.item.type === 'UPGRADE') ? (
+                      ) : (userItem.item.type === 'CONSUMABLE' || (userItem.item.type === 'COSMETIC' && !isDoodleJumpSkin) || userItem.item.type === 'UPGRADE' || effect?.type === 'CLAN_TAG_UNLOCK') ? (
                         <Button
                           onClick={() => handleUseItem(userItem)}
                           disabled={using === userItem.id}
