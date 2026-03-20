@@ -1937,4 +1937,376 @@ router.put('/:id/tag', authMiddleware, async (req: AuthRequest, res: Response) =
   }
 });
 
+// ─────────────────────────────────────────────
+// WAR MINI-GAMES
+// ─────────────────────────────────────────────
+
+const NAVAL_SHOTS_PER_USER = 5;
+const NAVAL_GRID_SIZE = 6;
+
+type NavalCell = { type: DefenseType | null; hp: number };
+
+const generateNavalGrid = (): NavalCell[][] => {
+  const grid: NavalCell[][] = Array.from({ length: NAVAL_GRID_SIZE }, () =>
+    Array.from({ length: NAVAL_GRID_SIZE }, () => ({ type: null, hp: 0 }))
+  );
+  const buildings: Array<{ type: DefenseType; hp: number }> = [
+    { type: 'FORTRESS', hp: 2 },
+    { type: 'FORTRESS', hp: 2 },
+    { type: 'ARMORY', hp: 1 },
+    { type: 'ARMORY', hp: 1 },
+    { type: 'ARMORY', hp: 1 },
+    { type: 'BANNER', hp: 1 },
+    { type: 'BANNER', hp: 1 },
+    { type: 'BANNER', hp: 1 },
+  ];
+  const placed = new Set<string>();
+  for (const b of buildings) {
+    let x: number, y: number;
+    do {
+      x = Math.floor(Math.random() * NAVAL_GRID_SIZE);
+      y = Math.floor(Math.random() * NAVAL_GRID_SIZE);
+    } while (placed.has(`${x},${y}`));
+    placed.add(`${x},${y}`);
+    grid[y][x] = { type: b.type, hp: b.hp };
+  }
+  return grid;
+};
+
+// GET /:id/war/games/status — game status for authenticated user
+router.get('/:id/war/games/status', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    await advanceClanWarsState();
+    const { id } = req.params;
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const member = await prisma.clanMember.findUnique({
+      where: { clanId_userId: { clanId: id, userId } },
+      select: { userId: true },
+    });
+    if (!member) return res.status(403).json({ error: 'Non membre.' });
+
+    const war = await getCurrentWarForClan(id);
+    if (!war) return res.json({ war: null });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const todayLogs = await prisma.clanWarGameLog.findMany({
+      where: { warId: war.id, userId, isPractice: false, playedAt: { gte: today } },
+    });
+
+    const memoryPlayedToday = todayLogs.some((l) => l.gameType === 'MEMORY');
+    const bombPlayedToday = todayLogs.some((l) => l.gameType === 'BOMB');
+
+    const enemyClanId = war.attackerClanId === id ? war.defenderClanId : war.attackerClanId;
+
+    let navalStatus = null;
+    if (war.status === 'ACTIVE') {
+      const board = await prisma.clanWarNavalBoard.findUnique({
+        where: { warId_clanId: { warId: war.id, clanId: enemyClanId } },
+        include: { shots: true },
+      });
+      const allShots = board?.shots ?? [];
+      const myShots = allShots.filter((s) => s.userId === userId);
+      navalStatus = {
+        boardId: board?.id ?? null,
+        shotsUsed: myShots.length,
+        shotsRemaining: Math.max(0, NAVAL_SHOTS_PER_USER - myShots.length),
+        shots: allShots.map((s) => ({
+          x: s.x,
+          y: s.y,
+          isHit: s.isHit,
+          building: s.building,
+          points: s.points,
+          isOwnShot: s.userId === userId,
+        })),
+      };
+    }
+
+    return res.json({
+      warStatus: war.status,
+      warId: war.id,
+      memoryPlayedToday,
+      bombPlayedToday,
+      canPlayMemory: !memoryPlayedToday && ['PREPARING', 'ACTIVE'].includes(war.status),
+      canPlayBomb: !bombPlayedToday && war.status === 'ACTIVE',
+      naval: navalStatus,
+    });
+  } catch (error) {
+    console.error('War games status error:', error);
+    res.status(500).json({ error: 'Failed to get game status' });
+  }
+});
+
+// POST /:id/war/games/memory — submit memory game result, apply fortifications
+router.post('/:id/war/games/memory', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    await advanceClanWarsState();
+    const { id } = req.params;
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { matchedPairs, score, isPractice = false } = req.body as {
+      matchedPairs: Record<string, number>;
+      score: number;
+      isPractice: boolean;
+    };
+
+    const member = await prisma.clanMember.findUnique({
+      where: { clanId_userId: { clanId: id, userId } },
+      select: { userId: true },
+    });
+    if (!member) return res.status(403).json({ error: 'Non membre.' });
+
+    const war = await getCurrentWarForClan(id);
+    if (!war) return res.status(400).json({ error: 'Aucune guerre active.' });
+    if (!['PREPARING', 'ACTIVE'].includes(war.status)) {
+      return res.status(400).json({ error: 'Fortifications non disponibles.' });
+    }
+
+    if (!isPractice) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const playedToday = await prisma.clanWarGameLog.findFirst({
+        where: { warId: war.id, userId, gameType: 'MEMORY', isPractice: false, playedAt: { gte: today } },
+      });
+      if (playedToday) return res.status(400).json({ error: 'Jeu déjà joué aujourd\'hui.' });
+
+      const fortificationsUsed = await prisma.clanWarFortification.count({
+        where: { warId: war.id, clanId: id, userId },
+      });
+      const fortifCap = CLAN_WAR_FORTIFICATIONS_PER_MEMBER;
+
+      const defenseTypes: DefenseType[] = ['FORTRESS', 'ARMORY', 'BANNER'];
+      let totalFortifs = 0;
+
+      await prisma.$transaction(async (tx) => {
+        for (const type of defenseTypes) {
+          const pairsMatched = Math.max(0, Math.floor(matchedPairs[type] ?? 0));
+          for (let i = 0; i < pairsMatched; i++) {
+            if (fortificationsUsed + totalFortifs >= fortifCap) break;
+            const existing = await tx.clanWarDefense.findUnique({
+              where: { warId_clanId_type: { warId: war.id, clanId: id, type } },
+            });
+            if (!existing) {
+              const maxDurability = getDefenseMaxDurability(type, 1);
+              const created = await tx.clanWarDefense.create({
+                data: { warId: war.id, clanId: id, type, level: 1, durability: maxDurability, maxDurability },
+              });
+              await tx.clanWarFortification.create({
+                data: { warId: war.id, defenseId: created.id, clanId: id, userId, levelAdded: 1, durabilityAdded: 0 },
+              });
+            } else {
+              const newLevel = existing.level + 1;
+              const durabilityAdd = defenseConfig[type].durabilityPerLevel;
+              const newMaxDurability = getDefenseMaxDurability(type, newLevel);
+              await tx.clanWarDefense.update({
+                where: { id: existing.id },
+                data: { level: newLevel, durability: { increment: durabilityAdd }, maxDurability: newMaxDurability },
+              });
+              await tx.clanWarFortification.create({
+                data: { warId: war.id, defenseId: existing.id, clanId: id, userId, levelAdded: 1, durabilityAdded: durabilityAdd },
+              });
+            }
+            totalFortifs++;
+          }
+        }
+      });
+
+      await prisma.clanWarGameLog.create({
+        data: { warId: war.id, userId, clanId: id, gameType: 'MEMORY', score, pointsAwarded: totalFortifs, isPractice: false },
+      });
+    }
+
+    return res.json({ success: true, isPractice });
+  } catch (error) {
+    console.error('Memory game error:', error);
+    res.status(500).json({ error: 'Failed to submit memory game' });
+  }
+});
+
+// POST /:id/war/games/bomb — submit bomb drop game result, apply attack points
+router.post('/:id/war/games/bomb', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    await advanceClanWarsState();
+    const { id } = req.params;
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { score, hits, isPractice = false } = req.body as { score: number; hits: number; isPractice: boolean };
+
+    const member = await prisma.clanMember.findUnique({
+      where: { clanId_userId: { clanId: id, userId } },
+      select: { userId: true },
+    });
+    if (!member) return res.status(403).json({ error: 'Non membre.' });
+
+    const war = await getCurrentWarForClan(id);
+    if (!war || war.status !== 'ACTIVE') {
+      return res.status(400).json({ error: 'La guerre n\'est pas active.' });
+    }
+
+    let finalPoints = 0;
+
+    if (!isPractice) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const playedToday = await prisma.clanWarGameLog.findFirst({
+        where: { warId: war.id, userId, gameType: 'BOMB', isPractice: false, playedAt: { gte: today } },
+      });
+      if (playedToday) return res.status(400).json({ error: 'Jeu déjà joué aujourd\'hui.' });
+
+      const safeScore = Math.max(0, Math.min(1000, Math.floor(score)));
+      const rawPoints = Math.round(safeScore / 10);
+      const targetClanId = war.attackerClanId === id ? war.defenderClanId : war.attackerClanId;
+      const defenseLevel = getClanDefenseLevel(war.defenses, targetClanId, 'FORTRESS');
+      const mitigation = defenseLevel * 4;
+      finalPoints = clamp(rawPoints - mitigation, 4, 80);
+
+      await prisma.$transaction(async (tx) => {
+        await tx.clanWarAttack.create({
+          data: {
+            warId: war.id,
+            userId,
+            clanId: id,
+            targetClanId,
+            attackType: 'RAID',
+            staminaCost: 0,
+            basePoints: rawPoints,
+            bonusPoints: 0,
+            defenseMitigation: mitigation,
+            structureDamage: hits * 6,
+            finalPoints,
+          },
+        });
+        if (war.attackerClanId === id) {
+          await tx.clanWar.update({ where: { id: war.id }, data: { attackerScore: { increment: finalPoints } } });
+        } else {
+          await tx.clanWar.update({ where: { id: war.id }, data: { defenderScore: { increment: finalPoints } } });
+        }
+      });
+
+      await prisma.clanWarGameLog.create({
+        data: { warId: war.id, userId, clanId: id, gameType: 'BOMB', score, pointsAwarded: finalPoints, isPractice: false },
+      });
+
+      await advanceClanWarsState();
+    }
+
+    return res.json({ success: true, isPractice, finalPoints });
+  } catch (error) {
+    console.error('Bomb game error:', error);
+    res.status(500).json({ error: 'Failed to submit bomb game' });
+  }
+});
+
+// POST /:id/war/games/naval/shot — fire a shot in naval warfare
+router.post('/:id/war/games/naval/shot', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    await advanceClanWarsState();
+    const { id } = req.params;
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { x, y } = req.body as { x: number; y: number };
+    if (typeof x !== 'number' || typeof y !== 'number' || x < 0 || x >= NAVAL_GRID_SIZE || y < 0 || y >= NAVAL_GRID_SIZE) {
+      return res.status(400).json({ error: 'Coordonnées invalides.' });
+    }
+
+    const member = await prisma.clanMember.findUnique({
+      where: { clanId_userId: { clanId: id, userId } },
+      select: { userId: true },
+    });
+    if (!member) return res.status(403).json({ error: 'Non membre.' });
+
+    const war = await getCurrentWarForClan(id);
+    if (!war || war.status !== 'ACTIVE') {
+      return res.status(400).json({ error: 'La guerre n\'est pas active.' });
+    }
+
+    const enemyClanId = war.attackerClanId === id ? war.defenderClanId : war.attackerClanId;
+
+    // Get or create enemy board
+    let board = await prisma.clanWarNavalBoard.findUnique({
+      where: { warId_clanId: { warId: war.id, clanId: enemyClanId } },
+      include: { shots: { where: { userId } } },
+    });
+
+    if (!board) {
+      const grid = generateNavalGrid();
+      board = await prisma.clanWarNavalBoard.create({
+        data: { warId: war.id, clanId: enemyClanId, grid: JSON.stringify(grid) },
+        include: { shots: { where: { userId } } },
+      });
+    }
+
+    if (board.shots.length >= NAVAL_SHOTS_PER_USER) {
+      return res.status(400).json({ error: 'Plus de tirs disponibles pour cette guerre.' });
+    }
+
+    const existing = await prisma.clanWarNavalShot.findUnique({
+      where: { boardId_x_y: { boardId: board.id, x, y } },
+    });
+    if (existing) return res.status(400).json({ error: 'Cette case a déjà été ciblée.' });
+
+    const grid = JSON.parse(board.grid) as NavalCell[][];
+    const cell = grid[y][x];
+    const isHit = cell.type !== null && cell.hp > 0;
+    let points = 0;
+    let building: string | null = null;
+
+    if (isHit) {
+      building = cell.type as string;
+      const buildingPoints: Record<string, number> = { FORTRESS: 25, ARMORY: 18, BANNER: 12 };
+      points = buildingPoints[building] ?? 12;
+      cell.hp -= 1;
+      if (cell.hp <= 0) {
+        points += 8; // destroy bonus
+        cell.type = null;
+      }
+      grid[y][x] = cell;
+      await prisma.clanWarNavalBoard.update({ where: { id: board.id }, data: { grid: JSON.stringify(grid) } });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.clanWarNavalShot.create({
+        data: { boardId: board!.id, warId: war.id, userId, clanId: id, x, y, isHit, building, points },
+      });
+      if (isHit && points > 0) {
+        await tx.clanWarAttack.create({
+          data: {
+            warId: war.id,
+            userId,
+            clanId: id,
+            targetClanId: enemyClanId,
+            attackType: 'SABOTAGE',
+            staminaCost: 0,
+            basePoints: points,
+            bonusPoints: 0,
+            defenseMitigation: 0,
+            structureDamage: 15,
+            finalPoints: points,
+          },
+        });
+        if (war.attackerClanId === id) {
+          await tx.clanWar.update({ where: { id: war.id }, data: { attackerScore: { increment: points } } });
+        } else {
+          await tx.clanWar.update({ where: { id: war.id }, data: { defenderScore: { increment: points } } });
+        }
+      }
+    });
+
+    if (isHit && points > 0) {
+      await advanceClanWarsState();
+    }
+
+    return res.json({ isHit, building, points, x, y });
+  } catch (error) {
+    console.error('Naval shot error:', error);
+    res.status(500).json({ error: 'Failed to fire naval shot' });
+  }
+});
+
 export default router;

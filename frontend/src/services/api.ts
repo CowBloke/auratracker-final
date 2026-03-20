@@ -603,6 +603,31 @@ export interface ClansListResponse {
   };
 }
 
+export interface ClanWarNavalShot {
+  x: number;
+  y: number;
+  isHit: boolean;
+  building: string | null;
+  points: number;
+  isOwnShot: boolean;
+}
+
+export interface ClanWarGamesStatus {
+  war: null | { id: string };
+  warStatus: 'PREPARING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+  warId: string;
+  memoryPlayedToday: boolean;
+  bombPlayedToday: boolean;
+  canPlayMemory: boolean;
+  canPlayBomb: boolean;
+  naval: {
+    boardId: string | null;
+    shotsUsed: number;
+    shotsRemaining: number;
+    shots: ClanWarNavalShot[];
+  } | null;
+}
+
 export const clansApi = {
   list: () => api.get<ClansListResponse>('/clans'),
   getById: (id: string) => api.get<{ clan: ClanDetail }>(`/clans/${id}`),
@@ -627,6 +652,15 @@ export const clansApi = {
     api.delete(`/clans/${clanId}/members/${userId}`),
   updateTag: (id: string, data: { tagText?: string; tagStyle?: object }) =>
     api.put<{ success: boolean; tagText: string | null; tagStyle: string | null }>(`/clans/${id}/tag`, data),
+  // War mini-games
+  getWarGamesStatus: (clanId: string) =>
+    api.get<ClanWarGamesStatus>(`/clans/${clanId}/war/games/status`),
+  submitMemoryGame: (clanId: string, data: { matchedPairs: Record<string, number>; score: number; isPractice: boolean }) =>
+    api.post<{ success: boolean; isPractice: boolean }>(`/clans/${clanId}/war/games/memory`, data),
+  submitBombGame: (clanId: string, data: { score: number; hits: number; isPractice: boolean }) =>
+    api.post<{ success: boolean; isPractice: boolean; finalPoints: number }>(`/clans/${clanId}/war/games/bomb`, data),
+  navalShot: (clanId: string, data: { x: number; y: number }) =>
+    api.post<{ isHit: boolean; building: string | null; points: number; x: number; y: number }>(`/clans/${clanId}/war/games/naval/shot`, data),
 };
 
 // Admin API

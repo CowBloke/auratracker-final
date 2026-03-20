@@ -33,7 +33,8 @@
       "Bash(grep -r \"setupDuelHandlers\\\\|duel.*routes\\\\|\\\\/api\\\\/duels\" /c/Users/cowbl/Me/Coding/AuraTracker/auratracker.final/backend/src --include=\"*.ts\" 2>/dev/null | head -20)",
       "Bash(grep -E \"\\\\.\\(ts|tsx|js|jsx\\)$\")",
       "Bash(echo \"EXIT:$?\")",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "Bash(find /c/Users/cowbl/source/repos/CRust/auratracker-final/frontend/src -type f \\\\\\(-name *clan* -o -name *war* \\\\\\))"
     ]
   },
   "outputStyle": "default"

@@ -1,16 +1,19 @@
-import { type FormEvent, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Axe, Check, Crown, Loader2, LogOut, Plus, Send, Shield, Sparkles, Swords, Tag, Target, UserX, X } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ClanChatMessage,
   ClanDetail,
   ClanSummary,
-  ClanWarActionType,
   ClanWarDefenseState,
+  ClanWarGamesStatus,
   ClanWarState,
   clansApi,
   uploadUserImage,
 } from '@/services/api';
+import { MemoryGame } from '@/components/clans/war-games/MemoryGame';
+import { BombDropGame } from '@/components/clans/war-games/BombDropGame';
+import { NavalWarfareGame } from '@/components/clans/war-games/NavalWarfareGame';
 import { PageShell } from '@/components/layout/page-shell';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -98,18 +101,6 @@ const getWarDefenseSet = (war: ClanWarState, clanId: string) =>
 const getWarEnemyDefenseSet = (war: ClanWarState, clanId: string) =>
   war.attackerClan.id === clanId ? war.defenses.defender : war.defenses.attacker;
 
-const getAttackColor = (attackType: ClanWarActionType['type']) => {
-  switch (attackType) {
-    case 'RAID':
-      return 'bg-amber-500/10 text-amber-700 border-amber-500/20';
-    case 'SIEGE':
-      return 'bg-rose-500/10 text-rose-700 border-rose-500/20';
-    case 'SABOTAGE':
-      return 'bg-sky-500/10 text-sky-700 border-sky-500/20';
-    default:
-      return '';
-  }
-};
 
 const getAvatarFallback = (value: string) => value.trim().slice(0, 2);
 
@@ -222,6 +213,26 @@ export default function Clans() {
   // Tab state
   const [activeTab, setActiveTab] = useState<'info' | 'guerre'>('info');
 
+  // War games
+  const [gameStatus, setGameStatus] = useState<ClanWarGamesStatus | null>(null);
+  const [activeGame, setActiveGame] = useState<'MEMORY' | 'BOMB' | 'NAVAL' | null>(null);
+  const [gamePractice, setGamePractice] = useState(false);
+  const [seenTutorials, setSeenTutorials] = useState<Record<string, boolean>>(() => ({
+    MEMORY: localStorage.getItem('war_tutorial_MEMORY') === '1',
+    BOMB: localStorage.getItem('war_tutorial_BOMB') === '1',
+    NAVAL: localStorage.getItem('war_tutorial_NAVAL') === '1',
+  }));
+  const [showTutorial, setShowTutorial] = useState<'MEMORY' | 'BOMB' | 'NAVAL' | null>(null);
+
+  const fetchGameStatus = useCallback(async (clanId: string) => {
+    try {
+      const res = await clansApi.getWarGamesStatus(clanId);
+      setGameStatus(res.data);
+    } catch {
+      // Non-member or no war — silently ignore
+    }
+  }, []);
+
   useEffect(() => {
     void fetchClans();
   }, []);
@@ -258,6 +269,14 @@ export default function Clans() {
     return () => window.clearInterval(interval);
   }, [selectedClanId, selectedClan?.viewer.isMember]);
 
+  useEffect(() => {
+    if (selectedClanId && selectedClan?.viewer.isMember) {
+      void fetchGameStatus(selectedClanId);
+    } else {
+      setGameStatus(null);
+    }
+  }, [selectedClanId, selectedClan?.viewer.isMember, fetchGameStatus]);
+
 
   const selectedClanSummary = useMemo(
     () => clans.find((clan) => clan.id === selectedClanId) ?? null,
@@ -268,8 +287,6 @@ export default function Clans() {
   const isOwnClan = viewerClanId === selectedClan?.id;
   const canCreateClan = !viewerClanId;
   const canJoinSelectedClan = Boolean(selectedClan && !selectedClan.viewer.isMember && !viewerClanId);
-  const canFortify = Boolean(selectedWar && isOwnClan && selectedClan?.viewer.isMember && selectedWar.viewerActions.fortificationsRemaining > 0);
-  const canAttack = Boolean(selectedWar && isOwnClan && selectedClan?.viewer.isMember && selectedWar.status === 'ACTIVE' && selectedWar.viewerActions.staminaRemaining > 0);
 
   const resetForm = () => {
     setName('');
@@ -368,6 +385,66 @@ export default function Clans() {
     } else {
       setSelectedClan(null);
     }
+  };
+
+  const openGame = (type: 'MEMORY' | 'BOMB' | 'NAVAL', practice: boolean) => {
+    setGamePractice(practice);
+    if (!seenTutorials[type]) {
+      setShowTutorial(type);
+    } else {
+      setActiveGame(type);
+    }
+  };
+
+  const confirmTutorial = (type: 'MEMORY' | 'BOMB' | 'NAVAL') => {
+    localStorage.setItem(`war_tutorial_${type}`, '1');
+    setSeenTutorials((prev) => ({ ...prev, [type]: true }));
+    setShowTutorial(null);
+    setActiveGame(type);
+  };
+
+  const closeGame = () => {
+    setActiveGame(null);
+    setShowTutorial(null);
+  };
+
+  const afterGame = async () => {
+    closeGame();
+    if (selectedClan) {
+      await refreshData(selectedClan.id);
+      await fetchGameStatus(selectedClan.id);
+    }
+  };
+
+  const handleMemoryComplete = async (result: { matchedPairs: Record<string, number>; score: number }) => {
+    if (gamePractice) { closeGame(); return; }
+    if (!selectedClan) return;
+    try {
+      await clansApi.submitMemoryGame(selectedClan.id, { ...result, isPractice: false });
+      toast({ title: 'Défenses renforcées !', description: 'Les structures de ton clan ont été améliorées.' });
+      await afterGame();
+    } catch (error: any) {
+      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de valider.', variant: 'destructive' });
+    }
+  };
+
+  const handleBombComplete = async (result: { score: number; hits: number }) => {
+    if (gamePractice) { closeGame(); return; }
+    if (!selectedClan) return;
+    try {
+      const res = await clansApi.submitBombGame(selectedClan.id, { ...result, isPractice: false });
+      toast({ title: 'Attaque enregistrée !', description: `+${res.data.finalPoints} pts de guerre.` });
+      await afterGame();
+    } catch (error: any) {
+      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de valider.', variant: 'destructive' });
+    }
+  };
+
+  const handleNavalShot = async (x: number, y: number) => {
+    if (!selectedClan) throw new Error('No clan');
+    const res = await clansApi.navalShot(selectedClan.id, { x, y });
+    await fetchGameStatus(selectedClan.id);
+    return res.data;
   };
 
   const handleCreateClan = async (event: React.FormEvent) => {
@@ -503,47 +580,6 @@ export default function Clans() {
       toast({
         title: 'Erreur',
         description: error.response?.data?.error || 'Impossible de déclarer cette guerre.',
-        variant: 'destructive',
-      });
-    } finally {
-      setWarActionKey(null);
-    }
-  };
-
-  const handleFortify = async (defenseType: ClanWarDefenseState['type']) => {
-    if (!selectedClan) return;
-    setWarActionKey(`fortify:${defenseType}`);
-    try {
-      await clansApi.fortifyWar(selectedClan.id, defenseType);
-      toast({ title: 'Défense renforcée', description: 'La structure a été améliorée.' });
-      await refreshData(selectedClan.id);
-    } catch (error: any) {
-      console.error('Failed to fortify war:', error);
-      toast({
-        title: 'Erreur',
-        description: error.response?.data?.error || 'Impossible de fortifier cette structure.',
-        variant: 'destructive',
-      });
-    } finally {
-      setWarActionKey(null);
-    }
-  };
-
-  const handleAttack = async (attackType: ClanWarActionType['type']) => {
-    if (!selectedClan) return;
-    setWarActionKey(`attack:${attackType}`);
-    try {
-      const res = await clansApi.attackWar(selectedClan.id, attackType);
-      toast({
-        title: res.data.completed ? 'Guerre terminée' : 'Attaque lancée',
-        description: res.data.completed ? 'Le conflit est terminé, les récompenses ont été distribuées.' : 'Ton attaque a été enregistrée.',
-      });
-      await refreshData(selectedClan.id);
-    } catch (error: any) {
-      console.error('Failed to attack war:', error);
-      toast({
-        title: 'Erreur',
-        description: error.response?.data?.error || 'Impossible de lancer cette attaque.',
         variant: 'destructive',
       });
     } finally {
@@ -1029,84 +1065,150 @@ export default function Clans() {
                           </div>
                           <CardContent className="space-y-6 p-6">
                             {isOwnClan ? (
-                              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+                              <div className="space-y-4">
+                                {/* War Games HQ */}
                                 <div className={mutedPanelClassName}>
                                   <div className="space-y-4 p-4">
                                     <div className="flex items-center justify-between">
                                       <div>
-                                        <h3 className="font-medium">Centre de commandement</h3>
+                                        <h3 className="font-medium">Jeux de guerre</h3>
                                         <p className="text-sm text-muted-foreground">
                                           {selectedWar.status === 'PREPARING'
-                                            ? 'Utilise la phase de préparation pour monter tes structures.'
-                                            : 'Coordonne les attaques et surveille la pression adverse.'}
+                                            ? 'Phase de préparation — renforcez vos défenses avec le jeu mémoire.'
+                                            : 'Attaquez via le bombardement, la guerre navale, et renforcez vos défenses.'}
                                         </p>
                                       </div>
                                       <Badge variant="secondary">{selectedWar.viewerSide === 'ATTACKER' ? 'Attaquant' : 'Défenseur'}</Badge>
                                     </div>
-                                    <div className="grid gap-3 md:grid-cols-2">
-                                      <div className={panelClassName}>
-                                        <div className="space-y-1 p-4">
-                                          <div className="text-xs text-muted-foreground">Endurance (24h)</div>
-                                          <div className="text-2xl font-semibold tabular-nums">
-                                            {selectedWar.viewerActions.staminaRemaining}/{selectedWar.viewerActions.staminaCap}
+                                    <div className="grid gap-3 md:grid-cols-3">
+                                      {/* Memory Game card */}
+                                      <div className={cn('rounded-2xl border p-4 space-y-3', gameStatus?.canPlayMemory ? 'border-amber-500/30 bg-amber-500/5' : 'border-border/40 bg-muted/10')}>
+                                        <div className="flex items-start justify-between gap-2">
+                                          <div>
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-xl">🧩</span>
+                                              <span className="font-medium text-sm">Jeu Mémoire</span>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground mt-1">Retournez les paires pour renforcer vos structures</p>
                                           </div>
-                                          <p className="text-sm text-muted-foreground">
-                                            {selectedWar.viewerActions.staminaUsed} consommée(s) sur les dernières 24h.
-                                          </p>
+                                          {gameStatus?.memoryPlayedToday && (
+                                            <Badge variant="outline" className="text-[10px] shrink-0">✓ Joué</Badge>
+                                          )}
+                                        </div>
+                                        <div className="flex flex-col gap-1.5">
+                                          <Button
+                                            size="sm"
+                                            className="w-full"
+                                            disabled={!gameStatus?.canPlayMemory}
+                                            onClick={() => openGame('MEMORY', false)}
+                                          >
+                                            {gameStatus?.memoryPlayedToday ? 'Déjà joué' : 'Jouer (1×/jour)'}
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="w-full"
+                                            disabled={!['PREPARING', 'ACTIVE'].includes(selectedWar.status)}
+                                            onClick={() => openGame('MEMORY', true)}
+                                          >
+                                            Entraînement
+                                          </Button>
                                         </div>
                                       </div>
-                                      <div className={panelClassName}>
-                                        <div className="space-y-1 p-4">
-                                          <div className="text-xs text-muted-foreground">Fortifications</div>
-                                          <div className="text-2xl font-semibold tabular-nums">
-                                            {selectedWar.viewerActions.fortificationsRemaining}/{selectedWar.viewerActions.fortificationsCap}
+
+                                      {/* Bomb Drop Game card */}
+                                      <div className={cn('rounded-2xl border p-4 space-y-3', gameStatus?.canPlayBomb ? 'border-rose-500/30 bg-rose-500/5' : 'border-border/40 bg-muted/10')}>
+                                        <div className="flex items-start justify-between gap-2">
+                                          <div>
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-xl">💣</span>
+                                              <span className="font-medium text-sm">Bombardement</span>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground mt-1">Pilotez un avion et détruisez les bâtiments ennemis</p>
                                           </div>
-                                          <p className="text-sm text-muted-foreground">
-                                            Chaque membre peut renforcer deux fois par guerre.
-                                          </p>
+                                          {gameStatus?.bombPlayedToday && (
+                                            <Badge variant="outline" className="text-[10px] shrink-0">✓ Joué</Badge>
+                                          )}
+                                        </div>
+                                        <div className="flex flex-col gap-1.5">
+                                          <Button
+                                            size="sm"
+                                            className="w-full"
+                                            disabled={!gameStatus?.canPlayBomb}
+                                            onClick={() => openGame('BOMB', false)}
+                                          >
+                                            {selectedWar.status !== 'ACTIVE' ? 'Inactif' : gameStatus?.bombPlayedToday ? 'Déjà joué' : 'Attaquer (1×/jour)'}
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="w-full"
+                                            disabled={selectedWar.status !== 'ACTIVE'}
+                                            onClick={() => openGame('BOMB', true)}
+                                          >
+                                            Entraînement
+                                          </Button>
+                                        </div>
+                                      </div>
+
+                                      {/* Naval Warfare card */}
+                                      <div className={cn('rounded-2xl border p-4 space-y-3',
+                                        selectedWar.status === 'ACTIVE' && (gameStatus?.naval?.shotsRemaining ?? 0) > 0
+                                          ? 'border-sky-500/30 bg-sky-500/5'
+                                          : 'border-border/40 bg-muted/10'
+                                      )}>
+                                        <div className="flex items-start justify-between gap-2">
+                                          <div>
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-xl">🎯</span>
+                                              <span className="font-medium text-sm">Guerre Navale</span>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground mt-1">Bombardez la base ennemie sur une grille 6×6</p>
+                                          </div>
+                                          {selectedWar.status === 'ACTIVE' && gameStatus?.naval && (
+                                            <Badge
+                                              variant={gameStatus.naval.shotsRemaining > 0 ? 'secondary' : 'outline'}
+                                              className="text-[10px] shrink-0"
+                                            >
+                                              {gameStatus.naval.shotsRemaining} tir(s)
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        <div className="flex flex-col gap-1.5">
+                                          <Button
+                                            size="sm"
+                                            className="w-full"
+                                            disabled={selectedWar.status !== 'ACTIVE' || (gameStatus?.naval?.shotsRemaining ?? 0) <= 0}
+                                            onClick={() => openGame('NAVAL', false)}
+                                          >
+                                            {selectedWar.status !== 'ACTIVE'
+                                              ? 'Inactif'
+                                              : (gameStatus?.naval?.shotsRemaining ?? 0) <= 0
+                                                ? 'Plus de tirs'
+                                                : 'Ouvrir la carte'}
+                                          </Button>
                                         </div>
                                       </div>
                                     </div>
-                                    {selectedWar.status === 'ACTIVE' ? (
-                                      <div className="grid gap-3 md:grid-cols-3">
-                                        {selectedClan.warHub.attackTypes.map((attack) => (
-                                          <button
-                                            key={attack.type}
-                                            type="button"
-                                            onClick={() => handleAttack(attack.type)}
-                                            disabled={!canAttack || warActionKey === `attack:${attack.type}`}
-                                            className={cn(
-                                              'rounded-2xl border px-4 py-4 text-left transition-colors hover:bg-muted/30 disabled:cursor-not-allowed disabled:opacity-60',
-                                              getAttackColor(attack.type)
-                                            )}
-                                          >
-                                            <div className="flex items-center justify-between">
-                                              <span className="font-medium">{attack.label}</span>
-                                              <Badge variant="outline">-{attack.staminaCost} end.</Badge>
-                                            </div>
-                                            <p className="mt-2 text-sm text-muted-foreground">{attack.description}</p>
-                                            <div className="mt-3 text-xs text-muted-foreground">
-                                              {attack.minPoints}-{attack.maxPoints} pts • {attack.structureDamage} dégâts structure
-                                            </div>
-                                          </button>
-                                        ))}
-                                      </div>
-                                    ) : null}
                                   </div>
                                 </div>
+
+                                {/* Rewards */}
                                 <div className={mutedPanelClassName}>
                                   <div className="space-y-3 p-4">
                                     <h3 className="font-medium">Récompenses</h3>
-                                    <div className="rounded-2xl border border-border/50 bg-emerald-500/5 p-3 text-sm">
-                                      <div className="font-medium">Victoire</div>
-                                      <div className="mt-1 text-muted-foreground">
-                                        +{selectedWar.rewardTable.winner.money} money et +{selectedWar.rewardTable.winner.aura} aura par membre.
+                                    <div className="grid gap-2 sm:grid-cols-2">
+                                      <div className="rounded-2xl border border-border/50 bg-emerald-500/5 p-3 text-sm">
+                                        <div className="font-medium">Victoire</div>
+                                        <div className="mt-1 text-muted-foreground">
+                                          +{selectedWar.rewardTable.winner.money} money et +{selectedWar.rewardTable.winner.aura} aura par membre.
+                                        </div>
                                       </div>
-                                    </div>
-                                    <div className="rounded-2xl border border-border/50 bg-background p-3 text-sm">
-                                      <div className="font-medium">Défaite / égalité</div>
-                                      <div className="mt-1 text-muted-foreground">
-                                        +{selectedWar.rewardTable.loser.money} money et +{selectedWar.rewardTable.loser.aura} aura par membre.
+                                      <div className="rounded-2xl border border-border/50 bg-background p-3 text-sm">
+                                        <div className="font-medium">Défaite / égalité</div>
+                                        <div className="mt-1 text-muted-foreground">
+                                          +{selectedWar.rewardTable.loser.money} money et +{selectedWar.rewardTable.loser.aura} aura par membre.
+                                        </div>
                                       </div>
                                     </div>
                                     {selectedWar.winnerClan ? (
@@ -1135,9 +1237,9 @@ export default function Clans() {
                                       <DefenseCard
                                         key={defense.type}
                                         defense={defense}
-                                        canFortify={canFortify}
-                                        fortifying={warActionKey === `fortify:${defense.type}`}
-                                        onFortify={() => handleFortify(defense.type)}
+                                        canFortify={false}
+                                        fortifying={false}
+                                        onFortify={() => undefined}
                                       />
                                     ))}
                                   </div>
@@ -1364,6 +1466,110 @@ export default function Clans() {
               </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Tutorial dialogs ── */}
+      {(['MEMORY', 'BOMB', 'NAVAL'] as const).map((type) => {
+        const TUTORIALS = {
+          MEMORY: {
+            title: '🧩 Jeu Mémoire — Comment jouer',
+            desc: 'Retournez les cartes pour trouver les paires. Chaque paire de défense matched améliore la structure correspondante.',
+            tips: ['16 cartes, 8 paires à trouver', '90 secondes pour tout trouver', 'Paire 🏰 = fortifie la Forteresse, ⚔️ = Armurerie, 🚩 = Bannière', 'Jouable une fois par jour (mode réel)'],
+          },
+          BOMB: {
+            title: '💣 Bombardement Aérien — Comment jouer',
+            desc: 'Votre avion survole la base ennemie. Cliquez sur le terrain pour larguer des bombes sur les bâtiments.',
+            tips: ['8 bombes par mission', '🏰 Forteresses nécessitent 2 impacts', 'Plus vous détruisez, plus vous marquez de points', 'Jouable une fois par jour (mode réel)'],
+          },
+          NAVAL: {
+            title: '🎯 Guerre Navale — Comment jouer',
+            desc: 'La carte ennemie est cachée. Cliquez sur les cases pour y envoyer un missile et révéler les bâtiments.',
+            tips: ['Grille 6×6 (36 cases possibles)', '5 tirs par membre, par guerre (total)', 'Vos coéquipiers partagent la même carte — coordonnez-vous !', 'Chaque touche rapporte des points de guerre'],
+          },
+        };
+        const t = TUTORIALS[type];
+        return (
+          <Dialog key={type} open={showTutorial === type} onOpenChange={(open) => !open && setShowTutorial(null)}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>{t.title}</DialogTitle>
+                <DialogDescription>{t.desc}</DialogDescription>
+              </DialogHeader>
+              <ul className="space-y-2">
+                {t.tips.map((tip, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    <span className="mt-0.5 text-primary shrink-0">▸</span>
+                    <span>{tip}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="flex gap-2 pt-1">
+                <Button className="flex-1" onClick={() => confirmTutorial(type)}>Jouer !</Button>
+                <Button variant="outline" onClick={() => setShowTutorial(null)}>Fermer</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        );
+      })}
+
+      {/* ── Game modals ── */}
+      <Dialog open={activeGame === 'MEMORY'} onOpenChange={(open) => !open && closeGame()}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              🧩 Jeu Mémoire
+              {gamePractice && <span className="ml-2 text-xs font-normal text-muted-foreground">(Entraînement)</span>}
+            </DialogTitle>
+            <DialogDescription>Trouvez toutes les paires pour améliorer vos défenses.</DialogDescription>
+          </DialogHeader>
+          {activeGame === 'MEMORY' && (
+            <MemoryGame
+              isPractice={gamePractice}
+              onComplete={handleMemoryComplete}
+              onClose={closeGame}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={activeGame === 'BOMB'} onOpenChange={(open) => !open && closeGame()}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              💣 Bombardement Aérien
+              {gamePractice && <span className="ml-2 text-xs font-normal text-muted-foreground">(Entraînement)</span>}
+            </DialogTitle>
+            <DialogDescription>Cliquez sur la zone de jeu pour larguer vos bombes sur la base ennemie.</DialogDescription>
+          </DialogHeader>
+          {activeGame === 'BOMB' && (
+            <BombDropGame
+              isPractice={gamePractice}
+              onComplete={handleBombComplete}
+              onClose={closeGame}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={activeGame === 'NAVAL'} onOpenChange={(open) => !open && closeGame()}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>🎯 Guerre Navale</DialogTitle>
+            <DialogDescription>
+              Ciblez les cases de la base ennemie.{' '}
+              {gameStatus?.naval ? `${gameStatus.naval.shotsRemaining} tir(s) restant(s) pour cette guerre.` : ''}
+            </DialogDescription>
+          </DialogHeader>
+          {activeGame === 'NAVAL' && gameStatus?.naval && selectedWar && (
+            <NavalWarfareGame
+              boardId={gameStatus.naval.boardId}
+              shotsRemaining={gameStatus.naval.shotsRemaining}
+              shots={gameStatus.naval.shots}
+              enemyClanName={getWarOpponent(selectedWar, selectedClan?.id ?? '').name}
+              onShoot={handleNavalShot}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </>

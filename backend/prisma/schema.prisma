@@ -86,6 +86,8 @@ model User {
   goyaveSave          GoyaveSave?
   clanWarsWon         ClanWar[]                 @relation("ClanWarWinner")
   registrationReviews RegistrationReview[]      @relation("RegistrationReviewReviewer")
+  clanWarGameLogs     ClanWarGameLog[]
+  clanWarNavalShots   ClanWarNavalShot[]
 
   // Admin Warnings
   warningsReceived    AdminWarning[]            @relation("WarningsReceived")
@@ -274,13 +276,16 @@ model Clan {
   members      ClanMember[]
   joinRequests ClanJoinRequest[]
   messages     ClanMessage[]
-  attackerWars ClanWar[]         @relation("ClanWarAttacker")
-  defenderWars ClanWar[]         @relation("ClanWarDefender")
-  wonWars      ClanWar[]         @relation("ClanWarWinnerClan")
-  warDefenses  ClanWarDefense[]
-  warAttacks   ClanWarAttack[]   @relation("ClanWarAttackSource")
-  warTargets   ClanWarAttack[]   @relation("ClanWarAttackTarget")
+  attackerWars   ClanWar[]              @relation("ClanWarAttacker")
+  defenderWars   ClanWar[]              @relation("ClanWarDefender")
+  wonWars        ClanWar[]              @relation("ClanWarWinnerClan")
+  warDefenses    ClanWarDefense[]
+  warAttacks     ClanWarAttack[]        @relation("ClanWarAttackSource")
+  warTargets     ClanWarAttack[]        @relation("ClanWarAttackTarget")
   fortifications ClanWarFortification[]
+  warGameLogs    ClanWarGameLog[]
+  navalBoards    ClanWarNavalBoard[]
+  navalShots     ClanWarNavalShot[]
 
   @@index([isPublic])
   @@index([createdAt])
@@ -355,9 +360,12 @@ model ClanWar {
   declaredBy   User   @relation("ClanWarDeclaredBy", fields: [declaredByUserId], references: [id], onDelete: Cascade)
   winnerClan   Clan?  @relation("ClanWarWinnerClan", fields: [winnerClanId], references: [id], onDelete: SetNull)
   winnerUser   User?  @relation("ClanWarWinner", fields: [winnerUserId], references: [id], onDelete: SetNull)
-  defenses     ClanWarDefense[]
-  attacks      ClanWarAttack[]
+  defenses       ClanWarDefense[]
+  attacks        ClanWarAttack[]
   fortifications ClanWarFortification[]
+  gameLogs       ClanWarGameLog[]
+  navalBoards    ClanWarNavalBoard[]
+  navalShots     ClanWarNavalShot[]
 
   @@index([attackerClanId, status])
   @@index([defenderClanId, status])
@@ -427,6 +435,66 @@ model ClanWarFortification {
 
   @@index([warId, clanId, userId])
   @@index([defenseId])
+}
+
+// ============================================
+// CLAN WAR MINI-GAMES
+// ============================================
+
+model ClanWarGameLog {
+  id            String   @id @default(uuid())
+  warId         String
+  userId        String
+  clanId        String
+  gameType      String   // "MEMORY" | "BOMB"
+  score         Int      @default(0)
+  pointsAwarded Int      @default(0)
+  isPractice    Boolean  @default(false)
+  playedAt      DateTime @default(now())
+
+  war  ClanWar @relation(fields: [warId], references: [id], onDelete: Cascade)
+  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clan Clan    @relation(fields: [clanId], references: [id], onDelete: Cascade)
+
+  @@index([warId, userId, gameType])
+  @@index([userId, gameType, playedAt])
+}
+
+model ClanWarNavalBoard {
+  id     String @id @default(uuid())
+  warId  String
+  clanId String
+  grid   String // JSON: 6x6 array of { type: string|null, hp: number }
+
+  war   ClanWar @relation(fields: [warId], references: [id], onDelete: Cascade)
+  clan  Clan    @relation(fields: [clanId], references: [id], onDelete: Cascade)
+  shots ClanWarNavalShot[]
+
+  @@unique([warId, clanId])
+  @@index([warId])
+}
+
+model ClanWarNavalShot {
+  id        String   @id @default(uuid())
+  boardId   String
+  warId     String
+  userId    String
+  clanId    String
+  x         Int
+  y         Int
+  isHit     Boolean  @default(false)
+  building  String?
+  points    Int      @default(0)
+  createdAt DateTime @default(now())
+
+  board ClanWarNavalBoard @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  war   ClanWar           @relation(fields: [warId], references: [id], onDelete: Cascade)
+  user  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clan  Clan              @relation(fields: [clanId], references: [id], onDelete: Cascade)
+
+  @@unique([boardId, x, y])
+  @@index([boardId, userId])
+  @@index([warId, clanId])
 }
 
 // Chat Messages
