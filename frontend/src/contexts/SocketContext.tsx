@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Socket } from 'socket.io-client';
 import { initSocket, connectSocket, disconnectSocket, chatEvents, partyEvents, gameEvents, bombPartyEvents, pokerEvents, petitBacEvents, duelEvents } from '../services/socket';
@@ -687,6 +687,10 @@ const SocketContext = createContext<SocketContextType | null>(null);
 export function SocketProvider({ children }: { children: React.ReactNode }) {
   const { user, updateBalance, logout } = useAuth();
   const navigate = useNavigate();
+  const navigateRef = useRef(navigate);
+  const logoutRef = useRef(logout);
+  useEffect(() => { navigateRef.current = navigate; }, [navigate]);
+  useEffect(() => { logoutRef.current = logout; }, [logout]);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [connected, setConnected] = useState(false);
   
@@ -793,9 +797,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
           expiresAt: data?.ban?.expiresAt ?? null,
           message: data?.message,
         });
-        logout();
+        logoutRef.current();
         disconnectSocket();
-        navigate('/banned', { replace: true });
+        navigateRef.current('/banned', { replace: true });
       };
 
       s.on('ban:enforced', handleBan);
@@ -930,7 +934,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
           pendingJoinRedirectPartyId === data.party.id &&
           window.location.pathname !== '/party'
         ) {
-          navigate('/party');
+          navigateRef.current('/party');
         }
         setPendingJoinRedirectPartyId(null);
         partyEvents.list();
@@ -1134,7 +1138,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setBombPartyGameOver(null);
         setBombPartyJoinPrompt(null);
         setBombPartyPlayAgainPrompt(null);
-        navigate('/games/bomb-party');
+        navigateRef.current('/games/bomb-party');
       });
 
       s.on('bombparty:typing', (data: { input: string; userId: string }) => {
@@ -1690,7 +1694,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       s.on('duel:redirect', (data: { gameType: string; partyId: string; path: string }) => {
         setIncomingDuelChallenge(null);
         setOutgoingDuelChallenge(null);
-        navigate(data.path);
+        navigateRef.current(data.path);
       });
 
       s.on('duel:matchmaking-state', (data: { isQueued: boolean }) => {
@@ -1723,7 +1727,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         s.removeAllListeners();
       };
     }
-  }, [user?.id, user?.username, logout, navigate]);
+  }, [user?.id, user?.username]);
 
   const sendMessage = (message?: string, replyToId?: string | null, imageUrl?: string | null) => {
     if (user) {
