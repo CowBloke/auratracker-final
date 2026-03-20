@@ -115,6 +115,39 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
       }
     }
     
+    const effect = parseItemEffect(item.effect);
+    const isClanTagUnlock = item.type === 'UPGRADE' && effect?.type === 'CLAN_TAG_UNLOCK';
+    let clanTagMembership: { clanId: string; isLeader: boolean } | null = null;
+
+    if (isClanTagUnlock) {
+      if (quantity !== 1) {
+        return res.status(400).json({ error: 'Le déblocage du tag de clan ne peut être acheté qu\'à l\'unité.' });
+      }
+
+      const membership = await prisma.clanMember.findUnique({
+        where: { userId: req.user.id },
+        select: { clanId: true, isLeader: true },
+      });
+      clanTagMembership = membership;
+
+      if (!membership) {
+        return res.status(400).json({ error: 'Tu dois etre dans un clan pour acheter ce tag.' });
+      }
+
+      if (!membership.isLeader) {
+        return res.status(400).json({ error: 'Seul le chef de clan peut acheter ce tag.' });
+      }
+
+      const clan = await prisma.clan.findUnique({
+        where: { id: membership.clanId },
+        select: { tagUnlocked: true },
+      });
+
+      if (clan?.tagUnlocked) {
+        return res.status(400).json({ error: 'Le tag est déjà débloqué pour ce clan.' });
+      }
+    }
+
     const totalPrice = item.price * quantity;
     
     // Check sufficient balance
@@ -122,34 +155,77 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
       return res.status(400).json({ error: 'Insufficient money' });
     }
     
-    // Purchase in transaction
-    const [updatedUser, userItem] = await prisma.$transaction([
-      prisma.user.update({
-        where: { id: req.user.id },
-        data: {
-          money: { decrement: totalPrice },
-        },
-      }),
-      prisma.userItem.upsert({
-        where: {
-          userId_itemId: {
+    let updatedUser: { money: number; aura: bigint };
+    let userItem: {
+      id: string;
+      quantity: number;
+      acquiredAt: Date;
+      item: typeof item;
+    } | null = null;
+
+    if (isClanTagUnlock) {
+      if (!clanTagMembership) {
+        return res.status(400).json({ error: 'Tu dois etre dans un clan pour acheter ce tag.' });
+      }
+
+      const txResult = await prisma.$transaction(async (tx) => {
+        const nextUser = await tx.user.update({
+          where: { id: req.user.id },
+          data: {
+            money: { decrement: totalPrice },
+          },
+          select: {
+            aura: true,
+            money: true,
+          },
+        });
+
+        await tx.clan.update({
+          where: { id: clanTagMembership.clanId },
+          data: { tagUnlocked: true },
+        });
+
+        return nextUser;
+      });
+
+      updatedUser = txResult;
+    } else {
+      // Purchase regular item into inventory.
+      const txResult = await prisma.$transaction([
+        prisma.user.update({
+          where: { id: req.user.id },
+          data: {
+            money: { decrement: totalPrice },
+          },
+          select: {
+            aura: true,
+            money: true,
+          },
+        }),
+        prisma.userItem.upsert({
+          where: {
+            userId_itemId: {
+              userId: req.user.id,
+              itemId,
+            },
+          },
+          create: {
             userId: req.user.id,
             itemId,
+            quantity,
           },
-        },
-        create: {
-          userId: req.user.id,
-          itemId,
-          quantity,
-        },
-        update: {
-          quantity: { increment: quantity },
-        },
-        include: {
-          item: true,
-        },
-      }),
-    ]);
+          update: {
+            quantity: { increment: quantity },
+          },
+          include: {
+            item: true,
+          },
+        }),
+      ]);
+
+      updatedUser = txResult[0];
+      userItem = txResult[1];
+    }
     
     // Log purchase
     logMarketplace('item_purchase', req.user.id, user.username, {
@@ -177,6 +253,7 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
     res.json({
       success: true,
       item: userItem,
+      effect: isClanTagUnlock ? { type: 'CLAN_TAG_UNLOCK' } : null,
       newBalance: {
         aura: updatedUser.aura,
         money: updatedUser.money,

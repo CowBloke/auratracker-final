@@ -1007,12 +1007,13 @@ export default function Racer() {
       setScore(lapTime);
 
       const lapTimeMs = Math.max(1, Math.round(lapTime * 1000));
+      const preciseLapSeconds = lapTimeMs / 1000;
       const roundedLapSeconds = Math.max(1, Math.round(lapTime));
 
       try {
         const [rewardResponse, dailyResponse] = await Promise.all([
           gamesApi.complete('racer', {
-            score: roundedLapSeconds,
+            score: preciseLapSeconds,
             won: true,
             duration: roundedLapSeconds,
           }),
@@ -1335,7 +1336,7 @@ export default function Racer() {
         </div>
       </div>
 
-      <div className={cn('flex justify-center items-start gap-6', isFullscreen && 'min-h-screen')}>
+      <div className={cn('flex flex-col items-center gap-6 2xl:flex-row 2xl:items-start', isFullscreen && 'min-h-screen')}>
         <div
           ref={gameContainerRef}
           className={cn('flex flex-col gap-3', isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4')}
@@ -1400,14 +1401,19 @@ export default function Racer() {
           </GameFullscreenStage>
         </div>
 
-        <div className={cn('w-80 border border-border/30 rounded-lg bg-card overflow-hidden shadow-sm', isFullscreen && 'hidden')} style={{ height: HEIGHT }}>
+        <div
+          className={cn(
+            'w-full max-w-[1024px] border border-border/30 rounded-lg bg-card overflow-hidden shadow-sm 2xl:w-80 2xl:max-w-none',
+            isFullscreen && 'hidden'
+          )}
+        >
           <div className="p-4 border-b border-border/30 bg-muted/30">
             <div className="flex items-center gap-2">
               <Trophy className="w-5 h-5 text-yellow-500" />
               <h3 className="text-base font-semibold">Classement quotidien</h3>
             </div>
           </div>
-          <div className="overflow-y-auto" style={{ height: HEIGHT - 60 }}>
+          <div className="max-h-[420px] overflow-y-auto 2xl:max-h-[708px]">
             {leaderboard.length === 0 ? (
               <div className="p-4 text-center text-muted-foreground text-sm">Aucun temps enregistre aujourd'hui</div>
             ) : (

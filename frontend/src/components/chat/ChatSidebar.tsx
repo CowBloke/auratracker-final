@@ -391,7 +391,7 @@ export default function ChatSidebar() {
                   >
                     <div
                       className={cn(
-                        "max-w-[90%] px-3 py-2 rounded-lg",
+                        "max-w-[90%] min-w-0 px-3 py-2 rounded-lg",
                         isSystemMessage
                           ? 'border border-amber-500/30 bg-amber-500/10'
                           : msg.userId === user?.id

@@ -246,6 +246,7 @@ export default function Game2048() {
   const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [leaderboard, setLeaderboard] = useState<GameLeaderboardEntry[]>([]);
   const [won, setWon] = useState(false);
+  const [showWinMessage, setShowWinMessage] = useState(false);
 
   const tilesRef = useRef<Tile[]>(tiles);
   const scoreRef = useRef(0);
@@ -305,6 +306,7 @@ export default function Game2048() {
     setRewards(null);
     setIsNewHighScore(false);
     setWon(false);
+    setShowWinMessage(false);
   }, []);
   
   // Handle game over
@@ -358,6 +360,7 @@ export default function Game2048() {
         // Check for win (2048 tile)
         if (!won && getHighestTile(withNewTile) >= 2048) {
           setWon(true);
+          setShowWinMessage(true);
         }
 
         // Check for game over
@@ -530,23 +533,25 @@ export default function Game2048() {
           </div>
 
           {/* Tiles */}
-          <div className="absolute inset-0 p-2.5">
+          <div className="absolute inset-2">
             {tiles.map((tile) => {
-              const x = tile.col * (CELL_SIZE + CELL_GAP);
-              const y = tile.row * (CELL_SIZE + CELL_GAP);
+              const responsiveCellSize = `calc(${100 / GRID_SIZE}% - ${((GRID_SIZE - 1) * CELL_GAP) / GRID_SIZE}px)`;
+              const left = `calc(${tile.col * (100 / GRID_SIZE)}% + ${tile.col * (CELL_GAP / GRID_SIZE)}px)`;
+              const top = `calc(${tile.row * (100 / GRID_SIZE)}% + ${tile.row * (CELL_GAP / GRID_SIZE)}px)`;
               return (
                 <div
                   key={tile.id}
                   className={cn(
                     'absolute rounded flex items-center justify-center font-bold',
-                    'transition-transform duration-150 ease-out',
+                    'transition-all duration-150 ease-out',
                     tile.isNew && 'animate-tile-appear',
                     tile.isMerged && 'animate-tile-merge'
                   )}
                   style={{
-                    width: CELL_SIZE,
-                    height: CELL_SIZE,
-                    transform: `translate(${x}px, ${y}px)`,
+                    top,
+                    left,
+                    width: responsiveCellSize,
+                    height: responsiveCellSize,
                     backgroundColor: getTileColor(tile.value, theme),
                     color: getTextColor(tile.value, theme),
                     fontSize: tile.value >= 1024 ? '1.5rem' : tile.value >= 128 ? '1.75rem' : '2rem',
@@ -574,14 +579,14 @@ export default function Game2048() {
           )}
 
           {/* Win Screen */}
-          {won && !gameOver && (
+          {showWinMessage && !gameOver && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg">
               <div className="text-center space-y-4 bg-card border border-border/50 rounded-lg p-6">
                 <h2 className="text-2xl font-light">Tu as atteint 2048 !</h2>
                 <p className="text-sm text-muted-foreground">Continue pour un meilleur score</p>
                 <Button
                   variant="ghost"
-                  onClick={() => setWon(false)}
+                  onClick={() => setShowWinMessage(false)}
                   className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
                 >
                   Continuer

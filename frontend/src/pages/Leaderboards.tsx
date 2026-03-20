@@ -192,13 +192,14 @@ export default function Leaderboards() {
   };
 
   const formatTime = (seconds: number): string => {
-    const minutes = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds - minutes * 60);
-    const tenths = Math.floor(10 * (seconds - Math.floor(seconds)));
+    const totalMs = Math.max(0, Math.round(seconds * 1000));
+    const minutes = Math.floor(totalMs / 60000);
+    const secs = Math.floor((totalMs % 60000) / 1000);
+    const milliseconds = totalMs % 1000;
     if (minutes > 0) {
-      return `${minutes}.${secs < 10 ? '0' : ''}${secs}.${tenths}`;
+      return `${minutes}:${secs.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
     } else {
-      return `${secs}.${tenths}`;
+      return `${secs}.${milliseconds.toString().padStart(3, '0')}`;
     }
   };
 

@@ -13,7 +13,8 @@ const SAVE_KEY = 'goyave_empire_save';
 const TICK_INTERVAL_MS = 200;
 const OFFLINE_THRESHOLD_MS = 30_000;
 const COST_SCALE = 1.15;
-const DB_SAVE_INTERVAL_MS = 60_000; // Save to DB every 60 seconds
+const DB_SAVE_INTERVAL_MS = 30_000; // Safety net autosave to DB every 30 seconds
+const DB_SAVE_DEBOUNCE_MS = 3_000; // Save shortly after meaningful state changes
 
 // ---- Types ----
 type UpgradeTarget = 'click' | 'tree' | 'picker' | 'garden' | 'orchard' | 'factory' | 'plantation' | 'lab' | 'rocket' | 'dimension';
@@ -149,7 +150,27 @@ function rewardPreviewText(totalGuavas: number): string {
   if (totalGuavas < 100000)    return 'Récompense: $60 + 8 aura';
   if (totalGuavas < 1000000)   return 'Récompense: $150 + 20 aura';
   if (totalGuavas < 10000000)  return 'Récompense: $400 + 50 aura';
-  return 'Récompense: $1000 + 100 aura';
+
+  const topTierMinScore = 10_000_000;
+  const maxScoreForScaling = 100_000_000_000_000;
+  const maxMoneyReward = 2000;
+  const maxAuraReward = 200;
+  const clampedScore = Math.min(totalGuavas, maxScoreForScaling);
+  const progress = (clampedScore - topTierMinScore) / (maxScoreForScaling - topTierMinScore);
+
+  const curveStrength = 5;
+  const scaledProgress = (1 - Math.exp(-curveStrength * progress)) / (1 - Math.exp(-curveStrength));
+
+  const moneyReward = Math.min(
+    maxMoneyReward,
+    Math.round(1000 + (maxMoneyReward - 1000) * scaledProgress)
+  );
+  const auraReward = Math.min(
+    maxAuraReward,
+    Math.round(100 + (maxAuraReward - 100) * scaledProgress)
+  );
+
+  return `Récompense: $${moneyReward.toLocaleString('fr-FR')} + ${auraReward.toLocaleString('fr-FR')} aura`;
 }
 
 function defaultSave(): SaveState {
@@ -199,6 +220,7 @@ export default function GoyaveEmpire() {
 
   const saveRef = useRef<SaveState>(save);
   saveRef.current = save;
+  const hasInitializedRef = useRef(false);
 
   const saveToDb = useCallback(async (state: SaveState) => {
     try {
@@ -208,7 +230,7 @@ export default function GoyaveEmpire() {
     }
   }, []);
 
-  // Load from DB on mount, fallback to localStorage
+  // Load from localStorage + DB on mount, keep the freshest snapshot.
   useEffect(() => {
     const init = async () => {
       let loaded = loadSave();
@@ -217,7 +239,10 @@ export default function GoyaveEmpire() {
         if (res.data.saveData) {
           const dbSave = JSON.parse(res.data.saveData) as SaveState;
           const def = defaultSave();
-          loaded = { ...def, ...dbSave, buildings: { ...def.buildings, ...(dbSave.buildings ?? {}) } };
+          const normalizedDb = { ...def, ...dbSave, buildings: { ...def.buildings, ...(dbSave.buildings ?? {}) } };
+          const localLastTick = Number.isFinite(loaded.lastTick) ? loaded.lastTick : 0;
+          const dbLastTick = Number.isFinite(normalizedDb.lastTick) ? normalizedDb.lastTick : 0;
+          loaded = dbLastTick > localLastTick ? normalizedDb : loaded;
           persistSave(loaded);
         }
       } catch {
@@ -239,6 +264,7 @@ export default function GoyaveEmpire() {
       }
       const updated = { ...loaded, lastTick: now };
       setSave(updated);
+      hasInitializedRef.current = true;
       persistSave(updated);
     };
 
@@ -252,6 +278,38 @@ export default function GoyaveEmpire() {
       saveToDb(saveRef.current);
     }, DB_SAVE_INTERVAL_MS);
     return () => clearInterval(interval);
+  }, [saveToDb]);
+
+  // Save to DB shortly after state changes to reduce data loss windows.
+  useEffect(() => {
+    if (!hasInitializedRef.current) return;
+    const timeout = setTimeout(() => {
+      saveToDb(save);
+    }, DB_SAVE_DEBOUNCE_MS);
+    return () => clearTimeout(timeout);
+  }, [save, saveToDb]);
+
+  // Best-effort flush when tab is hidden or page is unloading.
+  useEffect(() => {
+    const flushSave = () => {
+      if (hasInitializedRef.current) {
+        saveToDb(saveRef.current);
+      }
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        flushSave();
+      }
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('pagehide', flushSave);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('pagehide', flushSave);
+    };
   }, [saveToDb]);
 
   // Game tick

@@ -12,6 +12,7 @@ import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 import { ArrowDown, ArrowUp, Gamepad2, Play, RotateCcw, Wind } from 'lucide-react';
+import { toast } from 'sonner';
 
 const GAME_TYPE = 'chrome_dino';
 const CANVAS_WIDTH = 960;
@@ -137,6 +138,7 @@ const palettes: Record<'light' | 'dark', Palette> = {
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const rectsOverlap = (
   a: { left: number; right: number; top: number; bottom: number },
@@ -333,25 +335,40 @@ export default function ChromeDino() {
   const submitScore = useCallback(async () => {
     const finalScore = scoreRef.current;
 
-    try {
-      const response = await gamesApi.complete(GAME_TYPE, {
-        score: finalScore,
-        won: true,
-      });
+    const maxAttempts = 3;
+    let lastError: unknown = null;
 
-      setRewards({
-        aura: response.data.auraReward,
-        money: response.data.moneyReward,
-      });
-      setIsNewHighScore(response.data.isNewHighScore);
-      if (response.data.isNewHighScore) {
-        setHighScore(finalScore);
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        const response = await gamesApi.complete(GAME_TYPE, {
+          score: finalScore,
+          won: true,
+        });
+
+        setRewards({
+          aura: response.data.auraReward,
+          money: response.data.moneyReward,
+        });
+        setIsNewHighScore(response.data.isNewHighScore);
+        if (response.data.isNewHighScore) {
+          setHighScore(finalScore);
+        }
+        await refreshUser();
+        fetchLeaderboard();
+        return;
+      } catch (error) {
+        lastError = error;
+        if (attempt < maxAttempts) {
+          await wait(300 * attempt);
+        }
       }
-      await refreshUser();
-      fetchLeaderboard();
-    } catch (error) {
-      console.error('Failed to submit chrome dino score:', error);
     }
+
+    console.error('Failed to submit chrome dino score after retries:', lastError);
+    toast('Run non comptabilise', {
+      description: 'La recompense n\'a pas pu etre enregistree. Rejoue une run dans quelques secondes.',
+      duration: 4500,
+    });
   }, [fetchLeaderboard, refreshUser]);
 
   const endGame = useCallback(() => {
@@ -758,7 +775,7 @@ export default function ChromeDino() {
 
   return (
     <PageShell size="wide">
-      <div className={cn('grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)_280px]', isFullscreen && 'xl:grid-cols-1')}>
+      <div className={cn('grid gap-6 2xl:grid-cols-[280px_minmax(0,1fr)_280px]', isFullscreen && '2xl:grid-cols-1')}>
         <div className={cn('space-y-4', isFullscreen && 'hidden')}>
           <Card>
             <CardHeader className="px-4 py-3">
@@ -908,14 +925,16 @@ export default function ChromeDino() {
           </div>
         </div>
 
-        <GameLeaderboard
-          entries={leaderboard}
-          currentUserId={user?.id}
-          isAdmin={user?.isAdmin}
-          onDeleteScore={handleDeleteScore}
-          maxHeight={540}
-          hidden={isFullscreen}
-        />
+        <div className={cn('w-full', !isFullscreen && '2xl:max-w-[280px]')}>
+          <GameLeaderboard
+            entries={leaderboard}
+            currentUserId={user?.id}
+            isAdmin={user?.isAdmin}
+            onDeleteScore={handleDeleteScore}
+            maxHeight={540}
+            hidden={isFullscreen}
+          />
+        </div>
       </div>
     </PageShell>
   );

@@ -257,28 +257,36 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const markRead = useCallback(async (id: string) => {
     try {
       const res = await notificationsApi.markRead(id);
-      if (!socketRef.current?.connected) {
-        const previous = notificationsRef.current.find((item) => item.id === id);
-        applyNotificationUpdate(res.data.notification);
-        if (previous && !previous.isRead) {
-          setUnreadCount((current) => Math.max(0, current - 1));
-        }
+      const previous = notificationsRef.current.find((item) => item.id === id)
+        ?? archivedNotificationsRef.current.find((item) => item.id === id);
+
+      applyNotificationUpdate(res.data.notification);
+
+      if (previous && !previous.isRead && (res.data.notification.isRead || res.data.notification.isArchived)) {
+        setUnreadCount((current) => Math.max(0, current - 1));
       }
-    } catch { /* silent */ }
-  }, [applyNotificationUpdate]);
+
+      void refreshCount();
+    } catch {
+      toast.error('Impossible de marquer la notification comme lue.');
+    }
+  }, [applyNotificationUpdate, refreshCount]);
 
   const markAllRead = useCallback(async () => {
     try {
       await notificationsApi.markAllRead();
-      if (!socketRef.current?.connected) {
-        const readAt = new Date().toISOString();
-        setNotifications((prev) => prev.map((item) => (
-          item.isRead ? item : { ...item, isRead: true, readAt }
-        )));
-        setUnreadCount(0);
-      }
-    } catch { /* silent */ }
-  }, []);
+
+      const readAt = new Date().toISOString();
+      setNotifications((prev) => prev.map((item) => (
+        item.isRead ? item : { ...item, isRead: true, readAt }
+      )));
+      setUnreadCount(0);
+
+      void refreshCount();
+    } catch {
+      toast.error('Impossible de marquer toutes les notifications comme lues.');
+    }
+  }, [refreshCount]);
 
   const archiveNotification = useCallback(async (id: string) => {
     try {

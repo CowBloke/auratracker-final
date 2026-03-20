@@ -151,7 +151,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                   >
                     <div
                       className={cn(
-                        "max-w-[70%] px-3 py-2 rounded-lg relative",
+                        "max-w-[70%] min-w-0 px-3 py-2 rounded-lg relative",
                         msg.userId === user?.id
                           ? 'bg-foreground/10'
                           : 'bg-muted'
@@ -249,7 +249,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                           )}
                         </div>
                       </div>
-                      <p className="text-sm">{msg.message}</p>
+                      <p className="text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{msg.message}</p>
                       {msg.reactions.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1">
                           {msg.reactions.map((reaction) => (

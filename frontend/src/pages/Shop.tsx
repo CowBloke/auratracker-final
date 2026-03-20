@@ -678,25 +678,33 @@ export default function Shop() {
     try {
       const response = await marketplaceApi.purchase({ itemId: item.id, quantity: 1 });
       updateBalance(response.data.newBalance.aura, response.data.newBalance.money);
-      setInventoryItems(prev => {
-        if (prev.some(entry => entry.item.id === item.id)) return prev;
-        return [
-          {
-            id: response.data.item.id,
-            quantity: response.data.item.quantity,
-            acquiredAt: response.data.item.acquiredAt,
-            item: response.data.item.item,
-          },
-          ...prev,
-        ];
-      });
+      if (response.data.item) {
+        setInventoryItems(prev => {
+          if (prev.some(entry => entry.item.id === item.id)) return prev;
+          return [
+            {
+              id: response.data.item.id,
+              quantity: response.data.item.quantity,
+              acquiredAt: response.data.item.acquiredAt,
+              item: response.data.item.item,
+            },
+            ...prev,
+          ];
+        });
+      }
+
+      const isClanTagUnlock = response.data.effect?.type === 'CLAN_TAG_UNLOCK';
       const isDj = parseEffectType(item.effect) === 'DOODLE_JUMP_SKIN';
       toast.success(
-        isDj
+        isClanTagUnlock
+          ? 'Tag de clan debloque !'
+          : isDj
           ? `Skin "${item.name}" débloqué !`
           : 'Achat confirme',
         {
-          description: isDj
+          description: isClanTagUnlock
+            ? 'Le tag est maintenant actif pour ton clan. Va dans Clans pour le personnaliser.'
+            : isDj
             ? 'Disponible dans Doodle Jump.'
             : `${item.name} a ete ajoute a ton inventaire.`,
         },

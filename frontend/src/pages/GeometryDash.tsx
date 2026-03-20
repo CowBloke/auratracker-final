@@ -697,7 +697,7 @@ export default function GeometryDash() {
 
   return (
     <PageShell size="wide">
-      <div className={cn('grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)_280px]', isFullscreen && 'xl:grid-cols-1')}>
+      <div className={cn('grid gap-6 2xl:grid-cols-[280px_minmax(0,1fr)_280px]', isFullscreen && '2xl:grid-cols-1')}>
         <div className={cn('space-y-4', isFullscreen && 'hidden')}>
           <Card>
             <CardHeader className="px-4 py-3">
@@ -824,14 +824,16 @@ export default function GeometryDash() {
           </GameFullscreenStage>
         </div>
 
-        <GameLeaderboard
-          entries={leaderboard}
-          currentUserId={user?.id}
-          isAdmin={user?.isAdmin}
-          onDeleteScore={handleDeleteScore}
-          maxHeight={540}
-          hidden={isFullscreen}
-        />
+        <div className={cn('w-full', !isFullscreen && '2xl:max-w-[280px]')}>
+          <GameLeaderboard
+            entries={leaderboard}
+            currentUserId={user?.id}
+            isAdmin={user?.isAdmin}
+            onDeleteScore={handleDeleteScore}
+            maxHeight={540}
+            hidden={isFullscreen}
+          />
+        </div>
       </div>
     </PageShell>
   );

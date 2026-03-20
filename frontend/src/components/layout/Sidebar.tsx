@@ -95,6 +95,7 @@ const gameItems = [
   { to: '/games/2048', label: '2048', icon: Gamepad2 },
   { to: '/games/flappy-bird', label: 'Flappy Bird', icon: Gamepad2 },
   { to: '/games/chrome-dino', label: 'Chrome Dino', icon: Gamepad2 },
+  { to: '/games/geometry-dash', label: 'Geometry Dash', icon: Gamepad2 },
   { to: '/games/casino', label: 'Casino', icon: Dices },
   { to: '/games/aura-coin', label: 'Aura Coin', icon: Coins },
   { to: '/games/solitaire', label: 'Solitaire', icon: Layers },

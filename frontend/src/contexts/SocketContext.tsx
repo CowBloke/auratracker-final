@@ -1098,6 +1098,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setBombPartyGameOver(null);
         setBombPartyJoinPrompt(null);
         setBombPartyPlayAgainPrompt(null);
+        navigate('/games/bomb-party');
       });
 
       s.on('bombparty:typing', (data: { input: string; userId: string }) => {

@@ -44,6 +44,7 @@ export type AutoConditionKey =
   | 'GENEROUS'                // gifted something to someone
   | 'BUG_REPORTER'            // reported a bug
   | 'PUISSANCE_4_WIN'         // won a game of puissance 4
+  | 'BALL_ARENA_WIN'          // won a game of ball arena
   | 'POLYMARKET_SUGGESTION_ACCEPTED' // suggestion polymarket acceptée
   | 'POLYMARKET_BETTOR'       // a placé un pari polymarket
   | 'POLYMARKET_WIN';         // a gagné un pari polymarket
@@ -453,6 +454,15 @@ const getQualifyingUserIds = async (key: string): Promise<Set<string>> => {
   if (key === 'PUISSANCE_4_WIN') {
     const stats = await prisma.gameStats.findMany({
       where: { gameType: 'puissance_4', wins: { gte: 1 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  // BALL_ARENA_WIN – won at least one game of ball arena
+  if (key === 'BALL_ARENA_WIN') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'ball_arena', wins: { gte: 1 } },
       select: { userId: true },
     });
     return new Set(stats.map((s) => s.userId));

@@ -471,7 +471,26 @@ function calculateGoyaveEmpireRewards(score: number, isNewHighScore: boolean): {
     }
   }
 
+  let moneyReward = selectedTier.moneyReward;
   let auraReward = selectedTier.auraBonus;
+
+  const topTier = config.scoreTiers[config.scoreTiers.length - 1];
+  if (score > topTier.minScore) {
+    // Diminishing returns above top tier with a hard cap at 100T guavas.
+    const maxScoreForScaling = 100_000_000_000_000;
+    const maxMoneyReward = 2000;
+    const maxAuraReward = 200;
+    const clampedScore = Math.min(score, maxScoreForScaling);
+    const progress = (clampedScore - topTier.minScore) / (maxScoreForScaling - topTier.minScore);
+
+    // Normalized inverse-exponential curve to gain less and less near the cap.
+    const curveStrength = 5;
+    const scaledProgress = (1 - Math.exp(-curveStrength * progress)) / (1 - Math.exp(-curveStrength));
+
+    moneyReward = Math.round(topTier.moneyReward + (maxMoneyReward - topTier.moneyReward) * scaledProgress);
+    auraReward = Math.round(topTier.auraBonus + (maxAuraReward - topTier.auraBonus) * scaledProgress);
+  }
+
   if (isNewHighScore) {
     const tierIndex = config.scoreTiers.indexOf(selectedTier);
     const tierFraction = tierIndex / (config.scoreTiers.length - 1);
@@ -481,7 +500,10 @@ function calculateGoyaveEmpireRewards(score: number, isNewHighScore: boolean): {
     auraReward += bonus;
   }
 
-  return { money: selectedTier.moneyReward, aura: auraReward };
+  moneyReward = Math.min(moneyReward, 2000);
+  auraReward = Math.min(auraReward, 200);
+
+  return { money: moneyReward, aura: auraReward };
 }
 
 // Calculate rewards for Tetris based on score
@@ -887,6 +909,22 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       } else if (won && score >= bet * config.bigWinMultiplier) {
         auraReward = config.auraForBigWin;
       }
+    }
+
+    // Defensive fallback: eligible Chrome Dino runs should never end with 0/0 rewards.
+    if (
+      gameType === 'chrome_dino'
+      && score >= GAME_REWARDS.chrome_dino.minScoreForReward
+      && moneyReward <= 0
+      && auraReward <= 0
+    ) {
+      moneyReward = GAME_REWARDS.chrome_dino.scoreTiers[1]?.moneyReward ?? 1;
+      auraReward = GAME_REWARDS.chrome_dino.scoreTiers[1]?.auraBonus ?? 1;
+      logGame('reward_fallback', req.user.id, currentUser.username, {
+        gameType,
+        score,
+        reason: 'chrome_dino_zero_reward_guard',
+      });
     }
     
     // Update stats and user balance in transaction

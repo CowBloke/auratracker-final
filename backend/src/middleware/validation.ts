@@ -93,7 +93,7 @@ export const adminRareActionSchema = z.discriminatedUnion('action', [
 
 // Game schemas
 export const gameCompleteSchema = z.object({
-  score: z.number().int().min(0),
+  score: z.number().min(0),
   won: z.boolean(),
   duration: z.number().int().min(0).optional(),
   bet: z.number().int().min(0).optional(),
