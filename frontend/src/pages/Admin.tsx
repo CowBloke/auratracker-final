@@ -270,6 +270,17 @@ const formatGameTypeLabel = (gameType: unknown): string => {
   return GAME_TYPE_LABELS[normalized] || (normalized ? normalized.replace(/_/g, ' ') : 'Jeu');
 };
 
+const formatDurationShort = (totalSeconds: number): string => {
+  if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) return '0s';
+  const rounded = Math.round(totalSeconds);
+  const hours = Math.floor(rounded / 3600);
+  const minutes = Math.floor((rounded % 3600) / 60);
+  const seconds = rounded % 60;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+};
+
 const getGameDisplayInfo = (log: ActivityLog): { gameType: string; gameLabel: string; isMultiplayer: boolean } => {
   const metadata = log.metadata || {};
   const metadataGameType = typeof metadata.gameType === 'string' ? metadata.gameType : '';
@@ -2377,6 +2388,13 @@ export default function Admin() {
   })) ?? [];
   const gameBreakdownKeys = activityBreakdown?.topGames.map((entry) => entry.gameType) ?? [];
   const gameBreakdownData: ActivityBreakdownChartPoint[] = activityBreakdown?.gameSeries.map((entry) => ({
+    hour: entry.hour,
+    hourLabel: entry.hourLabel,
+    total: entry.total,
+    ...entry.values,
+  })) ?? [];
+  const gameDurationBreakdownKeys = activityBreakdown?.topGameDurations.map((entry) => entry.gameType) ?? [];
+  const gameDurationBreakdownData: ActivityBreakdownChartPoint[] = activityBreakdown?.gameDurationSeries.map((entry) => ({
     hour: entry.hour,
     hourLabel: entry.hourLabel,
     total: entry.total,
@@ -6255,6 +6273,92 @@ export default function Admin() {
                 ) : (
                   <p className="py-12 text-center text-sm text-muted-foreground">
                     Aucun log de jeu disponible pour cette date.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/40">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <CalendarRange className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-semibold text-sm">Temps passé par jeu</span>
+                </div>
+                <CardDescription>
+                  Durée cumulée des parties par heure (sur la date choisie).
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {loadingActivityBreakdown && !activityBreakdown ? (
+                  <div className="flex justify-center py-16">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : gameDurationBreakdownKeys.length > 0 ? (
+                  <>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={gameDurationBreakdownData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                        <XAxis
+                          dataKey="hourLabel"
+                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                          axisLine={false}
+                          tickLine={false}
+                          interval={1}
+                        />
+                        <YAxis
+                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={44}
+                          tickFormatter={(value: number) => `${Math.round(value / 60)}m`}
+                        />
+                        <RechartsTooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--background))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '0.75rem',
+                          }}
+                          formatter={(value: number, name: string) => [
+                            formatDurationShort(value),
+                            GAME_TYPE_LABELS[name] ?? humanizeUiLabel(name),
+                          ]}
+                          labelFormatter={(label) => `${label}`}
+                        />
+                        <Legend
+                          formatter={(value) => GAME_TYPE_LABELS[value] ?? humanizeUiLabel(value)}
+                          wrapperStyle={{ fontSize: '12px' }}
+                        />
+                        {gameDurationBreakdownKeys.map((gameType: string, index: number) => (
+                          <Bar
+                            key={gameType}
+                            dataKey={gameType}
+                            stackId="durations"
+                            fill={ACTIVITY_BREAKDOWN_COLORS[index % ACTIVITY_BREAKDOWN_COLORS.length]}
+                            radius={index === gameDurationBreakdownKeys.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                            isAnimationActive={false}
+                          />
+                        ))}
+                      </BarChart>
+                    </ResponsiveContainer>
+
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {activityBreakdown?.topGameDurations.map((entry, index) => (
+                        <div key={entry.gameType} className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/10 px-3 py-2 text-xs">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <span
+                              className="h-2.5 w-2.5 rounded-full"
+                              style={{ backgroundColor: ACTIVITY_BREAKDOWN_COLORS[index % ACTIVITY_BREAKDOWN_COLORS.length] }}
+                            />
+                            <span className="truncate">{GAME_TYPE_LABELS[entry.gameType] ?? humanizeUiLabel(entry.gameType)}</span>
+                          </div>
+                          <span className="tabular-nums text-muted-foreground">{formatDurationShort(entry.totalSeconds)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <p className="py-12 text-center text-sm text-muted-foreground">
+                    Aucune durée de partie exploitable pour cette date.
                   </p>
                 )}
               </CardContent>

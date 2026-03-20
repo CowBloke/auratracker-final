@@ -26,6 +26,7 @@ interface ChessPlayer {
 interface ChessGame {
   partyId: string;
   players: ChessPlayer[];
+  spectators: Set<string>;
   engine: Chess;
   phase: 'playing' | 'finished';
   winnerId: string | null;
@@ -65,12 +66,15 @@ interface PendingPlayAgainPrompt {
 
 const activeGames = new Map<string, ChessGame>();
 const playerSockets = new Map<string, string>();
+const chessSpectatorPartyBySocket = new Map<string, string>();
 const pendingJoinPrompts = new Map<string, PendingJoinPrompt>();
 const pendingPlayAgainPrompts = new Map<string, PendingPlayAgainPrompt>();
 const JOIN_PROMPT_TIMEOUT = 10000;
 const PLAY_AGAIN_TIMEOUT = 20000;
 
 const GAME_TIME_MS = 10 * 60 * 1000; // 10 minutes per player
+
+const getChessSpectateRoom = (partyId: string) => `chess:spectate:${partyId}`;
 
 function getCapturedPieces(engine: Chess) {
   const history = engine.history({ verbose: true });
@@ -104,7 +108,10 @@ function getCurrentPlayer(game: ChessGame) {
   return game.players.find((player) => player.color === game.engine.turn()) ?? null;
 }
 
-function getLegalMoves(game: ChessGame, userId: string) {
+function getLegalMoves(game: ChessGame, userId?: string) {
+  if (!userId) {
+    return {} as Record<string, string[]>;
+  }
   const currentPlayer = getCurrentPlayer(game);
   if (game.phase !== 'playing' || currentPlayer?.userId !== userId) {
     return {} as Record<string, string[]>;
@@ -121,7 +128,7 @@ function getLegalMoves(game: ChessGame, userId: string) {
   }, {});
 }
 
-function serializeState(game: ChessGame, userId: string) {
+function serializeState(game: ChessGame, userId?: string) {
   const { timeWhite, timeBlack } = calculateTimers(game);
   return {
     partyId: game.partyId,
@@ -147,12 +154,74 @@ function serializeState(game: ChessGame, userId: string) {
   };
 }
 
+function emitChessSpectateSessions(io: Server) {
+  const sessions = Array.from(activeGames.values()).map((game) => ({
+    partyId: game.partyId,
+    players: game.players.map((player) => ({
+      userId: player.userId,
+      username: player.username,
+      usernameColor: player.usernameColor,
+      color: player.color,
+    })),
+    spectatorCount: game.spectators.size,
+    phase: game.phase,
+  }));
+  io.emit('chess:spectate-sessions', { sessions });
+}
+
+function emitChessSpectatorCount(game: ChessGame, io: Server) {
+  const payload = {
+    partyId: game.partyId,
+    spectatorCount: game.spectators.size,
+  };
+  io.to(getChessSpectateRoom(game.partyId)).emit('chess:spectator-count', payload);
+  for (const player of game.players) {
+    const socketId = playerSockets.get(player.userId);
+    if (!socketId) continue;
+    io.to(socketId).emit('chess:spectator-count', payload);
+  }
+}
+
+function removeChessSpectator(io: Server, spectatorSocketId: string) {
+  const partyId = chessSpectatorPartyBySocket.get(spectatorSocketId);
+  if (!partyId) return;
+
+  chessSpectatorPartyBySocket.delete(spectatorSocketId);
+  const game = activeGames.get(partyId);
+  if (!game) return;
+
+  game.spectators.delete(spectatorSocketId);
+  const spectatorSocket = io.sockets.sockets.get(spectatorSocketId);
+  spectatorSocket?.leave(getChessSpectateRoom(partyId));
+
+  emitChessSpectatorCount(game, io);
+  emitChessSpectateSessions(io);
+}
+
+function stopChessSpectateForGame(io: Server, partyId: string) {
+  const game = activeGames.get(partyId);
+  if (!game) return;
+
+  io.to(getChessSpectateRoom(partyId)).emit('chess:spectate-stopped', { partyId });
+  for (const spectatorSocketId of game.spectators) {
+    chessSpectatorPartyBySocket.delete(spectatorSocketId);
+    const spectatorSocket = io.sockets.sockets.get(spectatorSocketId);
+    spectatorSocket?.leave(getChessSpectateRoom(partyId));
+  }
+  game.spectators.clear();
+}
+
 function emitState(game: ChessGame, io: Server) {
   for (const player of game.players) {
     const socketId = playerSockets.get(player.userId);
     if (!socketId) continue;
     io.to(socketId).emit('chess:state', serializeState(game, player.userId));
   }
+
+  io.to(getChessSpectateRoom(game.partyId)).emit('chess:spectate-state', {
+    partyId: game.partyId,
+    state: serializeState(game),
+  });
 }
 
 async function endGame(game: ChessGame, io: Server, winnerId: string | null, result: ChessResult) {
@@ -318,7 +387,9 @@ async function endGame(game: ChessGame, io: Server, winnerId: string | null, res
     responses: [],
   });
 
+  stopChessSpectateForGame(io, game.partyId);
   activeGames.delete(game.partyId);
+  emitChessSpectateSessions(io);
 }
 
 function createGame(partyId: string, members: Array<{ user: { id: string; username: string; usernameColor?: string | null } }>) {
@@ -341,6 +412,7 @@ function createGame(partyId: string, members: Array<{ user: { id: string; userna
         color: 'b' as ChessColor,
       },
     ],
+    spectators: new Set<string>(),
     engine: new Chess(),
     phase: 'playing' as const,
     winnerId: null,
@@ -382,6 +454,7 @@ async function resolveJoinPrompt(partyId: string, io: Server) {
   const game = createGame(partyId, members);
   activeGames.set(partyId, game);
   emitState(game, io);
+  emitChessSpectateSessions(io);
 }
 
 async function resolvePlayAgainPrompt(partyId: string, io: Server) {
@@ -415,6 +488,7 @@ async function resolvePlayAgainPrompt(partyId: string, io: Server) {
   const game = createGame(partyId, members);
   activeGames.set(partyId, game);
   emitState(game, io);
+  emitChessSpectateSessions(io);
 }
 
 export function startDirectChessGame(
@@ -426,6 +500,7 @@ export function startDirectChessGame(
   const game = createGame(partyId, players);
   activeGames.set(partyId, game);
   emitState(game, io);
+  emitChessSpectateSessions(io);
 }
 
 export const setupChessHandlers = (socket: Socket, io: Server) => {
@@ -478,6 +553,71 @@ export const setupChessHandlers = (socket: Socket, io: Server) => {
         responses,
       });
     }
+
+    socket.emit('chess:spectate-sessions', {
+      sessions: Array.from(activeGames.values()).map((activeGame) => ({
+        partyId: activeGame.partyId,
+        players: activeGame.players.map((player) => ({
+          userId: player.userId,
+          username: player.username,
+          usernameColor: player.usernameColor,
+          color: player.color,
+        })),
+        spectatorCount: activeGame.spectators.size,
+        phase: activeGame.phase,
+      })),
+    });
+  });
+
+  socket.on('chess:spectate-list-request', () => {
+    socket.emit('chess:spectate-sessions', {
+      sessions: Array.from(activeGames.values()).map((game) => ({
+        partyId: game.partyId,
+        players: game.players.map((player) => ({
+          userId: player.userId,
+          username: player.username,
+          usernameColor: player.usernameColor,
+          color: player.color,
+        })),
+        spectatorCount: game.spectators.size,
+        phase: game.phase,
+      })),
+    });
+  });
+
+  socket.on('chess:spectate-join', (data: { partyId: string }) => {
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+
+    removeChessSpectator(io, socket.id);
+
+    const game = activeGames.get(data.partyId);
+    if (!game || !game.isActive) {
+      socket.emit('chess:spectate-error', { message: 'Partie indisponible.' });
+      return;
+    }
+
+    if (game.players.some((player) => player.userId === userId)) {
+      socket.emit('chess:spectate-error', { message: 'Tu participes deja a cette partie.' });
+      return;
+    }
+
+    socket.join(getChessSpectateRoom(game.partyId));
+    chessSpectatorPartyBySocket.set(socket.id, game.partyId);
+    game.spectators.add(socket.id);
+
+    socket.emit('chess:spectate-joined', {
+      partyId: game.partyId,
+      state: serializeState(game),
+      spectatorCount: game.spectators.size,
+    });
+
+    emitChessSpectatorCount(game, io);
+    emitChessSpectateSessions(io);
+  });
+
+  socket.on('chess:spectate-leave', () => {
+    removeChessSpectator(io, socket.id);
   });
 
   socket.on('chess:start', async (data: { partyId: string }) => {
@@ -703,8 +843,10 @@ export const setupChessHandlers = (socket: Socket, io: Server) => {
     const game = activeGames.get(data.partyId);
     if (!game) return;
 
+    stopChessSpectateForGame(io, data.partyId);
     activeGames.delete(data.partyId);
     io.to(`party:${data.partyId}`).emit('chess:left', { userId });
+    emitChessSpectateSessions(io);
   });
 
   socket.on('chess:play-again-response', (data: { partyId: string; playAgain: boolean }) => {
@@ -730,6 +872,14 @@ export const setupChessHandlers = (socket: Socket, io: Server) => {
     if (prompt.responses.size === prompt.players.length) {
       resolvePlayAgainPrompt(data.partyId, io);
     }
+  });
+
+  socket.on('disconnect', () => {
+    const userId = socket.data.userId as string | undefined;
+    if (userId && playerSockets.get(userId) === socket.id) {
+      playerSockets.delete(userId);
+    }
+    removeChessSpectator(io, socket.id);
   });
 };
 

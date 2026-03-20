@@ -168,6 +168,20 @@ const extractGameTypeFromMetadata = (metadata: string | null): string | null => 
   }
 };
 
+const extractDurationSecondsFromMetadata = (metadata: string | null): number | null => {
+  if (!metadata) return null;
+  try {
+    const parsed = JSON.parse(metadata) as Record<string, unknown>;
+    const rawDuration = parsed.duration;
+    if (typeof rawDuration !== 'number' || !Number.isFinite(rawDuration) || rawDuration <= 0) {
+      return null;
+    }
+    return rawDuration;
+  } catch {
+    return null;
+  }
+};
+
 // Middleware to check if user is admin
 const requireAdmin = (req: AuthRequest, res: Response, next: Function) => {
   if (!req.user?.isAdmin) {
@@ -2978,6 +2992,8 @@ router.get('/activity-breakdown', authMiddleware, requireAdmin, async (req: Auth
 
     const gameBuckets = createHourlyBuckets();
     const gameTotals = new Map<string, number>();
+    const gameDurationBuckets = createHourlyBuckets();
+    const gameDurationTotals = new Map<string, number>();
 
     for (const log of gameLogs) {
       const gameType = extractGameTypeFromMetadata(log.metadata);
@@ -2987,6 +3003,16 @@ router.get('/activity-breakdown', authMiddleware, requireAdmin, async (req: Auth
       bucket.values[gameType] = (bucket.values[gameType] ?? 0) + 1;
       bucket.total += 1;
       gameTotals.set(gameType, (gameTotals.get(gameType) ?? 0) + 1);
+
+      if (log.action === 'game_complete') {
+        const durationSeconds = extractDurationSecondsFromMetadata(log.metadata);
+        if (durationSeconds !== null) {
+          const durationBucket = gameDurationBuckets[log.createdAt.getHours()];
+          durationBucket.values[gameType] = (durationBucket.values[gameType] ?? 0) + durationSeconds;
+          durationBucket.total += durationSeconds;
+          gameDurationTotals.set(gameType, (gameDurationTotals.get(gameType) ?? 0) + durationSeconds);
+        }
+      }
     }
 
     const topGames = Array.from(gameTotals.entries())
@@ -3008,12 +3034,36 @@ router.get('/activity-breakdown', authMiddleware, requireAdmin, async (req: Auth
       };
     });
 
+    const topGameDurations = Array.from(gameDurationTotals.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, GAME_BREAKDOWN_LIMIT)
+      .map(([gameType, totalSeconds]) => ({
+        gameType,
+        totalSeconds: Math.round(totalSeconds),
+      }));
+    const topGameDurationSet = new Set(topGameDurations.map((entry) => entry.gameType));
+
+    const gameDurationSeries = gameDurationBuckets.map((bucket) => {
+      const values: Record<string, number> = {};
+      for (const gameType of topGameDurationSet) {
+        values[gameType] = roundToSingleDecimal(bucket.values[gameType] ?? 0);
+      }
+      return {
+        hour: bucket.hour,
+        hourLabel: bucket.hourLabel,
+        total: roundToSingleDecimal(bucket.total),
+        values,
+      };
+    });
+
     res.json({
       date: rawDate,
       pageSeries,
       topPages,
       gameSeries,
       topGames,
+      gameDurationSeries,
+      topGameDurations,
     });
   } catch (error) {
     console.error('Admin activity breakdown error:', error);

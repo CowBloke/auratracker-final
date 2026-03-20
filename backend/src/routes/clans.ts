@@ -750,6 +750,31 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   }
 });
 
+// Global completed clan wars history (all-time)
+router.get('/wars/history', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    await advanceClanWarsState();
+
+    const userId = req.user?.id ?? null;
+    const wars = await prisma.clanWar.findMany({
+      where: {
+        status: 'COMPLETED',
+      },
+      include: historyWarInclude,
+      orderBy: {
+        completedAt: 'desc',
+      },
+    });
+
+    res.json({
+      wars: await Promise.all(wars.map((war) => mapWar(war, null, userId))),
+    });
+  } catch (error) {
+    console.error('Get global clan wars history error:', error);
+    res.status(500).json({ error: 'Failed to get global clan wars history' });
+  }
+});
+
 // Get clan detail
 router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {

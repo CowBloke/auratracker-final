@@ -33,6 +33,8 @@ interface P4State {
   partyId: string;
   board: Cell[][];
   currentPlayerId: string;
+  turnDuration?: number;
+  turnStartTime?: number;
   phase: 'playing' | 'finished';
   winnerId: string | null;
   winCells: [number, number][] | null;
@@ -63,6 +65,7 @@ export default function PuissanceQuatre() {
   const [hoverCol, setHoverCol] = useState<number | null>(null);
   const [droppingCell, setDroppingCell] = useState<{ row: number; col: number; playerIndex: 0 | 1 } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [turnTimeLeftMs, setTurnTimeLeftMs] = useState(0);
 
   const lastMoveKeyRef = useRef<string>('');
   const dropTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -71,6 +74,7 @@ export default function PuissanceQuatre() {
   const myInfo = gameState?.players.find((p) => p.userId === user?.id);
   const opponent = gameState?.players.find((p) => p.userId !== user?.id);
   const isMyTurn = gameState?.currentPlayerId === user?.id && gameState?.phase === 'playing';
+  const turnSecondsLeft = Math.max(0, Math.ceil(turnTimeLeftMs / 1000));
 
   // Animate last move
   useEffect(() => {
@@ -89,6 +93,26 @@ export default function PuissanceQuatre() {
   }, [gameState]);
 
   useEffect(() => () => { if (dropTimerRef.current) clearTimeout(dropTimerRef.current); }, []);
+
+  useEffect(() => {
+    if (
+      gameState?.phase !== 'playing' ||
+      !gameState.turnDuration ||
+      !gameState.turnStartTime
+    ) {
+      setTurnTimeLeftMs(0);
+      return;
+    }
+
+    const updateRemaining = () => {
+      const elapsed = Date.now() - gameState.turnStartTime!;
+      setTurnTimeLeftMs(Math.max(0, gameState.turnDuration! - elapsed));
+    };
+
+    updateRemaining();
+    const interval = setInterval(updateRemaining, 100);
+    return () => clearInterval(interval);
+  }, [gameState?.phase, gameState?.turnDuration, gameState?.turnStartTime]);
 
   // Socket events
   useEffect(() => {
@@ -422,15 +446,22 @@ export default function PuissanceQuatre() {
       </Card>
 
       {/* Turn indicator */}
-      <p className="text-center text-sm text-muted-foreground">
-        {gameState.phase === 'finished'
-          ? gameState.winnerId
-            ? gameState.winnerId === user?.id ? 'Tu as gagné !' : `${opponent?.username} a gagné.`
-            : 'Égalité !'
-          : isMyTurn
-          ? 'C\'est ton tour — clique sur une colonne'
-          : `Au tour de ${opponent?.username ?? '...'}`}
-      </p>
+      <div className="text-center text-sm text-muted-foreground space-y-1">
+        <p>
+          {gameState.phase === 'finished'
+            ? gameState.winnerId
+              ? gameState.winnerId === user?.id ? 'Tu as gagné !' : `${opponent?.username} a gagné.`
+              : 'Égalité !'
+            : isMyTurn
+            ? 'C\'est ton tour — clique sur une colonne'
+            : `Au tour de ${opponent?.username ?? '...'}`}
+        </p>
+        {gameState.phase === 'playing' && (
+          <p className={cn('text-xs', turnSecondsLeft <= 3 ? 'text-red-500' : 'text-muted-foreground')}>
+            Temps restant: {turnSecondsLeft}s
+          </p>
+        )}
+      </div>
 
       {/* Board */}
       <div className="flex flex-col items-center gap-1.5">

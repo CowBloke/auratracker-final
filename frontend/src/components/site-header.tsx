@@ -37,6 +37,8 @@ import {
   Trash2,
   UserPlus,
   Eye,
+  Monitor,
+  Crosshair,
 } from 'lucide-react';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { InboxDropdown } from '@/components/inbox/InboxDropdown';
@@ -50,6 +52,8 @@ export function SiteHeader() {
     requestOnlineUsers,
     doodleSpectateSessions,
     requestDoodleSpectateSessions,
+    chessSpectateSessions,
+    requestChessSpectateSessions,
     currentParty,
     partyMembers,
     publicParties,
@@ -61,6 +65,10 @@ export function SiteHeader() {
     bombPartyGame,
     petitBacGame,
     sendMessage,
+    duelMatchmakingQueued,
+    duelMatchmakingStats,
+    joinDuelMatchmaking,
+    leaveDuelMatchmaking,
   } = useSocket();
   const location = useLocation();
   const navigate = useNavigate();
@@ -83,6 +91,18 @@ export function SiteHeader() {
     () => new Map(doodleSpectateSessions.map((session) => [session.hostUserId, session])),
     [doodleSpectateSessions]
   );
+  const chessSpectateSessionMap = useMemo(() => {
+    const sessionsByUser = new Map<string, { partyId: string; spectatorCount: number }>();
+    for (const session of chessSpectateSessions) {
+      for (const player of session.players) {
+        sessionsByUser.set(player.userId, {
+          partyId: session.partyId,
+          spectatorCount: session.spectatorCount,
+        });
+      }
+    }
+    return sessionsByUser;
+  }, [chessSpectateSessions]);
   const gameStatus = bombPartyGame
     ? `Bomb Party - Round ${bombPartyGame.round}`
     : petitBacGame
@@ -270,6 +290,27 @@ export function SiteHeader() {
             </DropdownMenu>
           )}
 
+          <Button
+            type="button"
+            variant={duelMatchmakingQueued ? 'default' : 'outline'}
+            size="sm"
+            className="h-8 gap-2"
+            onClick={() => {
+              if (duelMatchmakingQueued) {
+                leaveDuelMatchmaking();
+              } else {
+                joinDuelMatchmaking();
+              }
+            }}
+            title={duelMatchmakingQueued ? 'Quitter la file de matchmaking duel' : 'Entrer en file de matchmaking duel'}
+          >
+            <Crosshair className="h-4 w-4" />
+            {duelMatchmakingQueued ? 'Quitter matchmaking' : 'Matchmaking duel'}
+            <span className="text-[10px] tabular-nums text-muted-foreground">
+              {duelMatchmakingStats.queuedCount} en queue / {duelMatchmakingStats.inGameCount} en jeu
+            </span>
+          </Button>
+
           {currentParty && (
             <div className="relative">
               <Collapsible open={showParty} onOpenChange={setShowParty}>
@@ -420,6 +461,7 @@ export function SiteHeader() {
                   if (open) {
                     requestOnlineUsers();
                     requestDoodleSpectateSessions();
+                    requestChessSpectateSessions();
                   }
                 }}
               >
@@ -461,11 +503,20 @@ export function SiteHeader() {
                                 <div className="h-1 w-1 rounded-full bg-foreground/50" />
                               )}
                               <div className="min-w-0 flex-1">
-                                <UsernameDisplay
-                                  username={u.username}
-                                  usernameColor={u.usernameColor}
-                                  className="block"
-                                />
+                                <span className="flex items-center gap-1.5">
+                                  <span
+                                    className={cn(
+                                      'inline-block h-1.5 w-1.5 rounded-full',
+                                      u.isPageActive ? 'bg-emerald-500' : 'bg-amber-500'
+                                    )}
+                                    title={u.isPageActive ? 'Utilisateur actif sur la page' : 'Utilisateur en arrière-plan'}
+                                  />
+                                  <UsernameDisplay
+                                    username={u.username}
+                                    usernameColor={u.usernameColor}
+                                    className="block"
+                                  />
+                                </span>
                                 {(() => {
                                   const pageMeta = getPageMeta(u.currentPage);
                                   const PageIcon = pageMeta.icon;
@@ -473,6 +524,8 @@ export function SiteHeader() {
                                     <span className="flex items-center gap-1 text-[10px] text-muted-foreground/80">
                                       <PageIcon className="h-3 w-3" />
                                       <span className="truncate">{pageMeta.label}</span>
+                                      <Monitor className="ml-1 h-3 w-3" />
+                                      <span>{u.isPageActive ? 'sur page' : 'arriere-plan'}</span>
                                     </span>
                                   );
                                 })()}
@@ -485,14 +538,41 @@ export function SiteHeader() {
                                   u.userId !== user?.id &&
                                   u.currentPage?.startsWith('/games/doodle-jump')
                               );
-                              if (!canSpectate || !session) return null;
+                              if (canSpectate && session) {
+                                return (
+                                  <Button
+                                    type="button"
+                                    onClick={() => {
+                                      setShowUsers(false);
+                                      navigate('/games/doodle-jump', {
+                                        state: { spectateHostUserId: u.userId },
+                                      });
+                                    }}
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 gap-1 px-2 text-[10px]"
+                                    title={`Spectate ${u.username}`}
+                                  >
+                                    <Eye className="h-3 w-3" />
+                                    <span className="tabular-nums">{session.spectatorCount}</span>
+                                  </Button>
+                                );
+                              }
+
+                              const chessSession = chessSpectateSessionMap.get(u.userId);
+                              const canSpectateChess = Boolean(
+                                chessSession &&
+                                  u.userId !== user?.id &&
+                                  u.currentPage?.startsWith('/games/echecs')
+                              );
+                              if (!canSpectateChess || !chessSession) return null;
                               return (
                                 <Button
                                   type="button"
                                   onClick={() => {
                                     setShowUsers(false);
-                                    navigate('/games/doodle-jump', {
-                                      state: { spectateHostUserId: u.userId },
+                                    navigate('/games/echecs', {
+                                      state: { spectatePartyId: chessSession.partyId },
                                     });
                                   }}
                                   variant="outline"
@@ -501,7 +581,7 @@ export function SiteHeader() {
                                   title={`Spectate ${u.username}`}
                                 >
                                   <Eye className="h-3 w-3" />
-                                  <span className="tabular-nums">{session.spectatorCount}</span>
+                                  <span className="tabular-nums">{chessSession.spectatorCount}</span>
                                 </Button>
                               );
                             })()}

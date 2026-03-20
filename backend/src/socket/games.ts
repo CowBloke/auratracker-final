@@ -80,6 +80,7 @@ interface DoodleMultiplayerRoom {
 const doodleSessions = new Map<string, DoodleSession>(); // hostUserId -> session
 const doodleSpectatorToHost = new Map<string, string>(); // spectatorSocketId -> hostUserId
 const DOODLE_REPLAY_LIMIT = 240;
+const doodleConfettiCooldownBySocket = new Map<string, number>();
 const doodleMultiplayerRooms = new Map<string, DoodleMultiplayerRoom>(); // roomId -> room
 const doodleMultiplayerRoomBySocket = new Map<string, string>(); // socketId -> roomId
 
@@ -489,6 +490,38 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
     removeDoodleSpectator(io, socket.id);
   });
 
+  socket.on('doodle:spectate-confetti', (data?: { hostUserId?: string }) => {
+    const senderUserId = socket.data.userId as string | undefined;
+    const senderUsername = socket.data.username as string | undefined;
+    if (!senderUserId || !senderUsername) return;
+
+    const now = Date.now();
+    const lastSentAt = doodleConfettiCooldownBySocket.get(socket.id) ?? 0;
+    if (now - lastSentAt < 500) return;
+
+    let hostUserId: string | null = null;
+    const hostedSession = doodleSessions.get(senderUserId);
+    if (hostedSession && hostedSession.hostSocketId === socket.id) {
+      hostUserId = senderUserId;
+    } else {
+      hostUserId = doodleSpectatorToHost.get(socket.id) ?? null;
+    }
+
+    if (!hostUserId) return;
+    if (data?.hostUserId && data.hostUserId !== hostUserId) return;
+
+    const session = doodleSessions.get(hostUserId);
+    if (!session) return;
+
+    doodleConfettiCooldownBySocket.set(socket.id, now);
+    io.to(getDoodleRoom(hostUserId)).emit('doodle:spectate-confetti', {
+      hostUserId,
+      sourceUserId: senderUserId,
+      sourceUsername: senderUsername,
+      timestamp: now,
+    });
+  });
+
   socket.on('doodle:multiplayer-join', (data: { mode?: DoodleMode }) => {
     const userId = socket.data.userId as string | undefined;
     const username = socket.data.username as string | undefined;
@@ -616,6 +649,7 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
   
   // Handle disconnect
   socket.on('disconnect', () => {
+    doodleConfettiCooldownBySocket.delete(socket.id);
     removeDoodleSpectator(io, socket.id);
     cleanupDoodleMultiplayerSocket(io, socket.id);
 

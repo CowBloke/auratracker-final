@@ -23,6 +23,9 @@ interface P4Game {
   players: P4Player[];
   board: Board;
   currentPlayerIndex: 0 | 1;
+  turnDuration: number;
+  turnStartTime: number;
+  turnTimer: NodeJS.Timeout | null;
   phase: 'playing' | 'finished';
   winnerId: string | null;
   winCells: [number, number][] | null;
@@ -54,6 +57,7 @@ const pendingJoinPrompts = new Map<string, PendingJoinPrompt>();
 const pendingPlayAgainPrompts = new Map<string, PendingPlayAgainPrompt>();
 const JOIN_PROMPT_TIMEOUT = 10000;
 const PLAY_AGAIN_TIMEOUT = 20000;
+const TURN_TIMEOUT = 10000;
 
 function createBoard(): Board {
   return Array.from({ length: ROWS }, () => Array(COLS).fill(0) as Cell[]);
@@ -107,6 +111,8 @@ function serializeState(game: P4Game) {
     partyId: game.partyId,
     board: game.board,
     currentPlayerId: game.players[game.currentPlayerIndex].userId,
+    turnDuration: game.turnDuration,
+    turnStartTime: game.turnStartTime,
     phase: game.phase,
     winnerId: game.winnerId,
     winCells: game.winCells,
@@ -124,7 +130,32 @@ function emitState(game: P4Game, io: Server) {
   io.to(`party:${game.partyId}`).emit('p4:state', serializeState(game));
 }
 
+function clearTurnTimer(game: P4Game) {
+  if (game.turnTimer) {
+    clearTimeout(game.turnTimer);
+    game.turnTimer = null;
+  }
+}
+
+function scheduleTurnTimer(game: P4Game, io: Server) {
+  clearTurnTimer(game);
+  game.turnStartTime = Date.now();
+  game.turnTimer = setTimeout(() => {
+    void handleTurnTimeout(game.partyId, io);
+  }, game.turnDuration);
+}
+
+async function handleTurnTimeout(partyId: string, io: Server) {
+  const game = activeGames.get(partyId);
+  if (!game || !game.isActive || game.phase !== 'playing') return;
+
+  clearTurnTimer(game);
+  const winner = game.players.find((p) => p.userId !== game.players[game.currentPlayerIndex].userId);
+  await endGame(game, io, winner?.userId ?? null);
+}
+
 async function endGame(game: P4Game, io: Server, winnerId: string | null) {
+  clearTurnTimer(game);
   game.isActive = false;
   game.phase = 'finished';
   game.winnerId = winnerId;
@@ -278,6 +309,9 @@ async function resolvePlayAgainPrompt(partyId: string, io: Server) {
     })),
     board: createBoard(),
     currentPlayerIndex: Math.floor(Math.random() * 2) as 0 | 1,
+    turnDuration: TURN_TIMEOUT,
+    turnStartTime: Date.now(),
+    turnTimer: null,
     phase: 'playing',
     winnerId: null,
     winCells: null,
@@ -286,6 +320,7 @@ async function resolvePlayAgainPrompt(partyId: string, io: Server) {
   };
 
   activeGames.set(partyId, game);
+  scheduleTurnTimer(game, io);
   emitState(game, io);
 }
 
@@ -325,6 +360,9 @@ async function resolveJoinPrompt(partyId: string, io: Server) {
     })),
     board: createBoard(),
     currentPlayerIndex: Math.floor(Math.random() * 2) as 0 | 1,
+    turnDuration: TURN_TIMEOUT,
+    turnStartTime: Date.now(),
+    turnTimer: null,
     phase: 'playing',
     winnerId: null,
     winCells: null,
@@ -333,6 +371,7 @@ async function resolveJoinPrompt(partyId: string, io: Server) {
   };
 
   activeGames.set(partyId, game);
+  scheduleTurnTimer(game, io);
   emitState(game, io);
 }
 
@@ -352,6 +391,9 @@ export function startDirectP4Game(
     })),
     board: createBoard(),
     currentPlayerIndex: Math.floor(Math.random() * 2) as 0 | 1,
+    turnDuration: TURN_TIMEOUT,
+    turnStartTime: Date.now(),
+    turnTimer: null,
     phase: 'playing',
     winnerId: null,
     winCells: null,
@@ -359,6 +401,7 @@ export function startDirectP4Game(
     isActive: true,
   };
   activeGames.set(partyId, game);
+  scheduleTurnTimer(game, io);
   emitState(game, io);
 }
 
@@ -539,6 +582,7 @@ export const setupPuissanceQuatreHandlers = (socket: Socket, io: Server) => {
       return;
     }
 
+    clearTurnTimer(game);
     game.board = result.board;
     game.lastMove = { col, row: result.row, playerId: userId };
 
@@ -557,6 +601,7 @@ export const setupPuissanceQuatreHandlers = (socket: Socket, io: Server) => {
     }
 
     game.currentPlayerIndex = ((game.currentPlayerIndex + 1) % 2) as 0 | 1;
+    scheduleTurnTimer(game, io);
     emitState(game, io);
   });
 
@@ -566,6 +611,7 @@ export const setupPuissanceQuatreHandlers = (socket: Socket, io: Server) => {
     const { partyId } = data;
     const game = activeGames.get(partyId);
     if (game) {
+      clearTurnTimer(game);
       activeGames.delete(partyId);
       io.to(`party:${partyId}`).emit('p4:left', { userId });
     }

@@ -10,6 +10,7 @@ interface OnlineUser {
   usernameColor?: string | null;
   profilePicture?: string | null;
   currentPage?: string | null;
+  isPageActive: boolean;
 }
 
 const BADGE_SELECT = {
@@ -104,6 +105,7 @@ const toPublicOnlineUser = (user: OnlineUser): PublicOnlineUser => ({
   usernameColor: user.usernameColor,
   profilePicture: user.profilePicture,
   currentPage: user.currentPage ?? null,
+  isPageActive: user.isPageActive,
 });
 
 const buildDisplayedOnlineState = async (): Promise<{ users: PublicOnlineUser[]; count: number }> => {
@@ -141,6 +143,7 @@ const buildDisplayedOnlineState = async (): Promise<{ users: PublicOnlineUser[];
           usernameColor: u.usernameColor,
           profilePicture: u.profilePicture,
           currentPage: null,
+          isPageActive: false,
         }));
 
       users = [...realUsers, ...randomOfflineUsers];
@@ -405,14 +408,16 @@ export const getOnlineUsers = () =>
     userId: u.userId,
     username: u.username,
     currentPage: u.currentPage ?? null,
+    isPageActive: u.isPageActive,
   }));
 
 export const setupChatHandlers = (socket: Socket, io: Server) => {
   // Join chat
-  socket.on('chat:join', async (data: { currentPage?: string }) => {
+  socket.on('chat:join', async (data: { currentPage?: string; isPageActive?: boolean }) => {
     const userId = socket.data.userId as string | undefined;
     if (!userId) return;
     const currentPage = data?.currentPage;
+    const isPageActive = data?.isPageActive !== false;
 
     // Check if user is banned
     const activeBan = await prisma.ban.findFirst({
@@ -472,6 +477,7 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
       usernameColor: dbUser?.usernameColor,
       profilePicture: dbUser?.profilePicture,
       currentPage: currentPage ?? null,
+      isPageActive,
     });
     socket.join(`user:${userId}`);
     _onPlayerJoined();
@@ -726,6 +732,20 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     if (!user) return;
 
     user.currentPage = currentPage;
+    void broadcastDisplayedOnlineState(io);
+  });
+
+  socket.on('chat:presence', (data: { isPageActive: boolean }) => {
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const user = onlineUsers.get(userId);
+    if (!user) return;
+
+    const nextIsPageActive = Boolean(data?.isPageActive);
+    if (user.isPageActive === nextIsPageActive) return;
+
+    user.isPageActive = nextIsPageActive;
+    void broadcastDisplayedOnlineState(io);
   });
 
   // On-demand: client requests the full online users list (with pages)

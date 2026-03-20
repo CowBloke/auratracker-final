@@ -53,6 +53,7 @@ interface OnlineUser {
   usernameColor?: string | null;
   profilePicture?: string | null;
   currentPage?: string | null;
+  isPageActive?: boolean;
   badges?: ChatBadge[];
 }
 
@@ -62,6 +63,18 @@ interface DoodleSpectateSession {
   mode: 'classic' | 'mort_subite';
   spectatorCount: number;
   score: number;
+}
+
+interface ChessSpectateSession {
+  partyId: string;
+  players: Array<{
+    userId: string;
+    username: string;
+    usernameColor?: string | null;
+    color: 'w' | 'b';
+  }>;
+  spectatorCount: number;
+  phase: 'playing' | 'finished';
 }
 
 interface TypingUser {
@@ -515,6 +528,11 @@ interface OutgoingDuelChallenge {
   gameType: 'chess' | 'battleship' | 'p4' | 'ballarena';
 }
 
+interface DuelMatchmakingStats {
+  queuedCount: number;
+  inGameCount: number;
+}
+
 interface ActiveJoinPrompt {
   gameType: string;
   title: string;
@@ -555,6 +573,8 @@ interface SocketContextType {
   requestOnlineUsers: () => void;
   doodleSpectateSessions: DoodleSpectateSession[];
   requestDoodleSpectateSessions: () => void;
+  chessSpectateSessions: ChessSpectateSession[];
+  requestChessSpectateSessions: () => void;
   // Party
   currentParty: Party | null;
   partyMembers: PartyMember[];
@@ -652,10 +672,14 @@ interface SocketContextType {
   // Duel challenges
   incomingDuelChallenge: IncomingDuelChallenge | null;
   outgoingDuelChallenge: OutgoingDuelChallenge | null;
+  duelMatchmakingQueued: boolean;
+  duelMatchmakingStats: DuelMatchmakingStats;
   challengeUserToDuel: (targetId: string, targetUsername: string, gameType: 'chess' | 'battleship' | 'p4' | 'ballarena') => void;
   acceptDuelChallenge: () => void;
   declineDuelChallenge: () => void;
   cancelDuelChallenge: () => void;
+  joinDuelMatchmaking: () => void;
+  leaveDuelMatchmaking: () => void;
 }
 
 const SocketContext = createContext<SocketContextType | null>(null);
@@ -672,6 +696,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [onlineCount, setOnlineCount] = useState(0);
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [doodleSpectateSessions, setDoodleSpectateSessions] = useState<DoodleSpectateSession[]>([]);
+  const [chessSpectateSessions, setChessSpectateSessions] = useState<ChessSpectateSession[]>([]);
   
   // Party state
   const [currentParty, setCurrentParty] = useState<Party | null>(null);
@@ -731,6 +756,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   // Duel state
   const [incomingDuelChallenge, setIncomingDuelChallenge] = useState<IncomingDuelChallenge | null>(null);
   const [outgoingDuelChallenge, setOutgoingDuelChallenge] = useState<OutgoingDuelChallenge | null>(null);
+  const [duelMatchmakingQueued, setDuelMatchmakingQueued] = useState(false);
+  const [duelMatchmakingStats, setDuelMatchmakingStats] = useState<DuelMatchmakingStats>({ queuedCount: 0, inGameCount: 0 });
 
   useEffect(() => {
     if (user) {
@@ -741,17 +768,22 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       s.on('connect', () => {
         setConnected(true);
         const initialPage = typeof window !== 'undefined' ? window.location.pathname : '/';
-        chatEvents.join(user.id, user.username, initialPage);
+        const isPageActive = typeof document === 'undefined'
+          ? true
+          : document.visibilityState === 'visible' && document.hasFocus();
+        chatEvents.join(user.id, user.username, initialPage, isPageActive);
         partyEvents.register(user.id);
         partyEvents.sync(user.id);
         partyEvents.list();
         gameEvents.register(user.id);
+        duelEvents.requestMatchmakingStats();
         s.emit('doodle:spectate-list-request');
         pokerEvents.register(user.id);
       });
 
       s.on('disconnect', () => {
         setConnected(false);
+        setDuelMatchmakingQueued(false);
       });
 
       const handleBan = (data: { message?: string; ban?: { reason?: string; type?: string; expiresAt?: string | null } }) => {
@@ -812,6 +844,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
       s.on('doodle:spectate-sessions', (data: { sessions: DoodleSpectateSession[] }) => {
         setDoodleSpectateSessions(Array.isArray(data.sessions) ? data.sessions : []);
+      });
+
+      s.on('chess:spectate-sessions', (data: { sessions: ChessSpectateSession[] }) => {
+        setChessSpectateSessions(Array.isArray(data.sessions) ? data.sessions : []);
       });
 
       s.on('user:online', (user: OnlineUser) => {
@@ -1657,6 +1693,31 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         navigate(data.path);
       });
 
+      s.on('duel:matchmaking-state', (data: { isQueued: boolean }) => {
+        setDuelMatchmakingQueued(Boolean(data.isQueued));
+      });
+
+      s.on('duel:matchmaking-stats', (data: { queuedCount: number; inGameCount: number }) => {
+        setDuelMatchmakingStats({
+          queuedCount: Math.max(0, Number(data.queuedCount) || 0),
+          inGameCount: Math.max(0, Number(data.inGameCount) || 0),
+        });
+      });
+
+      s.on('duel:matchmaking-match-found', (data: { gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' }) => {
+        import('sonner').then(({ toast }) => {
+          const labels = {
+            chess: 'Echecs',
+            battleship: 'Bataille navale',
+            p4: 'Puissance 4',
+            ballarena: 'Ball Arena',
+          } as const;
+          toast('Adversaire trouve !', {
+            description: `Duel ${labels[data.gameType] ?? 'aleatoire'} en cours de lancement...`,
+          });
+        });
+      });
+
       return () => {
         disconnectSocket();
         s.removeAllListeners();
@@ -1688,6 +1749,26 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  useEffect(() => {
+    if (!user || !connected) return;
+
+    const publishPresence = () => {
+      const isPageActive = document.visibilityState === 'visible' && document.hasFocus();
+      chatEvents.setPresence(user.id, isPageActive);
+    };
+
+    publishPresence();
+    document.addEventListener('visibilitychange', publishPresence);
+    window.addEventListener('focus', publishPresence);
+    window.addEventListener('blur', publishPresence);
+
+    return () => {
+      document.removeEventListener('visibilitychange', publishPresence);
+      window.removeEventListener('focus', publishPresence);
+      window.removeEventListener('blur', publishPresence);
+    };
+  }, [user?.id, connected]);
+
   const requestOnlineUsers = () => {
     if (socket) {
       socket.emit('chat:request-online-users');
@@ -1697,6 +1778,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const requestDoodleSpectateSessions = () => {
     if (socket) {
       socket.emit('doodle:spectate-list-request');
+    }
+  };
+
+  const requestChessSpectateSessions = () => {
+    if (socket) {
+      socket.emit('chess:spectate-list-request');
     }
   };
 
@@ -2031,6 +2118,14 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     setOutgoingDuelChallenge(null);
   };
 
+  const joinDuelMatchmaking = () => {
+    duelEvents.joinMatchmaking();
+  };
+
+  const leaveDuelMatchmaking = () => {
+    duelEvents.leaveMatchmaking();
+  };
+
   const respondToGameJoinPrompt = (accepted: boolean) => {
     if (!user) return;
     if (bombPartyJoinPrompt) {
@@ -2276,6 +2371,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         requestOnlineUsers,
         doodleSpectateSessions,
         requestDoodleSpectateSessions,
+        chessSpectateSessions,
+        requestChessSpectateSessions,
         deleteMessage,
         pinMessage,
         currentParty,
@@ -2363,10 +2460,14 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         respondToGameReplayPrompt,
         incomingDuelChallenge,
         outgoingDuelChallenge,
+        duelMatchmakingQueued,
+        duelMatchmakingStats,
         challengeUserToDuel,
         acceptDuelChallenge,
         declineDuelChallenge,
         cancelDuelChallenge,
+        joinDuelMatchmaking,
+        leaveDuelMatchmaking,
       }}
     >
       {children}

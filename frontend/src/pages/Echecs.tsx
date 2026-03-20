@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, LogOut, Play, Search, Swords, Trophy } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Eye, EyeOff, LogOut, Play, Search, Swords, Trophy } from 'lucide-react';
 import { Chess } from 'chess.js';
 import type { Square } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
@@ -113,6 +113,8 @@ function materialAdvantage(mine: string[], theirs: string[]): number {
 }
 
 export default function Echecs() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
   const { currentParty, partyMembers, socket, onlineUsers, requestOnlineUsers, challengeUserToDuel, outgoingDuelChallenge } = useSocket();
 
@@ -126,6 +128,9 @@ export default function Echecs() {
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingPromotion, setPendingPromotion] = useState<{ from: string; to: string } | null>(null);
+  const [spectatingPartyId, setSpectatingPartyId] = useState<string | null>(null);
+  const [spectatorCount, setSpectatorCount] = useState(0);
+  const spectatingPartyIdRef = useRef<string | null>(null);
 
   // Premove state
   const [premove, setPremove] = useState<{ from: string; to: string; promotion?: PromotionPiece } | null>(null);
@@ -139,10 +144,18 @@ export default function Echecs() {
   const serverTimeRef = useRef<{ white: number; black: number; receivedAt: number } | null>(null);
   const timeoutSentRef = useRef(false);
 
+  const routeSpectatePartyId = ((location.state as { spectatePartyId?: string } | null)?.spectatePartyId) ?? null;
+  const isSpectating = spectatingPartyId !== null;
+  const activePartyId = isSpectating ? spectatingPartyId : (currentParty?.id ?? null);
+
+  useEffect(() => {
+    spectatingPartyIdRef.current = spectatingPartyId;
+  }, [spectatingPartyId]);
+
   const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
   const myPlayer = gameState?.players.find((p) => p.userId === user?.id) ?? null;
   const opponent = gameState?.players.find((p) => p.userId !== user?.id) ?? null;
-  const isMyTurn = gameState?.phase === 'playing' && gameState.turn === myPlayer?.color;
+  const isMyTurn = !isSpectating && gameState?.phase === 'playing' && gameState.turn === myPlayer?.color;
 
   // chess.js instance for piece queries (memoized from FEN)
   const chess = useMemo(() => {
@@ -183,6 +196,7 @@ export default function Echecs() {
 
     const onState = (state: ChessState) => {
       setGameState(state);
+      setSpectatingPartyId(null);
       setSelectedSquare(null);
       setPendingPromotion(null);
       setError(null);
@@ -201,11 +215,53 @@ export default function Echecs() {
     const onGameOver = (data: GameOverData) => { setGameOver(data); refreshUser(); };
     const onLeft = () => {
       setGameState(null);
+      setSpectatingPartyId(null);
+      setSpectatorCount(0);
       setSelectedSquare(null);
       setPendingPromotion(null);
       setPremove(null);
       setPremoveSource(null);
       timeoutSentRef.current = false;
+    };
+
+    const onSpectateJoined = (data: { partyId: string; state: ChessState; spectatorCount: number }) => {
+      setSpectatingPartyId(data.partyId);
+      setSpectatorCount(data.spectatorCount ?? 0);
+      setGameState(data.state);
+      setSelectedSquare(null);
+      setPendingPromotion(null);
+      setPremove(null);
+      setPremoveSource(null);
+      setError(null);
+      navigate(location.pathname, { replace: true, state: null });
+    };
+
+    const onSpectateState = (data: { partyId: string; state: ChessState }) => {
+      if (!spectatingPartyIdRef.current || data.partyId !== spectatingPartyIdRef.current) return;
+      setGameState(data.state);
+      setSelectedSquare(null);
+      setPendingPromotion(null);
+      setError(null);
+    };
+
+    const onSpectateStopped = (data: { partyId: string }) => {
+      if (!spectatingPartyIdRef.current || data.partyId !== spectatingPartyIdRef.current) return;
+      setGameState(null);
+      setSpectatingPartyId(null);
+      setSpectatorCount(0);
+    };
+
+    const onSpectatorCount = (data: { partyId: string; spectatorCount: number }) => {
+      if (data.partyId === activePartyId) {
+        setSpectatorCount(data.spectatorCount ?? 0);
+      }
+    };
+
+    const onSpectateError = (data?: { message?: string }) => {
+      setError(data?.message ?? 'Impossible de rejoindre le spectate.');
+      setGameState(null);
+      setSpectatingPartyId(null);
+      setSpectatorCount(0);
     };
     const onError = (data: { message: string }) => { setError(data.message); setPendingPromotion(null); };
 
@@ -213,13 +269,36 @@ export default function Echecs() {
     socket.on('chess:game-over', onGameOver);
     socket.on('chess:left', onLeft);
     socket.on('chess:error', onError);
+    socket.on('chess:spectate-joined', onSpectateJoined);
+    socket.on('chess:spectate-state', onSpectateState);
+    socket.on('chess:spectate-stopped', onSpectateStopped);
+    socket.on('chess:spectator-count', onSpectatorCount);
+    socket.on('chess:spectate-error', onSpectateError);
     return () => {
       socket.off('chess:state', onState);
       socket.off('chess:game-over', onGameOver);
       socket.off('chess:left', onLeft);
       socket.off('chess:error', onError);
+      socket.off('chess:spectate-joined', onSpectateJoined);
+      socket.off('chess:spectate-state', onSpectateState);
+      socket.off('chess:spectate-stopped', onSpectateStopped);
+      socket.off('chess:spectator-count', onSpectatorCount);
+      socket.off('chess:spectate-error', onSpectateError);
     };
-  }, [socket, user, refreshUser]);
+  }, [socket, user, refreshUser, navigate, location.pathname, activePartyId]);
+
+  useEffect(() => {
+    if (!socket || !user || !routeSpectatePartyId) return;
+    socket.emit('chess:spectate-join', { partyId: routeSpectatePartyId });
+  }, [socket, user, routeSpectatePartyId]);
+
+  useEffect(() => {
+    return () => {
+      if (spectatingPartyId) {
+        socket?.emit('chess:spectate-leave');
+      }
+    };
+  }, [socket, spectatingPartyId]);
 
   // Real-time timer countdown
   useEffect(() => {
@@ -231,21 +310,21 @@ export default function Echecs() {
       if (turn === 'w') {
         const t = Math.max(0, serverTimeRef.current.white - elapsed);
         setDisplayTimeWhite(t);
-        if (t === 0 && myPlayer?.color === 'w' && !timeoutSentRef.current && socket && currentParty) {
+        if (t === 0 && myPlayer?.color === 'w' && !timeoutSentRef.current && socket && activePartyId) {
           timeoutSentRef.current = true;
-          socket.emit('chess:timeout', { partyId: currentParty.id });
+          socket.emit('chess:timeout', { partyId: activePartyId });
         }
       } else {
         const t = Math.max(0, serverTimeRef.current.black - elapsed);
         setDisplayTimeBlack(t);
-        if (t === 0 && myPlayer?.color === 'b' && !timeoutSentRef.current && socket && currentParty) {
+        if (t === 0 && myPlayer?.color === 'b' && !timeoutSentRef.current && socket && activePartyId) {
           timeoutSentRef.current = true;
-          socket.emit('chess:timeout', { partyId: currentParty.id });
+          socket.emit('chess:timeout', { partyId: activePartyId });
         }
       }
     }, 100);
     return () => clearInterval(interval);
-  }, [gameState?.turn, gameState?.phase]);
+  }, [gameState?.turn, gameState?.phase, myPlayer?.color, socket, activePartyId]);
 
   // Execute premove when it becomes our turn
   const prevIsMyTurnRef = useRef(false);
@@ -255,27 +334,27 @@ export default function Echecs() {
 
     if (isMyTurn && !wasMyTurn) {
       const pm = premoveRef.current;
-      if (pm && gameState && socket && currentParty) {
+      if (pm && gameState && socket && activePartyId) {
         const legalMoves = gameState.legalMoves[pm.from] ?? [];
         if (legalMoves.includes(pm.to)) {
-          socket.emit('chess:move', { partyId: currentParty.id, from: pm.from, to: pm.to, promotion: pm.promotion ?? 'q' });
+          socket.emit('chess:move', { partyId: activePartyId, from: pm.from, to: pm.to, promotion: pm.promotion ?? 'q' });
           setSelectedSquare(null);
         }
         setPremove(null);
         setPremoveSource(null);
       }
     }
-  }, [isMyTurn]);
+  }, [isMyTurn, gameState, socket, activePartyId]);
 
   const sendMove = useCallback((from: string, to: string, promotion?: PromotionPiece) => {
-    if (!socket || !currentParty) return;
-    socket.emit('chess:move', { partyId: currentParty.id, from, to, promotion });
+    if (!socket || !activePartyId || isSpectating) return;
+    socket.emit('chess:move', { partyId: activePartyId, from, to, promotion });
     setSelectedSquare(null);
-  }, [socket, currentParty]);
+  }, [socket, activePartyId, isSpectating]);
 
   // Drag & drop handler
   const onPieceDrop = useCallback((source: string, target: string, piece: string): boolean => {
-    if (!gameState || !myPlayer) return false;
+    if (!gameState || !myPlayer || isSpectating) return false;
 
     if (!isMyTurn) {
       // Set premove via drag
@@ -298,11 +377,11 @@ export default function Echecs() {
     }
     sendMove(source, target);
     return true;
-  }, [gameState, myPlayer, isMyTurn, sendMove]);
+  }, [gameState, myPlayer, isMyTurn, sendMove, isSpectating]);
 
   // Click-to-move handler
   const onSquareClick = useCallback((square: string) => {
-    if (!gameState || !myPlayer) return;
+    if (!gameState || !myPlayer || isSpectating) return;
 
     if (!isMyTurn) {
       // Premove selection
@@ -352,7 +431,7 @@ export default function Echecs() {
     } else {
       setSelectedSquare(null);
     }
-  }, [gameState, myPlayer, isMyTurn, selectedSquare, chess, sendMove, premoveSource]);
+  }, [gameState, myPlayer, isMyTurn, selectedSquare, chess, sendMove, premoveSource, isSpectating]);
 
   // Promotion piece selected from built-in dialog
   const onPromotionPieceSelect = useCallback((piece?: string): boolean => {
@@ -407,18 +486,27 @@ export default function Echecs() {
   }, [selectedSquare, gameState, chess, premove, premoveSource]);
 
   const handleStart = () => {
-    if (!socket || !currentParty) return;
+    if (!socket || !currentParty || isSpectating) return;
     socket.emit('chess:start', { partyId: currentParty.id });
   };
 
   const handleResign = () => {
-    if (!socket || !currentParty || !gameState || gameState.phase !== 'playing') return;
-    socket.emit('chess:resign', { partyId: currentParty.id });
+    if (!socket || !activePartyId || !gameState || gameState.phase !== 'playing' || isSpectating) return;
+    socket.emit('chess:resign', { partyId: activePartyId });
+  };
+
+  const handleLeaveSpectate = () => {
+    socket?.emit('chess:spectate-leave');
+    setGameState(null);
+    setSpectatingPartyId(null);
+    setSpectatorCount(0);
+    setError(null);
   };
 
   const statusText = (() => {
     if (!gameState) return null;
     if (gameState.phase === 'finished' && gameState.result) return RESULT_LABELS[gameState.result];
+    if (isSpectating) return 'Mode spectateur';
     if (isMyTurn && gameState.inCheck) return 'À toi — tu es en échec !';
     if (isMyTurn) return 'À toi de jouer.';
     if (premove) return 'Pré-coup en attente…';
@@ -427,7 +515,7 @@ export default function Echecs() {
   })();
 
   // ── No party ──────────────────────────────────────────────────────────────
-  if (!currentParty) {
+  if (!currentParty && !isSpectating && !routeSpectatePartyId) {
     const challengeableUsers = onlineUsers.filter(
       (u) => u.userId !== user?.id && u.username.toLowerCase().includes(challengeSearch.toLowerCase())
     );
@@ -513,6 +601,28 @@ export default function Echecs() {
     );
   }
 
+  if ((isSpectating || routeSpectatePartyId) && !gameState) {
+    return (
+      <PageShell>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link to="/games" className="inline-flex items-center gap-1.5">
+              <ArrowLeft className="h-4 w-4" />Jeux
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleLeaveSpectate}>
+            <EyeOff className="h-4 w-4 mr-1" />Quitter spectate
+          </Button>
+        </div>
+        <Card>
+          <CardContent className="py-10 text-center text-sm text-muted-foreground">
+            En attente de l'état de la partie...
+          </CardContent>
+        </Card>
+      </PageShell>
+    );
+  }
+
   // ── Lobby ─────────────────────────────────────────────────────────────────
   if (!gameState) {
     return (
@@ -584,8 +694,18 @@ export default function Echecs() {
               <LogOut className="h-4 w-4 mr-1" />Abandonner
             </Button>
           )}
+          {isSpectating && (
+            <Button variant="outline" size="sm" onClick={handleLeaveSpectate}>
+              <EyeOff className="h-4 w-4 mr-1" />Quitter spectate
+            </Button>
+          )}
           {statusText && (
             <span className="text-sm text-muted-foreground ml-1">{statusText}</span>
+          )}
+          {activePartyId && (
+            <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
+              <Eye className="h-3.5 w-3.5" />{spectatorCount} spectateur{spectatorCount !== 1 ? 's' : ''}
+            </span>
           )}
         </div>
 
@@ -600,6 +720,7 @@ export default function Echecs() {
               onSquareClick={onSquareClick as any}
               customSquareStyles={customSquareStyles as any}
               isDraggablePiece={({ piece }: { piece: string }) => {
+                if (isSpectating) return false;
                 if (!myPlayer) return false;
                 return piece[0] === myPlayer.color;
               }}
@@ -699,10 +820,15 @@ export default function Echecs() {
                 ) : (
                   <p className="text-sm text-muted-foreground">Partie non commencée.</p>
                 )}
-                {myPlayer && (
+                {myPlayer && !isSpectating && (
                   <div className="rounded-lg border border-border/40 px-3 py-2 text-sm text-muted-foreground">
                     Tu joues les {myPlayer.color === 'w' ? 'blancs' : 'noirs'}.
                     {gameState.inCheck && gameState.phase === 'playing' && ' Un roi est en échec.'}
+                  </div>
+                )}
+                {isSpectating && (
+                  <div className="rounded-lg border border-border/40 px-3 py-2 text-sm text-muted-foreground">
+                    Tu regardes cette partie en direct.
                   </div>
                 )}
                 {premove && (

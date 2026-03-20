@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../../contexts/SocketContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { Send, ChevronDown, ChevronUp, Trash2, MoreHorizontal, Pin, PinOff } from 'lucide-react';
+import { Send, ChevronDown, ChevronUp, Trash2, MoreHorizontal, Pin, PinOff, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -327,7 +327,16 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                           <UserBadges badges={u.badges} size="xs" showEmptySlots={false} tooltipSide="left" />
                         )}
                         <div className="min-w-0 flex-1">
-                          <UsernameDisplay username={u.username} className="block" />
+                          <span className="flex items-center gap-1.5">
+                            <span
+                              className={cn(
+                                'inline-block h-1.5 w-1.5 rounded-full',
+                                u.isPageActive ? 'bg-emerald-500' : 'bg-amber-500'
+                              )}
+                              title={u.isPageActive ? 'Utilisateur actif sur la page' : 'Utilisateur en arrière-plan'}
+                            />
+                            <UsernameDisplay username={u.username} className="block" />
+                          </span>
                           {(() => {
                             const pageMeta = getPageMeta(u.currentPage);
                             const PageIcon = pageMeta.icon;
@@ -335,6 +344,8 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                               <span className="flex items-center gap-1 text-[10px] text-muted-foreground/80">
                                 <PageIcon className="h-3 w-3" />
                                 <span className="truncate">{pageMeta.label}</span>
+                                <Monitor className="ml-1 h-3 w-3" />
+                                <span>{u.isPageActive ? 'sur page' : 'arriere-plan'}</span>
                               </span>
                             );
                           })()}

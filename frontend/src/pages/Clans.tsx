@@ -163,6 +163,7 @@ export default function Clans() {
   const { user } = useAuth();
   const [clans, setClans] = useState<ClanSummary[]>([]);
   const [activeWars, setActiveWars] = useState<ClanWarState[]>([]);
+  const [globalWarHistory, setGlobalWarHistory] = useState<ClanWarState[]>([]);
   const [viewerClanId, setViewerClanId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedClanId, setSelectedClanId] = useState<string | null>(null);
@@ -213,6 +214,7 @@ export default function Clans() {
 
   useEffect(() => {
     void fetchClans();
+    void fetchGlobalWarHistory();
   }, []);
 
   useEffect(() => {
@@ -337,6 +339,20 @@ export default function Clans() {
       });
     } finally {
       setDetailLoading(false);
+    }
+  };
+
+  const fetchGlobalWarHistory = async () => {
+    try {
+      const res = await clansApi.getGlobalWarHistory();
+      setGlobalWarHistory(res.data.wars ?? []);
+    } catch (error) {
+      console.error('Failed to fetch global war history:', error);
+      toast({
+        title: 'Erreur',
+        description: "Impossible de charger l'historique global des guerres.",
+        variant: 'destructive',
+      });
     }
   };
 
@@ -1208,6 +1224,53 @@ export default function Clans() {
                                   <Badge variant={isDraw ? 'outline' : isWin ? 'secondary' : 'destructive'}>
                                     {isDraw ? 'Égalité' : isWin ? 'Victoire' : 'Défaite'}
                                   </Badge>
+                                </div>
+                              );
+                            })
+                          )}
+                        </CardContent>
+                      </Card>
+
+                      {/* Global war history */}
+                      <Card className={panelClassName}>
+                        <CardContent className="space-y-3 p-4">
+                          <SectionTitle
+                            title="Archives globales des guerres"
+                            description="Toutes les guerres terminées de tous les clans."
+                            action={<Badge variant="secondary">{globalWarHistory.length}</Badge>}
+                          />
+                          {globalWarHistory.length === 0 ? (
+                            <div className="text-sm text-muted-foreground">Aucune guerre globale terminée pour le moment.</div>
+                          ) : (
+                            globalWarHistory.map((war) => {
+                              const isDraw = !war.winnerClan;
+                              return (
+                                <div key={war.id} className="rounded-2xl border border-border/50 bg-muted/15 p-4">
+                                  <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div className="min-w-0 space-y-1">
+                                      <div className="text-sm font-medium">
+                                        {war.attackerClan.name} <span className="text-muted-foreground">vs</span> {war.defenderClan.name}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">
+                                        Début: {formatDate(war.startsAt)} • Fin: {formatDate(war.completedAt)}
+                                      </div>
+                                      <div className="text-sm text-muted-foreground">
+                                        Score final: {war.attackerScore} - {war.defenderScore}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">
+                                        Récompense victoire: +{war.rewardTable.winner.money} money, +{war.rewardTable.winner.aura} aura •
+                                        Récompense défaite/égalité: +{war.rewardTable.loser.money} money, +{war.rewardTable.loser.aura} aura
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">
+                                        {war.winnerClan
+                                          ? `Vainqueur: ${war.winnerClan.name}${war.winnerUser ? ` • MVP: ${war.winnerUser.username}` : ''}`
+                                          : 'Résultat: égalité'}
+                                      </div>
+                                    </div>
+                                    <Badge variant={isDraw ? 'outline' : 'secondary'}>
+                                      {isDraw ? 'Égalité' : 'Terminée'}
+                                    </Badge>
+                                  </div>
                                 </div>
                               );
                             })

@@ -5,7 +5,7 @@ import { startDirectBattleshipGame } from './battleship.js';
 import { startDirectP4Game } from './puissancequatre.js';
 import { startDirectBallArenaGame } from './ballarena.js';
 import { emitPartyChatHistory } from './party.js';
-import { duelPartyIds } from './duelParties.js';
+import { duelPartyIds, onDuelPartyDeleted } from './duelParties.js';
 
 type DuelGameType = 'chess' | 'battleship' | 'p4' | 'ballarena';
 
@@ -21,6 +21,12 @@ interface DuelChallenge {
 
 const CHALLENGE_TIMEOUT = 30000;
 const pendingChallenges = new Map<string, DuelChallenge>();
+const matchmakingQueue: string[] = [];
+const matchmakingQueueSet = new Set<string>();
+const matchmakingUserToParty = new Map<string, string>();
+const matchmakingActivePartyIds = new Set<string>();
+let matchmakingPairingInProgress = false;
+let deleteListenerRegistered = false;
 
 const getChallengeKey = (challengerId: string, targetId: string, gameType: DuelGameType) =>
   `${challengerId}:${targetId}:${gameType}`;
@@ -32,7 +38,228 @@ const GAME_ROUTES: Record<DuelGameType, string> = {
   ballarena: '/games/ball-arena',
 };
 
+const MATCHMAKING_GAME_TYPES: DuelGameType[] = ['chess', 'battleship', 'p4', 'ballarena'];
+
+const randomMatchmakingGame = (): DuelGameType => {
+  const index = Math.floor(Math.random() * MATCHMAKING_GAME_TYPES.length);
+  return MATCHMAKING_GAME_TYPES[index];
+};
+
+const emitMatchmakingStateForUser = (io: Server, userId: string, isQueued: boolean) => {
+  io.to(`user:${userId}`).emit('duel:matchmaking-state', { isQueued });
+};
+
+const removeUserFromQueue = (userId: string): boolean => {
+  if (!matchmakingQueueSet.has(userId)) return false;
+  matchmakingQueueSet.delete(userId);
+  const index = matchmakingQueue.indexOf(userId);
+  if (index >= 0) matchmakingQueue.splice(index, 1);
+  return true;
+};
+
+const syncMatchmakingParties = async () => {
+  if (matchmakingActivePartyIds.size === 0) {
+    if (matchmakingUserToParty.size > 0) matchmakingUserToParty.clear();
+    return { inGameCount: 0 };
+  }
+
+  const partyIds = Array.from(matchmakingActivePartyIds);
+  const parties = await prisma.party.findMany({
+    where: { id: { in: partyIds } },
+    select: {
+      id: true,
+      members: {
+        select: { userId: true },
+      },
+    },
+  });
+
+  const existingIds = new Set(parties.map((party) => party.id));
+  for (const partyId of partyIds) {
+    if (!existingIds.has(partyId)) matchmakingActivePartyIds.delete(partyId);
+  }
+
+  matchmakingUserToParty.clear();
+  let inGameCount = 0;
+  for (const party of parties) {
+    inGameCount += party.members.length;
+    for (const member of party.members) {
+      matchmakingUserToParty.set(member.userId, party.id);
+    }
+  }
+
+  return { inGameCount };
+};
+
+const emitMatchmakingStats = async (io: Server, targetSocket?: Socket) => {
+  const { inGameCount } = await syncMatchmakingParties();
+  const payload = {
+    queuedCount: matchmakingQueueSet.size,
+    inGameCount,
+  };
+
+  if (targetSocket) {
+    targetSocket.emit('duel:matchmaking-stats', payload);
+    return;
+  }
+
+  io.emit('duel:matchmaking-stats', payload);
+};
+
+const createAndStartDuel = async (
+  io: Server,
+  challengerId: string,
+  acceptorId: string,
+  gameType: DuelGameType,
+  source: 'challenge' | 'matchmaking'
+) => {
+  await prisma.partyMember.deleteMany({
+    where: { userId: { in: [challengerId, acceptorId] } },
+  });
+
+  const party = await prisma.party.create({
+    data: {
+      isPublic: false,
+      maxSize: 2,
+      members: {
+        createMany: {
+          data: [
+            { userId: challengerId, isLeader: true },
+            { userId: acceptorId, isLeader: false },
+          ],
+        },
+      },
+    },
+    include: {
+      members: {
+        include: { user: { select: { id: true, username: true, usernameColor: true } } },
+        orderBy: { joinedAt: 'asc' },
+      },
+    },
+  });
+
+  const partyRoom = `party:${party.id}`;
+  const partyData = { id: party.id, name: null, isPublic: false, maxSize: 2 };
+  const members = party.members.map((member) => ({
+    userId: member.user.id,
+    username: member.user.username,
+    usernameColor: member.user.usernameColor,
+    isLeader: member.isLeader,
+  }));
+
+  const challengerSockets = await io.in(`user:${challengerId}`).fetchSockets();
+  const acceptorSockets = await io.in(`user:${acceptorId}`).fetchSockets();
+  const allSockets = [...challengerSockets, ...acceptorSockets];
+  for (const currentSocket of allSockets) {
+    currentSocket.join(partyRoom);
+  }
+
+  io.to(partyRoom).emit('party:joined', { party: partyData, members });
+
+  for (const currentSocket of allSockets) {
+    await emitPartyChatHistory(currentSocket, party.id);
+  }
+
+  duelPartyIds.add(party.id);
+
+  const gamePlayers = party.members.map((member) => ({ user: member.user }));
+  if (gameType === 'chess') {
+    startDirectChessGame(party.id, gamePlayers, io);
+  } else if (gameType === 'battleship') {
+    startDirectBattleshipGame(party.id, gamePlayers, io);
+  } else if (gameType === 'p4') {
+    startDirectP4Game(party.id, gamePlayers, io);
+  } else {
+    startDirectBallArenaGame(party.id, gamePlayers, io);
+  }
+
+  if (source === 'matchmaking') {
+    matchmakingActivePartyIds.add(party.id);
+    for (const member of party.members) {
+      matchmakingUserToParty.set(member.user.id, party.id);
+    }
+
+    io.to(partyRoom).emit('duel:matchmaking-match-found', {
+      gameType,
+      partyId: party.id,
+    });
+  }
+
+  io.to(partyRoom).emit('duel:redirect', {
+    gameType,
+    partyId: party.id,
+    path: GAME_ROUTES[gameType],
+  });
+
+  return party;
+};
+
+const tryMatchmakingPair = async (io: Server) => {
+  if (matchmakingPairingInProgress) return;
+  matchmakingPairingInProgress = true;
+
+  try {
+    while (matchmakingQueue.length >= 2) {
+      const challengerId = matchmakingQueue.shift();
+      const acceptorId = matchmakingQueue.shift();
+      if (!challengerId || !acceptorId) break;
+
+      matchmakingQueueSet.delete(challengerId);
+      matchmakingQueueSet.delete(acceptorId);
+      emitMatchmakingStateForUser(io, challengerId, false);
+      emitMatchmakingStateForUser(io, acceptorId, false);
+
+      const [challengerSockets, acceptorSockets] = await Promise.all([
+        io.in(`user:${challengerId}`).fetchSockets(),
+        io.in(`user:${acceptorId}`).fetchSockets(),
+      ]);
+
+      if (challengerSockets.length === 0 && acceptorSockets.length === 0) {
+        continue;
+      }
+
+      if (challengerSockets.length === 0) {
+        if (!matchmakingQueueSet.has(acceptorId) && !matchmakingUserToParty.has(acceptorId)) {
+          matchmakingQueue.push(acceptorId);
+          matchmakingQueueSet.add(acceptorId);
+          emitMatchmakingStateForUser(io, acceptorId, true);
+        }
+        continue;
+      }
+
+      if (acceptorSockets.length === 0) {
+        if (!matchmakingQueueSet.has(challengerId) && !matchmakingUserToParty.has(challengerId)) {
+          matchmakingQueue.push(challengerId);
+          matchmakingQueueSet.add(challengerId);
+          emitMatchmakingStateForUser(io, challengerId, true);
+        }
+        continue;
+      }
+
+      const gameType = randomMatchmakingGame();
+      await createAndStartDuel(io, challengerId, acceptorId, gameType, 'matchmaking');
+    }
+  } catch (error) {
+    console.error('tryMatchmakingPair error:', error);
+  } finally {
+    matchmakingPairingInProgress = false;
+    await emitMatchmakingStats(io);
+  }
+};
+
 export const setupDuelHandlers = (socket: Socket, io: Server) => {
+  if (!deleteListenerRegistered) {
+    deleteListenerRegistered = true;
+    onDuelPartyDeleted(async (partyId: string) => {
+      if (!matchmakingActivePartyIds.has(partyId)) return;
+      matchmakingActivePartyIds.delete(partyId);
+      for (const [userId, userPartyId] of matchmakingUserToParty.entries()) {
+        if (userPartyId === partyId) matchmakingUserToParty.delete(userId);
+      }
+      await emitMatchmakingStats(io);
+    });
+  }
+
   socket.on('duel:challenge', async (data: { targetId: string; gameType: DuelGameType }) => {
     const userId = socket.data.userId as string | undefined;
     const username = socket.data.username as string | undefined;
@@ -104,69 +331,7 @@ export const setupDuelHandlers = (socket: Socket, io: Server) => {
     pendingChallenges.delete(key);
 
     try {
-      // Remove both from any existing parties
-      await prisma.partyMember.deleteMany({
-        where: { userId: { in: [challengerId, userId] } },
-      });
-
-      // Create duel party with both players
-      const party = await prisma.party.create({
-        data: {
-          isPublic: false,
-          maxSize: 2,
-          members: {
-            createMany: {
-              data: [
-                { userId: challengerId, isLeader: true },
-                { userId, isLeader: false },
-              ],
-            },
-          },
-        },
-        include: {
-          members: {
-            include: { user: { select: { id: true, username: true, usernameColor: true } } },
-            orderBy: { joinedAt: 'asc' },
-          },
-        },
-      });
-
-      const partyRoom = `party:${party.id}`;
-      const partyData = { id: party.id, name: null, isPublic: false, maxSize: 2 };
-      const members = party.members.map((m) => ({
-        userId: m.user.id,
-        username: m.user.username,
-        usernameColor: m.user.usernameColor,
-        isLeader: m.isLeader,
-      }));
-
-      // Join acceptor to party room
-      socket.join(partyRoom);
-
-      // Join challenger's sockets to party room
-      const challengerSockets = await io.in(`user:${challengerId}`).fetchSockets();
-      for (const s of challengerSockets) {
-        s.join(partyRoom);
-      }
-
-      // Notify both of the new party
-      io.to(partyRoom).emit('party:joined', { party: partyData, members });
-      await emitPartyChatHistory(socket, party.id);
-
-      // Track this party for automatic cleanup after the game ends
-      duelPartyIds.add(party.id);
-
-      // Start game directly
-      const gamePlayers = party.members.map((m) => ({ user: m.user }));
-      if (gameType === 'chess') {
-        startDirectChessGame(party.id, gamePlayers, io);
-      } else if (gameType === 'battleship') {
-        startDirectBattleshipGame(party.id, gamePlayers, io);
-      } else if (gameType === 'p4') {
-        startDirectP4Game(party.id, gamePlayers, io);
-      } else if (gameType === 'ballarena') {
-        startDirectBallArenaGame(party.id, gamePlayers, io);
-      }
+      const party = await createAndStartDuel(io, challengerId, userId, gameType, 'challenge');
 
       // Notify challenger that challenge was accepted
       io.to(`user:${challengerId}`).emit('duel:challenge-accepted', {
@@ -174,21 +339,47 @@ export const setupDuelHandlers = (socket: Socket, io: Server) => {
         targetUsername: username ?? 'Quelqu\'un',
         gameType,
       });
-
-      // Redirect both to the game page
-      io.to(partyRoom).emit('duel:redirect', {
-        gameType,
-        partyId: party.id,
-        path: GAME_ROUTES[gameType],
-      });
-
-      for (const challengerSocket of challengerSockets) {
-        await emitPartyChatHistory(challengerSocket, party.id);
-      }
     } catch (error) {
       console.error('duel:accept error:', error);
       socket.emit('duel:challenge-error', { message: 'Impossible de démarrer le duel.' });
     }
+  });
+
+  socket.on('duel:matchmaking-join', async () => {
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+
+    if (matchmakingUserToParty.has(userId)) {
+      socket.emit('duel:challenge-error', { message: 'Tu es deja en duel via le matchmaking.' });
+      emitMatchmakingStateForUser(io, userId, false);
+      await emitMatchmakingStats(io, socket);
+      return;
+    }
+
+    if (!matchmakingQueueSet.has(userId)) {
+      matchmakingQueueSet.add(userId);
+      matchmakingQueue.push(userId);
+    }
+
+    emitMatchmakingStateForUser(io, userId, true);
+    await emitMatchmakingStats(io);
+    await tryMatchmakingPair(io);
+  });
+
+  socket.on('duel:matchmaking-leave', async () => {
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+
+    const removed = removeUserFromQueue(userId);
+    emitMatchmakingStateForUser(io, userId, false);
+    if (removed) await emitMatchmakingStats(io);
+  });
+
+  socket.on('duel:matchmaking-stats-request', async () => {
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    emitMatchmakingStateForUser(io, userId, matchmakingQueueSet.has(userId));
+    await emitMatchmakingStats(io, socket);
   });
 
   socket.on('duel:decline', (data: { challengerId: string; gameType: DuelGameType }) => {
@@ -232,6 +423,12 @@ export const setupDuelHandlers = (socket: Socket, io: Server) => {
   socket.on('disconnect', () => {
     const userId = socket.data.userId as string | undefined;
     if (!userId) return;
+
+    const removed = removeUserFromQueue(userId);
+    if (removed) {
+      emitMatchmakingStateForUser(io, userId, false);
+      void emitMatchmakingStats(io);
+    }
 
     // Cancel any outgoing challenges when user disconnects
     for (const [key, challenge] of pendingChallenges.entries()) {

@@ -36,8 +36,8 @@ export const disconnectSocket = (): void => {
 
 // Chat events
 export const chatEvents = {
-  join: (userId: string, username: string, currentPage?: string) => {
-    socket?.emit('chat:join', { userId, username, currentPage });
+  join: (userId: string, username: string, currentPage?: string, isPageActive?: boolean) => {
+    socket?.emit('chat:join', { userId, username, currentPage, isPageActive });
   },
   sendMessage: (userId: string, message?: string, replyToId?: string | null, imageUrl?: string | null) => {
     socket?.emit('chat:message', { userId, message, replyToId, imageUrl });
@@ -53,6 +53,9 @@ export const chatEvents = {
   },
   setPage: (userId: string, currentPage: string) => {
     socket?.emit('chat:page', { userId, currentPage });
+  },
+  setPresence: (userId: string, isPageActive: boolean) => {
+    socket?.emit('chat:presence', { userId, isPageActive });
   },
 };
 
@@ -219,6 +222,15 @@ export const duelEvents = {
   },
   cancel: (targetId: string, gameType: 'chess' | 'battleship' | 'p4' | 'ballarena') => {
     socket?.emit('duel:cancel', { targetId, gameType });
+  },
+  joinMatchmaking: () => {
+    socket?.emit('duel:matchmaking-join');
+  },
+  leaveMatchmaking: () => {
+    socket?.emit('duel:matchmaking-leave');
+  },
+  requestMatchmakingStats: () => {
+    socket?.emit('duel:matchmaking-stats-request');
   },
 };
 

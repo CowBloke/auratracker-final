@@ -661,7 +661,20 @@ export default function QSWatermelon() {
       currentDropXRef.current = clamp(x, 20, WORLD_WIDTH - 20);
     };
 
+    const isEditableTarget = (target: EventTarget | null) => {
+      const element = target as HTMLElement | null;
+      if (!element) return false;
+      const tagName = element.tagName;
+      return (
+        element.isContentEditable ||
+        tagName === 'INPUT' ||
+        tagName === 'TEXTAREA' ||
+        tagName === 'SELECT'
+      );
+    };
+
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) return;
       if (phaseRef.current === 'idle' && event.code === 'Space') {
         event.preventDefault();
         resetGame();

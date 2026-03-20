@@ -4,7 +4,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useSocket } from '../contexts/SocketContext';
 import { gamesApi, marketplaceApi } from '../services/api';
 import { resolveImageUrl } from '@/lib/images';
-import { Play, RotateCcw, Eye, EyeOff, Users } from 'lucide-react';
+import { Play, RotateCcw, Eye, EyeOff, Users, Sparkles } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -142,6 +142,24 @@ interface DoodleMultiplayerRosterItem {
   isDead: boolean;
 }
 
+interface DoodleConfettiParticle {
+  vx: number;
+  vy: number;
+  size: number;
+  color: string;
+}
+
+interface DoodleConfettiBurst {
+  id: number;
+  createdAt: number;
+  lifetime: number;
+  originX: number;
+  originY: number;
+  particles: DoodleConfettiParticle[];
+}
+
+const CONFETTI_COLORS = ['#f97316', '#facc15', '#22c55e', '#0ea5e9', '#ec4899', '#f43f5e'];
+
 const seededRandom = (seed: number, index: number, channel: number) => {
   let value = seed ^ Math.imul(index + 1, 374761393) ^ Math.imul(channel + 1, 668265263);
   value = Math.imul(value ^ (value >>> 13), 1274126177);
@@ -222,6 +240,9 @@ export default function DoodleJump() {
   const multiplayerSocketIdRef = useRef<string | null>(null);
   const multiplayerDisplayPlayersRef = useRef<Map<string, DoodleMultiplayerDisplayState>>(new Map());
   const pendingMultiplayerStartRef = useRef(false);
+  const confettiBurstsRef = useRef<DoodleConfettiBurst[]>([]);
+  const confettiBurstIdRef = useRef(0);
+  const lastConfettiEmitAtRef = useRef(0);
 
   const { user, refreshUser } = useAuth();
   const { socket } = useSocket();
@@ -444,6 +465,7 @@ export default function DoodleJump() {
     setSpectatingHost(null);
     spectateTargetFrameRef.current = null;
     spectateReplayQueueRef.current = [];
+    confettiBurstsRef.current = [];
     setSpectatorCount(0);
 
     if (resetGameState) {
@@ -459,6 +481,52 @@ export default function DoodleJump() {
   // ============================================
   // GAME INITIALIZATION
   // ============================================
+  const createConfettiBurst = useCallback((): DoodleConfettiBurst => {
+    const particleCount = 44;
+    const particles: DoodleConfettiParticle[] = [];
+    for (let i = 0; i < particleCount; i++) {
+      const spread = ((i / particleCount) - 0.5) * 1.8;
+      const angle = (-Math.PI / 2) + spread + ((Math.random() - 0.5) * 0.45);
+      const speed = 0.7 + (Math.random() * 1.5);
+      particles.push({
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 0.2,
+        size: 2 + (Math.random() * 3.5),
+        color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+      });
+    }
+
+    return {
+      id: confettiBurstIdRef.current++,
+      createdAt: performance.now(),
+      lifetime: 1400,
+      originX: CANVAS_WIDTH * (0.25 + (Math.random() * 0.5)),
+      originY: CANVAS_HEIGHT * (0.08 + (Math.random() * 0.12)),
+      particles,
+    };
+  }, []);
+
+  const addLocalConfettiBurst = useCallback(() => {
+    const bursts = confettiBurstsRef.current;
+    bursts.push(createConfettiBurst());
+    if (bursts.length > 12) {
+      bursts.splice(0, bursts.length - 12);
+    }
+  }, [createConfettiBurst]);
+
+  const emitSpectateConfetti = useCallback(() => {
+    if (!socket) return;
+    const now = Date.now();
+    if (now - lastConfettiEmitAtRef.current < 500) return;
+    lastConfettiEmitAtRef.current = now;
+
+    const currentHost = spectatingHostRef.current;
+    const hostUserId = currentHost?.hostUserId ?? user?.id;
+    if (!hostUserId) return;
+
+    socket.emit('doodle:spectate-confetti', { hostUserId });
+  }, [socket, user?.id]);
+
   const initGame = useCallback(() => {
     if (spectatingRef.current) {
       socket?.emit('doodle:spectate-leave');
@@ -520,6 +588,7 @@ export default function DoodleJump() {
     setRewards(null);
     setIsNewHighScore(false);
     setSpectatorCount(0);
+    confettiBurstsRef.current = [];
     lastBroadcastAtRef.current = 0;
 
     socket?.emit('doodle:spectate-start', { mode: selectedMode });
@@ -779,6 +848,28 @@ export default function DoodleJump() {
         ctx.globalAlpha = 1;
       }
     }
+
+    const nextConfettiBursts: DoodleConfettiBurst[] = [];
+    for (const burst of confettiBurstsRef.current) {
+      const elapsed = timestamp - burst.createdAt;
+      if (elapsed >= burst.lifetime) {
+        continue;
+      }
+      nextConfettiBursts.push(burst);
+
+      const progress = Math.max(0, Math.min(1, elapsed / burst.lifetime));
+      const alpha = 1 - progress;
+      for (const particle of burst.particles) {
+        const px = burst.originX + (particle.vx * progress * 300);
+        const py = burst.originY + (particle.vy * progress * 260) + (300 * progress * progress);
+        const size = Math.max(1, particle.size * (1 - (progress * 0.3)));
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = particle.color;
+        ctx.fillRect(px, py, size, size);
+      }
+    }
+    confettiBurstsRef.current = nextConfettiBursts;
+    ctx.globalAlpha = 1;
   }, [colors, user]);
 
   // ============================================
@@ -1090,11 +1181,23 @@ export default function DoodleJump() {
       clearSpectateState(true);
     };
 
+    const handleConfetti = (data: { hostUserId: string }) => {
+      const currentHost = spectatingHostRef.current;
+      if (currentHost && data.hostUserId === currentHost.hostUserId) {
+        addLocalConfettiBurst();
+        return;
+      }
+      if (user && data.hostUserId === user.id) {
+        addLocalConfettiBurst();
+      }
+    };
+
     socket.on('doodle:spectate-joined', handleJoined);
     socket.on('doodle:spectate-frame', handleFrame);
     socket.on('doodle:spectator-count', handleSpectatorCount);
     socket.on('doodle:spectate-stopped', handleStopped);
     socket.on('doodle:spectate-error', handleError);
+    socket.on('doodle:spectate-confetti', handleConfetti);
 
     return () => {
       socket.off('doodle:spectate-joined', handleJoined);
@@ -1102,8 +1205,9 @@ export default function DoodleJump() {
       socket.off('doodle:spectator-count', handleSpectatorCount);
       socket.off('doodle:spectate-stopped', handleStopped);
       socket.off('doodle:spectate-error', handleError);
+      socket.off('doodle:spectate-confetti', handleConfetti);
     };
-  }, [applySpectateFrame, clearMultiplayerRoom, clearSpectateState, location.pathname, navigate, socket, stopSpectateBroadcast, user]);
+  }, [addLocalConfettiBurst, applySpectateFrame, clearMultiplayerRoom, clearSpectateState, location.pathname, navigate, socket, stopSpectateBroadcast, user]);
 
   useEffect(() => {
     if (!socket || !user || !spectateHostUserIdFromRoute) return;
@@ -1287,7 +1391,20 @@ export default function DoodleJump() {
   // INPUT HANDLING
   // ============================================
   useEffect(() => {
+    const isEditableTarget = (target: EventTarget | null) => {
+      const element = target as HTMLElement | null;
+      if (!element) return false;
+      const tagName = element.tagName;
+      return (
+        element.isContentEditable ||
+        tagName === 'INPUT' ||
+        tagName === 'TEXTAREA' ||
+        tagName === 'SELECT'
+      );
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isEditableTarget(e.target)) return;
       if (spectatingRef.current) return;
       if (e.key === 'ArrowLeft' || e.key === 'a') {
         moveLeftRef.current = true;
@@ -1300,6 +1417,7 @@ export default function DoodleJump() {
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
+      if (isEditableTarget(e.target)) return;
       if (spectatingRef.current) return;
       if (e.key === 'ArrowLeft' || e.key === 'a') {
         moveLeftRef.current = false;
@@ -1525,18 +1643,30 @@ export default function DoodleJump() {
 
         {/* Spectate — quit button */}
         {spectatingHost && (
-          <Button
-            variant="outline"
-            type="button"
-            onClick={() => {
-              socket?.emit('doodle:spectate-leave');
-              clearSpectateState(true);
-            }}
-            className="flex items-center gap-2 w-full"
-          >
-            <EyeOff className="h-4 w-4" />
-            Quitter spectate
-          </Button>
+          <div className="flex flex-col gap-2">
+            <Button
+              variant="secondary"
+              type="button"
+              onClick={emitSpectateConfetti}
+              className="flex items-center gap-2 w-full"
+            >
+              <Sparkles className="h-4 w-4" />
+              Lancer des confettis
+            </Button>
+
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => {
+                socket?.emit('doodle:spectate-leave');
+                clearSpectateState(true);
+              }}
+              className="flex items-center gap-2 w-full"
+            >
+              <EyeOff className="h-4 w-4" />
+              Quitter spectate
+            </Button>
+          </div>
         )}
       </div>
 

@@ -631,6 +631,7 @@ export interface ClanWarGamesStatus {
 export const clansApi = {
   list: () => api.get<ClansListResponse>('/clans'),
   getById: (id: string) => api.get<{ clan: ClanDetail }>(`/clans/${id}`),
+  getGlobalWarHistory: () => api.get<{ wars: ClanWarState[] }>('/clans/wars/history'),
   getChat: (id: string, limit = 50) => api.get<{ messages: ClanChatMessage[] }>(`/clans/${id}/chat`, { params: { limit } }),
   sendMessage: (id: string, message: string) =>
     api.post<{ message: ClanChatMessage }>(`/clans/${id}/chat`, { message }),
@@ -955,6 +956,16 @@ export interface AdminActivityBreakdown {
   topGames: Array<{
     gameType: string;
     total: number;
+  }>;
+  gameDurationSeries: Array<{
+    hour: number;
+    hourLabel: string;
+    total: number;
+    values: Record<string, number>;
+  }>;
+  topGameDurations: Array<{
+    gameType: string;
+    totalSeconds: number;
   }>;
 }
 
