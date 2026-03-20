@@ -9,6 +9,8 @@
 - railer
 - débloquer goyave empire
 - azerty clavier chat
+- saisons
+- parties ouvertes avec matchmaking
 
 ## à FIX
 
