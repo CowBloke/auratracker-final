@@ -15,6 +15,7 @@ export type AutoConditionKey =
   | 'TOP_10_MONEY'
   | 'BOMBPARTY_TOP_WINS'
   | `GAME_HIGHSCORE_${string}`
+  | 'GAME_HIGHSCORE_FRUIT_NINJA'
   // Achievement badges (auto-checked via scheduler or direct award)
   | 'TRYHARDEUR'              // 100+ total games played across all types
   | 'GRIND_200'               // 200+ total games played

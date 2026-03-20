@@ -25,6 +25,7 @@ const GAME_CHAT_LABELS: Record<string, string> = {
   goyave_empire: 'Goyave Empire',
   logic_lab: 'Sudoku',
   minesweeper: 'Minesweeper',
+  fruit_ninja: 'Fruit Ninja',
 };
 
 function getUtcDayStart(date = new Date()): Date {
@@ -192,6 +193,18 @@ const GAME_REWARDS = {
       { minScore: 550, moneyReward: 80, auraBonus: 8 },
       { minScore: 750, moneyReward: 140, auraBonus: 14 },
       { minScore: 900, moneyReward: 220, auraBonus: 22 },
+    ],
+  },
+  fruit_ninja: {
+    minScoreForReward: 50,
+    scoreTiers: [
+      { minScore: 0,   moneyReward: 0,  auraBonus: 0 },
+      { minScore: 50,  moneyReward: 12, auraBonus: 1 },
+      { minScore: 120, moneyReward: 28, auraBonus: 3 },
+      { minScore: 220, moneyReward: 55, auraBonus: 6 },
+      { minScore: 350, moneyReward: 95, auraBonus: 10 },
+      { minScore: 500, moneyReward: 160, auraBonus: 16 },
+      { minScore: 700, moneyReward: 250, auraBonus: 24 },
     ],
   },
   minesweeper: {
@@ -586,6 +599,32 @@ function calculateLogicLabRewards(score: number, isNewHighScore: boolean): { mon
   return { money: moneyReward, aura: auraReward };
 }
 
+function calculateFruitNinjaRewards(score: number, isNewHighScore: boolean): { money: number; aura: number } {
+  const config = GAME_REWARDS.fruit_ninja;
+
+  if (score < config.minScoreForReward) {
+    return { money: 0, aura: 0 };
+  }
+
+  let selectedTier = config.scoreTiers[0];
+  for (let i = config.scoreTiers.length - 1; i >= 0; i--) {
+    if (score >= config.scoreTiers[i].minScore) {
+      selectedTier = config.scoreTiers[i];
+      break;
+    }
+  }
+
+  let moneyReward = selectedTier.moneyReward;
+  let auraReward = selectedTier.auraBonus;
+
+  if (isNewHighScore) {
+    moneyReward += Math.min(Math.floor(score / 100) * 6, 60);
+    auraReward += Math.min(Math.floor(score / 150), 8);
+  }
+
+  return { money: moneyReward, aura: auraReward };
+}
+
 function calculateMinesweeperRewards(score: number, isNewHighScore: boolean, won: boolean): { money: number; aura: number } {
   if (!won) {
     return { money: 0, aura: 0 };
@@ -895,6 +934,10 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       auraReward = rewards.aura;
     } else if (gameType === 'minesweeper') {
       const rewards = calculateMinesweeperRewards(score, isNewHighScore, won || false);
+      moneyReward = rewards.money;
+      auraReward = rewards.aura;
+    } else if (gameType === 'fruit_ninja') {
+      const rewards = calculateFruitNinjaRewards(score, isNewHighScore);
       moneyReward = rewards.money;
       auraReward = rewards.aura;
     } else if (gameType === 'casino' && bet) {
