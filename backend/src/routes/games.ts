@@ -16,6 +16,7 @@ const GAME_CHAT_LABELS: Record<string, string> = {
   game_2048: '2048',
   flappy_bird: 'Flappy Bird',
   chrome_dino: 'Chrome Dino',
+  stack_tower: 'Stack Tower',
   geometry_dash: 'Geometry Dash',
   qs_watermelon: 'QS Watermelon',
   solitaire: 'Solitaire',
@@ -99,6 +100,18 @@ const GAME_REWARDS = {
       { minScore: 650, moneyReward: 105, auraBonus: 10 },
       { minScore: 950, moneyReward: 170, auraBonus: 16 },
       { minScore: 1350, moneyReward: 260, auraBonus: 24 },
+    ],
+  },
+  stack_tower: {
+    minScoreForReward: 10,
+    scoreTiers: [
+      { minScore: 0, moneyReward: 0, auraBonus: 0 },
+      { minScore: 10, moneyReward: 12, auraBonus: 1 },
+      { minScore: 20, moneyReward: 26, auraBonus: 3 },
+      { minScore: 35, moneyReward: 50, auraBonus: 6 },
+      { minScore: 55, moneyReward: 85, auraBonus: 10 },
+      { minScore: 80, moneyReward: 130, auraBonus: 15 },
+      { minScore: 120, moneyReward: 190, auraBonus: 22 },
     ],
   },
   geometry_dash: {
@@ -351,6 +364,32 @@ function calculateChromeDinoRewards(score: number, isNewHighScore: boolean): { m
   if (isNewHighScore) {
     moneyReward += Math.min(Math.floor(score / 180) * 5, 55);
     auraReward += Math.min(Math.floor(score / 240), 10);
+  }
+
+  return { money: moneyReward, aura: auraReward };
+}
+
+function calculateStackTowerRewards(score: number, isNewHighScore: boolean): { money: number; aura: number } {
+  const config = GAME_REWARDS.stack_tower;
+
+  if (score < config.minScoreForReward) {
+    return { money: 0, aura: 0 };
+  }
+
+  let selectedTier = config.scoreTiers[0];
+  for (let i = config.scoreTiers.length - 1; i >= 0; i--) {
+    if (score >= config.scoreTiers[i].minScore) {
+      selectedTier = config.scoreTiers[i];
+      break;
+    }
+  }
+
+  let moneyReward = selectedTier.moneyReward;
+  let auraReward = selectedTier.auraBonus;
+
+  if (isNewHighScore) {
+    moneyReward += Math.min(Math.floor(score / 14) * 4, 60);
+    auraReward += Math.min(Math.floor(score / 22), 8);
   }
 
   return { money: moneyReward, aura: auraReward };
@@ -861,6 +900,10 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       const rewards = calculateChromeDinoRewards(score, isNewHighScore);
       moneyReward = rewards.money;
       auraReward = rewards.aura;
+    } else if (gameType === 'stack_tower') {
+      const rewards = calculateStackTowerRewards(score, isNewHighScore);
+      moneyReward = rewards.money;
+      auraReward = rewards.aura;
     } else if (gameType === 'geometry_dash') {
       const rewards = calculateGeometryDashRewards(score, isNewHighScore);
       moneyReward = rewards.money;
@@ -1113,6 +1156,11 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
         await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
       }
     } else if (gameType === 'chrome_dino') {
+      await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
+      if (won) {
+        await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
+      }
+    } else if (gameType === 'stack_tower') {
       await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
       if (won) {
         await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);

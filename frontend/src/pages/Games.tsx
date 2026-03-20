@@ -108,6 +108,14 @@ const games = [
     image: '/images/games/dino.png',
   },
   {
+    id: 'stack-tower',
+    pageKey: 'game-stack-tower',
+    name: 'Stack Tower',
+    description: 'Empile des blocs en rythme et vise des coupes parfaites pour monter la tour le plus haut possible.',
+    type: 'Arcade',
+    emoji: '🧱',
+  },
+  {
     id: 'fruit-ninja',
     pageKey: 'game-fruit-ninja',
     name: 'Fruit Ninja',

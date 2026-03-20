@@ -1,5 +1,6 @@
 - on voit pas tout le monde sur le doodle jump
 - saisons reset
+- taille fruit
 
 - un type d'item qui te permet de mettre une banière derrière les messages de tous les membres de clan comme on avait dit (du coup une nouvelle catégorie dans le shop pour les upgrades de clan).
 - apparemment meme en essayant j'ai pas fix le solitaire donc si tu peux
