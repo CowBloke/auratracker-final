@@ -26,7 +26,7 @@ import suggestionsRoutes from './routes/suggestions.js';
 import bombpartyRoutes from './routes/bombparty.js';
 import uploadsRoutes from './routes/uploads.js';
 import maintenanceRoutes from './routes/maintenance.js';
-import clansRoutes from './routes/clans.js';
+import clansRoutes, { advanceClanWarsState } from './routes/clans.js';
 import polymarketRoutes from './routes/polymarket.js';
 import passRoutes from './routes/pass.js';
 import questsRoutes from './routes/quests.js';
@@ -292,6 +292,7 @@ const start = async () => {
     startBombPartyCleanup(io);
     await ensureDefaultBadges();
     startAutoBadgeScheduler(); // first run: awards + auto-equip immediately
+    await advanceClanWarsState(); // activate any PREPARING wars immediately on startup
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'EADDRINUSE') {
       console.error(`Failed to start server: port ${config.port} is already in use`);

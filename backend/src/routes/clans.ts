@@ -621,13 +621,12 @@ const finalizeClanWar = async (warId: string) => {
   ]);
 };
 
-const advanceClanWarsState = async () => {
+export const advanceClanWarsState = async () => {
   const now = new Date();
 
   const warsToActivate = await prisma.clanWar.findMany({
     where: {
       status: 'PREPARING',
-      startsAt: { lte: now },
     },
     select: {
       id: true,
@@ -1501,8 +1500,8 @@ router.post('/:id/war/attack', authMiddleware, async (req: AuthRequest, res: Res
       return res.status(403).json({ error: 'Tu dois etre membre du clan pour attaquer.' });
     }
 
-    if (!war || war.status !== 'ACTIVE') {
-      return res.status(400).json({ error: 'La guerre n\'est pas encore dans sa phase active.' });
+    if (!war || !['PREPARING', 'ACTIVE'].includes(war.status)) {
+      return res.status(400).json({ error: 'Aucune guerre en cours.' });
     }
 
     const attack = attackConfig[rawAttackType];
@@ -2028,7 +2027,7 @@ router.get('/:id/war/games/status', authMiddleware, async (req: AuthRequest, res
     const enemyClanId = war.attackerClanId === id ? war.defenderClanId : war.attackerClanId;
 
     let navalStatus = null;
-    if (war.status === 'ACTIVE') {
+    if (['PREPARING', 'ACTIVE'].includes(war.status)) {
       const board = await prisma.clanWarNavalBoard.findUnique({
         where: { warId_clanId: { warId: war.id, clanId: enemyClanId } },
         include: { shots: true },
@@ -2055,8 +2054,8 @@ router.get('/:id/war/games/status', authMiddleware, async (req: AuthRequest, res
       warId: war.id,
       memoryPlayedToday,
       bombPlayedToday,
-      canPlayMemory: !memoryPlayedToday && war.status === 'ACTIVE',
-      canPlayBomb: !bombPlayedToday && war.status === 'ACTIVE',
+      canPlayMemory: !memoryPlayedToday && ['PREPARING', 'ACTIVE'].includes(war.status),
+      canPlayBomb: !bombPlayedToday && ['PREPARING', 'ACTIVE'].includes(war.status),
       naval: navalStatus,
     });
   } catch (error) {
@@ -2087,7 +2086,7 @@ router.post('/:id/war/games/memory', authMiddleware, async (req: AuthRequest, re
 
     const war = await getCurrentWarForClan(id);
     if (!war) return res.status(400).json({ error: 'Aucune guerre active.' });
-    if (war.status !== 'ACTIVE') {
+    if (!['PREPARING', 'ACTIVE'].includes(war.status)) {
       return res.status(400).json({ error: 'Fortifications non disponibles.' });
     }
 
@@ -2169,7 +2168,7 @@ router.post('/:id/war/games/bomb', authMiddleware, async (req: AuthRequest, res:
     if (!member) return res.status(403).json({ error: 'Non membre.' });
 
     const war = await getCurrentWarForClan(id);
-    if (!war || war.status !== 'ACTIVE') {
+    if (!war || !['PREPARING', 'ACTIVE'].includes(war.status)) {
       return res.status(400).json({ error: 'La guerre n\'est pas active.' });
     }
 
@@ -2249,7 +2248,7 @@ router.post('/:id/war/games/naval/shot', authMiddleware, async (req: AuthRequest
     if (!member) return res.status(403).json({ error: 'Non membre.' });
 
     const war = await getCurrentWarForClan(id);
-    if (!war || war.status !== 'ACTIVE') {
+    if (!war || !['PREPARING', 'ACTIVE'].includes(war.status)) {
       return res.status(400).json({ error: 'La guerre n\'est pas active.' });
     }
 
