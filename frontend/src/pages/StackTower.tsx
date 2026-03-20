@@ -92,23 +92,31 @@ class Stage {
   }
 
   onResize = () => {
-    if (this.container) {
-      const rect = this.container.getBoundingClientRect();
-      const width = rect.width > 0 ? rect.width : this.containerWidth;
-      const height = rect.height > 0 ? rect.height : this.containerHeight;
-      
-      this.containerWidth = width;
-      this.containerHeight = height;
-      
-      this.renderer.setSize(width, height);
-      
-      const viewSize = 30;
-      this.camera.left = width / -viewSize;
-      this.camera.right = width / viewSize;
-      this.camera.top = height / viewSize;
-      this.camera.bottom = height / -viewSize;
-      this.camera.updateProjectionMatrix();
+    if (this.resizeTimeout !== null) {
+      clearTimeout(this.resizeTimeout);
     }
+    
+    this.resizeTimeout = window.setTimeout(() => {
+      if (this.container) {
+        const rect = this.container.getBoundingClientRect();
+        const width = rect.width > 0 ? rect.width : this.containerWidth;
+        const height = rect.height > 0 ? rect.height : this.containerHeight;
+        
+        this.containerWidth = width;
+        this.containerHeight = height;
+        
+        this.renderer.setSize(width, height);
+        
+        const viewSize = 30;
+        const aspect = width / height;
+        this.camera.left = -aspect * viewSize / 2;
+        this.camera.right = aspect * viewSize / 2;
+        this.camera.top = viewSize / 2;
+        this.camera.bottom = -viewSize / 2;
+        this.camera.updateProjectionMatrix();
+      }
+      this.resizeTimeout = null;
+    }, 150);
   };
 
   render = () => {
@@ -125,6 +133,9 @@ class Stage {
 
   destroy = () => {
     window.removeEventListener('resize', this.onResize);
+    if (this.resizeTimeout !== null) {
+      clearTimeout(this.resizeTimeout);
+    }
     if (this.renderer.domElement.parentNode) {
       this.renderer.domElement.parentNode.removeChild(this.renderer.domElement);
     }
