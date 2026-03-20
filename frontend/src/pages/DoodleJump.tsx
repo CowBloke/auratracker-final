@@ -207,6 +207,7 @@ export default function DoodleJump() {
   const location = useLocation();
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const animationRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
   const canvasScaleRef = useRef(1);
@@ -243,6 +244,7 @@ export default function DoodleJump() {
   const confettiBurstsRef = useRef<DoodleConfettiBurst[]>([]);
   const confettiBurstIdRef = useRef(0);
   const lastConfettiEmitAtRef = useRef(0);
+  const fadeRafsRef = useRef<Set<number>>(new Set());
 
   const { user, refreshUser } = useAuth();
   const { socket } = useSocket();
@@ -552,6 +554,12 @@ export default function DoodleJump() {
     activeGameTypeRef.current = selectedGameType;
     multiplayerPlatformIndexRef.current = 0;
     platformIdCounterRef.current = 0;
+
+    // Cancel any in-flight platform fade animations from previous game
+    for (const rafId of fadeRafsRef.current) {
+      cancelAnimationFrame(rafId);
+    }
+    fadeRafsRef.current.clear();
 
     // Reset state
     platformsRef.current = [];
@@ -877,7 +885,7 @@ export default function DoodleJump() {
   // ============================================
   const gameLoop = useCallback((timestamp: number) => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
+    const ctx = ctxRef.current;
 
     if (!canvas || !ctx || !gameRunningRef.current) return;
 
@@ -976,17 +984,21 @@ export default function DoodleJump() {
               const fadeTime = platform.effect === 'disappear' ? DISAPPEARING_PLATFORM_FADE_TIME : BROKEN_PLATFORM_FADE_TIME;
               const startTime = timestamp;
 
+              let fadeRafId: number;
               const fadePlatform = (t: number) => {
                 const elapsed = t - startTime;
                 platform.opacity = Math.max(0, 1 - (elapsed / fadeTime));
                 if (elapsed < fadeTime) {
-                  requestAnimationFrame(fadePlatform);
+                  fadeRafId = requestAnimationFrame(fadePlatform);
+                  fadeRafsRef.current.add(fadeRafId);
                 } else {
+                  fadeRafsRef.current.delete(fadeRafId);
                   platformsRef.current = platformsRef.current.filter(p => p !== platform);
                   generateNewPlatforms(1);
                 }
               };
-              requestAnimationFrame(fadePlatform);
+              fadeRafId = requestAnimationFrame(fadePlatform);
+              fadeRafsRef.current.add(fadeRafId);
             }
 
             // Conveyor effect on player
@@ -1235,6 +1247,7 @@ export default function DoodleJump() {
       canvasScaleRef.current = width / CANVAS_WIDTH;
     };
 
+    ctxRef.current = canvas.getContext('2d');
     resizeCanvas();
     const observer = new ResizeObserver(resizeCanvas);
     observer.observe(canvas);
@@ -1249,7 +1262,7 @@ export default function DoodleJump() {
     if (!spectatingHost) return;
     const loop = (timestamp: number) => {
       const canvas = canvasRef.current;
-      const ctx = canvas?.getContext('2d');
+      const ctx = ctxRef.current;
       if (!canvas || !ctx || !spectatingRef.current) return;
 
       const replayFrame = spectateReplayQueueRef.current.length > 0
@@ -1471,6 +1484,10 @@ export default function DoodleJump() {
       stopSpectateBroadcast();
       socket?.emit('doodle:spectate-leave');
       clearMultiplayerRoom();
+      for (const rafId of fadeRafsRef.current) {
+        cancelAnimationFrame(rafId);
+      }
+      fadeRafsRef.current.clear();
     };
   }, [clearMultiplayerRoom, socket, stopSpectateBroadcast]);
 

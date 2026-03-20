@@ -211,6 +211,7 @@ export default function GeometryDash() {
   const { theme } = useTheme();
   const palette = useMemo(() => palettes[theme], [theme]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const animationRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
   const obstacleIdRef = useRef(1);
@@ -536,7 +537,8 @@ export default function GeometryDash() {
 
   const gameLoop = useCallback((timestamp: number) => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
+    if (canvas && !ctxRef.current) ctxRef.current = canvas.getContext('2d');
+    const ctx = ctxRef.current;
 
     if (!canvas || !ctx) return;
 

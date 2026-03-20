@@ -72,6 +72,7 @@ const getColors = (theme: 'light' | 'dark') => {
 // ============================================
 export default function FlappyBird() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const animationRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
   const canvasScaleRef = useRef(1);
@@ -226,7 +227,7 @@ export default function FlappyBird() {
   // ============================================
   const gameLoop = useCallback((timestamp: number) => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
+    const ctx = ctxRef.current;
 
     if (!canvas || !ctx || !gameRunningRef.current) return;
 
@@ -389,6 +390,7 @@ export default function FlappyBird() {
       canvasScaleRef.current = width / CANVAS_WIDTH;
     };
 
+    ctxRef.current = canvas.getContext('2d');
     resizeCanvas();
     const observer = new ResizeObserver(resizeCanvas);
     observer.observe(canvas);
