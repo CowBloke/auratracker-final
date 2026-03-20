@@ -211,19 +211,19 @@ const defenseConfig: Record<DefenseType, {
 }> = {
   FORTRESS: {
     label: 'Forteresse',
-    description: 'Reduit fortement les degats entrants.',
+    description: 'Réduit les points des bombardements ennemis (-4 pts/niveau).',
     baseDurability: 60,
     durabilityPerLevel: 18,
   },
   ARMORY: {
     label: 'Armurerie',
-    description: 'Augmente les degats offensifs du clan.',
+    description: 'Augmente vos points de bombardement (+3 pts/niveau).',
     baseDurability: 48,
     durabilityPerLevel: 16,
   },
   BANNER: {
-    label: 'Banniere',
-    description: 'Booste le moral et aide le clan à revenir dans la partie.',
+    label: 'Bannière',
+    description: 'Booste vos points de tirs navals (+2 pts/niveau).',
     baseDurability: 42,
     durabilityPerLevel: 14,
   },
@@ -1276,33 +1276,33 @@ router.post('/:id/war/declare', authMiddleware, async (req: AuthRequest, res: Re
     }
 
     const now = new Date();
-    const startsAt = addHours(now, CLAN_WAR_PREPARATION_HOURS);
-    const endsAt = addHours(startsAt, CLAN_WAR_DURATION_HOURS);
+    const endsAt = addHours(now, CLAN_WAR_DURATION_HOURS);
 
-    const war = await prisma.clanWar.create({
+    await prisma.clanWar.create({
       data: {
         attackerClanId: id,
         defenderClanId: targetClanId,
         declaredByUserId: userId,
-        status: 'PREPARING',
-        startsAt,
+        status: 'ACTIVE',
+        startsAt: now,
         endsAt,
         targetScore: CLAN_WAR_TARGET_SCORE,
       },
-      include: currentWarInclude,
     });
+
+    const war = await getCurrentWarForClan(id);
 
     createNotification({
       userId: defenderClan.owner.id,
       type: 'CLAN_WAR_DECLARED',
-      title: 'Guerre declaree',
-      body: `${attackerClan.name} a lance une guerre contre ${defenderClan.name}. La preparation commence maintenant.`,
-      data: { warId: war.id, clanId: targetClanId },
+      title: 'Guerre déclarée',
+      body: `${attackerClan.name} a déclaré la guerre à ${defenderClan.name}. La bataille commence maintenant !`,
+      data: { warId: war!.id, clanId: targetClanId },
       link: '/clans',
       icon: 'swords',
     }).catch(() => {});
 
-    res.json({ war: await mapWar(war, id, userId) });
+    res.json({ war: await mapWar(war!, id, userId) });
   } catch (error) {
     console.error('Declare clan war error:', error);
     res.status(500).json({ error: 'Failed to declare war' });
@@ -2030,7 +2030,7 @@ router.get('/:id/war/games/status', authMiddleware, async (req: AuthRequest, res
       warId: war.id,
       memoryPlayedToday,
       bombPlayedToday,
-      canPlayMemory: !memoryPlayedToday && ['PREPARING', 'ACTIVE'].includes(war.status),
+      canPlayMemory: !memoryPlayedToday && war.status === 'ACTIVE',
       canPlayBomb: !bombPlayedToday && war.status === 'ACTIVE',
       naval: navalStatus,
     });
@@ -2062,7 +2062,7 @@ router.post('/:id/war/games/memory', authMiddleware, async (req: AuthRequest, re
 
     const war = await getCurrentWarForClan(id);
     if (!war) return res.status(400).json({ error: 'Aucune guerre active.' });
-    if (!['PREPARING', 'ACTIVE'].includes(war.status)) {
+    if (war.status !== 'ACTIVE') {
       return res.status(400).json({ error: 'Fortifications non disponibles.' });
     }
 
@@ -2163,7 +2163,9 @@ router.post('/:id/war/games/bomb', authMiddleware, async (req: AuthRequest, res:
       const targetClanId = war.attackerClanId === id ? war.defenderClanId : war.attackerClanId;
       const defenseLevel = getClanDefenseLevel(war.defenses, targetClanId, 'FORTRESS');
       const mitigation = defenseLevel * 4;
-      finalPoints = clamp(rawPoints - mitigation, 4, 80);
+      const armoryLevel = getClanDefenseLevel(war.defenses, id, 'ARMORY');
+      const armoryBonus = armoryLevel * 3;
+      finalPoints = clamp(rawPoints - mitigation + armoryBonus, 4, 80);
 
       await prisma.$transaction(async (tx) => {
         await tx.clanWarAttack.create({
@@ -2268,6 +2270,8 @@ router.post('/:id/war/games/naval/shot', authMiddleware, async (req: AuthRequest
       }
       grid[y][x] = cell;
       await prisma.clanWarNavalBoard.update({ where: { id: board.id }, data: { grid: JSON.stringify(grid) } });
+      const bannerLevel = getClanDefenseLevel(war.defenses, id, 'BANNER');
+      points += bannerLevel * 2;
     }
 
     await prisma.$transaction(async (tx) => {

@@ -1,5 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Axe, Check, Crown, Loader2, LogOut, Plus, Send, Shield, Sparkles, Swords, Tag, Target, UserX, X } from 'lucide-react';
+import { AlertTriangle, Axe, Check, Crown, Loader2, LogOut, Plus, Send, Sparkles, Swords, Tag, Target, UserX, X } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ClanChatMessage,
@@ -122,56 +122,34 @@ const SectionTitle = ({
   </div>
 );
 
-const DefenseCard = ({
-  defense,
-  canFortify,
-  fortifying,
-  onFortify,
-}: {
-  defense: ClanWarDefenseState;
-  canFortify: boolean;
-  fortifying: boolean;
-  onFortify: () => void;
-}) => (
-  <Card className={panelClassName}>
-    <CardContent className="space-y-3 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="font-medium">{defense.label}</span>
-            <Badge variant={defense.isActive ? 'secondary' : 'outline'}>Niv. {defense.level}</Badge>
-          </div>
-          <p className="text-sm text-muted-foreground">{defense.description}</p>
-        </div>
-        <Shield className="h-4 w-4 text-muted-foreground" />
-      </div>
-      <div className="space-y-1">
-        <div className="flex items-center justify-between text-sm">
-          <span>Durabilité</span>
-          <span className="tabular-nums">
-            {defense.durability}/{defense.maxDurability}
-          </span>
-        </div>
-        <div className="h-2 overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full rounded-full bg-emerald-500 transition-all"
-            style={{
-              width: defense.maxDurability > 0 ? `${(defense.durability / defense.maxDurability) * 100}%` : '0%',
-            }}
-          />
+const UPGRADE_ICONS: Record<string, string> = { FORTRESS: '🏰', ARMORY: '⚔️', BANNER: '🚩' };
+const UPGRADE_EFFECTS: Record<string, (level: number) => string> = {
+  FORTRESS: (level) => level > 0 ? `Réduit les bombardements ennemis de ${level * 4} pts` : 'Non construite — à améliorer via le jeu mémoire',
+  ARMORY: (level) => level > 0 ? `Augmente vos bombardements de ${level * 3} pts` : 'Non construite — à améliorer via le jeu mémoire',
+  BANNER: (level) => level > 0 ? `Booste vos tirs navals de ${level * 2} pts` : 'Non construite — à améliorer via le jeu mémoire',
+};
+
+const UpgradeRow = ({ defense }: { defense: ClanWarDefenseState }) => (
+  <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-muted/15 px-3 py-2.5">
+    <span className="text-lg">{UPGRADE_ICONS[defense.type] ?? '🏛️'}</span>
+    <div className="min-w-0 flex-1">
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium">{defense.label}</span>
+        <div className="flex gap-0.5">
+          {[1, 2, 3].map((lvl) => (
+            <div
+              key={lvl}
+              className={cn('h-1.5 w-4 rounded-full transition-colors', defense.level >= lvl ? 'bg-primary' : 'bg-muted')}
+            />
+          ))}
         </div>
       </div>
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>{defense.contributions} renfort(s)</span>
-        {canFortify && (
-          <Button size="sm" variant="outline" onClick={onFortify} disabled={fortifying}>
-            {fortifying ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-2 h-3.5 w-3.5" />}
-            Fortifier
-          </Button>
-        )}
-      </div>
-    </CardContent>
-  </Card>
+      <p className="text-xs text-muted-foreground">{UPGRADE_EFFECTS[defense.type]?.(defense.level) ?? ''}</p>
+    </div>
+    <span className={cn('text-xs font-mono tabular-nums shrink-0', defense.level === 0 ? 'text-muted-foreground/50' : 'text-foreground')}>
+      {defense.level}/3
+    </span>
+  </div>
 );
 
 const TAG_PRESET_COLORS = [
@@ -572,7 +550,7 @@ export default function Clans() {
     setWarActionKey(`declare:${targetClanId}`);
     try {
       await clansApi.declareWar(selectedClan.id, targetClanId);
-      toast({ title: 'Guerre déclarée', description: 'La phase de préparation vient de démarrer.' });
+      toast({ title: 'Guerre déclarée !', description: 'La bataille commence maintenant — attaquez !' });
       setWarDialogOpen(false);
       await refreshData(selectedClan.id);
     } catch (error: any) {
@@ -647,11 +625,7 @@ export default function Clans() {
                         </div>
                         <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
                           <span>{war.attackerScore} - {war.defenderScore}</span>
-                          <span>
-                            {war.status === 'PREPARING'
-                              ? `Départ dans ${formatCountdown(war.startsAt)}`
-                              : `Fin dans ${formatCountdown(war.endsAt)}`}
-                          </span>
+                          <span>Fin dans {formatCountdown(war.endsAt)}</span>
                         </div>
                       </button>
                     ))
@@ -1040,11 +1014,9 @@ export default function Clans() {
                                   {selectedWar.attackerClan.name} vs {selectedWar.defenderClan.name}
                                 </h2>
                                 <p className="mt-2 text-sm text-muted-foreground">
-                                  {selectedWar.status === 'PREPARING'
-                                    ? `La guerre démarre dans ${formatCountdown(selectedWar.startsAt)}.`
-                                    : selectedWar.status === 'ACTIVE'
-                                      ? `Fin prévue dans ${formatCountdown(selectedWar.endsAt)}.`
-                                      : `Terminée le ${formatDate(selectedWar.completedAt)}.`}
+                                  {selectedWar.status === 'ACTIVE'
+                                    ? `Fin prévue dans ${formatCountdown(selectedWar.endsAt)}.`
+                                    : `Terminée le ${formatDate(selectedWar.completedAt)}.`}
                                 </p>
                               </div>
                               <div className="grid grid-cols-2 gap-3 text-center">
@@ -1063,25 +1035,21 @@ export default function Clans() {
                               </div>
                             </div>
                           </div>
-                          <CardContent className="space-y-6 p-6">
+                          <CardContent className="space-y-4 p-6">
                             {isOwnClan ? (
                               <div className="space-y-4">
-                                {/* War Games HQ */}
+                                {/* Games */}
                                 <div className={mutedPanelClassName}>
                                   <div className="space-y-4 p-4">
                                     <div className="flex items-center justify-between">
                                       <div>
                                         <h3 className="font-medium">Jeux de guerre</h3>
-                                        <p className="text-sm text-muted-foreground">
-                                          {selectedWar.status === 'PREPARING'
-                                            ? 'Phase de préparation — renforcez vos défenses avec le jeu mémoire.'
-                                            : 'Attaquez via le bombardement, la guerre navale, et renforcez vos défenses.'}
-                                        </p>
+                                        <p className="text-sm text-muted-foreground">Complétez les jeux quotidiennement pour marquer des points.</p>
                                       </div>
                                       <Badge variant="secondary">{selectedWar.viewerSide === 'ATTACKER' ? 'Attaquant' : 'Défenseur'}</Badge>
                                     </div>
                                     <div className="grid gap-3 md:grid-cols-3">
-                                      {/* Memory Game card */}
+                                      {/* Memory */}
                                       <div className={cn('rounded-2xl border p-4 space-y-3', gameStatus?.canPlayMemory ? 'border-amber-500/30 bg-amber-500/5' : 'border-border/40 bg-muted/10')}>
                                         <div className="flex items-start justify-between gap-2">
                                           <div>
@@ -1089,34 +1057,20 @@ export default function Clans() {
                                               <span className="text-xl">🧩</span>
                                               <span className="font-medium text-sm">Jeu Mémoire</span>
                                             </div>
-                                            <p className="text-xs text-muted-foreground mt-1">Retournez les paires pour renforcer vos structures</p>
+                                            <p className="text-xs text-muted-foreground mt-1">Retournez les paires pour améliorer vos défenses</p>
                                           </div>
-                                          {gameStatus?.memoryPlayedToday && (
-                                            <Badge variant="outline" className="text-[10px] shrink-0">✓ Joué</Badge>
-                                          )}
+                                          {gameStatus?.memoryPlayedToday && <Badge variant="outline" className="text-[10px] shrink-0">✓ Joué</Badge>}
                                         </div>
                                         <div className="flex flex-col gap-1.5">
-                                          <Button
-                                            size="sm"
-                                            className="w-full"
-                                            disabled={!gameStatus?.canPlayMemory}
-                                            onClick={() => openGame('MEMORY', false)}
-                                          >
+                                          <Button size="sm" className="w-full" disabled={!gameStatus?.canPlayMemory} onClick={() => openGame('MEMORY', false)}>
                                             {gameStatus?.memoryPlayedToday ? 'Déjà joué' : 'Jouer (1×/jour)'}
                                           </Button>
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="w-full"
-                                            disabled={!['PREPARING', 'ACTIVE'].includes(selectedWar.status)}
-                                            onClick={() => openGame('MEMORY', true)}
-                                          >
+                                          <Button size="sm" variant="outline" className="w-full" onClick={() => openGame('MEMORY', true)}>
                                             Entraînement
                                           </Button>
                                         </div>
                                       </div>
-
-                                      {/* Bomb Drop Game card */}
+                                      {/* Bomb */}
                                       <div className={cn('rounded-2xl border p-4 space-y-3', gameStatus?.canPlayBomb ? 'border-rose-500/30 bg-rose-500/5' : 'border-border/40 bg-muted/10')}>
                                         <div className="flex items-start justify-between gap-2">
                                           <div>
@@ -1126,37 +1080,19 @@ export default function Clans() {
                                             </div>
                                             <p className="text-xs text-muted-foreground mt-1">Pilotez un avion et détruisez les bâtiments ennemis</p>
                                           </div>
-                                          {gameStatus?.bombPlayedToday && (
-                                            <Badge variant="outline" className="text-[10px] shrink-0">✓ Joué</Badge>
-                                          )}
+                                          {gameStatus?.bombPlayedToday && <Badge variant="outline" className="text-[10px] shrink-0">✓ Joué</Badge>}
                                         </div>
                                         <div className="flex flex-col gap-1.5">
-                                          <Button
-                                            size="sm"
-                                            className="w-full"
-                                            disabled={!gameStatus?.canPlayBomb}
-                                            onClick={() => openGame('BOMB', false)}
-                                          >
-                                            {selectedWar.status !== 'ACTIVE' ? 'Inactif' : gameStatus?.bombPlayedToday ? 'Déjà joué' : 'Attaquer (1×/jour)'}
+                                          <Button size="sm" className="w-full" disabled={!gameStatus?.canPlayBomb} onClick={() => openGame('BOMB', false)}>
+                                            {gameStatus?.bombPlayedToday ? 'Déjà joué' : 'Attaquer (1×/jour)'}
                                           </Button>
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="w-full"
-                                            disabled={selectedWar.status !== 'ACTIVE'}
-                                            onClick={() => openGame('BOMB', true)}
-                                          >
+                                          <Button size="sm" variant="outline" className="w-full" onClick={() => openGame('BOMB', true)}>
                                             Entraînement
                                           </Button>
                                         </div>
                                       </div>
-
-                                      {/* Naval Warfare card */}
-                                      <div className={cn('rounded-2xl border p-4 space-y-3',
-                                        selectedWar.status === 'ACTIVE' && (gameStatus?.naval?.shotsRemaining ?? 0) > 0
-                                          ? 'border-sky-500/30 bg-sky-500/5'
-                                          : 'border-border/40 bg-muted/10'
-                                      )}>
+                                      {/* Naval */}
+                                      <div className={cn('rounded-2xl border p-4 space-y-3', (gameStatus?.naval?.shotsRemaining ?? 0) > 0 ? 'border-sky-500/30 bg-sky-500/5' : 'border-border/40 bg-muted/10')}>
                                         <div className="flex items-start justify-between gap-2">
                                           <div>
                                             <div className="flex items-center gap-2">
@@ -1165,31 +1101,43 @@ export default function Clans() {
                                             </div>
                                             <p className="text-xs text-muted-foreground mt-1">Bombardez la base ennemie sur une grille 6×6</p>
                                           </div>
-                                          {selectedWar.status === 'ACTIVE' && gameStatus?.naval && (
-                                            <Badge
-                                              variant={gameStatus.naval.shotsRemaining > 0 ? 'secondary' : 'outline'}
-                                              className="text-[10px] shrink-0"
-                                            >
+                                          {gameStatus?.naval && (
+                                            <Badge variant={(gameStatus.naval.shotsRemaining ?? 0) > 0 ? 'secondary' : 'outline'} className="text-[10px] shrink-0">
                                               {gameStatus.naval.shotsRemaining} tir(s)
                                             </Badge>
                                           )}
                                         </div>
-                                        <div className="flex flex-col gap-1.5">
-                                          <Button
-                                            size="sm"
-                                            className="w-full"
-                                            disabled={selectedWar.status !== 'ACTIVE' || (gameStatus?.naval?.shotsRemaining ?? 0) <= 0}
-                                            onClick={() => openGame('NAVAL', false)}
-                                          >
-                                            {selectedWar.status !== 'ACTIVE'
-                                              ? 'Inactif'
-                                              : (gameStatus?.naval?.shotsRemaining ?? 0) <= 0
-                                                ? 'Plus de tirs'
-                                                : 'Ouvrir la carte'}
-                                          </Button>
-                                        </div>
+                                        <Button size="sm" className="w-full" disabled={(gameStatus?.naval?.shotsRemaining ?? 0) <= 0} onClick={() => openGame('NAVAL', false)}>
+                                          {(gameStatus?.naval?.shotsRemaining ?? 0) <= 0 ? 'Plus de tirs' : 'Ouvrir la carte'}
+                                        </Button>
                                       </div>
                                     </div>
+                                  </div>
+                                </div>
+
+                                {/* Own defenses */}
+                                <div>
+                                  <div className="mb-2 flex items-center gap-2">
+                                    <span className="text-sm font-medium">🛡️ Défenses — {getWarOwnSide(selectedWar, selectedClan.id).name}</span>
+                                    <span className="text-xs text-muted-foreground">(Jeu Mémoire pour améliorer)</span>
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    {getWarDefenseSet(selectedWar, selectedClan.id).map((defense) => (
+                                      <UpgradeRow key={defense.type} defense={defense} />
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* Enemy defenses */}
+                                <div>
+                                  <div className="mb-2 flex items-center gap-2">
+                                    <Target className="h-3.5 w-3.5 text-muted-foreground" />
+                                    <span className="text-sm font-medium">Défenses ennemies</span>
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    {getWarEnemyDefenseSet(selectedWar, selectedClan.id).map((defense) => (
+                                      <UpgradeRow key={defense.type} defense={defense} />
+                                    ))}
                                   </div>
                                 </div>
 
@@ -1200,15 +1148,11 @@ export default function Clans() {
                                     <div className="grid gap-2 sm:grid-cols-2">
                                       <div className="rounded-2xl border border-border/50 bg-emerald-500/5 p-3 text-sm">
                                         <div className="font-medium">Victoire</div>
-                                        <div className="mt-1 text-muted-foreground">
-                                          +{selectedWar.rewardTable.winner.money} money et +{selectedWar.rewardTable.winner.aura} aura par membre.
-                                        </div>
+                                        <div className="mt-1 text-muted-foreground">+{selectedWar.rewardTable.winner.money} money et +{selectedWar.rewardTable.winner.aura} aura par membre.</div>
                                       </div>
                                       <div className="rounded-2xl border border-border/50 bg-background p-3 text-sm">
                                         <div className="font-medium">Défaite / égalité</div>
-                                        <div className="mt-1 text-muted-foreground">
-                                          +{selectedWar.rewardTable.loser.money} money et +{selectedWar.rewardTable.loser.aura} aura par membre.
-                                        </div>
+                                        <div className="mt-1 text-muted-foreground">+{selectedWar.rewardTable.loser.money} money et +{selectedWar.rewardTable.loser.aura} aura par membre.</div>
                                       </div>
                                     </div>
                                     {selectedWar.winnerClan ? (
@@ -1225,97 +1169,6 @@ export default function Clans() {
                                 </div>
                               </div>
                             ) : null}
-                            <div className="grid gap-6 xl:grid-cols-2">
-                              <div className="space-y-4">
-                                <div>
-                                  <div className="mb-3 flex items-center gap-2">
-                                    <Shield className="h-4 w-4 text-muted-foreground" />
-                                    <h3 className="font-medium">Défenses de {getWarOwnSide(selectedWar, selectedClan.id).name}</h3>
-                                  </div>
-                                  <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-1">
-                                    {getWarDefenseSet(selectedWar, selectedClan.id).map((defense) => (
-                                      <DefenseCard
-                                        key={defense.type}
-                                        defense={defense}
-                                        canFortify={false}
-                                        fortifying={false}
-                                        onFortify={() => undefined}
-                                      />
-                                    ))}
-                                  </div>
-                                </div>
-                                <div>
-                                  <div className="mb-3 flex items-center gap-2">
-                                    <Target className="h-4 w-4 text-muted-foreground" />
-                                    <h3 className="font-medium">Défenses ennemies</h3>
-                                  </div>
-                                  <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-1">
-                                    {getWarEnemyDefenseSet(selectedWar, selectedClan.id).map((defense) => (
-                                      <DefenseCard
-                                        key={defense.type}
-                                        defense={defense}
-                                        canFortify={false}
-                                        fortifying={false}
-                                        onFortify={() => undefined}
-                                      />
-                                    ))}
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="space-y-4">
-                                <Card className={panelClassName}>
-                                  <CardContent className="space-y-3 p-4">
-                                    <SectionTitle title="Journal des attaques" />
-                                    {selectedWar.recentAttacks.length === 0 ? (
-                                      <div className="text-sm text-muted-foreground">Aucune attaque enregistrée.</div>
-                                    ) : (
-                                      selectedWar.recentAttacks.map((attack) => (
-                                        <div key={attack.id} className="rounded-2xl border border-border/50 bg-muted/15 p-3">
-                                          <div className="flex items-start justify-between gap-3">
-                                            <div>
-                                              <div className="flex flex-wrap items-center gap-2">
-                                                <Badge variant="outline">{attack.attackLabel}</Badge>
-                                                <span className="text-sm font-medium">
-                                                  {attack.attackingClan.name} → {attack.targetClan.name}
-                                                </span>
-                                              </div>
-                                              <div className="mt-2 text-sm text-muted-foreground">
-                                                <UsernameDisplay username={attack.user.username} usernameColor={attack.user.usernameColor} /> a infligé{' '}
-                                                <span className="font-medium text-foreground">{attack.finalPoints} pts</span>
-                                                {attack.structureDamage > 0 ? ` et ${attack.structureDamage} dégâts structure.` : '.'}
-                                              </div>
-                                            </div>
-                                            <span className="text-xs text-muted-foreground">{formatDate(attack.createdAt)}</span>
-                                          </div>
-                                        </div>
-                                      ))
-                                    )}
-                                  </CardContent>
-                                </Card>
-                                <Card className={panelClassName}>
-                                  <CardContent className="space-y-3 p-4">
-                                    <SectionTitle title="Journal des fortifications" />
-                                    {selectedWar.recentFortifications.length === 0 ? (
-                                      <div className="text-sm text-muted-foreground">Aucun renfort pour l'instant.</div>
-                                    ) : (
-                                      selectedWar.recentFortifications.map((entry) => (
-                                        <div key={entry.id} className="rounded-2xl border border-border/50 bg-muted/15 p-3">
-                                          <div className="flex items-start justify-between gap-3">
-                                            <div className="text-sm">
-                                              <UsernameDisplay username={entry.user.username} usernameColor={entry.user.usernameColor} /> a renforcé{' '}
-                                              <span className="font-medium">{entry.defenseLabel}</span>
-                                              {entry.levelAdded > 0 ? ` (+${entry.levelAdded} niveau)` : ''}
-                                              {entry.durabilityAdded > 0 ? `, +${entry.durabilityAdded} durabilité` : ''}.
-                                            </div>
-                                            <span className="text-xs text-muted-foreground">{formatDate(entry.createdAt)}</span>
-                                          </div>
-                                        </div>
-                                      ))
-                                    )}
-                                  </CardContent>
-                                </Card>
-                              </div>
-                            </div>
                           </CardContent>
                         </Card>
                       ) : (
@@ -1324,7 +1177,7 @@ export default function Clans() {
                           <AlertTitle>Pas de guerre en cours</AlertTitle>
                           <AlertDescription>
                             {selectedClan.warHub.canDeclareWar
-                              ? 'Le chef peut choisir un clan adverse et lancer une phase de préparation.'
+                              ? 'Le chef peut choisir un clan adverse et démarrer la guerre immédiatement.'
                               : selectedClan.warHub.cooldownEndsAt
                                 ? `Le clan récupère encore jusqu'au ${formatDate(selectedClan.warHub.cooldownEndsAt)}.`
                                 : `Le clan doit atteindre ${selectedClan.warHub.minimumMembersRequired} membres pour entrer en guerre.`}
@@ -1432,7 +1285,7 @@ export default function Clans() {
           <DialogHeader>
             <DialogTitle>Déclarer une guerre</DialogTitle>
             <DialogDescription>
-              La guerre démarre par une préparation de 12h puis bascule en phase active. Choisis un adversaire disponible.
+              La guerre démarre immédiatement. Choisis un adversaire disponible.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-3">
