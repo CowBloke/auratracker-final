@@ -2933,7 +2933,7 @@ router.get('/activity-breakdown', authMiddleware, requireAdmin, async (req: Auth
           createdAt: { gte: start, lte: end },
         },
         orderBy: { createdAt: 'asc' },
-        select: { createdAt: true, metadata: true },
+        select: { createdAt: true, metadata: true, action: true },
       }),
     ]);
 

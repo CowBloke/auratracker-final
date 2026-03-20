@@ -170,7 +170,7 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
 
       const txResult = await prisma.$transaction(async (tx) => {
         const nextUser = await tx.user.update({
-          where: { id: req.user.id },
+          where: { id: user.id },
           data: {
             money: { decrement: totalPrice },
           },
