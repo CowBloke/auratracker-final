@@ -105,6 +105,16 @@ const games = [
     description: 'Runner désertique façon hors-ligne Chrome: saute, baisse-toi et tiens la vitesse le plus longtemps possible.',
     type: 'Arcade',
     emoji: '🦖',
+    image: '/images/games/dino.png',
+  },
+  {
+    id: 'fruit-ninja',
+    pageKey: 'game-fruit-ninja',
+    name: 'Fruit Ninja',
+    description: 'Tranche les fruits avec ta souris avant qu\'ils tombent. Évite les bombes et enchaîne les combos.',
+    type: 'Arcade',
+    emoji: '🍉',
+    image: '/images/games/fruitninja.png',
   },
   {
     id: 'geometry-dash',

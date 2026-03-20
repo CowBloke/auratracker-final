@@ -47,6 +47,7 @@ import GeometryDash from './pages/GeometryDash';
 import QSWatermelon from './pages/QSWatermelon';
 import RussianRoulette from './pages/RussianRoulette';
 import ChromeDino from './pages/ChromeDino';
+import FruitNinja from './pages/FruitNinja';
 import { BLOCKABLE_PAGES } from './config/blockedPages';
 import { useFeatures } from './contexts/FeaturesContext';
 
@@ -155,6 +156,7 @@ function App() {
         <Route path="games/2048" element={<Game2048 />} />
         <Route path="games/flappy-bird" element={<FlappyBird />} />
         <Route path="games/chrome-dino" element={<ChromeDino />} />
+        <Route path="games/fruit-ninja" element={<FruitNinja />} />
         <Route path="games/geometry-dash" element={<GeometryDash />} />
         <Route path="games/qs-watermelon" element={<QSWatermelon />} />
         <Route path="games/casino" element={<Casino />} />

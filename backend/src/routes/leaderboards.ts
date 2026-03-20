@@ -522,16 +522,26 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
         return res.status(400).json({ error: 'Invalid category' });
     }
     
-    // Batch-fetch equipped badges for all ranked users
+    // Batch-fetch equipped badges and clan tags for all ranked users
     if (rankings.length > 0) {
-      const badgeUsers = await prisma.user.findMany({
-        where: { id: { in: rankings.map((r: any) => r.userId) } },
-        select: {
-          id: true,
-          equippedBadge1: { select: BADGE_SELECT },
-          equippedBadge2: { select: BADGE_SELECT },
-        },
-      });
+      const rankedUserIds = rankings.map((r: any) => r.userId);
+      const [badgeUsers, clanMemberships] = await Promise.all([
+        prisma.user.findMany({
+          where: { id: { in: rankedUserIds } },
+          select: {
+            id: true,
+            equippedBadge1: { select: BADGE_SELECT },
+            equippedBadge2: { select: BADGE_SELECT },
+          },
+        }),
+        prisma.clanMember.findMany({
+          where: { userId: { in: rankedUserIds } },
+          select: {
+            userId: true,
+            clan: { select: { tagUnlocked: true, tagText: true, tagStyle: true } },
+          },
+        }),
+      ]);
       const badgeMap = new Map(badgeUsers.map((u) => [
         u.id,
         [
@@ -539,7 +549,17 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
           ...(u.equippedBadge2 ? [u.equippedBadge2] : []),
         ],
       ]));
-      rankings = rankings.map((r: any) => ({ ...r, badges: badgeMap.get(r.userId) ?? [] }));
+      const clanTagMap = new Map<string, { text: string; style: string | null }>();
+      for (const m of clanMemberships) {
+        if (m.clan?.tagUnlocked && m.clan?.tagText) {
+          clanTagMap.set(m.userId, { text: m.clan.tagText, style: m.clan.tagStyle });
+        }
+      }
+      rankings = rankings.map((r: any) => ({
+        ...r,
+        badges: badgeMap.get(r.userId) ?? [],
+        clanTag: clanTagMap.get(r.userId) ?? null,
+      }));
     }
 
     // Get current user's rank if authenticated

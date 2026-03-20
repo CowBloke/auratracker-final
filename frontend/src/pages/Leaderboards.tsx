@@ -8,6 +8,7 @@ import { TYPOGRAPHY } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { PageShell } from '@/components/layout/page-shell';
 import { UsernameDisplay } from '@/components/ui/username-display';
+import { toClanTagData } from '@/components/clans/ClanTag';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { UserBadges, BadgeData } from '@/components/badges/UserBadges';
 import { PlayerHoverCard } from '@/components/ui/player-hover-card';
@@ -22,6 +23,7 @@ interface Ranking {
   wins?: number;
   totalPlayed?: number;
   badges?: BadgeData[];
+  clanTag?: { text: string; style: string | null } | null;
 }
 
 type StatItem = { label: string; value: string; hint?: string };
@@ -386,9 +388,10 @@ export default function Leaderboards() {
                                   userId={ranking.userId}
                                   username={ranking.username}
                                   usernameColor={ranking.usernameColor}
+                                  clanTag={toClanTagData(ranking.clanTag)}
                                   className={cn(TYPOGRAPHY.BODY, "font-medium", ranking.userId === user?.id && "text-foreground")}
                                 >
-                                  <UsernameDisplay username={ranking.username} usernameColor={ranking.usernameColor} />
+                                  <UsernameDisplay username={ranking.username} usernameColor={ranking.usernameColor} clanTag={toClanTagData(ranking.clanTag)} />
                                 </PlayerHoverCard>
                               </div>
                             </div>
