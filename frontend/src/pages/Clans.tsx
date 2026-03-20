@@ -309,7 +309,7 @@ export default function Clans() {
   };
 
   const saveTag = async () => {
-    if (!selectedClan) return;
+    if (!selectedClan?.tagUnlocked) return;
     try {
       setSavingTag(true);
       await clansApi.updateTag(selectedClan.id, { tagText: tagText.trim(), tagStyle });
@@ -965,7 +965,7 @@ export default function Clans() {
                             )}
                           </div>
 
-                          <div className={cn('space-y-4', !selectedClan.tagUnlocked && 'pointer-events-none opacity-40')}>
+                          <div className={cn('space-y-4', !selectedClan.tagUnlocked && 'opacity-40')} {...(!selectedClan.tagUnlocked ? { inert: '' } : {})}>
                             {/* Preview */}
                             <div className="flex items-center gap-2 rounded-lg bg-muted/30 p-3">
                               <span className="text-sm text-muted-foreground">Aperçu :</span>
@@ -1030,7 +1030,7 @@ export default function Clans() {
                               </div>
                             </div>
                             {/* Save */}
-                            <Button onClick={saveTag} disabled={savingTag || !tagText.trim()} size="sm" className="w-full">
+                            <Button type="button" onClick={saveTag} disabled={savingTag || !tagText.trim()} size="sm" className="w-full">
                               {savingTag ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                               Sauvegarder
                             </Button>
