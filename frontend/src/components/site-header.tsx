@@ -78,6 +78,7 @@ export function SiteHeader() {
   const [showParty, setShowParty] = useState(false);
   const [announcement, setAnnouncement] = useState('');
   const [scrolled, setScrolled] = useState(false);
+  const canViewConnectedStatus = Boolean(user?.isAdmin || user?.isSuperAdmin);
 
   useEffect(() => {
     const mainEl = document.querySelector('main');
@@ -538,8 +539,12 @@ export function SiteHeader() {
                                     <span className="flex items-center gap-1 text-[10px] text-muted-foreground/80">
                                       <PageIcon className="h-3 w-3" />
                                       <span className="truncate">{pageMeta.label}</span>
-                                      <Monitor className="ml-1 h-3 w-3" />
-                                      <span>{u.isPageActive ? 'sur page' : 'arriere-plan'}</span>
+                                      {canViewConnectedStatus && (
+                                        <>
+                                          <Monitor className="ml-1 h-3 w-3" />
+                                          <span>{u.isPageActive ? 'sur page' : 'arriere-plan'}</span>
+                                        </>
+                                      )}
                                     </span>
                                   );
                                 })()}

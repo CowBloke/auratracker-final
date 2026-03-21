@@ -46,6 +46,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
   const [unreadCount, setUnreadCount] = useState(0);
   const typingTimeoutRef = useRef<TimeoutRef>(null);
   const lastMessageIdRef = useRef<string | null>(null);
+  const canViewConnectedStatus = Boolean(user?.isAdmin || user?.isSuperAdmin);
   const sortedMessages = useMemo(() => {
     return [...messages].sort((a, b) => {
       if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
@@ -350,8 +351,12 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                               <span className="flex items-center gap-1 text-[10px] text-muted-foreground/80">
                                 <PageIcon className="h-3 w-3" />
                                 <span className="truncate">{pageMeta.label}</span>
-                                <Monitor className="ml-1 h-3 w-3" />
-                                <span>{u.isPageActive ? 'sur page' : 'arriere-plan'}</span>
+                                {canViewConnectedStatus && (
+                                  <>
+                                    <Monitor className="ml-1 h-3 w-3" />
+                                    <span>{u.isPageActive ? 'sur page' : 'arriere-plan'}</span>
+                                  </>
+                                )}
                               </span>
                             );
                           })()}
