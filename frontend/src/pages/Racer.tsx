@@ -1055,7 +1055,7 @@ export default function Racer() {
   // Render
   const render = useCallback(() => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
+    const ctx = canvas?.getContext('2d', { alpha: false });
     const background = backgroundRef.current;
     const sprites = spritesRef.current;
 

@@ -34,7 +34,19 @@
       "Bash(grep -E \"\\\\.\\(ts|tsx|js|jsx\\)$\")",
       "Bash(echo \"EXIT:$?\")",
       "Bash(npx tsx:*)",
-      "Bash(find /c/Users/cowbl/source/repos/CRust/auratracker-final/frontend/src -type f \\\\\\(-name *clan* -o -name *war* \\\\\\))"
+      "Bash(find /c/Users/cowbl/source/repos/CRust/auratracker-final/frontend/src -type f \\\\\\(-name *clan* -o -name *war* \\\\\\))",
+      "Bash(sort -t':' -k5 -rn)",
+      "Bash(python3 -c \"print\\(\\(4188633039 - 0\\) / 1000000\\)\")",
+      "Bash(python3 -c \"print\\(4188.633039 / 60\\)\")",
+      "Bash(python3 -c \"ws_msgs=1059; duration=4188.633039; freq=ws_msgs/duration; print\\(f''WebSocket messages: {ws_msgs}, Frequency: {freq:.2f}/sec, Duration: {duration:.1f}s''\\)\")",
+      "Bash(grep -o '{\"\"\"\"args\"\"\"\":[^}]*},\"\"\"\"cat\"\"\"\"[^,]*,\"\"\"\"dur\"\"\"\":[0-9]*,\"\"\"\"name\"\"\"\":\"\"\"\"[^\"\"\"\"]*\"\"\"\"')",
+      "Bash(python3:*)",
+      "Bash(grep -E \"\\\\.tsx$\")",
+      "Bash(grep -n \"requestAnimationFrame\\\\|cancelAnimationFrame\" /c/Users/cowbl/source/repos/CRust/auratracker-final/frontend/src/pages/*.tsx)",
+      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
+      "Bash(grep -l \"requestAnimationFrame\" /c/Users/cowbl/source/repos/CRust/auratracker-final/frontend/src/pages/*.tsx)",
+      "Bash(xargs -I {} basename {})",
+      "Bash(grep -n \"pixelRatio\\\\|devicePixelRatio\" /c/Users/cowbl/source/repos/CRust/auratracker-final/frontend/src/pages/*.tsx)"
     ]
   },
   "outputStyle": "default"

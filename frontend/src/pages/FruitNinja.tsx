@@ -638,13 +638,13 @@ export default function FruitNinja() {
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
       if (!rect.width || !rect.height) return;
-      const dpr = Math.min(window.devicePixelRatio || 1, 3);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const w = Math.round(rect.width * dpr);
       const h = Math.round(rect.height * dpr);
       if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
       scaleRef.current = w / CANVAS_WIDTH;
     };
-    ctxRef.current = canvas.getContext('2d');
+    ctxRef.current = canvas.getContext('2d', { alpha: false });
     resize();
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);

@@ -537,7 +537,7 @@ export default function GeometryDash() {
 
   const gameLoop = useCallback((timestamp: number) => {
     const canvas = canvasRef.current;
-    if (canvas && !ctxRef.current) ctxRef.current = canvas.getContext('2d');
+    if (canvas && !ctxRef.current) ctxRef.current = canvas.getContext('2d', { alpha: false });
     const ctx = ctxRef.current;
 
     if (!canvas || !ctx) return;

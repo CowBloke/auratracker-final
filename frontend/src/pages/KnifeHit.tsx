@@ -739,7 +739,7 @@ export default function KnifeHit() {
 
   const drawScene = useCallback(() => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
+    const ctx = canvas?.getContext('2d', { alpha: false });
     if (!canvas || !ctx) return;
 
     ctx.setTransform(canvasScaleRef.current, 0, 0, canvasScaleRef.current, 0, 0);
@@ -1004,7 +1004,7 @@ export default function KnifeHit() {
     const resizeCanvas = () => {
       const rect = canvas.getBoundingClientRect();
       if (!rect.width || !rect.height) return;
-      const dpr = Math.min(window.devicePixelRatio || 1, 3);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const width = Math.round(rect.width * dpr);
       const height = Math.round(rect.height * dpr);
       if (canvas.width !== width || canvas.height !== height) {

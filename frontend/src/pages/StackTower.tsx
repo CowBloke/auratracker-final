@@ -313,6 +313,7 @@ class Game {
   startButton: HTMLElement;
   instructions: HTMLElement;
 
+  private rafId: number = 0;
   private onEnd?: (score: number) => void;
   private onScore?: (score: number) => void;
   private onStateChange?: (state: StageState) => void;
@@ -531,10 +532,11 @@ class Game {
       active.tick();
     }
     this.stage.render();
-    requestAnimationFrame(this.tick);
+    this.rafId = requestAnimationFrame(this.tick);
   };
 
   destroy() {
+    cancelAnimationFrame(this.rafId);
     document.removeEventListener('keydown', this.keydownHandler);
     document.removeEventListener('click', this.clickHandler);
     document.removeEventListener('touchstart', this.touchstartHandler);

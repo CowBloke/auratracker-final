@@ -135,7 +135,7 @@ function drawScene(
   phase: 'prep' | 'playing' | 'finished',
   myPlayerIndex: 0 | 1 | null,
 ) {
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d', { alpha: false });
   if (!ctx) return;
 
   ctx.clearRect(0, 0, 600, 600);

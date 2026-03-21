@@ -637,7 +637,7 @@ export default function ChromeDino() {
 
   const gameLoop = useCallback((timestamp: number) => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
+    const ctx = canvas?.getContext('2d', { alpha: false });
 
     if (!canvas || !ctx) return;
 

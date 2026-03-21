@@ -380,7 +380,7 @@ export default function FlappyBird() {
     const resizeCanvas = () => {
       const rect = canvas.getBoundingClientRect();
       if (!rect.width || !rect.height) return;
-      const dpr = Math.min(window.devicePixelRatio || 1, 3);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const width = Math.round(rect.width * dpr);
       const height = Math.round(rect.height * dpr);
       if (canvas.width !== width || canvas.height !== height) {
@@ -390,7 +390,7 @@ export default function FlappyBird() {
       canvasScaleRef.current = width / CANVAS_WIDTH;
     };
 
-    ctxRef.current = canvas.getContext('2d');
+    ctxRef.current = canvas.getContext('2d', { alpha: false });
     resizeCanvas();
     const observer = new ResizeObserver(resizeCanvas);
     observer.observe(canvas);
