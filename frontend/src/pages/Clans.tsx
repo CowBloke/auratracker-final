@@ -1,5 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Axe, Check, Crown, Loader2, LogOut, Plus, Send, Sparkles, Swords, Tag, Target, UserX, X } from 'lucide-react';
+import { AlertTriangle, Axe, Check, Crown, Info, Loader2, LogOut, MessageSquare, Plus, Send, Sparkles, Swords, Tag, Target, UserX, X } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ClanChatMessage,
@@ -190,7 +190,7 @@ export default function Clans() {
   const [savingTag, setSavingTag] = useState(false);
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<'info' | 'guerre' | 'tag'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'chat' | 'guerre' | 'tag'>('info');
 
   // War games
   const [gameStatus, setGameStatus] = useState<ClanWarGamesStatus | null>(null);
@@ -312,7 +312,10 @@ export default function Clans() {
     try {
       setLoading(true);
       const res = await clansApi.list();
-      setClans(res.data.clans ?? []);
+      const sorted = [...(res.data.clans ?? [])].sort(
+        (a, b) => Number(b.totalAura) - Number(a.totalAura)
+      );
+      setClans(sorted);
       setActiveWars(res.data.meta.activeWars ?? []);
       setViewerClanId(res.data.meta.viewerClanId ?? null);
     } catch (error) {
@@ -768,10 +771,19 @@ export default function Clans() {
                     </CardContent>
                   </Card>
 
-                  {/* Tabs: Infos / Tag / Guerre */}
-                  <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'info' | 'guerre' | 'tag')}>
+                  {/* Tabs: Infos / Chat / Tag / Guerre */}
+                  <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'info' | 'chat' | 'guerre' | 'tag')}>
                     <TabsList className="w-full">
-                      <TabsTrigger value="info" className="flex-1">Infos</TabsTrigger>
+                      <TabsTrigger value="info" className="flex-1">
+                        <Info className="mr-1.5 h-3.5 w-3.5" />
+                        Infos
+                      </TabsTrigger>
+                      {selectedClan.viewer.isMember ? (
+                        <TabsTrigger value="chat" className="flex-1">
+                          <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
+                          Chat
+                        </TabsTrigger>
+                      ) : null}
                       {selectedClan.viewer.isLeader && selectedClan.tagUnlocked ? (
                         <TabsTrigger value="tag" className="flex-1">
                           <Tag className="mr-1.5 h-3.5 w-3.5" />
@@ -779,6 +791,7 @@ export default function Clans() {
                         </TabsTrigger>
                       ) : null}
                       <TabsTrigger value="guerre" className="flex-1">
+                        <Swords className="mr-1.5 h-3.5 w-3.5" />
                         Guerre
                         {selectedWar && selectedWar.status !== 'COMPLETED' ? (
                           <Badge variant={getStatusVariant(selectedWar.status)} className="ml-2 h-4 px-1 text-[10px]">
@@ -852,57 +865,57 @@ export default function Clans() {
                         </Card>
                       ) : null}
 
-                      {/* Chat (members only) */}
-                      {selectedClan.viewer.isMember ? (
-                        <Card className={panelClassName}>
-                          <CardContent className="space-y-3 p-4">
-                            <SectionTitle title="Chat du clan" />
-                            <div className="max-h-[300px] space-y-2 overflow-y-auto rounded-xl border border-border/50 bg-muted/15 p-3">
-                              {chatLoading ? (
-                                <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  Chargement...
-                                </div>
-                              ) : chatMessages.length === 0 ? (
-                                <div className="py-8 text-center text-sm text-muted-foreground">Lance la conversation.</div>
-                              ) : (
-                                [...chatMessages].reverse().map((entry) => {
-                                  const isOwnMessage = entry.user.id === user?.id;
-                                  return (
-                                    <div key={entry.id} className={cn('flex', isOwnMessage ? 'justify-end' : 'justify-start')}>
-                                      <div className={cn('max-w-[85%] rounded-xl border border-border/50 px-3 py-2', isOwnMessage ? 'border-primary/20 bg-primary/10' : 'bg-background')}>
-                                        <div className="mb-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                                          <UsernameDisplay username={entry.user.username} usernameColor={entry.user.usernameColor} />
-                                          <span>•</span>
-                                          <span>{formatDate(entry.createdAt)}</span>
-                                        </div>
-                                        <p className="whitespace-pre-wrap break-words text-sm">{entry.message}</p>
-                                      </div>
-                                    </div>
-                                  );
-                                })
-                              )}
-                            </div>
-                            <form onSubmit={handleSendChatMessage} className="space-y-2">
-                              <Textarea
-                                value={chatDraft}
-                                onChange={(event) => setChatDraft(event.target.value.slice(0, 400))}
-                                rows={2}
-                                placeholder="Écris à ton clan..."
-                                disabled={chatSending}
-                              />
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="text-xs text-muted-foreground">{chatDraft.trim().length}/400</span>
-                                <Button type="submit" size="sm" disabled={chatSending || !chatDraft.trim()}>
-                                  {chatSending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Send className="mr-1.5 h-3.5 w-3.5" />}
-                                  Envoyer
-                                </Button>
-                              </div>
-                            </form>
-                          </CardContent>
-                        </Card>
-                      ) : null}
+                    </TabsContent>
 
+                    {/* ── Chat tab (members only) ── */}
+                    <TabsContent value="chat" className="mt-4">
+                      <Card className={panelClassName}>
+                        <CardContent className="space-y-3 p-4">
+                          <SectionTitle title="Chat du clan" />
+                          <div className="max-h-[420px] space-y-2 overflow-y-auto rounded-xl border border-border/50 bg-muted/15 p-3">
+                            {chatLoading ? (
+                              <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Chargement...
+                              </div>
+                            ) : chatMessages.length === 0 ? (
+                              <div className="py-8 text-center text-sm text-muted-foreground">Lance la conversation.</div>
+                            ) : (
+                              [...chatMessages].reverse().map((entry) => {
+                                const isOwnMessage = entry.user.id === user?.id;
+                                return (
+                                  <div key={entry.id} className={cn('flex', isOwnMessage ? 'justify-end' : 'justify-start')}>
+                                    <div className={cn('max-w-[85%] rounded-xl border border-border/50 px-3 py-2', isOwnMessage ? 'border-primary/20 bg-primary/10' : 'bg-background')}>
+                                      <div className="mb-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                                        <UsernameDisplay username={entry.user.username} usernameColor={entry.user.usernameColor} />
+                                        <span>•</span>
+                                        <span>{formatDate(entry.createdAt)}</span>
+                                      </div>
+                                      <p className="whitespace-pre-wrap break-words text-sm">{entry.message}</p>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                          <form onSubmit={handleSendChatMessage} className="space-y-2">
+                            <Textarea
+                              value={chatDraft}
+                              onChange={(event) => setChatDraft(event.target.value.slice(0, 400))}
+                              rows={2}
+                              placeholder="Écris à ton clan..."
+                              disabled={chatSending}
+                            />
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-xs text-muted-foreground">{chatDraft.trim().length}/400</span>
+                              <Button type="submit" size="sm" disabled={chatSending || !chatDraft.trim()}>
+                                {chatSending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Send className="mr-1.5 h-3.5 w-3.5" />}
+                                Envoyer
+                              </Button>
+                            </div>
+                          </form>
+                        </CardContent>
+                      </Card>
                     </TabsContent>
 
                     {/* ── Tag tab ── */}

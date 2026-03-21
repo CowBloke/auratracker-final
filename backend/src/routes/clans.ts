@@ -294,6 +294,7 @@ const mapClanSummary = (clan: ClanWithMembers | ClanDetailPayload) => ({
   tagUnlocked: clan.tagUnlocked,
   tagText: clan.tagText ?? null,
   tagStyle: clan.tagStyle ?? null,
+  slotUpgraded: clan.slotUpgraded,
 });
 
 const getClanDefenseLevel = (defenses: ClanWarCurrentPayload['defenses'] | ClanWarHistoryPayload['defenses'], clanId: string, type: DefenseType) => {
@@ -704,6 +705,36 @@ const getClanMembership = (clanId: string, userId: string) =>
       isLeader: true,
     },
   });
+
+// Get viewer's clan upgrade status (for shop page)
+router.get('/me/status', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.json({ inClan: false, tagUnlocked: false, slotUpgraded: false });
+
+    const membership = await prisma.clanMember.findUnique({
+      where: { userId },
+      select: { clanId: true, isLeader: true },
+    });
+
+    if (!membership) return res.json({ inClan: false, tagUnlocked: false, slotUpgraded: false });
+
+    const clan = await prisma.clan.findUnique({
+      where: { id: membership.clanId },
+      select: { tagUnlocked: true, slotUpgraded: true },
+    });
+
+    res.json({
+      inClan: true,
+      isLeader: membership.isLeader,
+      tagUnlocked: clan?.tagUnlocked ?? false,
+      slotUpgraded: clan?.slotUpgraded ?? false,
+    });
+  } catch (error) {
+    console.error('Get clan status error:', error);
+    res.status(500).json({ error: 'Failed to get clan status' });
+  }
+});
 
 // Get all clans
 router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
