@@ -25,14 +25,14 @@ export function GameFullscreenStage({
         height: `min(calc(100vh - 7rem), calc((100vw - 2rem) / ${baseWidth / baseHeight}))`,
       }
     : {
-        width: baseWidth,
-        height: baseHeight,
+        width: '100%',
+        maxWidth: baseWidth,
       };
 
   return (
     <div className={cn('flex w-full justify-center', isFullscreen && 'flex-1 items-center', className)}>
       <div
-        className={cn('relative shrink-0 overflow-hidden', contentClassName)}
+        className={cn('relative overflow-hidden', isFullscreen && 'shrink-0', contentClassName)}
         style={{
           ...contentStyle,
           aspectRatio,
