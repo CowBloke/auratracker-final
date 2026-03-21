@@ -50,7 +50,8 @@ const EFFECT_TYPES = [
   { value: 'BONUS_MONEY', label: 'Bonus Argent', description: 'Donne un bonus d\'argent à l\'utilisation' },
   { value: 'DOODLE_JUMP_SKIN', label: 'Skin Doodle Jump', description: 'Débloque un skin personnalisé dans Doodle Jump (sélectionner une image pour le skin)' },
   { value: 'GIFT', label: 'Cadeau', description: 'L\'objet est un cadeau : l\'acheteur choisit un destinataire et le lui envoie directement.' },
-  { value: 'CLAN_TAG_UNLOCK', label: 'Tag de clan', description: 'Débloque le tag de clan pour le clan du chef acheteur. Un clan ne peut l\'acheter qu\'une fois.' },
+  { value: 'CLAN_TAG_UNLOCK', label: 'Tag de clan', description: 'Débloque le tag de clan pour le clan du membre acheteur. Un clan ne peut l\'acheter qu\'une fois.' },
+  { value: 'CLAN_SLOT_UPGRADE', label: '+1 Slot clan', description: 'Ajoute un slot membre supplémentaire au clan. Un clan ne peut l\'acheter qu\'une fois. S\'applique automatiquement à l\'achat.' },
   { value: 'AWARD_BADGE', label: 'Badge', description: 'Donne un badge spécifique au joueur lors de l\'utilisation. L\'image boutique est générée automatiquement.' },
 ];
 
@@ -2034,6 +2035,8 @@ export default function Admin() {
         effect = JSON.stringify({ type: 'DOODLE_JUMP_SKIN', skinImageUrl: itemForm.skinImageUrl || '', ...(shopType ? { shopType } : {}) });
       } else if (itemForm.effectType === 'AWARD_BADGE') {
         effect = JSON.stringify({ type: 'AWARD_BADGE', badgeId: itemForm.badgeId || '' });
+      } else if (itemForm.effectType === 'CLAN_TAG_UNLOCK' || itemForm.effectType === 'CLAN_SLOT_UPGRADE') {
+        effect = JSON.stringify({ type: itemForm.effectType });
       } else {
         effect = JSON.stringify({ type: itemForm.effectType, value: itemForm.effectValue });
       }
@@ -5554,7 +5557,7 @@ export default function Admin() {
                   </div>
                 )}
 
-                {itemForm.effectType !== 'BONUS_AURA' && itemForm.effectType !== 'BONUS_MONEY' && itemForm.effectType !== 'DOODLE_JUMP_SKIN' && itemForm.effectType !== 'CLAN_TAG_UNLOCK' && itemForm.effectType !== 'AWARD_BADGE' && (
+                {itemForm.effectType !== 'BONUS_AURA' && itemForm.effectType !== 'BONUS_MONEY' && itemForm.effectType !== 'DOODLE_JUMP_SKIN' && itemForm.effectType !== 'CLAN_TAG_UNLOCK' && itemForm.effectType !== 'CLAN_SLOT_UPGRADE' && itemForm.effectType !== 'AWARD_BADGE' && (
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-muted-foreground">Valeur de l'effet</label>
                     <Input

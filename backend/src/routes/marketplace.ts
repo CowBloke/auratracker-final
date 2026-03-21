@@ -136,10 +136,6 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
         return res.status(400).json({ error: 'Tu dois être dans un clan pour acheter cet item.' });
       }
 
-      if (!membership.isLeader) {
-        return res.status(400).json({ error: 'Seul le chef de clan peut acheter cet item.' });
-      }
-
       const clan = await prisma.clan.findUnique({
         where: { id: membership.clanId },
         select: { tagUnlocked: true, slotUpgraded: true },
@@ -473,9 +469,6 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
 
       if (!membership) {
         return res.status(400).json({ error: 'Tu n\'es pas dans un clan.' });
-      }
-      if (!membership.isLeader) {
-        return res.status(400).json({ error: 'Seul le chef de clan peut débloquer un tag.' });
       }
 
       const clan = await prisma.clan.findUnique({ where: { id: membership.clanId }, select: { tagUnlocked: true } });
