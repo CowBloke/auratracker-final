@@ -233,6 +233,7 @@ const games = [
     type: 'Duel',
     requiresParty: true,
     emoji: '🎱',
+    image: '/images/games/ballarena.png',
   },
 ];
 

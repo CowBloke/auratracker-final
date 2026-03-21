@@ -109,14 +109,6 @@ const COLOR_BORDER: Record<CardColor, string> = {
   wild: 'border-zinc-600',
 };
 
-const COLOR_SHADOW: Record<CardColor, string> = {
-  red: 'shadow-red-500/40',
-  green: 'shadow-green-500/40',
-  blue: 'shadow-blue-600/40',
-  yellow: 'shadow-yellow-400/40',
-  wild: 'shadow-purple-500/40',
-};
-
 function cardLabel(value: CardValue): string {
   if (value === 'skip') return '⊘';
   if (value === 'reverse') return '⇄';
@@ -383,7 +375,6 @@ export default function Uno() {
   const unoToastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Card play animation: last played card visually
-  const [lastPlayedAnim, setLastPlayedAnim] = useState<UnoCard | null>(null);
   const lastActionKeyRef = useRef<string>('');
 
   const isLeader = partyMembers.find(m => m.userId === user?.id)?.isLeader;
@@ -451,9 +442,6 @@ export default function Uno() {
     const key = `${la.userId}-${la.card.id}`;
     if (key === lastActionKeyRef.current) return;
     lastActionKeyRef.current = key;
-    setLastPlayedAnim(la.card);
-    const t = setTimeout(() => setLastPlayedAnim(null), 500);
-    return () => clearTimeout(t);
   }, [gameState?.lastAction]);
 
   // ── Socket events ─────────────────────────────────────────────────────────
