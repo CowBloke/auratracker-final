@@ -56,31 +56,11 @@ function isValidPlacement(
     if (y + length > BOARD_SIZE) return false;
     for (let i = 0; i < length; i++) {
       if (board[x][y + i] !== 0) return false;
-      // Check adjacent cells
-      for (let dx = -1; dx <= 1; dx++) {
-        for (let dy = -1; dy <= 1; dy++) {
-          const nx = x + dx;
-          const ny = y + i + dy;
-          if (nx >= 0 && nx < BOARD_SIZE && ny >= 0 && ny < BOARD_SIZE) {
-            if (board[nx][ny] === 1) return false;
-          }
-        }
-      }
     }
   } else {
     if (x + length > BOARD_SIZE) return false;
     for (let i = 0; i < length; i++) {
       if (board[x + i][y] !== 0) return false;
-      // Check adjacent cells
-      for (let dx = -1; dx <= 1; dx++) {
-        for (let dy = -1; dy <= 1; dy++) {
-          const nx = x + i + dx;
-          const ny = y + dy;
-          if (nx >= 0 && nx < BOARD_SIZE && ny >= 0 && ny < BOARD_SIZE) {
-            if (board[nx][ny] === 1) return false;
-          }
-        }
-      }
     }
   }
   return true;

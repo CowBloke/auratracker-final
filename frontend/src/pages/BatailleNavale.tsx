@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { type DragEvent, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
-import { ArrowLeft, Play, LogOut, Search, Swords, Trophy } from 'lucide-react';
+import { ArrowLeft, Play, LogOut, Search, Swords, Trophy, RotateCw } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -74,6 +74,7 @@ export default function BatailleNavale() {
   const [gameState, setGameState] = useState<BattleshipState | null>(null);
   const [selectedShipLength, setSelectedShipLength] = useState<number | null>(null);
   const [selectedHorizontal, setSelectedHorizontal] = useState(true);
+  const [draggingShipLength, setDraggingShipLength] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [gameOver, setGameOver] = useState<{
     winnerId: string;
@@ -216,6 +217,31 @@ export default function BatailleNavale() {
       horizontal: selectedHorizontal,
     });
     setSelectedShipLength(null);
+    setDraggingShipLength(null);
+  };
+
+  const handleRotate = () => {
+    setSelectedHorizontal((prev) => !prev);
+  };
+
+  const handleDropShip = (x: number, y: number, droppedLength?: number) => {
+    const lengthToPlace = droppedLength ?? selectedShipLength;
+    if (!lengthToPlace) return;
+
+    setSelectedShipLength(lengthToPlace);
+
+    if (!socket || !user || !currentParty) return;
+    socket.emit('battleship:place-ship', {
+      userId: user.id,
+      partyId: currentParty.id,
+      x,
+      y,
+      length: lengthToPlace,
+      horizontal: selectedHorizontal,
+    });
+
+    setSelectedShipLength(null);
+    setDraggingShipLength(null);
   };
 
   const handleShoot = (x: number, y: number) => {
@@ -234,16 +260,33 @@ export default function BatailleNavale() {
     setGameState(null);
   };
 
+  useEffect(() => {
+    if (gameState?.phase !== 'placement') return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() === 'r') {
+        event.preventDefault();
+        setSelectedHorizontal((prev) => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [gameState?.phase]);
+
   const renderCell = (
     board: number[][],
     x: number,
     y: number,
     isMyBoard: boolean,
-    onClick?: () => void
+    onClick?: () => void,
+    onDragOver?: (event: DragEvent<HTMLButtonElement>) => void,
+    onDrop?: (event: DragEvent<HTMLButtonElement>) => void
   ) => {
     const cell = board[x][y];
     const shipSegment = isMyBoard ? myShipSegments.get(`${x}-${y}`) : undefined;
     const isClickable = onClick !== undefined;
+    const isDroppable = onDrop !== undefined;
     let bgColor = 'bg-sky-950/20';
     let borderColor = 'border-border/30';
 
@@ -290,13 +333,15 @@ export default function BatailleNavale() {
       <Button variant="ghost"
         key={`${x}-${y}`}
         onClick={onClick}
-        disabled={!isClickable}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+        disabled={!isClickable && !isDroppable}
         className={cn(
           'relative h-8 w-8 overflow-hidden rounded-none border p-0 transition-colors',
           bgColor,
           borderColor,
-          isClickable && 'hover:border-foreground hover:bg-sky-900/30 cursor-pointer',
-          !isClickable && 'cursor-not-allowed'
+          (isClickable || isDroppable) && 'hover:border-foreground hover:bg-sky-900/30 cursor-pointer',
+          !isClickable && !isDroppable && 'cursor-not-allowed'
         )}
       >
         {shipShape ? <span className={shipShape} /> : null}
@@ -556,28 +601,54 @@ export default function BatailleNavale() {
               Place tes bateaux sur la grille
             </p>
             {remainingShips.length > 0 && (
-              <div className="flex gap-2 justify-center mb-4">
-                {remainingShips.map((length) => (
+              <div className="flex flex-wrap gap-2 justify-center mb-4">
+                {remainingShips.map((length, index) => (
                   <Button variant="ghost"
-                    key={length}
+                    key={`${length}-${index}`}
+                    draggable
                     onClick={() => {
                       setSelectedShipLength(length);
-                      setSelectedHorizontal(true);
                     }}
+                    onDragStart={(event) => {
+                      event.dataTransfer.effectAllowed = 'move';
+                      event.dataTransfer.setData('text/plain', String(length));
+                      setSelectedShipLength(length);
+                      setDraggingShipLength(length);
+                    }}
+                    onDragEnd={() => setDraggingShipLength(null)}
                     className={cn(
-                      "px-3 py-1 border text-sm transition-colors",
+                      "px-3 py-1 border text-sm transition-colors cursor-grab active:cursor-grabbing",
                       selectedShipLength === length
                         ? "border-foreground bg-foreground text-background"
                         : "border-border/50 text-muted-foreground hover:border-foreground hover:text-foreground"
                     )}
                   >
-                    {length} cases
+                    <span className="inline-flex items-center gap-2">
+                      <span>{length} cases</span>
+                      <span className="inline-flex gap-0.5">
+                        {Array.from({ length }).map((_, segmentIndex) => (
+                          <span
+                            key={segmentIndex}
+                            className="h-2 w-2 rounded-sm bg-current/70"
+                          />
+                        ))}
+                      </span>
+                    </span>
                   </Button>
                 ))}
               </div>
             )}
             {selectedShipLength && (
-              <div className="flex gap-2 justify-center mb-4">
+              <div className="flex flex-wrap items-center gap-2 justify-center mb-4">
+                <Button variant="ghost" onClick={handleRotate}
+                  className={cn(
+                    "px-3 py-1 border text-sm transition-colors",
+                    "border-border/50 text-muted-foreground hover:border-foreground hover:text-foreground"
+                  )}
+                >
+                  <RotateCw className="h-4 w-4 mr-1" />
+                  Rotation: {selectedHorizontal ? 'Horizontal' : 'Vertical'}
+                </Button>
                 <Button variant="ghost"
                   onClick={() => setSelectedHorizontal(true)}
                   className={cn(
@@ -600,7 +671,13 @@ export default function BatailleNavale() {
                 >
                   Vertical
                 </Button>
+                <span className="text-xs text-muted-foreground">R pour pivoter</span>
               </div>
+            )}
+            {draggingShipLength && (
+              <p className="text-xs text-muted-foreground mb-4">
+                Glisse le bateau de {draggingShipLength} cases sur la grille
+              </p>
             )}
             {gameState.myShipsPlaced && (
               <p className="text-sm text-green-500">
@@ -625,6 +702,19 @@ export default function BatailleNavale() {
                     true,
                     selectedShipLength
                       ? () => handlePlaceShip(x, y)
+                      : undefined,
+                    remainingShips.length > 0
+                      ? (event) => {
+                          event.preventDefault();
+                          event.dataTransfer.dropEffect = 'move';
+                        }
+                      : undefined,
+                    remainingShips.length > 0
+                      ? (event) => {
+                          event.preventDefault();
+                          const droppedLength = Number(event.dataTransfer.getData('text/plain'));
+                          handleDropShip(x, y, Number.isFinite(droppedLength) ? droppedLength : undefined);
+                        }
                       : undefined
                   )
                 )

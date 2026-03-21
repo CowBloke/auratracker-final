@@ -333,13 +333,6 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                         )}
                         <div className="min-w-0 flex-1">
                           <span className="flex items-center gap-1.5">
-                            <span
-                              className={cn(
-                                'inline-block h-1.5 w-1.5 rounded-full',
-                                u.isPageActive ? 'bg-emerald-500' : 'bg-amber-500'
-                              )}
-                              title={u.isPageActive ? 'Utilisateur actif sur la page' : 'Utilisateur en arrière-plan'}
-                            />
                             <PlayerHoverCard userId={u.userId} username={u.username} usernameColor={u.usernameColor} clanTag={toClanTagData(u.clanTag)}>
                             <UsernameDisplay username={u.username} usernameColor={u.usernameColor} className="block" clanTag={toClanTagData(u.clanTag)} />
                           </PlayerHoverCard>

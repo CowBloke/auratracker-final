@@ -114,6 +114,7 @@ const games = [
     description: 'Empile des blocs en rythme et vise des coupes parfaites pour monter la tour le plus haut possible.',
     type: 'Arcade',
     emoji: '🧱',
+    image: '/images/games/stack.png',
   },
   {
     id: 'fruit-ninja',
