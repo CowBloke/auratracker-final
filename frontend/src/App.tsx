@@ -46,6 +46,7 @@ import Minesweeper from './pages/Minesweeper';
 import GeometryDash from './pages/GeometryDash';
 import QSWatermelon from './pages/QSWatermelon';
 import RussianRoulette from './pages/RussianRoulette';
+import Uno from './pages/Uno';
 import ChromeDino from './pages/ChromeDino';
 import FruitNinja from './pages/FruitNinja';
 import StackTower from './pages/StackTower';
@@ -180,6 +181,7 @@ function App() {
         <Route path="games/ball-arena" element={<BallArena />} />
         <Route path="games/logic-lab" element={<Sudoku />} />
         <Route path="games/russian-roulette" element={<RussianRoulette />} />
+        <Route path="games/uno" element={<Uno />} />
         <Route path="polymarket" element={<Polymarket />} />
         <Route path="leaderboards" element={<Leaderboards />} />
         <Route path="leaderboards/nombres" element={<Numbers />} />

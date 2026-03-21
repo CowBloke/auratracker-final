@@ -49,6 +49,16 @@ const games = [
     image: '/images/games/petitbac.png',
   },
   {
+    id: 'uno',
+    pageKey: 'game-uno',
+    name: 'UNO',
+    description: 'Le classique jeu de cartes : aligne les couleurs et valeurs, joue des actions et fais UNO en premier.',
+    type: 'Party',
+    requiresParty: true,
+    emoji: '🃏',
+    image: '/images/games/uno.png',
+  },
+  {
     id: 'bataille-navale',
     pageKey: 'game-bataille-navale',
     name: 'Bataille Navale',
