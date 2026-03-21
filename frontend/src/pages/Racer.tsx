@@ -478,6 +478,8 @@ export default function Racer() {
   const hillOffsetRef = useRef<number>(0);
   const treeOffsetRef = useRef<number>(0);
   const currentLapTimeRef = useRef<number>(0);
+  const lastLapTimeDisplayRef = useRef<number>(0);
+  const lastDisplaySpeedRef = useRef<number>(0);
   const lastLapTimeRef = useRef<number | null>(null);
   const fastestLapTimeRef = useRef<number>(180);
   const dailySeedRef = useRef<number>(1);
@@ -991,10 +993,18 @@ export default function Racer() {
       // Always increment lap time if we've started the lap
       if (hasCrossedStartLineRef.current) {
         currentLapTimeRef.current += dt;
-        setCurrentLapTime(currentLapTimeRef.current);
+        const lapTimeDisplay = Math.round(currentLapTimeRef.current * 10) / 10;
+        if (lapTimeDisplay !== lastLapTimeDisplayRef.current) {
+          lastLapTimeDisplayRef.current = lapTimeDisplay;
+          setCurrentLapTime(lapTimeDisplay);
+        }
       }
 
-      setSpeed(Math.round((speedRef.current / 500) * 5));
+      const newSpeed = Math.round((speedRef.current / 500) * 5);
+      if (newSpeed !== lastDisplaySpeedRef.current) {
+        lastDisplaySpeedRef.current = newSpeed;
+        setSpeed(newSpeed);
+      }
     },
     [findSegment, updateCars, gameOver]
   );

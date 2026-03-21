@@ -558,8 +558,11 @@ export default function GeometryDash() {
 
       distanceRef.current += delta;
       cameraOffsetRef.current += moveAmount;
-      scoreRef.current = Math.floor(cameraOffsetRef.current / 18);
-      setScore(scoreRef.current);
+      const newScore = Math.floor(cameraOffsetRef.current / 18);
+      if (newScore !== scoreRef.current) {
+        scoreRef.current = newScore;
+        setScore(newScore);
+      }
 
       player.jumpBuffer = Math.max(0, player.jumpBuffer - delta);
       player.coyote = player.grounded ? COYOTE_TIME : Math.max(0, player.coyote - delta);

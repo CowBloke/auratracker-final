@@ -206,6 +206,36 @@ const sendDisplayedOnlineState = async (socket: Socket) => {
   socket.emit('users:online-count', { count });
 };
 
+// Emit a single-user join delta to everyone else in the room (no full-list rebuild)
+const broadcastUserJoined = async (socket: Socket, userId: string) => {
+  const user = onlineUsers.get(userId);
+  if (!user) return;
+  const publicUser = toPublicOnlineUser(user);
+  const [badgeMap, clanTagMap] = await Promise.all([
+    getBatchEquippedBadges([userId]),
+    getBatchClanTags([userId]),
+  ]);
+  socket.to('global-chat').emit('user:online', {
+    ...publicUser,
+    badges: badgeMap.get(userId) ?? [],
+    clanTag: clanTagMap.get(userId) ?? null,
+  });
+  socket.to('global-chat').emit('users:online-count', { count: onlineUsers.size });
+};
+
+// Emit a page/presence update delta — no DB queries needed
+const broadcastUserUpdated = (io: Server, userId: string) => {
+  const user = onlineUsers.get(userId);
+  if (!user) return;
+  io.to('global-chat').emit('user:updated', toPublicOnlineUser(user));
+};
+
+// Emit a leave delta — no full-list rebuild
+const broadcastUserLeft = (io: Server, userId: string) => {
+  io.to('global-chat').emit('user:offline', { userId });
+  io.to('global-chat').emit('users:online-count', { count: onlineUsers.size });
+};
+
 const summarizeReactions = (
   reactions: Array<{ emoji: string; user?: { username: string } | null }>
 ) => {
@@ -597,9 +627,10 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
       })),
     });
     
-    await broadcastDisplayedOnlineState(io);
+    await sendDisplayedOnlineState(socket);
+    void broadcastUserJoined(socket, userId);
   });
-  
+
   // Send message
   socket.on('chat:message', async (data: { message?: string; imageUrl?: string | null; replyToId?: string | null }) => {
     const userId = socket.data.userId as string | undefined;
@@ -770,7 +801,7 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     if (!user) return;
 
     user.currentPage = currentPage;
-    void broadcastDisplayedOnlineState(io);
+    broadcastUserUpdated(io, userId);
   });
 
   socket.on('chat:presence', (data: { isPageActive: boolean }) => {
@@ -783,7 +814,7 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     if (user.isPageActive === nextIsPageActive) return;
 
     user.isPageActive = nextIsPageActive;
-    void broadcastDisplayedOnlineState(io);
+    broadcastUserUpdated(io, userId);
   });
 
   // On-demand: client requests the full online users list (with pages)
@@ -931,7 +962,7 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
       if (user.socketId === socket.id) {
         onlineUsers.delete(userId);
         _onPlayerLeft();
-        void broadcastDisplayedOnlineState(io);
+        broadcastUserLeft(io, userId);
         break;
       }
     }

@@ -126,6 +126,8 @@ export default function FruitNinja() {
   const lastSpawnRef = useRef(0);
   const lastTimeRef = useRef(0);
   const shakeAmtRef = useRef(0);
+  const bgGradRef = useRef<CanvasGradient | null>(null);
+  const vignetteGradRef = useRef<CanvasGradient | null>(null);
 
   // React state (UI)
   const { user, refreshUser } = useAuth();
@@ -372,21 +374,27 @@ export default function FruitNinja() {
       ctx.translate((Math.random() - 0.5) * intensity * 2, (Math.random() - 0.5) * intensity * 2);
     }
 
-    // Background
-    const bg = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
-    bg.addColorStop(0, '#07071a');
-    bg.addColorStop(1, '#16072a');
-    ctx.fillStyle = bg;
+    // Background (cached — game coords are constants, safe to reuse across frames)
+    if (!bgGradRef.current) {
+      const bg = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
+      bg.addColorStop(0, '#07071a');
+      bg.addColorStop(1, '#16072a');
+      bgGradRef.current = bg;
+    }
+    ctx.fillStyle = bgGradRef.current;
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-    // Subtle vignette
-    const vignette = ctx.createRadialGradient(
-      CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, CANVAS_HEIGHT * 0.25,
-      CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, CANVAS_HEIGHT * 0.75,
-    );
-    vignette.addColorStop(0, 'rgba(0,0,0,0)');
-    vignette.addColorStop(1, 'rgba(0,0,0,0.45)');
-    ctx.fillStyle = vignette;
+    // Subtle vignette (cached)
+    if (!vignetteGradRef.current) {
+      const vignette = ctx.createRadialGradient(
+        CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, CANVAS_HEIGHT * 0.25,
+        CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, CANVAS_HEIGHT * 0.75,
+      );
+      vignette.addColorStop(0, 'rgba(0,0,0,0)');
+      vignette.addColorStop(1, 'rgba(0,0,0,0.45)');
+      vignetteGradRef.current = vignette;
+    }
+    ctx.fillStyle = vignetteGradRef.current;
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
     // Splatters
@@ -400,6 +408,9 @@ export default function FruitNinja() {
     ctx.globalAlpha = 1;
 
     // Fruit halves
+    ctx.font = `${FRUIT_RADIUS * 1.8}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     for (const h of halvesRef.current) {
       ctx.save();
       ctx.globalAlpha = h.alpha;
@@ -412,9 +423,6 @@ export default function FruitNinja() {
         ctx.rect(-FRUIT_RADIUS * 2, -FRUIT_RADIUS * 2, FRUIT_RADIUS * 2, FRUIT_RADIUS * 4);
       }
       ctx.clip();
-      ctx.font = `${FRUIT_RADIUS * 1.8}px serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
       ctx.fillText(h.emoji, 0, 2);
       ctx.restore();
     }
@@ -442,9 +450,6 @@ export default function FruitNinja() {
       ctx.ellipse(4, 7, f.radius * 0.75, f.radius * 0.35, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
-      ctx.font = `${f.radius * 1.8}px serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
       ctx.fillText(f.emoji, 0, 2);
       ctx.restore();
     }

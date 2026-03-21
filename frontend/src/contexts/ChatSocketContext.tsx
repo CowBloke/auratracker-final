@@ -113,7 +113,10 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
   const [balanceUpdate, setBalanceUpdate] = useState<{ userId: string; aura: number; money: number } | null>(null);
 
   // Pending presence updates — batched every 500 ms to stop 52/sec re-renders
-  type PresenceOp = { op: 'add'; user: OnlineUser } | { op: 'remove'; userId: string };
+  type PresenceOp =
+    | { op: 'add'; user: OnlineUser }
+    | { op: 'remove'; userId: string }
+    | { op: 'update'; user: Omit<OnlineUser, 'badges' | 'clanTag'> };
   const pendingPresenceRef = useRef<PresenceOp[]>([]);
   // Pending count updates — also batched
   const pendingCountRef = useRef<number | null>(null);
@@ -128,6 +131,8 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
           for (const op of pending) {
             if (op.op === 'add') {
               if (!result.find((u) => u.userId === op.user.userId)) result.push(op.user);
+            } else if (op.op === 'update') {
+              result = result.map((u) => u.userId === op.user.userId ? { ...u, ...op.user } : u);
             } else {
               result = result.filter((u) => u.userId !== op.userId);
             }
@@ -239,6 +244,10 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
       pendingPresenceRef.current.push({ op: 'remove', userId: data.userId });
     });
 
+    s.on('user:updated', (data: Omit<OnlineUser, 'badges' | 'clanTag'>) => {
+      pendingPresenceRef.current.push({ op: 'update', user: data });
+    });
+
     s.on('doodle:spectate-sessions', (data: { sessions: DoodleSpectateSession[] }) => {
       setDoodleSpectateSessions(Array.isArray(data.sessions) ? data.sessions : []);
     });
@@ -265,6 +274,7 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
       s.off('users:online-count');
       s.off('user:online');
       s.off('user:offline');
+      s.off('user:updated');
       s.off('doodle:spectate-sessions');
       s.off('chess:spectate-sessions');
       s.off('economy:balance-update');

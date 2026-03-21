@@ -663,8 +663,11 @@ export default function ChromeDino() {
 
       speedRef.current = Math.min(MAX_SPEED, START_SPEED + scoreRef.current * SPEED_GAIN * 0.01);
       distanceRef.current += speedRef.current * delta;
-      scoreRef.current = Math.floor(distanceRef.current * SCORE_SCALE);
-      setScore(scoreRef.current);
+      const newScore = Math.floor(distanceRef.current * SCORE_SCALE);
+      if (newScore !== scoreRef.current) {
+        scoreRef.current = newScore;
+        setScore(newScore);
+      }
 
       player.targetHeight = player.ducking && player.onGround ? PLAYER_DUCK_HEIGHT : PLAYER_HEIGHT;
       player.targetWidth = player.ducking && player.onGround ? PLAYER_DUCK_WIDTH : PLAYER_WIDTH;
