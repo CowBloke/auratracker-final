@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { usersApi, UserPendingWarning } from '@/services/api';
-import { useSocket } from '@/contexts/SocketContext';
+import { useSocketBase } from '@/contexts/SocketContext';
 import { AlertTriangle, AlertCircle, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -19,7 +19,7 @@ export default function AdminWarningModal() {
   const [warnings, setWarnings] = useState<UserPendingWarning[]>([]);
   const [index, setIndex] = useState(0);
   const [acknowledging, setAcknowledging] = useState(false);
-  const { socket } = useSocket();
+  const { socket } = useSocketBase();
 
   const loadPendingWarnings = useCallback(async () => {
     try {

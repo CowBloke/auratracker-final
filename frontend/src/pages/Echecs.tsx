@@ -5,7 +5,10 @@ import { Chess } from 'chess.js';
 import type { Square } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
 import { useAuth } from '../contexts/AuthContext';
-import { useSocket } from '../contexts/SocketContext';
+import { useSocketBase } from '../contexts/SocketContext';
+import { useChatSocket } from '../contexts/ChatSocketContext';
+import { usePartySocket } from '../contexts/PartySocketContext';
+import { useDuelSocket } from '../contexts/DuelSocketContext';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -116,7 +119,10 @@ export default function Echecs() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
-  const { currentParty, partyMembers, socket, onlineUsers, requestOnlineUsers, challengeUserToDuel, outgoingDuelChallenge } = useSocket();
+  const { socket } = useSocketBase();
+  const { onlineUsers, requestOnlineUsers } = useChatSocket();
+  const { currentParty, partyMembers } = usePartySocket();
+  const { challengeUserToDuel, outgoingDuelChallenge } = useDuelSocket();
 
   const [showChallengePicker, setShowChallengePicker] = useState(false);
   const [challengeSearch, setChallengeSearch] = useState('');

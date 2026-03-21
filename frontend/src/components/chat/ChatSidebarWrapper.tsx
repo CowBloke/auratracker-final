@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode, Dispatch, SetStateAction } from 'react';
 import { SidebarProvider as ShadcnSidebarProvider } from '@/components/ui/sidebar';
 import ChatSidebar from './ChatSidebar';
-import { useSocket } from '@/contexts/SocketContext';
+import { useChatSocket } from '@/contexts/ChatSocketContext';
 import { useAuth } from '@/contexts/AuthContext';
 
 const CHAT_SIDEBAR_STORAGE_KEY = 'chat-sidebar-open';
@@ -52,7 +52,7 @@ export function useChatSidebar() {
 }
 
 export function ChatSidebarProvider({ children }: { children: ReactNode }) {
-  const { messages } = useSocket();
+  const { messages } = useChatSocket();
   const { user } = useAuth();
   const [open, setOpen] = useState(() => {
     const stored = localStorage.getItem(CHAT_SIDEBAR_STORAGE_KEY);

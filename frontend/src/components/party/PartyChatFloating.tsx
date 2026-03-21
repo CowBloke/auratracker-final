@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MessageCircle, Minimize2, Send, Users } from 'lucide-react';
-import { useSocket } from '@/contexts/SocketContext';
+import { usePartySocket } from '@/contexts/PartySocketContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,7 @@ interface PartyChatFloatingProps {
 
 export default function PartyChatFloating({ rightOffset }: PartyChatFloatingProps) {
   const { user } = useAuth();
-  const { currentParty, partyMembers, partyMessages, sendPartyMessage } = useSocket();
+  const { currentParty, partyMembers, partyMessages, sendPartyMessage } = usePartySocket();
   const [minimized, setMinimized] = useState(false);
   const [message, setMessage] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);

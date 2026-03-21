@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSocket } from '../../contexts/SocketContext';
+import { useChatSocket } from '../../contexts/ChatSocketContext';
+import { usePartySocket } from '../../contexts/PartySocketContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Send, X, MoreHorizontal, Pin, PinOff, Reply, ImagePlus } from 'lucide-react';
 import {
@@ -63,19 +64,8 @@ const getReactionUsersLabel = (users: string[]) => {
 export default function ChatSidebar() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const {
-    messages,
-    onlineUsers,
-    typingUsers,
-    sendMessage,
-    setTyping,
-    reactToMessage,
-    pinMessage,
-    joinParty,
-    requestJoinParty,
-    currentParty,
-    pendingJoinRequests,
-  } = useSocket();
+  const { messages, onlineUsers, typingUsers, sendMessage, setTyping, reactToMessage, pinMessage } = useChatSocket();
+  const { joinParty, requestJoinParty, currentParty, pendingJoinRequests } = usePartySocket();
   const { unreadCount } = useChatSidebar();
   const [input, setInput] = useState('');
   const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);

@@ -8,7 +8,9 @@ import GameJoinPrompt from '../game/GameJoinPrompt';
 import GameReplayPrompt from '../game/GameReplayPrompt';
 import DuelChallengePopup from '../game/DuelChallengePopup';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
-import { useSocket } from '@/contexts/SocketContext';
+import { useSocketBase } from '@/contexts/SocketContext';
+import { useGameSocket } from '@/contexts/GameSocketContext';
+import { useDuelSocket } from '@/contexts/DuelSocketContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SiteHeader } from '@/components/site-header';
@@ -38,7 +40,9 @@ function PartyChatFloatingContainer() {
 }
 
 export default function Layout() {
-  const { connected, setCurrentPage, activeJoinPrompt, activeReplayPrompt, respondToGameJoinPrompt, respondToGameReplayPrompt, incomingDuelChallenge, acceptDuelChallenge, declineDuelChallenge } = useSocket();
+  const { connected, setCurrentPage } = useSocketBase();
+  const { activeJoinPrompt, activeReplayPrompt, respondToGameJoinPrompt, respondToGameReplayPrompt } = useGameSocket();
+  const { incomingDuelChallenge, acceptDuelChallenge, declineDuelChallenge } = useDuelSocket();
   const { user } = useAuth();
   const location = useLocation();
   const mainRef = useRef<HTMLElement>(null);

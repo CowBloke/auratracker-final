@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useSocket } from '../contexts/SocketContext';
+import { usePartySocket } from '../contexts/PartySocketContext';
+import { useGameSocket } from '../contexts/GameSocketContext';
 import { ArrowLeft, Play, Heart, Crown, Users } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -33,17 +34,8 @@ function HighlightedWord({ word, prompt }: { word: string; prompt: string }) {
 
 export default function BombParty() {
   const { user, refreshUser } = useAuth();
-  const {
-    currentParty,
-    partyMembers,
-    bombPartyGame,
-    bombPartyGameOver,
-    bombPartyRejection,
-    startBombParty,
-    typeBombParty,
-    submitBombParty,
-    leaveBombParty,
-  } = useSocket();
+  const { currentParty, partyMembers } = usePartySocket();
+  const { bombPartyGame, bombPartyGameOver, bombPartyRejection, startBombParty, typeBombParty, submitBombParty, leaveBombParty } = useGameSocket();
 
   const [lives, setLives] = useState(3);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');

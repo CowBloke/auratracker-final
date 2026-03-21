@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useSocket } from '../contexts/SocketContext';
+import { usePartySocket } from '../contexts/PartySocketContext';
+import { useGameSocket } from '../contexts/GameSocketContext';
 import { usersApi } from '../services/api';
 import { Plus, LogOut, UserPlus, X, RefreshCw, Trash2, User, Play } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -111,11 +112,8 @@ export default function Party() {
     partySelectedGame,
     suggestPartyGame,
     selectPartyGame,
-    startBombParty,
-    startPetitBac,
-    startPoker,
-    startP4,
-  } = useSocket();
+  } = usePartySocket();
+  const { startBombParty, startPetitBac, startPoker, startP4 } = useGameSocket();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSocket } from '@/contexts/SocketContext';
+import { usePartySocket } from '@/contexts/PartySocketContext';
+import { useGameSocket } from '@/contexts/GameSocketContext';
 import { ArrowLeft, Clock, LogOut, Play, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -570,16 +571,8 @@ function PokerTableView({
 // ─── Main Poker page ──────────────────────────────────────────────────────────
 export default function Poker() {
   const { user } = useAuth();
-  const {
-    currentParty,
-    partyMembers,
-    pokerGame,
-    pokerGameOver,
-    startPoker,
-    actInPoker,
-    leavePoker,
-    clearPokerGameOver,
-  } = useSocket();
+  const { currentParty, partyMembers } = usePartySocket();
+  const { pokerGame, pokerGameOver, startPoker, actInPoker, leavePoker, clearPokerGameOver } = useGameSocket();
 
   const [startStack, setStartStack] = useState(800);
   const [bigBlind, setBigBlind] = useState(20);

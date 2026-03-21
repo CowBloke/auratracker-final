@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { useSocket } from '@/contexts/SocketContext';
+import { usePartySocket } from '@/contexts/PartySocketContext';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,7 @@ export default function PartyChatPanel({
   placeholder = 'Écris à ta party',
   className,
 }: PartyChatPanelProps) {
-  const { currentParty, partyMessages, sendPartyMessage } = useSocket();
+  const { currentParty, partyMessages, sendPartyMessage } = usePartySocket();
   const [message, setMessage] = useState('');
   const endRef = useRef<HTMLDivElement | null>(null);
 

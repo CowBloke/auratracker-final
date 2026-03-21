@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useSocket } from '../contexts/SocketContext';
+import { useSocketBase } from '../contexts/SocketContext';
 import { auraCoinApi, AuraCoinTransaction, AuraCoinPriceHistory, AuraCoinPosition } from '../services/api';
 import { cn } from '@/lib/utils';
 import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, X } from 'lucide-react';
@@ -14,7 +14,7 @@ import { UsernameDisplay } from '@/components/ui/username-display';
 
 export default function AuraCoin() {
   const { refreshUser } = useAuth();
-  const { socket } = useSocket();
+  const { socket } = useSocketBase();
   
   const [currentPrice, setCurrentPrice] = useState(100);
   const [feePercentage, setFeePercentage] = useState(0.02);

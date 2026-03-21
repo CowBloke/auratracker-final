@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSocket } from '@/contexts/SocketContext';
+import { usePartySocket } from '@/contexts/PartySocketContext';
+import { useGameSocket } from '@/contexts/GameSocketContext';
 import { ArrowLeft, Play, Skull, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageShell } from '@/components/layout/page-shell';
@@ -301,12 +302,8 @@ function RouletteTable({
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function RussianRoulette() {
   const { user } = useAuth();
-  const {
-    currentParty, partyMembers,
-    rouletteGame, rouletteGameOver, roulettePlayAgainPrompt,
-    startRoulette, pullRouletteTrigger, passRoulette,
-    respondToRoulettePlayAgainPrompt, clearRouletteGameOver,
-  } = useSocket();
+  const { currentParty, partyMembers } = usePartySocket();
+  const { rouletteGame, rouletteGameOver, roulettePlayAgainPrompt, startRoulette, pullRouletteTrigger, passRoulette, respondToRoulettePlayAgainPrompt, clearRouletteGameOver } = useGameSocket();
 
   const [bangEffect, setBangEffect] = useState(false);
   const [spinCylinder, setSpinCylinder] = useState(false);

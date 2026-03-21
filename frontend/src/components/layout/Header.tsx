@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useSocket } from '../../contexts/SocketContext';
+import { useSocketBase } from '../../contexts/SocketContext';
 import { Sparkles, Coins, User, LogOut, Wifi, WifiOff, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,7 +31,7 @@ interface SearchUser {
 
 export default function Header() {
   const { user, logout } = useAuth();
-  const { connected } = useSocket();
+  const { connected } = useSocketBase();
   const navigate = useNavigate();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [users, setUsers] = useState<SearchUser[]>([]);

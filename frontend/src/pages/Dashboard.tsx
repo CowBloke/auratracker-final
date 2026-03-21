@@ -18,7 +18,8 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useAuth } from '../contexts/AuthContext';
-import { useSocket } from '../contexts/SocketContext';
+import { useSocketBase } from '../contexts/SocketContext';
+import { usePartySocket } from '../contexts/PartySocketContext';
 import { ClanChatMessage, ClanSummary, ClanWarState, Gift, GiftStatus, ReferralSummary, auraCoinApi, authApi, clansApi, giftsApi, marketplaceApi } from '../services/api';
 import { GripVertical, Copy, Sparkles, Zap, Trophy, Users, Gift as GiftIcon, Package, TrendingUp, TrendingDown, CheckCircle2, Star, Gamepad2, BarChart3, Coins, Shield, Ticket, User as UserIcon, MessageSquare, Swords, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -352,15 +353,8 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { theme } = useTheme();
   const { maintenanceStatus } = useFeatures();
-  const {
-    socket,
-    fetchPublicParties,
-    publicParties,
-    currentParty,
-    joinParty,
-    requestJoinParty,
-    pendingJoinRequests,
-  } = useSocket();
+  const { socket } = useSocketBase();
+  const { fetchPublicParties, publicParties, currentParty, joinParty, requestJoinParty, pendingJoinRequests } = usePartySocket();
   const [loading, setLoading] = useState(true);
   const [giftsLoading, setGiftsLoading] = useState(true);
   const [inboxGifts, setInboxGifts] = useState<Gift[]>([]);

@@ -1,7 +1,11 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSocket } from '@/contexts/SocketContext';
+import { useSocketBase } from '@/contexts/SocketContext';
+import { useChatSocket } from '@/contexts/ChatSocketContext';
+import { usePartySocket } from '@/contexts/PartySocketContext';
+import { useGameSocket } from '@/contexts/GameSocketContext';
+import { useDuelSocket } from '@/contexts/DuelSocketContext';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -46,31 +50,11 @@ import { PlayerHoverCard } from '@/components/ui/player-hover-card';
 
 export function SiteHeader() {
   const { user } = useAuth();
-  const {
-    connected,
-    onlineUsers,
-    onlineCount,
-    requestOnlineUsers,
-    doodleSpectateSessions,
-    requestDoodleSpectateSessions,
-    chessSpectateSessions,
-    requestChessSpectateSessions,
-    currentParty,
-    partyMembers,
-    publicParties,
-    createParty,
-    leaveParty,
-    deleteParty,
-    joinParty,
-    fetchPublicParties,
-    bombPartyGame,
-    petitBacGame,
-    sendMessage,
-    duelMatchmakingQueued,
-    duelMatchmakingStats,
-    joinDuelMatchmaking,
-    leaveDuelMatchmaking,
-  } = useSocket();
+  const { connected } = useSocketBase();
+  const { onlineUsers, onlineCount, requestOnlineUsers, doodleSpectateSessions, requestDoodleSpectateSessions, chessSpectateSessions, requestChessSpectateSessions, sendMessage } = useChatSocket();
+  const { currentParty, partyMembers, publicParties, createParty, leaveParty, deleteParty, joinParty, fetchPublicParties } = usePartySocket();
+  const { bombPartyGame, petitBacGame } = useGameSocket();
+  const { duelMatchmakingQueued, duelMatchmakingStats, joinDuelMatchmaking, leaveDuelMatchmaking } = useDuelSocket();
   const location = useLocation();
   const navigate = useNavigate();
 

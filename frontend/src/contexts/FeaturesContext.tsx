@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { maintenanceApi } from '@/services/api';
 
 interface MaintenanceStatus {
@@ -62,8 +62,13 @@ export function FeaturesProvider({ children }: { children: React.ReactNode }) {
     return () => window.clearInterval(interval);
   }, [doFetch]);
 
+  const value = useMemo(
+    () => ({ maintenanceStatus, maintenanceLoading, refreshFeatures: doFetch }),
+    [maintenanceStatus, maintenanceLoading, doFetch]
+  );
+
   return (
-    <FeaturesContext.Provider value={{ maintenanceStatus, maintenanceLoading, refreshFeatures: doFetch }}>
+    <FeaturesContext.Provider value={value}>
       {children}
     </FeaturesContext.Provider>
   );

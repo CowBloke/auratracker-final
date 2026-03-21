@@ -1,14 +1,14 @@
 import { Gift } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 import { giftsApi } from '@/services/api';
-import { useSocket } from '@/contexts/SocketContext';
+import { useSocketBase } from '@/contexts/SocketContext';
 import GiftDialog from './GiftDialog';
 import { Button } from '@/components/ui/button';
 
 export default function GiftBubble() {
   const [count, setCount] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { socket } = useSocket();
+  const { socket } = useSocketBase();
 
   const fetchCount = useCallback(async () => {
     try {

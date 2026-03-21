@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useSocket } from '../contexts/SocketContext';
+import { usePartySocket } from '../contexts/PartySocketContext';
+import { useGameSocket } from '../contexts/GameSocketContext';
 import { ArrowLeft, Users, Play, Send, LogOut, Trophy } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -15,17 +16,8 @@ const DEFAULT_CATEGORIES = ['Prenom', 'Ville', 'Pays', 'Animal', 'Objet', 'Metie
 
 export default function PetitBac() {
   const { user } = useAuth();
-  const {
-    currentParty,
-    partyMembers,
-    petitBacGame,
-    petitBacRoundResult,
-    petitBacGameOver,
-    startPetitBac,
-    submitPetitBac,
-    leavePetitBac,
-    clearPetitBacGameOver,
-  } = useSocket();
+  const { currentParty, partyMembers } = usePartySocket();
+  const { petitBacGame, petitBacRoundResult, petitBacGameOver, startPetitBac, submitPetitBac, leavePetitBac, clearPetitBacGameOver } = useGameSocket();
 
   const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
   const myPlayer = petitBacGame?.players.find((p) => p.userId === user?.id);

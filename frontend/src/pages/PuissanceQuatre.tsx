@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useSocket } from '../contexts/SocketContext';
+import { useSocketBase } from '../contexts/SocketContext';
+import { useChatSocket } from '../contexts/ChatSocketContext';
+import { usePartySocket } from '../contexts/PartySocketContext';
+import { useDuelSocket } from '../contexts/DuelSocketContext';
 import { ArrowLeft, Play, LogOut, Search, Swords, Trophy } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -56,7 +59,10 @@ interface GameOverData {
 // ─── Component ──────────────────────────────────────────────────────────────
 export default function PuissanceQuatre() {
   const { user, refreshUser } = useAuth();
-  const { currentParty, partyMembers, socket, onlineUsers, requestOnlineUsers, challengeUserToDuel, outgoingDuelChallenge } = useSocket();
+  const { socket } = useSocketBase();
+  const { onlineUsers, requestOnlineUsers } = useChatSocket();
+  const { currentParty, partyMembers } = usePartySocket();
+  const { challengeUserToDuel, outgoingDuelChallenge } = useDuelSocket();
 
   const [showChallengePicker, setShowChallengePicker] = useState(false);
   const [challengeSearch, setChallengeSearch] = useState('');

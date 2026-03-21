@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { useSocket } from '../contexts/SocketContext';
+import { useSocketBase } from '../contexts/SocketContext';
 import { gamesApi, marketplaceApi } from '../services/api';
 import { resolveImageUrl } from '@/lib/images';
 import { Play, RotateCcw, Eye, EyeOff, Users, Sparkles } from 'lucide-react';
@@ -247,7 +247,7 @@ export default function DoodleJump() {
   const fadeRafsRef = useRef<Set<number>>(new Set());
 
   const { user, refreshUser } = useAuth();
-  const { socket } = useSocket();
+  const { socket } = useSocketBase();
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);

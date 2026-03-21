@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useSocket } from '@/contexts/SocketContext';
+import { usePartySocket } from '@/contexts/PartySocketContext';
+import { useGameSocket } from '@/contexts/GameSocketContext';
+import { useChatSocket } from '@/contexts/ChatSocketContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Users, LogOut, Bomb, ChevronUp, ChevronDown, Gamepad2, Trash2, UserPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -11,15 +13,9 @@ import { UsernameDisplay } from '@/components/ui/username-display';
 export default function PartyBubble() {
   const { user } = useAuth();
   const location = useLocation();
-  const {
-    currentParty,
-    partyMembers,
-    leaveParty,
-    deleteParty,
-    bombPartyGame,
-    petitBacGame,
-    sendMessage,
-  } = useSocket();
+  const { currentParty, partyMembers, leaveParty, deleteParty } = usePartySocket();
+  const { bombPartyGame, petitBacGame } = useGameSocket();
+  const { sendMessage } = useChatSocket();
 
   const [expanded, setExpanded] = useState(true);
 
