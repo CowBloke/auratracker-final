@@ -1525,6 +1525,7 @@ export interface Badge {
   createdAt: string;
   updatedAt: string;
   createdById?: string | null;
+  ownerCount?: number;
 }
 
 export interface UserBadgeEntry extends Badge {
@@ -1538,8 +1539,41 @@ export interface UserBadgesResponse {
   badges: UserBadgeEntry[];
 }
 
+// ─── Support API ──────────────────────────────────────────────────────────────
+
+export interface SupportMessage {
+  id: string;
+  userId: string;
+  body: string;
+  fromAdmin: boolean;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface SupportThread {
+  userId: string;
+  user: { id: string; username: string; profilePicture: string | null; usernameColor: string | null } | null;
+  lastBody: string;
+  lastFromAdmin: boolean;
+  lastCreatedAt: string;
+  unreadCount: number;
+}
+
+export const supportApi = {
+  // User
+  getMessages: () => api.get<{ messages: SupportMessage[] }>('/support/messages'),
+  sendMessage: (body: string) => api.post<{ message: SupportMessage }>('/support/messages', { body }),
+  getUnreadCount: () => api.get<{ count: number }>('/support/unread-count'),
+  markRead: () => api.post<{ success: boolean }>('/support/messages/read'),
+  // Admin
+  getThreads: () => api.get<{ threads: SupportThread[] }>('/support/admin/threads'),
+  getThread: (userId: string) => api.get<{ messages: SupportMessage[]; user: SupportThread['user'] }>(`/support/admin/threads/${userId}`),
+  reply: (userId: string, body: string) => api.post<{ message: SupportMessage }>(`/support/admin/reply/${userId}`, { body }),
+  markThreadRead: (userId: string) => api.post<{ success: boolean }>(`/support/admin/threads/${userId}/read`),
+};
+
 export const badgesApi = {
-  getAll: () => api.get<{ badges: Badge[] }>('/badges'),
+  getAll: () => api.get<{ badges: Badge[]; totalUsers: number }>('/badges'),
   getById: (id: string) => api.get<{ badge: Badge }>(`/badges/${id}`),
   getUserBadges: (userId: string) => api.get<UserBadgesResponse>(`/badges/user/${userId}`),
   equip: (slot: 1 | 2, badgeId: string | null) =>

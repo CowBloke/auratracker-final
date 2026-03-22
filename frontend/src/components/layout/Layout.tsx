@@ -15,19 +15,24 @@ import { useAuth } from '@/contexts/AuthContext';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SiteHeader } from '@/components/site-header';
 import PartyChatFloating from '@/components/party/PartyChatFloating';
+import SupportChat from '@/components/support/SupportChat';
 import { CONTAINER } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 
 function ChatBubbleContainer() {
   const { open } = useChatSidebar();
+  const rightOffset = open ? 'calc(20rem + 1.5rem)' : '1.5rem';
 
   return (
-    <div
-      className="fixed bottom-6 z-50 flex items-end gap-3 transition-all"
-      style={{ right: open ? 'calc(20rem + 1.5rem)' : '1.5rem' }}
-    >
-      <ChatBubble />
-    </div>
+    <>
+      <SupportChat rightOffset={`calc(${rightOffset} + 2.75rem + 0.75rem)`} />
+      <div
+        className="fixed bottom-6 z-50 flex items-end gap-3 transition-all"
+        style={{ right: rightOffset }}
+      >
+        <ChatBubble />
+      </div>
+    </>
   );
 }
 

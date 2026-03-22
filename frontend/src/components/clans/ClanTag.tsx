@@ -35,7 +35,7 @@ export function toClanTagData(raw: { text: string; style: string | null } | null
   return { text: raw.text, style: parseClanTagStyle(raw.style) };
 }
 
-function getClanTagBackground(style: ClanTagStyle): React.CSSProperties {
+export function getClanTagBackground(style: ClanTagStyle): React.CSSProperties {
   if (style.backgroundType === 'gradient' && style.backgroundGradient) {
     try {
       const g = JSON.parse(style.backgroundGradient) as { from: string; to: string; direction: string };

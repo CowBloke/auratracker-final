@@ -319,6 +319,18 @@
     animation: knife-hit-shimmer 3.6s linear infinite;
   }
 
+  /* Badge rarity drop effects (based on % of players owning) */
+  @keyframes badge-rare-pulse {
+    0%, 100% { filter: drop-shadow(0 0 2px rgba(96, 165, 250, 0.25)); }
+    50%       { filter: drop-shadow(0 0 7px rgba(96, 165, 250, 0.75)); }
+  }
+  @keyframes badge-ultra-pulse {
+    0%, 100% { filter: drop-shadow(0 0 3px rgba(250, 204, 21, 0.3)); }
+    50%       { filter: drop-shadow(0 0 10px rgba(250, 204, 21, 0.9)); }
+  }
+  .badge-rare-shimmer  { animation: badge-rare-pulse  2.5s ease-in-out infinite; }
+  .badge-ultra-shimmer { animation: badge-ultra-pulse 1.8s ease-in-out infinite; }
+
   .knife-hit-grid {
     background-image:
       linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),

@@ -64,6 +64,7 @@ export default function Profile() {
   // Badge state
   const [userBadges, setUserBadges] = useState<UserBadgeEntry[]>([]);
   const [allBadges, setAllBadges] = useState<Badge[]>([]);
+  const [totalUsers, setTotalUsers] = useState<number | undefined>(undefined);
   const [equippedBadge1Id, setEquippedBadge1Id] = useState<string | null>(null);
   const [equippedBadge2Id, setEquippedBadge2Id] = useState<string | null>(null);
 
@@ -95,6 +96,7 @@ export default function Profile() {
         ]);
         setUserBadges(badgesRes.data.badges);
         setAllBadges(allBadgesRes.data.badges);
+        setTotalUsers(allBadgesRes.data.totalUsers);
         setEquippedBadge1Id(badgesRes.data.equippedBadge1Id);
         setEquippedBadge2Id(badgesRes.data.equippedBadge2Id);
       } catch {
@@ -312,7 +314,7 @@ export default function Profile() {
             </div>
           )}
           {allBadges.length > 0 ? (
-            <BadgeCatalog allBadges={allBadges} earnedBadges={userBadges} />
+            <BadgeCatalog allBadges={allBadges} earnedBadges={userBadges} totalUsers={totalUsers} />
           ) : userBadges.length > 0 ? (
             <div className="flex flex-wrap gap-1">
               {userBadges.map((badge) => (

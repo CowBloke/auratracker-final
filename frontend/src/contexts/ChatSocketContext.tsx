@@ -88,7 +88,6 @@ interface ChatSocketContextValue {
   typingUsers: TypingUser[];
   doodleSpectateSessions: DoodleSpectateSession[];
   chessSpectateSessions: ChessSpectateSession[];
-  balanceUpdate: { userId: string; aura: number; money: number } | null;
   sendMessage: (message?: string, replyToId?: string | null, imageUrl?: string | null) => void;
   reactToMessage: (messageId: string, emoji: string) => void;
   setTyping: (isTyping: boolean) => void;
@@ -110,7 +109,6 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [doodleSpectateSessions, setDoodleSpectateSessions] = useState<DoodleSpectateSession[]>([]);
   const [chessSpectateSessions, setChessSpectateSessions] = useState<ChessSpectateSession[]>([]);
-  const [balanceUpdate, setBalanceUpdate] = useState<{ userId: string; aura: number; money: number } | null>(null);
 
   // Pending presence updates — batched every 500 ms to stop 52/sec re-renders
   type PresenceOp =
@@ -257,7 +255,6 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
     });
 
     s.on('economy:balance-update', (data: { userId: string; aura: number; money: number }) => {
-      setBalanceUpdate(data);
       if (data.userId === user.id) updateBalance(data.aura, data.money);
     });
 
@@ -333,7 +330,6 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
       typingUsers,
       doodleSpectateSessions,
       chessSpectateSessions,
-      balanceUpdate,
       sendMessage,
       reactToMessage,
       setTyping,
@@ -350,7 +346,6 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
       typingUsers,
       doodleSpectateSessions,
       chessSpectateSessions,
-      balanceUpdate,
       sendMessage,
       reactToMessage,
       setTyping,

@@ -26,7 +26,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { UsernameDisplay } from '@/components/ui/username-display';
-import { ClanTag, ClanTagStyle, DEFAULT_CLAN_TAG_STYLE, parseClanTagStyle } from '@/components/clans/ClanTag';
+import { ClanTag, ClanTagStyle, DEFAULT_CLAN_TAG_STYLE, getClanTagBackground, parseClanTagStyle } from '@/components/clans/ClanTag';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { SPACING, TYPOGRAPHY } from '@/lib/design-system';
@@ -676,31 +676,49 @@ export default function Clans() {
                   ) : clans.length === 0 ? (
                     <div className={cn(TYPOGRAPHY.MUTED, 'py-6')}>Aucun clan pour le moment.</div>
                   ) : (
-                    clans.map((clan) => (
-                      <button
-                        key={clan.id}
-                        type="button"
-                        onClick={() => setSelectedClanId(clan.id)}
-                        className={cn(
-                          'w-full rounded-2xl border border-border/50 px-3 py-3 text-left transition-colors hover:bg-muted/30',
-                          clan.id === selectedClanId && 'border-foreground/15 bg-muted/30'
-                        )}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-11 w-11">
-                            <AvatarImage src={resolveImageUrl(clan.imageUrl)} alt={clan.name} />
-                            <AvatarFallback>{getAvatarFallback(clan.name)}</AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate font-medium">{clan.name}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {clan.memberCount}/{clan.maxMembers} membres • {formatAura(clan.totalAura)} aura
+                    clans.map((clan) => {
+                      const hasTag = clan.tagUnlocked && clan.tagText;
+                      const clanTagStyle = hasTag ? parseClanTagStyle(clan.tagStyle) : null;
+                      return (
+                        <button
+                          key={clan.id}
+                          type="button"
+                          onClick={() => setSelectedClanId(clan.id)}
+                          className={cn(
+                            'w-full rounded-2xl border px-3 py-3 text-left transition-opacity',
+                            clan.id === selectedClanId ? 'opacity-100' : 'opacity-90 hover:opacity-100',
+                            !hasTag && 'border-border/50 hover:bg-muted/30',
+                            !hasTag && clan.id === selectedClanId && 'border-foreground/15 bg-muted/30',
+                          )}
+                          style={clanTagStyle ? {
+                            ...getClanTagBackground(clanTagStyle),
+                            borderColor: clanTagStyle.borderColor,
+                          } : undefined}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-11 w-11">
+                              <AvatarImage src={resolveImageUrl(clan.imageUrl)} alt={clan.name} />
+                              <AvatarFallback>{getAvatarFallback(clan.name)}</AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0 flex-1">
+                              <div
+                                className="truncate font-medium"
+                                style={clanTagStyle ? { color: clanTagStyle.textColor } : undefined}
+                              >
+                                {clan.name}
+                              </div>
+                              <div
+                                className={cn('text-xs', !clanTagStyle && 'text-muted-foreground')}
+                                style={clanTagStyle ? { color: clanTagStyle.textColor, opacity: 0.75 } : undefined}
+                              >
+                                {clan.memberCount}/{clan.maxMembers} membres • {formatAura(clan.totalAura)} aura
+                              </div>
                             </div>
+                            {viewerClanId === clan.id ? <Badge>Mon clan</Badge> : null}
                           </div>
-                          {viewerClanId === clan.id ? <Badge>Mon clan</Badge> : null}
-                        </div>
-                      </button>
-                    ))
+                        </button>
+                      );
+                    })
                   )}
                 </CardContent>
               </Card>

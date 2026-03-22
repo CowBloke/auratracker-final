@@ -42,10 +42,12 @@ export function BadgeHistory({
 export function BadgeCatalog({
   allBadges,
   earnedBadges,
+  totalUsers,
   className,
 }: {
   allBadges: Badge[];
   earnedBadges: UserBadgeEntry[];
+  totalUsers?: number;
   className?: string;
 }) {
   const earnedIds = new Set(earnedBadges.map((b) => b.id));
@@ -71,10 +73,10 @@ export function BadgeCatalog({
           <p className="text-xs text-muted-foreground/60 uppercase tracking-wider mb-2">Obtenus</p>
           <div className="flex flex-wrap gap-1">
             {earned.map((badge) => (
-              <BadgeIcon key={badge.id} badge={badge as BadgeData} size="lg" tooltipSide="bottom" />
+              <BadgeIcon key={badge.id} badge={badge as BadgeData} size="lg" tooltipSide="bottom" totalUsers={totalUsers} />
             ))}
             {earnedLeaderboard.map((badge) => (
-              <BadgeIcon key={badge.id} badge={badge as BadgeData} size="lg" tooltipSide="bottom" />
+              <BadgeIcon key={badge.id} badge={badge as BadgeData} size="lg" tooltipSide="bottom" totalUsers={totalUsers} />
             ))}
           </div>
         </div>
@@ -90,6 +92,7 @@ export function BadgeCatalog({
                 size="lg"
                 tooltipSide="bottom"
                 locked
+                totalUsers={totalUsers}
               />
             ))}
           </div>

@@ -34,6 +34,7 @@ import solitaireRoutes from './routes/solitaire.js';
 import giftsRoutes from './routes/gifts.js';
 import notificationsRoutes from './routes/notifications.js';
 import badgesRoutes from './routes/badges.js';
+import supportRoutes from './routes/support.js';
 
 // Socket handlers
 import { setupChatHandlers, startOnlineCountBroadcast, startOnlineSnapshotRecording } from './socket/chat.js';
@@ -104,6 +105,7 @@ app.use('/api/solitaire', solitaireRoutes);
 app.use('/api/gifts', giftsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/badges', badgesRoutes);
+app.use('/api/support', supportRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -187,6 +189,10 @@ io.on('connection', (socket) => {
   // Join personal room for targeted notifications
   if (socket.data.userId) {
     socket.join(`user:${socket.data.userId}`);
+    // Admins also join the support room so they receive support:message events
+    if (socket.data.isAdmin) {
+      socket.join('admin:support');
+    }
 
     // NUIT_BLANCHE: award badge if connected between 3:00 and 4:00 AM (local server time)
     const hour = new Date().getHours();

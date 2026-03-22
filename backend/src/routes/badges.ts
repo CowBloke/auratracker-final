@@ -40,12 +40,21 @@ const serializeBadge = (b: any) => ({
 router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const isAdmin = req.user?.isAdmin ?? false;
-    const badges = await prisma.badge.findMany({
-      where: isAdmin ? {} : { isActive: true },
-      select: BADGE_SELECT,
-      orderBy: [{ category: 'asc' }, { name: 'asc' }],
+    const [badges, totalUsers] = await Promise.all([
+      prisma.badge.findMany({
+        where: isAdmin ? {} : { isActive: true },
+        select: { ...BADGE_SELECT, _count: { select: { userBadges: true } } },
+        orderBy: [{ category: 'asc' }, { name: 'asc' }],
+      }),
+      prisma.user.count(),
+    ]);
+    res.json({
+      badges: badges.map((b) => {
+        const { _count, ...rest } = b;
+        return { ...serializeBadge(rest), ownerCount: _count.userBadges };
+      }),
+      totalUsers,
     });
-    res.json({ badges: badges.map(serializeBadge) });
   } catch (error) {
     console.error('GET /badges error:', error);
     res.status(500).json({ error: 'Failed to fetch badges' });

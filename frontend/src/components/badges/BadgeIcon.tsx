@@ -18,6 +18,7 @@ export interface BadgeData {
   isHidden?: boolean;
   obtainedAt?: string | null;
   obtainedReason?: string | null;
+  ownerCount?: number;
 }
 
 const RARITY_GLOW: Record<string, string> = {
@@ -49,6 +50,25 @@ interface BadgeIconProps {
   className?: string;
   tooltipSide?: 'top' | 'bottom' | 'left' | 'right';
   locked?: boolean; // True if user doesn't own this badge
+  totalUsers?: number;
+}
+
+function getOwnerPct(ownerCount?: number, totalUsers?: number): number | null {
+  if (ownerCount == null || !totalUsers) return null;
+  return Math.round((ownerCount / totalUsers) * 100);
+}
+
+function PctBadge({ pct }: { pct: number }) {
+  let color = '#9ca3af';
+  let label = '';
+  if (pct < 5) { color = '#facc15'; label = 'Extrêmement rare'; }
+  else if (pct < 10) { color = '#f97316'; label = 'Très rare'; }
+  else if (pct < 20) { color = '#60a5fa'; label = 'Rare'; }
+  return (
+    <p className="text-[10px] pt-0.5 border-t border-border/30" style={{ color }}>
+      {pct}% des joueurs l'ont{label ? ` · ${label}` : ''}
+    </p>
+  );
 }
 
 const SIZES = {
@@ -81,10 +101,18 @@ export function getBadgeBackground(badge: BadgeData): React.CSSProperties {
   return { backgroundColor: badge.backgroundColor };
 }
 
-export function BadgeIcon({ badge, size = 'sm', className, tooltipSide = 'top', locked = false }: BadgeIconProps) {
+export function BadgeIcon({ badge, size = 'sm', className, tooltipSide = 'top', locked = false, totalUsers }: BadgeIconProps) {
   const { box, text } = SIZES[size];
   const boxShadow = !locked ? (RARITY_GLOW[badge.rarity] ?? undefined) : undefined;
   const rarityColor = RARITY_TEXT_COLOR[badge.rarity] ?? '#9ca3af';
+  const pct = getOwnerPct(badge.ownerCount, totalUsers);
+  const isRareDrop = pct !== null && pct < 20;
+  const isUltraRareDrop = pct !== null && pct < 5;
+  const shimmerClass = !locked && isUltraRareDrop
+    ? 'badge-ultra-shimmer'
+    : !locked && isRareDrop
+    ? 'badge-rare-shimmer'
+    : undefined;
 
   // Hidden locked badge: show as ???
   if (locked && badge.isHidden) {
@@ -176,6 +204,7 @@ export function BadgeIcon({ badge, size = 'sm', className, tooltipSide = 'top', 
                 🔒 {badge.howToObtain}
               </p>
             )}
+            {pct !== null && <PctBadge pct={pct} />}
           </div>
         </TooltipContent>
       </Tooltip>
@@ -190,6 +219,7 @@ export function BadgeIcon({ badge, size = 'sm', className, tooltipSide = 'top', 
             className={cn(
               box,
               'rounded-sm flex items-center justify-center cursor-help flex-shrink-0 select-none',
+              shimmerClass,
               className,
           )}
           style={{
@@ -248,6 +278,7 @@ export function BadgeIcon({ badge, size = 'sm', className, tooltipSide = 'top', 
               Obtenu le {new Date(badge.obtainedAt).toLocaleDateString('fr-FR')}
             </p>
           )}
+          {pct !== null && <PctBadge pct={pct} />}
         </div>
       </TooltipContent>
     </Tooltip>
