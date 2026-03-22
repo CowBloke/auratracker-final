@@ -483,6 +483,11 @@ export default function Admin() {
   const [supportSending, setSupportSending] = useState(false);
   const [supportUnread, setSupportUnread] = useState(0);
   const supportMessagesEndRef = useRef<HTMLDivElement>(null);
+  const [newThreadOpen, setNewThreadOpen] = useState(false);
+  const [newThreadUserId, setNewThreadUserId] = useState('');
+  const [newThreadBody, setNewThreadBody] = useState('');
+  const [newThreadSending, setNewThreadSending] = useState(false);
+  const [newThreadSearch, setNewThreadSearch] = useState('');
 
   const fetchSupportThreads = async () => {
     setSupportThreadsLoading(true);
@@ -520,6 +525,21 @@ export default function Admin() {
       setSupportReply('');
     } catch { /* non-critical */ }
     finally { setSupportSending(false); }
+  };
+
+  const handleStartThread = async () => {
+    if (!newThreadUserId || !newThreadBody.trim() || newThreadSending) return;
+    setNewThreadSending(true);
+    try {
+      await supportApi.reply(newThreadUserId, newThreadBody.trim());
+      setNewThreadOpen(false);
+      setNewThreadBody('');
+      setNewThreadUserId('');
+      setNewThreadSearch('');
+      await fetchSupportThreads();
+      await openSupportThread(newThreadUserId);
+    } catch { /* non-critical */ }
+    finally { setNewThreadSending(false); }
   };
 
   const fetchBadges = async () => {
@@ -6909,14 +6929,75 @@ export default function Admin() {
 
         {/* ── SUPPORT TAB ──────────────────────────────────────────────────────── */}
         <TabsContent value="support" className={SPACING.SECTION_SPACING}>
+          {/* New thread dialog */}
+          <Dialog open={newThreadOpen} onOpenChange={(o) => { setNewThreadOpen(o); if (!o) { setNewThreadUserId(''); setNewThreadBody(''); setNewThreadSearch(''); } }}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Nouvelle conversation</DialogTitle>
+                <DialogDescription>Envoie un premier message à un utilisateur.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 py-2">
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">Utilisateur</label>
+                  <Input
+                    placeholder="Rechercher un utilisateur…"
+                    value={newThreadSearch}
+                    onChange={(e) => { setNewThreadSearch(e.target.value); setNewThreadUserId(''); }}
+                    className="mb-2"
+                  />
+                  {newThreadSearch.trim() && (
+                    <div className="border border-border rounded-md max-h-40 overflow-y-auto">
+                      {users
+                        .filter((u) => u.username.toLowerCase().includes(newThreadSearch.toLowerCase()))
+                        .slice(0, 10)
+                        .map((u) => (
+                          <button
+                            key={u.id}
+                            type="button"
+                            className={cn('w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors', newThreadUserId === u.id && 'bg-muted font-medium')}
+                            onClick={() => { setNewThreadUserId(u.id); setNewThreadSearch(u.username); }}
+                          >
+                            {u.username}
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">Message</label>
+                  <Textarea
+                    value={newThreadBody}
+                    onChange={(e) => setNewThreadBody(e.target.value)}
+                    placeholder="Votre message…"
+                    rows={3}
+                    maxLength={1000}
+                    className="resize-none"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setNewThreadOpen(false)}>Annuler</Button>
+                <Button disabled={!newThreadUserId || !newThreadBody.trim() || newThreadSending} onClick={handleStartThread}>
+                  {newThreadSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+                  Envoyer
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
           <div className="flex gap-4 h-[600px]">
             {/* Thread list */}
             <div className="w-72 shrink-0 flex flex-col border border-border rounded-lg overflow-hidden">
               <div className="px-4 py-3 border-b border-border bg-muted/40 flex items-center justify-between">
                 <h3 className={TYPOGRAPHY.H4}>Conversations</h3>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={fetchSupportThreads}>
-                  <RefreshCw className="h-3.5 w-3.5" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" title="Nouvelle conversation" onClick={() => setNewThreadOpen(true)}>
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={fetchSupportThreads}>
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
               <div className="flex-1 overflow-y-auto">
                 {supportThreadsLoading ? (

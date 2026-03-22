@@ -27,6 +27,7 @@ import {
   Crown,
   Brain,
   Bomb,
+  MessageCircle,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -46,7 +47,8 @@ import {
 } from '@/components/ui/collapsible';
 import { NavUser } from '@/components/nav-user';
 import { cn } from '@/lib/utils';
-import { usersApi } from '@/services/api';
+import { usersApi, supportApi } from '@/services/api';
+import { useSocketBase } from '@/contexts/SocketContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -111,6 +113,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   const location = useLocation();
   const navigate = useNavigate();
   const { maintenanceStatus } = useFeatures();
+  const { socket } = useSocketBase();
   const disabledPages = maintenanceStatus.disabledPages;
 
   const isDisabled = (path: string) => {
@@ -119,6 +122,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   };
 
   const isOnGames = location.pathname.startsWith('/games');
+  const [supportUnread, setSupportUnread] = useState(0);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [users, setUsers] = useState<SearchUser[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
@@ -126,6 +130,31 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   const [searchTerm, setSearchTerm] = useState('');
   const [hasFetchedUsers, setHasFetchedUsers] = useState(false);
   const [isBugReportOpen, setIsBugReportOpen] = useState(false);
+
+  // Support unread count
+  useEffect(() => {
+    if (!user) return;
+    supportApi.getUnreadCount().then(({ data }) => setSupportUnread(data.count)).catch(() => {});
+  }, [user]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const handler = (data: { message: { fromAdmin: boolean; userId?: string } }) => {
+      if (!data.message.fromAdmin) return;
+      if (location.pathname !== '/support') {
+        setSupportUnread((c) => c + 1);
+      }
+    };
+    socket.on('support:message', handler);
+    return () => { socket.off('support:message', handler); };
+  }, [socket, location.pathname]);
+
+  // Reset unread when visiting /support
+  useEffect(() => {
+    if (location.pathname === '/support') {
+      setSupportUnread(0);
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!isSearchOpen || hasFetchedUsers) return;
@@ -385,6 +414,31 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                   </SidebarMenuButton>
                 )}
               />
+            </SidebarMenuItem>
+
+            {/* Support */}
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={location.pathname === '/support'}
+                tooltip="Support"
+                className={cn(
+                  'h-9 px-3 text-sm font-normal',
+                  location.pathname === '/support'
+                    ? 'text-foreground bg-muted/50'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
+                )}
+              >
+                <NavLink to="/support">
+                  <MessageCircle className="h-4 w-4" />
+                  <span className="group-data-[collapsible=icon]:hidden">Support</span>
+                  {supportUnread > 0 && (
+                    <span className="ml-auto inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-semibold group-data-[collapsible=icon]:hidden">
+                      {supportUnread > 99 ? '99+' : supportUnread}
+                    </span>
+                  )}
+                </NavLink>
+              </SidebarMenuButton>
             </SidebarMenuItem>
 
             {/* Admin items (only for admins) */}

@@ -42,6 +42,7 @@ const STATIC_PAGE_META: Record<string, PageMeta> = {
   '/suggestions': { title: 'Suggestions', description: "Idées en cours, votes et suivi d'avancement." },
   '/settings': { title: 'Paramètres', description: 'Thème et personnalisation de l’interface.' },
   '/inbox': { title: 'Boîte de réception', description: 'Notifications et messages reçus.' },
+  '/support': { title: 'Support', description: 'Contacte l\'équipe pour toute question ou problème.' },
 };
 
 function humanizeSegment(segment: string) {
