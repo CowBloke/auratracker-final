@@ -23,6 +23,7 @@ export type AutoConditionKey =
   | 'GAME_2048_TILE_4096'     // made the 4096 tile (tracked via game_2048_tile gameType)
   | 'SUDOKU_COMPLETED'        // completed at least one sudoku
   | 'TOP_CASINO_LOSSES'       // user with the most casino losses
+  | 'TOP_BADGES_COUNT'        // user(s) with the most earned badges (excluding this badge)
   | 'CASINO_VETERAN'          // played 25+ casino games
   | 'FLAPPY_BIRD_50'          // flappy bird score >= 50
   | 'MINESWEEPER_WIN'         // won at least one minesweeper game
@@ -70,6 +71,9 @@ export const awardBadge = async (
     await prisma.userBadge.create({
       data: { userId, badgeId, obtainedReason: reason ?? null },
     });
+
+    // Keep dynamic leaderboard-style badge in sync whenever ownership changes.
+    void recheckBadgeForCondition('TOP_BADGES_COUNT');
     return true;
   } catch (error) {
     console.error('badgeAwards.awardBadge error:', error);
@@ -128,6 +132,9 @@ export const revokeBadge = async (userId: string, badgeId: string): Promise<bool
     await prisma.userBadge.delete({
       where: { userId_badgeId: { userId, badgeId } },
     });
+
+    // Keep dynamic leaderboard-style badge in sync whenever ownership changes.
+    void recheckBadgeForCondition('TOP_BADGES_COUNT');
     return true;
   } catch {
     return false;
@@ -342,6 +349,42 @@ const getQualifyingUserIds = async (key: string): Promise<Set<string>> => {
       orderBy: { losses: 'desc' },
     });
     return stat ? new Set([stat.userId]) : new Set();
+  }
+
+  // TOP_BADGES_COUNT – user(s) with the most earned badges (excluding this badge)
+  if (key === 'TOP_BADGES_COUNT') {
+    const topBadgeIds = await prisma.badge.findMany({
+      where: { autoConditionKey: 'TOP_BADGES_COUNT' },
+      select: { id: true },
+    });
+    const excludedBadgeIds = topBadgeIds.map((b) => b.id);
+
+    const participants = await prisma.user.findMany({
+      where: { isSuperAdmin: false, isApproved: true },
+      select: { id: true },
+    });
+    if (participants.length === 0) return new Set();
+
+    const participantIds = participants.map((u) => u.id);
+    const grouped = await prisma.userBadge.groupBy({
+      by: ['userId'],
+      where: {
+        userId: { in: participantIds },
+        ...(excludedBadgeIds.length > 0 ? { badgeId: { notIn: excludedBadgeIds } } : {}),
+      },
+      _count: { badgeId: true },
+    });
+
+    if (grouped.length === 0) return new Set();
+
+    const maxCount = grouped.reduce((max, row) => Math.max(max, row._count.badgeId), 0);
+    if (maxCount <= 0) return new Set();
+
+    return new Set(
+      grouped
+        .filter((row) => row._count.badgeId === maxCount)
+        .map((row) => row.userId),
+    );
   }
 
   // CASINO_VETERAN – played 25+ casino games

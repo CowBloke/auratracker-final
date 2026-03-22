@@ -16,6 +16,8 @@ const DEFAULT_SHOP_CATEGORIES = [
   { id: 'GIFT', label: 'Cadeaux' },
 ];
 
+const CLAN_BASE_MAX_MEMBERS = 5;
+
 const parseItemEffect = (effect: string | null) => {
   if (!effect) return null;
   try {
@@ -117,34 +119,40 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
     
     const effect = parseItemEffect(item.effect);
     const isClanTagUnlock = item.type === 'UPGRADE' && effect?.type === 'CLAN_TAG_UNLOCK';
-    let clanTagMembership: { clanId: string; isLeader: boolean } | null = null;
+    const isClanSlotUpgrade = item.type === 'UPGRADE' && effect?.type === 'CLAN_SLOT_UPGRADE';
+    const isClanUpgrade = isClanTagUnlock || isClanSlotUpgrade;
+    let clanUpgradeMembership: { clanId: string; isLeader: boolean } | null = null;
 
-    if (isClanTagUnlock) {
+    if (isClanUpgrade) {
       if (quantity !== 1) {
-        return res.status(400).json({ error: 'Le déblocage du tag de clan ne peut être acheté qu\'à l\'unité.' });
+        return res.status(400).json({ error: 'Cette amélioration de clan ne peut être achetée qu\'à l\'unité.' });
       }
 
       const membership = await prisma.clanMember.findUnique({
         where: { userId: req.user.id },
         select: { clanId: true, isLeader: true },
       });
-      clanTagMembership = membership;
+      clanUpgradeMembership = membership;
 
       if (!membership) {
-        return res.status(400).json({ error: 'Tu dois etre dans un clan pour acheter ce tag.' });
+        return res.status(400).json({ error: 'Tu dois etre dans un clan pour acheter cette amélioration.' });
       }
 
       if (!membership.isLeader) {
-        return res.status(400).json({ error: 'Seul le chef de clan peut acheter ce tag.' });
+        return res.status(400).json({ error: 'Seul le chef de clan peut acheter cette amélioration.' });
       }
 
       const clan = await prisma.clan.findUnique({
         where: { id: membership.clanId },
-        select: { tagUnlocked: true },
+        select: { tagUnlocked: true, maxMembers: true },
       });
 
-      if (clan?.tagUnlocked) {
+      if (isClanTagUnlock && clan?.tagUnlocked) {
         return res.status(400).json({ error: 'Le tag est déjà débloqué pour ce clan.' });
+      }
+
+      if (isClanSlotUpgrade && typeof clan?.maxMembers === 'number' && clan.maxMembers > CLAN_BASE_MAX_MEMBERS) {
+        return res.status(400).json({ error: 'Le slot supplémentaire est déjà débloqué pour ce clan.' });
       }
     }
 
@@ -163,9 +171,9 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
       item: typeof item;
     } | null = null;
 
-    if (isClanTagUnlock) {
-      if (!clanTagMembership) {
-        return res.status(400).json({ error: 'Tu dois etre dans un clan pour acheter ce tag.' });
+    if (isClanUpgrade) {
+      if (!clanUpgradeMembership) {
+        return res.status(400).json({ error: 'Tu dois etre dans un clan pour acheter cette amélioration.' });
       }
 
       const txResult = await prisma.$transaction(async (tx) => {
@@ -180,10 +188,21 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
           },
         });
 
-        await tx.clan.update({
-          where: { id: clanTagMembership.clanId },
-          data: { tagUnlocked: true },
-        });
+        if (isClanTagUnlock) {
+          await tx.clan.update({
+            where: { id: clanUpgradeMembership.clanId },
+            data: { tagUnlocked: true },
+          });
+        }
+
+        if (isClanSlotUpgrade) {
+          await tx.clan.update({
+            where: { id: clanUpgradeMembership.clanId },
+            data: {
+              maxMembers: { increment: 1 },
+            },
+          });
+        }
 
         return nextUser;
       });
@@ -253,7 +272,11 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
     res.json({
       success: true,
       item: userItem,
-      effect: isClanTagUnlock ? { type: 'CLAN_TAG_UNLOCK' } : null,
+      effect: isClanTagUnlock
+        ? { type: 'CLAN_TAG_UNLOCK' }
+        : isClanSlotUpgrade
+          ? { type: 'CLAN_SLOT_UPGRADE' }
+          : null,
       newBalance: {
         aura: updatedUser.aura,
         money: updatedUser.money,
@@ -452,8 +475,8 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
       });
     }
     
-    // Clan tag unlock — works regardless of item type
-    if (effect?.type === 'CLAN_TAG_UNLOCK') {
+    // Clan upgrades — works regardless of item type
+    if (effect?.type === 'CLAN_TAG_UNLOCK' || effect?.type === 'CLAN_SLOT_UPGRADE') {
       const membership = await prisma.clanMember.findUnique({
         where: { userId: req.user.id },
         select: { clanId: true, isLeader: true },
@@ -463,16 +486,31 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
         return res.status(400).json({ error: 'Tu n\'es pas dans un clan.' });
       }
       if (!membership.isLeader) {
-        return res.status(400).json({ error: 'Seul le chef de clan peut débloquer un tag.' });
+        return res.status(400).json({ error: 'Seul le chef de clan peut utiliser cette amélioration.' });
       }
 
-      const clan = await prisma.clan.findUnique({ where: { id: membership.clanId }, select: { tagUnlocked: true } });
-      if (clan?.tagUnlocked) {
+      const clan = await prisma.clan.findUnique({
+        where: { id: membership.clanId },
+        select: { tagUnlocked: true, maxMembers: true },
+      });
+      if (effect.type === 'CLAN_TAG_UNLOCK' && clan?.tagUnlocked) {
         return res.status(400).json({ error: 'Le tag est déjà débloqué pour ce clan.' });
+      }
+      if (effect.type === 'CLAN_SLOT_UPGRADE' && typeof clan?.maxMembers === 'number' && clan.maxMembers > CLAN_BASE_MAX_MEMBERS) {
+        return res.status(400).json({ error: 'Le slot supplémentaire est déjà débloqué pour ce clan.' });
       }
 
       await prisma.$transaction(async (tx) => {
-        await tx.clan.update({ where: { id: membership.clanId }, data: { tagUnlocked: true } });
+        if (effect.type === 'CLAN_TAG_UNLOCK') {
+          await tx.clan.update({ where: { id: membership.clanId }, data: { tagUnlocked: true } });
+        } else {
+          await tx.clan.update({
+            where: { id: membership.clanId },
+            data: {
+              maxMembers: { increment: 1 },
+            },
+          });
+        }
         if (userItem.quantity > 1) {
           await tx.userItem.update({ where: { id: userItemId }, data: { quantity: { decrement: 1 } } });
         } else {
@@ -480,13 +518,17 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
         }
       });
 
-      return res.json({ success: true, effect: { type: 'CLAN_TAG_UNLOCK' } });
+      return res.json({ success: true, effect: { type: effect.type } });
     }
 
     // UPGRADE items
     if (userItem.item.type === 'UPGRADE' && effect) {
       if (effect.type === 'CLAN_TAG_UNLOCK') { // handled above, kept for safety
         return res.json({ success: true, effect: { type: 'CLAN_TAG_UNLOCK' } });
+      }
+
+      if (effect.type === 'CLAN_SLOT_UPGRADE') { // handled above, kept for safety
+        return res.json({ success: true, effect: { type: 'CLAN_SLOT_UPGRADE' } });
       }
 
       if (effect.type === 'AWARD_BADGE') {

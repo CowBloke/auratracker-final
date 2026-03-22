@@ -154,6 +154,9 @@ export default function Inventory() {
         if (response.data.effect.bonusMoney) {
           effectText += ` • +$${response.data.effect.bonusMoney}`;
         }
+        if (response.data.effect.type === 'CLAN_SLOT_UPGRADE') {
+          effectText += ' • +1 slot clan';
+        }
         if (response.data.effect.type === 'AWARD_BADGE' && response.data.effect.badgeName) {
           effectText += ` • Badge "${response.data.effect.badgeName}" obtenu`;
         }
@@ -311,6 +314,8 @@ export default function Inventory() {
         return 'Skin Doodle Jump';
       case 'CLAN_TAG_UNLOCK':
         return 'Tag de clan';
+      case 'CLAN_SLOT_UPGRADE':
+        return '+1 slot clan';
       case 'AWARD_BADGE':
         return 'Badge';
       case 'BONUS_AURA':

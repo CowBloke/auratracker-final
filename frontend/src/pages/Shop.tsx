@@ -694,16 +694,21 @@ export default function Shop() {
       }
 
       const isClanTagUnlock = response.data.effect?.type === 'CLAN_TAG_UNLOCK';
+      const isClanSlotUpgrade = response.data.effect?.type === 'CLAN_SLOT_UPGRADE';
       const isDj = parseEffectType(item.effect) === 'DOODLE_JUMP_SKIN';
       toast.success(
         isClanTagUnlock
           ? 'Tag de clan debloque !'
+          : isClanSlotUpgrade
+          ? 'Slot de clan debloque !'
           : isDj
           ? `Skin "${item.name}" débloqué !`
           : 'Achat confirme',
         {
           description: isClanTagUnlock
             ? 'Le tag est maintenant actif pour ton clan. Va dans Clans pour le personnaliser.'
+            : isClanSlotUpgrade
+            ? 'Ton clan gagne un membre maximum supplémentaire.'
             : isDj
             ? 'Disponible dans Doodle Jump.'
             : `${item.name} a ete ajoute a ton inventaire.`,

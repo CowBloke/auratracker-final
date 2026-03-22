@@ -88,52 +88,52 @@ interface Palette {
 
 const palettes: Record<'light' | 'dark', Palette> = {
   light: {
-    skyTop: '#fef3c7',
-    skyBottom: '#dbeafe',
-    glow: 'rgba(245, 158, 11, 0.18)',
-    sun: '#f97316',
-    moon: '#f8fafc',
-    stars: 'rgba(255,255,255,0.55)',
-    mountainFar: '#fdba74',
-    mountainNear: '#f59e0b',
-    groundTop: '#f4e4ba',
-    groundBottom: '#d6b980',
-    groundLine: '#7c5a1f',
-    player: '#111827',
-    playerDetail: '#374151',
-    playerEye: '#f8fafc',
-    cactus: '#14532d',
-    cactusDark: '#166534',
-    bird: '#0f172a',
-    birdWing: '#f97316',
-    hud: 'rgba(255,255,255,0.72)',
-    hudText: '#111827',
-    accent: '#ea580c',
-    particle: '#f59e0b',
+    skyTop: '#f3f3f3',
+    skyBottom: '#ececec',
+    glow: 'rgba(0, 0, 0, 0)',
+    sun: '#d8d8d8',
+    moon: '#d8d8d8',
+    stars: 'rgba(0, 0, 0, 0)',
+    mountainFar: '#e4e4e4',
+    mountainNear: '#dddddd',
+    groundTop: '#f1f1f1',
+    groundBottom: '#ebebeb',
+    groundLine: '#5b5b5b',
+    player: '#8fb05f',
+    playerDetail: '#ea9ca8',
+    playerEye: '#5f3b3b',
+    cactus: '#5d5d5d',
+    cactusDark: '#545454',
+    bird: '#5d5d5d',
+    birdWing: '#666666',
+    hud: 'rgba(241,241,241,0.9)',
+    hudText: '#4a4a4a',
+    accent: '#666666',
+    particle: '#707070',
   },
   dark: {
-    skyTop: '#020617',
-    skyBottom: '#172554',
-    glow: 'rgba(34, 211, 238, 0.2)',
-    sun: '#22d3ee',
-    moon: '#e2e8f0',
-    stars: 'rgba(255,255,255,0.9)',
-    mountainFar: '#1d4ed8',
-    mountainNear: '#0f766e',
-    groundTop: '#1f2937',
-    groundBottom: '#0f172a',
-    groundLine: '#f8fafc',
-    player: '#f8fafc',
-    playerDetail: '#cbd5e1',
-    playerEye: '#020617',
-    cactus: '#4ade80',
-    cactusDark: '#22c55e',
-    bird: '#f8fafc',
-    birdWing: '#22d3ee',
-    hud: 'rgba(15,23,42,0.74)',
-    hudText: '#f8fafc',
-    accent: '#22d3ee',
-    particle: '#facc15',
+    skyTop: '#f3f3f3',
+    skyBottom: '#ececec',
+    glow: 'rgba(0, 0, 0, 0)',
+    sun: '#d8d8d8',
+    moon: '#d8d8d8',
+    stars: 'rgba(0, 0, 0, 0)',
+    mountainFar: '#e4e4e4',
+    mountainNear: '#dddddd',
+    groundTop: '#f1f1f1',
+    groundBottom: '#ebebeb',
+    groundLine: '#5b5b5b',
+    player: '#8fb05f',
+    playerDetail: '#ea9ca8',
+    playerEye: '#5f3b3b',
+    cactus: '#5d5d5d',
+    cactusDark: '#545454',
+    bird: '#5d5d5d',
+    birdWing: '#666666',
+    hud: 'rgba(241,241,241,0.9)',
+    hudText: '#4a4a4a',
+    accent: '#666666',
+    particle: '#707070',
   },
 };
 
@@ -432,93 +432,42 @@ export default function ChromeDino() {
   }, [gameOver, initGame, queueJump, setDuck, started]);
 
   const drawBackground = useCallback((ctx: CanvasRenderingContext2D) => {
-    const gradient = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
-    gradient.addColorStop(0, palette.skyTop);
-    gradient.addColorStop(1, palette.skyBottom);
-    ctx.fillStyle = gradient;
+    ctx.fillStyle = palette.skyTop;
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-    const cycle = clamp(scoreRef.current / 2200, 0, 1);
-    const celestialX = CANVAS_WIDTH * 0.77;
-    const celestialY = 96;
-
-    ctx.save();
-    ctx.globalAlpha = 0.92 - cycle * 0.42;
-    ctx.fillStyle = palette.glow;
-    ctx.beginPath();
-    ctx.arc(celestialX, celestialY, 88, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = cycle > 0.55 ? palette.moon : palette.sun;
-    ctx.beginPath();
-    ctx.arc(celestialX, celestialY, 42, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-
-    if (theme === 'dark') {
-      ctx.save();
-      ctx.fillStyle = palette.stars;
-      for (let index = 0; index < 24; index += 1) {
-        const x = ((index * 97) + scoreRef.current * 0.9) % CANVAS_WIDTH;
-        const y = 24 + ((index * 53) % 210);
-        ctx.globalAlpha = 0.3 + (index % 4) * 0.15;
-        ctx.fillRect(x, y, 2, 2);
-      }
-      ctx.restore();
+    const horizonOffset = -(distanceRef.current * 0.25 % 220);
+    ctx.fillStyle = palette.mountainFar;
+    for (let x = horizonOffset; x < CANVAS_WIDTH + 220; x += 220) {
+      ctx.fillRect(x + 34, GROUND_Y - 18, 10, 18);
+      ctx.fillRect(x + 26, GROUND_Y - 10, 6, 8);
+      ctx.fillRect(x + 46, GROUND_Y - 12, 6, 8);
+      ctx.fillRect(x + 118, GROUND_Y - 24, 12, 24);
+      ctx.fillRect(x + 110, GROUND_Y - 16, 6, 8);
+      ctx.fillRect(x + 132, GROUND_Y - 16, 6, 8);
     }
-
-    const drawMountains = (baseline: number, amplitude: number, width: number, color: string, speedFactor: number) => {
-      ctx.save();
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.moveTo(0, CANVAS_HEIGHT);
-      const offset = (distanceRef.current * speedFactor) % width;
-      for (let x = -width; x <= CANVAS_WIDTH + width; x += width) {
-        const peakX = x + width / 2 - offset;
-        ctx.lineTo(peakX - width / 2, baseline);
-        ctx.lineTo(peakX, baseline - amplitude);
-        ctx.lineTo(peakX + width / 2, baseline);
-      }
-      ctx.lineTo(CANVAS_WIDTH, CANVAS_HEIGHT);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-    };
-
-    drawMountains(GROUND_Y - 26, 86, 210, palette.mountainFar, 0.1);
-    drawMountains(GROUND_Y + 4, 118, 260, palette.mountainNear, 0.18);
-
-    cloudsRef.current.forEach((cloud) => {
-      ctx.save();
-      ctx.globalAlpha = theme === 'dark' ? 0.18 : 0.4;
-      ctx.fillStyle = theme === 'dark' ? '#e2e8f0' : '#ffffff';
-      ctx.beginPath();
-      ctx.arc(cloud.x, cloud.y, cloud.width * 0.18, 0, Math.PI * 2);
-      ctx.arc(cloud.x + cloud.width * 0.18, cloud.y - 10, cloud.width * 0.22, 0, Math.PI * 2);
-      ctx.arc(cloud.x + cloud.width * 0.4, cloud.y, cloud.width * 0.2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    });
-  }, [palette, theme]);
+  }, [palette]);
 
   const drawGround = useCallback((ctx: CanvasRenderingContext2D) => {
-    const groundGradient = ctx.createLinearGradient(0, GROUND_Y, 0, CANVAS_HEIGHT);
-    groundGradient.addColorStop(0, palette.groundTop);
-    groundGradient.addColorStop(1, palette.groundBottom);
-    ctx.fillStyle = groundGradient;
+    ctx.fillStyle = palette.groundTop;
     ctx.fillRect(0, GROUND_Y, CANVAS_WIDTH, CANVAS_HEIGHT - GROUND_Y);
 
     ctx.fillStyle = palette.groundLine;
-    ctx.fillRect(0, GROUND_Y - 2, CANVAS_WIDTH, 3);
+    ctx.fillRect(0, GROUND_Y - 2, CANVAS_WIDTH, 2);
 
-    const lineOffset = -(distanceRef.current * 0.8 % 64);
-    for (let x = lineOffset; x < CANVAS_WIDTH + 64; x += 64) {
-      ctx.fillRect(x, GROUND_Y + 22, 32, 4);
+    const crackOffset = -(distanceRef.current * 1.05 % 76);
+    for (let x = crackOffset; x < CANVAS_WIDTH + 76; x += 76) {
+      ctx.fillRect(x + 8, GROUND_Y - 1, 12, 2);
+      ctx.fillRect(x + 26, GROUND_Y, 8, 2);
+      ctx.fillRect(x + 44, GROUND_Y + 1, 10, 2);
     }
 
-    const pebbleOffset = -(distanceRef.current * 1.2 % 42);
-    for (let x = pebbleOffset; x < CANVAS_WIDTH + 42; x += 42) {
-      ctx.globalAlpha = 0.32;
-      ctx.fillRect(x, GROUND_Y + 44 + (x % 4), 5, 5);
+    const pebbleOffset = -(distanceRef.current * 0.92 % 32);
+    ctx.fillStyle = palette.groundLine;
+    for (let x = pebbleOffset; x < CANVAS_WIDTH + 32; x += 32) {
+      ctx.globalAlpha = 0.26;
+      ctx.fillRect(x + 2, GROUND_Y + 44 + (x % 3), 3, 3);
+      ctx.fillRect(x + 16, GROUND_Y + 62 + ((x + 1) % 4), 2, 2);
+      ctx.fillRect(x + 25, GROUND_Y + 50 + ((x + 2) % 5), 2, 2);
       ctx.globalAlpha = 1;
     }
   }, [palette]);
@@ -527,28 +476,73 @@ export default function ChromeDino() {
     const player = playerRef.current;
     const left = PLAYER_X - player.width / 2;
     const top = player.y - player.height;
-    const stride = Math.sin(distanceRef.current * 0.08) * 4;
+    const stride = Math.round(Math.sin(distanceRef.current * 0.14) * 2);
+    const unit = 4;
 
     ctx.save();
-    ctx.fillStyle = palette.player;
 
     if (player.ducking && player.onGround) {
-      ctx.fillRect(left, top + 16, player.width, player.height - 16);
-      ctx.fillRect(left + player.width - 18, top + 6, 16, 18);
+      const bodyX = Math.round(left + 7);
+      const bodyY = Math.round(top + 20);
+      const leafSwing = Math.round(Math.sin(distanceRef.current * 0.2) * 2);
+
+      // Guava skin: wide flattened fruit while ducking.
+      ctx.fillStyle = palette.player;
+      ctx.fillRect(bodyX + unit * 2, bodyY + unit, unit * 9, unit * 6);
+      ctx.fillRect(bodyX + unit, bodyY + unit * 2, unit, unit * 4);
+      ctx.fillRect(bodyX + unit * 11, bodyY + unit * 2, unit, unit * 4);
+      ctx.fillRect(bodyX + unit * 3, bodyY, unit * 7, unit);
+      ctx.fillRect(bodyX + unit * 3, bodyY + unit * 7, unit * 7, unit);
+
+      // Guava flesh + seeds.
       ctx.fillStyle = palette.playerDetail;
-      ctx.fillRect(left + 10, top + player.height - 8, 16, 4);
-      ctx.fillRect(left + player.width - 32, top + player.height - 8, 16, 4);
+      ctx.fillRect(bodyX + unit * 4, bodyY + unit * 2, unit * 5, unit * 3);
+      ctx.fillRect(bodyX + unit * 5, bodyY + unit * 5, unit * 3, unit);
+
+      ctx.fillStyle = palette.playerEye;
+      ctx.fillRect(bodyX + unit * 5, bodyY + unit * 3, 2, 2);
+      ctx.fillRect(bodyX + unit * 7, bodyY + unit * 3, 2, 2);
+      ctx.fillRect(bodyX + unit * 6, bodyY + unit * 4, 2, 2);
+
+      // Small top crown/leaf.
+      ctx.fillStyle = '#6d8f42';
+      ctx.fillRect(bodyX + unit * 6 + leafSwing, bodyY - unit, unit * 2, unit);
+      ctx.fillRect(bodyX + unit * 7 + leafSwing, bodyY - unit * 2, unit, unit);
     } else {
-      ctx.fillRect(left + 6, top + 10, player.width - 12, player.height - 10);
-      ctx.fillRect(left + player.width - 18, top, 14, 16);
+      const bodyX = Math.round(left + 6);
+      const bodyY = Math.round(top + 8);
+      const leafSwing = Math.round(Math.sin(distanceRef.current * 0.2) * 2);
+
+      // Guava skin: rounded fruit silhouette.
+      ctx.fillStyle = palette.player;
+      ctx.fillRect(bodyX + unit * 2, bodyY + unit, unit * 6, unit * 10);
+      ctx.fillRect(bodyX + unit, bodyY + unit * 2, unit, unit * 8);
+      ctx.fillRect(bodyX + unit * 8, bodyY + unit * 2, unit, unit * 8);
+      ctx.fillRect(bodyX + unit * 3, bodyY, unit * 4, unit);
+      ctx.fillRect(bodyX + unit * 3, bodyY + unit * 11, unit * 4, unit);
+
+      // Guava flesh center.
       ctx.fillStyle = palette.playerDetail;
-      ctx.fillRect(left + 4, top + player.height - 8, 12, 4 + Math.abs(stride));
-      ctx.fillRect(left + player.width - 16, top + player.height - 8, 12, 4 + Math.abs(stride));
-      ctx.fillRect(left + 10, top + 18, 8, 10);
+      ctx.fillRect(bodyX + unit * 3, bodyY + unit * 3, unit * 4, unit * 4);
+      ctx.fillRect(bodyX + unit * 4, bodyY + unit * 7, unit * 2, unit * 2);
+
+      // Seeds.
+      ctx.fillStyle = palette.playerEye;
+      ctx.fillRect(bodyX + unit * 4, bodyY + unit * 4, 2, 2);
+      ctx.fillRect(bodyX + unit * 5, bodyY + unit * 5, 2, 2);
+      ctx.fillRect(bodyX + unit * 4, bodyY + unit * 6, 2, 2);
+      ctx.fillRect(bodyX + unit * 6, bodyY + unit * 4, 2, 2);
+
+      // Little stem + leaf and running feet blocks.
+      ctx.fillStyle = '#6d8f42';
+      ctx.fillRect(bodyX + unit * 4 + leafSwing, bodyY - unit * 2, unit * 2, unit);
+      ctx.fillRect(bodyX + unit * 5 + leafSwing, bodyY - unit * 3, unit, unit);
+
+      ctx.fillStyle = palette.player;
+      ctx.fillRect(bodyX + unit * 2, bodyY + unit * 12, unit * 2, unit + Math.abs(stride));
+      ctx.fillRect(bodyX + unit * 6, bodyY + unit * 12, unit * 2, unit + Math.abs(stride));
     }
 
-    ctx.fillStyle = palette.playerEye;
-    ctx.fillRect(left + player.width - 12, top + 8, 4, 4);
     ctx.restore();
   }, [palette]);
 
@@ -557,8 +551,8 @@ export default function ChromeDino() {
       const flap = Math.sin(distanceRef.current * 0.08 + obstacle.bobPhase);
       ctx.save();
       ctx.fillStyle = palette.bird;
-      ctx.fillRect(obstacle.x + 8, obstacle.y + 12, obstacle.width - 16, 12);
-      ctx.fillRect(obstacle.x + obstacle.width - 18, obstacle.y + 8, 10, 10);
+      ctx.fillRect(obstacle.x + 8, obstacle.y + 12, obstacle.width - 16, 10);
+      ctx.fillRect(obstacle.x + obstacle.width - 16, obstacle.y + 9, 8, 8);
       ctx.fillStyle = palette.birdWing;
       ctx.beginPath();
       ctx.moveTo(obstacle.x + 22, obstacle.y + 16);
@@ -580,20 +574,20 @@ export default function ChromeDino() {
     ctx.fillStyle = palette.cactus;
 
     if (obstacle.type === 'cactus-cluster') {
-      ctx.fillRect(obstacle.x + 6, obstacle.y + 18, 18, obstacle.height - 18);
-      ctx.fillRect(obstacle.x + 28, obstacle.y + 6, 18, obstacle.height - 6);
-      ctx.fillRect(obstacle.x + 50, obstacle.y + 22, 14, obstacle.height - 22);
+      ctx.fillRect(obstacle.x + 4, obstacle.y + 18, 16, obstacle.height - 18);
+      ctx.fillRect(obstacle.x + 26, obstacle.y + 8, 16, obstacle.height - 8);
+      ctx.fillRect(obstacle.x + 48, obstacle.y + 22, 14, obstacle.height - 22);
       ctx.fillStyle = palette.cactusDark;
-      ctx.fillRect(obstacle.x + 10, obstacle.y + 6, 10, 18);
-      ctx.fillRect(obstacle.x + 34, obstacle.y - 6, 10, 20);
-      ctx.fillRect(obstacle.x + 54, obstacle.y + 10, 8, 16);
+      ctx.fillRect(obstacle.x + 8, obstacle.y + 8, 10, 14);
+      ctx.fillRect(obstacle.x + 32, obstacle.y - 4, 8, 20);
+      ctx.fillRect(obstacle.x + 52, obstacle.y + 12, 8, 14);
     } else {
       ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
       ctx.fillStyle = palette.cactusDark;
-      ctx.fillRect(obstacle.x + 5, obstacle.y + 8, obstacle.width - 10, 8);
-      ctx.fillRect(obstacle.x + obstacle.width - 8, obstacle.y + 20, 8, 18);
+      ctx.fillRect(obstacle.x + 4, obstacle.y + 8, obstacle.width - 8, 6);
+      ctx.fillRect(obstacle.x + obstacle.width - 8, obstacle.y + 22, 6, 14);
       if (obstacle.type === 'cactus-tall') {
-        ctx.fillRect(obstacle.x - 8, obstacle.y + 28, 10, 20);
+        ctx.fillRect(obstacle.x - 6, obstacle.y + 28, 8, 18);
       }
     }
 
@@ -619,20 +613,20 @@ export default function ChromeDino() {
     drawPlayer(ctx);
 
     ctx.fillStyle = palette.hud;
-    ctx.fillRect(24, 22, 250, 74);
+    ctx.fillRect(24, 22, 288, 78);
     ctx.fillStyle = palette.hudText;
-    ctx.font = '600 18px ui-sans-serif, system-ui, sans-serif';
-    ctx.fillText(`Score ${scoreRef.current}`, 42, 52);
-    ctx.font = '500 13px ui-sans-serif, system-ui, sans-serif';
-    ctx.fillText(`Vitesse ${Math.round(speedRef.current)} · Record ${highScore}`, 42, 76);
+    ctx.font = '700 22px "Courier New", ui-monospace, SFMono-Regular, Menlo, monospace';
+    ctx.fillText(`SCORE ${scoreRef.current}`, 42, 56);
+    ctx.font = '600 13px "Courier New", ui-monospace, SFMono-Regular, Menlo, monospace';
+    ctx.fillText(`SPEED ${Math.round(speedRef.current)}  BEST ${highScore}`, 42, 80);
 
     ctx.fillStyle = palette.hud;
-    ctx.fillRect(CANVAS_WIDTH - 212, 24, 168, 28);
+    ctx.fillRect(CANVAS_WIDTH - 232, 24, 192, 28);
     ctx.fillStyle = palette.accent;
-    ctx.fillRect(CANVAS_WIDTH - 212, 24, clamp((scoreRef.current / 1800) * 168, 12, 168), 28);
+    ctx.fillRect(CANVAS_WIDTH - 232, 24, clamp((scoreRef.current / 1800) * 192, 12, 192), 28);
     ctx.fillStyle = palette.hudText;
-    ctx.font = '600 13px ui-sans-serif, system-ui, sans-serif';
-    ctx.fillText('Run infini', CANVAS_WIDTH - 188, 43);
+    ctx.font = '600 13px "Courier New", ui-monospace, SFMono-Regular, Menlo, monospace';
+    ctx.fillText('INFINITE RUN', CANVAS_WIDTH - 206, 43);
   }, [drawBackground, drawGround, drawObstacle, drawPlayer, highScore, palette]);
 
   const gameLoop = useCallback((timestamp: number) => {
@@ -855,7 +849,7 @@ export default function ChromeDino() {
               ref={canvasRef}
               width={CANVAS_WIDTH}
               height={CANVAS_HEIGHT}
-              className="block h-full w-full cursor-pointer rounded-lg border border-border bg-black/10"
+              className="block h-full w-full cursor-pointer rounded-none border border-neutral-500 bg-[#efefef]"
               onMouseDown={() => queueJump()}
               onTouchStart={(event) => {
                 event.preventDefault();
@@ -864,13 +858,13 @@ export default function ChromeDino() {
             />
 
             {!started && (
-              <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/82">
+              <div className="absolute inset-0 flex items-center justify-center bg-[#efefef]/92">
                 <div className="space-y-4 p-6 text-center">
-                  <p className="text-3xl font-light">Chrome Dino</p>
-                  <p className="text-sm text-muted-foreground">
-                    Une version Aura Tracker du runner hors-ligne, avec plein écran, score serveur et classement.
+                  <p className="font-mono text-3xl font-bold tracking-wide text-neutral-700">CHROME DINO RUN</p>
+                  <p className="text-sm text-neutral-600">
+                    Version Aura Tracker du runner hors ligne en style Chrome classique.
                   </p>
-                  <Button onClick={initGame} variant="outline" className="border-foreground">
+                  <Button onClick={initGame} variant="outline" className="border-neutral-700 text-neutral-700">
                     <Play className="mr-2 h-4 w-4" />
                     Lancer le run
                   </Button>
@@ -879,19 +873,19 @@ export default function ChromeDino() {
             )}
 
             {gameOver && (
-              <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/88">
+              <div className="absolute inset-0 flex items-center justify-center bg-[#efefef]/92">
                 <div className="space-y-4 p-6 text-center">
-                  <p className="text-2xl font-light">Impact</p>
-                  <p className="text-4xl tabular-nums">{score}</p>
-                  {isNewHighScore && <p className="text-sm text-foreground">Nouveau record.</p>}
+                  <p className="font-mono text-2xl font-bold tracking-wide text-neutral-700">GAME OVER</p>
+                  <p className="font-mono text-4xl tabular-nums text-neutral-700">{score}</p>
+                  {isNewHighScore && <p className="text-sm text-neutral-700">Nouveau record.</p>}
                   {rewards && (rewards.aura > 0 || rewards.money > 0) && (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-neutral-600">
                       {rewards.money > 0 && `+$${rewards.money}`}
                       {rewards.money > 0 && rewards.aura > 0 && ' · '}
                       {rewards.aura > 0 && `+${rewards.aura} aura`}
                     </p>
                   )}
-                  <Button onClick={initGame} variant="outline" className="border-foreground">
+                  <Button onClick={initGame} variant="outline" className="border-neutral-700 text-neutral-700">
                     <RotateCcw className="mr-2 h-4 w-4" />
                     Rejouer
                   </Button>

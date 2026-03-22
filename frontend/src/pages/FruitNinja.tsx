@@ -18,11 +18,13 @@ const CANVAS_HEIGHT = 600;
 const GAME_TYPE = 'fruit_ninja';
 const GRAVITY = 0.22;
 const MAX_LIVES = 3;
-const FRUIT_RADIUS = 28;
+const FRUIT_RADIUS = 36;
 const MIN_SLICE_SPEED = 3;
 const COMBO_TIMEOUT_MS = 1400;
 const TRAIL_DURATION_MS = 110;
 const MAX_ACTIVE_FRUITS = 10;
+const WOOD_PLANK_MIN_WIDTH = 60;
+const WOOD_PLANK_MAX_WIDTH = 96;
 
 const FRUIT_DATA = [
   { emoji: '🍉', color: '#e03030', juice: '#ff5555' },
@@ -126,7 +128,7 @@ export default function FruitNinja() {
   const lastSpawnRef = useRef(0);
   const lastTimeRef = useRef(0);
   const shakeAmtRef = useRef(0);
-  const bgGradRef = useRef<CanvasGradient | null>(null);
+  const woodBgRef = useRef<HTMLCanvasElement | null>(null);
   const vignetteGradRef = useRef<CanvasGradient | null>(null);
 
   // React state (UI)
@@ -365,6 +367,92 @@ export default function FruitNinja() {
     setRewards(null); setIsNewHighScore(false);
   }, []);
 
+  const getWoodBackground = useCallback(() => {
+    if (woodBgRef.current) return woodBgRef.current;
+
+    const off = document.createElement('canvas');
+    off.width = CANVAS_WIDTH;
+    off.height = CANVAS_HEIGHT;
+    const c = off.getContext('2d');
+    if (!c) return off;
+
+    c.fillStyle = '#7b4f2e';
+    c.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+    let x = 0;
+    while (x < CANVAS_WIDTH) {
+      const plankW = WOOD_PLANK_MIN_WIDTH + Math.random() * (WOOD_PLANK_MAX_WIDTH - WOOD_PLANK_MIN_WIDTH);
+      const plankX = x;
+      const plankRight = Math.min(CANVAS_WIDTH, plankX + plankW);
+      const grad = c.createLinearGradient(plankX, 0, plankRight, 0);
+      const hueShift = (Math.random() - 0.5) * 10;
+      grad.addColorStop(0, `hsl(${27 + hueShift}, 48%, 33%)`);
+      grad.addColorStop(0.5, `hsl(${30 + hueShift}, 45%, 38%)`);
+      grad.addColorStop(1, `hsl(${24 + hueShift}, 50%, 31%)`);
+      c.fillStyle = grad;
+      c.fillRect(plankX, 0, plankRight - plankX, CANVAS_HEIGHT);
+
+      // Vertical seams between planks.
+      c.fillStyle = 'rgba(35, 20, 10, 0.5)';
+      c.fillRect(plankRight - 1.5, 0, 3, CANVAS_HEIGHT);
+      c.fillStyle = 'rgba(255, 220, 170, 0.07)';
+      c.fillRect(plankX + 1, 0, 1, CANVAS_HEIGHT);
+
+      // Horizontal wood grain bands.
+      for (let y = 0; y < CANVAS_HEIGHT; y += 8) {
+        const jitter = (Math.random() - 0.5) * 2;
+        const alpha = 0.035 + Math.random() * 0.035;
+        c.fillStyle = `rgba(40, 22, 10, ${alpha})`;
+        c.fillRect(plankX, y + jitter, plankRight - plankX, 1);
+      }
+
+      // Knots.
+      const knotCount = 1 + Math.floor(Math.random() * 3);
+      for (let i = 0; i < knotCount; i++) {
+        const kx = plankX + 10 + Math.random() * Math.max(10, plankRight - plankX - 20);
+        const ky = 20 + Math.random() * (CANVAS_HEIGHT - 40);
+        const kr = 5 + Math.random() * 11;
+        const knot = c.createRadialGradient(kx, ky, kr * 0.2, kx, ky, kr);
+        knot.addColorStop(0, 'rgba(72, 40, 18, 0.42)');
+        knot.addColorStop(0.65, 'rgba(48, 26, 12, 0.3)');
+        knot.addColorStop(1, 'rgba(28, 16, 8, 0.08)');
+        c.fillStyle = knot;
+        c.beginPath();
+        c.ellipse(kx, ky, kr * 1.15, kr * 0.85, Math.random() * Math.PI, 0, Math.PI * 2);
+        c.fill();
+      }
+
+      x = plankRight;
+    }
+
+    // Subtle scratch marks to mimic sliced board texture.
+    c.strokeStyle = 'rgba(30, 16, 8, 0.22)';
+    c.lineWidth = 1.2;
+    for (let i = 0; i < 24; i++) {
+      const sx = Math.random() * CANVAS_WIDTH;
+      const sy = Math.random() * CANVAS_HEIGHT;
+      const len = 25 + Math.random() * 90;
+      const ang = -0.75 + Math.random() * 1.5;
+      c.beginPath();
+      c.moveTo(sx, sy);
+      c.lineTo(sx + Math.cos(ang) * len, sy + Math.sin(ang) * len);
+      c.stroke();
+    }
+
+    // Soft center highlight.
+    const light = c.createRadialGradient(
+      CANVAS_WIDTH * 0.5, CANVAS_HEIGHT * 0.44, 30,
+      CANVAS_WIDTH * 0.5, CANVAS_HEIGHT * 0.44, CANVAS_HEIGHT * 0.8,
+    );
+    light.addColorStop(0, 'rgba(255, 215, 165, 0.14)');
+    light.addColorStop(1, 'rgba(255, 215, 165, 0)');
+    c.fillStyle = light;
+    c.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+    woodBgRef.current = off;
+    return off;
+  }, []);
+
   // ---- Draw ----
   const drawScene = useCallback((ctx: CanvasRenderingContext2D, timestamp: number) => {
     ctx.setTransform(scaleRef.current, 0, 0, scaleRef.current, 0, 0);
@@ -374,15 +462,8 @@ export default function FruitNinja() {
       ctx.translate((Math.random() - 0.5) * intensity * 2, (Math.random() - 0.5) * intensity * 2);
     }
 
-    // Background (cached — game coords are constants, safe to reuse across frames)
-    if (!bgGradRef.current) {
-      const bg = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
-      bg.addColorStop(0, '#07071a');
-      bg.addColorStop(1, '#16072a');
-      bgGradRef.current = bg;
-    }
-    ctx.fillStyle = bgGradRef.current;
-    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    // Wooden board background inspired by the original game.
+    ctx.drawImage(getWoodBackground(), 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
     // Subtle vignette (cached)
     if (!vignetteGradRef.current) {
@@ -391,7 +472,7 @@ export default function FruitNinja() {
         CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, CANVAS_HEIGHT * 0.75,
       );
       vignette.addColorStop(0, 'rgba(0,0,0,0)');
-      vignette.addColorStop(1, 'rgba(0,0,0,0.45)');
+      vignette.addColorStop(1, 'rgba(0,0,0,0.34)');
       vignetteGradRef.current = vignette;
     }
     ctx.fillStyle = vignetteGradRef.current;
@@ -528,7 +609,7 @@ export default function FruitNinja() {
     }
     ctx.globalAlpha = 1;
     ctx.restore();
-  }, []);
+  }, [getWoodBackground]);
 
   // ---- Game loop ----
   const gameLoop = useCallback((timestamp: number) => {
