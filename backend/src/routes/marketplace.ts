@@ -117,35 +117,34 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
     
     const effect = parseItemEffect(item.effect);
     const isClanTagUnlock = item.type === 'UPGRADE' && effect?.type === 'CLAN_TAG_UNLOCK';
-    const isClanSlotUpgrade = item.type === 'UPGRADE' && effect?.type === 'CLAN_SLOT_UPGRADE';
-    const isClanUpgrade = isClanTagUnlock || isClanSlotUpgrade;
-    let clanUpgradeMembership: { clanId: string; isLeader: boolean } | null = null;
+    let clanTagMembership: { clanId: string; isLeader: boolean } | null = null;
 
-    if (isClanUpgrade) {
+    if (isClanTagUnlock) {
       if (quantity !== 1) {
-        return res.status(400).json({ error: 'Cet achat ne peut être effectué qu\'à l\'unité.' });
+        return res.status(400).json({ error: 'Le déblocage du tag de clan ne peut être acheté qu\'à l\'unité.' });
       }
 
       const membership = await prisma.clanMember.findUnique({
         where: { userId: req.user.id },
         select: { clanId: true, isLeader: true },
       });
-      clanUpgradeMembership = membership;
+      clanTagMembership = membership;
 
       if (!membership) {
-        return res.status(400).json({ error: 'Tu dois être dans un clan pour acheter cet item.' });
+        return res.status(400).json({ error: 'Tu dois etre dans un clan pour acheter ce tag.' });
+      }
+
+      if (!membership.isLeader) {
+        return res.status(400).json({ error: 'Seul le chef de clan peut acheter ce tag.' });
       }
 
       const clan = await prisma.clan.findUnique({
         where: { id: membership.clanId },
-        select: { tagUnlocked: true, slotUpgraded: true },
+        select: { tagUnlocked: true },
       });
 
-      if (isClanTagUnlock && clan?.tagUnlocked) {
+      if (clan?.tagUnlocked) {
         return res.status(400).json({ error: 'Le tag est déjà débloqué pour ce clan.' });
-      }
-      if (isClanSlotUpgrade && clan?.slotUpgraded) {
-        return res.status(400).json({ error: 'Le slot supplémentaire est déjà débloqué pour ce clan.' });
       }
     }
 
@@ -164,9 +163,9 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
       item: typeof item;
     } | null = null;
 
-    if (isClanUpgrade) {
-      if (!clanUpgradeMembership) {
-        return res.status(400).json({ error: 'Tu dois être dans un clan pour acheter cet item.' });
+    if (isClanTagUnlock) {
+      if (!clanTagMembership) {
+        return res.status(400).json({ error: 'Tu dois etre dans un clan pour acheter ce tag.' });
       }
 
       const txResult = await prisma.$transaction(async (tx) => {
@@ -181,17 +180,10 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
           },
         });
 
-        if (isClanTagUnlock) {
-          await tx.clan.update({
-            where: { id: clanUpgradeMembership!.clanId },
-            data: { tagUnlocked: true },
-          });
-        } else if (isClanSlotUpgrade) {
-          await tx.clan.update({
-            where: { id: clanUpgradeMembership!.clanId },
-            data: { slotUpgraded: true, maxMembers: { increment: 1 } },
-          });
-        }
+        await tx.clan.update({
+          where: { id: clanTagMembership.clanId },
+          data: { tagUnlocked: true },
+        });
 
         return nextUser;
       });
@@ -261,7 +253,7 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
     res.json({
       success: true,
       item: userItem,
-      effect: isClanTagUnlock ? { type: 'CLAN_TAG_UNLOCK' } : isClanSlotUpgrade ? { type: 'CLAN_SLOT_UPGRADE' } : null,
+      effect: isClanTagUnlock ? { type: 'CLAN_TAG_UNLOCK' } : null,
       newBalance: {
         aura: updatedUser.aura,
         money: updatedUser.money,
@@ -469,6 +461,9 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
 
       if (!membership) {
         return res.status(400).json({ error: 'Tu n\'es pas dans un clan.' });
+      }
+      if (!membership.isLeader) {
+        return res.status(400).json({ error: 'Seul le chef de clan peut débloquer un tag.' });
       }
 
       const clan = await prisma.clan.findUnique({ where: { id: membership.clanId }, select: { tagUnlocked: true } });

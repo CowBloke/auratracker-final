@@ -478,8 +478,6 @@ export default function Racer() {
   const hillOffsetRef = useRef<number>(0);
   const treeOffsetRef = useRef<number>(0);
   const currentLapTimeRef = useRef<number>(0);
-  const lastLapTimeDisplayRef = useRef<number>(0);
-  const lastDisplaySpeedRef = useRef<number>(0);
   const lastLapTimeRef = useRef<number | null>(null);
   const fastestLapTimeRef = useRef<number>(180);
   const dailySeedRef = useRef<number>(1);
@@ -993,18 +991,10 @@ export default function Racer() {
       // Always increment lap time if we've started the lap
       if (hasCrossedStartLineRef.current) {
         currentLapTimeRef.current += dt;
-        const lapTimeDisplay = Math.round(currentLapTimeRef.current * 10) / 10;
-        if (lapTimeDisplay !== lastLapTimeDisplayRef.current) {
-          lastLapTimeDisplayRef.current = lapTimeDisplay;
-          setCurrentLapTime(lapTimeDisplay);
-        }
+        setCurrentLapTime(currentLapTimeRef.current);
       }
 
-      const newSpeed = Math.round((speedRef.current / 500) * 5);
-      if (newSpeed !== lastDisplaySpeedRef.current) {
-        lastDisplaySpeedRef.current = newSpeed;
-        setSpeed(newSpeed);
-      }
+      setSpeed(Math.round((speedRef.current / 500) * 5));
     },
     [findSegment, updateCars, gameOver]
   );
@@ -1065,7 +1055,7 @@ export default function Racer() {
   // Render
   const render = useCallback(() => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d', { alpha: false });
+    const ctx = canvas?.getContext('2d');
     const background = backgroundRef.current;
     const sprites = spritesRef.current;
 
