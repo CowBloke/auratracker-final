@@ -12,7 +12,8 @@ export interface SpectateFloatingMessage {
 
 interface Props {
   messages: SpectateFloatingMessage[];
-  onSend: (text: string) => void;
+  onSend?: (text: string) => void;
+  showInput?: boolean;
 }
 
 const KEYFRAMES = `
@@ -35,7 +36,7 @@ function ensureStyles() {
   styleInjected = true;
 }
 
-export function SpectateEffectBar({ messages, onSend }: Props) {
+export function SpectateEffectBar({ messages, onSend, showInput = true }: Props) {
   const [text, setText] = useState('');
   const lastSentAtRef = useRef(0);
 
@@ -77,29 +78,31 @@ export function SpectateEffectBar({ messages, onSend }: Props) {
         ))}
       </div>
 
-      {/* Input bar */}
-      <div className="absolute bottom-2 left-2 right-2 z-20">
-        <form
-          onSubmit={handleSubmit}
-          className="flex items-center gap-2 rounded-lg border border-border/50 bg-background/75 backdrop-blur-sm px-3 py-1.5"
-        >
-          <input
-            type="text"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Envoyer un message… 🎉"
-            maxLength={80}
-            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground min-w-0"
-          />
-          <button
-            type="submit"
-            className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
-            tabIndex={0}
+      {/* Input bar — only for spectators */}
+      {showInput && (
+        <div className="absolute bottom-2 left-2 right-2 z-20">
+          <form
+            onSubmit={handleSubmit}
+            className="flex items-center gap-2 rounded-lg border border-border/50 bg-background/75 backdrop-blur-sm px-3 py-1.5"
           >
-            <Send className="h-3.5 w-3.5" />
-          </button>
-        </form>
-      </div>
+            <input
+              type="text"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Envoyer un message… 🎉"
+              maxLength={80}
+              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground min-w-0"
+            />
+            <button
+              type="submit"
+              className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              tabIndex={0}
+            >
+              <Send className="h-3.5 w-3.5" />
+            </button>
+          </form>
+        </div>
+      )}
     </>
   );
 }

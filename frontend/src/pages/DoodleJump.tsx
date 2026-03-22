@@ -1232,7 +1232,13 @@ export default function DoodleJump() {
 
     const handleEffectMessage = (data: { hostUserId: string; username: string; text: string }) => {
       const currentHost = spectatingHostRef.current;
+      // Show for spectators watching this host
       if (currentHost && data.hostUserId === currentHost.hostUserId) {
+        addSpectateMessage(data.text, data.username);
+        return;
+      }
+      // Show for the host themselves (they're in their own spectate room)
+      if (user && data.hostUserId === user.id) {
         addSpectateMessage(data.text, data.username);
       }
     };
@@ -1766,9 +1772,13 @@ export default function DoodleJump() {
             style={{ imageRendering: 'pixelated' }}
           />
 
-          {/* Spectate effect bar */}
-          {spectatingHost && (
-            <SpectateEffectBar messages={spectateMessages} onSend={sendSpectateMessage} />
+          {/* Spectate effect bar — spectators get input, host just sees floating messages */}
+          {(spectatingHost || (isPlaying && spectateMessages.length > 0)) && (
+            <SpectateEffectBar
+              messages={spectateMessages}
+              onSend={sendSpectateMessage}
+              showInput={!!spectatingHost}
+            />
           )}
 
           {/* Start Screen */}

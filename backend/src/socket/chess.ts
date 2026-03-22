@@ -636,12 +636,14 @@ export const setupChessHandlers = (socket: Socket, io: Server) => {
     const game = activeGames.get(partyId);
     if (!game) return;
 
-    io.to(getChessSpectateRoom(partyId)).emit('chess:spectate-message-broadcast', {
-      partyId,
-      userId: senderUserId,
-      username: senderUsername,
-      text,
-    });
+    const payload = { partyId, userId: senderUserId, username: senderUsername, text };
+    // Broadcast to all spectators in the room
+    io.to(getChessSpectateRoom(partyId)).emit('chess:spectate-message-broadcast', payload);
+    // Also deliver to the players so they see it on their board
+    for (const player of game.players) {
+      const socketId = playerSockets.get(player.userId);
+      if (socketId) io.to(socketId).emit('chess:spectate-message-broadcast', payload);
+    }
   });
 
   socket.on('chess:start', async (data: { partyId: string }) => {

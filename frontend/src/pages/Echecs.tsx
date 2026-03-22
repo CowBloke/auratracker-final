@@ -297,17 +297,6 @@ export default function Echecs() {
   }, [socket, user, refreshUser, navigate, location.pathname, activePartyId]);
 
   useEffect(() => {
-    if (!socket) return;
-    const onEffectMessage = (data: { partyId: string; username: string; text: string }) => {
-      if (spectatingPartyIdRef.current && data.partyId === spectatingPartyIdRef.current) {
-        addSpectateMessage(data.text, data.username);
-      }
-    };
-    socket.on('chess:spectate-message-broadcast', onEffectMessage);
-    return () => { socket.off('chess:spectate-message-broadcast', onEffectMessage); };
-  }, [socket, addSpectateMessage]);
-
-  useEffect(() => {
     if (!socket || !user || !routeSpectatePartyId) return;
     socket.emit('chess:spectate-join', { partyId: routeSpectatePartyId });
   }, [socket, user, routeSpectatePartyId]);
@@ -546,6 +535,18 @@ export default function Echecs() {
     socket.emit('chess:spectate-message', { partyId: spectatingPartyId, text });
   }, [socket, spectatingPartyId]);
 
+  useEffect(() => {
+    if (!socket) return;
+    const onEffectMessage = (data: { partyId: string; username: string; text: string }) => {
+      // Show for spectators AND for players (backend emits to player sockets too)
+      const isInThisGame = spectatingPartyIdRef.current === data.partyId
+        || activePartyId === data.partyId;
+      if (isInThisGame) addSpectateMessage(data.text, data.username);
+    };
+    socket.on('chess:spectate-message-broadcast', onEffectMessage);
+    return () => { socket.off('chess:spectate-message-broadcast', onEffectMessage); };
+  }, [socket, addSpectateMessage, activePartyId]);
+
   const statusText = (() => {
     if (!gameState) return null;
     if (gameState.phase === 'finished' && gameState.result) return RESULT_LABELS[gameState.result];
@@ -782,9 +783,14 @@ export default function Echecs() {
                 areArrowsAllowed={false}
               />
             </div>
-            {isSpectating && (
-              <SpectateEffectBar messages={spectateMessages} onSend={sendSpectateMessage} />
-            )}
+            {/* Show floating messages for spectators (with input) and players (no input) */}
+            {spectateMessages.length > 0 || isSpectating ? (
+              <SpectateEffectBar
+                messages={spectateMessages}
+                onSend={sendSpectateMessage}
+                showInput={isSpectating}
+              />
+            ) : null}
           </div>
 
           {/* Sidebar */}
