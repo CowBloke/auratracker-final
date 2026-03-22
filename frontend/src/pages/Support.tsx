@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { supportApi, SupportMessage } from '@/services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { cn } from '@/lib/utils';
-import { PageShell } from '@/components/layout/page-shell';
+import { PageShell, PageHeader } from '@/components/layout/page-shell';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -82,7 +82,8 @@ export default function Support() {
   };
 
   return (
-    <PageShell title="Support" description="Contacte l'équipe pour toute question ou problème.">
+    <PageShell>
+      <PageHeader title="Support" description="Contacte l'équipe pour toute question ou problème." />
       <div className="flex flex-col h-[calc(100vh-12rem)] max-h-[700px] rounded-xl border border-border bg-card overflow-hidden">
         {/* Header */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-border bg-muted/30">
