@@ -31,7 +31,6 @@ import {
   MessageSquare,
   Send,
   RefreshCw,
-  Plus,
   Loader2,
 } from 'lucide-react';
 import {

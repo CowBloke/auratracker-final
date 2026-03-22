@@ -445,7 +445,7 @@ const defaultUpdatePopupForm: UpdatePopupFormData = {
 
 export default function Admin() {
   const { user } = useAuth();
-  const { socket } = useSocketBase();
+  useSocketBase();
   const { refreshFeatures } = useFeatures();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [userSearchQuery, setUserSearchQuery] = useState('');
