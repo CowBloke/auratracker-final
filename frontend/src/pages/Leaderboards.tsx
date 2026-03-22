@@ -29,7 +29,7 @@ interface Ranking {
 type StatItem = { label: string; value: string; hint?: string };
 type StatSection = { title: string; items: StatItem[] };
 
-type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'doodle_jump_mort_subite' | 'game_2048' | 'flappy_bird' | 'chrome_dino' | 'solitaire' | 'racer' | 'tetris' | 'knife_hit' | 'minesweeper' | 'casino' | 'casino_losses' | 'games_played' | 'bombparty';
+type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'doodle_jump_mort_subite' | 'game_2048' | 'flappy_bird' | 'chrome_dino' | 'stack_tower' | 'geometry_dash' | 'qs_watermelon' | 'solitaire' | 'racer' | 'tetris' | 'knife_hit' | 'minesweeper' | 'fruit_ninja' | 'goyave_empire' | 'logic_lab' | 'casino' | 'casino_losses' | 'games_played' | 'bombparty';
 type View = Category | 'nombres';
 
 const categories: { id: Category; name: string; valueLabel: string; icon: typeof Zap }[] = [
@@ -42,11 +42,17 @@ const categories: { id: Category; name: string; valueLabel: string; icon: typeof
   { id: 'game_2048', name: '2048', valueLabel: 'score', icon: Layers },
   { id: 'flappy_bird', name: 'Flappy Bird', valueLabel: 'score', icon: Wind },
   { id: 'chrome_dino', name: 'Chrome Dino', valueLabel: 'score', icon: Gamepad2 },
+  { id: 'stack_tower', name: 'Stack Tower', valueLabel: 'score', icon: Layers },
+  { id: 'geometry_dash', name: 'Geometry Dash', valueLabel: 'score', icon: ArrowUp },
+  { id: 'qs_watermelon', name: 'QS Watermelon', valueLabel: 'score', icon: Gamepad2 },
   { id: 'solitaire', name: 'Solitaire', valueLabel: 'score', icon: Diamond },
   { id: 'racer', name: 'Racer', valueLabel: 'temps', icon: Timer },
   { id: 'tetris', name: 'Tetris', valueLabel: 'score', icon: LayoutGrid },
   { id: 'knife_hit', name: 'Knife Hit', valueLabel: 'score', icon: Target },
   { id: 'minesweeper', name: 'Démineur', valueLabel: 'score', icon: Bomb },
+  { id: 'fruit_ninja', name: 'Fruit Ninja', valueLabel: 'score', icon: Target },
+  { id: 'goyave_empire', name: 'Goyave Empire', valueLabel: 'score', icon: Flame },
+  { id: 'logic_lab', name: 'Sudoku', valueLabel: 'score', icon: Hash },
   { id: 'casino', name: 'Gains Casino (partie unique)', valueLabel: '$', icon: Sparkles },
   { id: 'casino_losses', name: 'Pertes Casino (totales)', valueLabel: '$', icon: TrendingDown },
   { id: 'bombparty', name: 'Bomb Party', valueLabel: 'victoires', icon: Flame },
@@ -54,22 +60,29 @@ const categories: { id: Category; name: string; valueLabel: string; icon: typeof
 ];
 
 const economyCategories: Category[] = ['aura', 'money', 'total_money', 'auracoin'];
-const gameCategories: Category[] = ['doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird', 'chrome_dino', 'solitaire', 'racer', 'tetris', 'knife_hit', 'minesweeper', 'casino', 'casino_losses', 'bombparty', 'games_played'];
+const gameCategories: Category[] = ['doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird', 'chrome_dino', 'stack_tower', 'geometry_dash', 'qs_watermelon', 'solitaire', 'racer', 'tetris', 'knife_hit', 'minesweeper', 'fruit_ninja', 'goyave_empire', 'logic_lab', 'casino', 'casino_losses', 'bombparty', 'games_played'];
+const genericGameCategories: Category[] = ['stack_tower', 'geometry_dash', 'qs_watermelon', 'fruit_ninja', 'goyave_empire', 'logic_lab'];
 const deletableGameCategories: Partial<Record<Category, string>> = {
   doodle_jump: 'doodle_jump',
   doodle_jump_mort_subite: 'doodle_jump_mort_subite',
   game_2048: 'game_2048',
   flappy_bird: 'flappy_bird',
   chrome_dino: 'chrome_dino',
+  stack_tower: 'stack_tower',
+  geometry_dash: 'geometry_dash',
+  qs_watermelon: 'qs_watermelon',
   solitaire: 'solitaire',
   racer: 'racer',
   tetris: 'tetris',
   knife_hit: 'knife_hit',
   minesweeper: 'minesweeper',
+  fruit_ninja: 'fruit_ninja',
+  goyave_empire: 'goyave_empire',
+  logic_lab: 'logic_lab',
   casino: 'casino',
 };
 
-const gamesCatalog = ['Doodle Jump', 'Démineur', '2048', 'Flappy Bird', 'Chrome Dino', 'Casino', 'Bomb Party', 'Poker', 'Petit Bac', 'Bataille Navale', 'Solitaire', 'Racer', 'Tetris', 'Knife Hit', 'Polymarket'];
+const gamesCatalog = ['Doodle Jump', 'Démineur', '2048', 'Flappy Bird', 'Chrome Dino', 'Stack Tower', 'Geometry Dash', 'QS Watermelon', 'Fruit Ninja', 'Goyave Empire', 'Sudoku', 'Casino', 'Bomb Party', 'Poker', 'Petit Bac', 'Bataille Navale', 'Solitaire', 'Racer', 'Tetris', 'Knife Hit', 'Polymarket'];
 
 const formatNumber = (value: number, digits = 0) =>
   value.toLocaleString('fr-FR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
@@ -117,6 +130,20 @@ export default function Leaderboards() {
           usernameColor: entry.usernameColor,
           value: entry.auraCoinBalance,
           moneyValue: entry.auraCoinBalance * currentPrice,
+        }));
+        setRankings(mapped);
+        const userEntry = mapped.find((entry) => entry.userId === user?.id);
+        setUserRank(userEntry ? userEntry.rank : null);
+      } else if (genericGameCategories.includes(category)) {
+        const response = await gamesApi.getLeaderboard(category, 50);
+        const mapped: Ranking[] = (response.data.rankings || []).map((entry: any, index: number) => ({
+          rank: index + 1,
+          userId: entry.user?.id || '',
+          username: entry.user?.username || 'Unknown',
+          usernameColor: entry.user?.usernameColor,
+          value: Number(entry.highScore || 0),
+          badges: entry.badges,
+          clanTag: entry.user?.clanTag ?? null,
         }));
         setRankings(mapped);
         const userEntry = mapped.find((entry) => entry.userId === user?.id);
