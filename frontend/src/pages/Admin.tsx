@@ -409,15 +409,37 @@ interface UpdatePopupFormData {
   message: string;
   imageUrl: string;
   releaseDate: string;
+  publishMode: 'draft' | 'now' | 'scheduled';
   isPublished: boolean;
 }
+
+const toDateTimeLocalValue = (value: string | Date): string => {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+const getUpdatePopupPublishMode = (popup: Pick<AdminUpdatePopup, 'isPublished' | 'releaseDate'>): UpdatePopupFormData['publishMode'] => {
+  if (!popup.isPublished) {
+    return 'draft';
+  }
+  return new Date(popup.releaseDate).getTime() > Date.now() ? 'scheduled' : 'now';
+};
 
 const defaultUpdatePopupForm: UpdatePopupFormData = {
   title: '',
   summary: '',
   message: '',
   imageUrl: '',
-  releaseDate: new Date().toISOString().slice(0, 16),
+  releaseDate: toDateTimeLocalValue(new Date()),
+  publishMode: 'now',
   isPublished: true,
 };
 
@@ -818,7 +840,7 @@ export default function Admin() {
     setEditingUpdatePopupId(null);
     setUpdatePopupForm({
       ...defaultUpdatePopupForm,
-      releaseDate: new Date().toISOString().slice(0, 16),
+      releaseDate: toDateTimeLocalValue(new Date()),
     });
   };
 
@@ -886,12 +908,17 @@ export default function Admin() {
       return;
     }
 
-    const parsedReleaseDate = new Date(updatePopupForm.releaseDate);
-    if (Number.isNaN(parsedReleaseDate.getTime())) {
-      showMessage('error', 'Date de publication invalide');
-      return;
+    let releaseDateIso = new Date().toISOString();
+    if (updatePopupForm.publishMode === 'scheduled') {
+      const parsedReleaseDate = new Date(updatePopupForm.releaseDate);
+      if (Number.isNaN(parsedReleaseDate.getTime())) {
+        showMessage('error', 'Date de programmation invalide');
+        return;
+      }
+      releaseDateIso = parsedReleaseDate.toISOString();
     }
-    const releaseDateIso = parsedReleaseDate.toISOString();
+
+    const isPublished = updatePopupForm.publishMode !== 'draft';
 
     try {
       setSavingUpdatePopup(true);
@@ -901,7 +928,7 @@ export default function Admin() {
         summary: summary || undefined,
         imageUrl: imageUrl || undefined,
         releaseDate: releaseDateIso,
-        isPublished: updatePopupForm.isPublished,
+        isPublished,
       };
 
       if (editingUpdatePopupId) {
@@ -957,7 +984,8 @@ export default function Admin() {
       summary: popup.summary || '',
       message: popup.message,
       imageUrl: popup.imageUrl || '',
-      releaseDate: popup.releaseDate.slice(0, 16),
+      releaseDate: toDateTimeLocalValue(popup.releaseDate),
+      publishMode: getUpdatePopupPublishMode(popup),
       isPublished: popup.isPublished,
     });
     setActiveTab('communication');
@@ -4868,7 +4896,11 @@ export default function Admin() {
                           <div>
                             <h4 className="text-lg font-semibold">{updatePopupForm.title || 'Titre de la mise a jour'}</h4>
                             <p className="text-xs text-muted-foreground">
-                              {updatePopupForm.releaseDate ? new Date(updatePopupForm.releaseDate).toLocaleString('fr-FR') : 'Date non définie'}
+                              {updatePopupForm.publishMode === 'draft'
+                                ? 'Brouillon non visible'
+                                : updatePopupForm.publishMode === 'scheduled'
+                                  ? `Programmee pour le ${updatePopupForm.releaseDate ? new Date(updatePopupForm.releaseDate).toLocaleString('fr-FR') : 'date non definie'}`
+                                  : 'Publication immediate'}
                             </p>
                           </div>
                           {updatePopupForm.summary && (
@@ -4935,22 +4967,46 @@ export default function Admin() {
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <label className="text-sm font-medium">Date de publication</label>
+                          <label className="text-sm font-medium">Mode de diffusion</label>
+                          <Select
+                            value={updatePopupForm.publishMode}
+                            onValueChange={(value: 'draft' | 'now' | 'scheduled') => setUpdatePopupForm((prev) => ({
+                              ...prev,
+                              publishMode: value,
+                              isPublished: value !== 'draft',
+                              releaseDate: value === 'scheduled' ? prev.releaseDate : toDateTimeLocalValue(new Date()),
+                            }))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="draft">Brouillon</SelectItem>
+                              <SelectItem value="now">Publier maintenant</SelectItem>
+                              <SelectItem value="scheduled">Programmer</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground">
+                            {updatePopupForm.publishMode === 'draft'
+                              ? 'La popup ne sera visible par aucun joueur.'
+                              : updatePopupForm.publishMode === 'scheduled'
+                                ? 'La popup sera visible automatiquement a la date choisie.'
+                                : 'La popup devient visible des la sauvegarde.'}
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Date de programmation</label>
                           <Input
                             type="datetime-local"
                             value={updatePopupForm.releaseDate}
                             onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, releaseDate: e.target.value }))}
+                            disabled={updatePopupForm.publishMode !== 'scheduled'}
                           />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Visibilité</label>
-                          <div className="h-10 px-3 rounded-md border flex items-center justify-between bg-background/50">
-                            <span className="text-sm text-muted-foreground">{updatePopupForm.isPublished ? 'Publiée' : 'Brouillon'}</span>
-                            <Switch
-                              checked={updatePopupForm.isPublished}
-                              onCheckedChange={(checked) => setUpdatePopupForm((prev) => ({ ...prev, isPublished: checked }))}
-                            />
-                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {updatePopupForm.publishMode === 'scheduled'
+                              ? 'Choisissez la date et l heure de publication automatique.'
+                              : 'Disponible uniquement en mode Programme.'}
+                          </p>
                         </div>
                       </div>
                       <div className="space-y-2">
@@ -4984,14 +5040,23 @@ export default function Admin() {
                         <div className="space-y-2">
                           {updatePopups.map((popup) => (
                             <div key={popup.id} className="rounded-lg border p-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                              {(() => {
+                                const isScheduled = popup.isPublished && new Date(popup.releaseDate).getTime() > Date.now();
+                                const statusClass = !popup.isPublished
+                                  ? 'bg-muted text-muted-foreground'
+                                  : isScheduled
+                                    ? 'bg-blue-500/20 text-blue-400'
+                                    : 'bg-green-500/20 text-green-400';
+                                const statusLabel = !popup.isPublished ? 'Brouillon' : isScheduled ? 'Programmee' : 'Publiee';
+                                return (
                               <div className="min-w-0 space-y-1">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="font-medium">{popup.title}</span>
-                                  <span className={cn('text-xs px-2 py-0.5 rounded-full', popup.isPublished ? 'bg-green-500/20 text-green-400' : 'bg-muted text-muted-foreground')}>
-                                    {popup.isPublished ? 'Publiée' : 'Brouillon'}
+                                  <span className={cn('text-xs px-2 py-0.5 rounded-full', statusClass)}>
+                                    {statusLabel}
                                   </span>
                                   <span className="text-xs text-muted-foreground">
-                                    {new Date(popup.releaseDate).toLocaleString('fr-FR')}
+                                    {isScheduled ? `Diffusion le ${new Date(popup.releaseDate).toLocaleString('fr-FR')}` : new Date(popup.releaseDate).toLocaleString('fr-FR')}
                                   </span>
                                 </div>
                                 <p className="text-xs text-muted-foreground">
@@ -4999,6 +5064,8 @@ export default function Admin() {
                                 </p>
                                 {popup.summary && <p className="text-sm text-muted-foreground truncate">{popup.summary}</p>}
                               </div>
+                                );
+                              })()}
                               <div className="flex items-center gap-2">
                                 <Switch
                                   checked={popup.isPublished}
