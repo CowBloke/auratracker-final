@@ -4,7 +4,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useSocketBase } from '../contexts/SocketContext';
 import { gamesApi, marketplaceApi } from '../services/api';
 import { resolveImageUrl } from '@/lib/images';
-import { Play, RotateCcw, Eye, EyeOff, Users, Sparkles } from 'lucide-react';
+import { Play, RotateCcw, Eye, EyeOff, Users } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -509,34 +509,39 @@ export default function DoodleJump() {
   // ============================================
   // GAME INITIALIZATION
   // ============================================
-  const createConfettiBurst = useCallback((): DoodleConfettiBurst => {
+  const createConfettiBurst = useCallback((side: 'left' | 'right'): DoodleConfettiBurst => {
     const particleCount = 44;
     const particles: DoodleConfettiParticle[] = [];
+    const baseAngle = side === 'left' ? 0 : Math.PI;
     for (let i = 0; i < particleCount; i++) {
-      const spread = ((i / particleCount) - 0.5) * 1.8;
-      const angle = (-Math.PI / 2) + spread + ((Math.random() - 0.5) * 0.45);
-      const speed = 0.7 + (Math.random() * 1.5);
+      const spread = ((i / particleCount) - 0.5) * (Math.PI * 0.65);
+      const angle = baseAngle + spread + ((Math.random() - 0.5) * 0.3);
+      const speed = 0.8 + (Math.random() * 1.8);
       particles.push({
         vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - 0.2,
+        vy: Math.sin(angle) * speed - 0.35,
         size: 2 + (Math.random() * 3.5),
         color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
       });
     }
 
+    const originX = side === 'left' ? 4 : CANVAS_WIDTH - 4;
+    const originY = CANVAS_HEIGHT * (0.3 + Math.random() * 0.35);
+
     return {
       id: confettiBurstIdRef.current++,
       createdAt: performance.now(),
-      lifetime: 1400,
-      originX: CANVAS_WIDTH * (0.25 + (Math.random() * 0.5)),
-      originY: CANVAS_HEIGHT * (0.08 + (Math.random() * 0.12)),
+      lifetime: 1600,
+      originX,
+      originY,
       particles,
     };
   }, []);
 
   const addLocalConfettiBurst = useCallback(() => {
     const bursts = confettiBurstsRef.current;
-    bursts.push(createConfettiBurst());
+    bursts.push(createConfettiBurst('left'));
+    bursts.push(createConfettiBurst('right'));
     if (bursts.length > 12) {
       bursts.splice(0, bursts.length - 12);
     }
@@ -1715,30 +1720,18 @@ export default function DoodleJump() {
 
         {/* Spectate — quit button */}
         {spectatingHost && (
-          <div className="flex flex-col gap-2">
-            <Button
-              variant="secondary"
-              type="button"
-              onClick={emitSpectateConfetti}
-              className="flex items-center gap-2 w-full"
-            >
-              <Sparkles className="h-4 w-4" />
-              Lancer des confettis
-            </Button>
-
-            <Button
-              variant="outline"
-              type="button"
-              onClick={() => {
-                socket?.emit('doodle:spectate-leave');
-                clearSpectateState(true);
-              }}
-              className="flex items-center gap-2 w-full"
-            >
-              <EyeOff className="h-4 w-4" />
-              Quitter spectate
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            type="button"
+            onClick={() => {
+              socket?.emit('doodle:spectate-leave');
+              clearSpectateState(true);
+            }}
+            className="flex items-center gap-2 w-full"
+          >
+            <EyeOff className="h-4 w-4" />
+            Quitter spectate
+          </Button>
         )}
       </div>
 
@@ -1791,6 +1784,7 @@ export default function DoodleJump() {
             <SpectateEffectBar
               messages={spectateMessages}
               onSend={sendSpectateMessage}
+              onConfetti={spectatingHost ? emitSpectateConfetti : undefined}
               showInput={!!spectatingHost}
             />
           )}

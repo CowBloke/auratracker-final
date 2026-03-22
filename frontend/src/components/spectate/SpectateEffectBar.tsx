@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Send } from 'lucide-react';
+import { Send, Sparkles } from 'lucide-react';
 
 export interface SpectateFloatingMessage {
   id: number;
@@ -13,6 +13,7 @@ export interface SpectateFloatingMessage {
 interface Props {
   messages: SpectateFloatingMessage[];
   onSend?: (text: string) => void;
+  onConfetti?: () => void;
   showInput?: boolean;
 }
 
@@ -36,7 +37,7 @@ function ensureStyles() {
   styleInjected = true;
 }
 
-export function SpectateEffectBar({ messages, onSend, showInput = true }: Props) {
+export function SpectateEffectBar({ messages, onSend, onConfetti, showInput = true }: Props) {
   const [text, setText] = useState('');
   const lastSentAtRef = useRef(0);
 
@@ -93,6 +94,17 @@ export function SpectateEffectBar({ messages, onSend, showInput = true }: Props)
               maxLength={80}
               className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground min-w-0"
             />
+            {onConfetti && (
+              <button
+                type="button"
+                onClick={onConfetti}
+                className="text-muted-foreground hover:text-yellow-400 transition-colors shrink-0"
+                tabIndex={0}
+                title="Lancer des confettis"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+              </button>
+            )}
             <button
               type="submit"
               className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
