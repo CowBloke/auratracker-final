@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { PageShell } from '@/components/layout/page-shell';
 import { cn } from '@/lib/utils';
 import { UsernameDisplay } from '@/components/ui/username-display';
+import { SpectateEffectBar, type SpectateFloatingMessage } from '@/components/spectate/SpectateEffectBar';
 
 type ChessColor = 'w' | 'b';
 type PieceType = 'p' | 'n' | 'b' | 'r' | 'q' | 'k';
@@ -136,6 +137,8 @@ export default function Echecs() {
   const [pendingPromotion, setPendingPromotion] = useState<{ from: string; to: string } | null>(null);
   const [spectatingPartyId, setSpectatingPartyId] = useState<string | null>(null);
   const [spectatorCount, setSpectatorCount] = useState(0);
+  const [spectateMessages, setSpectateMessages] = useState<SpectateFloatingMessage[]>([]);
+  const spectateMessageIdRef = useRef(0);
   const spectatingPartyIdRef = useRef<string | null>(null);
 
   // Premove state
@@ -292,6 +295,17 @@ export default function Echecs() {
       socket.off('chess:spectate-error', onSpectateError);
     };
   }, [socket, user, refreshUser, navigate, location.pathname, activePartyId]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const onEffectMessage = (data: { partyId: string; username: string; text: string }) => {
+      if (spectatingPartyIdRef.current && data.partyId === spectatingPartyIdRef.current) {
+        addSpectateMessage(data.text, data.username);
+      }
+    };
+    socket.on('chess:spectate-message-broadcast', onEffectMessage);
+    return () => { socket.off('chess:spectate-message-broadcast', onEffectMessage); };
+  }, [socket, addSpectateMessage]);
 
   useEffect(() => {
     if (!socket || !user || !routeSpectatePartyId) return;
@@ -506,8 +520,31 @@ export default function Echecs() {
     setGameState(null);
     setSpectatingPartyId(null);
     setSpectatorCount(0);
+    setSpectateMessages([]);
     setError(null);
   };
+
+  const addSpectateMessage = useCallback((text: string, username: string) => {
+    const id = spectateMessageIdRef.current++;
+    const duration = 6000 + Math.random() * 3000;
+    const msg: SpectateFloatingMessage = {
+      id,
+      text,
+      username,
+      y: 5 + Math.random() * 75,
+      direction: Math.random() < 0.5 ? 'ltr' : 'rtl',
+      duration,
+    };
+    setSpectateMessages((prev) => [...prev, msg]);
+    setTimeout(() => {
+      setSpectateMessages((prev) => prev.filter((m) => m.id !== id));
+    }, duration + 200);
+  }, []);
+
+  const sendSpectateMessage = useCallback((text: string) => {
+    if (!socket || !spectatingPartyId) return;
+    socket.emit('chess:spectate-message', { partyId: spectatingPartyId, text });
+  }, [socket, spectatingPartyId]);
 
   const statusText = (() => {
     if (!gameState) return null;
@@ -717,32 +754,37 @@ export default function Echecs() {
 
         {/* Board + sidebar */}
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-          <div ref={boardContainerRef} className="w-full flex justify-center lg:justify-start">
-            <Chessboard
-              boardWidth={boardWidth}
-              position={gameState.fen}
-              boardOrientation={myPlayer?.color === 'b' ? 'black' : 'white'}
-              onPieceDrop={onPieceDrop as any}
-              onSquareClick={onSquareClick as any}
-              customSquareStyles={customSquareStyles as any}
-              isDraggablePiece={({ piece }: { piece: string }) => {
-                if (isSpectating) return false;
-                if (!myPlayer) return false;
-                return piece[0] === myPlayer.color;
-              }}
-              animationDuration={180}
-              showPromotionDialog={!!pendingPromotion}
-              promotionToSquare={(pendingPromotion?.to ?? null) as any}
-              onPromotionPieceSelect={onPromotionPieceSelect as any}
-              promotionDialogVariant="modal"
-              customBoardStyle={{
-                borderRadius: '8px',
-                boxShadow: '0 4px 28px rgba(0,0,0,0.22)',
-              }}
-              customDarkSquareStyle={{ backgroundColor: '#b58863' }}
-              customLightSquareStyle={{ backgroundColor: '#f0d9b5' }}
-              areArrowsAllowed={false}
-            />
+          <div className="relative overflow-hidden" style={{ minHeight: boardWidth }}>
+            <div ref={boardContainerRef} className="w-full flex justify-center lg:justify-start">
+              <Chessboard
+                boardWidth={boardWidth}
+                position={gameState.fen}
+                boardOrientation={myPlayer?.color === 'b' ? 'black' : 'white'}
+                onPieceDrop={onPieceDrop as any}
+                onSquareClick={onSquareClick as any}
+                customSquareStyles={customSquareStyles as any}
+                isDraggablePiece={({ piece }: { piece: string }) => {
+                  if (isSpectating) return false;
+                  if (!myPlayer) return false;
+                  return piece[0] === myPlayer.color;
+                }}
+                animationDuration={180}
+                showPromotionDialog={!!pendingPromotion}
+                promotionToSquare={(pendingPromotion?.to ?? null) as any}
+                onPromotionPieceSelect={onPromotionPieceSelect as any}
+                promotionDialogVariant="modal"
+                customBoardStyle={{
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 28px rgba(0,0,0,0.22)',
+                }}
+                customDarkSquareStyle={{ backgroundColor: '#b58863' }}
+                customLightSquareStyle={{ backgroundColor: '#f0d9b5' }}
+                areArrowsAllowed={false}
+              />
+            </div>
+            {isSpectating && (
+              <SpectateEffectBar messages={spectateMessages} onSend={sendSpectateMessage} />
+            )}
           </div>
 
           {/* Sidebar */}

@@ -681,6 +681,8 @@ export interface AdminUser {
   dailyAuraGiven: number;
   dailyAuraLimit: number;
   lastDailyReset: string;
+  schoolLevel: string | null;
+  classLetter: string | null;
   createdAt: string;
   updatedAt: string;
 }
