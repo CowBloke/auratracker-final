@@ -3,6 +3,7 @@ import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { logEconomy } from '../utils/logger.js';
 import { createNotification } from '../utils/notifications.js';
+import { awardBadgeByKey } from '../utils/badgeAwards.js';
 
 const router = Router();
 
@@ -490,6 +491,14 @@ export async function checkQuestProgress(
             completedAt: new Date(),
           },
         });
+
+        // FIRST_STEP: first completed daily quest ever (safe to call repeatedly — idempotent)
+        void awardBadgeByKey(userId, 'FIRST_STEP', 'Première quête quotidienne terminée');
+
+        // SPEEDRUN_DAILY_60S: completed within 60 seconds of selecting the quest
+        if (Date.now() - userQuest.selectedAt.getTime() <= 60_000) {
+          void awardBadgeByKey(userId, 'SPEEDRUN_DAILY_60S', 'Quête complétée en moins de 60 secondes');
+        }
 
         // Notify user via socket
         io.emit('quest:completed', {

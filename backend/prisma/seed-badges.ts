@@ -989,7 +989,7 @@ const BADGES = [
     borderColor: '#60a5fa',
     category: 'achievement',
     rarity: 'uncommon',
-    isAutomatic: false,
+    isAutomatic: true,
     autoConditionKey: 'STREAK_7',
   },
   {
@@ -1005,7 +1005,7 @@ const BADGES = [
     borderColor: '#93c5fd',
     category: 'achievement',
     rarity: 'rare',
-    isAutomatic: false,
+    isAutomatic: true,
     autoConditionKey: 'STREAK_30',
   },
   {
@@ -1069,7 +1069,7 @@ const BADGES = [
     borderColor: '#94a3b8',
     category: 'achievement',
     rarity: 'epic',
-    isAutomatic: false,
+    isAutomatic: true,
     autoConditionKey: 'COLLECTIONNEUR_25',
   },
   {
@@ -1117,7 +1117,7 @@ const BADGES = [
     borderColor: '#2dd4bf',
     category: 'achievement',
     rarity: 'common',
-    isAutomatic: false,
+    isAutomatic: true,
     autoConditionKey: 'SOCIAL_50_MESSAGES',
   },
   {
@@ -1133,7 +1133,7 @@ const BADGES = [
     borderColor: '#67e8f9',
     category: 'achievement',
     rarity: 'uncommon',
-    isAutomatic: false,
+    isAutomatic: true,
     autoConditionKey: 'MENTOR_3_REFERRALS',
   },
   {
@@ -1149,7 +1149,7 @@ const BADGES = [
     borderColor: '#fb7185',
     category: 'achievement',
     rarity: 'uncommon',
-    isAutomatic: false,
+    isAutomatic: true,
     autoConditionKey: 'GENEROUS_10_GIFTS',
   },
   {
@@ -1165,7 +1165,7 @@ const BADGES = [
     borderColor: '#4ade80',
     category: 'achievement',
     rarity: 'rare',
-    isAutomatic: false,
+    isAutomatic: true,
     autoConditionKey: 'POLYMARKET_20_WINS',
   },
   {
@@ -1181,7 +1181,7 @@ const BADGES = [
     borderColor: '#9ca3af',
     category: 'achievement',
     rarity: 'uncommon',
-    isAutomatic: false,
+    isAutomatic: true,
     autoConditionKey: 'CLAN_WARS_10',
   },
   {
@@ -1197,7 +1197,7 @@ const BADGES = [
     borderColor: '#facc15',
     category: 'special',
     rarity: 'epic',
-    isAutomatic: false,
+    isAutomatic: true,
     autoConditionKey: 'CLAN_MVP_3',
   },
   {
@@ -1277,7 +1277,7 @@ const BADGES = [
     borderColor: '#e879f9',
     category: 'special',
     rarity: 'legendary',
-    isAutomatic: false,
+    isAutomatic: true,
     autoConditionKey: 'MYTHIC_CATEGORY_COMPLETE',
   },
 ] as const;

@@ -3,6 +3,7 @@ import { Router, Response } from 'express';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { prisma } from '../server.js';
 import { createNotification } from '../utils/notifications.js';
+import { recheckBadgeForCondition } from '../utils/badgeAwards.js';
 
 const router = Router();
 
@@ -571,6 +572,10 @@ const finalizeClanWar = async (warId: string) => {
       });
     }
   });
+
+  // Recheck clan war achievement badges now that this war is completed
+  void recheckBadgeForCondition('CLAN_WARS_10');
+  void recheckBadgeForCondition('CLAN_MVP_3');
 
   const attackerMemberIds = war.attackerClan.members.map((member) => member.userId);
   const defenderMemberIds = war.defenderClan.members.map((member) => member.userId);
