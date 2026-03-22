@@ -12,9 +12,10 @@ import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 const SAVE_KEY = 'goyave_empire_save';
 const TICK_INTERVAL_MS = 200;
 const OFFLINE_THRESHOLD_MS = 30_000;
-const COST_SCALE = 1.15;
-const DB_SAVE_INTERVAL_MS = 30_000; // Safety net autosave to DB every 30 seconds
+const COST_SCALE = 1.18;
+const DB_SAVE_INTERVAL_MS = 5_000; // Keep active leaderboard close to real time
 const DB_SAVE_DEBOUNCE_MS = 3_000; // Save shortly after meaningful state changes
+const ACTIVE_LEADERBOARD_POLL_MS = 5_000;
 
 // ---- Types ----
 type UpgradeTarget = 'click' | 'tree' | 'picker' | 'garden' | 'orchard' | 'factory' | 'plantation' | 'lab' | 'rocket' | 'dimension';
@@ -212,11 +213,13 @@ export default function GoyaveEmpire() {
 
   const [save, setSave] = useState<SaveState>(() => loadSave());
   const [offlineGuavas, setOfflineGuavas] = useState<number | null>(null);
-  const [leaderboard, setLeaderboard] = useState<GameLeaderboardEntry[]>([]);
+  const [cashOutLeaderboard, setCashOutLeaderboard] = useState<GameLeaderboardEntry[]>([]);
+  const [activeLeaderboard, setActiveLeaderboard] = useState<GameLeaderboardEntry[]>([]);
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isCashingOut, setIsCashingOut] = useState(false);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showActiveLeaderboard, setShowActiveLeaderboard] = useState(true);
 
   const saveRef = useRef<SaveState>(save);
   saveRef.current = save;
@@ -272,7 +275,7 @@ export default function GoyaveEmpire() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Periodic DB save every 60 seconds
+  // Periodic DB save for persistence + active ranking updates.
   useEffect(() => {
     const interval = setInterval(() => {
       saveToDb(saveRef.current);
@@ -329,14 +332,31 @@ export default function GoyaveEmpire() {
   }, []);
 
   // Leaderboard
-  const fetchLeaderboard = useCallback(async () => {
+  const fetchCashOutLeaderboard = useCallback(async () => {
     try {
       const res = await gamesApi.getLeaderboard('goyave_empire', 20);
-      setLeaderboard(res.data.rankings || []);
+      setCashOutLeaderboard(res.data.rankings || []);
     } catch { /* non-fatal */ }
   }, []);
 
-  useEffect(() => { fetchLeaderboard(); }, [fetchLeaderboard]);
+  const fetchActiveLeaderboard = useCallback(async () => {
+    try {
+      const res = await gamesApi.getGoyaveActiveLeaderboard(20);
+      setActiveLeaderboard(res.data.rankings || []);
+    } catch { /* non-fatal */ }
+  }, []);
+
+  useEffect(() => {
+    fetchCashOutLeaderboard();
+    fetchActiveLeaderboard();
+  }, [fetchCashOutLeaderboard, fetchActiveLeaderboard]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchActiveLeaderboard();
+    }, ACTIVE_LEADERBOARD_POLL_MS);
+    return () => clearInterval(interval);
+  }, [fetchActiveLeaderboard]);
 
   // Actions
   const handleClick = useCallback(() => {
@@ -380,7 +400,8 @@ export default function GoyaveEmpire() {
       setRewards({ aura: res.data.auraReward, money: res.data.moneyReward });
       setIsNewHighScore(Boolean(res.data.isNewHighScore));
       await refreshUser();
-      fetchLeaderboard();
+      fetchCashOutLeaderboard();
+      fetchActiveLeaderboard();
       const freshSave: SaveState = { ...defaultSave(), cashOutScore: Math.max(score, saveRef.current.cashOutScore), lastTick: Date.now() };
       setSave(freshSave);
       persistSave(freshSave);
@@ -390,13 +411,13 @@ export default function GoyaveEmpire() {
     } finally {
       setIsCashingOut(false);
     }
-  }, [user, isCashingOut, fetchLeaderboard, refreshUser, saveToDb]);
+  }, [user, isCashingOut, fetchCashOutLeaderboard, fetchActiveLeaderboard, refreshUser, saveToDb]);
 
   const handleDeleteScore = async (userId: string, username: string) => {
     if (!confirm(`Supprimer le score de ${username} ?`)) return;
     try {
       await gamesApi.deleteStats('goyave_empire', userId);
-      fetchLeaderboard();
+      fetchCashOutLeaderboard();
     } catch (err) {
       console.error('Failed to delete score:', err);
     }
@@ -584,7 +605,7 @@ export default function GoyaveEmpire() {
               onClick={() => setShowLeaderboard(true)}
               className={`flex-1 py-3 text-sm font-medium transition-colors ${showLeaderboard ? 'bg-muted/40 text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
             >
-              Classement
+              Classements
             </button>
           </div>
 
@@ -637,14 +658,32 @@ export default function GoyaveEmpire() {
                 })}
               </div>
             ) : (
-              /* Leaderboard */
-              <GameLeaderboard
-                entries={leaderboard}
-                currentUserId={user?.id}
-                isAdmin={user?.isAdmin}
-                onDeleteScore={handleDeleteScore}
-                noCard
-              />
+              /* Leaderboards */
+              <div className="h-full flex flex-col">
+                <div className="p-2 border-b border-border/20 flex gap-2">
+                  <button
+                    onClick={() => setShowActiveLeaderboard(true)}
+                    className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${showActiveLeaderboard ? 'bg-muted/60 text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    Actif (live)
+                  </button>
+                  <button
+                    onClick={() => setShowActiveLeaderboard(false)}
+                    className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${!showActiveLeaderboard ? 'bg-muted/60 text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    Records
+                  </button>
+                </div>
+
+                <GameLeaderboard
+                  entries={showActiveLeaderboard ? activeLeaderboard : cashOutLeaderboard}
+                  currentUserId={user?.id}
+                  personalHighScore={showActiveLeaderboard ? undefined : save.cashOutScore}
+                  isAdmin={showActiveLeaderboard ? false : user?.isAdmin}
+                  onDeleteScore={showActiveLeaderboard ? undefined : handleDeleteScore}
+                  noCard
+                />
+              </div>
             )}
           </div>
         </div>

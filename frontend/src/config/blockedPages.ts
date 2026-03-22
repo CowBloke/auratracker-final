@@ -30,6 +30,7 @@ export const BLOCKABLE_PAGES: BlockablePage[] = [
   { key: 'game-tetris', path: '/games/tetris', label: 'Tetris', category: 'Jeux' },
   { key: 'game-knife-hit', path: '/games/knife-hit', label: 'Knife Hit', category: 'Jeux' },
   { key: 'game-echecs', path: '/games/echecs', label: 'Échecs', category: 'Jeux' },
+  { key: 'game-morpion', path: '/games/morpion', label: 'Morpion', category: 'Jeux' },
   { key: 'game-goyave-empire', path: '/games/goyave-empire', label: 'Goyave Empire', category: 'Jeux' },
   { key: 'game-puissance-quatre', path: '/games/puissance-quatre', label: 'Puissance 4', category: 'Jeux' },
   { key: 'game-polymarket', path: '/polymarket', label: 'Polymarket', category: 'Général' },

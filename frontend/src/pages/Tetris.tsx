@@ -210,6 +210,7 @@ export default function Tetris() {
       <GameLeaderboard
         entries={leaderboard}
         currentUserId={user?.id}
+        personalHighScore={highScore}
         isAdmin={user?.isAdmin}
         onDeleteScore={handleDeleteScore}
         maxHeight={GAME_HEIGHT - 56}

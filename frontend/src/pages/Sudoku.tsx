@@ -675,6 +675,7 @@ export default function Sudoku() {
         <GameLeaderboard
           entries={leaderboard}
           currentUserId={user?.id}
+          personalHighScore={highScore}
           title="Classement"
           maxHeight={420}
           hidden={isFullscreen}

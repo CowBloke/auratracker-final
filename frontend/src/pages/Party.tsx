@@ -72,6 +72,13 @@ const duelGames = [
     type: 'Duel',
     image: '/images/games/chess.png',
   },
+  {
+    id: 'morpion',
+    name: 'Morpion',
+    description: 'Un duel rapide: aligne 3 symboles avant ton adversaire.',
+    type: 'Duel',
+    image: '/images/games/puissance4.png',
+  },
 ];
 
 const getGameLink = (gameId: string) => {
@@ -81,6 +88,7 @@ const getGameLink = (gameId: string) => {
   if (gameId === 'bataille-navale') return '/games/bataille-navale';
   if (gameId === 'puissance-quatre') return '/games/puissance-quatre';
   if (gameId === 'echecs') return '/games/echecs';
+  if (gameId === 'morpion') return '/games/morpion';
   return `/games/${gameId}`;
 };
 
@@ -113,7 +121,7 @@ export default function Party() {
     suggestPartyGame,
     selectPartyGame,
   } = usePartySocket();
-  const { startBombParty, startPetitBac, startPoker, startP4 } = useGameSocket();
+  const { startBombParty, startPetitBac, startPoker, startP4, startMorpion } = useGameSocket();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -180,6 +188,9 @@ export default function Party() {
     } else if (gameId === 'puissance-quatre') {
       startP4();
       navigate('/games/puissance-quatre');
+    } else if (gameId === 'morpion') {
+      startMorpion();
+      navigate('/games/morpion');
     } else {
       navigate(getGameLink(gameId));
     }

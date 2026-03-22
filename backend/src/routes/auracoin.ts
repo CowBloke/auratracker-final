@@ -1,4 +1,5 @@
 import { Router, Response } from 'express';
+import { randomBytes } from 'crypto';
 import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { logAuraCoin } from '../utils/logger.js';
@@ -10,13 +11,17 @@ const router = Router();
 const INITIAL_PRICE = 100;
 const FEE_PERCENTAGE = 0.02; // 2% fee
 const MIN_FEE = 1; // Minimum fee in money units
-const RANDOM_VARIATION_PERCENTAGE = 0.005; // +/- 0.5%
-const PRICE_UPDATE_INTERVAL = 5000; // 5 seconds
+const PRICE_UPDATE_INTERVAL_MIN = 3500; // 3.5 seconds
+const PRICE_UPDATE_INTERVAL_MAX = 8500; // 8.5 seconds
 const MAX_LEVERAGE = 10; // Maximum leverage (x10)
 const LIQUIDATION_THRESHOLD = 0.8; // Liquidate when margin drops to 80% of initial
+const BASE_SPREAD_PERCENTAGE = 0.004; // 0.4%
+const MAX_SPREAD_PERCENTAGE = 0.03; // 3%
+const MAX_SLIPPAGE_PERCENTAGE = 0.02; // 2%
 
 // Current price in memory (will be persisted to DB)
 let currentPrice = INITIAL_PRICE;
+let lastMoveMagnitude = 0;
 
 // Initialize price from database or create initial price
 const initializePrice = async () => {
@@ -39,12 +44,67 @@ const initializePrice = async () => {
   }
 };
 
-// Random price variation
+const secureRandomUnit = () => {
+  const value = randomBytes(4).readUInt32BE(0);
+  return value / 0xffffffff;
+};
+
+const secureRandomRange = (min: number, max: number) => {
+  return min + (max - min) * secureRandomUnit();
+};
+
+const secureGaussian = () => {
+  const u1 = Math.max(secureRandomUnit(), 1e-12);
+  const u2 = secureRandomUnit();
+  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+};
+
+const getDynamicSpread = () => {
+  const volatilityPremium = Math.min(lastMoveMagnitude * 1.2, MAX_SPREAD_PERCENTAGE - BASE_SPREAD_PERCENTAGE);
+  return Math.min(BASE_SPREAD_PERCENTAGE + volatilityPremium, MAX_SPREAD_PERCENTAGE);
+};
+
+const getExecutionPrice = (side: 'BUY' | 'SELL', referencePrice: number, tradeNotional: number) => {
+  const spread = getDynamicSpread();
+  const halfSpread = spread / 2;
+  const sizeImpact = Math.min(tradeNotional / 50000, 1) * 0.01;
+  const randomImpact = secureRandomRange(0, 0.003);
+  const slippage = Math.min(sizeImpact + randomImpact, MAX_SLIPPAGE_PERCENTAGE);
+
+  if (side === 'BUY') {
+    return referencePrice * (1 + halfSpread + slippage);
+  }
+
+  return Math.max(1, referencePrice * (1 - halfSpread - slippage));
+};
+
+// Stochastic price engine with random regimes and occasional shocks.
 const applyRandomVariation = () => {
-  const variation = (Math.random() - 0.5) * 2 * RANDOM_VARIATION_PERCENTAGE;
-  currentPrice = currentPrice * (1 + variation);
-  // Ensure price doesn't go below 1
+  const regimeRoll = secureRandomUnit();
+  const meanReversion = (INITIAL_PRICE - currentPrice) / INITIAL_PRICE;
+
+  let volatility = 0.01;
+  if (regimeRoll > 0.75 && regimeRoll <= 0.93) {
+    volatility = 0.02;
+  } else if (regimeRoll > 0.93 && regimeRoll <= 0.99) {
+    volatility = 0.035;
+  } else if (regimeRoll > 0.99) {
+    volatility = 0.06;
+  }
+
+  const shockRoll = secureRandomUnit();
+  let shock = 0;
+  if (shockRoll > 0.985) {
+    shock = secureRandomRange(-0.08, 0.08);
+  }
+
+  const randomMove = secureGaussian() * volatility;
+  const reversionMove = meanReversion * 0.02;
+  const totalMove = randomMove + reversionMove + shock;
+
+  currentPrice = currentPrice * (1 + totalMove);
   currentPrice = Math.max(1, currentPrice);
+  lastMoveMagnitude = Math.abs(totalMove);
 };
 
 // Save price to database and broadcast
@@ -66,9 +126,22 @@ const savePriceAndBroadcast = async (volume: number = 0) => {
 // Start price variation interval
 let priceInterval: NodeJS.Timeout | null = null;
 
+const scheduleNextTick = () => {
+  const nextDelay = Math.floor(secureRandomRange(PRICE_UPDATE_INTERVAL_MIN, PRICE_UPDATE_INTERVAL_MAX));
+  priceInterval = setTimeout(async () => {
+    applyRandomVariation();
+    await savePriceAndBroadcast();
+    await checkLiquidations(); // Check for liquidations on each price update
+
+    if (priceInterval) {
+      scheduleNextTick();
+    }
+  }, nextDelay);
+};
+
 export const stopPriceEngine = () => {
   if (priceInterval) {
-    clearInterval(priceInterval);
+    clearTimeout(priceInterval);
     priceInterval = null;
     console.log('AuraCoin price engine stopped');
   }
@@ -144,7 +217,7 @@ router.post('/buy', authMiddleware, async (req: AuthRequest, res: Response) => {
     if (netAmount <= 0) {
       return res.status(400).json({ error: 'Amount too low to cover minimum fee' });
     }
-    const tradePrice = currentPrice;
+    const tradePrice = getExecutionPrice('BUY', currentPrice, moneyAmount);
     const coinsReceived = netAmount / tradePrice;
     
     // Update user balance and create transaction
@@ -248,7 +321,7 @@ router.post('/sell', authMiddleware, async (req: AuthRequest, res: Response) => 
     }
     
     // Calculate money received (before fee)
-    const tradePrice = currentPrice;
+    const tradePrice = getExecutionPrice('SELL', currentPrice, coinAmount * currentPrice);
     const grossAmount = Math.floor(coinAmount * tradePrice);
     const fee = Math.max(MIN_FEE, Math.floor(grossAmount * FEE_PERCENTAGE));
     const netAmount = grossAmount - fee;
@@ -413,13 +486,13 @@ router.get('/leaderboard', authMiddleware, async (req: AuthRequest, res: Respons
 // Calculate P&L for a position
 const calculatePnL = (position: any, currentPrice: number): number => {
   if (position.type === 'LONG') {
-    // Profit = (currentPrice - entryPrice) * coinAmount * leverage
+    // coinAmount already represents notional exposure in coins.
     const priceChange = currentPrice - position.entryPrice;
-    return Math.floor(priceChange * position.coinAmount * position.leverage);
+    return Math.floor(priceChange * position.coinAmount);
   } else {
-    // SHORT: Profit = (entryPrice - currentPrice) * coinAmount * leverage
+    // SHORT: Profit = (entryPrice - currentPrice) * coinAmount
     const priceChange = position.entryPrice - currentPrice;
-    return Math.floor(priceChange * position.coinAmount * position.leverage);
+    return Math.floor(priceChange * position.coinAmount);
   }
 };
 
@@ -519,7 +592,9 @@ router.post('/position/open', authMiddleware, async (req: AuthRequest, res: Resp
 
     // Calculate notional value (position size)
     const notionalValue = marginAmount * leverage;
-    const coinAmount = notionalValue / currentPrice;
+    const entrySide = type === 'LONG' ? 'BUY' : 'SELL';
+    const entryPrice = getExecutionPrice(entrySide, currentPrice, notionalValue);
+    const coinAmount = notionalValue / entryPrice;
 
     // Create position
     const position = await prisma.$transaction([
@@ -532,7 +607,7 @@ router.post('/position/open', authMiddleware, async (req: AuthRequest, res: Resp
           userId: req.user.id,
           type,
           leverage,
-          entryPrice: currentPrice,
+          entryPrice,
           coinAmount,
           marginAmount,
         },
@@ -556,7 +631,7 @@ router.post('/position/open', authMiddleware, async (req: AuthRequest, res: Resp
         type,
         leverage,
         marginAmount,
-        entryPrice: currentPrice,
+        entryPrice,
       },
       link: '/games/aura-coin',
       icon: 'chart-candlestick',
@@ -609,8 +684,11 @@ router.post('/position/close/:positionId', authMiddleware, async (req: AuthReque
       return res.status(400).json({ error: 'Position is already closed' });
     }
 
+    const closeSide = position.type === 'LONG' ? 'SELL' : 'BUY';
+    const closePrice = getExecutionPrice(closeSide, currentPrice, position.coinAmount * currentPrice);
+
     // Calculate P&L
-    const pnl = calculatePnL(position, currentPrice);
+    const pnl = calculatePnL(position, closePrice);
     const totalReturn = position.marginAmount + pnl;
 
     // Close position and return funds
@@ -620,7 +698,7 @@ router.post('/position/close/:positionId', authMiddleware, async (req: AuthReque
         data: {
           isOpen: false,
           closedAt: new Date(),
-          exitPrice: currentPrice,
+          exitPrice: closePrice,
           pnl,
         },
       }),
@@ -647,7 +725,7 @@ router.post('/position/close/:positionId', authMiddleware, async (req: AuthReque
       data: {
         positionId: updatedPosition.id,
         pnl,
-        exitPrice: currentPrice,
+        exitPrice: closePrice,
         totalReturn,
       },
       link: '/games/aura-coin',
@@ -740,12 +818,13 @@ router.get('/positions/closed', authMiddleware, async (req: AuthRequest, res: Re
 // Update price engine to check liquidations
 export const startPriceEngine = () => {
   initializePrice();
-  
-  priceInterval = setInterval(async () => {
-    applyRandomVariation();
-    await savePriceAndBroadcast();
-    await checkLiquidations(); // Check for liquidations on each price update
-  }, PRICE_UPDATE_INTERVAL);
+
+  if (priceInterval) {
+    clearTimeout(priceInterval);
+    priceInterval = null;
+  }
+
+  scheduleNextTick();
   
   console.log('AuraCoin price engine started');
 };

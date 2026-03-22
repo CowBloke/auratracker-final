@@ -296,6 +296,8 @@ const mapClanSummary = (clan: ClanWithMembers | ClanDetailPayload) => ({
   tagText: clan.tagText ?? null,
   tagStyle: clan.tagStyle ?? null,
   slotUpgraded: clan.slotUpgraded,
+  clanBankMoney: clan.clanBankMoney,
+  level: clan.level,
 });
 
 const getClanDefenseLevel = (defenses: ClanWarCurrentPayload['defenses'] | ClanWarHistoryPayload['defenses'], clanId: string, type: DefenseType) => {
@@ -715,18 +717,18 @@ const getClanMembership = (clanId: string, userId: string) =>
 router.get('/me/status', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
-    if (!userId) return res.json({ inClan: false, tagUnlocked: false, slotUpgraded: false });
+    if (!userId) return res.json({ inClan: false, tagUnlocked: false, slotUpgraded: false, clanBankMoney: 0, level: 1 });
 
     const membership = await prisma.clanMember.findUnique({
       where: { userId },
       select: { clanId: true, isLeader: true },
     });
 
-    if (!membership) return res.json({ inClan: false, tagUnlocked: false, slotUpgraded: false });
+    if (!membership) return res.json({ inClan: false, tagUnlocked: false, slotUpgraded: false, clanBankMoney: 0, level: 1 });
 
     const clan = await prisma.clan.findUnique({
       where: { id: membership.clanId },
-      select: { tagUnlocked: true, slotUpgraded: true },
+      select: { tagUnlocked: true, slotUpgraded: true, clanBankMoney: true, level: true },
     });
 
     res.json({
@@ -734,10 +736,108 @@ router.get('/me/status', authMiddleware, async (req: AuthRequest, res: Response)
       isLeader: membership.isLeader,
       tagUnlocked: clan?.tagUnlocked ?? false,
       slotUpgraded: clan?.slotUpgraded ?? false,
+      clanBankMoney: clan?.clanBankMoney ?? 0,
+      level: clan?.level ?? 1,
     });
   } catch (error) {
     console.error('Get clan status error:', error);
     res.status(500).json({ error: 'Failed to get clan status' });
+  }
+});
+
+// Deposit personal money into clan bank (members only)
+router.post('/:id/bank/deposit', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+    const amount = Number(req.body?.amount);
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (!Number.isInteger(amount) || amount <= 0) {
+      return res.status(400).json({ error: 'Montant invalide.' });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const membership = await tx.clanMember.findUnique({
+        where: {
+          clanId_userId: {
+            clanId: id,
+            userId,
+          },
+        },
+        select: {
+          clanId: true,
+        },
+      });
+
+      if (!membership) {
+        throw new Error('NOT_MEMBER');
+      }
+
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { money: true },
+      });
+
+      if (!user) {
+        throw new Error('USER_NOT_FOUND');
+      }
+
+      if (user.money < amount) {
+        throw new Error('INSUFFICIENT_FUNDS');
+      }
+
+      const [updatedUser, updatedClan] = await Promise.all([
+        tx.user.update({
+          where: { id: userId },
+          data: {
+            money: { decrement: amount },
+          },
+          select: {
+            money: true,
+            aura: true,
+          },
+        }),
+        tx.clan.update({
+          where: { id },
+          data: {
+            clanBankMoney: { increment: amount },
+          },
+          select: {
+            clanBankMoney: true,
+          },
+        }),
+      ]);
+
+      return {
+        updatedUser,
+        clanBankMoney: updatedClan.clanBankMoney,
+      };
+    });
+
+    res.json({
+      success: true,
+      deposited: amount,
+      clanBankMoney: result.clanBankMoney,
+      newBalance: {
+        money: result.updatedUser.money,
+        aura: result.updatedUser.aura,
+      },
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === 'NOT_MEMBER') {
+        return res.status(403).json({ error: 'Tu dois être membre du clan pour déposer.' });
+      }
+      if (error.message === 'INSUFFICIENT_FUNDS') {
+        return res.status(400).json({ error: 'Pas assez d\'argent.' });
+      }
+    }
+    console.error('Clan bank deposit error:', error);
+    res.status(500).json({ error: 'Failed to deposit to clan bank' });
   }
 });
 
@@ -1783,6 +1883,250 @@ router.post('/:id/requests/:requestId/reject', authMiddleware, async (req: AuthR
   }
 });
 
+// Promote a member to officer (leader permissions)
+router.post('/:id/members/:targetUserId/promote', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id, targetUserId } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const leader = await prisma.clanMember.findFirst({
+      where: {
+        clanId: id,
+        userId,
+        isLeader: true,
+      },
+      select: { id: true },
+    });
+
+    if (!leader) {
+      return res.status(403).json({ error: 'Seul un chef/officier peut promouvoir.' });
+    }
+
+    if (targetUserId === userId) {
+      return res.status(400).json({ error: 'Tu ne peux pas te promouvoir toi-meme.' });
+    }
+
+    const [member, clanInfo] = await Promise.all([
+      prisma.clanMember.findUnique({
+        where: {
+          clanId_userId: {
+            clanId: id,
+            userId: targetUserId,
+          },
+        },
+        select: { id: true, isLeader: true },
+      }),
+      prisma.clan.findUnique({ where: { id }, select: { name: true } }),
+    ]);
+
+    if (!member) {
+      return res.status(404).json({ error: 'Membre introuvable dans ce clan.' });
+    }
+
+    if (member.isLeader) {
+      return res.status(400).json({ error: 'Ce membre est deja promu.' });
+    }
+
+    await prisma.clanMember.update({
+      where: { id: member.id },
+      data: { isLeader: true },
+    });
+
+    createNotification({
+      userId: targetUserId,
+      type: 'SYSTEM',
+      title: 'Promotion de clan',
+      body: clanInfo?.name
+        ? `Tu as ete promu officier dans le clan ${clanInfo.name}.`
+        : 'Tu as ete promu officier dans ton clan.',
+      data: {
+        clanId: id,
+        clanName: clanInfo?.name ?? null,
+        promotedByUserId: userId,
+      },
+      link: '/clans',
+      icon: 'sparkles',
+    }).catch(() => {});
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Promote clan member error:', error);
+    res.status(500).json({ error: 'Failed to promote member' });
+  }
+});
+
+// Demote an officer/member with leader permissions
+router.post('/:id/members/:targetUserId/demote', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id, targetUserId } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const leader = await prisma.clanMember.findFirst({
+      where: {
+        clanId: id,
+        userId,
+        isLeader: true,
+      },
+      select: { id: true },
+    });
+
+    if (!leader) {
+      return res.status(403).json({ error: 'Seul un chef/officier peut retrograder.' });
+    }
+
+    if (targetUserId === userId) {
+      return res.status(400).json({ error: 'Tu ne peux pas te retrograder toi-meme.' });
+    }
+
+    const [member, clanInfo] = await Promise.all([
+      prisma.clanMember.findUnique({
+        where: {
+          clanId_userId: {
+            clanId: id,
+            userId: targetUserId,
+          },
+        },
+        select: { id: true, isLeader: true },
+      }),
+      prisma.clan.findUnique({ where: { id }, select: { ownerId: true, name: true } }),
+    ]);
+
+    if (!member) {
+      return res.status(404).json({ error: 'Membre introuvable dans ce clan.' });
+    }
+
+    if (!member.isLeader) {
+      return res.status(400).json({ error: 'Ce membre est deja simple membre.' });
+    }
+
+    if (clanInfo?.ownerId === targetUserId) {
+      return res.status(400).json({ error: 'Le chef ne peut pas etre retrograde. Transfere le role de chef avant.' });
+    }
+
+    await prisma.clanMember.update({
+      where: { id: member.id },
+      data: { isLeader: false },
+    });
+
+    createNotification({
+      userId: targetUserId,
+      type: 'SYSTEM',
+      title: 'Retrogradation de clan',
+      body: clanInfo?.name
+        ? `Tu es repasse membre dans le clan ${clanInfo.name}.`
+        : 'Tu es repasse membre dans ton clan.',
+      data: {
+        clanId: id,
+        clanName: clanInfo?.name ?? null,
+        demotedByUserId: userId,
+      },
+      link: '/clans',
+      icon: 'shield',
+    }).catch(() => {});
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Demote clan member error:', error);
+    res.status(500).json({ error: 'Failed to demote member' });
+  }
+});
+
+// Transfer clan owner role to another member
+router.post('/:id/members/:targetUserId/transfer-leadership', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id, targetUserId } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (targetUserId === userId) {
+      return res.status(400).json({ error: 'Tu es deja le chef de ce clan.' });
+    }
+
+    const [clan, currentMember, targetMember] = await Promise.all([
+      prisma.clan.findUnique({ where: { id }, select: { id: true, ownerId: true, name: true } }),
+      prisma.clanMember.findUnique({
+        where: {
+          clanId_userId: {
+            clanId: id,
+            userId,
+          },
+        },
+        select: { id: true, isLeader: true },
+      }),
+      prisma.clanMember.findUnique({
+        where: {
+          clanId_userId: {
+            clanId: id,
+            userId: targetUserId,
+          },
+        },
+        select: { id: true },
+      }),
+    ]);
+
+    if (!clan) {
+      return res.status(404).json({ error: 'Clan introuvable.' });
+    }
+
+    if (!currentMember || !currentMember.isLeader || clan.ownerId !== userId) {
+      return res.status(403).json({ error: 'Seul le chef actuel peut transferer ce role.' });
+    }
+
+    if (!targetMember) {
+      return res.status(404).json({ error: 'Membre cible introuvable dans ce clan.' });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.clan.update({
+        where: { id },
+        data: { ownerId: targetUserId },
+      });
+
+      await tx.clanMember.update({
+        where: { id: currentMember.id },
+        data: { isLeader: false },
+      });
+
+      await tx.clanMember.update({
+        where: { id: targetMember.id },
+        data: { isLeader: true },
+      });
+    });
+
+    createNotification({
+      userId: targetUserId,
+      type: 'SYSTEM',
+      title: 'Nouveau chef de clan',
+      body: clan.name
+        ? `Tu es maintenant le chef du clan ${clan.name}.`
+        : 'Tu es maintenant le chef de ton clan.',
+      data: {
+        clanId: id,
+        clanName: clan.name,
+        previousLeaderUserId: userId,
+      },
+      link: '/clans',
+      icon: 'crown',
+    }).catch(() => {});
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Transfer clan leadership error:', error);
+    res.status(500).json({ error: 'Failed to transfer leadership' });
+  }
+});
+
 // Leave a clan
 router.delete('/:id/leave', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
@@ -1923,11 +2267,15 @@ router.delete('/:id/members/:targetUserId', authMiddleware, async (req: AuthRequ
           userId: targetUserId,
         },
       },
-      select: { id: true },
+      select: { id: true, isLeader: true },
     });
 
     if (!member) {
       return res.status(404).json({ error: 'Membre introuvable dans ce clan.' });
+    }
+
+    if (member.isLeader) {
+      return res.status(400).json({ error: 'Retrograde ce membre avant de le retirer du clan.' });
     }
 
     await prisma.clanMember.delete({

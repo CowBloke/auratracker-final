@@ -1315,6 +1315,59 @@ const BADGE_SELECT = {
   rarity: true,
 } as const;
 
+async function attachUserDecorations<T extends { user: { id: string } }>(rows: T[]) {
+  if (rows.length === 0) return rows.map((row) => ({ ...row, badges: [], user: { ...row.user, clanTag: null } }));
+
+  const userIds = rows.map((r) => r.user.id);
+  const [badgeUsers, clanMemberships] = await Promise.all([
+    prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: {
+        id: true,
+        equippedBadge1: { select: BADGE_SELECT },
+        equippedBadge2: { select: BADGE_SELECT },
+      },
+    }),
+    prisma.clanMember.findMany({
+      where: { userId: { in: userIds } },
+      select: { userId: true, clan: { select: { tagUnlocked: true, tagText: true, tagStyle: true } } },
+    }),
+  ]);
+
+  const badgeMap = new Map(
+    badgeUsers.map((u) => [
+      u.id,
+      [
+        ...(u.equippedBadge1 ? [u.equippedBadge1] : []),
+        ...(u.equippedBadge2 ? [u.equippedBadge2] : []),
+      ],
+    ])
+  );
+
+  const clanTagMap = new Map(
+    clanMemberships
+      .filter((m) => m.clan?.tagUnlocked && m.clan?.tagText)
+      .map((m) => [m.userId, { text: m.clan!.tagText!, style: m.clan!.tagStyle }])
+  );
+
+  return rows.map((r) => ({
+    ...r,
+    badges: badgeMap.get(r.user.id) ?? [],
+    user: { ...r.user, clanTag: clanTagMap.get(r.user.id) ?? null },
+  }));
+}
+
+function extractActiveGoyaveCount(saveData: string): number {
+  try {
+    const parsed = JSON.parse(saveData) as { guavas?: unknown };
+    const guavas = typeof parsed.guavas === 'number' ? parsed.guavas : Number(parsed.guavas);
+    if (!Number.isFinite(guavas) || guavas < 0) return 0;
+    return Math.floor(guavas);
+  } catch {
+    return 0;
+  }
+}
+
 // Get game leaderboard
 router.get('/:gameType/leaderboard', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
@@ -1335,47 +1388,55 @@ router.get('/:gameType/leaderboard', authMiddleware, async (req: AuthRequest, re
       },
     });
 
-    // Attach equipped badges and clan tags
-    let rankings: any[] = rawRankings;
-    if (rawRankings.length > 0) {
-      const userIds = rawRankings.map((r) => r.user.id);
-      const [badgeUsers, clanMemberships] = await Promise.all([
-        prisma.user.findMany({
-          where: { id: { in: userIds } },
-          select: {
-            id: true,
-            equippedBadge1: { select: BADGE_SELECT },
-            equippedBadge2: { select: BADGE_SELECT },
-          },
-        }),
-        prisma.clanMember.findMany({
-          where: { userId: { in: userIds } },
-          select: { userId: true, clan: { select: { tagUnlocked: true, tagText: true, tagStyle: true } } },
-        }),
-      ]);
-      const badgeMap = new Map(badgeUsers.map((u) => [
-        u.id,
-        [
-          ...(u.equippedBadge1 ? [u.equippedBadge1] : []),
-          ...(u.equippedBadge2 ? [u.equippedBadge2] : []),
-        ],
-      ]));
-      const clanTagMap = new Map(
-        clanMemberships
-          .filter((m) => m.clan?.tagUnlocked && m.clan?.tagText)
-          .map((m) => [m.userId, { text: m.clan!.tagText!, style: m.clan!.tagStyle }])
-      );
-      rankings = rawRankings.map((r) => ({
-        ...r,
-        badges: badgeMap.get(r.user.id) ?? [],
-        user: { ...r.user, clanTag: clanTagMap.get(r.user.id) ?? null },
-      }));
-    }
+    const rankings = await attachUserDecorations(rawRankings);
 
     res.json({ rankings });
   } catch (error) {
     console.error('Get game leaderboard error:', error);
     res.status(500).json({ error: 'Failed to get leaderboard' });
+  }
+});
+
+// Goyave Empire: active leaderboard (recently synced players ranked by current guavas)
+router.get('/goyave_empire/active-leaderboard', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { limit = '20' } = req.query;
+    const parsedLimit = Math.min(Math.max(parseInt(limit as string, 10) || 20, 1), 100);
+    const activeSince = new Date(Date.now() - 3 * 60 * 1000);
+
+    const saves = await prisma.goyaveSave.findMany({
+      where: {
+        updatedAt: { gte: activeSince },
+        user: { isSuperAdmin: false },
+      },
+      select: {
+        id: true,
+        saveData: true,
+        user: {
+          select: {
+            id: true,
+            username: true,
+            usernameColor: true,
+          },
+        },
+      },
+    });
+
+    const ranked = saves
+      .map((save) => ({
+        id: save.id,
+        highScore: extractActiveGoyaveCount(save.saveData),
+        user: save.user,
+      }))
+      .filter((entry) => entry.highScore > 0)
+      .sort((a, b) => b.highScore - a.highScore)
+      .slice(0, parsedLimit);
+
+    const rankings = await attachUserDecorations(ranked);
+    res.json({ rankings, windowSeconds: 180 });
+  } catch (error) {
+    console.error('Get active goyave leaderboard error:', error);
+    res.status(500).json({ error: 'Failed to get active leaderboard' });
   }
 });
 

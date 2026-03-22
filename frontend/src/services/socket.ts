@@ -211,16 +211,16 @@ export const battleshipEvents = {
 
 // Duel events
 export const duelEvents = {
-  challenge: (targetId: string, gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno') => {
+  challenge: (targetId: string, gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' | 'morpion') => {
     socket?.emit('duel:challenge', { targetId, gameType });
   },
-  accept: (challengerId: string, gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno') => {
+  accept: (challengerId: string, gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' | 'morpion') => {
     socket?.emit('duel:accept', { challengerId, gameType });
   },
-  decline: (challengerId: string, gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno') => {
+  decline: (challengerId: string, gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' | 'morpion') => {
     socket?.emit('duel:decline', { challengerId, gameType });
   },
-  cancel: (targetId: string, gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno') => {
+  cancel: (targetId: string, gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' | 'morpion') => {
     socket?.emit('duel:cancel', { targetId, gameType });
   },
   joinMatchmaking: () => {

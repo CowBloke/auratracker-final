@@ -22,6 +22,7 @@ export interface GameLeaderboardEntry {
 interface GameLeaderboardProps {
   entries: GameLeaderboardEntry[];
   currentUserId?: string;
+  personalHighScore?: number | null;
   isAdmin?: boolean;
   onDeleteScore?: (userId: string, username: string) => void;
   title?: string;
@@ -120,6 +121,7 @@ function LeaderboardList({
 export function GameLeaderboard({
   entries,
   currentUserId,
+  personalHighScore,
   isAdmin,
   onDeleteScore,
   title = 'Classement',
@@ -127,6 +129,29 @@ export function GameLeaderboard({
   hidden,
   noCard,
 }: GameLeaderboardProps) {
+  const recordDuJeu = entries.length > 0 ? entries[0].highScore : null;
+  const recordPersonnelFromEntries = currentUserId
+    ? entries.find((entry) => entry.user.id === currentUserId)?.highScore
+    : null;
+  const recordPersonnel = personalHighScore ?? recordPersonnelFromEntries ?? null;
+
+  const recordsSummary = (
+    <div className="grid grid-cols-2 gap-2 border-b border-border/20 px-4 py-3">
+      <div className="rounded-md bg-muted/40 px-3 py-2">
+        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Record perso</p>
+        <p className="text-sm font-medium tabular-nums">
+          {recordPersonnel !== null ? recordPersonnel.toLocaleString() : '--'}
+        </p>
+      </div>
+      <div className="rounded-md bg-muted/40 px-3 py-2">
+        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Record du jeu</p>
+        <p className="text-sm font-medium tabular-nums">
+          {recordDuJeu !== null ? recordDuJeu.toLocaleString() : '--'}
+        </p>
+      </div>
+    </div>
+  );
+
   const list = (
     <LeaderboardList
       entries={entries}
@@ -137,7 +162,14 @@ export function GameLeaderboard({
     />
   );
 
-  if (noCard) return list;
+  if (noCard) {
+    return (
+      <>
+        {recordsSummary}
+        {list}
+      </>
+    );
+  }
 
   return (
     <Card className={cn(hidden && 'hidden')}>
@@ -148,6 +180,7 @@ export function GameLeaderboard({
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
+        {recordsSummary}
         {list}
       </CardContent>
     </Card>

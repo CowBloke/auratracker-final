@@ -630,6 +630,7 @@ export default function Game2048() {
       <GameLeaderboard
         entries={leaderboard}
         currentUserId={user?.id}
+        personalHighScore={highScore}
         isAdmin={user?.isAdmin}
         onDeleteScore={handleDeleteScore}
         maxHeight={350}

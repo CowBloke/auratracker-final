@@ -189,6 +189,8 @@ export const gamesApi = {
     api.post(`/games/${gameType}/complete`, data),
   getLeaderboard: (gameType: string, limit?: number) =>
     api.get(`/games/${gameType}/leaderboard`, { params: { limit } }),
+  getGoyaveActiveLeaderboard: (limit?: number) =>
+    api.get('/games/goyave_empire/active-leaderboard', { params: { limit } }),
   getDailyRacerState: (limit?: number) =>
     api.get<DailyRacerStateResponse>('/games/daily/racer', { params: { limit } }),
   submitDailyRacerRun: (lapTimeMs: number) =>
@@ -413,6 +415,8 @@ export interface ClanSummary {
   tagText: string | null;
   tagStyle: string | null;
   slotUpgraded: boolean;
+  clanBankMoney: number;
+  level: number;
 }
 
 export interface ClanMember {
@@ -631,7 +635,7 @@ export interface ClanWarGamesStatus {
 
 export const clansApi = {
   list: () => api.get<ClansListResponse>('/clans'),
-  myStatus: () => api.get<{ inClan: boolean; isLeader?: boolean; tagUnlocked: boolean; slotUpgraded: boolean }>('/clans/me/status'),
+  myStatus: () => api.get<{ inClan: boolean; isLeader?: boolean; tagUnlocked: boolean; slotUpgraded: boolean; clanBankMoney: number; level: number }>('/clans/me/status'),
   getById: (id: string) => api.get<{ clan: ClanDetail }>(`/clans/${id}`),
   getGlobalWarHistory: () => api.get<{ wars: ClanWarState[] }>('/clans/wars/history'),
   getChat: (id: string, limit = 50) => api.get<{ messages: ClanChatMessage[] }>(`/clans/${id}/chat`, { params: { limit } }),
@@ -651,8 +655,16 @@ export const clansApi = {
     api.post(`/clans/${clanId}/requests/${requestId}/accept`),
   rejectRequest: (clanId: string, requestId: string) =>
     api.post(`/clans/${clanId}/requests/${requestId}/reject`),
+  promoteMember: (clanId: string, userId: string) =>
+    api.post(`/clans/${clanId}/members/${userId}/promote`),
+  demoteMember: (clanId: string, userId: string) =>
+    api.post(`/clans/${clanId}/members/${userId}/demote`),
+  transferLeadership: (clanId: string, userId: string) =>
+    api.post(`/clans/${clanId}/members/${userId}/transfer-leadership`),
   removeMember: (clanId: string, userId: string) =>
     api.delete(`/clans/${clanId}/members/${userId}`),
+  depositToBank: (clanId: string, amount: number) =>
+    api.post<{ success: boolean; deposited: number; clanBankMoney: number; newBalance: { aura: number | string; money: number } }>(`/clans/${clanId}/bank/deposit`, { amount }),
   updateTag: (id: string, data: { tagText?: string; tagStyle?: object }) =>
     api.put<{ success: boolean; tagText: string | null; tagStyle: string | null }>(`/clans/${id}/tag`, data),
   // War mini-games
@@ -727,6 +739,8 @@ export interface AdminClan {
   imageUrl: string | null;
   isPublic: boolean;
   maxMembers: number;
+  clanBankMoney: number;
+  level: number;
   createdAt: string;
   updatedAt: string;
   owner: {
