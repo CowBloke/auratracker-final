@@ -49,7 +49,7 @@ export function SpectateEffectBar({ messages, onSend, showInput = true }: Props)
     const now = Date.now();
     if (now - lastSentAtRef.current < 1000) return; // 1 s client-side cooldown
     lastSentAtRef.current = now;
-    onSend(trimmed);
+    onSend?.(trimmed);
     setText('');
   }, [text, onSend]);
 
