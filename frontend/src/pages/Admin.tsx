@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { adminApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, supportApi, SupportThread, SupportMessage } from '../services/api';
+import { adminApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown } from '../services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
@@ -475,7 +475,7 @@ export default function Admin() {
   const [massBanTargetIds, setMassBanTargetIds] = useState<string[]>([]);
   const [clearingChat, setClearingChat] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'inbox' | 'users' | 'clubs' | 'logs' | 'bans' | 'content' | 'communication' | 'settings' | 'activity' | 'badges' | 'support'>('inbox');
+  const [activeTab, setActiveTab] = useState<'inbox' | 'users' | 'clubs' | 'logs' | 'bans' | 'content' | 'communication' | 'settings' | 'activity' | 'badges'>('inbox');
   const [commSubTab, setCommSubTab] = useState<'announcement' | 'login' | 'updates' | 'maintenance'>('announcement');
 
   // ── Badge tab state ────────────────────────────────────────────────────────
@@ -495,74 +495,7 @@ export default function Admin() {
   const [awardBadgeId, setAwardBadgeId] = useState('');
   const [awardBadgeReason, setAwardBadgeReason] = useState('');
 
-  // Support state
-  const [supportThreads, setSupportThreads] = useState<SupportThread[]>([]);
-  const [supportThreadsLoading, setSupportThreadsLoading] = useState(false);
-  const [activeThreadUserId, setActiveThreadUserId] = useState<string | null>(null);
-  const [activeThreadMessages, setActiveThreadMessages] = useState<SupportMessage[]>([]);
-  const [activeThreadUser, setActiveThreadUser] = useState<SupportThread['user'] | null>(null);
-  const [supportReply, setSupportReply] = useState('');
-  const [supportSending, setSupportSending] = useState(false);
-  const [supportUnread, setSupportUnread] = useState(0);
-  const supportMessagesEndRef = useRef<HTMLDivElement>(null);
-  const [newThreadOpen, setNewThreadOpen] = useState(false);
-  const [newThreadUserId, setNewThreadUserId] = useState('');
-  const [newThreadBody, setNewThreadBody] = useState('');
-  const [newThreadSending, setNewThreadSending] = useState(false);
-  const [newThreadSearch, setNewThreadSearch] = useState('');
 
-  const fetchSupportThreads = async () => {
-    setSupportThreadsLoading(true);
-    try {
-      const res = await supportApi.getThreads();
-      setSupportThreads(res.data.threads);
-      setSupportUnread(res.data.threads.reduce((sum, t) => sum + t.unreadCount, 0));
-    } catch { /* non-critical */ }
-    finally { setSupportThreadsLoading(false); }
-  };
-
-  const openSupportThread = async (userId: string) => {
-    setActiveThreadUserId(userId);
-    try {
-      const res = await supportApi.getThread(userId);
-      setActiveThreadMessages(res.data.messages);
-      setActiveThreadUser(res.data.user);
-      await supportApi.markThreadRead(userId);
-      setSupportThreads((prev) =>
-        prev.map((t) => (t.userId === userId ? { ...t, unreadCount: 0 } : t))
-      );
-      setSupportUnread((prev) => {
-        const thread = supportThreads.find((t) => t.userId === userId);
-        return Math.max(0, prev - (thread?.unreadCount ?? 0));
-      });
-    } catch { /* non-critical */ }
-  };
-
-  const handleSupportReply = async () => {
-    if (!activeThreadUserId || !supportReply.trim() || supportSending) return;
-    setSupportSending(true);
-    try {
-      const res = await supportApi.reply(activeThreadUserId, supportReply.trim());
-      setActiveThreadMessages((prev) => [...prev, res.data.message]);
-      setSupportReply('');
-    } catch { /* non-critical */ }
-    finally { setSupportSending(false); }
-  };
-
-  const handleStartThread = async () => {
-    if (!newThreadUserId || !newThreadBody.trim() || newThreadSending) return;
-    setNewThreadSending(true);
-    try {
-      await supportApi.reply(newThreadUserId, newThreadBody.trim());
-      setNewThreadOpen(false);
-      setNewThreadBody('');
-      setNewThreadUserId('');
-      setNewThreadSearch('');
-      await fetchSupportThreads();
-      await openSupportThread(newThreadUserId);
-    } catch { /* non-critical */ }
-    finally { setNewThreadSending(false); }
-  };
 
   const fetchBadges = async () => {
     setBadgesLoading(true);
@@ -1042,61 +975,8 @@ export default function Admin() {
     fetchUpdatePopups();
     fetchActivity('day');
     fetchActivityBreakdown(new Date().toISOString().slice(0, 10));
-    fetchSupportThreads();
   }, []);
 
-  // Real-time support messages for admin
-  useEffect(() => {
-    if (!socket) return;
-    const handleSupportMessage = (data: { message: SupportMessage; username?: string }) => {
-      const msg = data.message;
-      // Update thread list
-      setSupportThreads((prev) => {
-        const existing = prev.find((t) => t.userId === msg.userId);
-        if (existing) {
-          return prev.map((t) =>
-            t.userId === msg.userId
-              ? {
-                  ...t,
-                  lastBody: msg.body,
-                  lastFromAdmin: msg.fromAdmin,
-                  lastCreatedAt: msg.createdAt,
-                  unreadCount: !msg.fromAdmin && activeThreadUserId !== msg.userId ? t.unreadCount + 1 : t.unreadCount,
-                }
-              : t
-          ).sort((a, b) => new Date(b.lastCreatedAt).getTime() - new Date(a.lastCreatedAt).getTime());
-        }
-        // New thread
-        return [
-          {
-            userId: msg.userId,
-            user: null,
-            lastBody: msg.body,
-            lastFromAdmin: msg.fromAdmin,
-            lastCreatedAt: msg.createdAt,
-            unreadCount: !msg.fromAdmin ? 1 : 0,
-          },
-          ...prev,
-        ];
-      });
-      if (!msg.fromAdmin) {
-        setSupportUnread((c) => (activeThreadUserId !== msg.userId ? c + 1 : c));
-      }
-      // If thread is open and msg belongs to it, append
-      if (activeThreadUserId === msg.userId) {
-        setActiveThreadMessages((prev) => {
-          if (prev.some((m) => m.id === msg.id)) return prev;
-          return [...prev, msg];
-        });
-      }
-    };
-    socket.on('support:message', handleSupportMessage);
-    return () => { socket.off('support:message', handleSupportMessage); };
-  }, [socket, activeThreadUserId]);
-
-  useEffect(() => {
-    supportMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [activeThreadMessages]);
 
   const fetchActivityBreakdown = async (date = activityBreakdownDay) => {
     try {
@@ -2651,15 +2531,6 @@ export default function Admin() {
             Badges
             {badges.length > 0 && (
               <span className={TYPOGRAPHY.XS}>{badges.length}</span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="support" className="flex items-center gap-2" onClick={fetchSupportThreads}>
-            <MessageCircle className="h-4 w-4" />
-            Support
-            {supportUnread > 0 && (
-              <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[11px] font-semibold leading-none">
-                {supportUnread}
-              </span>
             )}
           </TabsTrigger>
         </TabsList>
@@ -7071,174 +6942,6 @@ export default function Admin() {
               </DialogContent>
             </Dialog>
 
-          </div>
-        </TabsContent>
-
-        {/* ── SUPPORT TAB ──────────────────────────────────────────────────────── */}
-        <TabsContent value="support" className={SPACING.SECTION_SPACING}>
-          {/* New thread dialog */}
-          <Dialog open={newThreadOpen} onOpenChange={(o) => { setNewThreadOpen(o); if (!o) { setNewThreadUserId(''); setNewThreadBody(''); setNewThreadSearch(''); } }}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Nouvelle conversation</DialogTitle>
-                <DialogDescription>Envoie un premier message à un utilisateur.</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-3 py-2">
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">Utilisateur</label>
-                  <Input
-                    placeholder="Rechercher un utilisateur…"
-                    value={newThreadSearch}
-                    onChange={(e) => { setNewThreadSearch(e.target.value); setNewThreadUserId(''); }}
-                    className="mb-2"
-                  />
-                  {newThreadSearch.trim() && (
-                    <div className="border border-border rounded-md max-h-40 overflow-y-auto">
-                      {users
-                        .filter((u) => u.username.toLowerCase().includes(newThreadSearch.toLowerCase()))
-                        .slice(0, 10)
-                        .map((u) => (
-                          <button
-                            key={u.id}
-                            type="button"
-                            className={cn('w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors', newThreadUserId === u.id && 'bg-muted font-medium')}
-                            onClick={() => { setNewThreadUserId(u.id); setNewThreadSearch(u.username); }}
-                          >
-                            {u.username}
-                          </button>
-                        ))}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">Message</label>
-                  <Textarea
-                    value={newThreadBody}
-                    onChange={(e) => setNewThreadBody(e.target.value)}
-                    placeholder="Votre message…"
-                    rows={3}
-                    maxLength={1000}
-                    className="resize-none"
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setNewThreadOpen(false)}>Annuler</Button>
-                <Button disabled={!newThreadUserId || !newThreadBody.trim() || newThreadSending} onClick={handleStartThread}>
-                  {newThreadSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-                  Envoyer
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          <div className="flex gap-4 h-[600px]">
-            {/* Thread list */}
-            <div className="w-72 shrink-0 flex flex-col border border-border rounded-lg overflow-hidden">
-              <div className="px-4 py-3 border-b border-border bg-muted/40 flex items-center justify-between">
-                <h3 className={TYPOGRAPHY.H4}>Conversations</h3>
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" title="Nouvelle conversation" onClick={() => setNewThreadOpen(true)}>
-                    <Plus className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={fetchSupportThreads}>
-                    <RefreshCw className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-              <div className="flex-1 overflow-y-auto">
-                {supportThreadsLoading ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  </div>
-                ) : supportThreads.length === 0 ? (
-                  <p className={cn(TYPOGRAPHY.MUTED, 'p-4 text-center')}>Aucune conversation.</p>
-                ) : (
-                  supportThreads.map((thread) => (
-                    <button
-                      key={thread.userId}
-                      type="button"
-                      onClick={() => openSupportThread(thread.userId)}
-                      className={cn(
-                        'w-full text-left px-4 py-3 border-b border-border/50 hover:bg-muted/40 transition-colors',
-                        activeThreadUserId === thread.userId && 'bg-muted'
-                      )}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium truncate">
-                          {thread.user?.username ?? thread.userId}
-                        </span>
-                        {thread.unreadCount > 0 && (
-                          <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-semibold shrink-0">
-                            {thread.unreadCount}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">
-                        {thread.lastFromAdmin ? '↩ ' : ''}{thread.lastBody}
-                      </p>
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Thread view */}
-            <div className="flex-1 flex flex-col border border-border rounded-lg overflow-hidden">
-              {!activeThreadUserId ? (
-                <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
-                  Sélectionne une conversation.
-                </div>
-              ) : (
-                <>
-                  <div className="px-4 py-3 border-b border-border bg-muted/40">
-                    <h3 className={TYPOGRAPHY.H4}>{activeThreadUser?.username ?? activeThreadUserId}</h3>
-                  </div>
-                  <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
-                    {activeThreadMessages.map((msg) => (
-                      <div key={msg.id} className={cn('flex', msg.fromAdmin ? 'justify-end' : 'justify-start')}>
-                        <div className={cn(
-                          'max-w-[75%] rounded-2xl px-3 py-2 text-sm',
-                          msg.fromAdmin
-                            ? 'bg-primary text-primary-foreground rounded-tr-sm'
-                            : 'bg-muted text-foreground rounded-tl-sm'
-                        )}>
-                          {!msg.fromAdmin && (
-                            <p className="text-[10px] font-semibold text-primary mb-0.5">{activeThreadUser?.username}</p>
-                          )}
-                          <p className="break-words whitespace-pre-wrap">{msg.body}</p>
-                          <p className={cn('text-[10px] mt-1', msg.fromAdmin ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
-                            {new Date(msg.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                    <div ref={supportMessagesEndRef} />
-                  </div>
-                  <div className="border-t border-border p-3 flex gap-2 items-end">
-                    <Textarea
-                      value={supportReply}
-                      onChange={(e) => setSupportReply(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSupportReply(); }
-                      }}
-                      placeholder="Répondre…"
-                      className="resize-none text-sm min-h-[36px] max-h-24 py-2"
-                      rows={1}
-                      maxLength={1000}
-                    />
-                    <Button
-                      size="icon"
-                      className="h-9 w-9 shrink-0"
-                      disabled={!supportReply.trim() || supportSending}
-                      onClick={handleSupportReply}
-                    >
-                      <Send className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </>
-              )}
-            </div>
           </div>
         </TabsContent>
 

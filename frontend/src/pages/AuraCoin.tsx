@@ -84,7 +84,7 @@ export default function AuraCoin() {
     const handlePriceUpdate = (data: { price: number; timestamp: string }) => {
       setCurrentPrice(data.price);
       setPriceHistory(prev => [
-        ...prev.slice(-288), // Keep last 24h of 5min intervals
+        ...prev.slice(-249),
         { price: data.price, volume: 0, createdAt: data.timestamp },
       ]);
       // Refresh open positions to update P&L
@@ -235,7 +235,12 @@ export default function AuraCoin() {
     }
   };
   
-  const chartData = priceHistory.map((p) => ({
+  const MAX_CHART_POINTS = 250;
+  const sampledHistory = priceHistory.length > MAX_CHART_POINTS
+    ? priceHistory.filter((_, i) => i % Math.ceil(priceHistory.length / MAX_CHART_POINTS) === 0)
+    : priceHistory;
+
+  const chartData = sampledHistory.map((p) => ({
     time: formatChartTime(new Date(p.createdAt), timePeriod),
     price: p.price,
     timestamp: p.createdAt,

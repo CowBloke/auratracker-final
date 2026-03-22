@@ -690,7 +690,7 @@ export default function ChatSidebar() {
                   onClick={handleInputCursorChange}
                   placeholder="Message..."
                   rows={1}
-                  className="min-h-9 max-h-40 resize-none overflow-y-auto text-sm bg-transparent border-border/50 py-2"
+                  className="min-h-9 max-h-40 resize-none overflow-y-hidden text-sm bg-transparent border-border/50 py-2"
                 />
                 {showMentionList && (
                   <div className="absolute bottom-full z-50 mb-2 w-full rounded-md border border-border/60 bg-background/95 shadow-lg">
