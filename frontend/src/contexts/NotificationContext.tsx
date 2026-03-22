@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from './AuthContext';
 import { notificationsApi, type Notification } from '@/services/api';
@@ -44,16 +44,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [loadingArchived, setLoadingArchived] = useState(false);
-  const [, setPage] = useState(1);
-  const [, setArchivedPage] = useState(1);
+  const [page, setPage] = useState(1);
+  const [archivedPage, setArchivedPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [hasMoreArchived, setHasMoreArchived] = useState(true);
   const socketRef = useRef<ReturnType<typeof import('../services/socket').initSocket> | null>(null);
   const notificationsRef = useRef<Notification[]>([]);
   const archivedNotificationsRef = useRef<Notification[]>([]);
-  // Refs for page values so fetch callbacks remain stable across page increments
-  const pageRef = useRef(1);
-  const archivedPageRef = useRef(1);
 
   useEffect(() => {
     notificationsRef.current = notifications;
@@ -94,42 +91,38 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     async (opts: { reset?: boolean } = {}) => {
       if (!user) return;
       const { reset = false } = opts;
-      const nextPage = reset ? 1 : pageRef.current;
+      const nextPage = reset ? 1 : page;
       setLoading(true);
       try {
         const res = await notificationsApi.getAll({ page: nextPage, limit: 20, archived: false });
         const { notifications: fetched, totalPages } = res.data;
         setNotifications((prev) => (reset ? fetched : mergeNotifications(prev, fetched)));
-        const newPage = nextPage + 1;
-        pageRef.current = newPage;
-        setPage(newPage);
+        setPage(nextPage + 1);
         setHasMore(nextPage < totalPages);
       } catch { /* silent */ } finally {
         setLoading(false);
       }
     },
-    [user?.id]
+    [user, page]
   );
 
   const fetchArchived = useCallback(
     async (opts: { reset?: boolean } = {}) => {
       if (!user) return;
       const { reset = false } = opts;
-      const nextPage = reset ? 1 : archivedPageRef.current;
+      const nextPage = reset ? 1 : archivedPage;
       setLoadingArchived(true);
       try {
         const res = await notificationsApi.getAll({ page: nextPage, limit: 20, archived: true });
         const { notifications: fetched, totalPages } = res.data;
         setArchivedNotifications((prev) => (reset ? fetched : mergeNotifications(prev, fetched)));
-        const newPage = nextPage + 1;
-        archivedPageRef.current = newPage;
-        setArchivedPage(newPage);
+        setArchivedPage(nextPage + 1);
         setHasMoreArchived(nextPage < totalPages);
       } catch { /* silent */ } finally {
         setLoadingArchived(false);
       }
     },
-    [user?.id]
+    [user, archivedPage]
   );
 
   useEffect(() => {
@@ -144,8 +137,6 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     setNotifications([]);
     setArchivedNotifications([]);
     setUnreadCount(0);
-    pageRef.current = 1;
-    archivedPageRef.current = 1;
     setPage(1);
     setArchivedPage(1);
     setHasMore(true);
@@ -236,7 +227,6 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
       socket.on('connect', () => {
         refreshCount();
-        pageRef.current = 1;
         setPage(1);
         setHasMore(true);
         fetchNotifications({ reset: true });
@@ -336,32 +326,25 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     } catch { /* silent */ }
   }, []);
 
-  const value = useMemo(
-    () => ({
-      notifications,
-      archivedNotifications,
-      unreadCount,
-      loading,
-      loadingArchived,
-      hasMore,
-      hasMoreArchived,
-      fetchNotifications,
-      fetchArchived,
-      markRead,
-      markAllRead,
-      archiveNotification,
-      unarchiveNotification,
-      archiveAllRead,
-    }),
-    [
-      notifications, archivedNotifications, unreadCount, loading, loadingArchived,
-      hasMore, hasMoreArchived, fetchNotifications, fetchArchived, markRead, markAllRead,
-      archiveNotification, unarchiveNotification, archiveAllRead,
-    ]
-  );
-
   return (
-    <NotificationContext.Provider value={value}>
+    <NotificationContext.Provider
+      value={{
+        notifications,
+        archivedNotifications,
+        unreadCount,
+        loading,
+        loadingArchived,
+        hasMore,
+        hasMoreArchived,
+        fetchNotifications,
+        fetchArchived,
+        markRead,
+        markAllRead,
+        archiveNotification,
+        unarchiveNotification,
+        archiveAllRead,
+      }}
+    >
       {children}
     </NotificationContext.Provider>
   );

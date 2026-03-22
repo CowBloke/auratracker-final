@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { marketplaceApi, giftsApi, usersApi, clansApi, ShopItem, ShopCategory, AdminInventoryItem } from '../services/api';
+import { marketplaceApi, giftsApi, usersApi, ShopItem, ShopCategory, AdminInventoryItem } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -95,8 +95,6 @@ const getEffectLabel = (effect: string | null) => {
     if (p.type === 'PROFILE_PICTURE') return 'Photo de profil';
     if (p.type === 'DOODLE_JUMP_SKIN') return 'Skin Doodle Jump';
     if (p.type === 'GIFT') return 'Cadeau à envoyer';
-    if (p.type === 'CLAN_TAG_UNLOCK') return 'Déblocage tag clan';
-    if (p.type === 'CLAN_SLOT_UPGRADE') return '+1 slot clan';
   } catch { /**/ }
   return null;
 };
@@ -263,7 +261,6 @@ function ShopCard({
   user,
   buyingItemId,
   ownedSkinItemIds,
-  clanStatus,
   onPurchase,
   onSend,
 }: {
@@ -271,7 +268,6 @@ function ShopCard({
   user: ReturnType<typeof useAuth>['user'];
   buyingItemId: string | null;
   ownedSkinItemIds: Set<string>;
-  clanStatus: { inClan: boolean; isLeader?: boolean; tagUnlocked: boolean; slotUpgraded: boolean } | null;
   onPurchase: (item: ShopItem) => void;
   onSend: (item: ShopItem) => void;
 }) {
@@ -282,12 +278,6 @@ function ShopCard({
   const cfg = CATEGORY_CFG[item.type] ?? FALLBACK_CFG;
   const isBuying = buyingItemId === item.id;
   const isOwnedSkin = isDoodleJumpSkin(item) && ownedSkinItemIds.has(item.id);
-  const effectType = parseEffectType(item.effect);
-  const isClanTagItem = effectType === 'CLAN_TAG_UNLOCK';
-  const isClanSlotItem = effectType === 'CLAN_SLOT_UPGRADE';
-  const isClanTagOwned = isClanTagItem && (clanStatus?.tagUnlocked ?? false);
-  const isClanSlotOwned = isClanSlotItem && (clanStatus?.slotUpgraded ?? false);
-  const isClanUpgradeOwned = isClanTagOwned || isClanSlotOwned;
 
   const renderMedia = () => {
     if (skinUrl) return <DoodleJumpSkinPreview skinImageUrl={skinUrl} />;
@@ -365,10 +355,10 @@ function ShopCard({
           ) : (
             <button
               onClick={() => onPurchase(item)}
-              disabled={!canAfford || isBuying || isOwnedSkin || isClanUpgradeOwned}
+              disabled={!canAfford || isBuying || isOwnedSkin}
               className={cn(
                 'w-full rounded-lg py-2 text-sm font-semibold transition-all duration-150',
-                canAfford && !isBuying && !isOwnedSkin && !isClanUpgradeOwned
+                canAfford && !isBuying && !isOwnedSkin
                   ? cn(cfg.buyBtn)
                   : 'bg-muted/20 text-muted-foreground/50 cursor-not-allowed border border-border/20',
               )}
@@ -376,8 +366,8 @@ function ShopCard({
               <span className="flex items-center justify-center gap-2">
                 {isBuying ? (
                   <><Loader2 className="h-4 w-4 animate-spin" /> Achat...</>
-                ) : isOwnedSkin || isClanUpgradeOwned ? (
-                  'Déjà débloqué pour ton clan'
+                ) : isOwnedSkin ? (
+                  'Deja possede'
                 ) : canAfford ? (
                   <><ShoppingCart className="h-4 w-4" /> Acheter</>
                 ) : (
@@ -590,7 +580,6 @@ export default function Shop() {
   const [categories, setCategories] = useState<ShopCategory[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
   const [buyingItemId, setBuyingItemId] = useState<string | null>(null);
-  const [clanStatus, setClanStatus] = useState<{ inClan: boolean; isLeader?: boolean; tagUnlocked: boolean; slotUpgraded: boolean } | null>(null);
 
   // Gift dialog
   const [sendDialogItem, setSendDialogItem] = useState<ShopItem | null>(null);
@@ -607,15 +596,13 @@ export default function Shop() {
         const inventoryRequest = user?.id
           ? marketplaceApi.getInventory(user.id)
           : Promise.resolve({ data: { items: [] as AdminInventoryItem[] } });
-        const [itemsRes, categoriesRes, inventoryRes, clanStatusRes] = await Promise.all([
+        const [itemsRes, categoriesRes, inventoryRes] = await Promise.all([
           marketplaceApi.getItems({ limit: 100 }),
           marketplaceApi.getCategories(),
           inventoryRequest,
-          clansApi.myStatus().catch(() => ({ data: { inClan: false, tagUnlocked: false, slotUpgraded: false } })),
         ]);
         setItems(itemsRes.data.items || []);
         setInventoryItems(inventoryRes.data.items || []);
-        setClanStatus(clanStatusRes.data);
         if (categoriesRes.data.categories?.length) {
           setCategories(categoriesRes.data.categories);
         }
@@ -706,32 +693,20 @@ export default function Shop() {
         });
       }
 
-      const effectType = response.data.effect?.type;
-      const isClanTagUnlock = effectType === 'CLAN_TAG_UNLOCK';
-      const isClanSlotUpgrade = effectType === 'CLAN_SLOT_UPGRADE';
+      const isClanTagUnlock = response.data.effect?.type === 'CLAN_TAG_UNLOCK';
       const isDj = parseEffectType(item.effect) === 'DOODLE_JUMP_SKIN';
-
-      // Refresh clan status for instant UI update
-      if (isClanTagUnlock || isClanSlotUpgrade) {
-        clansApi.myStatus().then(res => setClanStatus(res.data)).catch(() => {});
-      }
-
       toast.success(
         isClanTagUnlock
-          ? 'Tag de clan débloqué !'
-          : isClanSlotUpgrade
-          ? 'Slot de clan débloqué !'
+          ? 'Tag de clan debloque !'
           : isDj
           ? `Skin "${item.name}" débloqué !`
-          : 'Achat confirmé',
+          : 'Achat confirme',
         {
           description: isClanTagUnlock
             ? 'Le tag est maintenant actif pour ton clan. Va dans Clans pour le personnaliser.'
-            : isClanSlotUpgrade
-            ? 'Ton clan peut maintenant accueillir un membre supplémentaire. Appliqué automatiquement.'
             : isDj
             ? 'Disponible dans Doodle Jump.'
-            : `${item.name} a été ajouté à ton inventaire.`,
+            : `${item.name} a ete ajoute a ton inventaire.`,
         },
       );
     } catch (error: unknown) {
@@ -863,7 +838,6 @@ export default function Shop() {
                         user={user}
                         buyingItemId={buyingItemId}
                         ownedSkinItemIds={ownedSkinItemIds}
-                        clanStatus={clanStatus}
                         onPurchase={handlePurchase}
                         onSend={openSendDialog}
                       />
@@ -884,7 +858,6 @@ export default function Shop() {
                         user={user}
                         buyingItemId={buyingItemId}
                         ownedSkinItemIds={ownedSkinItemIds}
-                        clanStatus={clanStatus}
                         onPurchase={handlePurchase}
                         onSend={openSendDialog}
                       />

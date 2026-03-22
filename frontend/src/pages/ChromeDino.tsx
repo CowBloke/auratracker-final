@@ -637,7 +637,7 @@ export default function ChromeDino() {
 
   const gameLoop = useCallback((timestamp: number) => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d', { alpha: false });
+    const ctx = canvas?.getContext('2d');
 
     if (!canvas || !ctx) return;
 
@@ -663,11 +663,8 @@ export default function ChromeDino() {
 
       speedRef.current = Math.min(MAX_SPEED, START_SPEED + scoreRef.current * SPEED_GAIN * 0.01);
       distanceRef.current += speedRef.current * delta;
-      const newScore = Math.floor(distanceRef.current * SCORE_SCALE);
-      if (newScore !== scoreRef.current) {
-        scoreRef.current = newScore;
-        setScore(newScore);
-      }
+      scoreRef.current = Math.floor(distanceRef.current * SCORE_SCALE);
+      setScore(scoreRef.current);
 
       player.targetHeight = player.ducking && player.onGround ? PLAYER_DUCK_HEIGHT : PLAYER_HEIGHT;
       player.targetWidth = player.ducking && player.onGround ? PLAYER_DUCK_WIDTH : PLAYER_WIDTH;

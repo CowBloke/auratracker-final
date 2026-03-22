@@ -537,7 +537,7 @@ export default function GeometryDash() {
 
   const gameLoop = useCallback((timestamp: number) => {
     const canvas = canvasRef.current;
-    if (canvas && !ctxRef.current) ctxRef.current = canvas.getContext('2d', { alpha: false });
+    if (canvas && !ctxRef.current) ctxRef.current = canvas.getContext('2d');
     const ctx = ctxRef.current;
 
     if (!canvas || !ctx) return;
@@ -558,11 +558,8 @@ export default function GeometryDash() {
 
       distanceRef.current += delta;
       cameraOffsetRef.current += moveAmount;
-      const newScore = Math.floor(cameraOffsetRef.current / 18);
-      if (newScore !== scoreRef.current) {
-        scoreRef.current = newScore;
-        setScore(newScore);
-      }
+      scoreRef.current = Math.floor(cameraOffsetRef.current / 18);
+      setScore(scoreRef.current);
 
       player.jumpBuffer = Math.max(0, player.jumpBuffer - delta);
       player.coyote = player.grounded ? COYOTE_TIME : Math.max(0, player.coyote - delta);
