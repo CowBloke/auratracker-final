@@ -13,6 +13,7 @@ import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
+import { SpectateEffectBar, type SpectateFloatingMessage } from '@/components/spectate/SpectateEffectBar';
 
 // ============================================
 // GAME CONSTANTS (from old implementation)
@@ -265,6 +266,8 @@ export default function DoodleJump() {
   const [isMultiplayer, setIsMultiplayer] = useState(true);
   const [spectatorCount, setSpectatorCount] = useState(0);
   const [spectatingHost, setSpectatingHost] = useState<{ hostUserId: string; hostUsername: string } | null>(null);
+  const [spectateMessages, setSpectateMessages] = useState<SpectateFloatingMessage[]>([]);
+  const spectateMessageIdRef = useRef(0);
   const [multiplayerRoster, setMultiplayerRoster] = useState<DoodleMultiplayerRosterItem[]>([]);
   const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
   const spectateHostUserIdFromRoute = ((location.state as { spectateHostUserId?: string } | null)?.spectateHostUserId) ?? null;
@@ -469,6 +472,7 @@ export default function DoodleJump() {
     spectateReplayQueueRef.current = [];
     confettiBurstsRef.current = [];
     setSpectatorCount(0);
+    setSpectateMessages([]);
 
     if (resetGameState) {
       setStarted(false);
@@ -479,6 +483,28 @@ export default function DoodleJump() {
       setIsNewHighScore(false);
     }
   }, []);
+
+  const addSpectateMessage = useCallback((text: string, username: string) => {
+    const id = spectateMessageIdRef.current++;
+    const duration = 6000 + Math.random() * 3000;
+    const msg: SpectateFloatingMessage = {
+      id,
+      text,
+      username,
+      y: 5 + Math.random() * 75,
+      direction: Math.random() < 0.5 ? 'ltr' : 'rtl',
+      duration,
+    };
+    setSpectateMessages((prev) => [...prev, msg]);
+    setTimeout(() => {
+      setSpectateMessages((prev) => prev.filter((m) => m.id !== id));
+    }, duration + 200);
+  }, []);
+
+  const sendSpectateMessage = useCallback((text: string) => {
+    if (!socket || !spectatingHostRef.current) return;
+    socket.emit('doodle:spectate-message', { hostUserId: spectatingHostRef.current.hostUserId, text });
+  }, [socket]);
 
   // ============================================
   // GAME INITIALIZATION
@@ -1204,12 +1230,26 @@ export default function DoodleJump() {
       }
     };
 
+    const handleEffectMessage = (data: { hostUserId: string; username: string; text: string }) => {
+      const currentHost = spectatingHostRef.current;
+      // Show for spectators watching this host
+      if (currentHost && data.hostUserId === currentHost.hostUserId) {
+        addSpectateMessage(data.text, data.username);
+        return;
+      }
+      // Show for the host themselves (they're in their own spectate room)
+      if (user && data.hostUserId === user.id) {
+        addSpectateMessage(data.text, data.username);
+      }
+    };
+
     socket.on('doodle:spectate-joined', handleJoined);
     socket.on('doodle:spectate-frame', handleFrame);
     socket.on('doodle:spectator-count', handleSpectatorCount);
     socket.on('doodle:spectate-stopped', handleStopped);
     socket.on('doodle:spectate-error', handleError);
     socket.on('doodle:spectate-confetti', handleConfetti);
+    socket.on('doodle:spectate-message-broadcast', handleEffectMessage);
 
     return () => {
       socket.off('doodle:spectate-joined', handleJoined);
@@ -1218,8 +1258,9 @@ export default function DoodleJump() {
       socket.off('doodle:spectate-stopped', handleStopped);
       socket.off('doodle:spectate-error', handleError);
       socket.off('doodle:spectate-confetti', handleConfetti);
+      socket.off('doodle:spectate-message-broadcast', handleEffectMessage);
     };
-  }, [addLocalConfettiBurst, applySpectateFrame, clearMultiplayerRoom, clearSpectateState, location.pathname, navigate, socket, stopSpectateBroadcast, user]);
+  }, [addLocalConfettiBurst, addSpectateMessage, applySpectateFrame, clearMultiplayerRoom, clearSpectateState, location.pathname, navigate, socket, stopSpectateBroadcast, user]);
 
   useEffect(() => {
     if (!socket || !user || !spectateHostUserIdFromRoute) return;
@@ -1730,6 +1771,15 @@ export default function DoodleJump() {
             className="block h-full w-full rounded-lg border border-border/30"
             style={{ imageRendering: 'pixelated' }}
           />
+
+          {/* Spectate effect bar — spectators get input, host just sees floating messages */}
+          {(spectatingHost || (isPlaying && spectateMessages.length > 0)) && (
+            <SpectateEffectBar
+              messages={spectateMessages}
+              onSend={sendSpectateMessage}
+              showInput={!!spectatingHost}
+            />
+          )}
 
           {/* Start Screen */}
           {!started && !spectatingHost && (

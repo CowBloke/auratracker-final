@@ -522,6 +522,30 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
     });
   });
 
+  socket.on('doodle:spectate-message', (data?: { hostUserId?: string; text?: string }) => {
+    const senderUserId = socket.data.userId as string | undefined;
+    const senderUsername = socket.data.username as string | undefined;
+    if (!senderUserId || !senderUsername) return;
+
+    const text = typeof data?.text === 'string' ? data.text.trim().slice(0, 80) : '';
+    if (!text) return;
+
+    // Resolve host — only spectators (not the host themselves) can send
+    const hostUserId = doodleSpectatorToHost.get(socket.id) ?? null;
+    if (!hostUserId) return;
+    if (data?.hostUserId && data.hostUserId !== hostUserId) return;
+
+    const session = doodleSessions.get(hostUserId);
+    if (!session) return;
+
+    io.to(getDoodleRoom(hostUserId)).emit('doodle:spectate-message-broadcast', {
+      hostUserId,
+      userId: senderUserId,
+      username: senderUsername,
+      text,
+    });
+  });
+
   socket.on('doodle:multiplayer-join', (data: { mode?: DoodleMode }) => {
     const userId = socket.data.userId as string | undefined;
     const username = socket.data.username as string | undefined;

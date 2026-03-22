@@ -49,7 +49,24 @@ export type AutoConditionKey =
   | 'BALL_ARENA_WIN'          // won a game of ball arena
   | 'POLYMARKET_SUGGESTION_ACCEPTED' // suggestion polymarket acceptée
   | 'POLYMARKET_BETTOR'       // a placé un pari polymarket
-  | 'POLYMARKET_WIN';         // a gagné un pari polymarket
+  | 'POLYMARKET_WIN'          // a gagné un pari polymarket
+  // Scheduler-based achievement badges
+  | 'COLLECTIONNEUR_25'       // owns 25+ badges
+  | 'GENEROUS_10_GIFTS'       // gifted 10+ times
+  | 'POLYMARKET_20_WINS'      // won 20+ polymarket bets
+  | 'SOCIAL_50_MESSAGES'      // sent 50+ chat messages
+  | 'STREAK_7'                // daily pass streak >= 7
+  | 'STREAK_30'               // daily pass streak >= 30
+  | 'MENTOR_3_REFERRALS'      // referred 3+ approved users
+  | 'CLAN_WARS_10'            // participated in 10+ completed clan wars
+  | 'CLAN_MVP_3'              // top attacker in their clan in 3+ completed wars
+  | 'MYTHIC_CATEGORY_COMPLETE' // owns all active badges in at least one category
+  // Event-driven badges (awarded at event time via awardBadgeByKey)
+  | 'FIRST_STEP'              // claimed first daily quest reward
+  | 'SPEEDRUN_DAILY_60S'      // completed a quest within 60s of selecting it
+  | 'NIGHT_OWL_WIN'           // won a game between 2:00–4:59 AM
+  | 'EARLY_BIRD_WIN'          // won a game before 7:00 AM
+  | 'PERFECT_10';             // 10 consecutive wins across all games
 
 // ─── Core award / revoke helpers ─────────────────────────────────────────────
 
@@ -537,6 +554,182 @@ const getQualifyingUserIds = async (key: string): Promise<Set<string>> => {
       select: { userId: true },
     });
     return new Set(stats.map((s) => s.userId));
+  }
+
+  // COLLECTIONNEUR_25 – owns 25+ badges (excluding this badge itself)
+  if (key === 'COLLECTIONNEUR_25') {
+    const thisKeys = await prisma.badge.findMany({
+      where: { autoConditionKey: 'COLLECTIONNEUR_25' },
+      select: { id: true },
+    });
+    const excludedIds = thisKeys.map((b) => b.id);
+
+    const grouped = await prisma.userBadge.groupBy({
+      by: ['userId'],
+      where: excludedIds.length > 0 ? { badgeId: { notIn: excludedIds } } : {},
+      _count: { badgeId: true },
+    });
+    return new Set(grouped.filter((r) => r._count.badgeId >= 25).map((r) => r.userId));
+  }
+
+  // GENEROUS_10_GIFTS – gifted 10+ times (tracked via gifts_sent gameStats)
+  if (key === 'GENEROUS_10_GIFTS') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'gifts_sent', wins: { gte: 10 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  // POLYMARKET_20_WINS – won 20+ polymarket bets (payout != null means won)
+  if (key === 'POLYMARKET_20_WINS') {
+    const bets = await prisma.polymarketBet.groupBy({
+      by: ['userId'],
+      where: { payout: { not: null } },
+      _count: { id: true },
+    });
+    return new Set(bets.filter((r) => r._count.id >= 20).map((r) => r.userId));
+  }
+
+  // SOCIAL_50_MESSAGES – sent 50+ chat messages
+  if (key === 'SOCIAL_50_MESSAGES') {
+    const msgs = await prisma.chatMessage.groupBy({
+      by: ['userId'],
+      where: { userId: { not: null }, type: 'user' },
+      _count: { id: true },
+    });
+    return new Set(
+      msgs
+        .filter((r) => r.userId !== null && r._count.id >= 50)
+        .map((r) => r.userId as string),
+    );
+  }
+
+  // STREAK_7 / STREAK_30 – daily pass streak threshold
+  if (key === 'STREAK_7' || key === 'STREAK_30') {
+    const threshold = key === 'STREAK_30' ? 30 : 7;
+    const users = await prisma.user.findMany({
+      where: { isApproved: true, dailyPassStreak: { gte: threshold } },
+      select: { id: true },
+    });
+    return new Set(users.map((u) => u.id));
+  }
+
+  // MENTOR_3_REFERRALS – referred 3+ approved users
+  if (key === 'MENTOR_3_REFERRALS') {
+    const referrals = await prisma.user.groupBy({
+      by: ['referredById'],
+      where: { isApproved: true, referredById: { not: null } },
+      _count: { id: true },
+    });
+    return new Set(
+      referrals
+        .filter((r) => r.referredById !== null && r._count.id >= 3)
+        .map((r) => r.referredById as string),
+    );
+  }
+
+  // CLAN_WARS_10 – participated (attacked) in 10+ distinct completed wars
+  if (key === 'CLAN_WARS_10') {
+    const completedWars = await prisma.clanWar.findMany({
+      where: { status: 'COMPLETED' },
+      select: { id: true },
+    });
+    const completedWarIds = completedWars.map((w) => w.id);
+    if (completedWarIds.length === 0) return new Set();
+
+    const attacks = await prisma.clanWarAttack.findMany({
+      where: { warId: { in: completedWarIds } },
+      select: { userId: true, warId: true },
+    });
+    const warsByUser = new Map<string, Set<string>>();
+    for (const a of attacks) {
+      if (!warsByUser.has(a.userId)) warsByUser.set(a.userId, new Set());
+      warsByUser.get(a.userId)!.add(a.warId);
+    }
+    return new Set(
+      [...warsByUser.entries()]
+        .filter(([, wars]) => wars.size >= 10)
+        .map(([userId]) => userId),
+    );
+  }
+
+  // CLAN_MVP_3 – top attacker for their clan in 3+ completed wars
+  if (key === 'CLAN_MVP_3') {
+    const completedWars = await prisma.clanWar.findMany({
+      where: { status: 'COMPLETED' },
+      select: { id: true },
+    });
+    const completedWarIds = completedWars.map((w) => w.id);
+    if (completedWarIds.length === 0) return new Set();
+
+    const attacks = await prisma.clanWarAttack.findMany({
+      where: { warId: { in: completedWarIds } },
+      select: { warId: true, clanId: true, userId: true, finalPoints: true },
+    });
+
+    // Sum points per (war, clan, user)
+    const warClanPoints = new Map<string, Map<string, number>>();
+    for (const a of attacks) {
+      const key2 = `${a.warId}:${a.clanId}`;
+      if (!warClanPoints.has(key2)) warClanPoints.set(key2, new Map());
+      const userMap = warClanPoints.get(key2)!;
+      userMap.set(a.userId, (userMap.get(a.userId) ?? 0) + a.finalPoints);
+    }
+
+    // Find top contributor per (war, clan)
+    const mvpCount = new Map<string, number>();
+    for (const userMap of warClanPoints.values()) {
+      if (userMap.size === 0) continue;
+      const [topUserId] = [...userMap.entries()].sort((a, b) => b[1] - a[1])[0];
+      mvpCount.set(topUserId, (mvpCount.get(topUserId) ?? 0) + 1);
+    }
+    return new Set(
+      [...mvpCount.entries()].filter(([, count]) => count >= 3).map(([userId]) => userId),
+    );
+  }
+
+  // MYTHIC_CATEGORY_COMPLETE – owns all active badges in at least one category
+  if (key === 'MYTHIC_CATEGORY_COMPLETE') {
+    const thisKeys = await prisma.badge.findMany({
+      where: { autoConditionKey: 'MYTHIC_CATEGORY_COMPLETE' },
+      select: { id: true },
+    });
+    const excludedIds = new Set(thisKeys.map((b) => b.id));
+
+    const allBadges = await prisma.badge.findMany({
+      where: { isActive: true },
+      select: { id: true, category: true },
+    });
+    const byCategory = new Map<string, string[]>();
+    for (const b of allBadges) {
+      if (!b.category || excludedIds.has(b.id)) continue;
+      if (!byCategory.has(b.category)) byCategory.set(b.category, []);
+      byCategory.get(b.category)!.push(b.id);
+    }
+    // Only check categories with at least 2 badges (skip trivially small ones)
+    const eligibleCategories = [...byCategory.entries()].filter(([, ids]) => ids.length >= 2);
+    if (eligibleCategories.length === 0) return new Set();
+
+    const users = await prisma.user.findMany({
+      where: { isApproved: true, isSuperAdmin: false },
+      select: {
+        id: true,
+        earnedBadges: { select: { badgeId: true } },
+      },
+    });
+
+    const result = new Set<string>();
+    for (const user of users) {
+      const earned = new Set(user.earnedBadges.map((b) => b.badgeId));
+      for (const [, badgeIds] of eligibleCategories) {
+        if (badgeIds.every((id) => earned.has(id))) {
+          result.add(user.id);
+          break;
+        }
+      }
+    }
+    return result;
   }
 
   return new Set();

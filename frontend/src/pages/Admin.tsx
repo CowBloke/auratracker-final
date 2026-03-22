@@ -3160,6 +3160,17 @@ export default function Admin() {
                               {u.isChatMuted && (
                                 <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 shrink-0">muet</span>
                               )}
+                              {u.schoolLevel && (
+                                <span className={cn(
+                                  "text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0",
+                                  u.schoolLevel === 'SECONDE' && "bg-sky-500/15 text-sky-400",
+                                  u.schoolLevel === 'PREMIERE' && "bg-violet-500/15 text-violet-400",
+                                  u.schoolLevel === 'TERMINALE' && "bg-rose-500/15 text-rose-400",
+                                )}>
+                                  {u.schoolLevel === 'SECONDE' ? '2nde' : u.schoolLevel === 'PREMIERE' ? '1ère' : 'Tle'}
+                                  {u.classLetter ? ` ${u.classLetter}` : ''}
+                                </span>
+                              )}
                             </div>
                           </div>
 

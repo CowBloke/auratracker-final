@@ -1084,6 +1084,8 @@ router.get('/users', authMiddleware, requireAdmin, async (req: AuthRequest, res:
         dailyAuraGiven: true,
         dailyAuraLimit: true,
         lastDailyReset: true,
+        schoolLevel: true,
+        classLetter: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -1091,7 +1093,7 @@ router.get('/users', authMiddleware, requireAdmin, async (req: AuthRequest, res:
         createdAt: 'desc',
       },
     });
-    
+
     res.json({ users });
   } catch (error) {
     console.error('Admin get users error:', error);

@@ -1179,6 +1179,34 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       }
     }
 
+    // NIGHT_OWL_WIN / EARLY_BIRD_WIN: time-of-win badges
+    if (won) {
+      const hour = new Date().getHours();
+      if (hour >= 2 && hour < 5) {
+        void awardBadgeByKey(req.user.id, 'NIGHT_OWL_WIN', 'Victoire entre 2h et 5h du matin');
+      }
+      if (hour < 7) {
+        void awardBadgeByKey(req.user.id, 'EARLY_BIRD_WIN', 'Victoire avant 7h du matin');
+      }
+    }
+
+    // PERFECT_10: track cross-game consecutive win streak (highScore = current streak)
+    {
+      const streakStat = await prisma.gameStats.findUnique({
+        where: { userId_gameType: { userId: req.user.id, gameType: 'win_streak' } },
+        select: { highScore: true },
+      });
+      const newStreak = won ? (streakStat?.highScore ?? 0) + 1 : 0;
+      await prisma.gameStats.upsert({
+        where: { userId_gameType: { userId: req.user.id, gameType: 'win_streak' } },
+        create: { userId: req.user.id, gameType: 'win_streak', wins: 0, losses: 0, highScore: newStreak, totalPlayed: 1 },
+        update: { highScore: newStreak, totalPlayed: { increment: 1 } },
+      });
+      if (won && newStreak >= 10) {
+        void awardBadgeByKey(req.user.id, 'PERFECT_10', '10 victoires consécutives');
+      }
+    }
+
     // Check quest progress
     if (isDoodleJumpType(gameType)) {
       await checkQuestProgress(req.user.id, 'DOODLE_JUMP_SCORE', score);

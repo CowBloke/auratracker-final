@@ -52,11 +52,15 @@ export function BadgeCatalog({
 }) {
   const earnedIds = new Set(earnedBadges.map((b) => b.id));
 
+  // ownerCount lookup from allBadges (user badges don't include it)
+  const ownerCountMap = new Map(allBadges.map((b) => [b.id, b.ownerCount]));
+  const withCount = (b: UserBadgeEntry) => ({ ...b, ownerCount: ownerCountMap.get(b.id) ?? b.ownerCount });
+
   // Badges earned (shown first, ordered by obtainedAt desc — preserved from earnedBadges)
-  const earned = earnedBadges.filter((b) => !isExcludedFromCatalog(b));
+  const earned = earnedBadges.filter((b) => !isExcludedFromCatalog(b)).map(withCount);
 
   // Leaderboard/top-N badges the user has earned (shown separately)
-  const earnedLeaderboard = earnedBadges.filter((b) => isExcludedFromCatalog(b));
+  const earnedLeaderboard = earnedBadges.filter((b) => isExcludedFromCatalog(b)).map(withCount);
 
   // All catalog badges (non-leaderboard), not yet earned
   const locked = allBadges.filter((b) => !isExcludedFromCatalog(b) && !earnedIds.has(b.id));

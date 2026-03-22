@@ -620,6 +620,32 @@ export const setupChessHandlers = (socket: Socket, io: Server) => {
     removeChessSpectator(io, socket.id);
   });
 
+  socket.on('chess:spectate-message', (data?: { partyId?: string; text?: string }) => {
+    const senderUserId = socket.data.userId as string | undefined;
+    const senderUsername = socket.data.username as string | undefined;
+    if (!senderUserId || !senderUsername) return;
+
+    const text = typeof data?.text === 'string' ? data.text.trim().slice(0, 80) : '';
+    if (!text) return;
+
+    // Only spectators (not players) may send
+    const partyId = chessSpectatorPartyBySocket.get(socket.id) ?? null;
+    if (!partyId) return;
+    if (data?.partyId && data.partyId !== partyId) return;
+
+    const game = activeGames.get(partyId);
+    if (!game) return;
+
+    const payload = { partyId, userId: senderUserId, username: senderUsername, text };
+    // Broadcast to all spectators in the room
+    io.to(getChessSpectateRoom(partyId)).emit('chess:spectate-message-broadcast', payload);
+    // Also deliver to the players so they see it on their board
+    for (const player of game.players) {
+      const socketId = playerSockets.get(player.userId);
+      if (socketId) io.to(socketId).emit('chess:spectate-message-broadcast', payload);
+    }
+  });
+
   socket.on('chess:start', async (data: { partyId: string }) => {
     const userId = socket.data.userId as string | undefined;
     if (!userId) return;
