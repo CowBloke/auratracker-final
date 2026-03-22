@@ -9,8 +9,9 @@ const router = Router();
 
 // Configuration
 const INITIAL_PRICE = 100;
-const FEE_PERCENTAGE = 0.02; // 2% fee
+const DEFAULT_FEE_PERCENTAGE = 0.02; // 2% fee
 const MIN_FEE = 1; // Minimum fee in money units
+const AURACOIN_BUY_FEE_PERCENTAGE_KEY = 'auracoin_buy_fee_percentage';
 const PRICE_UPDATE_INTERVAL_MIN = 3500; // 3.5 seconds
 const PRICE_UPDATE_INTERVAL_MAX = 8500; // 8.5 seconds
 const MAX_LEVERAGE = 10; // Maximum leverage (x10)
@@ -18,6 +19,22 @@ const LIQUIDATION_THRESHOLD = 0.8; // Liquidate when margin drops to 80% of init
 const BASE_SPREAD_PERCENTAGE = 0.004; // 0.4%
 const MAX_SPREAD_PERCENTAGE = 0.03; // 3%
 const MAX_SLIPPAGE_PERCENTAGE = 0.02; // 2%
+
+const parseAuraCoinFeePercentage = (rawValue: string | null | undefined): number => {
+  if (!rawValue) return DEFAULT_FEE_PERCENTAGE;
+  const parsed = Number.parseFloat(rawValue);
+  if (!Number.isFinite(parsed)) return DEFAULT_FEE_PERCENTAGE;
+  // Clamp to a safe [0, 50%] range.
+  return Math.min(0.5, Math.max(0, parsed));
+};
+
+const getAuraCoinBuyFeePercentage = async (): Promise<number> => {
+  const setting = await prisma.gameSettings.findUnique({
+    where: { key: AURACOIN_BUY_FEE_PERCENTAGE_KEY },
+    select: { value: true },
+  });
+  return parseAuraCoinFeePercentage(setting?.value);
+};
 
 // Current price in memory (will be persisted to DB)
 let currentPrice = INITIAL_PRICE;
@@ -150,6 +167,7 @@ export const stopPriceEngine = () => {
 // Get current price and history
 router.get('/price', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
+    const feePercentage = await getAuraCoinBuyFeePercentage();
     const { hours = '24' } = req.query;
     const hoursAgo = new Date(Date.now() - parseInt(hours as string) * 60 * 60 * 1000);
     
@@ -173,7 +191,7 @@ router.get('/price', authMiddleware, async (req: AuthRequest, res: Response) => 
     
     res.json({
       currentPrice,
-      feePercentage: FEE_PERCENTAGE,
+      feePercentage,
       history,
       userBalance: {
         auraCoin: user?.auraCoinBalance || 0,
@@ -211,8 +229,10 @@ router.post('/buy', authMiddleware, async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Insufficient funds' });
     }
     
+    const feePercentage = await getAuraCoinBuyFeePercentage();
+
     // Calculate fee and coins received
-    const fee = Math.max(MIN_FEE, Math.floor(moneyAmount * FEE_PERCENTAGE));
+    const fee = Math.max(MIN_FEE, Math.floor(moneyAmount * feePercentage));
     const netAmount = moneyAmount - fee;
     if (netAmount <= 0) {
       return res.status(400).json({ error: 'Amount too low to cover minimum fee' });
@@ -320,10 +340,12 @@ router.post('/sell', authMiddleware, async (req: AuthRequest, res: Response) => 
       return res.status(400).json({ error: 'Insufficient AuraCoin balance' });
     }
     
+    const feePercentage = await getAuraCoinBuyFeePercentage();
+
     // Calculate money received (before fee)
     const tradePrice = getExecutionPrice('SELL', currentPrice, coinAmount * currentPrice);
     const grossAmount = Math.floor(coinAmount * tradePrice);
-    const fee = Math.max(MIN_FEE, Math.floor(grossAmount * FEE_PERCENTAGE));
+    const fee = Math.max(MIN_FEE, Math.floor(grossAmount * feePercentage));
     const netAmount = grossAmount - fee;
     if (netAmount <= 0) {
       return res.status(400).json({ error: 'Amount too low to cover minimum fee' });

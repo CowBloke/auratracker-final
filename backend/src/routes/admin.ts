@@ -24,6 +24,7 @@ import {
 const router = Router();
 const ANNOUNCEMENT_KEY = 'topbar_announcement';
 const ANNOUNCEMENT_MAX_LENGTH = 120;
+const AURACOIN_BUY_FEE_PERCENTAGE_KEY = 'auracoin_buy_fee_percentage';
 const UPDATE_POPUP_UPLOAD_DIR = path.resolve('uploads', 'update-popups');
 const ITEM_UPLOAD_DIR = path.resolve('uploads', 'items');
 const MAX_UPDATE_POPUP_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
@@ -2276,6 +2277,13 @@ router.put('/settings/:key', authMiddleware, requireAdmin, async (req: AuthReque
       return res.status(400).json({ error: 'Referral enabled must be true or false' });
     }
 
+    if (key === AURACOIN_BUY_FEE_PERCENTAGE_KEY) {
+      const numValue = Number.parseFloat(normalizedValue);
+      if (!Number.isFinite(numValue) || numValue < 0 || numValue > 0.5) {
+        return res.status(400).json({ error: 'AuraCoin buy fee must be between 0 and 0.5' });
+      }
+    }
+
     const setting = await prisma.gameSettings.upsert({
       where: { key },
       create: { key, value: normalizedValue },
@@ -2363,6 +2371,14 @@ router.put('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, r
       if (key === REFERRAL_ENABLED_SETTING_KEY && !['true', 'false'].includes(normalizedValue)) {
         errors.push(`${key}: Referral enabled must be true or false`);
         continue;
+      }
+
+      if (key === AURACOIN_BUY_FEE_PERCENTAGE_KEY) {
+        const numValue = Number.parseFloat(normalizedValue);
+        if (!Number.isFinite(numValue) || numValue < 0 || numValue > 0.5) {
+          errors.push(`${key}: AuraCoin buy fee must be between 0 and 0.5`);
+          continue;
+        }
       }
 
       updates.push({ key, value: normalizedValue });
