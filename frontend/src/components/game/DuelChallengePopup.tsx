@@ -10,12 +10,13 @@ const GAME_NAMES: Record<string, string> = {
   p4: 'Puissance 4',
   ballarena: 'Ball Arena',
   uno: 'Uno',
+  morpion: 'Morpion',
 };
 
 interface DuelChallengePopupProps {
   challengerUsername: string;
   challengerUsernameColor?: string | null;
-  gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno';
+  gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' | 'morpion';
   timeLimit: number;
   sentAt: number;
   onAccept: () => void;

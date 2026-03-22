@@ -43,6 +43,8 @@ import {
   Eye,
   Monitor,
   Crosshair,
+  Sparkles,
+  CircleDollarSign,
 } from 'lucide-react';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { InboxDropdown } from '@/components/inbox/InboxDropdown';
@@ -594,10 +596,12 @@ export function SiteHeader() {
           <InboxDropdown />
 
           <div className="flex items-center gap-6 tabular-nums">
-            <span className="text-foreground">
+            <span className="inline-flex items-center gap-1.5 text-foreground">
+              <Sparkles className="h-3.5 w-3.5 text-violet-400" aria-hidden="true" />
               {user?.aura.toLocaleString()} <span className="text-muted-foreground">aura</span>
             </span>
-            <span className="text-foreground">
+            <span className="inline-flex items-center gap-1.5 text-foreground">
+              <CircleDollarSign className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
               ${user?.money.toLocaleString()} <span className="text-muted-foreground">argent</span>
             </span>
           </div>

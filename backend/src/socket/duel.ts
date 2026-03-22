@@ -5,10 +5,11 @@ import { startDirectBattleshipGame } from './battleship.js';
 import { startDirectP4Game } from './puissancequatre.js';
 import { startDirectBallArenaGame } from './ballarena.js';
 import { startDirectUnoGame } from './uno.js';
+import { startDirectMorpionGame } from './morpion.js';
 import { emitPartyChatHistory } from './party.js';
 import { duelPartyIds, onDuelPartyDeleted } from './duelParties.js';
 
-type DuelGameType = 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno';
+type DuelGameType = 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' | 'morpion';
 
 interface DuelChallenge {
   challengerId: string;
@@ -38,9 +39,10 @@ const GAME_ROUTES: Record<DuelGameType, string> = {
   p4: '/games/puissance-quatre',
   ballarena: '/games/ball-arena',
   uno: '/games/uno',
+  morpion: '/games/morpion',
 };
 
-const MATCHMAKING_GAME_TYPES: DuelGameType[] = ['chess', 'battleship', 'p4', 'ballarena'];
+const MATCHMAKING_GAME_TYPES: DuelGameType[] = ['chess', 'battleship', 'p4', 'ballarena', 'morpion'];
 
 const randomMatchmakingGame = (): DuelGameType => {
   const index = Math.floor(Math.random() * MATCHMAKING_GAME_TYPES.length);
@@ -173,6 +175,8 @@ const createAndStartDuel = async (
     startDirectP4Game(party.id, gamePlayers, io);
   } else if (gameType === 'uno') {
     startDirectUnoGame(party.id, gamePlayers, io);
+  } else if (gameType === 'morpion') {
+    startDirectMorpionGame(party.id, gamePlayers, io);
   } else {
     startDirectBallArenaGame(party.id, gamePlayers, io);
   }
@@ -270,7 +274,7 @@ export const setupDuelHandlers = (socket: Socket, io: Server) => {
     if (!userId || !username) return;
 
     const { targetId, gameType } = data;
-    if (!['chess', 'battleship', 'p4', 'ballarena', 'uno'].includes(gameType)) return;
+    if (!['chess', 'battleship', 'p4', 'ballarena', 'uno', 'morpion'].includes(gameType)) return;
     if (userId === targetId) return;
 
     // Cancel any existing challenge from this challenger to this target for this game type

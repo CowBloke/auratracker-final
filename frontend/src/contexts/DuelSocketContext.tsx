@@ -7,7 +7,7 @@ interface IncomingDuelChallenge {
   challengerId: string;
   challengerUsername: string;
   challengerUsernameColor?: string | null;
-  gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno';
+  gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' | 'morpion';
   timeLimit: number;
   sentAt: number;
 }
@@ -15,7 +15,7 @@ interface IncomingDuelChallenge {
 interface OutgoingDuelChallenge {
   targetId: string;
   targetUsername: string;
-  gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno';
+  gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' | 'morpion';
 }
 
 interface DuelMatchmakingStats {
@@ -28,7 +28,7 @@ interface DuelSocketContextValue {
   outgoingDuelChallenge: OutgoingDuelChallenge | null;
   duelMatchmakingQueued: boolean;
   duelMatchmakingStats: DuelMatchmakingStats;
-  challengeUserToDuel: (targetId: string, targetUsername: string, gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno') => void;
+  challengeUserToDuel: (targetId: string, targetUsername: string, gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' | 'morpion') => void;
   acceptDuelChallenge: () => void;
   declineDuelChallenge: () => void;
   cancelDuelChallenge: () => void;
@@ -118,9 +118,9 @@ export function DuelSocketProvider({ children }: { children: React.ReactNode }) 
       });
     });
 
-    s.on('duel:matchmaking-match-found', (data: { gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' }) => {
+    s.on('duel:matchmaking-match-found', (data: { gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' | 'morpion' }) => {
       import('sonner').then(({ toast }) => {
-        const labels = { chess: 'Echecs', battleship: 'Bataille navale', p4: 'Puissance 4', ballarena: 'Ball Arena', uno: 'UNO' } as const;
+        const labels = { chess: 'Echecs', battleship: 'Bataille navale', p4: 'Puissance 4', ballarena: 'Ball Arena', uno: 'UNO', morpion: 'Morpion' } as const;
         toast('Adversaire trouve !', { description: `Duel ${labels[data.gameType] ?? 'aleatoire'} en cours de lancement...` });
       });
     });
@@ -142,7 +142,7 @@ export function DuelSocketProvider({ children }: { children: React.ReactNode }) 
   }, [user?.id]);
 
   const challengeUserToDuel = useCallback(
-    (targetId: string, targetUsername: string, gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno') => {
+    (targetId: string, targetUsername: string, gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' | 'morpion') => {
       if (!user) return;
       setOutgoingDuelChallenge({ targetId, targetUsername, gameType });
       duelEvents.challenge(targetId, gameType);

@@ -639,6 +639,7 @@ export default function Minesweeper() {
         <GameLeaderboard
           entries={leaderboard}
           currentUserId={user?.id}
+          personalHighScore={highScore}
           isAdmin={user?.isAdmin}
           onDeleteScore={(userId) => handleDeleteScore(userId)}
           maxHeight={420}

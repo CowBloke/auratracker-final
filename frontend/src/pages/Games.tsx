@@ -235,6 +235,15 @@ const games = [
     emoji: '🎱',
     image: '/images/games/ballarena.png',
   },
+  {
+    id: 'morpion',
+    pageKey: 'game-morpion',
+    name: 'Morpion',
+    description: 'Duel minimaliste en 3x3: bloque, anticipe et aligne 3 symboles.',
+    type: 'Duel',
+    requiresParty: true,
+    image: '/images/games/puissance4.png',
+  },
 ];
 
 const tabConfig: Array<{ id: GamesTab; label: string }> = [
@@ -318,6 +327,9 @@ export default function Games() {
     }
     if (gameId === 'ball-arena') {
       return '/games/ball-arena';
+    }
+    if (gameId === 'morpion') {
+      return '/games/morpion';
     }
     if (gameId === 'echecs') {
       return '/games/echecs';

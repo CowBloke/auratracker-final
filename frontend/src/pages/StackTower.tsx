@@ -765,6 +765,7 @@ export default function StackTower() {
           <GameLeaderboard
             entries={leaderboard}
             currentUserId={user?.id}
+            personalHighScore={highScore}
             isAdmin={user?.isAdmin}
             onDeleteScore={handleDeleteScore}
             maxHeight={540}

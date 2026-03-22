@@ -798,6 +798,10 @@ export default function Racer() {
     hillOffsetRef.current = 0;
     treeOffsetRef.current = 0;
     hasCrossedStartLineRef.current = false;
+    keyLeftRef.current = false;
+    keyRightRef.current = false;
+    keyFasterRef.current = false;
+    keySlowerRef.current = false;
 
     setScore(0);
     setCurrentLapTime(0);
@@ -1341,11 +1345,23 @@ export default function Racer() {
           ref={gameContainerRef}
           className={cn('flex flex-col gap-3', isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4')}
         >
-          <GameFullscreenToolbar
-            isFullscreen={isFullscreen}
-            onToggleFullscreen={toggleFullscreen}
-            className="w-full max-w-[1024px]"
-          />
+          <div className="flex w-full max-w-[1024px] items-center justify-between gap-2">
+            <GameFullscreenToolbar
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={toggleFullscreen}
+              className="w-auto"
+            />
+            {imagesLoaded && (
+              <Button
+                variant="ghost"
+                onClick={initGame}
+                className="flex items-center gap-2 border border-border/60 px-3 py-2 text-xs uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Rejouer
+              </Button>
+            )}
+          </div>
 
           <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={WIDTH} baseHeight={HEIGHT}>
             <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="h-full w-full rounded-lg border border-border/30" />
@@ -1411,6 +1427,20 @@ export default function Racer() {
             <div className="flex items-center gap-2">
               <Trophy className="w-5 h-5 text-yellow-500" />
               <h3 className="text-base font-semibold">Classement quotidien</h3>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 border-b border-border/20 px-4 py-3">
+            <div className="rounded-md bg-muted/40 px-3 py-2">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Record perso</p>
+              <p className="text-sm font-medium tabular-nums">
+                {dailyBestLapTimeMs ? formatMsTime(dailyBestLapTimeMs) : '--'}
+              </p>
+            </div>
+            <div className="rounded-md bg-muted/40 px-3 py-2">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Record du jeu</p>
+              <p className="text-sm font-medium tabular-nums">
+                {leaderboard[0]?.bestLapTimeMs ? formatMsTime(leaderboard[0].bestLapTimeMs) : '--'}
+              </p>
             </div>
           </div>
           <div className="max-h-[420px] overflow-y-auto 2xl:max-h-[708px]">

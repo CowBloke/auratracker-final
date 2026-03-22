@@ -772,6 +772,7 @@ export default function Solitaire() {
       <GameLeaderboard
         entries={leaderboard}
         currentUserId={user?.id}
+        personalHighScore={highScore}
         maxHeight={720}
         hidden={isFullscreen}
       />

@@ -1,5 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Axe, Check, Crown, Info, Loader2, LogOut, MessageSquare, Plus, Send, Sparkles, Swords, Tag, Target, UserX, X } from 'lucide-react';
+import { AlertTriangle, Axe, Check, Coins, Crown, Info, Loader2, LogOut, MessageSquare, Plus, Send, Sparkles, Swords, Tag, Target, UserX, X } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ClanChatMessage,
@@ -37,6 +37,12 @@ const panelClassName = 'rounded-2xl border border-border/50 bg-background shadow
 const mutedPanelClassName = 'rounded-2xl border border-border/50 bg-muted/15 shadow-none';
 
 const formatAura = (value: number | string) => {
+  const numericValue = typeof value === 'string' ? Number(value) : value;
+  if (Number.isNaN(numericValue)) return '0';
+  return numericValue.toLocaleString('fr-FR');
+};
+
+const formatMoney = (value: number | string) => {
   const numericValue = typeof value === 'string' ? Number(value) : value;
   if (Number.isNaN(numericValue)) return '0';
   return numericValue.toLocaleString('fr-FR');
@@ -183,6 +189,8 @@ export default function Clans() {
   const [isPublic, setIsPublic] = useState(true);
   const [imageUrl, setImageUrl] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+  const [bankDepositAmount, setBankDepositAmount] = useState('100');
+  const [depositingBank, setDepositingBank] = useState(false);
 
   // Tag editor state
   const [tagText, setTagText] = useState('');
@@ -545,6 +553,65 @@ export default function Clans() {
     }
   };
 
+  const handlePromoteMember = async (userId: string) => {
+    if (!selectedClan) return;
+    setActionLoading(true);
+    try {
+      await clansApi.promoteMember(selectedClan.id, userId);
+      toast({ title: 'Membre promu', description: 'Le membre est maintenant officier.' });
+      await refreshData(selectedClan.id);
+    } catch (error: any) {
+      console.error('Failed to promote member:', error);
+      toast({
+        title: 'Erreur',
+        description: error.response?.data?.error || 'Impossible de promouvoir ce membre.',
+        variant: 'destructive',
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDemoteMember = async (userId: string) => {
+    if (!selectedClan) return;
+    setActionLoading(true);
+    try {
+      await clansApi.demoteMember(selectedClan.id, userId);
+      toast({ title: 'Membre rétrogradé', description: 'Le membre est repassé au rang membre.' });
+      await refreshData(selectedClan.id);
+    } catch (error: any) {
+      console.error('Failed to demote member:', error);
+      toast({
+        title: 'Erreur',
+        description: error.response?.data?.error || 'Impossible de rétrograder ce membre.',
+        variant: 'destructive',
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleTransferLeadership = async (userId: string, username: string) => {
+    if (!selectedClan) return;
+    if (!confirm(`Confirmer le transfert du rôle de chef à ${username} ?`)) return;
+
+    setActionLoading(true);
+    try {
+      await clansApi.transferLeadership(selectedClan.id, userId);
+      toast({ title: 'Chef transféré', description: `${username} est maintenant le chef du clan.` });
+      await refreshData(selectedClan.id);
+    } catch (error: any) {
+      console.error('Failed to transfer leadership:', error);
+      toast({
+        title: 'Erreur',
+        description: error.response?.data?.error || 'Impossible de transférer le rôle de chef.',
+        variant: 'destructive',
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleLeave = async () => {
     if (!selectedClan) return;
     if (!confirm('Voulez-vous vraiment quitter ce clan ?')) return;
@@ -583,6 +650,35 @@ export default function Clans() {
       });
     } finally {
       setWarActionKey(null);
+    }
+  };
+
+  const handleDepositToBank = async () => {
+    if (!selectedClan || !selectedClan.viewer.isMember) return;
+
+    const amount = Number(bankDepositAmount);
+    if (!Number.isInteger(amount) || amount <= 0) {
+      toast({
+        title: 'Montant invalide',
+        description: 'Entre un montant entier supérieur à 0.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setDepositingBank(true);
+      await clansApi.depositToBank(selectedClan.id, amount);
+      toast({ title: 'Dépôt effectué', description: `${amount.toLocaleString('fr-FR')} money ajouté à la banque de clan.` });
+      await refreshData(selectedClan.id);
+    } catch (error: any) {
+      toast({
+        title: 'Erreur',
+        description: error.response?.data?.error || 'Impossible de déposer dans la banque de clan.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDepositingBank(false);
     }
   };
 
@@ -713,6 +809,12 @@ export default function Clans() {
                               >
                                 {clan.memberCount}/{clan.maxMembers} membres • {formatAura(clan.totalAura)} aura
                               </div>
+                              <div
+                                className={cn('text-[11px]', !clanTagStyle && 'text-muted-foreground')}
+                                style={clanTagStyle ? { color: clanTagStyle.textColor, opacity: 0.75 } : undefined}
+                              >
+                                Niveau {clan.level}
+                              </div>
                             </div>
                             {viewerClanId === clan.id ? <Badge>Mon clan</Badge> : null}
                           </div>
@@ -753,6 +855,7 @@ export default function Clans() {
                             <Badge variant={selectedClan.isPublic ? 'secondary' : 'outline'}>
                               {selectedClan.isPublic ? 'Ouvert' : 'Privé'}
                             </Badge>
+                            <Badge variant="outline">Niveau {selectedClan.level}</Badge>
                             {selectedClan.viewer.isLeader ? (
                               <Badge className="gap-1">
                                 <Crown className="h-3 w-3" />
@@ -821,6 +924,44 @@ export default function Clans() {
 
                     {/* ── Info tab ── */}
                     <TabsContent value="info" className="mt-4 space-y-4">
+                      <Card className={panelClassName}>
+                        <CardContent className="space-y-3 p-4">
+                          <SectionTitle
+                            title="Banque de clan"
+                            description="Les membres peuvent déposer. Seul le chef peut dépenser cet argent pour les améliorations du clan."
+                            action={<Badge variant="secondary">Niveau {selectedClan.level}</Badge>}
+                          />
+                          <div className="rounded-2xl border border-border/50 bg-muted/15 p-4">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Coins className="h-4 w-4" />
+                              Solde actuel
+                            </div>
+                            <div className="mt-2 text-2xl font-semibold tabular-nums">
+                              {formatMoney(selectedClan.clanBankMoney)}
+                            </div>
+                          </div>
+                          {selectedClan.viewer.isMember ? (
+                            <div className="flex flex-wrap items-end gap-2">
+                              <div className="w-full max-w-[180px] space-y-1">
+                                <label className="text-xs text-muted-foreground">Montant à déposer</label>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  step={1}
+                                  value={bankDepositAmount}
+                                  onChange={(event) => setBankDepositAmount(event.target.value)}
+                                  disabled={depositingBank}
+                                />
+                              </div>
+                              <Button type="button" onClick={handleDepositToBank} disabled={depositingBank}>
+                                {depositingBank ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Coins className="mr-2 h-4 w-4" />}
+                                Déposer
+                              </Button>
+                            </div>
+                          ) : null}
+                        </CardContent>
+                      </Card>
+
                       {/* Roster */}
                       <Card className={panelClassName}>
                         <CardContent className="space-y-2 p-4">
@@ -841,13 +982,43 @@ export default function Clans() {
                                     />
                                     {member.isLeader ? <Crown className="h-3.5 w-3.5 text-amber-500" /> : null}
                                   </div>
-                                  <div className="text-xs text-muted-foreground">{formatAura(member.aura)} aura</div>
+                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                    <span>{formatAura(member.aura)} aura</span>
+                                    <span>•</span>
+                                    <span>
+                                      {selectedClan.leader.id === member.userId
+                                        ? 'Chef'
+                                        : member.isLeader
+                                          ? 'Officier'
+                                          : 'Membre'}
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
-                              {selectedClan.viewer.isLeader && !member.isLeader ? (
-                                <Button variant="ghost" size="sm" onClick={() => handleRemoveMember(member.userId)} disabled={actionLoading}>
-                                  <UserX className="h-3.5 w-3.5" />
-                                </Button>
+                              {selectedClan.viewer.isLeader && member.userId !== user?.id ? (
+                                <div className="flex flex-wrap justify-end gap-1.5">
+                                  {selectedClan.leader.id !== member.userId ? (
+                                    member.isLeader ? (
+                                      <Button variant="outline" size="sm" onClick={() => handleDemoteMember(member.userId)} disabled={actionLoading}>
+                                        Rétrograder
+                                      </Button>
+                                    ) : (
+                                      <Button variant="outline" size="sm" onClick={() => handlePromoteMember(member.userId)} disabled={actionLoading}>
+                                        Promouvoir
+                                      </Button>
+                                    )
+                                  ) : null}
+                                  {selectedClan.leader.id === user?.id && selectedClan.leader.id !== member.userId ? (
+                                    <Button variant="secondary" size="sm" onClick={() => handleTransferLeadership(member.userId, member.username)} disabled={actionLoading}>
+                                      Donner chef
+                                    </Button>
+                                  ) : null}
+                                  {!member.isLeader ? (
+                                    <Button variant="ghost" size="sm" onClick={() => handleRemoveMember(member.userId)} disabled={actionLoading}>
+                                      <UserX className="h-3.5 w-3.5" />
+                                    </Button>
+                                  ) : null}
+                                </div>
                               ) : null}
                             </div>
                           ))}

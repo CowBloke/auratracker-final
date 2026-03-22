@@ -121,6 +121,7 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
     const isClanTagUnlock = item.type === 'UPGRADE' && effect?.type === 'CLAN_TAG_UNLOCK';
     const isClanSlotUpgrade = item.type === 'UPGRADE' && effect?.type === 'CLAN_SLOT_UPGRADE';
     const isClanUpgrade = isClanTagUnlock || isClanSlotUpgrade;
+    const totalPrice = item.price * quantity;
     let clanUpgradeMembership: { clanId: string; isLeader: boolean } | null = null;
 
     if (isClanUpgrade) {
@@ -144,7 +145,7 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
 
       const clan = await prisma.clan.findUnique({
         where: { id: membership.clanId },
-        select: { tagUnlocked: true, maxMembers: true },
+        select: { tagUnlocked: true, maxMembers: true, clanBankMoney: true },
       });
 
       if (isClanTagUnlock && clan?.tagUnlocked) {
@@ -154,12 +155,14 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
       if (isClanSlotUpgrade && typeof clan?.maxMembers === 'number' && clan.maxMembers > CLAN_BASE_MAX_MEMBERS) {
         return res.status(400).json({ error: 'Le slot supplémentaire est déjà débloqué pour ce clan.' });
       }
+
+      if (!clan || clan.clanBankMoney < totalPrice) {
+        return res.status(400).json({ error: 'La banque de clan n\'a pas assez d\'argent pour cette amélioration.' });
+      }
     }
 
-    const totalPrice = item.price * quantity;
-    
     // Check sufficient balance
-    if (user.money < totalPrice) {
+    if (!isClanUpgrade && user.money < totalPrice) {
       return res.status(400).json({ error: 'Insufficient money' });
     }
     
@@ -177,21 +180,34 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
       }
 
       const txResult = await prisma.$transaction(async (tx) => {
-        const nextUser = await tx.user.update({
-          where: { id: user.id },
-          data: {
-            money: { decrement: totalPrice },
-          },
-          select: {
-            aura: true,
-            money: true,
-          },
+        const clan = await tx.clan.findUnique({
+          where: { id: clanUpgradeMembership.clanId },
+          select: { tagUnlocked: true, maxMembers: true, clanBankMoney: true },
         });
+
+        if (!clan) {
+          throw new Error('CLAN_NOT_FOUND');
+        }
+
+        if (isClanTagUnlock && clan.tagUnlocked) {
+          throw new Error('CLAN_TAG_ALREADY_UNLOCKED');
+        }
+
+        if (isClanSlotUpgrade && clan.maxMembers > CLAN_BASE_MAX_MEMBERS) {
+          throw new Error('CLAN_SLOT_ALREADY_UPGRADED');
+        }
+
+        if (clan.clanBankMoney < totalPrice) {
+          throw new Error('CLAN_BANK_INSUFFICIENT_FUNDS');
+        }
 
         if (isClanTagUnlock) {
           await tx.clan.update({
             where: { id: clanUpgradeMembership.clanId },
-            data: { tagUnlocked: true },
+            data: {
+              tagUnlocked: true,
+              clanBankMoney: { decrement: totalPrice },
+            },
           });
         }
 
@@ -200,8 +216,21 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
             where: { id: clanUpgradeMembership.clanId },
             data: {
               maxMembers: { increment: 1 },
+              clanBankMoney: { decrement: totalPrice },
             },
           });
+        }
+
+        const nextUser = await tx.user.findUnique({
+          where: { id: user.id },
+          select: {
+            aura: true,
+            money: true,
+          },
+        });
+
+        if (!nextUser) {
+          throw new Error('USER_NOT_FOUND');
         }
 
         return nextUser;
@@ -283,6 +312,17 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
       },
     });
   } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === 'CLAN_BANK_INSUFFICIENT_FUNDS') {
+        return res.status(400).json({ error: 'La banque de clan n\'a pas assez d\'argent pour cette amélioration.' });
+      }
+      if (error.message === 'CLAN_TAG_ALREADY_UNLOCKED') {
+        return res.status(400).json({ error: 'Le tag est déjà débloqué pour ce clan.' });
+      }
+      if (error.message === 'CLAN_SLOT_ALREADY_UPGRADED') {
+        return res.status(400).json({ error: 'Le slot supplémentaire est déjà débloqué pour ce clan.' });
+      }
+    }
     console.error('Purchase error:', error);
     res.status(500).json({ error: 'Failed to purchase item' });
   }

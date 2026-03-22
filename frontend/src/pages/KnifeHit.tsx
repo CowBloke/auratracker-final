@@ -1191,6 +1191,7 @@ export default function KnifeHit() {
         <GameLeaderboard
           entries={leaderboard}
           currentUserId={user?.id}
+          personalHighScore={highScore}
           maxHeight={420}
           hidden={isFullscreen}
         />

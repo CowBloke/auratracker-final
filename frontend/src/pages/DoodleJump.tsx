@@ -851,6 +851,20 @@ export default function DoodleJump() {
         continue;
       }
       if (remoteScreenY > CANVAS_HEIGHT + 80) {
+        const markerX = Math.max(10, Math.min(CANVAS_WIDTH - 10, remote.displayX + CHARACTER_WIDTH / 2));
+        const labelY = CANVAS_HEIGHT - 12;
+        const triangleY = CANVAS_HEIGHT - 6;
+        ctx.fillStyle = remote.usernameColor || '#f8fafc';
+        ctx.beginPath();
+        ctx.moveTo(markerX, triangleY);
+        ctx.lineTo(markerX - 6, triangleY - 10);
+        ctx.lineTo(markerX + 6, triangleY - 10);
+        ctx.closePath();
+        ctx.fill();
+        ctx.font = '10px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = remote.usernameColor || '#e5e7eb';
+        ctx.fillText(remote.username, markerX, labelY);
         continue;
       }
 
@@ -1832,6 +1846,7 @@ export default function DoodleJump() {
         <GameLeaderboard
           entries={leaderboard}
           currentUserId={user?.id}
+          personalHighScore={highScore}
           isAdmin={user?.isAdmin}
           onDeleteScore={handleDeleteScore}
           title={`Classement — ${displayMode === 'mort_subite' ? 'Mort subite' : 'Classique'}`}
