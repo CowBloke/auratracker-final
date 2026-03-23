@@ -1036,6 +1036,11 @@ export default function KnifeHit() {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.code === 'KeyR' && (!started || gameOver)) {
+        event.preventDefault();
+        startGame();
+        return;
+      }
       if (event.code !== 'Space' && event.code !== 'Enter') return;
       event.preventDefault();
       if (!started || gameOver) {

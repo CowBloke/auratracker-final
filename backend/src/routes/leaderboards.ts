@@ -20,6 +20,53 @@ const BADGE_SELECT = {
 
 const router = Router();
 
+type Period = 'daily' | 'weekly' | 'monthly';
+
+// Game types that can be filtered by period via GameScoreHistory
+const PERIOD_GAME_TYPES = new Set([
+  'doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird',
+  'chrome_dino', 'solitaire', 'racer', 'tetris', 'knife_hit', 'minesweeper', 'casino',
+]);
+
+function getPeriodStart(period: Period): Date {
+  const now = new Date();
+  if (period === 'daily') {
+    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  } else if (period === 'weekly') {
+    const day = now.getUTCDay(); // 0=Sun
+    const diffToMonday = (day + 6) % 7;
+    const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - diffToMonday));
+    return monday;
+  } else {
+    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  }
+}
+
+async function getPeriodGameRankings(
+  gameType: string,
+  periodStart: Date,
+  limit: number,
+  skip: number,
+  ascending = false,
+): Promise<{ userId: string; username: string; usernameColor: string | null; value: number }[]> {
+  const aggFn = ascending ? 'MIN' : 'MAX';
+  const orderDir = ascending ? 'ASC' : 'DESC';
+  const rows = await prisma.$queryRawUnsafe<{ userId: string; username: string; usernameColor: string | null; highScore: number }[]>(
+    `SELECT gsh.userId, u.username, u.usernameColor,
+      ${aggFn}(gsh.score) as highScore
+    FROM "GameScoreHistory" gsh
+    JOIN "User" u ON gsh.userId = u.id
+    WHERE gsh.gameType = ?
+      AND gsh.createdAt >= ?
+      AND u.isSuperAdmin = 0
+    GROUP BY gsh.userId
+    ORDER BY highScore ${orderDir}
+    LIMIT ? OFFSET ?`,
+    gameType, periodStart.toISOString(), limit, skip,
+  );
+  return rows.map((r) => ({ userId: r.userId, username: r.username, usernameColor: r.usernameColor, value: Number(r.highScore) }));
+}
+
 type LeaderboardCategory =
   | 'aura'
   | 'money'
@@ -43,11 +90,95 @@ type LeaderboardCategory =
 router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { category } = req.params as { category: LeaderboardCategory };
-    const { limit = '50', offset = '0' } = req.query;
-    
+    const { limit = '50', offset = '0', period } = req.query;
+
     let rankings: any[] = [];
     let totalMoneyPrice: number | null = null;
-    
+
+    // Period-filtered leaderboard for score-based games
+    if (period && (period === 'daily' || period === 'weekly' || period === 'monthly') && PERIOD_GAME_TYPES.has(category)) {
+      const periodStart = getPeriodStart(period as Period);
+      const ascending = category === 'racer';
+      const take = parseInt(limit as string);
+      const skip = parseInt(offset as string);
+      const periodRankings = await getPeriodGameRankings(category, periodStart, take, skip, ascending);
+      rankings = periodRankings.map((r, i) => ({
+        rank: skip + i + 1,
+        userId: r.userId,
+        username: r.username,
+        usernameColor: r.usernameColor,
+        value: r.value,
+      }));
+
+      if (rankings.length > 0) {
+        const rankedUserIds = rankings.map((r: any) => r.userId);
+        const [badgeUsers, clanMemberships] = await Promise.all([
+          prisma.user.findMany({
+            where: { id: { in: rankedUserIds } },
+            select: {
+              id: true,
+              equippedBadge1: { select: BADGE_SELECT },
+              equippedBadge2: { select: BADGE_SELECT },
+            },
+          }),
+          prisma.clanMember.findMany({
+            where: { userId: { in: rankedUserIds } },
+            select: {
+              userId: true,
+              clan: { select: { tagUnlocked: true, tagText: true, tagStyle: true } },
+            },
+          }),
+        ]);
+        const badgeMap = new Map(badgeUsers.map((u) => [
+          u.id,
+          [...(u.equippedBadge1 ? [u.equippedBadge1] : []), ...(u.equippedBadge2 ? [u.equippedBadge2] : [])],
+        ]));
+        const clanTagMap = new Map<string, { text: string; style: string | null }>();
+        for (const m of clanMemberships) {
+          if (m.clan?.tagUnlocked && m.clan?.tagText) {
+            clanTagMap.set(m.userId, { text: m.clan.tagText, style: m.clan.tagStyle });
+          }
+        }
+        rankings = rankings.map((r: any) => ({
+          ...r,
+          badges: badgeMap.get(r.userId) ?? [],
+          clanTag: clanTagMap.get(r.userId) ?? null,
+        }));
+      }
+
+      // User's own rank in the period
+      let userRank = null;
+      if (req.user) {
+        const userEntry = rankings.find((r: any) => r.userId === req.user!.id);
+        if (userEntry) {
+          userRank = userEntry.rank;
+        } else {
+          const aggFn2 = ascending ? 'MIN' : 'MAX';
+          const cmp = ascending ? '<' : '>';
+          const userBestRows = await prisma.$queryRawUnsafe<{ best: number | null }[]>(
+            `SELECT ${aggFn2}(score) as best FROM "GameScoreHistory" WHERE gameType = ? AND createdAt >= ? AND userId = ?`,
+            category, periodStart.toISOString(), req.user.id,
+          );
+          const userBest = userBestRows[0]?.best != null ? Number(userBestRows[0].best) : null;
+          if (userBest !== null) {
+            const betterRows = await prisma.$queryRawUnsafe<{ cnt: bigint }[]>(
+              `SELECT COUNT(*) as cnt FROM (
+                SELECT gsh.userId FROM "GameScoreHistory" gsh
+                JOIN "User" u ON gsh.userId = u.id
+                WHERE gsh.gameType = ? AND gsh.createdAt >= ? AND u.isSuperAdmin = 0
+                GROUP BY gsh.userId
+                HAVING ${aggFn2}(gsh.score) ${cmp} ?
+              )`,
+              category, periodStart.toISOString(), userBest,
+            );
+            userRank = Number(betterRows[0]?.cnt ?? 0) + 1;
+          }
+        }
+      }
+
+      return res.json({ rankings, userRank });
+    }
+
     switch (category) {
       case 'aura':
         rankings = await prisma.user.findMany({

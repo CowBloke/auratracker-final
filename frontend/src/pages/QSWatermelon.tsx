@@ -675,7 +675,7 @@ export default function QSWatermelon() {
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isEditableTarget(event.target)) return;
-      if (phaseRef.current === 'idle' && event.code === 'Space') {
+      if (phaseRef.current === 'idle' && (event.code === 'Space' || event.code === 'KeyR')) {
         event.preventDefault();
         resetGame();
         return;
@@ -761,7 +761,7 @@ export default function QSWatermelon() {
             <CardContent className="space-y-3 px-4 pb-4 text-sm text-muted-foreground">
               <div className="flex items-start gap-2">
                 <MousePointer2 className="mt-0.5 h-4 w-4 shrink-0 text-foreground" />
-                <p>Déplace la souris pour viser, clique pour lâcher. `A` / `D` et les flèches gauche / droite marchent aussi.</p>
+                <p>Déplace la souris pour viser, clique pour lâcher. `A` / `D` et les flèches gauche / droite marchent aussi. <kbd className="px-1 py-0.5 border border-border/50 rounded text-xs">R</kbd> pour rejouer.</p>
               </div>
               <div className="flex items-start gap-2">
                 <Smartphone className="mt-0.5 h-4 w-4 shrink-0 text-foreground" />

@@ -543,7 +543,7 @@ export default function Admin() {
     setSupportSending(true);
     try {
       const res = await supportApi.reply(activeThreadUserId, supportReply.trim());
-      setActiveThreadMessages((prev) => [...prev, res.data.message]);
+      setActiveThreadMessages((prev) => prev.some((m) => m.id === res.data.message.id) ? prev : [...prev, res.data.message]);
       setSupportReply('');
     } catch { /* non-critical */ }
     finally { setSupportSending(false); }

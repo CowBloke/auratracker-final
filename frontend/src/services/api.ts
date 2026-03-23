@@ -389,7 +389,7 @@ export interface AuraCoinPosition {
 
 // Leaderboards API
 export const leaderboardsApi = {
-  get: (category: string, params?: { limit?: number; offset?: number; seasonId?: string }) =>
+  get: (category: string, params?: { limit?: number; offset?: number; seasonId?: string; period?: 'daily' | 'weekly' | 'monthly' }) =>
     api.get(`/leaderboards/${category}`, { params }),
   getUserRankings: (userId: string) => api.get(`/leaderboards/user/${userId}`),
 };

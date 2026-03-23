@@ -1046,6 +1046,9 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
           money: { increment: moneyReward },
         },
       }),
+      prisma.gameScoreHistory.create({
+        data: { userId: req.user.id, gameType, score },
+      }),
     ]);
     
     // Emit balance update (always for casino, or if there are rewards)

@@ -376,8 +376,13 @@ export default function Game2048() {
   // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.key === 'r' || e.key === 'R') && gameOver) {
+        e.preventDefault();
+        initGame();
+        return;
+      }
       if (!started || gameOver) return;
-      
+
       switch (e.key) {
         case 'ArrowUp':
         case 'w':
@@ -408,7 +413,7 @@ export default function Game2048() {
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [started, gameOver, handleMove]);
+  }, [started, gameOver, handleMove, initGame]);
   
   // Touch/swipe controls
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -493,6 +498,7 @@ export default function Game2048() {
             </div>
             <p className="text-xs text-muted-foreground">ou <kbd className="px-1.5 py-0.5 border border-border/50 rounded">wasd</kbd></p>
             <p className="text-xs text-muted-foreground">ou glisser sur mobile</p>
+            <p className="text-xs text-muted-foreground pt-1"><kbd className="px-1.5 py-0.5 border border-border/50 rounded">R</kbd> pour rejouer</p>
           </CardContent>
         </Card>
 

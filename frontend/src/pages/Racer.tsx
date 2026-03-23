@@ -1266,6 +1266,11 @@ export default function Racer() {
   // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.key === 'r' || e.key === 'R') && gameOver) {
+        e.preventDefault();
+        initGame();
+        return;
+      }
       if (!started || gameOver) return;
 
       const keyCode = e.keyCode || e.which;
@@ -1310,7 +1315,7 @@ export default function Racer() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [started, gameOver]);
+  }, [started, gameOver, initGame]);
 
   const formatTime = (dt: number): string => {
     const totalMs = Math.max(0, Math.round(dt * 1000));

@@ -123,6 +123,21 @@ export default function Tetris() {
     setSessionKey((prev) => prev + 1);
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        lastSubmittedRef.current = '';
+        setRewards(null);
+        setIsNewHighScore(false);
+        setLastScore(null);
+        setSessionKey((prev) => prev + 1);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <div className={cn(
       'grid items-start gap-4 px-4 pb-6 lg:px-6 lg:pb-8',

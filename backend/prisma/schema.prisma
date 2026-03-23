@@ -44,6 +44,7 @@ model User {
   sentTransfers         Transfer[]             @relation("SentTransfers")
   receivedTransfers     Transfer[]             @relation("ReceivedTransfers")
   gameStats             GameStats[]
+  gameScoreHistory      GameScoreHistory[]
   partyMemberships      PartyMember[]
   partyMessages         PartyMessage[]
   sentMessages          ChatMessage[]
@@ -217,6 +218,19 @@ model DailyRacerRun {
   @@index([trackDate, lapTimeMs])
   @@index([trackDate, userId])
   @@index([userId, createdAt])
+}
+
+model GameScoreHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  gameType  String
+  score     Float
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([gameType, createdAt])
+  @@index([userId, gameType, createdAt])
 }
 
 // Party System

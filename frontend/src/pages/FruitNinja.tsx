@@ -786,6 +786,17 @@ export default function FruitNinja() {
     return () => cancelAnimationFrame(animRef.current);
   }, [started, gameOver, gameLoop]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.key === 'r' || e.key === 'R') && (gameOver || !started)) {
+        e.preventDefault();
+        initGame();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [gameOver, started, initGame]);
+
   const isPlaying = started && !gameOver;
 
   return (
@@ -862,6 +873,7 @@ export default function FruitNinja() {
           </CardHeader>
           <CardContent className="px-4 pb-4 space-y-2 text-xs text-muted-foreground">
             <p>🖱️ Déplace la souris rapidement à travers les fruits pour les trancher.</p>
+            <p><kbd className="px-1 py-0.5 border border-border/50 rounded">R</kbd> pour rejouer.</p>
             <Separator />
             <p>💣 Évite les bombes — elles coûtent une vie.</p>
             <p>❌ Laisser tomber un fruit coûte une vie.</p>

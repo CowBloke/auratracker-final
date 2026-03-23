@@ -423,6 +423,17 @@ export default function FlappyBird() {
     };
   }, [handleJump]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.key === 'r' || e.key === 'R') && (gameOver || !started)) {
+        e.preventDefault();
+        initGame();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [gameOver, started, initGame]);
+
   // Start game loop when game starts
   useEffect(() => {
     if (started && !gameOver) {
@@ -472,6 +483,10 @@ export default function FlappyBird() {
               <span className="text-xs text-muted-foreground">Clic</span>
             </div>
             <p className="text-xs text-muted-foreground">pour sauter</p>
+            <div className="flex items-center gap-2 flex-wrap pt-1">
+              <kbd className="px-2 py-0.5 border border-border/50 rounded text-xs">R</kbd>
+            </div>
+            <p className="text-xs text-muted-foreground">pour rejouer</p>
           </CardContent>
         </Card>
       </div>

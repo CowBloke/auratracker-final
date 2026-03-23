@@ -173,27 +173,18 @@ router.get('/price', authMiddleware, async (req: AuthRequest, res: Response) => 
     const { hours = '24' } = req.query;
     const hoursAgo = new Date(Date.now() - parseInt(hours as string) * 60 * 60 * 1000);
 
-    const count = await prisma.auraCoinPrice.count({
+    const allHistory = await prisma.auraCoinPrice.findMany({
       where: { createdAt: { gte: hoursAgo } },
+      orderBy: { createdAt: 'asc' },
+      select: { price: true, volume: true, createdAt: true },
     });
 
     let history: { price: number; volume: number; createdAt: Date | string }[];
-    if (count <= MAX_CHART_POINTS) {
-      history = await prisma.auraCoinPrice.findMany({
-        where: { createdAt: { gte: hoursAgo } },
-        orderBy: { createdAt: 'asc' },
-        select: { price: true, volume: true, createdAt: true },
-      });
+    if (allHistory.length > MAX_CHART_POINTS) {
+      const step = Math.ceil(allHistory.length / MAX_CHART_POINTS);
+      history = allHistory.filter((_, i) => i % step === 0);
     } else {
-      const step = Math.floor(count / MAX_CHART_POINTS);
-      history = await prisma.$queryRawUnsafe<{ price: number; volume: number; createdAt: string }[]>(
-        `SELECT price, volume, createdAt FROM (
-          SELECT price, volume, createdAt, ROW_NUMBER() OVER (ORDER BY createdAt ASC) as rn
-          FROM AuraCoinPrice
-          WHERE createdAt >= ?
-        ) WHERE rn % ${step} = 0`,
-        hoursAgo.toISOString()
-      );
+      history = allHistory;
     }
     
     // Get user's balance

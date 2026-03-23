@@ -31,6 +31,19 @@ type StatSection = { title: string; items: StatItem[] };
 
 type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'doodle_jump_mort_subite' | 'game_2048' | 'flappy_bird' | 'chrome_dino' | 'stack_tower' | 'geometry_dash' | 'qs_watermelon' | 'solitaire' | 'racer' | 'tetris' | 'knife_hit' | 'minesweeper' | 'fruit_ninja' | 'goyave_empire' | 'logic_lab' | 'casino' | 'casino_losses' | 'games_played' | 'bombparty';
 type View = Category | 'nombres';
+type Period = 'all' | 'monthly' | 'weekly' | 'daily';
+
+const PERIOD_CATEGORIES = new Set<Category>([
+  'doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird',
+  'chrome_dino', 'solitaire', 'racer', 'tetris', 'knife_hit', 'minesweeper', 'casino',
+]);
+
+const PERIOD_OPTIONS: { id: Period; label: string }[] = [
+  { id: 'all', label: 'Tout le temps' },
+  { id: 'monthly', label: 'Ce mois' },
+  { id: 'weekly', label: 'Cette semaine' },
+  { id: 'daily', label: "Aujourd'hui" },
+];
 
 const categories: { id: Category; name: string; valueLabel: string; icon: typeof Zap }[] = [
   { id: 'aura', name: 'Aura', valueLabel: 'aura', icon: Zap },
@@ -91,6 +104,7 @@ const formatMoney = (value: number, digits = 0) => `$${formatNumber(value, digit
 export default function Leaderboards() {
   const { user } = useAuth();
   const [activeView, setActiveView] = useState<View>('aura');
+  const [period, setPeriod] = useState<Period>('all');
   const category: Category = activeView === 'nombres' ? 'aura' : activeView as Category;
 
   // Rankings state
@@ -102,11 +116,18 @@ export default function Leaderboards() {
   const [nombresSections, setNombresSections] = useState<StatSection[]>([]);
   const [nombresLoading, setNombresLoading] = useState(false);
 
+  // Reset period when switching to a category that doesn't support it
+  useEffect(() => {
+    if (activeView === 'nombres' || !PERIOD_CATEGORIES.has(category)) {
+      setPeriod('all');
+    }
+  }, [activeView]);
+
   useEffect(() => {
     if (activeView !== 'nombres') {
       fetchRankings();
     }
-  }, [activeView]);
+  }, [activeView, period]);
 
   useEffect(() => {
     if (activeView === 'nombres' && nombresSections.length === 0) {
@@ -149,7 +170,9 @@ export default function Leaderboards() {
         const userEntry = mapped.find((entry) => entry.userId === user?.id);
         setUserRank(userEntry ? userEntry.rank : null);
       } else {
-        const response = await leaderboardsApi.get(category, { limit: 50 });
+        const params: Parameters<typeof leaderboardsApi.get>[1] = { limit: 50 };
+        if (period !== 'all' && PERIOD_CATEGORIES.has(category)) params.period = period;
+        const response = await leaderboardsApi.get(category, params);
         setRankings(response.data.rankings);
         setUserRank(response.data.userRank);
       }
@@ -354,6 +377,26 @@ export default function Leaderboards() {
           <ScrollArea className="h-full">
           <div className="space-y-4">
             <h2 className={TYPOGRAPHY.H3}>{activeTitle}</h2>
+
+            {activeView !== 'nombres' && PERIOD_CATEGORIES.has(category) && (
+              <div className="flex gap-1">
+                {PERIOD_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setPeriod(opt.id)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+                      period === opt.id
+                        ? "bg-muted text-foreground"
+                        : "text-muted-foreground hover:bg-muted/40"
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {activeView === 'nombres' ? (
               nombresLoading ? (
