@@ -1,4 +1,1 @@
-- envoie/retrait pop up chaque jour
-- pop ups de temps de temps en temps
-- rework objets themes
-- preciser pop up
+- revoir system envoi/retrait aura et cadeaux

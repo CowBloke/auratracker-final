@@ -190,6 +190,21 @@ export const petitBacEvents = {
   },
 };
 
+export const jackpot5Events = {
+  start: (partyId: string) => {
+    socket?.emit('jackpot5:start', { partyId });
+  },
+  respondToJoin: (partyId: string, accepted: boolean) => {
+    socket?.emit('jackpot5:join-response', { partyId, accepted });
+  },
+  submitPick: (partyId: string, pick: number[]) => {
+    socket?.emit('jackpot5:submit-pick', { partyId, pick });
+  },
+  respondToPlayAgain: (partyId: string, playAgain: boolean) => {
+    socket?.emit('jackpot5:play-again-response', { partyId, playAgain });
+  },
+};
+
 // Battleship events
 export const battleshipEvents = {
   register: (userId: string) => {

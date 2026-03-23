@@ -51,6 +51,7 @@ const pageMatchers: Array<{ test: (path: string) => boolean; label: string; icon
   { test: (path) => path.startsWith('/games/puissance-quatre'), label: 'Puissance 4', icon: Gamepad2 },
   { test: (path) => path.startsWith('/games/ball-arena'), label: 'Ball Arena', icon: Gamepad2 },
   { test: (path) => path.startsWith('/games/russian-roulette'), label: 'Russian Roulette', icon: Dice5 },
+  { test: (path) => path.startsWith('/games/jackpot-5'), label: 'Jackpot 5', icon: Coins },
   { test: (path) => path.startsWith('/games/uno'), label: 'Uno', icon: Gamepad2 },
   { test: (path) => path.startsWith('/games/morpion'), label: 'Morpion', icon: Gamepad2 },
   { test: (path) => path.startsWith('/games/casino'), label: 'Casino', icon: Dice5 },

@@ -14,6 +14,15 @@ type Game = (typeof games)[number];
 
 const games = [
   {
+    id: 'levier-infernal',
+    pageKey: 'game-levier-infernal',
+    name: 'Levier Infernal',
+    description: 'Mini-jeu party inspiré de Mario: chacun tire un levier, l’un explose, le dernier survivant gagne.',
+    type: 'Party',
+    requiresParty: true,
+    image: '/images/games/rouletterusse.png',
+  },
+  {
     id: 'russian-roulette',
     pageKey: 'game-russian-roulette',
     name: 'Russian Roulette',
@@ -21,6 +30,15 @@ const games = [
     type: 'Party',
     requiresParty: true,
     image: '/images/games/rouletterusse.png',
+  },
+  {
+    id: 'jackpot-5',
+    pageKey: 'game-jackpot-5',
+    name: 'Jackpot 5',
+    description: 'Choisis 5 chiffres, attends le tirage et décroche des gains selon tes correspondances.',
+    type: 'Party',
+    requiresParty: true,
+    image: '/images/games/cashmachine.png',
   },
   {
     id: 'bomb-party',
@@ -295,6 +313,9 @@ export default function Games() {
     }
     if (gameId === 'bomb-party') {
       return '/games/bomb-party';
+    }
+    if (gameId === 'jackpot-5') {
+      return '/games/jackpot-5';
     }
     if (gameId === 'poker') {
       return '/games/poker';

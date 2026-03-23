@@ -34,6 +34,7 @@ const gamesCatalog = [
   'Flappy Bird',
   'Casino',
   'Bomb Party',
+  'Jackpot 5',
   'Poker',
   'Petit Bac',
   'Bataille Navale',
