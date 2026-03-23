@@ -20,8 +20,8 @@ import { CSS } from '@dnd-kit/utilities';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocketBase } from '../contexts/SocketContext';
 import { usePartySocket } from '../contexts/PartySocketContext';
-import { ClanChatMessage, ClanSummary, ClanWarState, Gift, GiftStatus, ReferralSummary, auraCoinApi, authApi, clansApi, giftsApi, marketplaceApi } from '../services/api';
-import { GripVertical, Copy, Sparkles, Zap, Trophy, Users, Gift as GiftIcon, Package, TrendingUp, TrendingDown, CheckCircle2, Star, Gamepad2, BarChart3, Coins, Shield, Ticket, User as UserIcon, MessageSquare, Swords, Crown } from 'lucide-react';
+import { ClanChatMessage, ClanSummary, ClanWarState, Gift, GiftStatus, auraCoinApi, clansApi, giftsApi, marketplaceApi } from '../services/api';
+import { GripVertical, Zap, Trophy, Users, Gift as GiftIcon, Package, TrendingUp, TrendingDown, CheckCircle2, Star, Gamepad2, BarChart3, Coins, Shield, User as UserIcon, MessageSquare, Swords, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -30,13 +30,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 import { AreaChart, Area, XAxis, YAxis } from 'recharts';
 import GiftDialog from '@/components/gifts/GiftDialog';
-import ReferralClaimAnimation from '@/components/referrals/ReferralClaimAnimation';
-import { useFeatures } from '@/contexts/FeaturesContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { resolveThemeImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
 
 interface GameShortcut {
   id: string;
@@ -352,7 +349,6 @@ function coerceVisibleDashboardWidgets(value: unknown): DashboardWidgetId[] | nu
 export default function Dashboard() {
   const { user } = useAuth();
   const { theme } = useTheme();
-  const { maintenanceStatus } = useFeatures();
   const { socket } = useSocketBase();
   const { fetchPublicParties, publicParties, currentParty, joinParty, requestJoinParty, pendingJoinRequests } = usePartySocket();
   const [loading, setLoading] = useState(true);
@@ -379,14 +375,11 @@ export default function Dashboard() {
   const [auraCoinPreviousPrice, setAuraCoinPreviousPrice] = useState<number | null>(null);
   const [auraCoinHistory, setAuraCoinHistory] = useState<{ price: number; time: string }[]>([]);
   const [inventoryItems, setInventoryItems] = useState<DashboardInventoryItem[]>([]);
-  const [referralSummary, setReferralSummary] = useState<ReferralSummary | null>(null);
-  const [referralClaimOpen, setReferralClaimOpen] = useState(false);
   const [clans, setClans] = useState<ClanSummary[]>([]);
   const [activeWars, setActiveWars] = useState<ClanWarState[]>([]);
   const [viewerClanId, setViewerClanId] = useState<string | null>(null);
   const [latestClanMessage, setLatestClanMessage] = useState<ClanChatMessage | null>(null);
   const [clanMessageLoading, setClanMessageLoading] = useState(false);
-  const referralEnabled = maintenanceStatus.referralEnabled;
 
   const shortcutMap = useMemo(() => new Map(gameShortcuts.map((item) => [item.id, item])), []);
   const quickActionMap = useMemo(() => new Map(quickActions.map((item) => [item.id, item])), []);
@@ -498,13 +491,12 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [inboxRes, receivedRes, statusRes, auraCoinRes, inventoryRes, referralRes, clansRes] = await Promise.allSettled([
+        const [inboxRes, receivedRes, statusRes, auraCoinRes, inventoryRes, clansRes] = await Promise.allSettled([
           giftsApi.getInbox(),
           giftsApi.getReceived(),
           giftsApi.getStatus(),
           auraCoinApi.getPrice(4),
           user?.id ? marketplaceApi.getInventory(user.id) : Promise.resolve({ data: { items: [] as DashboardInventoryItem[] } }),
-          referralEnabled ? authApi.getReferralSummary() : Promise.resolve(null),
           clansApi.list(),
         ]);
 
@@ -536,12 +528,6 @@ export default function Dashboard() {
           setInventoryItems((inventoryRes.value.data.items || []) as DashboardInventoryItem[]);
         }
 
-        if (referralEnabled && referralRes.status === 'fulfilled' && referralRes.value) {
-          setReferralSummary(referralRes.value.data);
-        } else if (!referralEnabled) {
-          setReferralSummary(null);
-        }
-
         if (clansRes.status === 'fulfilled') {
           setClans(clansRes.value.data.clans);
           setActiveWars(clansRes.value.data.meta.activeWars);
@@ -564,7 +550,7 @@ export default function Dashboard() {
 
     fetchData();
     fetchPublicParties();
-  }, [referralEnabled, user?.id]);
+  }, [user?.id]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -731,24 +717,6 @@ export default function Dashboard() {
     setGiftDialogOpen(true);
   };
 
-  const handleReferralCopy = async () => {
-    if (!referralSummary?.referralCode) return;
-
-    try {
-      await navigator.clipboard.writeText(referralSummary.referralCode);
-      toast('Code copie', {
-        description: `${referralSummary.referralCode} est pret a etre partage.`,
-        duration: 3000,
-      });
-    } catch (error) {
-      console.error('Failed to copy referral code:', error);
-      toast('Copie impossible', {
-        description: 'Le code est affiche, mais la copie automatique a echoue.',
-        duration: 3000,
-      });
-    }
-  };
-
   const handleDashboardDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -818,70 +786,6 @@ export default function Dashboard() {
         </div>
 
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-end">
-          {referralSummary && (
-            <div className="relative overflow-hidden rounded-3xl border border-amber-200/20 bg-[linear-gradient(140deg,rgba(250,204,21,0.16),rgba(15,23,42,0.95)_45%,rgba(17,24,39,0.98))] px-4 py-4 text-white shadow-[0_18px_60px_rgba(15,23,42,0.28)] lg:min-w-[360px]">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(250,204,21,0.24),transparent_38%)]" />
-              <div className="relative space-y-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <p className="text-xs uppercase tracking-[0.32em] text-amber-200/70">Parrainage</p>
-                    <p className="text-sm text-white/70">Ton code est deja pret a etre partage.</p>
-                  </div>
-                  <Badge className="border border-white/10 bg-white/10 text-amber-100 hover:bg-white/10">
-                    +{referralSummary.rewardAmount} money chacun
-                  </Badge>
-                </div>
-
-                <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-300/12 text-amber-200">
-                      <Ticket className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.24em] text-white/45">Code</p>
-                      <p className="font-mono text-lg tracking-[0.34em] text-amber-100">{referralSummary.referralCode}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="bg-amber-200 text-slate-950 hover:bg-amber-100"
-                      onClick={() => setReferralClaimOpen(true)}
-                    >
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      Reclamer
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-white/70 hover:bg-white/10 hover:text-white"
-                      onClick={handleReferralCopy}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 text-center text-sm">
-                  <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-                    <p className="text-xs uppercase tracking-[0.2em] text-white/45">Valides</p>
-                    <p className="mt-1 text-lg font-semibold text-white">{referralSummary.successfulReferrals}</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-                    <p className="text-xs uppercase tracking-[0.2em] text-white/45">En attente</p>
-                    <p className="mt-1 text-lg font-semibold text-white">{referralSummary.pendingReferrals}</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-                    <p className="text-xs uppercase tracking-[0.2em] text-white/45">Gagnes</p>
-                    <p className="mt-1 text-lg font-semibold text-white">{referralSummary.totalRewardsEarned}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
           <div className="flex flex-wrap justify-end gap-2">
             <Dialog open={widgetsDialogOpen} onOpenChange={setWidgetsDialogOpen}>
               <Button variant="outline" className={dashboardGhostButtonClass} onClick={() => setWidgetsDialogOpen(true)}>
@@ -1622,16 +1526,6 @@ export default function Dashboard() {
         onGiftOpened={fetchGiftOverview}
         initialTab={giftDialogInitialTab}
       />
-
-      {referralSummary && (
-        <ReferralClaimAnimation
-          open={referralClaimOpen}
-          code={referralSummary.referralCode}
-          rewardAmount={referralSummary.rewardAmount}
-          successfulReferrals={referralSummary.successfulReferrals}
-          onClose={() => setReferralClaimOpen(false)}
-        />
-      )}
     </>
   );
 }

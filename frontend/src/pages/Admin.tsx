@@ -243,19 +243,43 @@ const GAME_TYPE_LABELS: Record<string, string> = {
   doodle_jump_mort_subite: 'Doodle Jump (Mort Subite)',
   game_2048: '2048',
   flappy_bird: 'Flappy Bird',
+  chrome_dino: 'Chrome Dino',
+  stack_tower: 'Stack Tower',
+  geometry_dash: 'Geometry Dash',
   solitaire: 'Solitaire',
   racer: 'Racer',
+  racer_daily: 'Racer Quotidien',
   tetris: 'Tetris',
   knife_hit: 'Knife Hit',
   minesweeper: 'Démineur',
+  goyave_empire: 'Goyave Empire',
+  logic_lab: 'Sudoku',
+  fruit_ninja: 'Fruit Ninja',
   casino: 'Casino',
   bombparty: 'Bomb Party',
   petit_bac: 'Petit Bac',
   poker: 'Poker',
   battleship: 'Bataille Navale',
+  chess: 'Échecs',
+  puissance_4: 'Puissance 4',
+  ball_arena: 'Ball Arena',
+  uno: 'Uno',
+  morpion: 'Morpion',
+  russian_roulette: 'Russian Roulette',
 };
 
-const MULTIPLAYER_GAME_TYPES = new Set(['bombparty', 'petit_bac', 'poker', 'battleship']);
+const MULTIPLAYER_GAME_TYPES = new Set([
+  'bombparty',
+  'petit_bac',
+  'poker',
+  'battleship',
+  'chess',
+  'puissance_4',
+  'ball_arena',
+  'uno',
+  'morpion',
+  'russian_roulette',
+]);
 const ACTIVITY_BREAKDOWN_COLORS = ['#2563eb', '#f97316', '#10b981', '#eab308', '#8b5cf6', '#ef4444'];
 
 const toNumber = (value: unknown): number | null => {
@@ -361,16 +385,29 @@ const GAME_TYPES = [
   { value: 'doodle_jump_mort_subite', label: 'Doodle Jump (Mort Subite)' },
   { value: 'game_2048', label: '2048' },
   { value: 'flappy_bird', label: 'Flappy Bird' },
+  { value: 'chrome_dino', label: 'Chrome Dino' },
+  { value: 'stack_tower', label: 'Stack Tower' },
+  { value: 'geometry_dash', label: 'Geometry Dash' },
   { value: 'solitaire', label: 'Solitaire' },
   { value: 'racer', label: 'Racer' },
+  { value: 'racer_daily', label: 'Racer Quotidien' },
   { value: 'tetris', label: 'Tetris' },
   { value: 'knife_hit', label: 'Knife Hit' },
   { value: 'minesweeper', label: 'Démineur' },
+  { value: 'goyave_empire', label: 'Goyave Empire' },
+  { value: 'logic_lab', label: 'Sudoku' },
+  { value: 'fruit_ninja', label: 'Fruit Ninja' },
   { value: 'casino', label: 'Casino' },
   { value: 'bombparty', label: 'Bomb Party' },
   { value: 'petit_bac', label: 'Petit Bac' },
   { value: 'poker', label: 'Poker' },
   { value: 'battleship', label: 'Bataille Navale' },
+  { value: 'chess', label: 'Échecs' },
+  { value: 'puissance_4', label: 'Puissance 4' },
+  { value: 'ball_arena', label: 'Ball Arena' },
+  { value: 'uno', label: 'Uno' },
+  { value: 'morpion', label: 'Morpion' },
+  { value: 'russian_roulette', label: 'Russian Roulette' },
 ];
 
 interface ItemFormData {
@@ -7070,7 +7107,6 @@ export default function Admin() {
                                 <SelectItem value="GAME_HIGHSCORE_flappy_bird">🐦 Champion Flappy Bird</SelectItem>
                                 <SelectItem value="GAME_HIGHSCORE_game_2048">🔢 Champion 2048</SelectItem>
                                 <SelectItem value="GAME_HIGHSCORE_geometry_dash">📐 Champion Geometry Dash</SelectItem>
-                                <SelectItem value="GAME_HIGHSCORE_qs_watermelon">🍉 Champion Watermelon</SelectItem>
                                 <SelectItem value="GAME_HIGHSCORE_solitaire">🃏 Champion Solitaire</SelectItem>
                                 <SelectItem value="GAME_HIGHSCORE_racer">🏎️ Champion Racer (meilleur temps)</SelectItem>
                                 <SelectItem value="GAME_HIGHSCORE_tetris">🧱 Champion Tetris</SelectItem>

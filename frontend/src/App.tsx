@@ -44,7 +44,6 @@ import Inbox from './pages/Inbox';
 import Blocked from './pages/Blocked';
 import Minesweeper from './pages/Minesweeper';
 import GeometryDash from './pages/GeometryDash';
-import QSWatermelon from './pages/QSWatermelon';
 import RussianRoulette from './pages/RussianRoulette';
 import Uno from './pages/Uno';
 import Morpion from './pages/Morpion';
@@ -163,7 +162,6 @@ function App() {
         <Route path="games/fruit-ninja" element={<FruitNinja />} />
         <Route path="games/stack-tower" element={<StackTower />} />
         <Route path="games/geometry-dash" element={<GeometryDash />} />
-        <Route path="games/qs-watermelon" element={<QSWatermelon />} />
         <Route path="games/casino" element={<Casino />} />
         <Route path="games/aura-coin" element={<AuraCoin />} />
         <Route path="games/minesweeper" element={<Minesweeper />} />

@@ -144,14 +144,6 @@ const games = [
     image: '/images/games/geometrydash.png',
   },
   {
-    id: 'qs-watermelon',
-    pageKey: 'game-qs-watermelon',
-    name: 'QS Watermelon',
-    description: 'Clone du Watermelon Game: aligne, drop et fusionne les fruits sans depasser la ligne rouge.',
-    type: 'Arcade',
-    image: '/images/games/qswatermelon.svg',
-  },
-  {
     id: 'casino',
     pageKey: 'game-casino',
     name: 'Casino',
@@ -300,9 +292,6 @@ export default function Games() {
     }
     if (gameId === 'geometry-dash') {
       return '/games/geometry-dash';
-    }
-    if (gameId === 'qs-watermelon') {
-      return '/games/qs-watermelon';
     }
     if (gameId === 'logic-lab') {
       return '/games/logic-lab';

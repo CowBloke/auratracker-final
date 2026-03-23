@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { PageShell } from '@/components/layout/page-shell';
+import { PageShell, PageHeader } from '@/components/layout/page-shell';
 import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { toast } from 'sonner';
@@ -29,43 +29,43 @@ const CATEGORY_CFG: Record<string, {
 }> = {
   COSMETIC: {
     Icon: Sparkles,
-    color: 'text-violet-400',
-    strip: 'from-violet-500 to-purple-600',
-    headerBg: 'from-violet-900/40 to-violet-800/10 border-violet-500/25',
-    headerText: 'text-violet-300',
-    priceBadge: 'bg-violet-500/15 text-violet-300 border-violet-500/30',
-    buyBtn: 'bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-400 hover:to-purple-500 text-white shadow-md shadow-violet-900/40',
-    pillActive: 'bg-violet-500/20 text-violet-300 border-violet-500/40',
+    color: 'text-violet-500',
+    strip: 'from-violet-500/80 to-violet-400/40',
+    headerBg: 'border-violet-500/25 bg-violet-500/5',
+    headerText: 'text-foreground',
+    priceBadge: 'bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/30',
+    buyBtn: 'bg-foreground text-background hover:bg-foreground/90',
+    pillActive: 'bg-violet-500/10 text-foreground border-violet-500/30',
   },
   CONSUMABLE: {
     Icon: Zap,
-    color: 'text-amber-400',
-    strip: 'from-amber-500 to-orange-500',
-    headerBg: 'from-amber-900/40 to-orange-800/10 border-amber-500/25',
-    headerText: 'text-amber-300',
-    priceBadge: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
-    buyBtn: 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white shadow-md shadow-amber-900/40',
-    pillActive: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+    color: 'text-amber-500',
+    strip: 'from-amber-500/80 to-amber-300/40',
+    headerBg: 'border-amber-500/25 bg-amber-500/5',
+    headerText: 'text-foreground',
+    priceBadge: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30',
+    buyBtn: 'bg-foreground text-background hover:bg-foreground/90',
+    pillActive: 'bg-amber-500/10 text-foreground border-amber-500/30',
   },
   UPGRADE: {
     Icon: TrendingUp,
-    color: 'text-sky-400',
-    strip: 'from-sky-500 to-cyan-500',
-    headerBg: 'from-sky-900/40 to-cyan-800/10 border-sky-500/25',
-    headerText: 'text-sky-300',
-    priceBadge: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
-    buyBtn: 'bg-gradient-to-r from-sky-500 to-cyan-500 hover:from-sky-400 hover:to-cyan-400 text-white shadow-md shadow-sky-900/40',
-    pillActive: 'bg-sky-500/20 text-sky-300 border-sky-500/40',
+    color: 'text-sky-500',
+    strip: 'from-sky-500/80 to-sky-300/40',
+    headerBg: 'border-sky-500/25 bg-sky-500/5',
+    headerText: 'text-foreground',
+    priceBadge: 'bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30',
+    buyBtn: 'bg-foreground text-background hover:bg-foreground/90',
+    pillActive: 'bg-sky-500/10 text-foreground border-sky-500/30',
   },
   GIFT: {
     Icon: Gift,
-    color: 'text-pink-400',
-    strip: 'from-pink-500 to-rose-500',
-    headerBg: 'from-pink-900/40 to-rose-800/10 border-pink-500/25',
-    headerText: 'text-pink-300',
-    priceBadge: 'bg-pink-500/15 text-pink-300 border-pink-500/30',
-    buyBtn: 'bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-400 hover:to-rose-400 text-white shadow-md shadow-pink-900/40',
-    pillActive: 'bg-pink-500/20 text-pink-300 border-pink-500/40',
+    color: 'text-pink-500',
+    strip: 'from-pink-500/80 to-pink-300/40',
+    headerBg: 'border-pink-500/25 bg-pink-500/5',
+    headerText: 'text-foreground',
+    priceBadge: 'bg-pink-500/10 text-pink-700 dark:text-pink-300 border-pink-500/30',
+    buyBtn: 'bg-foreground text-background hover:bg-foreground/90',
+    pillActive: 'bg-pink-500/10 text-foreground border-pink-500/30',
   },
 };
 
@@ -316,11 +316,11 @@ function ShopCard({
 
   return (
     <Card className={cn(
-      'group overflow-hidden transition-all duration-200',
-      'hover:-translate-y-0.5 hover:shadow-xl',
+      'group overflow-hidden border-border/60 shadow-sm transition-all duration-200',
+      'hover:-translate-y-0.5 hover:border-border hover:shadow-md',
     )}>
       {/* Colored accent strip */}
-      <div className={cn('h-1 w-full bg-gradient-to-r', cfg.strip)} />
+      <div className={cn('h-0.5 w-full bg-gradient-to-r', cfg.strip)} />
       <CardContent className="p-0">
         {renderMedia()}
         <div className="space-y-3 p-4">
@@ -348,30 +348,30 @@ function ShopCard({
           <p className="text-xs leading-relaxed text-muted-foreground line-clamp-2">{item.description}</p>
 
           {isGift ? (
-            <button
+            <Button
               onClick={() => onSend(item)}
               disabled={!canAfford}
               className={cn(
-                'w-full rounded-lg py-2 text-sm font-semibold transition-all duration-150',
+                'w-full rounded-lg text-sm font-semibold transition-all duration-150',
                 canAfford
-                  ? 'bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-400 hover:to-rose-400 text-white shadow-md shadow-pink-900/30'
-                  : 'bg-muted/20 text-muted-foreground/50 cursor-not-allowed border border-border/20',
+                  ? 'bg-foreground text-background hover:bg-foreground/90'
+                  : 'bg-muted/20 text-muted-foreground/50 border border-border/20',
               )}
             >
               <span className="flex items-center justify-center gap-2">
                 <Gift className="h-4 w-4" />
                 {canAfford ? 'Envoyer en cadeau' : 'Solde insuffisant'}
               </span>
-            </button>
+            </Button>
           ) : (
-            <button
+            <Button
               onClick={() => onPurchase(item)}
               disabled={!canAfford || isBuying || isOwnedSkin || isAlreadyPurchased}
               className={cn(
-                'w-full rounded-lg py-2 text-sm font-semibold transition-all duration-150',
+                'w-full rounded-lg text-sm font-semibold transition-all duration-150',
                 canAfford && !isBuying && !isOwnedSkin && !isAlreadyPurchased
                   ? cn(cfg.buyBtn)
-                  : 'bg-muted/20 text-muted-foreground/50 cursor-not-allowed border border-border/20',
+                  : 'bg-muted/20 text-muted-foreground/50 border border-border/20',
               )}
             >
               <span className="flex items-center justify-center gap-2">
@@ -387,7 +387,7 @@ function ShopCard({
                   'Solde insuffisant'
                 )}
               </span>
-            </button>
+            </Button>
           )}
         </div>
       </CardContent>
@@ -416,13 +416,13 @@ function DjSkinCard({
   const isOwnedSkin = ownedSkinItemIds.has(item.id);
 
   return (
-    <Card className="group overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-violet-900/20 border-violet-500/10">
-      <div className="h-1 bg-gradient-to-r from-violet-500 to-indigo-600" />
+    <Card className="group overflow-hidden border-border/60 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-md">
+      <div className="h-0.5 bg-gradient-to-r from-violet-500/80 to-violet-300/40" />
       <CardContent className="p-0">
         {skinUrl
           ? <DoodleJumpSkinPreview skinImageUrl={skinUrl} />
-          : <div className="flex h-36 items-center justify-center bg-violet-950/20">
-              <Gamepad2 className="h-12 w-12 text-violet-500/30" />
+          : <div className="flex h-36 items-center justify-center bg-violet-500/5">
+              <Gamepad2 className="h-12 w-12 text-violet-500/40" />
             </div>
         }
         <div className="space-y-3 p-4">
@@ -433,14 +433,14 @@ function DjSkinCard({
             </span>
           </div>
           <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>
-          <button
+          <Button
             onClick={() => onPurchase(item)}
             disabled={!canAfford || isBuying || isOwnedSkin}
             className={cn(
-              'w-full rounded-lg py-2 text-sm font-semibold transition-all duration-150',
+              'w-full rounded-lg text-sm font-semibold transition-all duration-150',
               canAfford && !isBuying && !isOwnedSkin
-                ? 'bg-gradient-to-r from-violet-500 to-indigo-600 hover:from-violet-400 hover:to-indigo-500 text-white shadow-md shadow-violet-900/40'
-                : 'bg-muted/20 text-muted-foreground/50 cursor-not-allowed border border-border/20',
+                ? 'bg-foreground text-background hover:bg-foreground/90'
+                : 'bg-muted/20 text-muted-foreground/50 border border-border/20',
             )}
           >
             <span className="flex items-center justify-center gap-2">
@@ -453,7 +453,7 @@ function DjSkinCard({
                   : 'Solde insuffisant'
               }
             </span>
-          </button>
+          </Button>
         </div>
       </CardContent>
     </Card>
@@ -496,15 +496,15 @@ function DoodleJumpShopSection({
   if (!loading && !hasStatic && !hasRotating) return null;
 
   return (
-    <div className="space-y-6 rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-950/30 via-indigo-950/20 to-transparent p-6">
+    <div className="space-y-6 rounded-xl border border-border/60 bg-card p-5 shadow-sm md:p-6">
       {/* Section header */}
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/20">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-500/10">
           <Gamepad2 className="h-5 w-5 text-violet-400" />
         </div>
         <div>
-          <h2 className="text-lg font-bold text-violet-200">Skins Doodle Jump</h2>
-          <p className="text-xs text-violet-400/70">Personnalise ton personnage dans Doodle Jump</p>
+          <h2 className="text-base font-semibold tracking-tight">Skins Doodle Jump</h2>
+          <p className="text-xs text-muted-foreground">Personnalise ton personnage dans Doodle Jump</p>
         </div>
       </div>
 
@@ -519,12 +519,12 @@ function DoodleJumpShopSection({
           {hasRotating && (
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-3">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-500/15 px-3 py-1 text-xs font-bold text-orange-300 border border-orange-500/25">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-orange-500/25 bg-orange-500/10 px-3 py-1 text-xs font-semibold text-orange-700 dark:text-orange-300">
                   <Flame className="h-3.5 w-3.5" />
                   SKINS DU JOUR
                 </span>
                 {countdown && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/20 px-2.5 py-1 text-xs text-muted-foreground border border-border/20">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border/50 bg-muted/30 px-2.5 py-1 text-xs text-muted-foreground">
                     <Timer className="h-3 w-3" />
                     Renouvellement dans {countdown}
                     <RotateCcw className="h-3 w-3" />
@@ -550,7 +550,7 @@ function DoodleJumpShopSection({
           {hasStatic && (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-500/15 px-3 py-1 text-xs font-bold text-violet-300 border border-violet-500/25">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-700 dark:text-violet-300">
                   <Star className="h-3.5 w-3.5" />
                   SKINS PERMANENTS
                 </span>
@@ -784,44 +784,54 @@ export default function Shop() {
   return (
     <PageShell>
       <div className="space-y-6">
+        <PageHeader
+          title="Shop"
+          description="Achète des améliorations, cosmétiques et cadeaux pour ton profil et tes jeux."
+          actions={(
+            <div className="inline-flex items-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-sm">
+              <Coins className="h-4 w-4 text-amber-500" />
+              <span className="text-muted-foreground">Solde</span>
+              <span className="font-semibold tabular-nums text-foreground">${user?.money ?? 0}</span>
+            </div>
+          )}
+        />
 
         {/* ── Category filter tabs + balance ── */}
-        <div className="flex flex-wrap items-center gap-2">
-          {VIRTUAL_FILTERS.map(entry => {
-            const cfg = entry.value === 'ALL'
-              ? null
-              : entry.value === 'DOODLE_JUMP'
-                ? null
-                : CATEGORY_CFG[entry.value];
-            const isActive = filter === entry.value;
+        <Card className="border-border/60 shadow-sm">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              {VIRTUAL_FILTERS.map(entry => {
+                const cfg = entry.value === 'ALL'
+                  ? null
+                  : entry.value === 'DOODLE_JUMP'
+                    ? null
+                    : CATEGORY_CFG[entry.value];
+                const isActive = filter === entry.value;
 
-            return (
-              <button
-                key={entry.value}
-                onClick={() => setFilter(entry.value)}
-                className={cn(
-                  'inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-all duration-150',
-                  isActive
-                    ? entry.value === 'DOODLE_JUMP'
-                      ? 'bg-violet-500/20 text-violet-200 border-violet-500/40 shadow-sm'
-                      : entry.value === 'ALL'
-                        ? 'bg-foreground/10 text-foreground border-foreground/20 shadow-sm'
-                        : cfg?.pillActive ?? 'bg-foreground/10 text-foreground border-foreground/20'
-                    : 'border-border/30 bg-muted/10 text-muted-foreground hover:bg-muted/20 hover:text-foreground',
-                )}
-              >
-                {cfg && <cfg.Icon className={cn('h-3.5 w-3.5', isActive ? cfg.color : 'text-muted-foreground')} />}
-                {entry.value === 'DOODLE_JUMP' && <Gamepad2 className={cn('h-3.5 w-3.5', isActive ? 'text-violet-400' : 'text-muted-foreground')} />}
-                {entry.label}
-              </button>
-            );
-          })}
-          {/* Balance badge — right-aligned in the same row */}
-          <div className="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-1.5 text-sm">
-            <Coins className="h-3.5 w-3.5 text-amber-400" />
-            <span className="font-bold tabular-nums text-amber-300">${user?.money ?? 0}</span>
-          </div>
-        </div>
+                return (
+                  <button
+                    key={entry.value}
+                    onClick={() => setFilter(entry.value)}
+                    className={cn(
+                      'inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
+                      isActive
+                        ? entry.value === 'DOODLE_JUMP'
+                          ? 'border-violet-500/30 bg-violet-500/10 text-foreground'
+                          : entry.value === 'ALL'
+                            ? 'border-border bg-muted text-foreground'
+                            : cfg?.pillActive ?? 'border-border bg-muted text-foreground'
+                        : 'border-border/60 bg-background text-muted-foreground hover:bg-muted/40 hover:text-foreground',
+                    )}
+                  >
+                    {cfg && <cfg.Icon className={cn('h-3.5 w-3.5', isActive ? cfg.color : 'text-muted-foreground')} />}
+                    {entry.value === 'DOODLE_JUMP' && <Gamepad2 className={cn('h-3.5 w-3.5', isActive ? 'text-violet-500' : 'text-muted-foreground')} />}
+                    {entry.label}
+                  </button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* ── Content ── */}
         {loading ? (
@@ -854,14 +864,14 @@ export default function Shop() {
                 <div key={section.id} className="space-y-4">
                   {/* Section header */}
                   <div className={cn(
-                    'flex items-center gap-3 rounded-xl border bg-gradient-to-r px-4 py-3',
-                    cfg?.headerBg ?? 'from-muted/20 to-muted/10 border-border/20',
+                    'flex items-center gap-3 rounded-lg border px-4 py-3 shadow-sm',
+                    cfg?.headerBg ?? 'border-border/60 bg-muted/20',
                   )}>
                     {cfg && <cfg.Icon className={cn('h-4 w-4', cfg.color)} />}
                     <span className={cn('font-semibold text-sm', cfg?.headerText ?? 'text-foreground')}>
                       {section.label}
                     </span>
-                    <span className="ml-auto rounded-full bg-black/20 px-2 py-0.5 text-xs text-muted-foreground">
+                    <span className="ml-auto rounded-full border border-border/40 bg-background/80 px-2 py-0.5 text-xs text-muted-foreground">
                       {section.items.length}
                     </span>
                   </div>
@@ -918,7 +928,7 @@ export default function Shop() {
           <div className="space-y-4 py-2">
             <div className="flex items-center justify-between rounded-xl border border-pink-500/20 bg-pink-500/5 px-3 py-2 text-sm">
               <span className="text-muted-foreground">Prix</span>
-              <span className="font-bold tabular-nums text-pink-300">${sendDialogItem?.price}</span>
+              <span className="font-semibold tabular-nums text-foreground">${sendDialogItem?.price}</span>
             </div>
 
             <div className="space-y-2">
@@ -954,21 +964,21 @@ export default function Shop() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setSendDialogItem(null)}>Annuler</Button>
-            <button
+            <Button
               onClick={handleSendGift}
               disabled={!selectedReceiver || sendingGift}
               className={cn(
-                'inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all',
+                'inline-flex items-center gap-2 rounded-lg text-sm font-semibold transition-all',
                 selectedReceiver && !sendingGift
-                  ? 'bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-400 hover:to-rose-400 text-white shadow-md'
-                  : 'bg-muted/20 text-muted-foreground cursor-not-allowed',
+                  ? 'bg-foreground text-background hover:bg-foreground/90'
+                  : 'bg-muted/20 text-muted-foreground border border-border/20',
               )}
             >
               {sendingGift
                 ? <><Loader2 className="h-4 w-4 animate-spin" /> Envoi...</>
                 : <><Send className="h-4 w-4" /> Envoyer</>
               }
-            </button>
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

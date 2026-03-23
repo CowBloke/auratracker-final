@@ -28,7 +28,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { ClanTag, ClanTagStyle, DEFAULT_CLAN_TAG_STYLE, getClanTagBackground, parseClanTagStyle } from '@/components/clans/ClanTag';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSocketBase } from '@/contexts/SocketContext';
 import { toast } from '@/hooks/use-toast';
 import { SPACING, TYPOGRAPHY } from '@/lib/design-system';
 import { resolveImageUrl } from '@/lib/images';
@@ -168,7 +167,6 @@ const TAG_PRESET_COLORS = [
 
 export default function Clans() {
   const { user } = useAuth();
-  const { socket } = useSocketBase();
   const [clans, setClans] = useState<ClanSummary[]>([]);
   const [activeWars, setActiveWars] = useState<ClanWarState[]>([]);
   const [globalWarHistory, setGlobalWarHistory] = useState<ClanWarState[]>([]);
@@ -244,16 +242,6 @@ export default function Clans() {
       setTagStyle(parseClanTagStyle(selectedClan.tagStyle));
     }
   }, [selectedClan?.id]);
-
-  useEffect(() => {
-    if (!socket) return;
-    const handler = ({ clanId, maxMembers }: { clanId: string; maxMembers: number }) => {
-      setClans(prev => prev.map(c => c.id === clanId ? { ...c, maxMembers } : c));
-      setSelectedClan(prev => prev && prev.id === clanId ? { ...prev, maxMembers } : prev);
-    };
-    socket.on('clan:slot_upgraded', handler);
-    return () => { socket.off('clan:slot_upgraded', handler); };
-  }, [socket]);
 
   useEffect(() => {
     if (!selectedClanId || !selectedClan?.viewer.isMember) {
