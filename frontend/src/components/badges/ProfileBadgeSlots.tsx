@@ -23,6 +23,8 @@ interface ProfileBadgeSlotsProps {
   equippedBadge2Id: string | null;
   /** If true, slots are interactive (own profile) */
   editable?: boolean;
+  variant?: 'default' | 'inline';
+  className?: string;
   onEquip?: (slot: 1 | 2, badgeId: string | null) => void;
 }
 
@@ -31,6 +33,8 @@ export function ProfileBadgeSlots({
   equippedBadge1Id,
   equippedBadge2Id,
   editable = false,
+  variant = 'default',
+  className,
   onEquip,
 }: ProfileBadgeSlotsProps) {
   const [openSlot, setOpenSlot] = useState<1 | 2 | null>(null);
@@ -70,7 +74,7 @@ export function ProfileBadgeSlots({
   ];
 
   return (
-    <div className="flex items-center gap-2">
+    <div className={cn('flex items-center', variant === 'inline' ? 'gap-1.5' : 'gap-2', className)}>
       {slots.map(({ slot, badge, otherId }) => {
         const inner = (
           <SlotButton
@@ -78,6 +82,7 @@ export function ProfileBadgeSlots({
             saving={saving === slot}
             isActive={openSlot === slot}
             editable={editable}
+            variant={variant}
           />
         );
 
@@ -173,16 +178,21 @@ function SlotButton({
   saving,
   isActive,
   editable,
+  variant,
 }: {
   badge: BadgeData | null;
   saving: boolean;
   isActive: boolean;
   editable: boolean;
+  variant: 'default' | 'inline';
 }) {
+  const isInline = variant === 'inline';
+
   return (
     <div
       className={cn(
-        'relative group w-16 h-16 rounded-md border-2 flex items-center justify-center transition-all select-none',
+        'relative group flex items-center justify-center select-none transition-all',
+        isInline ? 'h-10 w-10 rounded-xl border' : 'h-16 w-16 rounded-md border-2',
         editable
           ? isActive
             ? 'border-foreground shadow-[0_0_0_3px_hsl(var(--foreground)/0.1)] cursor-pointer'
@@ -194,7 +204,7 @@ function SlotButton({
         <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
       ) : badge ? (
         <>
-          <BadgeIcon badge={badge} size="2xl" tooltipSide="bottom" />
+          <BadgeIcon badge={badge} size={isInline ? 'lg' : '2xl'} tooltipSide="bottom" />
           {editable && (
             <div className="absolute inset-0 rounded-[calc(theme(borderRadius.md)-2px)] bg-background/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
               <Edit2 className="w-4 h-4" />
@@ -202,7 +212,7 @@ function SlotButton({
           )}
         </>
       ) : editable ? (
-        <span className="text-2xl text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors">+</span>
+        <span className={cn(isInline ? 'text-lg' : 'text-2xl', 'text-muted-foreground/30 transition-colors group-hover:text-muted-foreground/60')}>+</span>
       ) : null}
     </div>
   );
