@@ -8,8 +8,9 @@ import { useFeatures } from '@/contexts/FeaturesContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { resolveThemeImageUrl } from '@/lib/images';
 
-type GamesTab = 'singleplayer' | 'multiplayer';
+type GamesTab = 'singleplayer' | 'multiplayer' | 'all';
 type MultiplayerTab = 'all' | 'duel' | 'party';
+type Game = (typeof games)[number];
 
 const games = [
   {
@@ -248,6 +249,10 @@ const games = [
 
 const tabConfig: Array<{ id: GamesTab; label: string }> = [
   {
+    id: 'all',
+    label: 'Tous',
+  },
+  {
     id: 'singleplayer',
     label: 'Singleplayer',
   },
@@ -258,7 +263,7 @@ const tabConfig: Array<{ id: GamesTab; label: string }> = [
 ];
 
 export default function Games() {
-  const [activeTab, setActiveTab] = useState<GamesTab>('singleplayer');
+  const [activeTab, setActiveTab] = useState<GamesTab>('all');
   const [activeMultiplayerTab, setActiveMultiplayerTab] = useState<MultiplayerTab>('all');
   const { maintenanceStatus } = useFeatures();
   const { theme } = useTheme();
@@ -337,13 +342,46 @@ export default function Games() {
     return `/games/${gameId}`;
   };
 
+  const multiplayerGamesToRender = activeMultiplayerTab === 'duel'
+    ? duelGames
+    : activeMultiplayerTab === 'party'
+      ? partyGames
+      : multiplayerGames;
+
   const gamesToRender = activeTab === 'singleplayer'
-    ? soloGames
-    : activeMultiplayerTab === 'duel'
-      ? duelGames
-      : activeMultiplayerTab === 'party'
-        ? partyGames
-        : multiplayerGames;
+      ? soloGames
+      : multiplayerGamesToRender;
+
+  const renderGameCard = (game: Game) => (
+    <Link
+      key={game.id}
+      to={getGameLink(game.id)}
+      className="group block"
+    >
+      <Card className="relative isolate aspect-square overflow-hidden transition hover:border-foreground/40 hover:shadow-md">
+        {'emoji' in game && (
+          <div className="absolute inset-0 flex items-center justify-center bg-green-950/40 text-8xl">
+            {game.emoji as string}
+          </div>
+        )}
+        {game.image && (
+          <img
+            src={resolveThemeImageUrl(game.image, theme)}
+            alt={game.name}
+            className="absolute inset-0 h-full w-full object-cover"
+            loading="lazy"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+        <CardContent className="relative z-10 flex h-full flex-col justify-end p-5 text-white">
+          <p className="text-xs font-medium   text-white/70">{game.type}</p>
+          <h3 className={TYPOGRAPHY.H4}>{game.name}</h3>
+          <p className="mt-1 text-xs text-white/85">{game.description}</p>
+        </CardContent>
+      </Card>
+    </Link>
+  );
 
   return (
     <PageShell>
@@ -370,38 +408,33 @@ export default function Games() {
             </Tabs>
           )}
 
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-            {gamesToRender.map((game) => (
-              <Link
-                key={game.id}
-                to={getGameLink(game.id)}
-                className="group block"
-              >
-                <Card className="relative isolate aspect-square overflow-hidden transition hover:border-foreground/40 hover:shadow-md">
-                  {'emoji' in game && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-green-950/40 text-8xl">
-                      {game.emoji as string}
-                    </div>
-                  )}
-                  {game.image && (
-                    <img
-                      src={resolveThemeImageUrl(game.image, theme)}
-                      alt={game.name}
-                      className="absolute inset-0 h-full w-full object-cover"
-                      loading="lazy"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                    />
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-                  <CardContent className="relative z-10 flex h-full flex-col justify-end p-5 text-white">
-                    <p className="text-xs font-medium   text-white/70">{game.type}</p>
-                    <h3 className={TYPOGRAPHY.H4}>{game.name}</h3>
-                    <p className="mt-1 text-xs text-white/85">{game.description}</p>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
+          {activeTab === 'all' ? (
+            <div className="space-y-8">
+              <section className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/90">Singleplayer</h2>
+                  <div className="h-px flex-1 bg-border/70" />
+                </div>
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+                  {soloGames.map(renderGameCard)}
+                </div>
+              </section>
+
+              <section className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/90">Multiplayer</h2>
+                  <div className="h-px flex-1 bg-border/70" />
+                </div>
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+                  {multiplayerGames.map(renderGameCard)}
+                </div>
+              </section>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+              {gamesToRender.map(renderGameCard)}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </PageShell>
