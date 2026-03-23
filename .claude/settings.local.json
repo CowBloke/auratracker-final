@@ -48,7 +48,8 @@
       "Bash(xargs -I {} basename {})",
       "Bash(grep -n \"pixelRatio\\\\|devicePixelRatio\" /c/Users/cowbl/source/repos/CRust/auratracker-final/frontend/src/pages/*.tsx)",
       "Bash(grep -rn \"useStore\\\\|create\\(\" c:/Users/cowbl/source/repos/CRust/auratracker-final/frontend/src --include=*.ts --include=*.tsx -l)",
-      "Bash(grep -rn \"from ''zustand''\\\\|from \"\"zustand\"\"\" c:/Users/cowbl/source/repos/CRust/auratracker-final/frontend/src --include=\"*.ts\" --include=\"*.tsx\" -l)"
+      "Bash(grep -rn \"from ''zustand''\\\\|from \"\"zustand\"\"\" c:/Users/cowbl/source/repos/CRust/auratracker-final/frontend/src --include=\"*.ts\" --include=\"*.tsx\" -l)",
+      "Bash(grep -E \"\\\\.ts$\")"
     ]
   },
   "outputStyle": "default"

@@ -57,7 +57,7 @@ const pendingJoinPrompts = new Map<string, PendingJoinPrompt>();
 const pendingPlayAgainPrompts = new Map<string, PendingPlayAgainPrompt>();
 const JOIN_PROMPT_TIMEOUT = 10000;
 const PLAY_AGAIN_TIMEOUT = 20000;
-const TURN_TIMEOUT = 10000;
+const TURN_TIMEOUT = 20000;
 
 function createBoard(): Board {
   return Array.from({ length: ROWS }, () => Array(COLS).fill(0) as Cell[]);
@@ -150,8 +150,48 @@ async function handleTurnTimeout(partyId: string, io: Server) {
   if (!game || !game.isActive || game.phase !== 'playing') return;
 
   clearTurnTimer(game);
-  const winner = game.players.find((p) => p.userId !== game.players[game.currentPlayerIndex].userId);
-  await endGame(game, io, winner?.userId ?? null);
+
+  // Find columns that still have room
+  const validCols: number[] = [];
+  for (let c = 0; c < COLS; c++) {
+    if (game.board[0][c] === 0) validCols.push(c);
+  }
+
+  if (validCols.length === 0) {
+    await endGame(game, io, null);
+    return;
+  }
+
+  // Play a random move for the inactive player
+  const currentPlayer = game.players[game.currentPlayerIndex];
+  const playerVal = (currentPlayer.playerIndex + 1) as 1 | 2;
+  const randomCol = validCols[Math.floor(Math.random() * validCols.length)];
+  const result = dropPiece(game.board, randomCol, playerVal);
+
+  if (!result) {
+    const opponent = game.players.find((p) => p.userId !== currentPlayer.userId);
+    await endGame(game, io, opponent?.userId ?? null);
+    return;
+  }
+
+  game.board = result.board;
+  game.lastMove = { col: randomCol, row: result.row, playerId: currentPlayer.userId };
+
+  const win = checkWin(game.board, playerVal);
+  if (win) {
+    game.winCells = win;
+    await endGame(game, io, currentPlayer.userId);
+    return;
+  }
+
+  if (isBoardFull(game.board)) {
+    await endGame(game, io, null);
+    return;
+  }
+
+  game.currentPlayerIndex = game.currentPlayerIndex === 0 ? 1 : 0;
+  emitState(game, io);
+  scheduleTurnTimer(game, io);
 }
 
 async function endGame(game: P4Game, io: Server, winnerId: string | null) {

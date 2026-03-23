@@ -82,22 +82,6 @@ export default function PuissanceQuatre() {
   const isMyTurn = gameState?.currentPlayerId === user?.id && gameState?.phase === 'playing';
   const turnSecondsLeft = Math.max(0, Math.ceil(turnTimeLeftMs / 1000));
 
-  // Animate last move
-  useEffect(() => {
-    if (!gameState?.lastMove) return;
-    const lm = gameState.lastMove;
-    const key = `${lm.row}-${lm.col}-${lm.playerId}`;
-    if (key === lastMoveKeyRef.current) return;
-    lastMoveKeyRef.current = key;
-
-    const player = gameState.players.find((p) => p.userId === lm.playerId);
-    if (!player) return;
-
-    setDroppingCell({ row: lm.row, col: lm.col, playerIndex: player.playerIndex });
-    if (dropTimerRef.current) clearTimeout(dropTimerRef.current);
-    dropTimerRef.current = setTimeout(() => setDroppingCell(null), 500);
-  }, [gameState]);
-
   useEffect(() => () => { if (dropTimerRef.current) clearTimeout(dropTimerRef.current); }, []);
 
   useEffect(() => {
@@ -127,6 +111,19 @@ export default function PuissanceQuatre() {
     socket.emit('p4:register');
 
     const onState = (state: P4State) => {
+      if (state.lastMove) {
+        const lm = state.lastMove;
+        const key = `${lm.row}-${lm.col}-${lm.playerId}`;
+        if (key !== lastMoveKeyRef.current) {
+          lastMoveKeyRef.current = key;
+          const player = state.players.find((p) => p.userId === lm.playerId);
+          if (player) {
+            if (dropTimerRef.current) clearTimeout(dropTimerRef.current);
+            setDroppingCell({ row: lm.row, col: lm.col, playerIndex: player.playerIndex });
+            dropTimerRef.current = setTimeout(() => setDroppingCell(null), 600);
+          }
+        }
+      }
       setGameState(state);
       setError(null);
     };
@@ -374,9 +371,8 @@ export default function PuissanceQuatre() {
     <PageShell>
       <style>{`
         @keyframes piece-fall {
-          0%   { transform: translateY(var(--fall-from)); opacity: 0.8; }
-          80%  { transform: translateY(4px); opacity: 1; }
-          100% { transform: translateY(0); opacity: 1; }
+          from { transform: translateY(var(--fall-from)); opacity: 0.8; }
+          to   { transform: translateY(0); opacity: 1; }
         }
         @keyframes win-pulse {
           0%, 100% { transform: scale(1);    filter: brightness(1); }
@@ -397,76 +393,58 @@ export default function PuissanceQuatre() {
         }
       `}</style>
 
-      <PageHeader
-        title="Puissance 4"
-        description={`Duel : ${currentParty.name || 'Sans nom'}`}
-        actions={
-          <>
-            <Button asChild variant="outline" size="sm">
-              <Link to="/games" className="inline-flex items-center gap-2">
-                <ArrowLeft className="h-4 w-4" />
-                Jeux
-              </Link>
-            </Button>
-            <Button variant="destructive" size="sm" onClick={handleLeave}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Quitter
-            </Button>
-          </>
-        }
-      />
+      {/* Compact nav */}
+      <div className="flex items-center justify-between gap-2">
+        <Button asChild variant="outline" size="sm">
+          <Link to="/games">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        </Button>
+        <span className="text-sm text-muted-foreground">Puissance 4</span>
+        <Button variant="destructive" size="sm" onClick={handleLeave}>
+          <LogOut className="h-4 w-4" />
+        </Button>
+      </div>
 
       {error && (
         <p className="text-center text-sm text-red-500 animate-pulse">{error}</p>
       )}
 
-      {/* Players header */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex justify-center gap-6 flex-wrap">
-            {gameState.players.map((player) => {
-              const isMe = player.userId === user?.id;
-              const isCurrentTurn = gameState.currentPlayerId === player.userId && gameState.phase === 'playing';
-              const color = player.playerIndex === 0 ? 'bg-red-500' : 'bg-yellow-400';
-              return (
-                <div
-                  key={player.userId}
-                  className={cn(
-                    'flex items-center gap-2.5 px-4 py-2 border rounded-lg transition-colors',
-                    isCurrentTurn ? 'border-foreground/60 bg-muted/40' : 'border-border/30'
+      {/* Players + timer */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-4 flex-wrap">
+          {gameState.players.map((player) => {
+            const isMe = player.userId === user?.id;
+            const isCurrentTurn = gameState.currentPlayerId === player.userId && gameState.phase === 'playing';
+            const color = player.playerIndex === 0 ? 'bg-red-500' : 'bg-yellow-400';
+            return (
+              <div key={player.userId} className="flex items-center gap-1.5">
+                <div className={cn('w-3 h-3 rounded-full shrink-0', color)} />
+                <span className={cn('text-sm', isCurrentTurn ? 'font-medium' : 'text-muted-foreground')}>
+                  <UsernameDisplay username={player.username} usernameColor={player.usernameColor} />
+                  {isMe && <span className="ml-1 text-xs text-muted-foreground">(toi)</span>}
+                  {isCurrentTurn && gameState.phase === 'playing' && (
+                    <span className="ml-1 text-xs text-muted-foreground">←</span>
                   )}
-                >
-                  <div className={cn('w-3 h-3 rounded-full shrink-0', color)} />
-                  <span className="text-sm font-medium">
-                    <UsernameDisplay username={player.username} usernameColor={player.usernameColor} />
-                    {isMe && <span className="ml-1 text-xs text-muted-foreground">(toi)</span>}
-                  </span>
-                  {isCurrentTurn && (
-                    <span className="text-xs text-muted-foreground">→</span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Turn indicator */}
-      <div className="text-center text-sm text-muted-foreground space-y-1">
-        <p>
-          {gameState.phase === 'finished'
-            ? gameState.winnerId
-              ? gameState.winnerId === user?.id ? 'Tu as gagné !' : `${opponent?.username} a gagné.`
-              : 'Égalité !'
-            : isMyTurn
-            ? 'C\'est ton tour — clique sur une colonne'
-            : `Au tour de ${opponent?.username ?? '...'}`}
-        </p>
-        {gameState.phase === 'playing' && (
-          <p className={cn('text-xs', turnSecondsLeft <= 3 ? 'text-red-500' : 'text-muted-foreground')}>
-            Temps restant: {turnSecondsLeft}s
-          </p>
-        )}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="text-sm text-right shrink-0">
+          {gameState.phase === 'playing' && (
+            <span className={cn('tabular-nums', turnSecondsLeft <= 3 ? 'text-red-500 font-medium' : 'text-muted-foreground')}>
+              {turnSecondsLeft}s
+            </span>
+          )}
+          {gameState.phase === 'finished' && (
+            <span className="text-muted-foreground">
+              {gameState.winnerId
+                ? gameState.winnerId === user?.id ? 'Tu as gagné !' : `${opponent?.username} a gagné.`
+                : 'Égalité !'}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Board */}
@@ -515,7 +493,8 @@ export default function PuissanceQuatre() {
                 <div
                   key={`${row}-${col}`}
                   className={cn(
-                    'rounded-full transition-colors duration-100',
+                    'rounded-full',
+                    !droppingHere && 'transition-colors duration-100',
                     displayCell === 0 && 'bg-foreground/10',
                     colorClass,
                     !winHere && displayCell === 0 && canClick && hoverCol === col && myInfo?.playerIndex === 0 && 'bg-red-500/25',
@@ -543,6 +522,11 @@ export default function PuissanceQuatre() {
                 top: CELL_GAP + droppingCell.row * (CELL_SIZE + CELL_GAP),
                 zIndex: 20,
                 ...getFallStyle(droppingCell.row),
+              }}
+              onAnimationEnd={() => {
+                if (dropTimerRef.current) clearTimeout(dropTimerRef.current);
+                dropTimerRef.current = null;
+                setDroppingCell(null);
               }}
             />
           )}
