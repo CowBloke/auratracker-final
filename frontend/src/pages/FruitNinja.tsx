@@ -5,6 +5,7 @@ import { Play, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
@@ -130,9 +131,11 @@ export default function FruitNinja() {
   const shakeAmtRef = useRef(0);
   const woodBgRef = useRef<HTMLCanvasElement | null>(null);
   const vignetteGradRef = useRef<CanvasGradient | null>(null);
+  const fpsModeRef = useRef(false);
 
   // React state (UI)
   const { user, refreshUser } = useAuth();
+  const [fpsMode, setFpsMode] = useState(false);
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(MAX_LIVES);
   const [combo, setCombo] = useState(0);
@@ -160,6 +163,11 @@ export default function FruitNinja() {
   }, []);
 
   useEffect(() => { fetchStats(); fetchLeaderboard(); }, [fetchStats, fetchLeaderboard]);
+
+  useEffect(() => {
+    fpsModeRef.current = fpsMode;
+    if (fpsMode) particlesRef.current = [];
+  }, [fpsMode]);
 
   const handleDeleteScore = useCallback(async (userId: string, username: string) => {
     if (!confirm(`Supprimer le score de ${username} ?`)) return;
@@ -201,6 +209,7 @@ export default function FruitNinja() {
 
   // ---- Particle effects ----
   const createJuiceParticles = useCallback((x: number, y: number, color: string, juice: string, count: number) => {
+    if (fpsModeRef.current) return;
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
       const spd = 1.5 + Math.random() * 5.5;
@@ -270,7 +279,7 @@ export default function FruitNinja() {
       setCombo(0);
       lastSliceTimeRef.current = 0;
       // Dark smoke + fire
-      for (let i = 0; i < 28; i++) {
+      if (!fpsModeRef.current) for (let i = 0; i < 28; i++) {
         const angle = Math.random() * Math.PI * 2;
         const spd = 2 + Math.random() * 7;
         particlesRef.current.push({
@@ -316,7 +325,7 @@ export default function FruitNinja() {
     });
 
     // Ring burst for combo
-    if (comboRef.current >= 3) {
+    if (comboRef.current >= 3 && !fpsModeRef.current) {
       for (let i = 0; i < 14; i++) {
         const angle = (i / 14) * Math.PI * 2;
         particlesRef.current.push({
@@ -509,14 +518,16 @@ export default function FruitNinja() {
     }
 
     // Particles
-    for (const p of particlesRef.current) {
-      ctx.globalAlpha = p.alpha;
-      ctx.fillStyle = p.color;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, Math.max(0.5, p.size), 0, Math.PI * 2);
-      ctx.fill();
+    if (!fpsModeRef.current) {
+      for (const p of particlesRef.current) {
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, Math.max(0.5, p.size), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
     }
-    ctx.globalAlpha = 1;
 
     // Flying fruits
     for (const f of fruitsRef.current) {
@@ -855,6 +866,17 @@ export default function FruitNinja() {
             <p>💣 Évite les bombes — elles coûtent une vie.</p>
             <p>❌ Laisser tomber un fruit coûte une vie.</p>
             <p>🔥 Enchaîne les tranches pour un multiplicateur ×2 / ×3.</p>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <label htmlFor="fps-mode" className="text-xs text-muted-foreground cursor-pointer select-none">
+                Mode FPS <span className="text-muted-foreground/60">(sans particules)</span>
+              </label>
+              <Switch
+                id="fps-mode"
+                checked={fpsMode}
+                onCheckedChange={setFpsMode}
+              />
+            </div>
           </CardContent>
         </Card>
 
