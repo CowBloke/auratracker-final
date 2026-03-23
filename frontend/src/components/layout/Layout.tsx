@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SiteHeader } from '@/components/site-header';
 import PartyChatFloating from '@/components/party/PartyChatFloating';
+import SupportChat from '@/components/support/SupportChat';
 import { CONTAINER } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 
@@ -36,6 +37,17 @@ function PartyChatFloatingContainer() {
 
   return (
     <PartyChatFloating rightOffset={open ? 'calc(20rem + 1.5rem)' : '1.5rem'} />
+  );
+}
+
+function SupportChatContainer() {
+  const { open } = useChatSidebar();
+  const { isAdmin } = useAuth();
+
+  if (isAdmin) return null;
+
+  return (
+    <SupportChat rightOffset={open ? 'calc(20rem + 1.5rem)' : '1.5rem'} />
   );
 }
 
@@ -83,6 +95,7 @@ export default function Layout() {
         </SidebarProvider>
         <ChatSidebarWrapper />
         <PartyChatFloatingContainer />
+        <SupportChatContainer />
         <ChatBubbleContainer />
 
         {activeJoinPrompt && user && (
