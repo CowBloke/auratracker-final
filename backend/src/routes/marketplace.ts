@@ -131,17 +131,14 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
 
       const membership = await prisma.clanMember.findUnique({
         where: { userId: req.user.id },
-        select: { clanId: true, isLeader: true },
+        select: { clanId: true },
       });
-      clanUpgradeMembership = membership;
+      clanUpgradeMembership = membership ? { ...membership, isLeader: false } : null;
 
       if (!membership) {
         return res.status(400).json({ error: 'Tu dois etre dans un clan pour acheter cette amélioration.' });
       }
 
-      if (!membership.isLeader) {
-        return res.status(400).json({ error: 'Seul le chef de clan peut acheter cette amélioration.' });
-      }
 
       const clan = await prisma.clan.findUnique({
         where: { id: membership.clanId },
@@ -537,14 +534,11 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
     if (effect?.type === 'CLAN_TAG_UNLOCK' || effect?.type === 'CLAN_SLOT_UPGRADE') {
       const membership = await prisma.clanMember.findUnique({
         where: { userId: req.user.id },
-        select: { clanId: true, isLeader: true },
+        select: { clanId: true },
       });
 
       if (!membership) {
         return res.status(400).json({ error: 'Tu n\'es pas dans un clan.' });
-      }
-      if (!membership.isLeader) {
-        return res.status(400).json({ error: 'Seul le chef de clan peut utiliser cette amélioration.' });
       }
 
       const clan = await prisma.clan.findUnique({
