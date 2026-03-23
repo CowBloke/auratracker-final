@@ -216,9 +216,15 @@ export function SiteHeader() {
               }}
             >
               <DropdownMenuTrigger asChild>
-                <Button type="button" variant="outline" size="sm" className="h-8 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-2"
+                  title="Rejoindre une party"
+                  aria-label="Rejoindre une party"
+                >
                   <Users className="h-4 w-4" />
-                  Rejoindre une party
                   <ChevronDown className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
