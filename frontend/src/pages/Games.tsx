@@ -201,6 +201,14 @@ const games = [
     image: '/images/games/knifehit.png',
   },
   {
+    id: 'clash-village',
+    pageKey: 'game-clash-village',
+    name: 'Clash Village',
+    description: 'Bâtis ton village, renforce tes défenses et pille les réserves ennemies dans des raids asynchrones.',
+    type: 'Strategy',
+    image: '/images/games/clashvillage.svg',
+  },
+  {
     id: 'goyave-empire',
     pageKey: 'game-goyave-empire',
     name: 'Goyave Empire',
@@ -326,6 +334,9 @@ export default function Games() {
     }
     if (gameId === 'knife-hit') {
       return '/games/knife-hit';
+    }
+    if (gameId === 'clash-village') {
+      return '/games/clash-village';
     }
     if (gameId === 'puissance-quatre') {
       return '/games/puissance-quatre';

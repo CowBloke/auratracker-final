@@ -1,7 +1,4 @@
-- saisons reset
-- payant
-- cams
 - envoie/retrait pop up chaque jour
 - pop ups de temps de temps en temps
 - rework objets themes
-- preciser r pop up
+- preciser pop up

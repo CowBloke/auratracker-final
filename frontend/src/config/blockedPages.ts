@@ -29,6 +29,7 @@ export const BLOCKABLE_PAGES: BlockablePage[] = [
   { key: 'game-racer', path: '/games/racer', label: 'Racer', category: 'Jeux' },
   { key: 'game-tetris', path: '/games/tetris', label: 'Tetris', category: 'Jeux' },
   { key: 'game-knife-hit', path: '/games/knife-hit', label: 'Knife Hit', category: 'Jeux' },
+  { key: 'game-clash-village', path: '/games/clash-village', label: 'Clash Village', category: 'Jeux' },
   { key: 'game-echecs', path: '/games/echecs', label: 'Échecs', category: 'Jeux' },
   { key: 'game-morpion', path: '/games/morpion', label: 'Morpion', category: 'Jeux' },
   { key: 'game-goyave-empire', path: '/games/goyave-empire', label: 'Goyave Empire', category: 'Jeux' },

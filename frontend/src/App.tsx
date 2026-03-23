@@ -36,6 +36,7 @@ import Racer from './pages/Racer';
 import Tetris from './pages/Tetris';
 import KnifeHit from './pages/KnifeHit';
 import GoyaveEmpire from './pages/GoyaveEmpire';
+import ClashVillage from './pages/ClashVillage';
 import PuissanceQuatre from './pages/PuissanceQuatre';
 import Echecs from './pages/Echecs';
 import BallArena from './pages/BallArena';
@@ -178,6 +179,7 @@ function App() {
         <Route path="games/tetris" element={<Tetris />} />
         <Route path="games/knife-hit" element={<KnifeHit />} />
         <Route path="games/goyave-empire" element={<GoyaveEmpire />} />
+        <Route path="games/clash-village" element={<ClashVillage />} />
         <Route path="games/puissance-quatre" element={<PuissanceQuatre />} />
         <Route path="games/echecs" element={<Echecs />} />
         <Route path="games/ball-arena" element={<BallArena />} />

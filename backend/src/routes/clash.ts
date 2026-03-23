@@ -1,4 +1,4 @@
-import { Prisma, type PrismaClient } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
 import { Router, type Response } from 'express';
 import { z } from 'zod';
 import { authMiddleware, type AuthRequest } from '../middleware/auth.js';
@@ -637,10 +637,12 @@ router.post('/attack', authMiddleware, async (req: AuthRequest, res: Response) =
       });
 
       const vaultProtection = getVaultProtection(defenderBuildings);
+      const attackerCapacity = getStorageCapacity(attackerBuildings, attackerVillage.townHallLevel);
+      const attackerRoom = Math.max(0, attackerCapacity - attackerVillage.moneyInStorage);
       const cappedByCurrentBalance = Math.floor(defenderVillage.moneyInStorage * STEAL_COEFFICIENT);
       const cappedByVault = Math.floor(defenderVillage.moneyInStorage * (1 - vaultProtection));
       const theoreticalLoot = Math.floor(defenderVillage.moneyInStorage * (destructionPercent / 100) * STEAL_COEFFICIENT);
-      const moneyStolen = Math.max(0, Math.min(theoreticalLoot, cappedByCurrentBalance, cappedByVault, defenderVillage.moneyInStorage));
+      const moneyStolen = Math.max(0, Math.min(theoreticalLoot, cappedByCurrentBalance, cappedByVault, defenderVillage.moneyInStorage, attackerRoom));
       const trophyDelta = getTrophyDelta(destructionPercent);
       const destroyedBuildings = getDestroyedBuildings(defenderBuildings, destructionPercent);
       const result = {
@@ -811,7 +813,7 @@ router.get('/history', authMiddleware, async (req: AuthRequest, res: Response) =
       }),
       prisma.clashActivity.findMany({
         where: {
-          village: { userId: req.user!.id },
+          village: { is: { userId: req.user!.id } },
         },
         orderBy: { createdAt: 'desc' },
         take: 30,
