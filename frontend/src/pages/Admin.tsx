@@ -791,6 +791,10 @@ export default function Admin() {
   const [downloadingLogs, setDownloadingLogs] = useState(false);
   const [downloadLogsError, setDownloadLogsError] = useState<string | null>(null);
 
+  // Score history backfill
+  const [backfillLoading, setBackfillLoading] = useState(false);
+  const [backfillResult, setBackfillResult] = useState<{ inserted: number; skipped: number } | null>(null);
+
   // Settings state
   const [loadingSettings, setLoadingSettings] = useState(false);
   const [maintenanceMessage, setMaintenanceMessage] = useState('');
@@ -4074,6 +4078,49 @@ export default function Admin() {
               )}
             </CardContent>
           </Card>
+
+          {user?.isSuperAdmin && (
+            <Card>
+              <CardHeader>
+                <CardDescription>Classements par période</CardDescription>
+              </CardHeader>
+              <CardContent className={SPACING.CARD_SPACING}>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <h3 className="font-medium">Backfill historique des scores</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Importe les scores passés (depuis les logs) dans la table GameScoreHistory pour alimenter les classements journalier / hebdo / mensuel. À lancer une seule fois après le déploiement.
+                    </p>
+                    {backfillResult && (
+                      <p className="text-sm text-green-500">
+                        ✓ {backfillResult.inserted} scores importés, {backfillResult.skipped} ignorés.
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    disabled={backfillLoading}
+                    onClick={async () => {
+                      if (!confirm('Lancer le backfill des scores ? Cette opération peut prendre quelques secondes.')) return;
+                      setBackfillLoading(true);
+                      setBackfillResult(null);
+                      try {
+                        const res = await adminApi.backfillScoreHistory();
+                        setBackfillResult({ inserted: res.data.inserted, skipped: res.data.skipped });
+                      } catch {
+                        alert('Erreur lors du backfill.');
+                      } finally {
+                        setBackfillLoading(false);
+                      }
+                    }}
+                  >
+                    {backfillLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trophy className="h-4 w-4 mr-2" />}
+                    Lancer le backfill
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="bans" className={SPACING.SECTION_SPACING}>

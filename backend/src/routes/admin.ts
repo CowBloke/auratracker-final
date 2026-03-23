@@ -3602,4 +3602,39 @@ router.delete('/warnings/:id', authMiddleware, requireAdmin, async (req: AuthReq
   }
 });
 
+// Backfill GameScoreHistory from game_complete logs
+router.post('/backfill-score-history', authMiddleware, async (req: AuthRequest, res: Response) => {
+  if (!req.user?.isSuperAdmin) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const logs = await prisma.log.findMany({
+      where: { type: 'GAME', action: 'game_complete', userId: { not: null }, metadata: { not: null } },
+      select: { userId: true, metadata: true, createdAt: true },
+    });
+
+    let inserted = 0;
+    let skipped = 0;
+    const records: { userId: string; gameType: string; score: number; createdAt: Date }[] = [];
+
+    for (const log of logs) {
+      try {
+        const meta = JSON.parse(log.metadata!);
+        const gameType = meta.gameType;
+        const score = meta.score;
+        if (!gameType || score == null || !log.userId) { skipped++; continue; }
+        records.push({ userId: log.userId, gameType, score: Number(score), createdAt: log.createdAt });
+      } catch { skipped++; }
+    }
+
+    if (records.length > 0) {
+      const result = await prisma.gameScoreHistory.createMany({ data: records });
+      inserted = result.count;
+    }
+
+    res.json({ success: true, inserted, skipped });
+  } catch (error) {
+    console.error('Backfill error:', error);
+    res.status(500).json({ error: 'Backfill failed' });
+  }
+});
+
 export default router;

@@ -1046,11 +1046,13 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
           money: { increment: moneyReward },
         },
       }),
-      prisma.gameScoreHistory.create({
-        data: { userId: req.user.id, gameType, score },
-      }),
     ]);
-    
+
+    // Record score history outside the main transaction so it never blocks game completion
+    prisma.gameScoreHistory.create({
+      data: { userId: req.user.id, gameType, score },
+    }).catch((err) => console.error('[gameScoreHistory] failed to insert:', err));
+
     // Emit balance update (always for casino, or if there are rewards)
     if (gameType === 'casino' || auraReward > 0 || moneyReward > 0) {
       io.emit('economy:balance-update', {
