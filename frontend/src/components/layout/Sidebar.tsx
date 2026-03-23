@@ -72,7 +72,6 @@ interface SearchUser {
 const navItems = [
   { to: '/leaderboards', label: 'Classement', icon: Trophy },
   { to: '/party', label: 'Party', icon: Users },
-  { to: '/messages', label: 'Messages', icon: MessageCircle },
   { to: '/clans', label: 'Clans', icon: Flag },
   { to: '/market', label: 'Shop', icon: Store },
   { to: '/inventory', label: 'Inventaire', icon: Backpack },

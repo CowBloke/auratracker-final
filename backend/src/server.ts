@@ -35,6 +35,7 @@ import giftsRoutes from './routes/gifts.js';
 import notificationsRoutes from './routes/notifications.js';
 import badgesRoutes from './routes/badges.js';
 import supportRoutes from './routes/support.js';
+import clashRoutes from './routes/clash.js';
 
 // Socket handlers
 import { setupChatHandlers, startOnlineCountBroadcast, startOnlineSnapshotRecording } from './socket/chat.js';
@@ -51,7 +52,6 @@ import { setupRussianRouletteHandlers } from './socket/russianroulette.js';
 import { setupBallArenaHandlers } from './socket/ballarena.js';
 import { setupUnoHandlers } from './socket/uno.js';
 import { setupMorpionHandlers } from './socket/morpion.js';
-import { setupSocialHandlers } from './socket/social.js';
 
 // Logger
 import { initLogger } from './utils/logger.js';
@@ -108,6 +108,7 @@ app.use('/api/gifts', giftsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/badges', badgesRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/clash', clashRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -267,7 +268,6 @@ io.on('connection', (socket) => {
   setupBallArenaHandlers(socket, io);
   setupUnoHandlers(socket, io);
   setupMorpionHandlers(socket, io);
-  setupSocialHandlers(socket, io);
 
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.id}`);

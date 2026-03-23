@@ -1,7 +1,5 @@
 - saisons reset
 - payant
-- nerf
-- clash of clans
 - cams
 - envoie/retrait pop up chaque jour
 - pop ups de temps de temps en temps

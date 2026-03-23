@@ -51,7 +51,6 @@ import ChromeDino from './pages/ChromeDino';
 import FruitNinja from './pages/FruitNinja';
 import StackTower from './pages/StackTower';
 import Support from './pages/Support';
-import Messages from './pages/Messages';
 import QSWatermelon from './pages/QSWatermelon';
 import { BLOCKABLE_PAGES } from './config/blockedPages';
 import { useFeatures } from './contexts/FeaturesContext';
@@ -201,7 +200,6 @@ function App() {
         <Route path="settings" element={<Settings />} />
         <Route path="inbox" element={<Inbox />} />
         <Route path="support" element={<Support />} />
-        <Route path="messages" element={<Messages />} />
       </Route>
     </Routes>
   );

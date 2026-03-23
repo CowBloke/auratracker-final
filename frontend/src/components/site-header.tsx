@@ -46,7 +46,6 @@ import {
   Crosshair,
   Sparkles,
   CircleDollarSign,
-  MessageCircle,
 } from 'lucide-react';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { InboxDropdown } from '@/components/inbox/InboxDropdown';
@@ -210,19 +209,6 @@ export function SiteHeader() {
       </div>
 
         <div className="flex items-center gap-4">
-          <Button
-            asChild
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8 px-2"
-            title="Messages privés"
-            aria-label="Messages privés"
-          >
-            <Link to="/messages">
-              <MessageCircle className="h-4 w-4" />
-            </Link>
-          </Button>
           <div className="flex items-center gap-8 text-sm">
           {!currentParty && (
             <DropdownMenu

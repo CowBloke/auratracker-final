@@ -203,11 +203,6 @@ export default function Profile() {
     }
   };
 
-  const handleOpenPrivateChat = () => {
-    if (!profileUser || isOwnProfile) return;
-    navigate(`/messages?userId=${profileUser.id}`);
-  };
-
   if (loading) {
     return (
       <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
@@ -296,9 +291,6 @@ export default function Profile() {
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : null}
                   {social?.isFollowing ? 'Ne plus suivre' : 'Suivre'}
-                </Button>
-                <Button variant="outline" onClick={handleOpenPrivateChat}>
-                  Message privé
                 </Button>
               </div>
             )}

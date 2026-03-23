@@ -10,32 +10,6 @@ export const SOCIAL_USER_SELECT = {
   createdAt: true,
 } as const;
 
-export const getCanonicalConversationPair = (userId: string, otherUserId: string) =>
-  userId < otherUserId ? [userId, otherUserId] as const : [otherUserId, userId] as const;
-
-export const getOrCreatePrivateConversation = async (userId: string, otherUserId: string) => {
-  const [participantOneId, participantTwoId] = getCanonicalConversationPair(userId, otherUserId);
-
-  return prisma.privateConversation.upsert({
-    where: {
-      participantOneId_participantTwoId: {
-        participantOneId,
-        participantTwoId,
-      },
-    },
-    create: {
-      participantOneId,
-      participantTwoId,
-    },
-    update: {},
-  });
-};
-
-export const getConversationOtherUserId = (
-  conversation: { participantOneId: string; participantTwoId: string },
-  viewerId: string
-) => (conversation.participantOneId === viewerId ? conversation.participantTwoId : conversation.participantOneId);
-
 export const getFriendIds = async (userId: string) => {
   const [following, followers] = await Promise.all([
     prisma.userFollow.findMany({
@@ -103,58 +77,5 @@ export const getUserSocialStats = async (userId: string) => {
     followerCount,
     followingCount,
     connectionCount: connections.length,
-  };
-};
-
-export const buildConversationSummaryForViewer = (
-  conversation: {
-    id: string;
-    participantOneId: string;
-    participantTwoId: string;
-    createdAt: Date;
-    updatedAt: Date;
-    lastMessageAt: Date;
-    participantOne: typeof SOCIAL_USER_SELECT extends infer _T ? any : never;
-    participantTwo: typeof SOCIAL_USER_SELECT extends infer _T ? any : never;
-    messages: Array<{
-      id: string;
-      body: string;
-      imageUrl: string | null;
-      createdAt: Date;
-      readAt: Date | null;
-      senderId: string;
-    }>;
-  },
-  viewerId: string
-) => {
-  const otherUser =
-    conversation.participantOneId === viewerId
-      ? conversation.participantTwo
-      : conversation.participantOne;
-  const lastMessage = conversation.messages[0] ?? null;
-  const unreadCount = conversation.messages.filter(
-    (message) => message.senderId !== viewerId && !message.readAt
-  ).length;
-
-  return {
-    id: conversation.id,
-    createdAt: conversation.createdAt.toISOString(),
-    updatedAt: conversation.updatedAt.toISOString(),
-    lastMessageAt: conversation.lastMessageAt.toISOString(),
-    otherUser: {
-      ...otherUser,
-      createdAt: otherUser.createdAt.toISOString(),
-    },
-    lastMessage: lastMessage
-      ? {
-          id: lastMessage.id,
-          body: lastMessage.body,
-          imageUrl: lastMessage.imageUrl,
-          createdAt: lastMessage.createdAt.toISOString(),
-          readAt: lastMessage.readAt ? lastMessage.readAt.toISOString() : null,
-          senderId: lastMessage.senderId,
-        }
-      : null,
-    unreadCount,
   };
 };

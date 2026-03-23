@@ -75,13 +75,6 @@ export interface ReferralSummary {
 export const usersApi = {
   getAll: () => api.get('/users'),
   getSocialOverview: () => api.get<{ stats: SocialStats; friends: SocialUser[] }>('/users/social/overview'),
-  getConversations: () => api.get<{ conversations: PrivateConversationSummary[] }>('/users/social/conversations'),
-  getConversationMessages: (conversationId: string, limit?: number) =>
-    api.get<{ messages: PrivateMessage[] }>(`/users/social/conversations/${conversationId}/messages`, { params: { limit } }),
-  createConversationWith: (userId: string) =>
-    api.post<{ conversation: PrivateConversationSummary }>(`/users/social/conversations/with/${userId}`),
-  markConversationRead: (conversationId: string) =>
-    api.post<{ success: boolean }>(`/users/social/conversations/${conversationId}/read`),
   follow: (targetUserId: string) =>
     api.post<{ relationship: SocialRelationship; stats: SocialStats }>(`/users/social/follow/${targetUserId}`),
   unfollow: (targetUserId: string) =>
@@ -140,40 +133,6 @@ export interface SocialUser {
   bio?: string | null;
   createdAt: string;
   social?: SocialRelationship & Partial<SocialStats>;
-}
-
-export interface PrivateMessage {
-  id: string;
-  conversationId: string;
-  senderId: string;
-  body: string;
-  imageUrl: string | null;
-  createdAt: string;
-  readAt: string | null;
-  sender: {
-    id: string;
-    username: string;
-    firstName?: string | null;
-    usernameColor?: string | null;
-    profilePicture?: string | null;
-  };
-}
-
-export interface PrivateConversationSummary {
-  id: string;
-  createdAt: string;
-  updatedAt: string;
-  lastMessageAt: string;
-  otherUser: SocialUser;
-  lastMessage: {
-    id: string;
-    body: string;
-    imageUrl: string | null;
-    createdAt: string;
-    readAt: string | null;
-    senderId: string;
-  } | null;
-  unreadCount: number;
 }
 
 // Economy API
@@ -272,6 +231,123 @@ export const gamesApi = {
     api.get<{ saveData: string | null }>('/games/goyave_empire/save'),
   saveGoyaveState: (saveData: string) =>
     api.post('/games/goyave_empire/save', { saveData }),
+};
+
+export interface ClashPlayerSummary {
+  id: string;
+  username: string;
+  usernameColor: string | null;
+  profilePicture: string | null;
+}
+
+export interface ClashBuilding {
+  id: string;
+  type: 'townHall' | 'goldStorage' | 'vault' | 'cannon' | 'wall';
+  level: number;
+  x: number;
+  y: number;
+  hp: number;
+  maxHp: number;
+  storageCapacity?: number;
+  defensePower?: number;
+  protectionPct?: number;
+}
+
+export interface ClashTroop {
+  type: 'barbarian' | 'archer' | 'giant';
+  count: number;
+}
+
+export interface ClashVillageState {
+  id: string;
+  townHallLevel: number;
+  moneyInStorage: number;
+  trophies: number;
+  shieldUntil: string | null;
+  attackCooldownUntil: string | null;
+  storageCapacity: number;
+  defenseRating: number;
+  vaultProtectionPct: number;
+  layout: Array<{
+    id: string;
+    type: ClashBuilding['type'];
+    x: number;
+    y: number;
+  }>;
+  buildings: ClashBuilding[];
+  troops: ClashTroop[];
+  user: ClashPlayerSummary | null;
+}
+
+export interface ClashActivity {
+  id: string;
+  villageId: string;
+  type: string;
+  title: string;
+  detail: string;
+  deltaMoney: number;
+  deltaTrophies: number;
+  relatedUserId: string | null;
+  createdAt: string;
+}
+
+export interface ClashBattleEntry {
+  id: string;
+  createdAt: string;
+  opponent: ClashPlayerSummary;
+  destructionPercent: number;
+  moneyStolen: number;
+  trophiesDelta: number;
+  result: Record<string, unknown>;
+}
+
+export interface ClashStateResponse {
+  village: ClashVillageState;
+  activities: ClashActivity[];
+  recentAttacks: ClashBattleEntry[];
+  recentDefenses: ClashBattleEntry[];
+}
+
+export interface ClashTarget {
+  user: ClashPlayerSummary | null;
+  village: ClashVillageState;
+  availableLoot: number;
+}
+
+export interface ClashLeaderboardEntry {
+  rank: number;
+  user: ClashPlayerSummary | null;
+  trophies?: number;
+  moneyInStorage?: number;
+  townHallLevel?: number;
+  totalLoot?: number;
+  averageDefense?: number | null;
+  defenseCount?: number;
+}
+
+export const clashApi = {
+  getState: () => api.get<ClashStateResponse>('/clash/state'),
+  bootstrap: () => api.post<ClashStateResponse>('/clash/bootstrap'),
+  upgrade: (buildingType: ClashBuilding['type']) =>
+    api.post<ClashStateResponse & { upgrade: { buildingType: ClashBuilding['type']; cost: number; newBalance: { money: number } } }>('/clash/upgrade', { buildingType }),
+  getMatchmaking: () => api.get<{ targets: ClashTarget[] }>('/clash/matchmaking'),
+  attack: (defenderUserId: string, attackPlan?: Array<{ troopType: ClashTroop['type']; count: number }>) =>
+    api.post<ClashStateResponse & {
+      attack: {
+        id: string;
+        createdAt: string;
+        defender: ClashVillageState | null;
+        destructionPercent: number;
+        moneyStolen: number;
+        trophiesDeltaAttacker: number;
+        trophiesDeltaDefender: number;
+        result: Record<string, unknown>;
+      };
+    }>('/clash/attack', { defenderUserId, attackPlan }),
+  getHistory: () =>
+    api.get<{ attacks: ClashBattleEntry[]; defenses: ClashBattleEntry[]; activities: ClashActivity[] }>('/clash/history'),
+  getLeaderboard: () =>
+    api.get<{ trophies: ClashLeaderboardEntry[]; loot: ClashLeaderboardEntry[]; defense: ClashLeaderboardEntry[] }>('/clash/leaderboard'),
 };
 
 export interface DailyRacerLeaderboardEntry {

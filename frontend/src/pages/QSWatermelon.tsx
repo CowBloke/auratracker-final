@@ -24,7 +24,9 @@ const AIR_DAMPING = 0.997;
 const FLOOR_FRICTION = 0.992;
 const WALL_RESTITUTION = 0.16;
 const FRUIT_RESTITUTION = 0.08;
-const MERGE_SPEED_THRESHOLD = 4.5;
+const MERGE_CONTACT_BUFFER = 2;
+const MERGE_SHOCK_RADIUS = 120;
+const MERGE_SHOCK_FORCE = 2.4;
 const GAME_OVER_BUFFER_MS = 1700;
 const PRE_SPAWN_DELAY_MS = 520;
 
@@ -433,12 +435,12 @@ export default function QSWatermelon() {
               b.vy += impulse * ny;
             }
 
-            if (
+            const canMerge =
               a.type === b.type &&
               a.type < FRUITS.length - 1 &&
-              Math.abs(relativeVelocity) <= MERGE_SPEED_THRESHOLD &&
-              overlap > Math.min(12, minDist * 0.18)
-            ) {
+              dist <= minDist + MERGE_CONTACT_BUFFER;
+
+            if (canMerge) {
               mergedIds.add(a.id);
               mergedIds.add(b.id);
 
@@ -456,6 +458,21 @@ export default function QSWatermelon() {
                 aboveDangerMs: 0,
               };
               additions.push(newFruit);
+
+              for (const other of fruits) {
+                if (!other || other.id === a.id || other.id === b.id || mergedIds.has(other.id)) continue;
+
+                const shockDx = other.x - newFruit.x;
+                const shockDy = other.y - newFruit.y;
+                const shockDistance = Math.hypot(shockDx, shockDy);
+                if (shockDistance <= 0.001 || shockDistance > MERGE_SHOCK_RADIUS) continue;
+
+                const shockFalloff = 1 - shockDistance / MERGE_SHOCK_RADIUS;
+                const shockForce = MERGE_SHOCK_FORCE * shockFalloff;
+                other.vx += (shockDx / shockDistance) * shockForce;
+                other.vy += (shockDy / shockDistance) * shockForce - shockForce * 0.18;
+                other.angularVelocity += (Math.random() - 0.5) * 0.05 * shockFalloff;
+              }
 
               const gained = FRUITS[nextType].score;
               scoreRef.current += gained;

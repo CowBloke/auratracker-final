@@ -51,9 +51,6 @@ model User {
   chatReactions         ChatReaction[]
   following             UserFollow[]              @relation("UserFollowing")
   followers             UserFollow[]              @relation("UserFollowers")
-  privateConversationsAsOne PrivateConversation[] @relation("PrivateConversationUserOne")
-  privateConversationsAsTwo PrivateConversation[] @relation("PrivateConversationUserTwo")
-  sentPrivateMessages   PrivateMessage[]          @relation("PrivateMessageSender")
   auraCoinTransactions  AuraCoinTransaction[]
   auraCoinPositions     AuraCoinPosition[]
   bugReports            BugReport[]
@@ -90,6 +87,9 @@ model User {
   notifications       Notification[]
   dailyRacerRuns      DailyRacerRun[]
   goyaveSave          GoyaveSave?
+  clashVillage        ClashVillage?
+  clashAttacks        ClashBattle[]             @relation("ClashBattleAttacker")
+  clashDefenses       ClashBattle[]             @relation("ClashBattleDefender")
   clanWarsWon         ClanWar[]                 @relation("ClanWarWinner")
   registrationReviews RegistrationReview[]      @relation("RegistrationReviewReviewer")
   clanWarGameLogs     ClanWarGameLog[]
@@ -211,6 +211,63 @@ model GoyaveSave {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model ClashVillage {
+  id                  String          @id @default(uuid())
+  userId              String          @unique
+  townHallLevel       Int             @default(1)
+  moneyInStorage      Int             @default(0)
+  trophies            Int             @default(100)
+  shieldUntil         DateTime?
+  attackCooldownUntil DateTime?
+  layoutJson          String          @default("[]")
+  buildingsJson       String          @default("[]")
+  troopsJson          String          @default("[]")
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activities ClashActivity[]
+
+  @@index([trophies])
+  @@index([moneyInStorage])
+}
+
+model ClashBattle {
+  id                    String   @id @default(uuid())
+  attackerUserId        String
+  defenderUserId        String
+  destructionPercent    Int
+  moneyStolen           Int      @default(0)
+  trophiesDeltaAttacker Int      @default(0)
+  trophiesDeltaDefender Int      @default(0)
+  resultJson            String
+  createdAt             DateTime @default(now())
+
+  attacker User @relation("ClashBattleAttacker", fields: [attackerUserId], references: [id], onDelete: Cascade)
+  defender User @relation("ClashBattleDefender", fields: [defenderUserId], references: [id], onDelete: Cascade)
+
+  @@index([attackerUserId, createdAt])
+  @@index([defenderUserId, createdAt])
+  @@index([createdAt])
+}
+
+model ClashActivity {
+  id            String   @id @default(uuid())
+  villageId     String
+  type          String
+  title         String
+  detail        String
+  deltaMoney    Int      @default(0)
+  deltaTrophies Int      @default(0)
+  relatedUserId String?
+  createdAt     DateTime @default(now())
+
+  village ClashVillage @relation(fields: [villageId], references: [id], onDelete: Cascade)
+
+  @@index([villageId, createdAt])
+  @@index([type, createdAt])
+}
+
 model DailyRacerRun {
   id        String   @id @default(uuid())
   userId    String
@@ -291,41 +348,6 @@ model UserFollow {
   @@unique([followerId, followingId])
   @@index([followerId, createdAt])
   @@index([followingId, createdAt])
-}
-
-model PrivateConversation {
-  id               String   @id @default(uuid())
-  participantOneId String
-  participantTwoId String
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  lastMessageAt    DateTime @default(now())
-
-  participantOne User             @relation("PrivateConversationUserOne", fields: [participantOneId], references: [id], onDelete: Cascade)
-  participantTwo User             @relation("PrivateConversationUserTwo", fields: [participantTwoId], references: [id], onDelete: Cascade)
-  messages       PrivateMessage[]
-
-  @@unique([participantOneId, participantTwoId])
-  @@index([participantOneId, lastMessageAt])
-  @@index([participantTwoId, lastMessageAt])
-  @@index([lastMessageAt])
-}
-
-model PrivateMessage {
-  id             String   @id @default(uuid())
-  conversationId String
-  senderId       String
-  body           String
-  imageUrl       String?
-  createdAt      DateTime @default(now())
-  readAt         DateTime?
-
-  conversation PrivateConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender       User                @relation("PrivateMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
-
-  @@index([conversationId, createdAt])
-  @@index([senderId, createdAt])
-  @@index([conversationId, readAt])
 }
 
 // Clan System
