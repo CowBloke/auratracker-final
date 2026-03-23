@@ -392,7 +392,8 @@ export default function ChatSidebar() {
                   >
                     <div
                       className={cn(
-                        "max-w-[90%] min-w-0 px-3 py-2 rounded-lg",
+                        "relative w-fit max-w-[85%] min-w-0 px-3 py-2 rounded-lg",
+                        !isSystemMessage && 'pr-12',
                         isSystemMessage
                           ? 'border border-amber-500/30 bg-amber-500/10'
                           : msg.userId === user?.id
@@ -400,6 +401,71 @@ export default function ChatSidebar() {
                           : 'bg-muted'
                       )}
                     >
+                      {!isSystemMessage && (
+                        <div className="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-md bg-background/70 p-0.5 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-muted-foreground/70 hover:text-foreground"
+                                title="Réagir"
+                              >
+                                <MoreHorizontal className="h-3.5 w-3.5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              align={msg.userId === user?.id ? 'end' : 'start'}
+                              className="flex items-center gap-1 p-2"
+                            >
+                              {REACTION_OPTIONS.map((reaction) => (
+                                <Button
+                                  key={reaction.value}
+                                  type="button"
+                                  onClick={() => reactToMessage(msg.id, reaction.value)}
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  title={reaction.label}
+                                >
+                                  <span className="text-base">{reaction.value}</span>
+                                </Button>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          {user?.isAdmin && (
+                            <Button
+                              type="button"
+                              onClick={() => pinMessage(msg.id, !msg.pinned)}
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-[10px] text-muted-foreground/60 hover:text-foreground"
+                              title={msg.pinned ? 'Désépingler' : 'Épingler'}
+                            >
+                              {msg.pinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
+                            </Button>
+                          )}
+                          <Button
+                            type="button"
+                            onClick={() =>
+                              setReplyTarget({
+                                id: msg.id,
+                                userId: msg.userId ?? '',
+                                username: msg.username,
+                                usernameColor: msg.usernameColor,
+                                message: msg.message || (msg.imageUrl ? '[image]' : ''),
+                              })
+                            }
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-muted-foreground/70 hover:text-foreground"
+                            title="Répondre"
+                          >
+                            <Reply className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      )}
                       {msg.replyTo && (
                         <div className="mb-2 border-l-2 border-border/60 pl-2 text-xs text-muted-foreground">
                           <UsernameDisplay
@@ -412,7 +478,7 @@ export default function ChatSidebar() {
                           </span>
                         </div>
                       )}
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="mb-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 pr-1">
                         {msg.profilePicture && (
                           <img 
                             src={resolveImageUrl(msg.profilePicture)} 
@@ -429,11 +495,16 @@ export default function ChatSidebar() {
                             onClick={() => navigate(`/profile/${msg.userId}`)}
                             variant="link"
                             className={cn(
-                              "h-auto px-0 py-0 text-xs font-medium",
+                              "h-auto min-w-0 max-w-full px-0 py-0 text-xs font-medium",
                               !msg.usernameColor && (msg.userId === user?.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')
                             )}
                           >
-                            <UsernameDisplay username={msg.username} usernameColor={msg.usernameColor} clanTag={toClanTagData(msg.clanTag)} />
+                            <UsernameDisplay
+                              username={msg.username}
+                              usernameColor={msg.usernameColor}
+                              clanTag={toClanTagData(msg.clanTag)}
+                              className="max-w-[13rem]"
+                            />
                           </Button>
                         ) : (
                           <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
@@ -496,73 +567,6 @@ export default function ChatSidebar() {
                         {msg.pinned && (
                           <Pin className="h-3 w-3 text-muted-foreground" />
                         )}
-                        <div className="ml-auto flex items-center gap-2">
-                          {!isSystemMessage && (
-                            <>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 opacity-0 transition-opacity text-muted-foreground/70 group-hover:opacity-100 hover:text-foreground"
-                                title="Réagir"
-                              >
-                                <MoreHorizontal className="h-3.5 w-3.5" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                              align={msg.userId === user?.id ? 'end' : 'start'}
-                              className="flex items-center gap-1 p-2"
-                            >
-                              {REACTION_OPTIONS.map((reaction) => (
-                                <Button
-                                  key={reaction.value}
-                                  type="button"
-                                  onClick={() => reactToMessage(msg.id, reaction.value)}
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  title={reaction.label}
-                                >
-                                  <span className="text-base">{reaction.value}</span>
-                                </Button>
-                              ))}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                          {user?.isAdmin && (
-                            <Button
-                              type="button"
-                              onClick={() => pinMessage(msg.id, !msg.pinned)}
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-[10px] text-muted-foreground/60 opacity-0 transition-colors group-hover:opacity-100 hover:text-foreground"
-                              title={msg.pinned ? 'Désépingler' : 'Épingler'}
-                            >
-                              {msg.pinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
-                            </Button>
-                          )}
-                          <Button
-                            type="button"
-                            onClick={() =>
-                              setReplyTarget({
-                                id: msg.id,
-                                userId: msg.userId ?? '',
-                                username: msg.username,
-                                usernameColor: msg.usernameColor,
-                                message: msg.message || (msg.imageUrl ? '[image]' : ''),
-                              })
-                            }
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 opacity-0 transition-opacity text-muted-foreground/70 group-hover:opacity-100 hover:text-foreground"
-                            title="Répondre"
-                          >
-                            <Reply className="h-3.5 w-3.5" />
-                          </Button>
-                            </>
-                          )}
-                        </div>
                       </div>
                       {invite ? (
                         <div className="space-y-2">

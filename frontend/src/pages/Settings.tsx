@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
-import { Sun, Moon, Loader2, Check, User } from 'lucide-react';
+import { Sun, Moon, Loader2, Check, User, Copy, Sparkles, Ticket } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeatures } from '@/contexts/FeaturesContext';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { PageShell } from '@/components/layout/page-shell';
-import { usersApi } from '@/services/api';
+import { ReferralSummary, authApi, usersApi } from '@/services/api';
+import ReferralClaimAnimation from '@/components/referrals/ReferralClaimAnimation';
+import { toast } from 'sonner';
 
 interface ColorSchemeEntry {
   id: string;
@@ -41,10 +45,14 @@ function parseRootVars(css: string): Record<string, string> {
 export default function Settings() {
   const { theme, setTheme, colorScheme, setColorScheme } = useTheme();
   const { user } = useAuth();
+  const { maintenanceStatus } = useFeatures();
   const [colorSchemes, setColorSchemes] = useState<ColorSchemeEntry[]>([
     { id: 'default', label: 'Default' },
   ]);
   const [themeVars, setThemeVars] = useState<Record<string, Record<string, string>>>({});
+  const [referralSummary, setReferralSummary] = useState<ReferralSummary | null>(null);
+  const [referralClaimOpen, setReferralClaimOpen] = useState(false);
+  const [referralLoading, setReferralLoading] = useState(false);
 
   // Name change state
   const [requestedUsername, setRequestedUsername] = useState('');
@@ -52,6 +60,7 @@ export default function Settings() {
   const [submittingNameChange, setSubmittingNameChange] = useState(false);
   const [nameChangeSuccess, setNameChangeSuccess] = useState(false);
   const [nameChangeError, setNameChangeError] = useState<string | null>(null);
+  const referralEnabled = maintenanceStatus.referralEnabled;
 
   useEffect(() => {
     fetch('/themes/manifest.json')
@@ -74,6 +83,38 @@ export default function Settings() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (!referralEnabled) {
+      setReferralSummary(null);
+      return;
+    }
+
+    let cancelled = false;
+    setReferralLoading(true);
+
+    authApi
+      .getReferralSummary()
+      .then((res) => {
+        if (!cancelled) {
+          setReferralSummary(res.data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setReferralSummary(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setReferralLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [referralEnabled]);
+
   const handleNameChangeSubmit = async () => {
     if (!requestedUsername.trim()) return;
     setSubmittingNameChange(true);
@@ -90,6 +131,24 @@ export default function Settings() {
       setNameChangeError(err.response?.data?.error || 'Erreur lors de l\'envoi');
     } finally {
       setSubmittingNameChange(false);
+    }
+  };
+
+  const handleReferralCopy = async () => {
+    if (!referralSummary?.referralCode) return;
+
+    try {
+      await navigator.clipboard.writeText(referralSummary.referralCode);
+      toast('Code copie', {
+        description: `${referralSummary.referralCode} est pret a etre partage.`,
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Failed to copy referral code:', error);
+      toast('Copie impossible', {
+        description: 'Le code est affiche, mais la copie automatique a echoue.',
+        duration: 3000,
+      });
     }
   };
 
@@ -112,6 +171,12 @@ export default function Settings() {
             className="justify-start px-3 py-2 text-sm"
           >
             Compte
+          </TabsTrigger>
+          <TabsTrigger
+            value="parrainage"
+            className="justify-start px-3 py-2 text-sm"
+          >
+            Parrainage
           </TabsTrigger>
         </TabsList>
 
@@ -301,7 +366,87 @@ export default function Settings() {
             )}
           </section>
         </TabsContent>
+
+        <TabsContent value="parrainage" className="mt-0 flex-1 space-y-8">
+          {!referralEnabled ? (
+            <section className="max-w-2xl rounded-xl border border-border/50 bg-muted/20 px-4 py-4">
+              <p className="text-sm font-medium">Parrainage desactive pour le moment.</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Cette fonctionnalite reviendra bientot.
+              </p>
+            </section>
+          ) : referralLoading ? (
+            <section className="max-w-2xl rounded-xl border border-border/50 bg-muted/20 px-4 py-6">
+              <p className="text-sm text-muted-foreground">Chargement du parrainage...</p>
+            </section>
+          ) : referralSummary ? (
+            <section className="max-w-3xl">
+              <div className="space-y-4 rounded-xl border border-border/50 bg-muted/20 px-4 py-4 sm:px-5 sm:py-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Parrainage</p>
+                    <p className="text-sm font-medium">Ton code est pret a etre partage.</p>
+                  </div>
+                  <Badge variant="secondary" className="border border-border/50 bg-background/70">
+                    +{referralSummary.rewardAmount} money chacun
+                  </Badge>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/50 bg-background/70 px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border/50 bg-muted/40 text-muted-foreground">
+                      <Ticket className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Code</p>
+                      <p className="font-mono text-base font-medium tracking-[0.28em] text-foreground">{referralSummary.referralCode}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button variant="default" size="sm" onClick={() => setReferralClaimOpen(true)}>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Reclamer
+                    </Button>
+                    <Button variant="outline" size="icon" onClick={handleReferralCopy}>
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
+                  <div className="rounded-lg border border-border/50 bg-background/70 px-3 py-2 text-center">
+                    <p className="text-xs text-muted-foreground">Valides</p>
+                    <p className="mt-1 text-lg font-semibold text-foreground">{referralSummary.successfulReferrals}</p>
+                  </div>
+                  <div className="rounded-lg border border-border/50 bg-background/70 px-3 py-2 text-center">
+                    <p className="text-xs text-muted-foreground">En attente</p>
+                    <p className="mt-1 text-lg font-semibold text-foreground">{referralSummary.pendingReferrals}</p>
+                  </div>
+                  <div className="rounded-lg border border-border/50 bg-background/70 px-3 py-2 text-center">
+                    <p className="text-xs text-muted-foreground">Gagnes</p>
+                    <p className="mt-1 text-lg font-semibold text-foreground">{referralSummary.totalRewardsEarned}</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+          ) : (
+            <section className="max-w-2xl rounded-xl border border-border/50 bg-muted/20 px-4 py-4">
+              <p className="text-sm text-muted-foreground">Impossible de charger le parrainage pour le moment.</p>
+            </section>
+          )}
+        </TabsContent>
       </Tabs>
+
+      {referralSummary && (
+        <ReferralClaimAnimation
+          open={referralClaimOpen}
+          code={referralSummary.referralCode}
+          rewardAmount={referralSummary.rewardAmount}
+          successfulReferrals={referralSummary.successfulReferrals}
+          onClose={() => setReferralClaimOpen(false)}
+        />
+      )}
     </PageShell>
   );
 }
