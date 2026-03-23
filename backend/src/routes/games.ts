@@ -1311,13 +1311,21 @@ async function attachUserDecorations<T extends { user: { id: string } }>(rows: T
 }
 
 function extractActiveGoyaveCount(saveData: string): number {
+  const parsed = parseGoyaveSaveSnapshot(saveData);
+  if (!parsed) return 0;
+  return parsed.guavas;
+}
+
+function parseGoyaveSaveSnapshot(saveData: string): { guavas: number; lastTick: number } | null {
   try {
-    const parsed = JSON.parse(saveData) as { guavas?: unknown };
-    const guavas = typeof parsed.guavas === 'number' ? parsed.guavas : Number(parsed.guavas);
-    if (!Number.isFinite(guavas) || guavas < 0) return 0;
-    return Math.floor(guavas);
+    const parsed = JSON.parse(saveData) as { guavas?: unknown; lastTick?: unknown };
+    const rawGuavas = typeof parsed.guavas === 'number' ? parsed.guavas : Number(parsed.guavas);
+    const guavas = Number.isFinite(rawGuavas) && rawGuavas >= 0 ? Math.floor(rawGuavas) : 0;
+    const rawLastTick = typeof parsed.lastTick === 'number' ? parsed.lastTick : Number(parsed.lastTick);
+    const lastTick = Number.isFinite(rawLastTick) && rawLastTick > 0 ? Math.floor(rawLastTick) : 0;
+    return { guavas, lastTick };
   } catch {
-    return 0;
+    return null;
   }
 }
 
@@ -1457,10 +1465,30 @@ router.post('/goyave_empire/save', authMiddleware, async (req: AuthRequest, res:
     if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
     const { saveData } = req.body;
     if (typeof saveData !== 'string') return res.status(400).json({ error: 'saveData must be a string' });
-    await prisma.goyaveSave.upsert({
+    const incomingSnapshot = parseGoyaveSaveSnapshot(saveData);
+    if (!incomingSnapshot) return res.status(400).json({ error: 'saveData must be valid JSON' });
+
+    const existing = await prisma.goyaveSave.findUnique({
       where: { userId: req.user.id },
-      update: { saveData },
-      create: { userId: req.user.id, saveData },
+      select: { id: true, saveData: true },
+    });
+
+    // Ignore stale writes that can arrive out-of-order when clients sync frequently.
+    if (existing) {
+      const existingSnapshot = parseGoyaveSaveSnapshot(existing.saveData);
+      if (existingSnapshot && existingSnapshot.lastTick > incomingSnapshot.lastTick) {
+        return res.json({ success: true, ignoredStale: true });
+      }
+
+      await prisma.goyaveSave.update({
+        where: { id: existing.id },
+        data: { saveData },
+      });
+      return res.json({ success: true });
+    }
+
+    await prisma.goyaveSave.create({
+      data: { userId: req.user.id, saveData },
     });
     res.json({ success: true });
   } catch (error) {

@@ -5,7 +5,7 @@ import { ImagePicker } from '@/components/ui/image-picker';
 import {
   Loader2, Plus, Calendar,
   CheckCircle2, XCircle, DollarSign, Users,
-  Check, X, ChevronDown
+  Check, X, ChevronDown, Shield
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -411,26 +411,36 @@ export default function Polymarket() {
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
         <div className="flex items-center justify-between gap-3">
           <TabsList className="h-auto flex-wrap">
-            <TabsTrigger value="events">Événements</TabsTrigger>
-            <TabsTrigger value="history">Mes paris</TabsTrigger>
-            {user?.isAdmin && <TabsTrigger value="admin">Admin</TabsTrigger>}
-          </TabsList>
-          <Button onClick={() => setSuggestionDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Suggérer
-          </Button>
-        </div>
-
-        <TabsContent value="events" className={SPACING.SECTION_SPACING}>
-          <div className="flex justify-end">
+            <TabsTrigger value="events" className="gap-2">
+              <Calendar className="h-4 w-4" />
+              Événements
+            </TabsTrigger>
+            <TabsTrigger value="history" className="gap-2">
+              <DollarSign className="h-4 w-4" />
+              Mes paris
+            </TabsTrigger>
             {user?.isAdmin && (
-              <Button onClick={() => setCreateEventDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
+              <TabsTrigger value="admin" className="gap-2">
+                <Shield className="h-4 w-4" />
+                Paris admin
+              </TabsTrigger>
+            )}
+          </TabsList>
+          <div className="flex items-center gap-2">
+            <Button className="h-11 px-5" onClick={() => setSuggestionDialogOpen(true)}>
+              <Plus className="h-5 w-5 mr-2" />
+              Suggérer
+            </Button>
+            {user?.isAdmin && activeTab === 'events' && (
+              <Button className="h-11 px-5" variant="outline" onClick={() => setCreateEventDialogOpen(true)}>
+                <Plus className="h-5 w-5 mr-2" />
                 Créer un événement
               </Button>
             )}
           </div>
+        </div>
 
+        <TabsContent value="events" className={SPACING.SECTION_SPACING}>
           {openEvents.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center text-muted-foreground">
@@ -750,7 +760,10 @@ export default function Polymarket() {
 
         {user?.isAdmin && (
           <TabsContent value="admin" className={SPACING.SECTION_SPACING}>
-            <h2 className={TYPOGRAPHY.H2}>Administration</h2>
+            <h2 className={cn(TYPOGRAPHY.H2, 'flex items-center gap-2')}>
+              <Shield className="h-5 w-5" />
+              Administration
+            </h2>
 
             <div className={SPACING.SECTION_SPACING}>
               <div>

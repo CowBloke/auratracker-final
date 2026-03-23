@@ -13,8 +13,8 @@ const SAVE_KEY = 'goyave_empire_save';
 const TICK_INTERVAL_MS = 200;
 const OFFLINE_THRESHOLD_MS = 30_000;
 const COST_SCALE = 1.18;
-const DB_SAVE_INTERVAL_MS = 5_000; // Keep active leaderboard close to real time
-const DB_SAVE_DEBOUNCE_MS = 3_000; // Save shortly after meaningful state changes
+const DB_SAVE_INTERVAL_MS = 3_000; // Keep active leaderboard close to real time
+const DB_SAVE_DEBOUNCE_MS = 1_500; // Save shortly after meaningful state changes
 const ACTIVE_LEADERBOARD_POLL_MS = 5_000;
 
 // ---- Types ----
@@ -261,6 +261,7 @@ export default function GoyaveEmpire() {
           const updated: SaveState = { ...loaded, guavas: loaded.guavas + earned, totalGuavas: loaded.totalGuavas + earned, lastTick: now };
           setSave(updated);
           persistSave(updated);
+          hasInitializedRef.current = true;
           setOfflineGuavas(earned);
           return;
         }
