@@ -9,6 +9,7 @@ interface MaintenanceStatus {
   disabledPages: string[];
   blockedMessage: string;
   referralEnabled: boolean;
+  duelMatchmakingEnabled: boolean;
 }
 
 const DEFAULT_STATUS: MaintenanceStatus = {
@@ -19,6 +20,7 @@ const DEFAULT_STATUS: MaintenanceStatus = {
   disabledPages: [],
   blockedMessage: '',
   referralEnabled: true,
+  duelMatchmakingEnabled: true,
 };
 
 interface FeaturesContextValue {
@@ -48,6 +50,7 @@ export function FeaturesProvider({ children }: { children: React.ReactNode }) {
         disabledPages: res.data.blockedPages || [],
         blockedMessage: res.data.blockedMessage || '',
         referralEnabled: res.data.referralEnabled !== false,
+        duelMatchmakingEnabled: res.data.duelMatchmakingEnabled !== false,
       });
     } catch {
       setMaintenanceStatus(DEFAULT_STATUS);

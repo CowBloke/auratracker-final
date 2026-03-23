@@ -43,6 +43,7 @@ const GAME_ROUTES: Record<DuelGameType, string> = {
 };
 
 const MATCHMAKING_GAME_TYPES: DuelGameType[] = ['chess', 'battleship', 'p4', 'ballarena', 'morpion'];
+const DUEL_MATCHMAKING_ENABLED_SETTING_KEY = 'duel_matchmaking_enabled';
 
 const randomMatchmakingGame = (): DuelGameType => {
   const index = Math.floor(Math.random() * MATCHMAKING_GAME_TYPES.length);
@@ -51,6 +52,15 @@ const randomMatchmakingGame = (): DuelGameType => {
 
 const emitMatchmakingStateForUser = (io: Server, userId: string, isQueued: boolean) => {
   io.to(`user:${userId}`).emit('duel:matchmaking-state', { isQueued });
+};
+
+const isDuelMatchmakingEnabled = async () => {
+  const setting = await prisma.gameSettings.findUnique({
+    where: { key: DUEL_MATCHMAKING_ENABLED_SETTING_KEY },
+    select: { value: true },
+  });
+
+  return setting?.value !== 'false';
 };
 
 const removeUserFromQueue = (userId: string): boolean => {
@@ -108,6 +118,18 @@ const emitMatchmakingStats = async (io: Server, targetSocket?: Socket) => {
   }
 
   io.emit('duel:matchmaking-stats', payload);
+};
+
+export const clearDuelMatchmakingQueue = async (io: Server) => {
+  const queuedUserIds = Array.from(matchmakingQueueSet);
+  matchmakingQueue.length = 0;
+  matchmakingQueueSet.clear();
+
+  for (const userId of queuedUserIds) {
+    emitMatchmakingStateForUser(io, userId, false);
+  }
+
+  await emitMatchmakingStats(io);
 };
 
 const createAndStartDuel = async (
@@ -207,7 +229,17 @@ const tryMatchmakingPair = async (io: Server) => {
   matchmakingPairingInProgress = true;
 
   try {
+    if (!(await isDuelMatchmakingEnabled())) {
+      await clearDuelMatchmakingQueue(io);
+      return;
+    }
+
     while (matchmakingQueue.length >= 2) {
+      if (!(await isDuelMatchmakingEnabled())) {
+        await clearDuelMatchmakingQueue(io);
+        return;
+      }
+
       const challengerId = matchmakingQueue.shift();
       const acceptorId = matchmakingQueue.shift();
       if (!challengerId || !acceptorId) break;
@@ -357,6 +389,14 @@ export const setupDuelHandlers = (socket: Socket, io: Server) => {
     const userId = socket.data.userId as string | undefined;
     if (!userId) return;
 
+    if (!(await isDuelMatchmakingEnabled())) {
+      removeUserFromQueue(userId);
+      emitMatchmakingStateForUser(io, userId, false);
+      socket.emit('duel:challenge-error', { message: 'Le matchmaking est temporairement desactive.' });
+      await emitMatchmakingStats(io, socket);
+      return;
+    }
+
     if (matchmakingUserToParty.has(userId)) {
       socket.emit('duel:challenge-error', { message: 'Tu es deja en duel via le matchmaking.' });
       emitMatchmakingStateForUser(io, userId, false);
@@ -386,6 +426,15 @@ export const setupDuelHandlers = (socket: Socket, io: Server) => {
   socket.on('duel:matchmaking-stats-request', async () => {
     const userId = socket.data.userId as string | undefined;
     if (!userId) return;
+
+    const enabled = await isDuelMatchmakingEnabled();
+    if (!enabled) {
+      removeUserFromQueue(userId);
+      emitMatchmakingStateForUser(io, userId, false);
+      await emitMatchmakingStats(io, socket);
+      return;
+    }
+
     emitMatchmakingStateForUser(io, userId, matchmakingQueueSet.has(userId));
     await emitMatchmakingStats(io, socket);
   });

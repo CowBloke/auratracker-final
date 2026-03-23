@@ -137,6 +137,14 @@ const games = [
     image: '/images/games/fruitninja.png',
   },
   {
+    id: 'qs-watermelon',
+    pageKey: 'game-qs-watermelon',
+    name: 'QS Watermelon',
+    description: 'Lâche les fruits dans la cuve, fusionne les doublons et vise la pastèque sans dépasser la ligne.',
+    type: 'Arcade',
+    image: '/images/games/qswatermelon.svg',
+  },
+  {
     id: 'geometry-dash',
     pageKey: 'game-geometry-dash',
     name: 'Geometry Dash',
@@ -297,6 +305,9 @@ export default function Games() {
     }
     if (gameId === 'geometry-dash') {
       return '/games/geometry-dash';
+    }
+    if (gameId === 'qs-watermelon') {
+      return '/games/qs-watermelon';
     }
     if (gameId === 'logic-lab') {
       return '/games/logic-lab';

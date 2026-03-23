@@ -234,4 +234,19 @@ export const duelEvents = {
   },
 };
 
+export const socialEvents = {
+  joinConversation: (conversationId: string) => {
+    socket?.emit('social:conversation:join', { conversationId });
+  },
+  leaveConversation: (conversationId: string) => {
+    socket?.emit('social:conversation:leave', { conversationId });
+  },
+  sendMessage: (targetUserId: string, body: string) => {
+    socket?.emit('social:message', { targetUserId, body });
+  },
+  markConversationRead: (conversationId: string) => {
+    socket?.emit('social:conversation:read', { conversationId });
+  },
+};
+
 export default socket;

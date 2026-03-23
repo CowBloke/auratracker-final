@@ -25,6 +25,7 @@ const router = Router();
 const ANNOUNCEMENT_KEY = 'topbar_announcement';
 const ANNOUNCEMENT_MAX_LENGTH = 120;
 const AURACOIN_BUY_FEE_PERCENTAGE_KEY = 'auracoin_buy_fee_percentage';
+const DUEL_MATCHMAKING_ENABLED_SETTING_KEY = 'duel_matchmaking_enabled';
 const UPDATE_POPUP_UPLOAD_DIR = path.resolve('uploads', 'update-popups');
 const ITEM_UPLOAD_DIR = path.resolve('uploads', 'items');
 const MAX_UPDATE_POPUP_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
@@ -2277,6 +2278,10 @@ router.put('/settings/:key', authMiddleware, requireAdmin, async (req: AuthReque
       return res.status(400).json({ error: 'Referral enabled must be true or false' });
     }
 
+    if (key === DUEL_MATCHMAKING_ENABLED_SETTING_KEY && !['true', 'false'].includes(normalizedValue)) {
+      return res.status(400).json({ error: 'Duel matchmaking enabled must be true or false' });
+    }
+
     if (key === AURACOIN_BUY_FEE_PERCENTAGE_KEY) {
       const numValue = Number.parseFloat(normalizedValue);
       if (!Number.isFinite(numValue) || numValue < 0 || numValue > 0.5) {
@@ -2289,6 +2294,15 @@ router.put('/settings/:key', authMiddleware, requireAdmin, async (req: AuthReque
       create: { key, value: normalizedValue },
       update: { value: normalizedValue },
     });
+
+    if (key === DUEL_MATCHMAKING_ENABLED_SETTING_KEY && normalizedValue === 'false') {
+      try {
+        const { clearDuelMatchmakingQueue } = await import('../socket/duel.js');
+        await clearDuelMatchmakingQueue(io);
+      } catch (clearError) {
+        console.error('Failed to clear duel matchmaking queue:', clearError);
+      }
+    }
 
     // Log setting update
     logAdmin('setting_update', req.user!.id, undefined, undefined, undefined, {
@@ -2373,6 +2387,11 @@ router.put('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, r
         continue;
       }
 
+      if (key === DUEL_MATCHMAKING_ENABLED_SETTING_KEY && !['true', 'false'].includes(normalizedValue)) {
+        errors.push(`${key}: Duel matchmaking enabled must be true or false`);
+        continue;
+      }
+
       if (key === AURACOIN_BUY_FEE_PERCENTAGE_KEY) {
         const numValue = Number.parseFloat(normalizedValue);
         if (!Number.isFinite(numValue) || numValue < 0 || numValue > 0.5) {
@@ -2395,6 +2414,18 @@ router.put('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, r
         create: { key, value },
         update: { value },
       });
+    }
+
+    const duelMatchmakingDisabled = updates.some(
+      ({ key, value }) => key === DUEL_MATCHMAKING_ENABLED_SETTING_KEY && value === 'false'
+    );
+    if (duelMatchmakingDisabled) {
+      try {
+        const { clearDuelMatchmakingQueue } = await import('../socket/duel.js');
+        await clearDuelMatchmakingQueue(io);
+      } catch (clearError) {
+        console.error('Failed to clear duel matchmaking queue:', clearError);
+      }
     }
 
     // Log bulk setting update

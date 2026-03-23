@@ -2,37 +2,419 @@ import { Router, Response } from 'express';
 import { prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { createNotification } from '../utils/notifications.js';
+import {
+  SOCIAL_USER_SELECT,
+  buildConversationSummaryForViewer,
+  getFriendIds,
+  getOrCreatePrivateConversation,
+  getRelationshipWithViewer,
+  getUserSocialStats,
+} from '../utils/social.js';
 
 const router = Router();
 const ANNOUNCEMENT_KEY = 'topbar_announcement';
 
+const serializePrivateMessage = (message: {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  body: string;
+  imageUrl: string | null;
+  createdAt: Date;
+  readAt: Date | null;
+  sender: {
+    id: string;
+    username: string;
+    firstName: string | null;
+    usernameColor: string | null;
+    profilePicture: string | null;
+  };
+}) => ({
+  id: message.id,
+  conversationId: message.conversationId,
+  senderId: message.senderId,
+  body: message.body,
+  imageUrl: message.imageUrl,
+  createdAt: message.createdAt.toISOString(),
+  readAt: message.readAt ? message.readAt.toISOString() : null,
+  sender: message.sender,
+});
+
 // Get all users (for the 40-user community)
 router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        username: true,
-        firstName: true,
-        schoolLevel: true,
-        classLetter: true,
-        aura: true,
-        money: true,
-        auraCoinBalance: true,
-        usernameColor: true,
-        profilePicture: true,
-        bio: true,
-        createdAt: true,
-      },
-      orderBy: {
-        aura: 'desc',
-      },
+    const currentUserId = req.user!.id;
+    const [users, outgoing, incoming] = await Promise.all([
+      prisma.user.findMany({
+        select: {
+          id: true,
+          username: true,
+          firstName: true,
+          schoolLevel: true,
+          classLetter: true,
+          aura: true,
+          money: true,
+          auraCoinBalance: true,
+          usernameColor: true,
+          profilePicture: true,
+          bio: true,
+          createdAt: true,
+          _count: {
+            select: {
+              followers: true,
+              following: true,
+            },
+          },
+        },
+        orderBy: {
+          aura: 'desc',
+        },
+      }),
+      prisma.userFollow.findMany({
+        where: { followerId: currentUserId },
+        select: { followingId: true },
+      }),
+      prisma.userFollow.findMany({
+        where: { followingId: currentUserId },
+        select: { followerId: true },
+      }),
+    ]);
+
+    const followingIds = new Set(outgoing.map((entry) => entry.followingId));
+    const followerIds = new Set(incoming.map((entry) => entry.followerId));
+
+    const sortedUsers = [...users].sort((a, b) => {
+      const aIsConnection = followingIds.has(a.id) && followerIds.has(a.id);
+      const bIsConnection = followingIds.has(b.id) && followerIds.has(b.id);
+      if (aIsConnection !== bIsConnection) return aIsConnection ? -1 : 1;
+
+      const aIsFollowing = followingIds.has(a.id);
+      const bIsFollowing = followingIds.has(b.id);
+      if (aIsFollowing !== bIsFollowing) return aIsFollowing ? -1 : 1;
+
+      return Number(b.aura) - Number(a.aura);
     });
     
-    res.json({ users });
+    res.json({
+      users: sortedUsers.map((user) => {
+        const isFollowing = followingIds.has(user.id);
+        const isFollowedBy = followerIds.has(user.id);
+
+        return {
+          ...user,
+          social: {
+            isFollowing,
+            isFollowedBy,
+            isConnection: isFollowing && isFollowedBy,
+            followerCount: user._count.followers,
+            followingCount: user._count.following,
+          },
+        };
+      }),
+    });
   } catch (error) {
     console.error('Get users error:', error);
     res.status(500).json({ error: 'Failed to get users' });
+  }
+});
+
+router.get('/social/overview', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const friendIds = await getFriendIds(userId);
+
+    const friends = await prisma.user.findMany({
+      where: { id: { in: friendIds } },
+      select: {
+        ...SOCIAL_USER_SELECT,
+        _count: {
+          select: {
+            followers: true,
+            following: true,
+          },
+        },
+      },
+      orderBy: { username: 'asc' },
+    });
+
+    const stats = await getUserSocialStats(userId);
+
+    res.json({
+      stats,
+      friends: friends.map((friend) => ({
+        ...friend,
+        createdAt: friend.createdAt.toISOString(),
+        social: {
+          isFollowing: true,
+          isFollowedBy: true,
+          isConnection: true,
+          followerCount: friend._count.followers,
+          followingCount: friend._count.following,
+        },
+      })),
+    });
+  } catch (error) {
+    console.error('Get social overview error:', error);
+    res.status(500).json({ error: 'Failed to get social overview' });
+  }
+});
+
+router.get('/social/conversations', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const conversations = await prisma.privateConversation.findMany({
+      where: {
+        OR: [{ participantOneId: userId }, { participantTwoId: userId }],
+      },
+      include: {
+        participantOne: { select: SOCIAL_USER_SELECT },
+        participantTwo: { select: SOCIAL_USER_SELECT },
+        messages: {
+          orderBy: { createdAt: 'desc' },
+          take: 25,
+          select: {
+            id: true,
+            body: true,
+            imageUrl: true,
+            createdAt: true,
+            readAt: true,
+            senderId: true,
+          },
+        },
+      },
+      orderBy: { lastMessageAt: 'desc' },
+    });
+
+    res.json({
+      conversations: conversations.map((conversation) =>
+        buildConversationSummaryForViewer(conversation, userId)
+      ),
+    });
+  } catch (error) {
+    console.error('Get conversations error:', error);
+    res.status(500).json({ error: 'Failed to get conversations' });
+  }
+});
+
+router.post('/social/conversations/with/:userId', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const currentUserId = req.user!.id;
+    const otherUserId = req.params.userId;
+
+    if (currentUserId === otherUserId) {
+      return res.status(400).json({ error: 'Cannot create a conversation with yourself' });
+    }
+
+    const otherUser = await prisma.user.findUnique({
+      where: { id: otherUserId },
+      select: { id: true, isApproved: true },
+    });
+
+    if (!otherUser?.isApproved) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const conversation = await getOrCreatePrivateConversation(currentUserId, otherUserId);
+
+    const hydratedConversation = await prisma.privateConversation.findUnique({
+      where: { id: conversation.id },
+      include: {
+        participantOne: { select: SOCIAL_USER_SELECT },
+        participantTwo: { select: SOCIAL_USER_SELECT },
+        messages: {
+          orderBy: { createdAt: 'desc' },
+          take: 25,
+          select: {
+            id: true,
+            body: true,
+            imageUrl: true,
+            createdAt: true,
+            readAt: true,
+            senderId: true,
+          },
+        },
+      },
+    });
+
+    if (!hydratedConversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    res.json({
+      conversation: buildConversationSummaryForViewer(hydratedConversation, currentUserId),
+    });
+  } catch (error) {
+    console.error('Create conversation error:', error);
+    res.status(500).json({ error: 'Failed to create conversation' });
+  }
+});
+
+router.get('/social/conversations/:conversationId/messages', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const { conversationId } = req.params;
+    const limit = Math.min(Number(req.query.limit) || 100, 200);
+
+    const conversation = await prisma.privateConversation.findFirst({
+      where: {
+        id: conversationId,
+        OR: [{ participantOneId: userId }, { participantTwoId: userId }],
+      },
+      select: { id: true },
+    });
+
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    const messages = await prisma.privateMessage.findMany({
+      where: { conversationId },
+      orderBy: { createdAt: 'asc' },
+      take: limit,
+      include: {
+        sender: {
+          select: {
+            id: true,
+            username: true,
+            firstName: true,
+            usernameColor: true,
+            profilePicture: true,
+          },
+        },
+      },
+    });
+
+    res.json({
+      messages: messages.map(serializePrivateMessage),
+    });
+  } catch (error) {
+    console.error('Get conversation messages error:', error);
+    res.status(500).json({ error: 'Failed to get conversation messages' });
+  }
+});
+
+router.post('/social/conversations/:conversationId/read', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const { conversationId } = req.params;
+
+    const conversation = await prisma.privateConversation.findFirst({
+      where: {
+        id: conversationId,
+        OR: [{ participantOneId: userId }, { participantTwoId: userId }],
+      },
+      select: { id: true },
+    });
+
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    await prisma.privateMessage.updateMany({
+      where: {
+        conversationId,
+        senderId: { not: userId },
+        readAt: null,
+      },
+      data: {
+        readAt: new Date(),
+      },
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Read conversation error:', error);
+    res.status(500).json({ error: 'Failed to mark conversation as read' });
+  }
+});
+
+router.post('/social/follow/:targetUserId', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const followerId = req.user!.id;
+    const { targetUserId } = req.params;
+
+    if (followerId === targetUserId) {
+      return res.status(400).json({ error: 'Cannot follow yourself' });
+    }
+
+    const target = await prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { id: true, username: true, isApproved: true },
+    });
+
+    if (!target?.isApproved) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    await prisma.userFollow.upsert({
+      where: {
+        followerId_followingId: {
+          followerId,
+          followingId: targetUserId,
+        },
+      },
+      create: {
+        followerId,
+        followingId: targetUserId,
+      },
+      update: {},
+    });
+
+    const relationship = await getRelationshipWithViewer(followerId, targetUserId);
+    const stats = await getUserSocialStats(targetUserId);
+
+    if (relationship.isConnection) {
+      await createNotification({
+        userId: targetUserId,
+        type: 'SOCIAL_CONNECTION',
+        title: 'Nouvelle connexion',
+        body: `${req.user!.username} fait maintenant partie de tes connexions.`,
+        link: `/profile/${followerId}`,
+        icon: 'users',
+      });
+    } else {
+      await createNotification({
+        userId: targetUserId,
+        type: 'SOCIAL_FOLLOW',
+        title: 'Nouveau follow',
+        body: `${req.user!.username} suit maintenant ton profil.`,
+        link: `/profile/${followerId}`,
+        icon: 'user-round-pen',
+      });
+    }
+
+    res.json({
+      relationship,
+      stats,
+    });
+  } catch (error) {
+    console.error('Follow user error:', error);
+    res.status(500).json({ error: 'Failed to follow user' });
+  }
+});
+
+router.delete('/social/follow/:targetUserId', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const followerId = req.user!.id;
+    const { targetUserId } = req.params;
+
+    await prisma.userFollow.deleteMany({
+      where: {
+        followerId,
+        followingId: targetUserId,
+      },
+    });
+
+    const relationship = await getRelationshipWithViewer(followerId, targetUserId);
+    const stats = await getUserSocialStats(targetUserId);
+
+    res.json({
+      relationship,
+      stats,
+    });
+  } catch (error) {
+    console.error('Unfollow user error:', error);
+    res.status(500).json({ error: 'Failed to unfollow user' });
   }
 });
 
@@ -128,7 +510,7 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     
-    const [user, auraCoinAggregate, clanMembership] = await Promise.all([
+    const [user, auraCoinAggregate, clanMembership, socialStats, relationship, connections] = await Promise.all([
       prisma.user.findUnique({
         where: { id },
         select: {
@@ -153,6 +535,12 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
               totalPlayed: true,
             },
           },
+          _count: {
+            select: {
+              followers: true,
+              following: true,
+            },
+          },
         },
       }),
       prisma.auraCoinTransaction.aggregate({
@@ -163,6 +551,18 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
       prisma.clanMember.findUnique({
         where: { userId: id },
         select: { clan: { select: { tagUnlocked: true, tagText: true, tagStyle: true } } },
+      }),
+      getUserSocialStats(id),
+      getRelationshipWithViewer(req.user!.id, id),
+      prisma.user.findMany({
+        where: {
+          id: {
+            in: await getFriendIds(id),
+          },
+        },
+        select: SOCIAL_USER_SELECT,
+        orderBy: { username: 'asc' },
+        take: 12,
       }),
     ]);
 
@@ -178,6 +578,16 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
       user: {
         ...user,
         clanTag,
+        social: {
+          ...relationship,
+          followerCount: user._count.followers,
+          followingCount: user._count.following,
+          connectionCount: socialStats.connectionCount,
+          connections: connections.map((connection) => ({
+            ...connection,
+            createdAt: connection.createdAt.toISOString(),
+          })),
+        },
         auraCoinStats: {
           transactionCount: auraCoinAggregate._count._all,
           totalMoney: auraCoinAggregate._sum.moneyAmount ?? 0,

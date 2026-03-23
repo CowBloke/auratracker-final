@@ -29,7 +29,7 @@ interface Ranking {
 type StatItem = { label: string; value: string; hint?: string };
 type StatSection = { title: string; items: StatItem[] };
 
-type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'doodle_jump_mort_subite' | 'game_2048' | 'flappy_bird' | 'chrome_dino' | 'stack_tower' | 'geometry_dash' | 'solitaire' | 'racer' | 'tetris' | 'knife_hit' | 'minesweeper' | 'fruit_ninja' | 'goyave_empire' | 'logic_lab' | 'casino' | 'casino_losses' | 'games_played' | 'bombparty';
+type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'doodle_jump_mort_subite' | 'game_2048' | 'flappy_bird' | 'chrome_dino' | 'stack_tower' | 'geometry_dash' | 'qs_watermelon' | 'solitaire' | 'racer' | 'tetris' | 'knife_hit' | 'minesweeper' | 'fruit_ninja' | 'goyave_empire' | 'logic_lab' | 'casino' | 'casino_losses' | 'games_played' | 'bombparty';
 type View = Category | 'nombres';
 type Period = 'all' | 'monthly' | 'weekly' | 'daily';
 
@@ -57,6 +57,7 @@ const categories: { id: Category; name: string; valueLabel: string; icon: typeof
   { id: 'chrome_dino', name: 'Chrome Dino', valueLabel: 'score', icon: Gamepad2 },
   { id: 'stack_tower', name: 'Stack Tower', valueLabel: 'score', icon: Layers },
   { id: 'geometry_dash', name: 'Geometry Dash', valueLabel: 'score', icon: ArrowUp },
+  { id: 'qs_watermelon', name: 'QS Watermelon', valueLabel: 'score', icon: Sparkles },
   { id: 'solitaire', name: 'Solitaire', valueLabel: 'score', icon: Diamond },
   { id: 'racer', name: 'Racer', valueLabel: 'temps', icon: Timer },
   { id: 'tetris', name: 'Tetris', valueLabel: 'score', icon: LayoutGrid },
@@ -72,8 +73,8 @@ const categories: { id: Category; name: string; valueLabel: string; icon: typeof
 ];
 
 const economyCategories: Category[] = ['aura', 'money', 'total_money', 'auracoin'];
-const gameCategories: Category[] = ['doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird', 'chrome_dino', 'stack_tower', 'geometry_dash', 'solitaire', 'racer', 'tetris', 'knife_hit', 'minesweeper', 'fruit_ninja', 'goyave_empire', 'logic_lab', 'casino', 'casino_losses', 'bombparty', 'games_played'];
-const genericGameCategories: Category[] = ['stack_tower', 'geometry_dash', 'fruit_ninja', 'goyave_empire', 'logic_lab'];
+const gameCategories: Category[] = ['doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird', 'chrome_dino', 'stack_tower', 'geometry_dash', 'qs_watermelon', 'solitaire', 'racer', 'tetris', 'knife_hit', 'minesweeper', 'fruit_ninja', 'goyave_empire', 'logic_lab', 'casino', 'casino_losses', 'bombparty', 'games_played'];
+const genericGameCategories: Category[] = ['stack_tower', 'geometry_dash', 'qs_watermelon', 'fruit_ninja', 'goyave_empire', 'logic_lab'];
 const deletableGameCategories: Partial<Record<Category, string>> = {
   doodle_jump: 'doodle_jump',
   doodle_jump_mort_subite: 'doodle_jump_mort_subite',
@@ -82,6 +83,7 @@ const deletableGameCategories: Partial<Record<Category, string>> = {
   chrome_dino: 'chrome_dino',
   stack_tower: 'stack_tower',
   geometry_dash: 'geometry_dash',
+  qs_watermelon: 'qs_watermelon',
   solitaire: 'solitaire',
   racer: 'racer',
   tetris: 'tetris',

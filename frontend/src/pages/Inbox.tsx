@@ -31,6 +31,7 @@ import {
   BadgeCheck,
   BadgeX,
   UserMinus,
+  UserRoundPlus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -60,6 +61,9 @@ const TYPE_ICON: Record<string, React.FC<{ className?: string }>> = {
   POLYMARKET_WIN:     ({ className }) => <TrendingUp className={className} />,
   POLYMARKET_LOSS:    ({ className }) => <TrendingDown className={className} />,
   PARTY_INVITE:       ({ className }) => <Sword className={className} />,
+  DIRECT_MESSAGE:     ({ className }) => <MessageSquare className={className} />,
+  SOCIAL_FOLLOW:      ({ className }) => <UserRoundPlus className={className} />,
+  SOCIAL_CONNECTION:  ({ className }) => <Users className={className} />,
   ADMIN:              ({ className }) => <Megaphone className={className} />,
   SYSTEM:             ({ className }) => <Info className={className} />,
 };
@@ -107,6 +111,7 @@ const CATEGORIES = [
   { id: 'aura',       label: 'Aura',       Icon: Star,       types: ['AURA_RECEIVED'] },
   { id: 'cadeaux',    label: 'Cadeaux',    Icon: Gift,       types: ['GIFT_RECEIVED'] },
   { id: 'clans',      label: 'Clans',      Icon: Users,      types: CLAN_TYPES },
+  { id: 'social',     label: 'Social',     Icon: MessageSquare, types: ['DIRECT_MESSAGE', 'SOCIAL_FOLLOW', 'SOCIAL_CONNECTION'] },
   { id: 'quetes',     label: 'Quêtes',     Icon: Zap,        types: ['QUEST_COMPLETED'] },
   { id: 'polymarket', label: 'Polymarket', Icon: TrendingUp, types: POLY_TYPES },
   { id: 'systeme',    label: 'Système',    Icon: Info,       types: SYS_TYPES },

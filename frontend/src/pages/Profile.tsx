@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { usersApi, leaderboardsApi, auraCoinApi, bombPartyApi, BombPartyStats, badgesApi, Badge, UserBadgeEntry } from '../services/api';
+import { usersApi, leaderboardsApi, auraCoinApi, bombPartyApi, BombPartyStats, badgesApi, Badge, UserBadgeEntry, SocialRelationship, SocialStats } from '../services/api';
 import { Edit2, Save, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -32,6 +32,16 @@ interface ProfileUser {
     transactionCount: number;
     totalMoney: number;
   };
+  social?: SocialRelationship & SocialStats & {
+    connections: Array<{
+      id: string;
+      username: string;
+      firstName?: string | null;
+      usernameColor?: string | null;
+      profilePicture?: string | null;
+      createdAt: string;
+    }>;
+  };
   gameStats: Array<{
     gameType: string;
     wins: number;
@@ -50,6 +60,7 @@ interface Rankings {
 export default function Profile() {
   const { userId } = useParams();
   const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
   const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
   const [rankings, setRankings] = useState<Rankings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,6 +71,7 @@ export default function Profile() {
   const [editingBio, setEditingBio] = useState(false);
   const [bioText, setBioText] = useState('');
   const [savingBio, setSavingBio] = useState(false);
+  const [socialLoading, setSocialLoading] = useState(false);
 
   // Badge state
   const [userBadges, setUserBadges] = useState<UserBadgeEntry[]>([]);
@@ -150,6 +162,52 @@ export default function Profile() {
     else setEquippedBadge2Id(badgeId);
   };
 
+  const handleFollowToggle = async () => {
+    if (!profileUser || isOwnProfile) return;
+
+    try {
+      setSocialLoading(true);
+      if (profileUser.social?.isFollowing) {
+        const res = await usersApi.unfollow(profileUser.id);
+        setProfileUser((prev) => prev ? {
+          ...prev,
+          social: prev.social ? {
+            ...prev.social,
+            ...res.data.relationship,
+            ...res.data.stats,
+          } : {
+            ...res.data.relationship,
+            ...res.data.stats,
+            connections: [],
+          },
+        } : prev);
+      } else {
+        const res = await usersApi.follow(profileUser.id);
+        setProfileUser((prev) => prev ? {
+          ...prev,
+          social: prev.social ? {
+            ...prev.social,
+            ...res.data.relationship,
+            ...res.data.stats,
+          } : {
+            ...res.data.relationship,
+            ...res.data.stats,
+            connections: [],
+          },
+        } : prev);
+      }
+    } catch (error) {
+      console.error('Failed to toggle follow:', error);
+    } finally {
+      setSocialLoading(false);
+    }
+  };
+
+  const handleOpenPrivateChat = () => {
+    if (!profileUser || isOwnProfile) return;
+    navigate(`/messages?userId=${profileUser.id}`);
+  };
+
   if (loading) {
     return (
       <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
@@ -187,6 +245,7 @@ export default function Profile() {
   const equippedBadge1 = userBadges.find((b) => b.id === equippedBadge1Id) ?? null;
   const equippedBadge2 = userBadges.find((b) => b.id === equippedBadge2Id) ?? null;
   const equippedBadges = [equippedBadge1, equippedBadge2].filter(Boolean) as BadgeData[];
+  const social = profileUser.social;
 
   return (
     <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
@@ -230,11 +289,70 @@ export default function Profile() {
               labelClassName="text-sm md:text-base text-muted-foreground"
             />
           </div>
+            {!isOwnProfile && (
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Button onClick={handleFollowToggle} disabled={socialLoading}>
+                  {socialLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : null}
+                  {social?.isFollowing ? 'Ne plus suivre' : 'Suivre'}
+                </Button>
+                <Button variant="outline" onClick={handleOpenPrivateChat}>
+                  Message privé
+                </Button>
+              </div>
+            )}
             <p className={cn(TYPOGRAPHY.SMALL, "mt-2")}>
               Membre depuis {new Date(profileUser.createdAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
             </p>
           </div>
         </div>
+
+      {social ? (
+        <Card>
+          <CardHeader>
+            <CardDescription>Réseau social</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-2xl border border-border/40 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Connexions</p>
+              <p className="mt-2 text-3xl font-semibold">{social.connectionCount}</p>
+              <p className="mt-1 text-sm text-muted-foreground">Follow back mutuels</p>
+            </div>
+            <div className="rounded-2xl border border-border/40 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Followers</p>
+              <p className="mt-2 text-3xl font-semibold">{social.followerCount}</p>
+              <p className="mt-1 text-sm text-muted-foreground">Joueurs qui suivent ce profil</p>
+            </div>
+            <div className="rounded-2xl border border-border/40 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Following</p>
+              <p className="mt-2 text-3xl font-semibold">{social.followingCount}</p>
+              <p className="mt-1 text-sm text-muted-foreground">Profils suivis</p>
+            </div>
+            {social.connections.length > 0 ? (
+              <div className="md:col-span-3 space-y-3">
+                <p className="text-sm text-muted-foreground">Connexions en commun visibles sur le profil</p>
+                <div className="flex flex-wrap gap-2">
+                  {social.connections.map((connection) => (
+                    <Button
+                      key={connection.id}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(`/profile/${connection.id}`)}
+                    >
+                      <span
+                        className="mr-2 inline-block h-2 w-2 rounded-full bg-primary"
+                        aria-hidden="true"
+                      />
+                      {connection.username}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {/* Bio Section */}
       <Card>

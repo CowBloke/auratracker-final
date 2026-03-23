@@ -246,6 +246,7 @@ const GAME_TYPE_LABELS: Record<string, string> = {
   chrome_dino: 'Chrome Dino',
   stack_tower: 'Stack Tower',
   geometry_dash: 'Geometry Dash',
+  qs_watermelon: 'QS Watermelon',
   solitaire: 'Solitaire',
   racer: 'Racer',
   racer_daily: 'Racer Quotidien',
@@ -388,6 +389,7 @@ const GAME_TYPES = [
   { value: 'chrome_dino', label: 'Chrome Dino' },
   { value: 'stack_tower', label: 'Stack Tower' },
   { value: 'geometry_dash', label: 'Geometry Dash' },
+  { value: 'qs_watermelon', label: 'QS Watermelon' },
   { value: 'solitaire', label: 'Solitaire' },
   { value: 'racer', label: 'Racer' },
   { value: 'racer_daily', label: 'Racer Quotidien' },
@@ -845,6 +847,8 @@ export default function Admin() {
   const [savingFakeOnline, setSavingFakeOnline] = useState(false);
   const [announcementMessage, setAnnouncementMessage] = useState('');
   const [savingAnnouncement, setSavingAnnouncement] = useState(false);
+  const [duelMatchmakingEnabled, setDuelMatchmakingEnabled] = useState(true);
+  const [savingDuelMatchmakingEnabled, setSavingDuelMatchmakingEnabled] = useState(false);
   const [referralEnabled, setReferralEnabled] = useState(true);
   const [savingReferralEnabled, setSavingReferralEnabled] = useState(false);
   const [referralRewardAmount, setReferralRewardAmount] = useState('250');
@@ -1670,6 +1674,7 @@ export default function Admin() {
       setLoadingSettings(true);
       const res = await adminApi.getSettings();
       setAnnouncementMessage(res.data.settings.topbar_announcement || '');
+      setDuelMatchmakingEnabled(res.data.settings.duel_matchmaking_enabled !== 'false');
       setReferralEnabled(res.data.settings.referral_enabled !== 'false');
       setReferralRewardAmount(res.data.settings.referral_reward_amount || '250');
       setAuraCoinBuyFeePercentage(res.data.settings.auracoin_buy_fee_percentage || '0.02');
@@ -1825,6 +1830,23 @@ export default function Admin() {
       showMessage('error', 'Erreur lors de la sauvegarde de l\'annonce');
     } finally {
       setSavingAnnouncement(false);
+    }
+  };
+
+  const saveDuelMatchmakingEnabled = async (value: boolean) => {
+    const previousValue = duelMatchmakingEnabled;
+    try {
+      setDuelMatchmakingEnabled(value);
+      setSavingDuelMatchmakingEnabled(true);
+      await adminApi.updateSetting('duel_matchmaking_enabled', value ? 'true' : 'false');
+      refreshFeatures();
+      showMessage('success', value ? 'Matchmaking duel active' : 'Matchmaking duel desactive');
+    } catch (error) {
+      setDuelMatchmakingEnabled(previousValue);
+      console.error('Failed to save duel matchmaking enabled setting:', error);
+      showMessage('error', 'Erreur lors de la sauvegarde du matchmaking duel');
+    } finally {
+      setSavingDuelMatchmakingEnabled(false);
     }
   };
 
@@ -3866,6 +3888,20 @@ export default function Admin() {
               <CardDescription>Parrainage</CardDescription>
             </CardHeader>
             <CardContent className={SPACING.CARD_SPACING}>
+              <div className="flex items-center justify-between rounded-xl border border-border/50 bg-muted/20 px-4 py-4">
+                <div className="space-y-1">
+                  <h3 className="font-medium">Activer le matchmaking duel</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Affiche le bouton cote joueur et autorise l&apos;entree dans la file de matchmaking duel.
+                  </p>
+                </div>
+                <Switch
+                  checked={duelMatchmakingEnabled}
+                  disabled={savingDuelMatchmakingEnabled}
+                  onCheckedChange={saveDuelMatchmakingEnabled}
+                />
+              </div>
+
               <div className="flex items-center justify-between rounded-xl border border-border/50 bg-muted/20 px-4 py-4">
                 <div className="space-y-1">
                   <h3 className="font-medium">Activer le systeme de parrainage</h3>

@@ -6,6 +6,7 @@ import { useChatSocket } from '@/contexts/ChatSocketContext';
 import { usePartySocket } from '@/contexts/PartySocketContext';
 import { useGameSocket } from '@/contexts/GameSocketContext';
 import { useDuelSocket } from '@/contexts/DuelSocketContext';
+import { useFeatures } from '@/contexts/FeaturesContext';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -45,6 +46,7 @@ import {
   Crosshair,
   Sparkles,
   CircleDollarSign,
+  MessageCircle,
 } from 'lucide-react';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { InboxDropdown } from '@/components/inbox/InboxDropdown';
@@ -57,6 +59,7 @@ export function SiteHeader() {
   const { currentParty, partyMembers, publicParties, createParty, leaveParty, deleteParty, joinParty, fetchPublicParties } = usePartySocket();
   const { bombPartyGame, petitBacGame } = useGameSocket();
   const { duelMatchmakingQueued, duelMatchmakingStats, joinDuelMatchmaking, leaveDuelMatchmaking } = useDuelSocket();
+  const { maintenanceStatus } = useFeatures();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -98,6 +101,7 @@ export function SiteHeader() {
       : 'En attente';
   const inviteLabel = currentParty?.name ? `Rejoins ${currentParty.name}` : 'Rejoins ma party';
   const inviteVisibility = currentParty?.isPublic ? 'public' : 'private';
+  const duelMatchmakingEnabled = maintenanceStatus.duelMatchmakingEnabled;
   const availableParties = useMemo(
     () => publicParties.filter((party) => party.memberCount < party.maxSize),
     [publicParties]
@@ -205,8 +209,21 @@ export function SiteHeader() {
         </Breadcrumb>
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-8 text-sm">
+        <div className="flex items-center gap-4">
+          <Button
+            asChild
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 px-2"
+            title="Messages privés"
+            aria-label="Messages privés"
+          >
+            <Link to="/messages">
+              <MessageCircle className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div className="flex items-center gap-8 text-sm">
           {!currentParty && (
             <DropdownMenu
               onOpenChange={(open) => {
@@ -284,26 +301,28 @@ export function SiteHeader() {
             </DropdownMenu>
           )}
 
-          <Button
-            type="button"
-            variant={duelMatchmakingQueued ? 'default' : 'outline'}
-            size="sm"
-            className="h-8 gap-2"
-            onClick={() => {
-              if (duelMatchmakingQueued) {
-                leaveDuelMatchmaking();
-              } else {
-                joinDuelMatchmaking();
-              }
-            }}
-            title={duelMatchmakingQueued ? 'Quitter la file de matchmaking duel' : 'Entrer en file de matchmaking duel'}
-          >
-            <Crosshair className="h-4 w-4" />
-            {duelMatchmakingQueued ? 'Quitter matchmaking' : 'Matchmaking duel'}
-            <span className="text-[10px] tabular-nums text-muted-foreground">
-              {duelMatchmakingStats.queuedCount} en queue / {duelMatchmakingStats.inGameCount} en jeu
-            </span>
-          </Button>
+          {duelMatchmakingEnabled && (
+            <Button
+              type="button"
+              variant={duelMatchmakingQueued ? 'default' : 'outline'}
+              size="sm"
+              className="h-8 gap-2"
+              onClick={() => {
+                if (duelMatchmakingQueued) {
+                  leaveDuelMatchmaking();
+                } else {
+                  joinDuelMatchmaking();
+                }
+              }}
+              title={duelMatchmakingQueued ? 'Quitter la file de matchmaking duel' : 'Entrer en file de matchmaking duel'}
+            >
+              <Crosshair className="h-4 w-4" />
+              {duelMatchmakingQueued ? 'Quitter matchmaking' : 'Matchmaking duel'}
+              <span className="text-[10px] tabular-nums text-muted-foreground">
+                {duelMatchmakingStats.queuedCount} en queue / {duelMatchmakingStats.inGameCount} en jeu
+              </span>
+            </Button>
+          )}
 
           {currentParty && (
             <div className="relative">

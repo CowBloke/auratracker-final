@@ -74,6 +74,18 @@ export interface ReferralSummary {
 // Users API
 export const usersApi = {
   getAll: () => api.get('/users'),
+  getSocialOverview: () => api.get<{ stats: SocialStats; friends: SocialUser[] }>('/users/social/overview'),
+  getConversations: () => api.get<{ conversations: PrivateConversationSummary[] }>('/users/social/conversations'),
+  getConversationMessages: (conversationId: string, limit?: number) =>
+    api.get<{ messages: PrivateMessage[] }>(`/users/social/conversations/${conversationId}/messages`, { params: { limit } }),
+  createConversationWith: (userId: string) =>
+    api.post<{ conversation: PrivateConversationSummary }>(`/users/social/conversations/with/${userId}`),
+  markConversationRead: (conversationId: string) =>
+    api.post<{ success: boolean }>(`/users/social/conversations/${conversationId}/read`),
+  follow: (targetUserId: string) =>
+    api.post<{ relationship: SocialRelationship; stats: SocialStats }>(`/users/social/follow/${targetUserId}`),
+  unfollow: (targetUserId: string) =>
+    api.delete<{ relationship: SocialRelationship; stats: SocialStats }>(`/users/social/follow/${targetUserId}`),
   getAnnouncement: () => api.get<{ message: string }>('/users/announcement'),
   getPendingUpdatePopups: () => api.get<{ popups: UserUpdatePopup[] }>('/users/update-popups/pending'),
   markUpdatePopupViewed: (id: string) => api.post<{ success: boolean }>(`/users/update-popups/${id}/viewed`),
@@ -105,6 +117,63 @@ export interface UserPendingWarning {
     id: string;
     username: string;
   };
+}
+
+export interface SocialRelationship {
+  isFollowing: boolean;
+  isFollowedBy: boolean;
+  isConnection: boolean;
+}
+
+export interface SocialStats {
+  followerCount: number;
+  followingCount: number;
+  connectionCount: number;
+}
+
+export interface SocialUser {
+  id: string;
+  username: string;
+  firstName?: string | null;
+  usernameColor?: string | null;
+  profilePicture?: string | null;
+  bio?: string | null;
+  createdAt: string;
+  social?: SocialRelationship & Partial<SocialStats>;
+}
+
+export interface PrivateMessage {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  body: string;
+  imageUrl: string | null;
+  createdAt: string;
+  readAt: string | null;
+  sender: {
+    id: string;
+    username: string;
+    firstName?: string | null;
+    usernameColor?: string | null;
+    profilePicture?: string | null;
+  };
+}
+
+export interface PrivateConversationSummary {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  lastMessageAt: string;
+  otherUser: SocialUser;
+  lastMessage: {
+    id: string;
+    body: string;
+    imageUrl: string | null;
+    createdAt: string;
+    readAt: string | null;
+    senderId: string;
+  } | null;
+  unreadCount: number;
 }
 
 // Economy API
@@ -1183,6 +1252,7 @@ export const maintenanceApi = {
     loginMessage?: string;
     loginRegisterCtaEnabled?: boolean;
     referralEnabled?: boolean;
+    duelMatchmakingEnabled?: boolean;
   }>('/maintenance'),
 };
 

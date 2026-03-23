@@ -1,6 +1,5 @@
 - saisons reset
 - payant
-- soial, amis, chatprivé
 - nerf
 - clash of clans
 - cams
@@ -8,4 +7,3 @@
 - pop ups de temps de temps en temps
 - rework objets themes
 - preciser r pop up
-- qs watermelon
