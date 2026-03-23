@@ -42,9 +42,9 @@ function PartyChatFloatingContainer() {
 
 function SupportChatContainer() {
   const { open } = useChatSidebar();
-  const { isAdmin } = useAuth();
+  const { user } = useAuth();
 
-  if (isAdmin) return null;
+  if (user?.isAdmin) return null;
 
   return (
     <SupportChat rightOffset={open ? 'calc(20rem + 1.5rem)' : '1.5rem'} />
