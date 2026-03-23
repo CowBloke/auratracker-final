@@ -28,6 +28,13 @@ interface User {
 
 const multiplayerGames = [
   {
+    id: 'jackpot-5',
+    name: 'Jackpot 5',
+    description: 'Choisis 5 chiffres et compare ta grille au tirage pour toucher des gains.',
+    type: 'Party',
+    image: '/images/games/cashmachine.png',
+  },
+  {
     id: 'bomb-party',
     name: 'Bomb Party',
     description: 'Trouve des mots contenant les lettres avant que la bombe explose.',
@@ -47,6 +54,13 @@ const multiplayerGames = [
     description: 'Joue une table entre amis, blindes et stack personnalisables.',
     type: 'Party',
     image: '/images/games/poker.png',
+  },
+  {
+    id: 'levier-infernal',
+    name: 'Levier Infernal',
+    description: 'Choisis un levier, prie pour survivre et laisse le classement se jouer aux victoires.',
+    type: 'Party',
+    image: '/images/games/rouletterusse.png',
   },
 ];
 
@@ -83,8 +97,10 @@ const duelGames = [
 
 const getGameLink = (gameId: string) => {
   if (gameId === 'bomb-party') return '/games/bomb-party';
+  if (gameId === 'jackpot-5') return '/games/jackpot-5';
   if (gameId === 'petit-bac') return '/games/petit-bac';
   if (gameId === 'poker') return '/games/poker';
+  if (gameId === 'levier-infernal') return '/games/levier-infernal';
   if (gameId === 'bataille-navale') return '/games/bataille-navale';
   if (gameId === 'puissance-quatre') return '/games/puissance-quatre';
   if (gameId === 'echecs') return '/games/echecs';
@@ -121,7 +137,7 @@ export default function Party() {
     suggestPartyGame,
     selectPartyGame,
   } = usePartySocket();
-  const { startBombParty, startPetitBac, startPoker, startP4, startMorpion } = useGameSocket();
+  const { startBombParty, startPetitBac, startPoker, startLeverBlast, startP4, startMorpion } = useGameSocket();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -185,6 +201,9 @@ export default function Party() {
       setShowPbDialog(true);
     } else if (gameId === 'poker') {
       setShowPokerDialog(true);
+    } else if (gameId === 'levier-infernal') {
+      startLeverBlast();
+      navigate('/games/levier-infernal');
     } else if (gameId === 'puissance-quatre') {
       startP4();
       navigate('/games/puissance-quatre');

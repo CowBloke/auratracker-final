@@ -46,6 +46,7 @@ import Blocked from './pages/Blocked';
 import Minesweeper from './pages/Minesweeper';
 import GeometryDash from './pages/GeometryDash';
 import RussianRoulette from './pages/RussianRoulette';
+import LevierInfernal from './pages/LevierInfernal';
 import Uno from './pages/Uno';
 import Morpion from './pages/Morpion';
 import ChromeDino from './pages/ChromeDino';
@@ -53,6 +54,7 @@ import FruitNinja from './pages/FruitNinja';
 import StackTower from './pages/StackTower';
 import Support from './pages/Support';
 import QSWatermelon from './pages/QSWatermelon';
+import Jackpot5 from './pages/Jackpot5';
 import { BLOCKABLE_PAGES } from './config/blockedPages';
 import { useFeatures } from './contexts/FeaturesContext';
 
@@ -185,8 +187,10 @@ function App() {
         <Route path="games/ball-arena" element={<BallArena />} />
         <Route path="games/logic-lab" element={<Sudoku />} />
         <Route path="games/russian-roulette" element={<RussianRoulette />} />
+        <Route path="games/levier-infernal" element={<LevierInfernal />} />
         <Route path="games/uno" element={<Uno />} />
         <Route path="games/morpion" element={<Morpion />} />
+        <Route path="games/jackpot-5" element={<Jackpot5 />} />
         <Route path="polymarket" element={<Polymarket />} />
         <Route path="leaderboards" element={<Leaderboards />} />
         <Route path="leaderboards/nombres" element={<Numbers />} />
