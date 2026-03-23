@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { prisma } from '../server.js';
+import { prisma, io } from '../server.js';
 import { authMiddleware, adminMiddleware, AuthRequest } from '../middleware/auth.js';
 import { validate, createItemSchema, purchaseSchema, useItemSchema } from '../middleware/validation.js';
 import { logMarketplace } from '../utils/logger.js';
@@ -211,15 +211,18 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
           });
         }
 
+        let newMaxMembers: number | null = null;
         if (isClanSlotUpgrade) {
-          await tx.clan.update({
+          const updatedClan = await tx.clan.update({
             where: { id: clanUpgradeMembership.clanId },
             data: {
               maxMembers: { increment: 1 },
               slotUpgraded: true,
               clanBankMoney: { decrement: totalPrice },
             },
+            select: { maxMembers: true },
           });
+          newMaxMembers = updatedClan.maxMembers;
         }
 
         const nextUser = await tx.user.findUnique({
@@ -234,10 +237,24 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
           throw new Error('USER_NOT_FOUND');
         }
 
-        return nextUser;
+        return { user: nextUser, newMaxMembers };
       });
 
-      updatedUser = txResult;
+      updatedUser = txResult.user;
+
+      if (isClanSlotUpgrade && txResult.newMaxMembers !== null) {
+        // Notify all clan members in real-time so the Clans page updates immediately
+        const clanMembers = await prisma.clanMember.findMany({
+          where: { clanId: clanUpgradeMembership.clanId },
+          select: { userId: true },
+        });
+        for (const member of clanMembers) {
+          io.to(`user:${member.userId}`).emit('clan:slot_upgraded', {
+            clanId: clanUpgradeMembership.clanId,
+            maxMembers: txResult.newMaxMembers,
+          });
+        }
+      }
     } else {
       // Purchase regular item into inventory.
       const txResult = await prisma.$transaction([
