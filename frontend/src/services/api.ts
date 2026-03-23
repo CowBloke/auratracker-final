@@ -1169,6 +1169,7 @@ export const adminApi = {
   createWarning: (data: { userId: string; message: string; severity?: 'LOW' | 'MEDIUM' | 'HIGH' }) =>
     api.post<{ warning: AdminWarning; message: string }>('/admin/warnings', data),
   deleteWarning: (id: string) => api.delete<{ success: boolean; message: string }>(`/admin/warnings/${id}`),
+  backfillScoreHistory: () => api.post<{ success: boolean; inserted: number; skipped: number }>('/admin/backfill-score-history'),
 };
 
 export const maintenanceApi = {
