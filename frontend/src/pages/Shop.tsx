@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { marketplaceApi, giftsApi, usersApi, ShopItem, ShopCategory, AdminInventoryItem } from '../services/api';
+import { marketplaceApi, giftsApi, usersApi, clansApi, ShopItem, ShopCategory, AdminInventoryItem } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -261,6 +261,7 @@ function ShopCard({
   user,
   buyingItemId,
   ownedSkinItemIds,
+  clanStatus,
   onPurchase,
   onSend,
 }: {
@@ -268,12 +269,22 @@ function ShopCard({
   user: ReturnType<typeof useAuth>['user'];
   buyingItemId: string | null;
   ownedSkinItemIds: Set<string>;
+  clanStatus: { inClan: boolean; tagUnlocked: boolean; slotUpgraded: boolean; clanBankMoney: number } | null;
   onPurchase: (item: ShopItem) => void;
   onSend: (item: ShopItem) => void;
 }) {
-  const isGift = item.type === 'GIFT' || parseEffectType(item.effect) === 'GIFT';
+  const effectType = parseEffectType(item.effect);
+  const isClanTagUnlock = effectType === 'CLAN_TAG_UNLOCK';
+  const isClanSlotUpgrade = effectType === 'CLAN_SLOT_UPGRADE';
+  const isClanUpgrade = isClanTagUnlock || isClanSlotUpgrade;
+  const isAlreadyPurchased =
+    (isClanTagUnlock && !!clanStatus?.tagUnlocked) ||
+    (isClanSlotUpgrade && !!clanStatus?.slotUpgraded);
+  const isGift = item.type === 'GIFT' || effectType === 'GIFT';
   const effectLabel = isGift ? null : getEffectLabel(item.effect);
-  const canAfford = (user?.money ?? 0) >= item.price;
+  const canAfford = isClanUpgrade
+    ? (clanStatus?.clanBankMoney ?? 0) >= item.price
+    : (user?.money ?? 0) >= item.price;
   const skinUrl = getSkinImageUrl(item.effect);
   const cfg = CATEGORY_CFG[item.type] ?? FALLBACK_CFG;
   const isBuying = buyingItemId === item.id;
@@ -355,10 +366,10 @@ function ShopCard({
           ) : (
             <button
               onClick={() => onPurchase(item)}
-              disabled={!canAfford || isBuying || isOwnedSkin}
+              disabled={!canAfford || isBuying || isOwnedSkin || isAlreadyPurchased}
               className={cn(
                 'w-full rounded-lg py-2 text-sm font-semibold transition-all duration-150',
-                canAfford && !isBuying && !isOwnedSkin
+                canAfford && !isBuying && !isOwnedSkin && !isAlreadyPurchased
                   ? cn(cfg.buyBtn)
                   : 'bg-muted/20 text-muted-foreground/50 cursor-not-allowed border border-border/20',
               )}
@@ -366,6 +377,8 @@ function ShopCard({
               <span className="flex items-center justify-center gap-2">
                 {isBuying ? (
                   <><Loader2 className="h-4 w-4 animate-spin" /> Achat...</>
+                ) : isAlreadyPurchased ? (
+                  'Déjà acheté'
                 ) : isOwnedSkin ? (
                   'Deja possede'
                 ) : canAfford ? (
@@ -580,6 +593,7 @@ export default function Shop() {
   const [categories, setCategories] = useState<ShopCategory[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
   const [buyingItemId, setBuyingItemId] = useState<string | null>(null);
+  const [clanStatus, setClanStatus] = useState<{ inClan: boolean; tagUnlocked: boolean; slotUpgraded: boolean; clanBankMoney: number } | null>(null);
 
   // Gift dialog
   const [sendDialogItem, setSendDialogItem] = useState<ShopItem | null>(null);
@@ -596,16 +610,26 @@ export default function Shop() {
         const inventoryRequest = user?.id
           ? marketplaceApi.getInventory(user.id)
           : Promise.resolve({ data: { items: [] as AdminInventoryItem[] } });
-        const [itemsRes, categoriesRes, inventoryRes] = await Promise.all([
+        const clanStatusRequest = user?.id
+          ? clansApi.myStatus()
+          : Promise.resolve({ data: { inClan: false, tagUnlocked: false, slotUpgraded: false, clanBankMoney: 0, level: 1 } });
+        const [itemsRes, categoriesRes, inventoryRes, clanStatusRes] = await Promise.all([
           marketplaceApi.getItems({ limit: 100 }),
           marketplaceApi.getCategories(),
           inventoryRequest,
+          clanStatusRequest,
         ]);
         setItems(itemsRes.data.items || []);
         setInventoryItems(inventoryRes.data.items || []);
         if (categoriesRes.data.categories?.length) {
           setCategories(categoriesRes.data.categories);
         }
+        setClanStatus({
+          inClan: clanStatusRes.data.inClan,
+          tagUnlocked: clanStatusRes.data.tagUnlocked,
+          slotUpgraded: clanStatusRes.data.slotUpgraded,
+          clanBankMoney: clanStatusRes.data.clanBankMoney,
+        });
       } catch {
         toast.error('Impossible de charger la boutique.');
       } finally {
@@ -696,6 +720,12 @@ export default function Shop() {
       const isClanTagUnlock = response.data.effect?.type === 'CLAN_TAG_UNLOCK';
       const isClanSlotUpgrade = response.data.effect?.type === 'CLAN_SLOT_UPGRADE';
       const isDj = parseEffectType(item.effect) === 'DOODLE_JUMP_SKIN';
+      if (isClanTagUnlock) {
+        setClanStatus(prev => prev ? { ...prev, tagUnlocked: true, clanBankMoney: prev.clanBankMoney - item.price } : prev);
+      }
+      if (isClanSlotUpgrade) {
+        setClanStatus(prev => prev ? { ...prev, slotUpgraded: true, clanBankMoney: prev.clanBankMoney - item.price } : prev);
+      }
       toast.success(
         isClanTagUnlock
           ? 'Tag de clan debloque !'
@@ -843,6 +873,7 @@ export default function Shop() {
                         user={user}
                         buyingItemId={buyingItemId}
                         ownedSkinItemIds={ownedSkinItemIds}
+                        clanStatus={clanStatus}
                         onPurchase={handlePurchase}
                         onSend={openSendDialog}
                       />
@@ -863,6 +894,7 @@ export default function Shop() {
                         user={user}
                         buyingItemId={buyingItemId}
                         ownedSkinItemIds={ownedSkinItemIds}
+                        clanStatus={clanStatus}
                         onPurchase={handlePurchase}
                         onSend={openSendDialog}
                       />

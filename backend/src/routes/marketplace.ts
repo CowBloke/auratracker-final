@@ -216,6 +216,7 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
             where: { id: clanUpgradeMembership.clanId },
             data: {
               maxMembers: { increment: 1 },
+              slotUpgraded: true,
               clanBankMoney: { decrement: totalPrice },
             },
           });
@@ -548,6 +549,7 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
             where: { id: membership.clanId },
             data: {
               maxMembers: { increment: 1 },
+              slotUpgraded: true,
             },
           });
         }
