@@ -118,8 +118,8 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
     }
     
     const effect = parseItemEffect(item.effect);
-    const isClanTagUnlock = item.type === 'UPGRADE' && effect?.type === 'CLAN_TAG_UNLOCK';
-    const isClanSlotUpgrade = item.type === 'UPGRADE' && effect?.type === 'CLAN_SLOT_UPGRADE';
+    const isClanTagUnlock = effect?.type === 'CLAN_TAG_UNLOCK';
+    const isClanSlotUpgrade = effect?.type === 'CLAN_SLOT_UPGRADE';
     const isClanUpgrade = isClanTagUnlock || isClanSlotUpgrade;
     const totalPrice = item.price * quantity;
     let clanUpgradeMembership: { clanId: string; isLeader: boolean } | null = null;
