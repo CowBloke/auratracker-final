@@ -401,58 +401,75 @@ export default function Profile() {
 
   return (
     <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
-      {/* Profile Picture */}
-      <div className="flex items-start gap-6">
-        {profileUser.profilePicture ? (
-          <img 
-            src={resolveImageUrl(profileUser.profilePicture)} 
-            alt={profileUser.username}
-            className="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover border-2 border-border shrink-0"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
-            }}
-          />
-        ) : (
-          <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-muted/30 flex items-center justify-center border-2 border-border shrink-0">
-            <span 
-              className={cn(TYPOGRAPHY.H2, "md:text-4xl")}
-              style={profileUser.usernameColor ? { color: profileUser.usernameColor } : undefined}
-            >
-              {profileUser.username.slice(0, 2)}
-            </span>
-          </div>
-        )}
-        
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3">
-            <ProfileBadgeSlots
-              badges={userBadges}
-              equippedBadge1Id={equippedBadge1Id}
-              equippedBadge2Id={equippedBadge2Id}
-              editable={isOwnProfile}
-              onEquip={handleEquipBadge}
+      <div className="overflow-hidden rounded-[28px] border border-border/40 bg-card">
+        <div className="relative h-40 md:h-56">
+          {profileUser.profileBanner ? (
+            <img
+              src={resolveImageUrl(profileUser.profileBanner)}
+              alt={`Banniere de ${profileUser.username}`}
+              className="absolute inset-0 h-full w-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
             />
-            <UsernameDisplay
-              username={profileUser.username}
-              firstName={profileUser.firstName}
-              usernameColor={profileUser.usernameColor}
-              clanTag={toClanTagData(profileUser.clanTag)}
-              className={cn(TYPOGRAPHY.H1, "md:text-7xl")}
-              labelClassName="text-sm md:text-base text-muted-foreground"
-            />
-            {!isOwnProfile && (
-              <div className="mt-4 flex flex-wrap gap-3">
-                <Button onClick={handleFollowToggle} disabled={socialLoading}>
-                  {socialLoading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : null}
-                  {social?.isFollowing ? 'Ne plus suivre' : 'Suivre'}
-                </Button>
+          ) : null}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/25 via-background/10 to-background/80" />
+        </div>
+
+        <div className="px-4 pb-6 md:px-6">
+          <div className="-mt-12 flex items-start gap-6 md:-mt-16">
+            {profileUser.profilePicture ? (
+              <img
+                src={resolveImageUrl(profileUser.profilePicture)}
+                alt={profileUser.username}
+                className="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover border-4 border-background shrink-0 bg-background"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            ) : (
+              <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-muted/30 flex items-center justify-center border-4 border-background shrink-0">
+                <span
+                  className={cn(TYPOGRAPHY.H2, "md:text-4xl")}
+                  style={profileUser.usernameColor ? { color: profileUser.usernameColor } : undefined}
+                >
+                  {profileUser.username.slice(0, 2)}
+                </span>
               </div>
             )}
-            <p className={cn(TYPOGRAPHY.SMALL, "mt-2")}>
-              Membre depuis {new Date(profileUser.createdAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
-            </p>
+
+            <div className="flex-1 min-w-0 pt-12 md:pt-16">
+              <div className="flex items-center gap-3">
+                <ProfileBadgeSlots
+                  badges={userBadges}
+                  equippedBadge1Id={equippedBadge1Id}
+                  equippedBadge2Id={equippedBadge2Id}
+                  editable={isOwnProfile}
+                  onEquip={handleEquipBadge}
+                />
+                <UsernameDisplay
+                  username={profileUser.username}
+                  firstName={profileUser.firstName}
+                  usernameColor={profileUser.usernameColor}
+                  clanTag={toClanTagData(profileUser.clanTag)}
+                  className={cn(TYPOGRAPHY.H1, "md:text-7xl")}
+                  labelClassName="text-sm md:text-base text-muted-foreground"
+                />
+              </div>
+              {!isOwnProfile && (
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <Button onClick={handleFollowToggle} disabled={socialLoading}>
+                    {socialLoading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : null}
+                    {social?.isFollowing ? 'Ne plus suivre' : 'Suivre'}
+                  </Button>
+                </div>
+              )}
+              <p className={cn(TYPOGRAPHY.SMALL, "mt-2")}>
+                Membre depuis {new Date(profileUser.createdAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+              </p>
+            </div>
           </div>
         </div>
       </div>

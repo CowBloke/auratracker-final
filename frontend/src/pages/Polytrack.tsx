@@ -1,41 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
-import { Maximize2, Minimize2, Trophy, Clock, ChevronDown, Send } from 'lucide-react';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { Maximize2, Minimize2, Trophy, Clock, ChevronDown, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { polytrackApi, type PolytrackTrack, type PolytrackLeaderboardEntry } from '@/services/api';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { PlayerHoverCard } from '@/components/ui/player-hover-card';
 import { PageShell } from '@/components/layout/page-shell';
 
-// Parse "m:ss.mmm" or "ss.mmm" into milliseconds
-function parseTime(raw: string): number | null {
-  const cleaned = raw.trim();
-  // Accept: 1:14.055 or 14.055 or 1:14 or 74055 (raw ms)
-  const fullPattern = /^(\d+):(\d{1,2})\.(\d{1,3})$/;
-  const shortPattern = /^(\d+)\.(\d{1,3})$/;
-  const rawMs = /^\d+$/;
-
-  let m: RegExpMatchArray | null;
-  if ((m = cleaned.match(fullPattern))) {
-    const mins = parseInt(m[1], 10);
-    const secs = parseInt(m[2], 10);
-    const ms = parseInt(m[3].padEnd(3, '0'), 10);
-    return mins * 60_000 + secs * 1_000 + ms;
-  }
-  if ((m = cleaned.match(shortPattern))) {
-    const secs = parseInt(m[1], 10);
-    const ms = parseInt(m[2].padEnd(3, '0'), 10);
-    return secs * 1_000 + ms;
-  }
-  if (rawMs.test(cleaned)) {
-    const v = parseInt(cleaned, 10);
-    return v > 0 && v < 600_000 ? v : null;
-  }
-  return null;
-}
-
+const GAME_ORIGIN = 'https://iammyguy21th.github.io';
 const MEDAL_COLORS = ['text-yellow-400', 'text-slate-400', 'text-amber-600'];
 
 export default function Polytrack() {
@@ -48,9 +20,8 @@ export default function Polytrack() {
   const [, setLoadingTracks] = useState(true);
   const [loadingLb, setLoadingLb] = useState(false);
 
-  // Submit state
-  const [timeInput, setTimeInput] = useState('');
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  // In-game capture state
+  const [pendingMs, setPendingMs] = useState<number | null>(null);
   const [submitResult, setSubmitResult] = useState<{ saved: boolean; isGlobalRecord: boolean; isNewPB: boolean; timeDisplay: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -93,24 +64,15 @@ export default function Polytrack() {
   useEffect(() => {
     fetchLeaderboard(selectedTrack);
     setSubmitResult(null);
-    setSubmitError(null);
-    setTimeInput('');
+    setPendingMs(null);
   }, [selectedTrack]);
 
-  const handleSubmit = async () => {
+  const submitTime = useCallback(async (ms: number, trackNum: number) => {
     if (!user) return;
-    setSubmitError(null);
-    setSubmitResult(null);
-
-    const ms = parseTime(timeInput);
-    if (ms === null) {
-      setSubmitError('Format invalide. Utilise mm:ss.mmm ou ss.mmm (ex: 1:14.055 ou 22.074)');
-      return;
-    }
-
     setSubmitting(true);
+    setSubmitResult(null);
     try {
-      const res = await polytrackApi.submitRecord(selectedTrack, ms);
+      const res = await polytrackApi.submitRecord(trackNum, ms);
       const d = res.data;
       setSubmitResult({
         saved: d.saved,
@@ -119,15 +81,33 @@ export default function Polytrack() {
         timeDisplay: d.personalBest.timeDisplay,
       });
       if (d.saved) {
-        setTimeInput('');
-        await Promise.all([fetchTracks(), fetchLeaderboard(selectedTrack)]);
+        await Promise.all([fetchTracks(), fetchLeaderboard(trackNum)]);
       }
     } catch {
-      setSubmitError('Erreur lors de la soumission. Réessaie.');
+      // ignore
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Listen for finish events posted by the game iframe
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (event.origin !== GAME_ORIGIN) return;
+      const data = event.data as { type?: string; timeMs?: number; trackNumber?: number };
+      if (data?.type !== 'polytrack:finish') return;
+      const ms = Number(data.timeMs);
+      if (!Number.isFinite(ms) || ms <= 0 || ms >= 600_000) return;
+      const track = Number.isInteger(data.trackNumber) && data.trackNumber! >= 1 && data.trackNumber! <= 14
+        ? data.trackNumber!
+        : selectedTrack;
+      setPendingMs(ms);
+      setSelectedTrack(track);
+      submitTime(ms, track);
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [selectedTrack, submitTime]);
 
   const toggleFullscreen = () => {
     if (!fullscreen) {
@@ -218,35 +198,25 @@ export default function Polytrack() {
               </CardContent>
             </Card>
 
-            {/* Submit time */}
+            {/* In-game score capture */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                   <Clock size={15} className="text-muted-foreground" />
-                  Soumettre un temps — {currentTrack?.name ?? `Track ${selectedTrack}`}
+                  Score en jeu — {currentTrack?.name ?? `Track ${selectedTrack}`}
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
-                <p className="text-xs text-muted-foreground">
-                  Après avoir terminé un tour, entre ton temps affiché dans le jeu.
-                </p>
-                <div className="flex gap-2">
-                  <Input
-                    value={timeInput}
-                    onChange={(e) => setTimeInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-                    placeholder="1:14.055 ou 22.074"
-                    className="font-mono text-sm"
-                    disabled={submitting || !user}
-                  />
-                  <Button size="sm" onClick={handleSubmit} disabled={submitting || !user || !timeInput.trim()}>
-                    <Send size={14} />
-                  </Button>
-                </div>
-
-                {submitError && (
-                  <p className="text-xs text-destructive">{submitError}</p>
-                )}
+                {submitting ? (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground animate-pulse">
+                    <CheckCircle2 size={14} />
+                    Enregistrement en cours…
+                  </div>
+                ) : pendingMs === null ? (
+                  <p className="text-xs text-muted-foreground">
+                    Termine un tour dans le jeu — ton temps sera capturé automatiquement.
+                  </p>
+                ) : null}
 
                 {submitResult && (
                   <div className={cn(

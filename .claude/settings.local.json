@@ -65,7 +65,9 @@
       "WebFetch(domain:codebeautify.org)",
       "Bash(curl -sI \"https://iammyguy21th.github.io/polytrack.3/\")",
       "Bash(curl -sI \"https://app-polytrack.kodub.com/\")",
-      "Bash(2)"
+      "Bash(2)",
+      "Bash(curl -s https://iammyguy21th.github.io/polytrack.3/)",
+      "Bash(curl -s https://iammyguy21th.github.io/polytrack.3/dist/main.bundle.js)"
     ]
   },
   "outputStyle": "default"
