@@ -41,6 +41,8 @@ interface ItemEffect {
   skinImageUrl?: string;
 }
 
+type ImageEffectType = 'PROFILE_PICTURE' | 'PROFILE_BANNER';
+
 const typeLabels: Record<string, string> = {
   CONSUMABLE: 'Consommable',
   COSMETIC: 'Cosmétique',
@@ -78,6 +80,7 @@ export default function Inventory() {
   const [imageDialogOpen, setImageDialogOpen] = useState(false);
   const [imageItem, setImageItem] = useState<UserItem | null>(null);
   const [imageUrl, setImageUrl] = useState('');
+  const [imageEffectType, setImageEffectType] = useState<ImageEffectType | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -130,9 +133,10 @@ export default function Inventory() {
         setColorDialogOpen(true);
         return;
       }
-      if (effect.type === 'PROFILE_PICTURE') {
+      if (effect.type === 'PROFILE_PICTURE' || effect.type === 'PROFILE_BANNER') {
         setImageItem(userItem);
         setImageUrl('');
+        setImageEffectType(effect.type);
         setImageDialogOpen(true);
         return;
       }
@@ -256,13 +260,14 @@ export default function Inventory() {
       await refreshUser();
       await fetchInventory();
       
-      toast.success('Photo de profil appliquee');
+      toast.success(imageEffectType === 'PROFILE_BANNER' ? 'Banniere de profil appliquee' : 'Photo de profil appliquee');
       setImageDialogOpen(false);
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Echec');
     } finally {
       setUsing(null);
       setImageItem(null);
+      setImageEffectType(null);
     }
   };
 
@@ -292,6 +297,8 @@ export default function Inventory() {
         return <Palette className="w-4 h-4" />;
       case 'PROFILE_PICTURE':
         return <Camera className="w-4 h-4" />;
+      case 'PROFILE_BANNER':
+        return <Camera className="w-4 h-4" />;
       case 'DOODLE_JUMP_SKIN':
         return <Package className="w-4 h-4" />;
       case 'CLAN_TAG_UNLOCK':
@@ -310,6 +317,8 @@ export default function Inventory() {
         return 'Couleur de pseudo';
       case 'PROFILE_PICTURE':
         return 'Photo de profil';
+      case 'PROFILE_BANNER':
+        return 'Banniere de profil';
       case 'DOODLE_JUMP_SKIN':
         return 'Skin Doodle Jump';
       case 'CLAN_TAG_UNLOCK':
@@ -552,10 +561,12 @@ export default function Inventory() {
           <DialogHeader>
             <DialogTitle className={cn(TYPOGRAPHY.H5, "flex items-center gap-2")}>
               <Camera className="w-5 h-5" />
-              Photo de profil
+              {imageEffectType === 'PROFILE_BANNER' ? 'Banniere de profil' : 'Photo de profil'}
             </DialogTitle>
             <DialogDescription>
-              Importez votre photo de profil qui sera affichée dans le chat.
+              {imageEffectType === 'PROFILE_BANNER'
+                ? 'Importez la banniere qui sera affichee en haut de votre profil joueur.'
+                : 'Importez votre photo de profil qui sera affichee dans le chat.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -563,7 +574,10 @@ export default function Inventory() {
             {/* Preview */}
             {imageUrl && (
               <div className="flex justify-center">
-                <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-border">
+                <div className={cn(
+                  "overflow-hidden border-2 border-border bg-muted/20",
+                  imageEffectType === 'PROFILE_BANNER' ? "h-24 w-full rounded-2xl" : "w-20 h-20 rounded-full"
+                )}>
                   <img
                     src={imageUrl}
                     alt="Preview"
@@ -585,7 +599,15 @@ export default function Inventory() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setImageDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setImageDialogOpen(false);
+                setImageEffectType(null);
+                setImageItem(null);
+                setImageUrl('');
+              }}
+            >
               Annuler
             </Button>
             <Button 

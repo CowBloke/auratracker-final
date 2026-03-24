@@ -435,14 +435,16 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
         });
       }
       
-      if (effect.type === 'PROFILE_PICTURE' && effectData?.imageUrl) {
+      if ((effect.type === 'PROFILE_PICTURE' || effect.type === 'PROFILE_BANNER') && effectData?.imageUrl) {
         if (!isAllowedImageUrl(effectData.imageUrl)) {
           return res.status(400).json({ error: 'Image must be uploaded or a valid URL' });
         }
-        // Apply profile picture
+        const profileImageField = effect.type === 'PROFILE_BANNER' ? 'profileBanner' : 'profilePicture';
+
+        // Apply profile image cosmetic
         await prisma.user.update({
           where: { id: req.user.id },
-          data: { profilePicture: effectData.imageUrl },
+          data: { [profileImageField]: effectData.imageUrl },
         });
         
         // Decrement or remove item
@@ -465,12 +467,12 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
         logMarketplace('item_use', req.user.id, profilePicUser?.username || undefined, {
           itemId: userItem.item.id,
           itemName: userItem.item.name,
-          effectType: 'PROFILE_PICTURE',
+          effectType: effect.type,
         });
 
         return res.json({
           success: true,
-          effect: { type: 'PROFILE_PICTURE', imageUrl: effectData.imageUrl },
+          effect: { type: effect.type, imageUrl: effectData.imageUrl },
         });
       }
       

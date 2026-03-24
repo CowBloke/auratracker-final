@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { createNotification } from '../utils/notifications.js';
+import { isAllowedImageUrl } from '../utils/uploads.js';
 import {
   SOCIAL_USER_SELECT,
   getFriendIds,
@@ -29,6 +30,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
           auraCoinBalance: true,
           usernameColor: true,
           profilePicture: true,
+          profileBanner: true,
           bio: true,
           createdAt: true,
           _count: {
@@ -327,6 +329,7 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
           auraCoinBalance: true,
           usernameColor: true,
           profilePicture: true,
+          profileBanner: true,
           bio: true,
           createdAt: true,
           gameStats: {
@@ -413,7 +416,7 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Not authorized' });
     }
 
-    const { username, bio } = req.body;
+    const { username, bio, profileBanner } = req.body;
 
     if (username) {
       // Check if username is taken
@@ -429,9 +432,16 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
       }
     }
 
-    const updateData: { username?: string; bio?: string } = {};
+    const updateData: { username?: string; bio?: string | null; profileBanner?: string | null } = {};
     if (username) updateData.username = username;
     if (bio !== undefined) updateData.bio = bio?.trim() || null;
+    if (profileBanner !== undefined) {
+      const trimmedProfileBanner = profileBanner?.trim() || null;
+      if (trimmedProfileBanner && !isAllowedImageUrl(trimmedProfileBanner)) {
+        return res.status(400).json({ error: 'Image must be uploaded or a valid URL' });
+      }
+      updateData.profileBanner = trimmedProfileBanner;
+    }
 
     const user = await prisma.user.update({
       where: { id },
@@ -449,6 +459,7 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
         isAdmin: true,
         usernameColor: true,
         profilePicture: true,
+        profileBanner: true,
         bio: true,
         createdAt: true,
       },
