@@ -45,7 +45,7 @@ export default function Polytrack() {
   const [selectedTrack, setSelectedTrack] = useState<number>(1);
   const [leaderboard, setLeaderboard] = useState<PolytrackLeaderboardEntry[]>([]);
   const [userRank, setUserRank] = useState<{ rank: number; timeMs: number; timeDisplay: string } | null>(null);
-  const [loadingTracks, setLoadingTracks] = useState(true);
+  const [, setLoadingTracks] = useState(true);
   const [loadingLb, setLoadingLb] = useState(false);
 
   // Submit state
@@ -313,7 +313,7 @@ export default function Polytrack() {
 
                         {/* Username */}
                         <div className="flex-1 min-w-0">
-                          <PlayerHoverCard userId={entry.userId}>
+                          <PlayerHoverCard userId={entry.userId} username={entry.username}>
                             <span
                               className={cn('font-medium truncate cursor-pointer hover:underline', isCurrentUser && 'font-semibold')}
                               style={entry.usernameColor ? { color: entry.usernameColor } : undefined}

@@ -13,18 +13,19 @@ import {
   SocialRelationship,
   SocialStats,
 } from '../services/api';
-import { CalendarDays, Edit2, Loader2, Save, X } from 'lucide-react';
+import { Edit2, Loader2, Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { TYPOGRAPHY } from '@/lib/design-system';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
 import { UserBadges } from '@/components/badges/UserBadges';
-import { ClanTag, toClanTagData } from '@/components/clans/ClanTag';
+import { toClanTagData } from '@/components/clans/ClanTag';
 import { BadgeCatalog } from '@/components/badges/BadgeSelector';
 import { ProfileBadgeSlots } from '@/components/badges/ProfileBadgeSlots';
 import { BadgeData } from '@/components/badges/BadgeIcon';
 import { CustomBadgeRequestDialog } from '@/components/badges/CustomBadgeRequestDialog';
+import { UsernameDisplay } from '@/components/ui/username-display';
 
 const PROFILE_GAME_CATALOG = [
   { gameType: 'russian_roulette', label: 'Russian Roulette' },
@@ -302,11 +303,6 @@ export default function Profile() {
   const equippedBadge2 = userBadges.find((b) => b.id === equippedBadge2Id) ?? null;
   const equippedBadges = [equippedBadge1, equippedBadge2].filter(Boolean) as BadgeData[];
   const social = profileUser.social;
-  const clanTag = toClanTagData(profileUser.clanTag);
-  const memberSinceLabel = new Date(profileUser.createdAt).toLocaleDateString('fr-FR', {
-    month: 'long',
-    year: 'numeric',
-  });
   const statsByGameType = new Map(profileUser.gameStats.map((stat) => [stat.gameType, stat]));
   const knownGameTypes = new Set(PROFILE_GAME_CATALOG.map((entry) => entry.gameType));
   const excludedUnknownGameTypes = new Set([...knownGameTypes, 'bombparty']);
@@ -444,7 +440,6 @@ export default function Profile() {
               className={cn(TYPOGRAPHY.H1, "md:text-7xl")}
               labelClassName="text-sm md:text-base text-muted-foreground"
             />
-          </div>
             {!isOwnProfile && (
               <div className="mt-4 flex flex-wrap gap-3">
                 <Button onClick={handleFollowToggle} disabled={socialLoading}>
@@ -460,27 +455,18 @@ export default function Profile() {
             </p>
           </div>
         </div>
+      </div>
 
-              <p className={cn('max-w-2xl text-sm leading-6 text-foreground/88', !profileUser.bio && 'text-muted-foreground')}>
-                {profileUser.bio ||
-                  (isOwnProfile
-                    ? 'Ajoute une description pour te presenter aux autres joueurs.'
-                    : 'Aucune description pour le moment.')}
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-              {headerSocialStats.map((item) => (
-                <div key={item.label} className="inline-flex items-center gap-2 text-muted-foreground">
-                  <span className="font-semibold text-foreground">{item.value}</span>
-                  <span>{item.label}</span>
-                </div>
-              ))}
-            </div>
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+        {headerSocialStats.map((item) => (
+          <div key={item.label} className="inline-flex items-center gap-2 text-muted-foreground">
+            <span className="font-semibold text-foreground">{item.value}</span>
+            <span>{item.label}</span>
           </div>
-        </div>
+        ))}
+      </div>
 
-        <div className="grid lg:grid-cols-[minmax(0,1.55fr)_340px]">
+      <div className="grid lg:grid-cols-[minmax(0,1.55fr)_340px]">
           <div className="min-w-0 lg:border-r lg:border-border/60">
             <SectionBlock
               title="A propos"
@@ -675,33 +661,6 @@ export default function Profile() {
             </div>
           </aside>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function ProfileAvatar({ profileUser }: { profileUser: ProfileUser }) {
-  if (profileUser.profilePicture) {
-    return (
-      <img
-        src={resolveImageUrl(profileUser.profilePicture)}
-        alt={profileUser.username}
-        className="relative z-20 h-24 w-24 shrink-0 rounded-full border-4 border-card object-cover shadow-sm md:h-32 md:w-32"
-        onError={(e) => {
-          (e.target as HTMLImageElement).style.display = 'none';
-        }}
-      />
-    );
-  }
-
-  return (
-    <div className="relative z-20 flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-4 border-card bg-muted/70 shadow-sm md:h-32 md:w-32">
-      <span
-        className="text-3xl font-semibold tracking-tight md:text-4xl"
-        style={profileUser.usernameColor ? { color: profileUser.usernameColor } : undefined}
-      >
-        {profileUser.username.slice(0, 2)}
-      </span>
     </div>
   );
 }
