@@ -1,9 +1,10 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Axe, Check, Coins, Crown, Info, Loader2, LogOut, MessageSquare, Plus, Send, Sparkles, Swords, Tag, Target, UserX, X } from 'lucide-react';
+import { AlertTriangle, Axe, Check, Coins, Crown, Info, Loader2, LogOut, MessageSquare, Pencil, Plus, Send, Sparkles, Swords, Tag, Target, Trash2, UserX, X } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ClanChatMessage,
   ClanDetail,
+  ClanPumpUpMessage,
   ClanSummary,
   ClanWarDefenseState,
   ClanWarGamesStatus,
@@ -192,13 +193,26 @@ export default function Clans() {
   const [bankDepositAmount, setBankDepositAmount] = useState('100');
   const [depositingBank, setDepositingBank] = useState(false);
 
+  // Image editor state
+  const [imageEditOpen, setImageEditOpen] = useState(false);
+  const [editImageUrl, setEditImageUrl] = useState('');
+  const [savingImage, setSavingImage] = useState(false);
+
   // Tag editor state
   const [tagText, setTagText] = useState('');
   const [tagStyle, setTagStyle] = useState<ClanTagStyle>(DEFAULT_CLAN_TAG_STYLE);
   const [savingTag, setSavingTag] = useState(false);
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<'info' | 'chat' | 'guerre' | 'tag'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'chat' | 'guerre' | 'tag' | 'messages'>('info');
+
+  // Pump-up messages
+  const [pumpUpMessages, setPumpUpMessages] = useState<ClanPumpUpMessage[]>([]);
+  const [pumpUpLoading, setPumpUpLoading] = useState(false);
+  const [pumpUpDraft, setPumpUpDraft] = useState('');
+  const [pumpUpColor, setPumpUpColor] = useState('#ffffff');
+  const [pumpUpSaving, setPumpUpSaving] = useState(false);
+  const [pumpUpEditId, setPumpUpEditId] = useState<string | null>(null);
 
   // War games
   const [gameStatus, setGameStatus] = useState<ClanWarGamesStatus | null>(null);
@@ -265,6 +279,26 @@ export default function Clans() {
     }
   }, [selectedClanId, selectedClan?.viewer.isMember, fetchGameStatus]);
 
+  const fetchPumpUpMessages = useCallback(async (clanId: string) => {
+    setPumpUpLoading(true);
+    try {
+      const res = await clansApi.getPumpUpMessages(clanId);
+      setPumpUpMessages(res.data.messages);
+    } catch {
+      setPumpUpMessages([]);
+    } finally {
+      setPumpUpLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedClanId && selectedClan?.viewer.isMember) {
+      void fetchPumpUpMessages(selectedClanId);
+    } else {
+      setPumpUpMessages([]);
+    }
+  }, [selectedClanId, selectedClan?.viewer.isMember, fetchPumpUpMessages]);
+
 
 
   const selectedClanSummary = useMemo(
@@ -315,6 +349,56 @@ export default function Clans() {
     }
   };
 
+
+  const savePumpUpMessage = async () => {
+    if (!selectedClan || !pumpUpDraft.trim()) return;
+    setPumpUpSaving(true);
+    try {
+      if (pumpUpEditId) {
+        const res = await clansApi.updatePumpUpMessage(selectedClan.id, pumpUpEditId, { content: pumpUpDraft.trim(), color: pumpUpColor });
+        setPumpUpMessages((prev) => prev.map((m) => m.id === pumpUpEditId ? res.data.message : m));
+      } else {
+        const res = await clansApi.createPumpUpMessage(selectedClan.id, { content: pumpUpDraft.trim(), color: pumpUpColor });
+        setPumpUpMessages((prev) => [...prev, res.data.message]);
+      }
+      setPumpUpDraft('');
+      setPumpUpColor('#ffffff');
+      setPumpUpEditId(null);
+      toast({ title: pumpUpEditId ? 'Message modifié' : 'Message ajouté' });
+    } catch (error: any) {
+      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de sauvegarder.', variant: 'destructive' });
+    } finally {
+      setPumpUpSaving(false);
+    }
+  };
+
+  const deletePumpUpMessage = async (msgId: string) => {
+    if (!selectedClan) return;
+    try {
+      await clansApi.deletePumpUpMessage(selectedClan.id, msgId);
+      setPumpUpMessages((prev) => prev.filter((m) => m.id !== msgId));
+      if (pumpUpEditId === msgId) {
+        setPumpUpEditId(null);
+        setPumpUpDraft('');
+        setPumpUpColor('#ffffff');
+      }
+      toast({ title: 'Message supprimé' });
+    } catch (error: any) {
+      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de supprimer.', variant: 'destructive' });
+    }
+  };
+
+  const startEditPumpUp = (msg: ClanPumpUpMessage) => {
+    setPumpUpEditId(msg.id);
+    setPumpUpDraft(msg.content);
+    setPumpUpColor(msg.color);
+  };
+
+  const cancelEditPumpUp = () => {
+    setPumpUpEditId(null);
+    setPumpUpDraft('');
+    setPumpUpColor('#ffffff');
+  };
 
   const fetchClans = async () => {
     try {
@@ -682,6 +766,22 @@ export default function Clans() {
     }
   };
 
+  const handleSaveImage = async () => {
+    if (!selectedClan || !selectedClan.viewer.isLeader) return;
+    try {
+      setSavingImage(true);
+      const res = await clansApi.updateImage(selectedClan.id, editImageUrl.trim() || null);
+      setSelectedClan((prev) => prev ? { ...prev, imageUrl: res.data.imageUrl } : prev);
+      setClans((prev) => prev.map((c) => c.id === selectedClan.id ? { ...c, imageUrl: res.data.imageUrl } : c));
+      setImageEditOpen(false);
+      toast({ title: 'Image mise à jour' });
+    } catch (error: any) {
+      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de modifier l\'image.', variant: 'destructive' });
+    } finally {
+      setSavingImage(false);
+    }
+  };
+
   const handleSendChatMessage = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedClan || !selectedClan.viewer.isMember) return;
@@ -845,10 +945,22 @@ export default function Clans() {
                   <Card className={panelClassName}>
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
-                        <Avatar className="h-12 w-12 shrink-0 rounded-xl border border-border/50 bg-muted/20">
-                          <AvatarImage src={resolveImageUrl(selectedClan.imageUrl)} alt={selectedClan.name} />
-                          <AvatarFallback className="rounded-xl text-base">{getAvatarFallback(selectedClan.name)}</AvatarFallback>
-                        </Avatar>
+                        <div className="relative shrink-0">
+                          <Avatar className="h-12 w-12 rounded-xl border border-border/50 bg-muted/20">
+                            <AvatarImage src={resolveImageUrl(selectedClan.imageUrl)} alt={selectedClan.name} />
+                            <AvatarFallback className="rounded-xl text-base">{getAvatarFallback(selectedClan.name)}</AvatarFallback>
+                          </Avatar>
+                          {selectedClan.viewer.isLeader ? (
+                            <button
+                              type="button"
+                              className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/50 opacity-0 hover:opacity-100 transition-opacity"
+                              onClick={() => { setEditImageUrl(selectedClan.imageUrl ?? ''); setImageEditOpen(true); }}
+                              title="Modifier l'image"
+                            >
+                              <Pencil className="h-4 w-4 text-white" />
+                            </button>
+                          ) : null}
+                        </div>
                         <div className="min-w-0 flex-1 space-y-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <h1 className="text-xl font-semibold tracking-tight">{selectedClan.name}</h1>
@@ -893,7 +1005,7 @@ export default function Clans() {
                   </Card>
 
                   {/* Tabs: Infos / Chat / Tag / Guerre */}
-                  <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'info' | 'chat' | 'guerre' | 'tag')}>
+                  <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'info' | 'chat' | 'guerre' | 'tag' | 'messages')}>
                     <TabsList className="w-full">
                       <TabsTrigger value="info" className="flex-1">
                         <Info className="mr-1.5 h-3.5 w-3.5" />
@@ -909,6 +1021,12 @@ export default function Clans() {
                         <TabsTrigger value="tag" className="flex-1">
                           <Tag className="mr-1.5 h-3.5 w-3.5" />
                           Tag
+                        </TabsTrigger>
+                      ) : null}
+                      {selectedClan.viewer.isMember ? (
+                        <TabsTrigger value="messages" className="flex-1">
+                          <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                          Messages
                         </TabsTrigger>
                       ) : null}
                       <TabsTrigger value="guerre" className="flex-1">
@@ -1180,6 +1298,130 @@ export default function Clans() {
                             {savingTag ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Sauvegarder
                           </Button>
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
+
+                    {/* ── Messages tab ── */}
+                    <TabsContent value="messages" className="mt-4 space-y-4">
+                      <Card className={panelClassName}>
+                        <CardContent className="space-y-4 p-4">
+                          <SectionTitle
+                            title="Messages de bienvenue"
+                            description="Ces messages s'affichent aléatoirement sur l'accueil des membres."
+                          />
+
+                          {/* Message list */}
+                          {pumpUpLoading ? (
+                            <p className="text-sm text-muted-foreground">Chargement...</p>
+                          ) : pumpUpMessages.length === 0 ? (
+                            <div className="rounded-xl border border-dashed border-border/50 bg-muted/10 px-4 py-4">
+                              <p className="text-sm text-muted-foreground">Aucun message de bienvenue pour l'instant.</p>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              {pumpUpMessages.map((msg) => (
+                                <div key={msg.id} className="flex items-start gap-2 rounded-xl border border-border/50 bg-muted/15 px-3 py-2.5">
+                                  <div className="mt-0.5 h-3 w-3 shrink-0 rounded-full border border-border/50" style={{ backgroundColor: msg.color }} />
+                                  <p className="min-w-0 flex-1 text-sm leading-relaxed" style={{ color: msg.color !== '#ffffff' ? msg.color : undefined }}>
+                                    {msg.content}
+                                  </p>
+                                  {selectedClan.viewer.isLeader && (
+                                    <div className="flex shrink-0 gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => startEditPumpUp(msg)}
+                                        className="rounded p-1 text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                                      >
+                                        <Pencil className="h-3.5 w-3.5" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => void deletePumpUpMessage(msg.id)}
+                                        className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Editor — leaders only */}
+                          {selectedClan.viewer.isLeader && (
+                            <div className="space-y-3 rounded-xl border border-border/50 bg-muted/10 p-3">
+                              <p className="text-xs font-medium text-muted-foreground">
+                                {pumpUpEditId ? 'Modifier le message' : `Nouveau message (${pumpUpMessages.length}/5)`}
+                              </p>
+
+                              {/* Preview */}
+                              {pumpUpDraft.trim() && (
+                                <div className="rounded-lg bg-muted/30 px-3 py-2">
+                                  <span className="text-xs text-muted-foreground">Aperçu : </span>
+                                  <span className="text-sm font-medium" style={{ color: pumpUpColor }}>
+                                    {pumpUpDraft.replace('{name}', user?.username ?? 'Nom')}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Text input */}
+                              <div className="space-y-1">
+                                <label className="text-xs text-muted-foreground">
+                                  Texte — utilise <code className="rounded bg-muted px-1">{'{name}'}</code> pour le prénom
+                                </label>
+                                <Input
+                                  value={pumpUpDraft}
+                                  onChange={(e) => setPumpUpDraft(e.target.value.slice(0, 120))}
+                                  placeholder="Bienvenue {name} dans le clan !"
+                                  maxLength={120}
+                                />
+                                <p className="text-right text-xs text-muted-foreground">{pumpUpDraft.length}/120</p>
+                              </div>
+
+                              {/* Color picker */}
+                              <div className="space-y-1">
+                                <label className="text-xs text-muted-foreground">Couleur du texte</label>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {TAG_PRESET_COLORS.map((c) => (
+                                    <button
+                                      type="button"
+                                      key={c}
+                                      onClick={() => setPumpUpColor(c)}
+                                      className={cn('h-5 w-5 rounded-full border-2 transition-transform hover:scale-110', pumpUpColor === c ? 'border-foreground scale-110' : 'border-transparent')}
+                                      style={{ backgroundColor: c }}
+                                    />
+                                  ))}
+                                  <input
+                                    type="color"
+                                    value={pumpUpColor}
+                                    onChange={(e) => setPumpUpColor(e.target.value)}
+                                    className="h-5 w-5 cursor-pointer rounded border p-0"
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Actions */}
+                              <div className="flex gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  disabled={pumpUpSaving || !pumpUpDraft.trim() || (!pumpUpEditId && pumpUpMessages.length >= 5)}
+                                  onClick={() => void savePumpUpMessage()}
+                                  className="flex-1"
+                                >
+                                  {pumpUpSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                  {pumpUpEditId ? 'Modifier' : 'Ajouter'}
+                                </Button>
+                                {pumpUpEditId && (
+                                  <Button type="button" size="sm" variant="outline" onClick={cancelEditPumpUp}>
+                                    Annuler
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
                     </TabsContent>
@@ -1545,6 +1787,29 @@ export default function Clans() {
                 </Button>
               </div>
             </form>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={imageEditOpen} onOpenChange={setImageEditOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Modifier l'emblème du clan</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <ImagePicker
+              value={editImageUrl}
+              onChange={setEditImageUrl}
+              uploadFn={uploadClanImageFile}
+              disabled={savingImage}
+            />
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => setImageEditOpen(false)} disabled={savingImage}>Annuler</Button>
+            <Button onClick={handleSaveImage} disabled={savingImage}>
+              {savingImage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Enregistrer
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

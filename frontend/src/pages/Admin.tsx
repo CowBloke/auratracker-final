@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { adminApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, supportApi, SupportThread, SupportMessage } from '../services/api';
+import { adminApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, supportApi, SupportThread, SupportMessage, customBadgesApi, CustomBadgeRequest } from '../services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
@@ -523,6 +523,9 @@ export default function Admin() {
   // ── Badge tab state ────────────────────────────────────────────────────────
   const [badges, setBadges] = useState<Badge[]>([]);
   const [badgesLoading, setBadgesLoading] = useState(false);
+  const [customBadgeRequests, setCustomBadgeRequests] = useState<CustomBadgeRequest[]>([]);
+  const [customBadgeRequestsLoading, setCustomBadgeRequestsLoading] = useState(false);
+  const [rejectNotes, setRejectNotes] = useState<Record<string, string>>({});
   const [badgeFormOpen, setBadgeFormOpen] = useState(false);
   const [editingBadge, setEditingBadge] = useState<Badge | null>(null);
   const [badgeForm, setBadgeForm] = useState<Partial<Badge>>({
@@ -613,6 +616,36 @@ export default function Admin() {
       setBadges(res.data.badges);
     } catch { /* non-critical */ }
     finally { setBadgesLoading(false); }
+  };
+
+  const fetchCustomBadgeRequests = async () => {
+    setCustomBadgeRequestsLoading(true);
+    try {
+      const res = await customBadgesApi.getPending();
+      setCustomBadgeRequests(res.data.requests);
+    } catch { /* non-critical */ }
+    finally { setCustomBadgeRequestsLoading(false); }
+  };
+
+  const handleApproveCustomBadge = async (id: string) => {
+    try {
+      await customBadgesApi.approve(id);
+      showMessage('success', 'Badge approuvé et attribué');
+      fetchCustomBadgeRequests();
+    } catch {
+      showMessage('error', 'Erreur lors de l\'approbation');
+    }
+  };
+
+  const handleRejectCustomBadge = async (id: string) => {
+    try {
+      await customBadgesApi.reject(id, rejectNotes[id]);
+      showMessage('success', 'Demande refusée');
+      fetchCustomBadgeRequests();
+      setRejectNotes((prev) => { const n = { ...prev }; delete n[id]; return n; });
+    } catch {
+      showMessage('error', 'Erreur lors du refus');
+    }
   };
 
   const openCreateBadge = () => {
@@ -2709,11 +2742,11 @@ export default function Admin() {
               <span className={TYPOGRAPHY.XS}>{onlineStats.current} en ligne</span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="badges" className="flex items-center gap-2" onClick={fetchBadges}>
+          <TabsTrigger value="badges" className="flex items-center gap-2" onClick={() => { fetchBadges(); fetchCustomBadgeRequests(); }}>
             <Award className="h-4 w-4" />
             Badges
-            {badges.length > 0 && (
-              <span className={TYPOGRAPHY.XS}>{badges.length}</span>
+            {customBadgeRequests.length > 0 && (
+              <span className="ml-1 bg-yellow-500 text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full">{customBadgeRequests.length}</span>
             )}
           </TabsTrigger>
           <TabsTrigger value="support" className="flex items-center gap-2" onClick={fetchSupportThreads}>
@@ -6774,6 +6807,74 @@ export default function Admin() {
         {/* ── BADGES TAB ─────────────────────────────────────────────────────── */}
         <TabsContent value="badges" className={SPACING.SECTION_SPACING}>
           <div className="space-y-6">
+
+            {/* Custom badge requests */}
+            <Card>
+              <CardHeader>
+                <CardDescription className="flex items-center gap-2">
+                  Demandes de badges personnalisés
+                  {customBadgeRequests.length > 0 && (
+                    <span className="bg-yellow-500 text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full">{customBadgeRequests.length}</span>
+                  )}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className={SPACING.CARD_SPACING}>
+                {customBadgeRequestsLoading ? (
+                  <div className="flex justify-center py-4">
+                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : customBadgeRequests.length === 0 ? (
+                  <p className={TYPOGRAPHY.MUTED}>Aucune demande en attente.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {customBadgeRequests.map((req) => (
+                      <div key={req.id} className="flex items-start gap-3 p-3 rounded-md border border-yellow-500/20 bg-yellow-500/5">
+                        <BadgeIcon
+                          badge={{
+                            id: req.id, name: req.name, description: req.description,
+                            icon: req.icon, iconColor: '#ffffff',
+                            backgroundColor: req.backgroundColor, backgroundType: 'solid',
+                            borderColor: req.borderColor, rarity: req.rarity,
+                            category: 'custom',
+                          }}
+                          size="md"
+                        />
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-medium">{req.name}</span>
+                            <span className="text-xs text-muted-foreground">par {req.user?.username}</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${
+                              req.rarity === 'legendary' ? 'border-yellow-500/40 text-yellow-400' :
+                              req.rarity === 'epic' ? 'border-purple-500/40 text-purple-400' :
+                              req.rarity === 'rare' ? 'border-blue-500/40 text-blue-400' :
+                              req.rarity === 'uncommon' ? 'border-green-500/40 text-green-400' :
+                              'border-border/40 text-muted-foreground'
+                            }`}>{req.rarity}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">{req.description}</p>
+                          <div className="flex items-center gap-2 pt-1 flex-wrap">
+                            <Input
+                              className="h-7 text-xs max-w-[200px]"
+                              placeholder="Note (optionnel)"
+                              value={rejectNotes[req.id] ?? ''}
+                              onChange={(e) => setRejectNotes((prev) => ({ ...prev, [req.id]: e.target.value }))}
+                            />
+                            <Button size="sm" className="h-7 text-xs" onClick={() => handleApproveCustomBadge(req.id)}>
+                              <Check className="w-3 h-3 mr-1" />
+                              Approuver
+                            </Button>
+                            <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => handleRejectCustomBadge(req.id)}>
+                              <X className="w-3 h-3 mr-1" />
+                              Refuser
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Header actions */}
             <div className="flex items-center justify-between gap-4 flex-wrap">

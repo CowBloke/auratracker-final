@@ -34,6 +34,7 @@ import solitaireRoutes from './routes/solitaire.js';
 import giftsRoutes from './routes/gifts.js';
 import notificationsRoutes from './routes/notifications.js';
 import badgesRoutes from './routes/badges.js';
+import customBadgesRoutes from './routes/customBadges.js';
 import supportRoutes from './routes/support.js';
 import clashRoutes from './routes/clash.js';
 
@@ -109,6 +110,7 @@ app.use('/api/solitaire', solitaireRoutes);
 app.use('/api/gifts', giftsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/badges', badgesRoutes);
+app.use('/api/custom-badges', customBadgesRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/clash', clashRoutes);
 

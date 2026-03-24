@@ -20,7 +20,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocketBase } from '../contexts/SocketContext';
 import { usePartySocket } from '../contexts/PartySocketContext';
-import { ClanChatMessage, ClanSummary, ClanWarState, Gift, GiftStatus, auraCoinApi, clansApi, giftsApi, marketplaceApi } from '../services/api';
+import { ClanChatMessage, ClanPumpUpMessage, ClanSummary, ClanWarState, Gift, GiftStatus, auraCoinApi, clansApi, giftsApi, marketplaceApi } from '../services/api';
 import { GripVertical, Zap, Trophy, Users, Gift as GiftIcon, Package, TrendingUp, TrendingDown, CheckCircle2, Star, Gamepad2, BarChart3, Coins, Shield, User as UserIcon, MessageSquare, Swords, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -381,6 +381,7 @@ export default function Dashboard() {
   const [viewerClanId, setViewerClanId] = useState<string | null>(null);
   const [latestClanMessage, setLatestClanMessage] = useState<ClanChatMessage | null>(null);
   const [clanMessageLoading, setClanMessageLoading] = useState(false);
+  const [clanPumpUpMessage, setClanPumpUpMessage] = useState<ClanPumpUpMessage | null>(null);
 
   const shortcutMap = useMemo(() => new Map(gameShortcuts.map((item) => [item.id, item])), []);
   const quickActionMap = useMemo(() => new Map(quickActions.map((item) => [item.id, item])), []);
@@ -489,6 +490,18 @@ export default function Dashboard() {
     }
   };
 
+  const fetchClanPumpUpMessage = async (clanId: string) => {
+    try {
+      const response = await clansApi.getPumpUpMessages(clanId);
+      const messages = response.data.messages;
+      if (messages.length > 0) {
+        setClanPumpUpMessage(messages[Math.floor(Math.random() * messages.length)]);
+      }
+    } catch {
+      // silently ignore
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -536,6 +549,7 @@ export default function Dashboard() {
 
           if (clansRes.value.data.meta.viewerClanId) {
             await fetchLatestClanMessage(clansRes.value.data.meta.viewerClanId);
+            await fetchClanPumpUpMessage(clansRes.value.data.meta.viewerClanId);
           } else {
             setLatestClanMessage(null);
           }
@@ -780,9 +794,18 @@ export default function Dashboard() {
       <div className="w-full space-y-6 px-4 pb-6 lg:px-6 lg:pb-8">
         <div className="px-1 py-1">
           <div className={cn("space-y-2", SPACING.TIGHT_SPACING)}>
-            <p className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
-              {welcomeMessage || `Bienvenue, ${user?.username ?? ''}`}
-            </p>
+            {clanPumpUpMessage ? (
+              <p
+                className="text-3xl font-semibold tracking-tight md:text-4xl"
+                style={{ color: clanPumpUpMessage.color }}
+              >
+                {clanPumpUpMessage.content.replace('{name}', user?.username ?? '')}
+              </p>
+            ) : (
+              <p className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
+                {welcomeMessage || `Bienvenue, ${user?.username ?? ''}`}
+              </p>
+            )}
           </div>
         </div>
 

@@ -2306,6 +2306,32 @@ router.delete('/:id/members/:targetUserId', authMiddleware, async (req: AuthRequ
   }
 });
 
+// Update clan image (leader only)
+router.put('/:id/image', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+
+    const membership = await getClanMembership(id, userId);
+    if (!membership) return res.status(403).json({ error: 'Not a member' });
+    if (!membership.isLeader) return res.status(403).json({ error: 'Seul le chef peut modifier l\'image du clan.' });
+
+    const { imageUrl } = req.body;
+
+    const updated = await prisma.clan.update({
+      where: { id },
+      data: { imageUrl: typeof imageUrl === 'string' && imageUrl.trim() ? imageUrl.trim() : null },
+      select: { id: true, imageUrl: true },
+    });
+
+    res.json({ success: true, imageUrl: updated.imageUrl });
+  } catch (error) {
+    console.error('Update clan image error:', error);
+    res.status(500).json({ error: 'Failed to update clan image' });
+  }
+});
+
 // Update clan tag text and style (leader only, requires tagUnlocked)
 router.put('/:id/tag', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
@@ -2719,6 +2745,84 @@ router.post('/:id/war/games/naval/shot', authMiddleware, async (req: AuthRequest
     console.error('Naval shot error:', error);
     res.status(500).json({ error: 'Failed to fire naval shot' });
   }
+});
+
+// ── Pump-up messages ──────────────────────────────────────────────────────────
+
+router.get('/:id/pump-up', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const userId = req.user!.id;
+
+  const membership = await prisma.clanMember.findFirst({ where: { clanId: id, userId } });
+  if (!membership) return res.status(403).json({ error: 'Not a member' });
+
+  const messages = await prisma.clanPumpUpMessage.findMany({
+    where: { clanId: id },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  return res.json({ messages });
+});
+
+router.post('/:id/pump-up', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const userId = req.user!.id;
+  const { content, color } = req.body as { content: string; color?: string };
+
+  const membership = await prisma.clanMember.findFirst({ where: { clanId: id, userId } });
+  if (!membership?.isLeader) return res.status(403).json({ error: 'Leaders only' });
+
+  const count = await prisma.clanPumpUpMessage.count({ where: { clanId: id } });
+  if (count >= 5) return res.status(400).json({ error: 'Maximum 5 messages' });
+
+  if (!content?.trim()) return res.status(400).json({ error: 'Content required' });
+  if (content.trim().length > 120) return res.status(400).json({ error: 'Max 120 characters' });
+
+  const message = await prisma.clanPumpUpMessage.create({
+    data: { clanId: id, content: content.trim(), color: color ?? '#ffffff' },
+  });
+
+  return res.json({ message });
+});
+
+router.put('/:id/pump-up/:msgId', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const { id, msgId } = req.params;
+  const userId = req.user!.id;
+  const { content, color } = req.body as { content?: string; color?: string };
+
+  const membership = await prisma.clanMember.findFirst({ where: { clanId: id, userId } });
+  if (!membership?.isLeader) return res.status(403).json({ error: 'Leaders only' });
+
+  const existing = await prisma.clanPumpUpMessage.findFirst({ where: { id: msgId, clanId: id } });
+  if (!existing) return res.status(404).json({ error: 'Message not found' });
+
+  if (content !== undefined && !content.trim()) return res.status(400).json({ error: 'Content required' });
+  if (content !== undefined && content.trim().length > 120) return res.status(400).json({ error: 'Max 120 characters' });
+
+  const message = await prisma.clanPumpUpMessage.update({
+    where: { id: msgId },
+    data: {
+      ...(content !== undefined && { content: content.trim() }),
+      ...(color !== undefined && { color }),
+    },
+  });
+
+  return res.json({ message });
+});
+
+router.delete('/:id/pump-up/:msgId', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const { id, msgId } = req.params;
+  const userId = req.user!.id;
+
+  const membership = await prisma.clanMember.findFirst({ where: { clanId: id, userId } });
+  if (!membership?.isLeader) return res.status(403).json({ error: 'Leaders only' });
+
+  const existing = await prisma.clanPumpUpMessage.findFirst({ where: { id: msgId, clanId: id } });
+  if (!existing) return res.status(404).json({ error: 'Message not found' });
+
+  await prisma.clanPumpUpMessage.delete({ where: { id: msgId } });
+
+  return res.json({ success: true });
 });
 
 export default router;

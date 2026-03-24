@@ -49,7 +49,16 @@
       "Bash(grep -n \"pixelRatio\\\\|devicePixelRatio\" /c/Users/cowbl/source/repos/CRust/auratracker-final/frontend/src/pages/*.tsx)",
       "Bash(grep -rn \"useStore\\\\|create\\(\" c:/Users/cowbl/source/repos/CRust/auratracker-final/frontend/src --include=*.ts --include=*.tsx -l)",
       "Bash(grep -rn \"from ''zustand''\\\\|from \"\"zustand\"\"\" c:/Users/cowbl/source/repos/CRust/auratracker-final/frontend/src --include=\"*.ts\" --include=\"*.tsx\" -l)",
-      "Bash(grep -E \"\\\\.ts$\")"
+      "Bash(grep -E \"\\\\.ts$\")",
+      "Bash(gh repo:*)",
+      "Bash(gh api:*)",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "WebFetch(domain:iammyguy21th.github.io)",
+      "WebFetch(domain:kodub.itch.io)",
+      "WebFetch(domain:polytrack.best)",
+      "WebFetch(domain:www.speedrun.com)",
+      "WebFetch(domain:www.crazygames.com)"
     ]
   },
   "outputStyle": "default"

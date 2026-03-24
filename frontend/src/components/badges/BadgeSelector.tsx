@@ -3,8 +3,8 @@ import { BadgeIcon, BadgeData } from './BadgeIcon';
 import { cn } from '@/lib/utils';
 
 // Categories whose badges are excluded from the "all badges" catalog
-// (leaderboard/top-N badges that only a few people can hold at a time)
-const EXCLUDED_CATALOG_CATEGORIES = ['leaderboard', 'admin'];
+// (leaderboard/top-N badges that only a few people can hold at a time, and custom personal badges)
+const EXCLUDED_CATALOG_CATEGORIES = ['leaderboard', 'admin', 'custom'];
 const EXCLUDED_CATALOG_CONDITION_PREFIXES = ['TOP_', 'CLASS_', 'GAME_HIGHSCORE_', 'BOMBPARTY_TOP_', 'MEMBER'];
 
 function isExcludedFromCatalog(badge: Badge): boolean {

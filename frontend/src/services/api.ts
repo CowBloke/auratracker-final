@@ -608,6 +608,13 @@ export interface ClanChatMessage {
   };
 }
 
+export interface ClanPumpUpMessage {
+  id: string;
+  content: string;
+  color: string;
+  createdAt: string;
+}
+
 export interface ClanWarActionType {
   type: 'RAID' | 'SIEGE' | 'SABOTAGE';
   label: string;
@@ -810,6 +817,8 @@ export const clansApi = {
     api.delete(`/clans/${clanId}/members/${userId}`),
   depositToBank: (clanId: string, amount: number) =>
     api.post<{ success: boolean; deposited: number; clanBankMoney: number; newBalance: { aura: number | string; money: number } }>(`/clans/${clanId}/bank/deposit`, { amount }),
+  updateImage: (id: string, imageUrl: string | null) =>
+    api.put<{ success: boolean; imageUrl: string | null }>(`/clans/${id}/image`, { imageUrl }),
   updateTag: (id: string, data: { tagText?: string; tagStyle?: object }) =>
     api.put<{ success: boolean; tagText: string | null; tagStyle: string | null }>(`/clans/${id}/tag`, data),
   // War mini-games
@@ -821,6 +830,15 @@ export const clansApi = {
     api.post<{ success: boolean; isPractice: boolean; finalPoints: number }>(`/clans/${clanId}/war/games/bomb`, data),
   navalShot: (clanId: string, data: { x: number; y: number }) =>
     api.post<{ isHit: boolean; building: string | null; points: number; x: number; y: number }>(`/clans/${clanId}/war/games/naval/shot`, data),
+  // Pump-up messages
+  getPumpUpMessages: (clanId: string) =>
+    api.get<{ messages: ClanPumpUpMessage[] }>(`/clans/${clanId}/pump-up`),
+  createPumpUpMessage: (clanId: string, data: { content: string; color: string }) =>
+    api.post<{ message: ClanPumpUpMessage }>(`/clans/${clanId}/pump-up`, data),
+  updatePumpUpMessage: (clanId: string, msgId: string, data: { content?: string; color?: string }) =>
+    api.put<{ message: ClanPumpUpMessage }>(`/clans/${clanId}/pump-up/${msgId}`, data),
+  deletePumpUpMessage: (clanId: string, msgId: string) =>
+    api.delete(`/clans/${clanId}/pump-up/${msgId}`),
 };
 
 // Admin API
@@ -1751,6 +1769,42 @@ export const badgesApi = {
     api.delete<{ success: boolean }>(`/badges/revoke/${userId}/${badgeId}`),
   getAllUsersAdmin: () => api.get<{ users: Array<{ id: string; username: string; equippedBadge1Id: string | null; equippedBadge2Id: string | null; badges: UserBadgeEntry[] }> }>('/badges/admin/all-users'),
   checkAuto: () => api.post<{ success: boolean; message: string }>('/badges/check-auto'),
+};
+
+export interface CustomBadgeRequest {
+  id: string;
+  userId: string;
+  status: 'pending' | 'approved' | 'rejected';
+  name: string;
+  description: string;
+  icon: string;
+  backgroundColor: string;
+  borderColor: string;
+  rarity: string;
+  adminNote?: string | null;
+  badgeId?: string | null;
+  badge?: Partial<Badge> | null;
+  user?: { id: string; username: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const customBadgesApi = {
+  submit: (data: {
+    name: string;
+    description: string;
+    icon: string;
+    backgroundColor: string;
+    borderColor: string;
+    rarity: string;
+  }) => api.post<{ request: CustomBadgeRequest }>('/custom-badges', data),
+  getMy: () => api.get<{ requests: CustomBadgeRequest[] }>('/custom-badges/my'),
+  // Admin
+  getPending: () => api.get<{ requests: CustomBadgeRequest[] }>('/custom-badges/pending'),
+  approve: (id: string, adminNote?: string) =>
+    api.post<{ success: boolean; badge: Badge }>(`/custom-badges/${id}/approve`, { adminNote }),
+  reject: (id: string, adminNote?: string) =>
+    api.post<{ success: boolean }>(`/custom-badges/${id}/reject`, { adminNote }),
 };
 
 export default api;

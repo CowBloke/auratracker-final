@@ -109,6 +109,7 @@ model User {
   equippedBadge2      Badge?                    @relation("UserEquippedBadge2", fields: [equippedBadge2Id], references: [id], onDelete: SetNull)
   earnedBadges        UserBadge[]
   createdBadges       Badge[]                   @relation("BadgeCreator")
+  customBadgeRequests CustomBadgeRequest[]
 
   @@index([aura])
   @@index([money])
@@ -382,6 +383,7 @@ model Clan {
   warGameLogs    ClanWarGameLog[]
   navalBoards    ClanWarNavalBoard[]
   navalShots     ClanWarNavalShot[]
+  pumpUpMessages ClanPumpUpMessage[]
 
   @@index([isPublic])
   @@index([createdAt])
@@ -591,6 +593,18 @@ model ClanWarNavalShot {
   @@unique([boardId, x, y])
   @@index([boardId, userId])
   @@index([warId, clanId])
+}
+
+model ClanPumpUpMessage {
+  id        String   @id @default(uuid())
+  clanId    String
+  content   String
+  color     String   @default("#ffffff")
+  createdAt DateTime @default(now())
+
+  clan Clan @relation(fields: [clanId], references: [id], onDelete: Cascade)
+
+  @@index([clanId])
 }
 
 // Chat Messages
@@ -1169,6 +1183,7 @@ model Badge {
   userBadges         UserBadge[]
   equippedBySlot1    User[]     @relation("UserEquippedBadge1")
   equippedBySlot2    User[]     @relation("UserEquippedBadge2")
+  customRequest      CustomBadgeRequest?
 
   @@index([category])
   @@index([isAutomatic])
@@ -1211,6 +1226,30 @@ model AdminWarning {
 
   @@index([userId, isAcknowledged])
   @@index([createdAt])
+}
+
+// Custom Badge Requests (user-submitted, admin-reviewed)
+model CustomBadgeRequest {
+  id              String   @id @default(uuid())
+  userId          String
+  status          String   @default("pending") // "pending" | "approved" | "rejected"
+  name            String
+  description     String
+  icon            String   @default("⭐")
+  backgroundColor String   @default("#374151")
+  borderColor     String   @default("#6b7280")
+  rarity          String   @default("common")
+  adminNote       String?
+  badgeId         String?  @unique // Set on approval to the created Badge id
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge? @relation(fields: [badgeId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status])
 }
 
 // Support / Messaging system (user ↔ admin)

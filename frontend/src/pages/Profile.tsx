@@ -24,6 +24,7 @@ import { ClanTag, toClanTagData } from '@/components/clans/ClanTag';
 import { BadgeCatalog } from '@/components/badges/BadgeSelector';
 import { ProfileBadgeSlots } from '@/components/badges/ProfileBadgeSlots';
 import { BadgeData } from '@/components/badges/BadgeIcon';
+import { CustomBadgeRequestDialog } from '@/components/badges/CustomBadgeRequestDialog';
 
 const PROFILE_GAME_CATALOG = [
   { gameType: 'russian_roulette', label: 'Russian Roulette' },
@@ -119,6 +120,7 @@ export default function Profile() {
   const [totalUsers, setTotalUsers] = useState<number | undefined>(undefined);
   const [equippedBadge1Id, setEquippedBadge1Id] = useState<string | null>(null);
   const [equippedBadge2Id, setEquippedBadge2Id] = useState<string | null>(null);
+  const [customBadgeDialogOpen, setCustomBadgeDialogOpen] = useState(false);
 
   const targetUserId = userId || currentUser?.id;
   const isOwnProfile = targetUserId === currentUser?.id;
@@ -600,7 +602,11 @@ export default function Profile() {
               ) : null}
 
               {allBadges.length > 0 ? (
-                <BadgeCatalog allBadges={allBadges} earnedBadges={userBadges} totalUsers={totalUsers} />
+                <BadgeCatalog
+                  allBadges={allBadges}
+                  earnedBadges={isOwnProfile ? userBadges : userBadges.filter((b) => b.category !== 'custom')}
+                  totalUsers={totalUsers}
+                />
               ) : userBadges.length > 0 ? (
                 <div className="flex flex-wrap gap-1">
                   {userBadges.map((badge) => (
@@ -609,6 +615,23 @@ export default function Profile() {
                 </div>
               ) : (
                 <p className={TYPOGRAPHY.MUTED}>Aucun badge.</p>
+              )}
+
+              {isOwnProfile && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-4 w-full text-xs text-muted-foreground"
+                    onClick={() => setCustomBadgeDialogOpen(true)}
+                  >
+                    + Demander un badge personnalisé
+                  </Button>
+                  <CustomBadgeRequestDialog
+                    open={customBadgeDialogOpen}
+                    onOpenChange={setCustomBadgeDialogOpen}
+                  />
+                </>
               )}
             </SectionBlock>
           </div>
