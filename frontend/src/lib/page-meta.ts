@@ -27,6 +27,7 @@ const STATIC_PAGE_META: Record<string, PageMeta> = {
   '/games/racer': { title: 'Racer', description: 'Course arcade style outrun.' },
   '/games/tetris': { title: 'Tetris', description: 'Session puzzle et classement.' },
   '/games/knife-hit': { title: 'Knife Hit', description: 'Timing arcade et classement.' },
+  '/games/polytrack': { title: 'PolyTrack', description: 'Course low-poly time trial sur 14 circuits — soumets tes temps et grimpe au classement.' },
   '/games/echecs': { title: 'Échecs', description: 'Duel complet avec règles officielles.' },
   '/games/ball-arena': { title: 'Ball Arena', description: "Duel physique : propulse ton adversaire hors de l'arène." },
   '/games/goyave-empire': { title: 'Goyave Empire', description: 'Idle farming : récolte des goyaves et bâtis ton empire.' },

@@ -87,6 +87,7 @@ model User {
   // Notifications
   notifications       Notification[]
   dailyRacerRuns      DailyRacerRun[]
+  polytrackRecords    PolytrackRecord[]
   goyaveSave          GoyaveSave?
   clashVillage        ClashVillage?
   clashAttacks        ClashBattle[]             @relation("ClashBattleAttacker")
@@ -1266,4 +1267,26 @@ model SupportMessage {
 
   @@index([userId])
   @@index([createdAt])
+}
+
+// ============================================
+// POLYTRACK RECORDS
+// ============================================
+
+// Stores per-track personal bests submitted manually by users after playing.
+// trackNumber: 1-14 matching the tracks in the embedded game.
+// timeMs: lap time in milliseconds (lower = better).
+model PolytrackRecord {
+  id          String   @id @default(uuid())
+  userId      String
+  trackNumber Int      // 1-14
+  timeMs      Int      // Lap time in milliseconds
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Only one personal best per user per track (upsert replaces if lower)
+  @@unique([userId, trackNumber])
+  @@index([trackNumber, timeMs])
+  @@index([userId])
 }

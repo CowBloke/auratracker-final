@@ -235,6 +235,15 @@ const games = [
     image: '/images/games/goyaveempire.png',
   },
   {
+    id: 'polytrack',
+    pageKey: 'game-polytrack',
+    name: 'PolyTrack',
+    description: 'Course low-poly time trial sur 14 circuits. Soumets tes meilleurs temps et grimpe au classement.',
+    type: 'Score',
+    emoji: '🏎️',
+    image: '/images/games/racer.png',
+  },
+  {
     id: 'puissance-quatre',
     pageKey: 'game-puissance-quatre',
     name: 'Puissance 4',

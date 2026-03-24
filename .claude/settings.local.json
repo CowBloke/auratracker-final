@@ -58,7 +58,13 @@
       "WebFetch(domain:kodub.itch.io)",
       "WebFetch(domain:polytrack.best)",
       "WebFetch(domain:www.speedrun.com)",
-      "WebFetch(domain:www.crazygames.com)"
+      "WebFetch(domain:www.crazygames.com)",
+      "WebFetch(domain:polytrack.org)",
+      "WebFetch(domain:www.kodub.com)",
+      "WebFetch(domain:stuffed18.github.io)",
+      "WebFetch(domain:codebeautify.org)",
+      "Bash(curl -sI \"https://iammyguy21th.github.io/polytrack.3/\")",
+      "Bash(curl -sI \"https://app-polytrack.kodub.com/\")"
     ]
   },
   "outputStyle": "default"

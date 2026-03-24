@@ -234,6 +234,41 @@ export const gamesApi = {
     api.post('/games/goyave_empire/save', { saveData }),
 };
 
+// Polytrack API
+export interface PolytrackHolder {
+  userId: string;
+  username: string;
+  usernameColor: string | null;
+  profilePicture: string | null;
+}
+
+export interface PolytrackTrack {
+  number: number;
+  name: string;
+  globalRecord: { timeMs: number; timeDisplay: string; holder: PolytrackHolder | null } | null;
+  personalBest: { timeMs: number; timeDisplay: string } | null;
+}
+
+export interface PolytrackLeaderboardEntry {
+  rank: number;
+  userId: string;
+  username: string;
+  usernameColor: string | null;
+  profilePicture: string | null;
+  timeMs: number;
+  timeDisplay: string;
+  createdAt: string;
+}
+
+export const polytrackApi = {
+  getTracks: () =>
+    api.get<{ tracks: PolytrackTrack[] }>('/polytrack/tracks'),
+  submitRecord: (trackNumber: number, timeMs: number) =>
+    api.post<{ saved: boolean; isGlobalRecord: boolean; isNewPB: boolean; personalBest: { timeMs: number; timeDisplay: string } }>('/polytrack/records', { trackNumber, timeMs }),
+  getLeaderboard: (trackNumber: number, limit?: number) =>
+    api.get<{ trackNumber: number; rankings: PolytrackLeaderboardEntry[]; userRank: { rank: number; timeMs: number; timeDisplay: string } | null }>(`/polytrack/leaderboard/${trackNumber}`, { params: { limit } }),
+};
+
 export interface ClashPlayerSummary {
   id: string;
   username: string;
