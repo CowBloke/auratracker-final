@@ -15,6 +15,7 @@ interface User {
   isSuperAdmin: boolean;
   usernameColor?: string | null;
   profilePicture?: string | null;
+  profileBanner?: string | null;
   referralCode?: string | null;
   referredById?: string | null;
   createdAt: string;

@@ -83,7 +83,7 @@ export const usersApi = {
   getPendingUpdatePopups: () => api.get<{ popups: UserUpdatePopup[] }>('/users/update-popups/pending'),
   markUpdatePopupViewed: (id: string) => api.post<{ success: boolean }>(`/users/update-popups/${id}/viewed`),
   getById: (id: string) => api.get(`/users/${id}`),
-  update: (id: string, data: { username?: string; bio?: string }) => api.put(`/users/${id}`, data),
+  update: (id: string, data: { username?: string; bio?: string; profileBanner?: string | null }) => api.put(`/users/${id}`, data),
   requestNameChange: (data: { requestedUsername: string; reason?: string }) =>
     api.post<{ request: NameChangeRequest }>('/users/name-change-request', data),
   // Admin warnings (user-facing)
@@ -130,6 +130,7 @@ export interface SocialUser {
   firstName?: string | null;
   usernameColor?: string | null;
   profilePicture?: string | null;
+  profileBanner?: string | null;
   bio?: string | null;
   createdAt: string;
   social?: SocialRelationship & Partial<SocialStats>;
