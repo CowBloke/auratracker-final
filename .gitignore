@@ -6,6 +6,10 @@ dist/
 build/
 *.tsbuildinfo
 
+# Polytrack game bundles (pre-built, must be deployed)
+!frontend/public/polytrack/dist/main.bundle.js
+!frontend/public/polytrack/dist/simulation_worker.bundle.js
+
 # Environment files
 .env
 .env.local
