@@ -639,7 +639,7 @@ export default function Admin() {
   const [massBanTargetIds, setMassBanTargetIds] = useState<string[]>([]);
   const [clearingChat, setClearingChat] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'inbox' | 'users' | 'clubs' | 'logs' | 'bans' | 'content' | 'settings' | 'activity' | 'badges' | 'support'>('inbox');
+  const [activeTab, setActiveTab] = useState<'inbox' | 'users' | 'clubs' | 'logs' | 'bans' | 'content' | 'settings' | 'activity' | 'badges' | 'support' | 'communication'>('inbox');
   const [announcementOpen, setAnnouncementOpen] = useState(false);
   const [loginCommOpen, setLoginCommOpen] = useState(false);
   const [updatesOpen, setUpdatesOpen] = useState(false);
