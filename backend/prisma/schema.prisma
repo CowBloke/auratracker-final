@@ -908,6 +908,7 @@ model PolymarketSuggestion {
   eventDate   DateTime? // Date de réalisation de l’événement
   suggestedYesOdds Float? // Cote suggérée pour "Oui"
   suggestedNoOdds  Float? // Cote suggérée pour "Non"
+  optionsConfig String? // JSON: [{key,label,color,odds},...] — null = legacy YES/NO
   status      String    @default("PENDING") // PENDING, APPROVED, REJECTED
   createdAt   DateTime  @default(now())
   reviewedAt  DateTime?
@@ -930,6 +931,7 @@ model PolymarketEvent {
   eventDate    DateTime // Date de réalisation de l'événement
   yesOdds      Float // Cote pour "Oui" (ex: 1.5 = mise * 1.5 si gagnant)
   noOdds       Float // Cote pour "Non" (ex: 2.0 = mise * 2.0 si gagnant)
+  optionsConfig String? // JSON: [{key,label,color,odds},...] — null = legacy YES/NO
   status       String    @default("OPEN") // OPEN, CLOSED, RESOLVED
   resolution   String? // "YES" or "NO" when resolved
   resolvedAt   DateTime?

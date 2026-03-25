@@ -14,7 +14,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { Loader2, Trash2, Save, MessageSquareX, AlertTriangle, Plus, Minus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, Inbox, Archive, UserCog, Crown, Swords, Send, Upload, Award } from 'lucide-react';
+import { Loader2, Trash2, Save, AlertTriangle, Plus, Minus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, Inbox, Archive, UserCog, Crown, Swords, Send, Upload, Award } from 'lucide-react';
 import { BadgeIcon } from '@/components/badges/BadgeIcon';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, ReferenceDot, LineChart, Line, Tooltip as RechartsTooltip, Legend, BarChart, Bar } from 'recharts';
 import {
@@ -216,17 +216,25 @@ const ACTION_LABELS: Record<string, string> = {
 const METADATA_LABELS: Record<string, string> = {
   score: 'Score',
   game: 'Jeu',
+  gameType: 'Jeu',
   reward: 'Récompense',
   amount: 'Montant',
   item: 'Objet',
+  itemName: 'Objet',
   price: 'Prix',
+  totalPrice: 'Prix total',
+  quantity: 'Quantité',
   reason: 'Raison',
   duration: 'Durée',
+  lapTimeMs: 'Temps de tour',
   target: 'Cible',
   result: 'Résultat',
   bet: 'Mise',
   win: 'Gain',
+  winAmount: 'Gain brut',
+  netGain: 'Gain net',
   loss: 'Perte',
+  won: 'Résultat',
   oldValue: 'Ancienne valeur',
   newValue: 'Nouvelle valeur',
   currency: 'Devise',
@@ -236,7 +244,40 @@ const METADATA_LABELS: Record<string, string> = {
   content: 'Contenu',
   status: 'Statut',
   votes: 'Votes',
-
+  auraAmount: 'Aura',
+  moneyAmount: 'Money',
+  auraReward: 'Récompense aura',
+  moneyReward: 'Récompense money',
+  totalAura: 'Total aura',
+  totalMoney: 'Total money',
+  newHighScore: 'Nouveau record',
+  previousHighScore: 'Record précédent',
+  isNewHighScore: 'Nouveau record',
+  isNewDailyBest: 'Nouveau record quotidien',
+  isFirstRunToday: 'Première partie du jour',
+  streak: 'Streak',
+  claimDay: 'Jour réclamé',
+  banType: 'Type de ban',
+  durationHours: 'Durée (heures)',
+  expiresAt: 'Expire le',
+  bansRemoved: 'Bans supprimés',
+  moneySpent: 'Money dépensé',
+  coinsReceived: 'AuraCoins reçus',
+  coinsSold: 'AuraCoins vendus',
+  moneyReceived: 'Money reçu',
+  fee: 'Frais',
+  priceAtPurchase: 'Prix d\'achat',
+  priceAtSale: 'Prix de vente',
+  remainingAllowance: 'Quota restant',
+  effectType: 'Effet',
+  badgeName: 'Nom du badge',
+  auraSentLast24h: 'Aura envoyée (24h)',
+  moneyStolen: 'Money volé',
+  destructionPercent: 'Destruction (%)',
+  buildingType: 'Bâtiment',
+  level: 'Niveau',
+  cost: 'Coût',
+  via: 'Via',
 };
 
 const GAME_TYPE_LABELS: Record<string, string> = {
@@ -325,7 +366,44 @@ const getGameDisplayInfo = (log: ActivityLog): { gameType: string; gameLabel: st
   };
 };
 
-const formatLogSummary = (log: ActivityLog): string => {
+// Keys that contain internal IDs — skip in expanded view
+const SKIP_METADATA_KEYS = new Set(['itemId', 'transferId', 'appealId', 'questIds', 'banId', 'defenderUserId']);
+
+const renderNetGain = (net: number) => (
+  <span className={net >= 0 ? 'text-green-400' : 'text-red-400'}>
+    {net >= 0 ? '+' : ''}{net}
+  </span>
+);
+
+const renderMetadataValue = (key: string, value: unknown): React.ReactNode => {
+  if (key === 'netGain') {
+    const n = toNumber(value);
+    if (n !== null) return renderNetGain(n);
+  }
+  if (key === 'won') return value === true ? <span className="text-green-400">Oui</span> : <span className="text-red-400">Non</span>;
+  if (key === 'isNewHighScore' || key === 'isNewDailyBest' || key === 'isFirstRunToday') return value === true ? 'Oui' : 'Non';
+  if (key === 'banType') return value === 'TEMPORARY' ? 'Temporaire' : value === 'PERMANENT' ? 'Permanent' : String(value);
+  if (key === 'gameType' && typeof value === 'string') return formatGameTypeLabel(value);
+  if (key === 'effectType') {
+    const map: Record<string, string> = { USERNAME_COLOR: 'Couleur pseudo', PROFILE_PICTURE: 'Photo de profil', PROFILE_BANNER: 'Bannière', CONSUMABLE: 'Consommable', CUSTOM_BADGE: 'Badge custom' };
+    return typeof value === 'string' ? (map[value] || value) : String(value);
+  }
+  if (key === 'expiresAt' && typeof value === 'string') {
+    return new Date(value).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+  if (key === 'duration') {
+    const n = toNumber(value);
+    if (n !== null) return formatDurationShort(n);
+  }
+  if (key === 'lapTimeMs') {
+    const n = toNumber(value);
+    if (n !== null) return `${(n / 1000).toFixed(3)}s`;
+  }
+  if (typeof value === 'object' && value !== null) return JSON.stringify(value);
+  return String(value);
+};
+
+const renderLogSummary = (log: ActivityLog): React.ReactNode => {
   const actor = log.username || 'inconnu';
   const metadata = log.metadata || {};
   const { gameLabel, gameType } = getGameDisplayInfo(log);
@@ -334,53 +412,96 @@ const formatLogSummary = (log: ActivityLog): string => {
     if (log.action === 'game_complete') {
       if (gameType === 'battleship') {
         const won = metadata.won === true;
-        return `${gameLabel} : ${won ? 'victoire' : 'défaite'} par ${actor}`;
+        return <>{gameLabel} : {won ? <span className="text-green-400">victoire</span> : <span className="text-red-400">défaite</span>} par {actor}</>;
+      }
+      const netGain = toNumber(metadata.netGain);
+      if (netGain !== null) {
+        const bet = toNumber(metadata.bet);
+        return <>{gameLabel} : {bet !== null && <>mise {bet}, </>}net {renderNetGain(netGain)} par {actor}</>;
       }
       const score = toNumber(metadata.score);
-      if (score !== null) {
-        return `${gameLabel} : score ${score} par ${actor}`;
-      }
-      return `${gameLabel} : partie par ${actor}`;
+      if (score !== null) return <>{gameLabel} : score {score} par {actor}</>;
+      return <>{gameLabel} : partie par {actor}</>;
     }
 
     if (log.action === 'highscore') {
       const best = toNumber(metadata.newHighScore);
-      if (best !== null) {
-        return `${gameLabel} : nouveau record ${best} par ${actor}`;
-      }
-      return `${gameLabel} : nouveau record par ${actor}`;
+      if (best !== null) return <>{gameLabel} : nouveau record {best} par {actor}</>;
+      return <>{gameLabel} : nouveau record par {actor}</>;
     }
 
     if (log.action === 'casino_bet') {
       const bet = toNumber(metadata.bet);
-      const winAmount = toNumber(metadata.winAmount);
       const netGain = toNumber(metadata.netGain);
       const won = metadata.won === true;
-      const parts = [`Casino : ${won ? 'gagné' : 'perdu'}`];
-      if (bet !== null) parts.push(`mise ${bet}`);
-      if (winAmount !== null) parts.push(`gain brut ${winAmount}`);
-      if (netGain !== null) parts.push(`net ${netGain}`);
-      return `${parts.join(', ')} par ${actor}`;
+      return <>Casino : {won ? <span className="text-green-400">gagné</span> : <span className="text-red-400">perdu</span>}{bet !== null && <>, mise {bet}</>}{netGain !== null && <>, net {renderNetGain(netGain)}</>} par {actor}</>;
     }
 
     if (log.action === 'game_reward') {
       const auraReward = toNumber(metadata.auraReward);
       const moneyReward = toNumber(metadata.moneyReward);
-      const rewardParts: string[] = [];
-      if (auraReward !== null) rewardParts.push(`${auraReward} aura`);
-      if (moneyReward !== null) rewardParts.push(`${moneyReward} money`);
-      if (rewardParts.length > 0) {
-        return `${gameLabel} : récompense ${rewardParts.join(' + ')} par ${actor}`;
-      }
-      return `${gameLabel} : récompense par ${actor}`;
+      const parts: string[] = [];
+      if (auraReward !== null) parts.push(`${auraReward} aura`);
+      if (moneyReward !== null) parts.push(`${moneyReward} money`);
+      if (parts.length > 0) return <>{gameLabel} : récompense {parts.join(' + ')} par {actor}</>;
+      return <>{gameLabel} : récompense par {actor}</>;
+    }
+  }
+
+  if (log.type === 'MARKETPLACE') {
+    const itemName = typeof metadata.itemName === 'string' ? metadata.itemName : null;
+    if (log.action === 'item_purchase') {
+      const qty = toNumber(metadata.quantity);
+      const price = toNumber(metadata.totalPrice);
+      return <>Achat{itemName && <> : <span className="font-semibold">{itemName}</span></>}{qty !== null && qty > 1 && <> ×{qty}</>}{price !== null && <> ({price} 💰)</>} par {actor}</>;
+    }
+    if (log.action === 'item_use') {
+      return <>Utilisation{itemName && <> : <span className="font-semibold">{itemName}</span></>} par {actor}</>;
+    }
+  }
+
+  if (log.type === 'ECONOMY') {
+    if (log.action === 'transfer') {
+      const aura = toNumber(metadata.auraAmount);
+      const money = toNumber(metadata.moneyAmount);
+      const parts: string[] = [];
+      if (aura !== null && aura !== 0) parts.push(`${aura} aura`);
+      if (money !== null && money !== 0) parts.push(`${money} 💰`);
+      return <>Transfert{parts.length > 0 && <> : {parts.join(' + ')}</>} de {actor}{log.targetName && <> → {log.targetName}</>}</>;
+    }
+    if (log.action === 'gift_aura') {
+      const amount = toNumber(metadata.amount);
+      return <>Don d'aura{amount !== null && <> : <span className="text-amber-400">+{amount}</span></>} de {actor}{log.targetName && <> → {log.targetName}</>}</>;
+    }
+  }
+
+  if (log.type === 'AURACOIN') {
+    if (log.action === 'auracoin_buy') {
+      const coins = toNumber(metadata.coinsReceived);
+      const money = toNumber(metadata.moneySpent);
+      return <>Achat AuraCoin{coins !== null && <> : {coins} coins</>}{money !== null && <> pour {money} 💰</>} par {actor}</>;
+    }
+    if (log.action === 'auracoin_sell') {
+      const coins = toNumber(metadata.coinsSold);
+      const money = toNumber(metadata.moneyReceived);
+      return <>Vente AuraCoin{coins !== null && <> : {coins} coins</>}{money !== null && <> → {money} 💰</>} par {actor}</>;
+    }
+  }
+
+  if (log.type === 'BAN') {
+    if (log.action === 'ban_create') {
+      const banType = metadata.banType === 'TEMPORARY' ? 'temporaire' : metadata.banType === 'PERMANENT' ? 'permanent' : null;
+      const reason = typeof metadata.reason === 'string' ? metadata.reason : null;
+      return <>Ban{banType && <> {banType}</>} de {log.targetName || 'inconnu'}{reason && <> — {reason}</>} par {actor}</>;
+    }
+    if (log.action === 'ban_remove') {
+      return <>Ban levé : {log.targetName || 'inconnu'} par {actor}</>;
     }
   }
 
   const actionLabel = ACTION_LABELS[log.action] || humanizeUiLabel(log.action);
-  if (log.targetName) {
-    return `${actionLabel} par ${actor} → ${log.targetName}`;
-  }
-  return log.username ? `${actionLabel} par ${actor}` : actionLabel;
+  if (log.targetName) return <>{actionLabel} par {actor} → {log.targetName}</>;
+  return <>{log.username ? `${actionLabel} par ${actor}` : actionLabel}</>;
 };
 
 // Game type filters
@@ -518,8 +639,11 @@ export default function Admin() {
   const [massBanTargetIds, setMassBanTargetIds] = useState<string[]>([]);
   const [clearingChat, setClearingChat] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'inbox' | 'users' | 'clubs' | 'logs' | 'bans' | 'content' | 'communication' | 'settings' | 'activity' | 'badges' | 'support'>('inbox');
-  const [commSubTab, setCommSubTab] = useState<'announcement' | 'login' | 'updates' | 'maintenance'>('announcement');
+  const [activeTab, setActiveTab] = useState<'inbox' | 'users' | 'clubs' | 'logs' | 'bans' | 'content' | 'settings' | 'activity' | 'badges' | 'support'>('inbox');
+  const [announcementOpen, setAnnouncementOpen] = useState(false);
+  const [loginCommOpen, setLoginCommOpen] = useState(false);
+  const [updatesOpen, setUpdatesOpen] = useState(false);
+  const [maintenanceOpen, setMaintenanceOpen] = useState(false);
 
   // ── Badge tab state ────────────────────────────────────────────────────────
   const [badges, setBadges] = useState<Badge[]>([]);
@@ -2731,10 +2855,6 @@ export default function Admin() {
             <Package className="h-4 w-4" />
             Objets
           </TabsTrigger>
-          <TabsTrigger value="communication" className="flex items-center gap-2">
-            <MessageCircle className="h-4 w-4" />
-            Communication
-          </TabsTrigger>
           <TabsTrigger value="settings" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
             Paramètres
@@ -3902,228 +4022,570 @@ export default function Admin() {
         </TabsContent>
 
         <TabsContent value="settings" className={SPACING.SECTION_SPACING}>
-          <Card>
-            <CardHeader>
-              <CardDescription>Système de présence</CardDescription>
-            </CardHeader>
-            <CardContent className={SPACING.CARD_SPACING}>
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <h3 className="font-medium">Utilisateurs en ligne fictifs</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Complète automatiquement la liste des connectés avec des utilisateurs hors-ligne pour maintenir un minimum de 10 % affichés.
-                  </p>
+
+          {/* ── Présence ───────────────────────────────────────── */}
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Système de présence</p>
+            <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
+              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                <div>
+                  <div className="text-sm font-medium">Utilisateurs en ligne fictifs</div>
+                  <div className="text-xs text-muted-foreground">Complète la liste des connectés avec des utilisateurs hors-ligne pour maintenir un minimum de 10 % affichés.</div>
                 </div>
-                <Switch
-                  checked={fakeOnlineEnabled}
-                  disabled={savingFakeOnline}
-                  onCheckedChange={saveFakeOnline}
-                />
+                <Switch checked={fakeOnlineEnabled} disabled={savingFakeOnline} onCheckedChange={saveFakeOnline} />
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader>
-              <CardDescription>Parrainage</CardDescription>
-            </CardHeader>
-            <CardContent className={SPACING.CARD_SPACING}>
-              <div className="flex items-center justify-between rounded-xl border border-border/50 bg-muted/20 px-4 py-4">
-                <div className="space-y-1">
-                  <h3 className="font-medium">Activer le matchmaking duel</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Affiche le bouton cote joueur et autorise l&apos;entree dans la file de matchmaking duel.
-                  </p>
+          {/* ── Parrainage ─────────────────────────────────────── */}
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Parrainage</p>
+            <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
+              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                <div>
+                  <div className="text-sm font-medium">Matchmaking duel</div>
+                  <div className="text-xs text-muted-foreground">Affiche le bouton côté joueur et autorise l&apos;entrée dans la file de matchmaking duel.</div>
                 </div>
-                <Switch
-                  checked={duelMatchmakingEnabled}
-                  disabled={savingDuelMatchmakingEnabled}
-                  onCheckedChange={saveDuelMatchmakingEnabled}
-                />
+                <Switch checked={duelMatchmakingEnabled} disabled={savingDuelMatchmakingEnabled} onCheckedChange={saveDuelMatchmakingEnabled} />
               </div>
-
-              <div className="flex items-center justify-between rounded-xl border border-border/50 bg-muted/20 px-4 py-4">
-                <div className="space-y-1">
-                  <h3 className="font-medium">Activer le systeme de parrainage</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Coupe l&apos;usage des codes de parrainage sur l&apos;inscription et masque le module cote joueur.
-                  </p>
+              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                <div>
+                  <div className="text-sm font-medium">Système de parrainage</div>
+                  <div className="text-xs text-muted-foreground">Coupe l&apos;usage des codes de parrainage sur l&apos;inscription et masque le module côté joueur.</div>
                 </div>
-                <Switch
-                  checked={referralEnabled}
-                  disabled={savingReferralEnabled}
-                  onCheckedChange={saveReferralEnabled}
-                />
+                <Switch checked={referralEnabled} disabled={savingReferralEnabled} onCheckedChange={saveReferralEnabled} />
               </div>
-
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                <div className="space-y-2">
-                  <h3 className="font-medium">Recompense fixe par inscription validee</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Quand un compte inscrit avec un code de parrainage est approuve, le nouveau joueur et le parrain recoivent chacun cette somme en money.
-                  </p>
+              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                <div>
+                  <div className="text-sm font-medium">Récompense par inscription</div>
+                  <div className="text-xs text-muted-foreground">Montant versé au parrain et au filleul quand un compte parrainé est approuvé.</div>
                 </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Input
+                    id="referral-reward-amount"
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={referralRewardAmount}
+                    disabled={!referralEnabled}
+                    onChange={(event) => setReferralRewardAmount(event.target.value)}
+                    className="w-24 h-8 text-sm"
+                  />
+                  <Button size="sm" onClick={saveReferralReward} disabled={savingReferralReward || !referralEnabled}>
+                    {savingReferralReward ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
 
-                <div className="flex w-full max-w-sm items-end gap-3">
-                  <div className="flex-1 space-y-2">
-                    <label htmlFor="referral-reward-amount" className="text-sm font-medium">
-                      Recompense
-                    </label>
-                    <Input
-                      id="referral-reward-amount"
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={referralRewardAmount}
-                      disabled={!referralEnabled}
-                      onChange={(event) => setReferralRewardAmount(event.target.value)}
-                    />
+          {/* ── AuraCoin ───────────────────────────────────────── */}
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">AuraCoin</p>
+            <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
+              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                <div>
+                  <div className="text-sm font-medium">Frais d&apos;achat</div>
+                  <div className="text-xs text-muted-foreground">Taux appliqué sur les achats et ventes AuraCoin (0 = 0 %, 0.5 = 50 %).</div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Input
+                    id="auracoin-buy-fee"
+                    type="number"
+                    min={0}
+                    max={0.5}
+                    step={0.0001}
+                    value={auraCoinBuyFeePercentage}
+                    onChange={(event) => setAuraCoinBuyFeePercentage(event.target.value)}
+                    className="w-28 h-8 text-sm"
+                  />
+                  <Button size="sm" onClick={saveAuraCoinBuyFee} disabled={savingAuraCoinBuyFee}>
+                    {savingAuraCoinBuyFee ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Communication ─────────────────────────────────── */}
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Communication</p>
+            <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
+
+              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                <div>
+                  <div className="text-sm font-medium">Annonce topbar</div>
+                  <div className="text-xs text-muted-foreground">
+                    {announcementMessage.trim()
+                      ? `"${announcementMessage.trim().slice(0, 48)}${announcementMessage.trim().length > 48 ? '…' : ''}"`
+                      : 'Aucune annonce active'}
                   </div>
-                  <Button onClick={saveReferralReward} disabled={savingReferralReward || !referralEnabled}>
-                    {savingReferralReward ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Sauvegarde...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="mr-2 h-4 w-4" />
-                        Sauvegarder
-                      </>
-                    )}
-                  </Button>
                 </div>
+                <Button variant="outline" size="sm" onClick={() => setAnnouncementOpen(true)} className="shrink-0">
+                  <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
+                  Configurer
+                </Button>
               </div>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardHeader>
-              <CardDescription>AuraCoin</CardDescription>
-            </CardHeader>
-            <CardContent className={SPACING.CARD_SPACING}>
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                <div className="space-y-2">
-                  <h3 className="font-medium">Frais d achat AuraCoin</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Definis le taux applique sur les achats et ventes AuraCoin. Valeur entre 0 et 0.5 (soit 0% a 50%).
-                  </p>
-                </div>
-
-                <div className="flex w-full max-w-sm items-end gap-3">
-                  <div className="flex-1 space-y-2">
-                    <label htmlFor="auracoin-buy-fee" className="text-sm font-medium">
-                      Taux (ex: 0.02 = 2%)
-                    </label>
-                    <Input
-                      id="auracoin-buy-fee"
-                      type="number"
-                      min={0}
-                      max={0.5}
-                      step={0.0001}
-                      value={auraCoinBuyFeePercentage}
-                      onChange={(event) => setAuraCoinBuyFeePercentage(event.target.value)}
-                    />
+              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                <div>
+                  <div className="text-sm font-medium">Page de connexion</div>
+                  <div className="text-xs text-muted-foreground">
+                    {loginMessage.trim()
+                      ? `Message actif · CTA ${loginRegisterCtaEnabled ? 'activé' : 'désactivé'}`
+                      : `Pas de message · CTA ${loginRegisterCtaEnabled ? 'activé' : 'désactivé'}`}
                   </div>
-                  <Button onClick={saveAuraCoinBuyFee} disabled={savingAuraCoinBuyFee}>
-                    {savingAuraCoinBuyFee ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Sauvegarde...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="mr-2 h-4 w-4" />
-                        Sauvegarder
-                      </>
-                    )}
-                  </Button>
                 </div>
+                <Button variant="outline" size="sm" onClick={() => setLoginCommOpen(true)} className="shrink-0">
+                  <LogIn className="h-3.5 w-3.5 mr-1.5" />
+                  Configurer
+                </Button>
               </div>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardHeader>
-              <CardDescription>Actions sensibles</CardDescription>
-            </CardHeader>
-            <CardContent className={SPACING.CARD_SPACING}>
-              <div className="flex items-start gap-4">
-                <MessageSquareX className="h-8 w-8 text-muted-foreground shrink-0 mt-1" />
-                <div className="space-y-2">
-                  <h3 className="font-medium">Vider le chat</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Supprime définitivement tous les messages du chat global. Cette action est irréversible.
-                  </p>
+              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                <div>
+                  <div className="text-sm font-medium">Updates</div>
+                  <div className="text-xs text-muted-foreground">
+                    {updatePopups.filter(p => p.isPublished).length} publiée{updatePopups.filter(p => p.isPublished).length !== 1 ? 's' : ''} · {updatePopups.length} au total
+                  </div>
                 </div>
-              </div>
-              
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="border-destructive/50 text-destructive hover:bg-destructive/10"
-                    disabled={clearingChat}
-                  >
-                    {clearingChat ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Suppression...
-                      </>
-                    ) : (
-                      <>
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Vider le chat
-                      </>
-                    )}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="flex items-center gap-2">
-                      <AlertTriangle className="h-5 w-5 text-destructive" />
-                      Vider le chat ?
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Tous les messages du chat seront définitivement supprimés. Cette action ne peut pas être annulée.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Annuler</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={clearChat}
-                      className="bg-destructive hover:bg-destructive/90"
-                    >
-                      Vider le chat
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardDescription>Fonctionnalités — activez ou désactivez chaque page du site. Une page désactivée disparaît de la navigation et est inaccessible par URL.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <h3 className="font-medium">Pages du site</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {blockedPages.length > 0
-                      ? `${blockedPages.length} page${blockedPages.length > 1 ? 's' : ''} désactivée${blockedPages.length > 1 ? 's' : ''}`
-                      : 'Toutes les pages sont actives'}
-                  </p>
-                </div>
-                <Button variant="outline" onClick={() => setFonctionnalitesOpen(true)}>
-                  <Gamepad2 className="h-4 w-4 mr-2" />
+                <Button variant="outline" size="sm" onClick={() => setUpdatesOpen(true)} className="shrink-0">
+                  <Sparkles className="h-3.5 w-3.5 mr-1.5" />
                   Gérer
                 </Button>
               </div>
-            </CardContent>
-          </Card>
 
+              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                <div>
+                  <div className="text-sm font-medium">Maintenance</div>
+                  <div className={cn('text-xs', maintenanceEnabled ? 'text-amber-500' : 'text-muted-foreground')}>
+                    {maintenanceEnabled ? 'Maintenance globale active' : 'Site accessible normalement'}
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setMaintenanceOpen(true)} className="shrink-0">
+                  <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
+                  Configurer
+                </Button>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Annonce modal */}
+          <Dialog open={announcementOpen} onOpenChange={setAnnouncementOpen}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Annonce topbar</DialogTitle>
+                <DialogDescription>Ce message s&apos;affiche pour tous les utilisateurs dans la barre du haut.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 py-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">Message</label>
+                  <span className={cn('text-xs', announcementMessage.length >= ANNOUNCEMENT_MAX_LENGTH ? 'text-amber-400' : 'text-muted-foreground')}>
+                    {announcementMessage.length}/{ANNOUNCEMENT_MAX_LENGTH}
+                  </span>
+                </div>
+                <Textarea
+                  value={announcementMessage}
+                  onChange={(e) => setAnnouncementMessage(e.target.value)}
+                  placeholder="Ex: Maintenance prévue ce soir à 23h."
+                  className="min-h-[90px]"
+                  maxLength={ANNOUNCEMENT_MAX_LENGTH}
+                />
+                <p className="text-xs text-muted-foreground">Laisser vide pour masquer l&apos;annonce.</p>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setAnnouncementOpen(false)}>Annuler</Button>
+                <Button onClick={async () => { await saveAnnouncement(); setAnnouncementOpen(false); }} disabled={savingAnnouncement}>
+                  {savingAnnouncement ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                  Sauvegarder
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Login modal */}
+          <Dialog open={loginCommOpen} onOpenChange={setLoginCommOpen}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Page de connexion</DialogTitle>
+                <DialogDescription>Personnalisez le message et le bouton d&apos;inscription visibles sur la page de connexion.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
+                  <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                    <div>
+                      <div className="text-sm font-medium">Bouton &ldquo;Créer un compte&rdquo;</div>
+                      <div className="text-xs text-muted-foreground">Affiche ou masque le gros bouton animé sur la page de connexion.</div>
+                    </div>
+                    <Switch checked={loginRegisterCtaEnabled} onCheckedChange={saveLoginRegisterCta} disabled={savingLoginRegisterCta} />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Message</label>
+                  <Textarea
+                    value={loginMessage}
+                    onChange={(e) => setLoginMessage(e.target.value)}
+                    placeholder="Ex: Bienvenue ! Le serveur est ouvert."
+                    className="min-h-[90px]"
+                  />
+                  <p className="text-xs text-muted-foreground">Laisser vide pour masquer le message.</p>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setLoginCommOpen(false)}>Annuler</Button>
+                <Button onClick={async () => { await saveLoginMessage(); setLoginCommOpen(false); }} disabled={savingLoginMessage}>
+                  {savingLoginMessage ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                  Sauvegarder
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Updates modal */}
+          <Dialog open={updatesOpen} onOpenChange={setUpdatesOpen}>
+            <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden">
+              <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/40 shrink-0">
+                <DialogTitle>Updates</DialogTitle>
+                <DialogDescription>Gérez les popups d&apos;annonce de mise à jour affichées aux joueurs.</DialogDescription>
+              </DialogHeader>
+              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+                {/* Preview */}
+                <div className="space-y-2 p-4 rounded-lg border bg-background/30">
+                  <div className="flex items-center gap-2">
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Aperçu joueur</span>
+                  </div>
+                  <div className="rounded-lg border bg-muted/20 p-4 space-y-4">
+                    <div>
+                      <h4 className="text-lg font-semibold">{updatePopupForm.title || 'Titre de la mise à jour'}</h4>
+                      <p className="text-xs text-muted-foreground">
+                        {updatePopupForm.publishMode === 'draft'
+                          ? 'Brouillon non visible'
+                          : updatePopupForm.publishMode === 'scheduled'
+                            ? `Programmée pour le ${updatePopupForm.releaseDate ? new Date(updatePopupForm.releaseDate).toLocaleString('fr-FR') : 'date non définie'}`
+                            : 'Publication immédiate'}
+                      </p>
+                    </div>
+                    {updatePopupForm.summary && <p className="text-sm font-medium">{updatePopupForm.summary}</p>}
+                    {updatePopupForm.imageUrl && (
+                      <img
+                        src={resolveImageUrl(updatePopupForm.imageUrl)}
+                        alt="preview"
+                        className="w-full max-h-56 rounded-md border object-cover"
+                        onError={(event) => { (event.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    )}
+                    <div className="rounded-md border bg-background/60 p-3">
+                      <p className="text-sm whitespace-pre-wrap">{updatePopupForm.message || 'Le contenu de la popup s\'affichera ici.'}</p>
+                    </div>
+                  </div>
+                </div>
+                {/* Form */}
+                <div className="space-y-4 p-4 rounded-lg border bg-muted/20">
+                  <div className="flex items-center justify-between">
+                    <h3 className={TYPOGRAPHY.H3}>{editingUpdatePopupId ? 'Modifier une update' : 'Nouvelle update'}</h3>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={handleSuggestUpdateSummary} disabled={suggestingUpdateSummary}>
+                        {suggestingUpdateSummary ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Sparkles className="h-4 w-4 mr-1" />}
+                        Auto-résumé
+                      </Button>
+                      {editingUpdatePopupId && (
+                        <Button variant="ghost" size="sm" onClick={resetUpdatePopupForm}>
+                          <X className="h-4 w-4 mr-1" />
+                          Annuler
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Titre *</label>
+                    <Input value={updatePopupForm.title} onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, title: e.target.value }))} placeholder="Ex: Mise à jour 1.8.0" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Sous-titre</label>
+                    <Input value={updatePopupForm.summary} onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, summary: e.target.value }))} placeholder="Ex: Nouvelles features, équilibrage et fixes" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Message *</label>
+                    <Textarea
+                      value={updatePopupForm.message}
+                      onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, message: e.target.value }))}
+                      rows={8}
+                      placeholder={'Ex: • Nouveau mode de jeu\n• Ajustement des récompenses\n• Corrections de bugs'}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Mode de diffusion</label>
+                      <Select
+                        value={updatePopupForm.publishMode}
+                        onValueChange={(value: 'draft' | 'now' | 'scheduled') => setUpdatePopupForm((prev) => ({
+                          ...prev,
+                          publishMode: value,
+                          isPublished: value !== 'draft',
+                          releaseDate: value === 'scheduled' ? prev.releaseDate : toDateTimeLocalValue(new Date()),
+                        }))}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="draft">Brouillon</SelectItem>
+                          <SelectItem value="now">Publier maintenant</SelectItem>
+                          <SelectItem value="scheduled">Programmer</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        {updatePopupForm.publishMode === 'draft'
+                          ? 'La popup ne sera visible par aucun joueur.'
+                          : updatePopupForm.publishMode === 'scheduled'
+                            ? 'La popup sera visible automatiquement à la date choisie.'
+                            : 'La popup devient visible dès la sauvegarde.'}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Date de programmation</label>
+                      <Input
+                        type="datetime-local"
+                        value={updatePopupForm.releaseDate}
+                        onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, releaseDate: e.target.value }))}
+                        disabled={updatePopupForm.publishMode !== 'scheduled'}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {updatePopupForm.publishMode === 'scheduled'
+                          ? 'Choisissez la date et l\'heure de publication automatique.'
+                          : 'Disponible uniquement en mode Programmé.'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Image</label>
+                    <ImagePicker
+                      value={updatePopupForm.imageUrl}
+                      onChange={(url) => setUpdatePopupForm((prev) => ({ ...prev, imageUrl: url }))}
+                      uploadFn={uploadUpdatePopupImageFile}
+                      placeholder="/uploads/update-popups/... ou https://..."
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button onClick={handleSaveUpdatePopup} disabled={savingUpdatePopup}>
+                      {savingUpdatePopup ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                      {editingUpdatePopupId ? 'Mettre à jour' : 'Créer'}
+                    </Button>
+                  </div>
+                </div>
+                {/* List */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className={TYPOGRAPHY.H3}>Historique</h3>
+                    <span className="text-xs text-muted-foreground">{updatePopups.length} entrées</span>
+                  </div>
+                  {loadingUpdatePopups ? (
+                    <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+                  ) : updatePopups.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Aucune popup créée.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {updatePopups.map((popup) => (
+                        <div key={popup.id} className="rounded-lg border p-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                          {(() => {
+                            const isScheduled = popup.isPublished && new Date(popup.releaseDate).getTime() > Date.now();
+                            const statusClass = !popup.isPublished ? 'bg-muted text-muted-foreground' : isScheduled ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400';
+                            const statusLabel = !popup.isPublished ? 'Brouillon' : isScheduled ? 'Programmée' : 'Publiée';
+                            return (
+                              <div className="min-w-0 space-y-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-medium">{popup.title}</span>
+                                  <span className={cn('text-xs px-2 py-0.5 rounded-full', statusClass)}>{statusLabel}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {isScheduled ? `Diffusion le ${new Date(popup.releaseDate).toLocaleString('fr-FR')}` : new Date(popup.releaseDate).toLocaleString('fr-FR')}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground">Vu {popup._count.views} fois · Créée par {popup.createdBy.username}</p>
+                                {popup.summary && <p className="text-sm text-muted-foreground truncate">{popup.summary}</p>}
+                              </div>
+                            );
+                          })()}
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Switch checked={popup.isPublished} disabled={updatingUpdatePopupId === popup.id} onCheckedChange={(checked) => handleToggleUpdatePopupPublished(popup, checked)} />
+                            <Button size="sm" variant="outline" onClick={() => handleEditUpdatePopup(popup)}><Edit2 className="h-4 w-4" /></Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button size="sm" variant="outline" className="text-destructive border-destructive/30">
+                                  {deletingUpdatePopup === popup.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Supprimer cette update ?</AlertDialogTitle>
+                                  <AlertDialogDescription>Cette action est irréversible. La popup ne sera plus affichée aux joueurs.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDeleteUpdatePopup(popup.id)}>Supprimer</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Maintenance modal */}
+          <Dialog open={maintenanceOpen} onOpenChange={setMaintenanceOpen}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Maintenance</DialogTitle>
+                <DialogDescription>Quand activée, toutes les pages affichent la maintenance sauf /admin, /login et /register.</DialogDescription>
+              </DialogHeader>
+              {loadingSettings ? (
+                <div className="flex justify-center py-8"><div className="w-1 h-8 bg-foreground/20 animate-pulse" /></div>
+              ) : (
+                <div className="space-y-4 py-2">
+                  <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
+                    <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                      <div>
+                        <div className="text-sm font-medium">Maintenance globale</div>
+                        <div className="text-xs text-muted-foreground">Active la page de maintenance sur tout le site.</div>
+                      </div>
+                      <Switch checked={maintenanceEnabled} onCheckedChange={setMaintenanceEnabled} />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Raison</label>
+                    <Textarea
+                      value={maintenanceMessage}
+                      onChange={(e) => setMaintenanceMessage(e.target.value)}
+                      placeholder="Ex: Mise à jour technique en cours."
+                      className="min-h-[100px]"
+                    />
+                    <p className="text-xs text-muted-foreground">Ce texte s&apos;affichera sur la page de maintenance.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Fin de maintenance (optionnel)</label>
+                    <Input
+                      type="datetime-local"
+                      value={maintenanceEndDate}
+                      onChange={(e) => setMaintenanceEndDate(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">Si définie, un compte à rebours s&apos;affichera sur la page de maintenance.</p>
+                  </div>
+                </div>
+              )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setMaintenanceOpen(false)}>Annuler</Button>
+                <Button onClick={async () => { await saveMaintenance(); setMaintenanceOpen(false); }} disabled={savingMaintenance}>
+                  {savingMaintenance ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                  Sauvegarder
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* ── Fonctionnalités ────────────────────────────────── */}
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Fonctionnalités</p>
+            <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
+              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                <div>
+                  <div className="text-sm font-medium">Pages du site</div>
+                  <div className="text-xs text-muted-foreground">
+                    {blockedPages.length > 0
+                      ? `${blockedPages.length} page${blockedPages.length > 1 ? 's' : ''} désactivée${blockedPages.length > 1 ? 's' : ''}`
+                      : 'Toutes les pages sont actives'}
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setFonctionnalitesOpen(true)} className="shrink-0">
+                  <Gamepad2 className="h-3.5 w-3.5 mr-1.5" />
+                  Gérer
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Actions sensibles ──────────────────────────────── */}
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Actions sensibles</p>
+            <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
+              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                <div>
+                  <div className="text-sm font-medium text-destructive">Vider le chat</div>
+                  <div className="text-xs text-muted-foreground">Supprime définitivement tous les messages du chat global. Cette action est irréversible.</div>
+                </div>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="border-destructive/50 text-destructive hover:bg-destructive/10 shrink-0" disabled={clearingChat}>
+                      {clearingChat ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="flex items-center gap-2">
+                        <AlertTriangle className="h-5 w-5 text-destructive" />
+                        Vider le chat ?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Tous les messages du chat seront définitivement supprimés. Cette action ne peut pas être annulée.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                      <AlertDialogAction onClick={clearChat} className="bg-destructive hover:bg-destructive/90">
+                        Vider le chat
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Classements (superAdmin) ───────────────────────── */}
+          {user?.isSuperAdmin && (
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Classements par période</p>
+              <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
+                <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                  <div>
+                    <div className="text-sm font-medium">Backfill historique des scores</div>
+                    <div className="text-xs text-muted-foreground">
+                      Importe les scores passés dans GameScoreHistory pour alimenter les classements journalier / hebdo / mensuel. À lancer une seule fois.
+                    </div>
+                    {backfillResult && (
+                      <p className="text-xs text-green-500 mt-1">✓ {backfillResult.inserted} importés, {backfillResult.skipped} ignorés.</p>
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={backfillLoading}
+                    className="shrink-0"
+                    onClick={async () => {
+                      if (!confirm('Lancer le backfill des scores ? Cette opération peut prendre quelques secondes.')) return;
+                      setBackfillLoading(true);
+                      setBackfillResult(null);
+                      try {
+                        const res = await adminApi.backfillScoreHistory();
+                        setBackfillResult({ inserted: res.data.inserted, skipped: res.data.skipped });
+                      } catch {
+                        alert('Erreur lors du backfill.');
+                      } finally {
+                        setBackfillLoading(false);
+                      }
+                    }}
+                  >
+                    {backfillLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trophy className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Fonctionnalités modal ──────────────────────────── */}
           <Dialog open={fonctionnalitesOpen} onOpenChange={setFonctionnalitesOpen}>
             <DialogContent className="max-w-xl max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
               <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/40 shrink-0">
@@ -4156,9 +4618,7 @@ export default function Admin() {
                 ).map(([category, pages]) => (
                   <div key={category}>
                     <div className="px-6 pt-5 pb-1.5 flex items-center justify-between">
-                      <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70">
-                        {category}
-                      </span>
+                      <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70">{category}</span>
                       <span className="text-[11px] text-muted-foreground/50">
                         {pages.filter(p => !blockedPages.includes(p.key)).length}/{pages.length}
                       </span>
@@ -4167,22 +4627,11 @@ export default function Admin() {
                       {pages.map((page) => {
                         const isBlocked = blockedPages.includes(page.key);
                         return (
-                          <div
-                            key={page.key}
-                            className="group flex items-center justify-between gap-4 px-4 py-3 hover:bg-muted/30 transition-colors cursor-default"
-                          >
-                            <div className="flex-1 min-w-0">
-                              <div className={cn('text-sm font-medium leading-snug', isBlocked && 'text-muted-foreground/50 line-through')}>
-                                {page.label}
-                              </div>
-                              <div className="overflow-hidden max-h-0 group-hover:max-h-8 transition-all duration-150 ease-out">
-                                <p className="text-xs text-muted-foreground/70 pt-0.5 leading-tight">{page.description}</p>
-                              </div>
+                          <div key={page.key} className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-muted/30 transition-colors cursor-default">
+                            <div className={cn('text-sm font-medium', isBlocked && 'text-muted-foreground/50 line-through')}>
+                              {page.label}
                             </div>
-                            <Switch
-                              checked={!isBlocked}
-                              onCheckedChange={() => toggleBlockedPage(page.key)}
-                            />
+                            <Switch checked={!isBlocked} onCheckedChange={() => toggleBlockedPage(page.key)} />
                           </div>
                         );
                       })}
@@ -4199,9 +4648,7 @@ export default function Admin() {
                     : 'Tout activé'}
                 </span>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setFonctionnalitesOpen(false)}>
-                    Annuler
-                  </Button>
+                  <Button variant="outline" onClick={() => setFonctionnalitesOpen(false)}>Annuler</Button>
                   <Button onClick={async () => { const ok = await saveBlockedPages(); if (ok) setFonctionnalitesOpen(false); }} disabled={savingBlocks}>
                     {savingBlocks ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                     Sauvegarder
@@ -4211,48 +4658,6 @@ export default function Admin() {
             </DialogContent>
           </Dialog>
 
-          {user?.isSuperAdmin && (
-            <Card>
-              <CardHeader>
-                <CardDescription>Classements par période</CardDescription>
-              </CardHeader>
-              <CardContent className={SPACING.CARD_SPACING}>
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <h3 className="font-medium">Backfill historique des scores</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Importe les scores passés (depuis les logs) dans la table GameScoreHistory pour alimenter les classements journalier / hebdo / mensuel. À lancer une seule fois après le déploiement.
-                    </p>
-                    {backfillResult && (
-                      <p className="text-sm text-green-500">
-                        ✓ {backfillResult.inserted} scores importés, {backfillResult.skipped} ignorés.
-                      </p>
-                    )}
-                  </div>
-                  <Button
-                    variant="outline"
-                    disabled={backfillLoading}
-                    onClick={async () => {
-                      if (!confirm('Lancer le backfill des scores ? Cette opération peut prendre quelques secondes.')) return;
-                      setBackfillLoading(true);
-                      setBackfillResult(null);
-                      try {
-                        const res = await adminApi.backfillScoreHistory();
-                        setBackfillResult({ inserted: res.data.inserted, skipped: res.data.skipped });
-                      } catch {
-                        alert('Erreur lors du backfill.');
-                      } finally {
-                        setBackfillLoading(false);
-                      }
-                    }}
-                  >
-                    {backfillLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trophy className="h-4 w-4 mr-2" />}
-                    Lancer le backfill
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </TabsContent>
 
         <TabsContent value="bans" className={SPACING.SECTION_SPACING}>
@@ -4795,7 +5200,7 @@ export default function Admin() {
                 const config = LOG_TYPE_CONFIG[log.type];
                 const Icon = config?.icon || ScrollText;
                 const isExpanded = expandedLogIds.has(log.id);
-                const summaryLabel = formatLogSummary(log);
+                const summaryNode = renderLogSummary(log);
                 const gameDisplayInfo = getGameDisplayInfo(log);
                 const gameRowAccentClass =
                   log.type === 'GAME'
@@ -4838,7 +5243,7 @@ export default function Admin() {
 
                       {/* Action + User summary */}
                       <span className="text-sm truncate flex-1">
-                        <span className="font-medium">{summaryLabel}</span>
+                        <span className="font-medium">{summaryNode}</span>
                       </span>
 
                       {/* Time */}
@@ -4872,6 +5277,20 @@ export default function Admin() {
                             })}
                           </div>
 
+                          {log.username && (
+                            <>
+                              <div className="text-muted-foreground">Utilisateur</div>
+                              <div>{log.username}</div>
+                            </>
+                          )}
+
+                          {log.targetName && (
+                            <>
+                              <div className="text-muted-foreground">Cible</div>
+                              <div>{log.targetName}</div>
+                            </>
+                          )}
+
                           {log.ipAddress && (
                             <>
                               <div className="text-muted-foreground">Adresse réseau</div>
@@ -4879,35 +5298,15 @@ export default function Admin() {
                             </>
                           )}
 
-                          {log.userId && (
-                            <>
-                              <div className="text-muted-foreground">Identifiant utilisateur</div>
-                              <div className="font-mono text-[11px]">{log.userId}</div>
-                            </>
-                          )}
-
-                          {log.targetId && (
-                            <>
-                              <div className="text-muted-foreground">Identifiant cible</div>
-                              <div className="font-mono text-[11px]">{log.targetId}</div>
-                            </>
-                          )}
-
-                          {/* Metadata with human-readable labels */}
-                          {log.metadata && Object.entries(log.metadata).map(([key, value]) => (
-                            <div key={key} className="contents">
-                              <div className="text-muted-foreground">{METADATA_LABELS[key] || humanizeUiLabel(key)}</div>
-                              <div>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</div>
-                            </div>
-                          ))}
-
-                          {/* Details with human-readable labels */}
-                          {log.details && !log.metadata && Object.entries(log.details).map(([key, value]) => (
-                            <div key={key} className="contents">
-                              <div className="text-muted-foreground">{METADATA_LABELS[key] || humanizeUiLabel(key)}</div>
-                              <div>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</div>
-                            </div>
-                          ))}
+                          {/* Metadata — skip internal IDs, format values */}
+                          {Object.entries(log.metadata ?? log.details ?? {})
+                            .filter(([key]) => !SKIP_METADATA_KEYS.has(key))
+                            .map(([key, value]) => (
+                              <div key={key} className="contents">
+                                <div className="text-muted-foreground">{METADATA_LABELS[key] || humanizeUiLabel(key)}</div>
+                                <div>{renderMetadataValue(key, value)}</div>
+                              </div>
+                            ))}
                         </div>
                       </div>
                     )}
@@ -4948,400 +5347,6 @@ export default function Admin() {
               </div>
             </div>
           )}
-        </TabsContent>
-
-        <TabsContent value="communication" className={SPACING.SECTION_SPACING}>
-          <Card className="overflow-hidden">
-            <CardHeader className="border-b border-border/30 pb-3">
-              <CardDescription>Communication</CardDescription>
-            </CardHeader>
-            <div className="flex min-h-[400px]">
-              {/* Left sidebar */}
-              <div className="w-48 shrink-0 border-r border-border/40 p-1.5 space-y-0.5">
-                {([
-                  { key: 'announcement' as const, label: 'Annonce', Icon: MessageCircle },
-                  { key: 'login' as const, label: 'Connexion', Icon: LogIn },
-                  { key: 'updates' as const, label: 'Updates', Icon: Sparkles },
-                  { key: 'maintenance' as const, label: 'Maintenance', Icon: AlertTriangle },
-                ]).map((item) => (
-                  <button
-                    key={item.key}
-                    onClick={() => setCommSubTab(item.key)}
-                    className={cn(
-                      'w-full flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors text-left',
-                      commSubTab === item.key
-                        ? 'bg-accent text-accent-foreground font-medium'
-                        : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
-                    )}
-                  >
-                    <item.Icon className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate">{item.label}</span>
-                  </button>
-                ))}
-              </div>
-              {/* Content */}
-              <div className="flex-1 min-w-0 p-4">
-                {commSubTab === 'announcement' && (
-                  <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      Ce message s'affiche pour tous les utilisateurs dans la barre du haut, à côté du bouton de sidebar.
-                    </p>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-sm font-medium">Message</label>
-                        <span className={cn(
-                          'text-xs',
-                          announcementMessage.length >= ANNOUNCEMENT_MAX_LENGTH ? 'text-amber-400' : 'text-muted-foreground'
-                        )}>
-                          {announcementMessage.length}/{ANNOUNCEMENT_MAX_LENGTH}
-                        </span>
-                      </div>
-                      <Textarea
-                        value={announcementMessage}
-                        onChange={(e) => setAnnouncementMessage(e.target.value)}
-                        placeholder="Ex: Maintenance prévue ce soir à 23h."
-                        className="min-h-[90px]"
-                        maxLength={ANNOUNCEMENT_MAX_LENGTH}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Laissez vide pour masquer l'annonce.
-                      </p>
-                    </div>
-                    <div className="flex justify-end">
-                      <Button onClick={saveAnnouncement} disabled={savingAnnouncement}>
-                        {savingAnnouncement ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : (
-                          <Save className="h-4 w-4 mr-2" />
-                        )}
-                        Sauvegarder l'annonce
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {commSubTab === 'login' && (
-                  <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      Ce message s'affiche à gauche du formulaire de connexion, visible par tous les visiteurs.
-                    </p>
-                    <div className="flex items-center justify-between rounded-lg border bg-background/40 p-4">
-                      <div className="space-y-1 pr-4">
-                        <p className="text-sm font-medium">Bouton "Creer un compte" geant</p>
-                        <p className="text-xs text-muted-foreground">
-                          Affiche ou masque le gros bouton anime sur la page de connexion.
-                        </p>
-                      </div>
-                      <Switch
-                        checked={loginRegisterCtaEnabled}
-                        onCheckedChange={saveLoginRegisterCta}
-                        disabled={savingLoginRegisterCta}
-                      />
-                    </div>
-                    <Textarea
-                      value={loginMessage}
-                      onChange={(e) => setLoginMessage(e.target.value)}
-                      placeholder="Ex: Bienvenue ! Le serveur est ouvert."
-                      className="min-h-[90px]"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Laissez vide pour masquer le message.
-                    </p>
-                    <div className="flex justify-end">
-                      <Button onClick={saveLoginMessage} disabled={savingLoginMessage}>
-                        {savingLoginMessage ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : (
-                          <Save className="h-4 w-4 mr-2" />
-                        )}
-                        Sauvegarder
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {commSubTab === 'updates' && (
-                  <div className="space-y-6">
-                    {/* Preview */}
-                    <div className="space-y-2 p-4 rounded-lg border bg-background/30">
-                      <div className="flex items-center gap-2">
-                        <Eye className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm font-medium">Aperçu joueur</span>
-                      </div>
-                      <div className="rounded-lg border bg-muted/20 p-4 space-y-4">
-                          <div>
-                            <h4 className="text-lg font-semibold">{updatePopupForm.title || 'Titre de la mise a jour'}</h4>
-                            <p className="text-xs text-muted-foreground">
-                              {updatePopupForm.publishMode === 'draft'
-                                ? 'Brouillon non visible'
-                                : updatePopupForm.publishMode === 'scheduled'
-                                  ? `Programmee pour le ${updatePopupForm.releaseDate ? new Date(updatePopupForm.releaseDate).toLocaleString('fr-FR') : 'date non definie'}`
-                                  : 'Publication immediate'}
-                            </p>
-                          </div>
-                          {updatePopupForm.summary && (
-                            <p className="text-sm font-medium">{updatePopupForm.summary}</p>
-                          )}
-                          {updatePopupForm.imageUrl && (
-                            <img
-                              src={resolveImageUrl(updatePopupForm.imageUrl)}
-                              alt="preview"
-                              className="w-full max-h-56 rounded-md border object-cover"
-                              onError={(event) => {
-                                (event.target as HTMLImageElement).style.display = 'none';
-                              }}
-                            />
-                          )}
-                          <div className="rounded-md border bg-background/60 p-3">
-                            <p className="text-sm whitespace-pre-wrap">{updatePopupForm.message || 'Le contenu de la popup s affichera ici.'}</p>
-                          </div>
-                        </div>
-                      </div>
-                    {/* Form */}
-                    <div className="space-y-4 p-4 rounded-lg border bg-muted/20">
-                      <div className="flex items-center justify-between">
-                        <h3 className={TYPOGRAPHY.H3}>
-                          {editingUpdatePopupId ? 'Modifier une update' : 'Nouvelle update'}
-                        </h3>
-                        <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm" onClick={handleSuggestUpdateSummary} disabled={suggestingUpdateSummary}>
-                            {suggestingUpdateSummary ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Sparkles className="h-4 w-4 mr-1" />}
-                            Auto-résumé
-                          </Button>
-                          {editingUpdatePopupId && (
-                            <Button variant="ghost" size="sm" onClick={resetUpdatePopupForm}>
-                              <X className="h-4 w-4 mr-1" />
-                              Annuler
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Titre *</label>
-                        <Input
-                          value={updatePopupForm.title}
-                          onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, title: e.target.value }))}
-                          placeholder="Ex: Mise a jour 1.8.0"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Sous-titre</label>
-                        <Input
-                          value={updatePopupForm.summary}
-                          onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, summary: e.target.value }))}
-                          placeholder="Ex: Nouvelles features, équilibrage et fixes"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Message *</label>
-                        <Textarea
-                          value={updatePopupForm.message}
-                          onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, message: e.target.value }))}
-                          rows={10}
-                          placeholder={'Ex: • Nouveau mode de jeu\n• Ajustement des récompenses\n• Corrections de bugs'}
-                        />
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Mode de diffusion</label>
-                          <Select
-                            value={updatePopupForm.publishMode}
-                            onValueChange={(value: 'draft' | 'now' | 'scheduled') => setUpdatePopupForm((prev) => ({
-                              ...prev,
-                              publishMode: value,
-                              isPublished: value !== 'draft',
-                              releaseDate: value === 'scheduled' ? prev.releaseDate : toDateTimeLocalValue(new Date()),
-                            }))}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="draft">Brouillon</SelectItem>
-                              <SelectItem value="now">Publier maintenant</SelectItem>
-                              <SelectItem value="scheduled">Programmer</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <p className="text-xs text-muted-foreground">
-                            {updatePopupForm.publishMode === 'draft'
-                              ? 'La popup ne sera visible par aucun joueur.'
-                              : updatePopupForm.publishMode === 'scheduled'
-                                ? 'La popup sera visible automatiquement a la date choisie.'
-                                : 'La popup devient visible des la sauvegarde.'}
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Date de programmation</label>
-                          <Input
-                            type="datetime-local"
-                            value={updatePopupForm.releaseDate}
-                            onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, releaseDate: e.target.value }))}
-                            disabled={updatePopupForm.publishMode !== 'scheduled'}
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            {updatePopupForm.publishMode === 'scheduled'
-                              ? 'Choisissez la date et l heure de publication automatique.'
-                              : 'Disponible uniquement en mode Programme.'}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Image</label>
-                        <ImagePicker
-                          value={updatePopupForm.imageUrl}
-                          onChange={(url) => setUpdatePopupForm((prev) => ({ ...prev, imageUrl: url }))}
-                          uploadFn={uploadUpdatePopupImageFile}
-                          placeholder="/uploads/update-popups/... ou https://..."
-                        />
-                      </div>
-                      <div className="flex justify-end">
-                        <Button onClick={handleSaveUpdatePopup} disabled={savingUpdatePopup}>
-                          {savingUpdatePopup ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                          {editingUpdatePopupId ? 'Mettre à jour' : 'Créer'}
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h3 className={TYPOGRAPHY.H3}>Historique des updates</h3>
-                        <span className="text-xs text-muted-foreground">{updatePopups.length} entrées</span>
-                      </div>
-                      {loadingUpdatePopups ? (
-                        <div className="flex justify-center py-8">
-                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                        </div>
-                      ) : updatePopups.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">Aucune popup créée.</p>
-                      ) : (
-                        <div className="space-y-2">
-                          {updatePopups.map((popup) => (
-                            <div key={popup.id} className="rounded-lg border p-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                              {(() => {
-                                const isScheduled = popup.isPublished && new Date(popup.releaseDate).getTime() > Date.now();
-                                const statusClass = !popup.isPublished
-                                  ? 'bg-muted text-muted-foreground'
-                                  : isScheduled
-                                    ? 'bg-blue-500/20 text-blue-400'
-                                    : 'bg-green-500/20 text-green-400';
-                                const statusLabel = !popup.isPublished ? 'Brouillon' : isScheduled ? 'Programmee' : 'Publiee';
-                                return (
-                              <div className="min-w-0 space-y-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-medium">{popup.title}</span>
-                                  <span className={cn('text-xs px-2 py-0.5 rounded-full', statusClass)}>
-                                    {statusLabel}
-                                  </span>
-                                  <span className="text-xs text-muted-foreground">
-                                    {isScheduled ? `Diffusion le ${new Date(popup.releaseDate).toLocaleString('fr-FR')}` : new Date(popup.releaseDate).toLocaleString('fr-FR')}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                  Vu {popup._count.views} fois • Créée par {popup.createdBy.username}
-                                </p>
-                                {popup.summary && <p className="text-sm text-muted-foreground truncate">{popup.summary}</p>}
-                              </div>
-                                );
-                              })()}
-                              <div className="flex items-center gap-2">
-                                <Switch
-                                  checked={popup.isPublished}
-                                  disabled={updatingUpdatePopupId === popup.id}
-                                  onCheckedChange={(checked) => handleToggleUpdatePopupPublished(popup, checked)}
-                                />
-                                <Button size="sm" variant="outline" onClick={() => handleEditUpdatePopup(popup)}>
-                                  <Edit2 className="h-4 w-4" />
-                                </Button>
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <Button size="sm" variant="outline" className="text-destructive border-destructive/30">
-                                      {deletingUpdatePopup === popup.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                                    </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Supprimer cette update ?</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Cette action est irréversible. La popup ne sera plus affichée aux joueurs.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                      <AlertDialogAction onClick={() => handleDeleteUpdatePopup(popup.id)}>Supprimer</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {commSubTab === 'maintenance' && (
-                  <div className="space-y-4">
-                    {loadingSettings ? (
-                      <div className="flex justify-center py-12">
-                        <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Raison</label>
-                          <Textarea
-                            value={maintenanceMessage}
-                            onChange={(e) => setMaintenanceMessage(e.target.value)}
-                            placeholder="Ex: Mise à jour technique en cours."
-                            className="min-h-[120px]"
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Ce texte s'affichera sur la page de maintenance.
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Date et heure de fin de maintenance (optionnel)</label>
-                          <Input
-                            type="datetime-local"
-                            value={maintenanceEndDate}
-                            onChange={(e) => setMaintenanceEndDate(e.target.value)}
-                            className="max-w-md"
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Si définie, un compte à rebours s'affichera sur la page de maintenance. Laissez vide pour ne pas afficher de compte à rebours.
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <label className="text-sm font-medium">Activer la maintenance globale</label>
-                              <p className="text-xs text-muted-foreground">
-                                Quand activée, toutes les pages affichent la maintenance sauf /admin, /login et /register.
-                              </p>
-                            </div>
-                            <Switch
-                              checked={maintenanceEnabled}
-                              onCheckedChange={setMaintenanceEnabled}
-                            />
-                          </div>
-                        </div>
-                        <div className="flex justify-end">
-                          <Button onClick={saveMaintenance} disabled={savingMaintenance}>
-                            {savingMaintenance ? (
-                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            ) : (
-                              <Save className="h-4 w-4 mr-2" />
-                            )}
-                            Sauvegarder la maintenance
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </Card>
         </TabsContent>
 
       {/* Ban Dialog */}

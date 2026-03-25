@@ -85,7 +85,8 @@
       "Bash(git -C c:/Users/cowbl/source/repos/CRust/auratracker-final show --stat 5b8a4b5)",
       "Bash(git -C c:/Users/cowbl/source/repos/CRust/auratracker-final show --stat da93aec)",
       "Bash(git -C c:/Users/cowbl/source/repos/CRust/auratracker-final show --stat a9a209b)",
-      "Bash(git -C:*)"
+      "Bash(git -C:*)",
+      "Bash(grep -l \"polymarket\\\\|Polymarket\" c:/Users/cowbl/source/repos/CRust/auratracker-final/frontend/src/components/**/*)"
     ]
   },
   "outputStyle": "default"

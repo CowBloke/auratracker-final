@@ -16,6 +16,43 @@ const requireAdmin = (req: AuthRequest, res: Response, next: Function) => {
   next();
 };
 
+// ========== OPTION HELPERS ==========
+
+interface EventOption {
+  key: string;
+  label: string;
+  color: string;
+  odds: number;
+}
+
+/** Returns the options array for an event. Falls back to YES/NO from yesOdds/noOdds for legacy events. */
+function getEventOptions(event: { yesOdds: number; noOdds: number; optionsConfig?: string | null }): EventOption[] {
+  if (event.optionsConfig) {
+    try {
+      const parsed = JSON.parse(event.optionsConfig) as EventOption[];
+      if (Array.isArray(parsed) && parsed.length >= 2) return parsed;
+    } catch { /* fall through */ }
+  }
+  return [
+    { key: 'YES', label: 'Oui', color: '#22c55e', odds: event.yesOdds },
+    { key: 'NO',  label: 'Non', color: '#ef4444', odds: event.noOdds  },
+  ];
+}
+
+/** Validates an optionsConfig array from request body. Returns cleaned array or null on failure. */
+function validateOptionsConfig(raw: unknown): EventOption[] | null {
+  if (!Array.isArray(raw) || raw.length < 2 || raw.length > 4) return null;
+  for (const o of raw as any[]) {
+    if (typeof o.key !== 'string' || !o.key.trim()) return null;
+    if (typeof o.label !== 'string' || !o.label.trim()) return null;
+    if (typeof o.color !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(o.color)) return null;
+    if (typeof o.odds !== 'number' || o.odds <= 1) return null;
+  }
+  const keys = (raw as any[]).map((o) => o.key);
+  if (new Set(keys).size !== keys.length) return null; // duplicate keys
+  return raw as EventOption[];
+}
+
 // ========== SUGGESTIONS ==========
 
 // Get all suggestions
@@ -24,17 +61,10 @@ router.get('/suggestions', authMiddleware, async (req: AuthRequest, res: Respons
     const suggestions = await prisma.polymarketSuggestion.findMany({
       include: {
         user: {
-          select: {
-            id: true,
-            username: true,
-            usernameColor: true,
-          },
+          select: { id: true, username: true, usernameColor: true },
         },
         event: {
-          select: {
-            id: true,
-            status: true,
-          },
+          select: { id: true, status: true },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -50,7 +80,7 @@ router.get('/suggestions', authMiddleware, async (req: AuthRequest, res: Respons
 // Create a suggestion
 router.post('/suggestions', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { title, description, imageUrl, eventDate, suggestedYesOdds, suggestedNoOdds } = req.body;
+    const { title, description, imageUrl, eventDate, suggestedYesOdds, suggestedNoOdds, optionsConfig } = req.body;
 
     if (!title || !description) {
       return res.status(400).json({ error: 'Title and description are required' });
@@ -70,26 +100,45 @@ router.post('/suggestions', authMiddleware, async (req: AuthRequest, res: Respon
       if (isNaN(eventDateObj.getTime())) {
         return res.status(400).json({ error: 'Invalid event date' });
       }
-
       if (eventDateObj <= new Date()) {
         return res.status(400).json({ error: 'Event date must be in the future' });
       }
     }
 
-    const hasSuggestedYesOdds = suggestedYesOdds !== undefined && suggestedYesOdds !== null && suggestedYesOdds !== '';
-    const hasSuggestedNoOdds = suggestedNoOdds !== undefined && suggestedNoOdds !== null && suggestedNoOdds !== '';
-    if (hasSuggestedYesOdds !== hasSuggestedNoOdds) {
-      return res.status(400).json({ error: 'Both suggested odds are required when proposing odds' });
-    }
-    if (hasSuggestedYesOdds && parseFloat(suggestedYesOdds) <= 1) {
-      return res.status(400).json({ error: 'Suggested yes odds must be greater than 1' });
-    }
-    if (hasSuggestedNoOdds && parseFloat(suggestedNoOdds) <= 1) {
-      return res.status(400).json({ error: 'Suggested no odds must be greater than 1' });
-    }
-
     if (imageUrl && !isAllowedImageUrl(imageUrl)) {
       return res.status(400).json({ error: 'Image must be uploaded or a valid URL' });
+    }
+
+    // Handle optionsConfig (multi-option or legacy binary odds)
+    let optionsConfigStr: string | null = null;
+    let legacyYesOdds: number | null = null;
+    let legacyNoOdds: number | null = null;
+
+    if (optionsConfig !== undefined && optionsConfig !== null) {
+      // New multi-option format from frontend
+      const validated = validateOptionsConfig(optionsConfig);
+      if (!validated) {
+        return res.status(400).json({ error: 'optionsConfig invalide (2–4 options, cotes > 1, couleurs hex)' });
+      }
+      optionsConfigStr = JSON.stringify(validated);
+      // Populate legacy fields from first two options for backward compat
+      legacyYesOdds = validated[0].odds;
+      legacyNoOdds = validated[1].odds;
+    } else {
+      // Legacy binary odds
+      const hasSuggestedYesOdds = suggestedYesOdds !== undefined && suggestedYesOdds !== null && suggestedYesOdds !== '';
+      const hasSuggestedNoOdds = suggestedNoOdds !== undefined && suggestedNoOdds !== null && suggestedNoOdds !== '';
+      if (hasSuggestedYesOdds !== hasSuggestedNoOdds) {
+        return res.status(400).json({ error: 'Both suggested odds are required when proposing odds' });
+      }
+      if (hasSuggestedYesOdds && parseFloat(suggestedYesOdds) <= 1) {
+        return res.status(400).json({ error: 'Suggested yes odds must be greater than 1' });
+      }
+      if (hasSuggestedNoOdds && parseFloat(suggestedNoOdds) <= 1) {
+        return res.status(400).json({ error: 'Suggested no odds must be greater than 1' });
+      }
+      if (hasSuggestedYesOdds) legacyYesOdds = parseFloat(suggestedYesOdds);
+      if (hasSuggestedNoOdds) legacyNoOdds = parseFloat(suggestedNoOdds);
     }
 
     const suggestion = await prisma.polymarketSuggestion.create({
@@ -99,16 +148,13 @@ router.post('/suggestions', authMiddleware, async (req: AuthRequest, res: Respon
         description: description.trim(),
         imageUrl: imageUrl?.trim() || null,
         eventDate: eventDateObj,
-        suggestedYesOdds: hasSuggestedYesOdds ? parseFloat(suggestedYesOdds) : null,
-        suggestedNoOdds: hasSuggestedNoOdds ? parseFloat(suggestedNoOdds) : null,
+        suggestedYesOdds: legacyYesOdds,
+        suggestedNoOdds: legacyNoOdds,
+        optionsConfig: optionsConfigStr,
       },
       include: {
         user: {
-          select: {
-            id: true,
-            username: true,
-            usernameColor: true,
-          },
+          select: { id: true, username: true, usernameColor: true },
         },
       },
     });
@@ -124,11 +170,7 @@ router.post('/suggestions', authMiddleware, async (req: AuthRequest, res: Respon
         type: 'SYSTEM',
         title: 'Nouvelle suggestion Polymarket',
         body: `${suggestion.user.username} a propose "${suggestion.title}".`,
-        data: {
-          suggestionId: suggestion.id,
-          title: suggestion.title,
-          authorId: suggestion.user.id,
-        },
+        data: { suggestionId: suggestion.id, title: suggestion.title, authorId: suggestion.user.id },
         link: '/polymarket',
         icon: 'chart-no-axes-column',
       })
@@ -147,55 +189,45 @@ router.post('/suggestions', authMiddleware, async (req: AuthRequest, res: Respon
 router.get('/events', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { status } = req.query;
-    
+
     const where: any = {};
-    if (status) {
-      where.status = status;
-    }
+    if (status) where.status = status;
 
     const events = await prisma.polymarketEvent.findMany({
       where,
       include: {
         suggestion: {
           include: {
-            user: {
-              select: {
-                id: true,
-                username: true,
-                usernameColor: true,
-              },
-            },
+            user: { select: { id: true, username: true, usernameColor: true } },
           },
         },
         bets: {
-          select: {
-            userId: true,
-            prediction: true,
-            amount: true,
-          },
+          select: { userId: true, prediction: true, amount: true },
         },
-        _count: {
-          select: {
-            bets: true,
-          },
-        },
+        _count: { select: { bets: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
 
-    // Calculate total volume and yes/no totals
     const eventsWithStats = events.map((event) => {
-      const yesBets = event.bets.filter((b) => b.prediction === 'YES');
-      const noBets = event.bets.filter((b) => b.prediction === 'NO');
-      const totalYes = yesBets.reduce((sum, b) => sum + b.amount, 0);
-      const totalNo = noBets.reduce((sum, b) => sum + b.amount, 0);
-      const totalVolume = totalYes + totalNo;
+      const options = getEventOptions(event);
+      const optionStats: Record<string, number> = {};
+      for (const opt of options) {
+        optionStats[opt.key] = event.bets
+          .filter((b) => b.prediction === opt.key)
+          .reduce((sum, b) => sum + b.amount, 0);
+      }
+      const totalVolume = Object.values(optionStats).reduce((s, v) => s + v, 0);
+      const totalYes = optionStats['YES'] || 0;
+      const totalNo = optionStats['NO'] || 0;
 
       return {
         ...event,
         totalVolume,
         totalYes,
         totalNo,
+        optionStats,
+        options,
         betCount: event._count.bets,
       };
     });
@@ -217,32 +249,16 @@ router.get('/events/:id', authMiddleware, async (req: AuthRequest, res: Response
       include: {
         suggestion: {
           include: {
-            user: {
-              select: {
-                id: true,
-                username: true,
-                usernameColor: true,
-              },
-            },
+            user: { select: { id: true, username: true, usernameColor: true } },
           },
         },
         bets: {
           include: {
-            user: {
-              select: {
-                id: true,
-                username: true,
-                usernameColor: true,
-              },
-            },
+            user: { select: { id: true, username: true, usernameColor: true } },
           },
           orderBy: { createdAt: 'desc' },
         },
-        _count: {
-          select: {
-            bets: true,
-          },
-        },
+        _count: { select: { bets: true } },
       },
     });
 
@@ -250,11 +266,16 @@ router.get('/events/:id', authMiddleware, async (req: AuthRequest, res: Response
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    const yesBets = event.bets.filter((b) => b.prediction === 'YES');
-    const noBets = event.bets.filter((b) => b.prediction === 'NO');
-    const totalYes = yesBets.reduce((sum, b) => sum + b.amount, 0);
-    const totalNo = noBets.reduce((sum, b) => sum + b.amount, 0);
-    const totalVolume = totalYes + totalNo;
+    const options = getEventOptions(event);
+    const optionStats: Record<string, number> = {};
+    for (const opt of options) {
+      optionStats[opt.key] = event.bets
+        .filter((b) => b.prediction === opt.key)
+        .reduce((sum, b) => sum + b.amount, 0);
+    }
+    const totalVolume = Object.values(optionStats).reduce((s, v) => s + v, 0);
+    const totalYes = optionStats['YES'] || 0;
+    const totalNo = optionStats['NO'] || 0;
 
     res.json({
       event: {
@@ -262,6 +283,8 @@ router.get('/events/:id', authMiddleware, async (req: AuthRequest, res: Response
         totalVolume,
         totalYes,
         totalNo,
+        optionStats,
+        options,
         betCount: event._count.bets,
       },
     });
@@ -274,14 +297,10 @@ router.get('/events/:id', authMiddleware, async (req: AuthRequest, res: Response
 // Create event (admin only)
 router.post('/events', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const { title, description, imageUrl, eventDate, yesOdds, noOdds, suggestionId } = req.body;
+    const { title, description, imageUrl, eventDate, yesOdds, noOdds, optionsConfig, suggestionId } = req.body;
 
-    if (!title || !description || !eventDate || !yesOdds || !noOdds) {
-      return res.status(400).json({ error: 'All fields are required' });
-    }
-
-    if (yesOdds <= 1 || noOdds <= 1) {
-      return res.status(400).json({ error: 'Odds must be greater than 1' });
+    if (!title || !description || !eventDate) {
+      return res.status(400).json({ error: 'Title, description, and event date are required' });
     }
 
     const eventDateObj = new Date(eventDate);
@@ -293,46 +312,60 @@ router.post('/events', authMiddleware, requireAdmin, async (req: AuthRequest, re
       return res.status(400).json({ error: 'Image must be uploaded or a valid URL' });
     }
 
+    let optionsConfigStr: string | null = null;
+    let finalYesOdds: number;
+    let finalNoOdds: number;
+
+    if (optionsConfig !== undefined && optionsConfig !== null) {
+      const validated = validateOptionsConfig(optionsConfig);
+      if (!validated) {
+        return res.status(400).json({ error: 'optionsConfig invalide (2–4 options, cotes > 1, couleurs hex)' });
+      }
+      optionsConfigStr = JSON.stringify(validated);
+      finalYesOdds = validated[0].odds;
+      finalNoOdds = validated[1].odds;
+    } else {
+      if (!yesOdds || !noOdds) {
+        return res.status(400).json({ error: 'Options or yes/no odds are required' });
+      }
+      if (yesOdds <= 1 || noOdds <= 1) {
+        return res.status(400).json({ error: 'Odds must be greater than 1' });
+      }
+      finalYesOdds = parseFloat(yesOdds);
+      finalNoOdds = parseFloat(noOdds);
+    }
+
     const event = await prisma.polymarketEvent.create({
       data: {
         title: title.trim(),
         description: description.trim(),
         imageUrl: imageUrl?.trim() || null,
         eventDate: eventDateObj,
-        yesOdds: parseFloat(yesOdds),
-        noOdds: parseFloat(noOdds),
+        yesOdds: finalYesOdds,
+        noOdds: finalNoOdds,
+        optionsConfig: optionsConfigStr,
         suggestionId: suggestionId || null,
       },
       include: {
         suggestion: {
           include: {
-            user: {
-              select: {
-                id: true,
-                username: true,
-                usernameColor: true,
-              },
-            },
+            user: { select: { id: true, username: true, usernameColor: true } },
           },
         },
       },
     });
 
-    // If created from suggestion, update suggestion status
     if (suggestionId) {
       await prisma.polymarketSuggestion.update({
         where: { id: suggestionId },
-        data: {
-          status: 'APPROVED',
-          reviewedAt: new Date(),
-          reviewedBy: req.user!.id,
-        },
+        data: { status: 'APPROVED', reviewedAt: new Date(), reviewedBy: req.user!.id },
       });
     }
 
     logAdmin('polymarket_event_create', req.user!.id, undefined, event.id, event.title, {
       yesOdds: event.yesOdds,
       noOdds: event.noOdds,
+      optionsCount: optionsConfigStr ? JSON.parse(optionsConfigStr).length : 2,
     });
 
     res.status(201).json({ event });
@@ -346,7 +379,7 @@ router.post('/events', authMiddleware, requireAdmin, async (req: AuthRequest, re
 router.patch('/events/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { title, description, imageUrl, eventDate, yesOdds, noOdds, status } = req.body;
+    const { title, description, imageUrl, eventDate, yesOdds, noOdds, optionsConfig, status } = req.body;
 
     const updateData: any = {};
 
@@ -365,26 +398,38 @@ router.patch('/events/:id', authMiddleware, requireAdmin, async (req: AuthReques
       }
       updateData.eventDate = eventDateObj;
     }
-    if (yesOdds !== undefined) {
-      if (yesOdds <= 1) {
-        return res.status(400).json({ error: 'Yes odds must be greater than 1' });
+
+    // optionsConfig takes priority over individual yesOdds/noOdds
+    if (optionsConfig !== undefined) {
+      if (optionsConfig === null) {
+        updateData.optionsConfig = null;
+        // Keep existing yesOdds/noOdds if provided separately
+      } else {
+        const validated = validateOptionsConfig(optionsConfig);
+        if (!validated) {
+          return res.status(400).json({ error: 'optionsConfig invalide (2–4 options, cotes > 1, couleurs hex)' });
+        }
+        updateData.optionsConfig = JSON.stringify(validated);
+        updateData.yesOdds = validated[0].odds;
+        updateData.noOdds = validated[1].odds;
       }
-      updateData.yesOdds = parseFloat(yesOdds);
-    }
-    if (noOdds !== undefined) {
-      if (noOdds <= 1) {
-        return res.status(400).json({ error: 'No odds must be greater than 1' });
+    } else {
+      if (yesOdds !== undefined) {
+        if (yesOdds <= 1) return res.status(400).json({ error: 'Yes odds must be greater than 1' });
+        updateData.yesOdds = parseFloat(yesOdds);
       }
-      updateData.noOdds = parseFloat(noOdds);
+      if (noOdds !== undefined) {
+        if (noOdds <= 1) return res.status(400).json({ error: 'No odds must be greater than 1' });
+        updateData.noOdds = parseFloat(noOdds);
+      }
     }
+
     if (status !== undefined) {
       if (!['OPEN', 'CLOSED', 'RESOLVED'].includes(status)) {
         return res.status(400).json({ error: 'Invalid status' });
       }
       updateData.status = status;
-      if (status === 'CLOSED') {
-        updateData.closedAt = new Date();
-      }
+      if (status === 'CLOSED') updateData.closedAt = new Date();
     }
 
     const event = await prisma.polymarketEvent.update({
@@ -405,19 +450,9 @@ router.patch('/events/:id', authMiddleware, requireAdmin, async (req: AuthReques
 router.post('/suggestions/:id/approve', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { yesOdds, noOdds, eventDate } = req.body;
+    const { yesOdds, noOdds, optionsConfig, eventDate } = req.body;
 
-    if (!yesOdds || !noOdds) {
-      return res.status(400).json({ error: 'Yes and no odds are required' });
-    }
-
-    if (yesOdds <= 1 || noOdds <= 1) {
-      return res.status(400).json({ error: 'Odds must be greater than 1' });
-    }
-
-    const suggestion = await prisma.polymarketSuggestion.findUnique({
-      where: { id },
-    });
+    const suggestion = await prisma.polymarketSuggestion.findUnique({ where: { id } });
 
     if (!suggestion) {
       return res.status(404).json({ error: 'Suggestion not found' });
@@ -439,7 +474,29 @@ router.post('/suggestions/:id/approve', authMiddleware, requireAdmin, async (req
       return res.status(400).json({ error: 'Event date is required to approve this suggestion' });
     }
 
-    // Create event from suggestion
+    let optionsConfigStr: string | null = null;
+    let finalYesOdds: number;
+    let finalNoOdds: number;
+
+    if (optionsConfig !== undefined && optionsConfig !== null) {
+      const validated = validateOptionsConfig(optionsConfig);
+      if (!validated) {
+        return res.status(400).json({ error: 'optionsConfig invalide (2–4 options, cotes > 1, couleurs hex)' });
+      }
+      optionsConfigStr = JSON.stringify(validated);
+      finalYesOdds = validated[0].odds;
+      finalNoOdds = validated[1].odds;
+    } else {
+      if (!yesOdds || !noOdds) {
+        return res.status(400).json({ error: 'Options config or yes/no odds are required' });
+      }
+      if (yesOdds <= 1 || noOdds <= 1) {
+        return res.status(400).json({ error: 'Odds must be greater than 1' });
+      }
+      finalYesOdds = parseFloat(yesOdds);
+      finalNoOdds = parseFloat(noOdds);
+    }
+
     const event = await prisma.polymarketEvent.create({
       data: {
         suggestionId: suggestion.id,
@@ -447,32 +504,22 @@ router.post('/suggestions/:id/approve', authMiddleware, requireAdmin, async (req
         description: suggestion.description,
         imageUrl: suggestion.imageUrl,
         eventDate: eventDateObj,
-        yesOdds: parseFloat(yesOdds),
-        noOdds: parseFloat(noOdds),
+        yesOdds: finalYesOdds,
+        noOdds: finalNoOdds,
+        optionsConfig: optionsConfigStr,
       },
       include: {
         suggestion: {
           include: {
-            user: {
-              select: {
-                id: true,
-                username: true,
-                usernameColor: true,
-              },
-            },
+            user: { select: { id: true, username: true, usernameColor: true } },
           },
         },
       },
     });
 
-    // Update suggestion status
     await prisma.polymarketSuggestion.update({
       where: { id },
-      data: {
-        status: 'APPROVED',
-        reviewedAt: new Date(),
-        reviewedBy: req.user!.id,
-      },
+      data: { status: 'APPROVED', reviewedAt: new Date(), reviewedBy: req.user!.id },
     });
 
     logAdmin('polymarket_suggestion_approve', req.user!.id, undefined, id, suggestion.title, {
@@ -486,10 +533,7 @@ router.post('/suggestions/:id/approve', authMiddleware, requireAdmin, async (req
       type: 'SYSTEM',
       title: 'Suggestion Polymarket acceptée',
       body: `Ta suggestion "${suggestion.title}" a été acceptée et publiée.`,
-      data: {
-        suggestionId: suggestion.id,
-        eventId: event.id,
-      },
+      data: { suggestionId: suggestion.id, eventId: event.id },
       link: '/polymarket',
       icon: 'badge-check',
     }).catch(() => {});
@@ -508,9 +552,7 @@ router.post('/suggestions/:id/reject', authMiddleware, requireAdmin, async (req:
   try {
     const { id } = req.params;
 
-    const suggestion = await prisma.polymarketSuggestion.findUnique({
-      where: { id },
-    });
+    const suggestion = await prisma.polymarketSuggestion.findUnique({ where: { id } });
 
     if (!suggestion) {
       return res.status(404).json({ error: 'Suggestion not found' });
@@ -522,11 +564,7 @@ router.post('/suggestions/:id/reject', authMiddleware, requireAdmin, async (req:
 
     await prisma.polymarketSuggestion.update({
       where: { id },
-      data: {
-        status: 'REJECTED',
-        reviewedAt: new Date(),
-        reviewedBy: req.user!.id,
-      },
+      data: { status: 'REJECTED', reviewedAt: new Date(), reviewedBy: req.user!.id },
     });
 
     logAdmin('polymarket_suggestion_reject', req.user!.id, undefined, id, suggestion.title, {});
@@ -536,9 +574,7 @@ router.post('/suggestions/:id/reject', authMiddleware, requireAdmin, async (req:
       type: 'SYSTEM',
       title: 'Suggestion Polymarket refusée',
       body: `Ta suggestion "${suggestion.title}" a été refusée.`,
-      data: {
-        suggestionId: suggestion.id,
-      },
+      data: { suggestionId: suggestion.id },
       link: '/polymarket',
       icon: 'badge-x',
     }).catch(() => {});
@@ -556,19 +592,12 @@ router.post('/suggestions/:id/reject', authMiddleware, requireAdmin, async (req:
 router.get('/bets', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const bets = await prisma.polymarketBet.findMany({
-      where: {
-        userId: req.user!.id,
-      },
+      where: { userId: req.user!.id },
       include: {
         event: {
           select: {
-            id: true,
-            title: true,
-            status: true,
-            resolution: true,
-            eventDate: true,
-            yesOdds: true,
-            noOdds: true,
+            id: true, title: true, status: true, resolution: true,
+            eventDate: true, yesOdds: true, noOdds: true, optionsConfig: true,
           },
         },
       },
@@ -586,25 +615,16 @@ router.get('/bets', authMiddleware, async (req: AuthRequest, res: Response) => {
 router.get('/bets/all', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { limit = 50 } = req.query;
-    
+
     const bets = await prisma.polymarketBet.findMany({
       include: {
         user: {
-          select: {
-            id: true,
-            username: true,
-            usernameColor: true,
-          },
+          select: { id: true, username: true, usernameColor: true },
         },
         event: {
           select: {
-            id: true,
-            title: true,
-            status: true,
-            resolution: true,
-            eventDate: true,
-            yesOdds: true,
-            noOdds: true,
+            id: true, title: true, status: true, resolution: true,
+            eventDate: true, yesOdds: true, noOdds: true, optionsConfig: true,
           },
         },
       },
@@ -628,10 +648,6 @@ router.post('/bets', authMiddleware, async (req: AuthRequest, res: Response) => 
       return res.status(400).json({ error: 'Event ID, prediction, and amount are required' });
     }
 
-    if (!['YES', 'NO'].includes(prediction)) {
-      return res.status(400).json({ error: 'Prediction must be YES or NO' });
-    }
-
     if (amount <= 0 || !Number.isInteger(amount)) {
       return res.status(400).json({ error: 'Amount must be a positive integer' });
     }
@@ -647,9 +663,7 @@ router.post('/bets', authMiddleware, async (req: AuthRequest, res: Response) => 
     }
 
     // Get event
-    const event = await prisma.polymarketEvent.findUnique({
-      where: { id: eventId },
-    });
+    const event = await prisma.polymarketEvent.findUnique({ where: { id: eventId } });
 
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
@@ -663,49 +677,36 @@ router.post('/bets', authMiddleware, async (req: AuthRequest, res: Response) => 
       return res.status(400).json({ error: 'Event date has passed' });
     }
 
+    // Validate prediction against event options
+    const options = getEventOptions(event);
+    const validKeys = options.map((o) => o.key);
+    if (!validKeys.includes(prediction)) {
+      return res.status(400).json({ error: `Prediction must be one of: ${validKeys.join(', ')}` });
+    }
+
+    const chosenOption = options.find((o) => o.key === prediction)!;
+
     // Check if user already bet on this event
     const existingBet = await prisma.polymarketBet.findUnique({
-      where: {
-        userId_eventId: {
-          userId: req.user!.id,
-          eventId: event.id,
-        },
-      },
+      where: { userId_eventId: { userId: req.user!.id, eventId: event.id } },
     });
 
     if (existingBet) {
       return res.status(400).json({ error: 'You have already placed a bet on this event' });
     }
 
-    // Create bet and deduct money
     const bet = await prisma.polymarketBet.create({
-      data: {
-        userId: req.user!.id,
-        eventId: event.id,
-        prediction,
-        amount,
-      },
+      data: { userId: req.user!.id, eventId: event.id, prediction, amount },
       include: {
         event: {
-          select: {
-            id: true,
-            title: true,
-            status: true,
-            yesOdds: true,
-            noOdds: true,
-          },
+          select: { id: true, title: true, status: true, yesOdds: true, noOdds: true, optionsConfig: true },
         },
       },
     });
 
-    // Deduct money from user
     await prisma.user.update({
       where: { id: req.user!.id },
-      data: {
-        money: {
-          decrement: amount,
-        },
-      },
+      data: { money: { decrement: amount } },
     });
 
     awardBadgeByKey(req.user!.id, 'POLYMARKET_BETTOR').catch(() => {});
@@ -714,13 +715,8 @@ router.post('/bets', authMiddleware, async (req: AuthRequest, res: Response) => 
       userId: req.user!.id,
       type: 'SYSTEM',
       title: 'Pari Polymarket place',
-      body: `Tu as mise $${amount} sur ${prediction} pour "${bet.event.title}".`,
-      data: {
-        betId: bet.id,
-        eventId: event.id,
-        prediction,
-        amount,
-      },
+      body: `Tu as mise $${amount} sur ${chosenOption.label} pour "${bet.event.title}".`,
+      data: { betId: bet.id, eventId: event.id, prediction, amount },
       link: '/polymarket',
       icon: 'chart-no-axes-column',
     }).catch(() => {});
@@ -743,15 +739,13 @@ router.post('/events/:id/resolve', authMiddleware, requireAdmin, async (req: Aut
     const { id } = req.params;
     const { resolution } = req.body;
 
-    if (!['YES', 'NO'].includes(resolution)) {
-      return res.status(400).json({ error: 'Resolution must be YES or NO' });
+    if (!resolution) {
+      return res.status(400).json({ error: 'Resolution is required' });
     }
 
     const event = await prisma.polymarketEvent.findUnique({
       where: { id },
-      include: {
-        bets: true,
-      },
+      include: { bets: true },
     });
 
     if (!event) {
@@ -762,9 +756,19 @@ router.post('/events/:id/resolve', authMiddleware, requireAdmin, async (req: Aut
       return res.status(400).json({ error: 'Event already resolved' });
     }
 
-    // Calculate payouts for winning bets
+    // Validate resolution against event options
+    const options = getEventOptions(event);
+    const winningOption = options.find((o) => o.key === resolution);
+    if (!winningOption) {
+      return res.status(400).json({
+        error: `Resolution must be one of: ${options.map((o) => o.key).join(', ')}`,
+      });
+    }
+
+    const odds = winningOption.odds;
+
+    // Check payout overflow
     const winningBets = event.bets.filter((bet) => bet.prediction === resolution);
-    const odds = resolution === 'YES' ? event.yesOdds : event.noOdds;
     const maxInt32 = 2147483647;
     const maxPayout = winningBets.reduce((max, bet) => Math.max(max, Math.floor(bet.amount * odds)), 0);
 
@@ -774,34 +778,18 @@ router.post('/events/:id/resolve', authMiddleware, requireAdmin, async (req: Aut
       });
     }
 
-    // Update event status
     await prisma.polymarketEvent.update({
       where: { id },
-      data: {
-        status: 'RESOLVED',
-        resolution,
-        resolvedAt: new Date(),
-        resolvedBy: req.user!.id,
-      },
+      data: { status: 'RESOLVED', resolution, resolvedAt: new Date(), resolvedBy: req.user!.id },
     });
 
-    // Calculate and update payouts for winning bets
     for (const bet of winningBets) {
       const payoutAmount = Math.floor(bet.amount * odds);
       const payout = BigInt(payoutAmount);
-      await prisma.polymarketBet.update({
-        where: { id: bet.id },
-        data: { payout },
-      });
-
-      // Add payout to user balance
+      await prisma.polymarketBet.update({ where: { id: bet.id }, data: { payout } });
       await prisma.user.update({
         where: { id: bet.userId },
-        data: {
-          money: {
-            increment: payoutAmount,
-          },
-        },
+        data: { money: { increment: payoutAmount } },
       });
 
       createNotification({
@@ -809,12 +797,7 @@ router.post('/events/:id/resolve', authMiddleware, requireAdmin, async (req: Aut
         type: 'POLYMARKET_WIN',
         title: 'Pari Polymarket gagne',
         body: `Ton pari sur "${event.title}" a gagne. Gain: $${payoutAmount}.`,
-        data: {
-          betId: bet.id,
-          eventId: event.id,
-          resolution,
-          payoutAmount,
-        },
+        data: { betId: bet.id, eventId: event.id, resolution, payoutAmount },
         link: '/polymarket',
         icon: 'trending-up',
       }).catch(() => {});
@@ -829,12 +812,7 @@ router.post('/events/:id/resolve', authMiddleware, requireAdmin, async (req: Aut
         type: 'POLYMARKET_LOSS',
         title: 'Pari Polymarket perdu',
         body: `Ton pari sur "${event.title}" a perdu.`,
-        data: {
-          betId: bet.id,
-          eventId: event.id,
-          resolution,
-          amount: bet.amount,
-        },
+        data: { betId: bet.id, eventId: event.id, resolution, amount: bet.amount },
         link: '/polymarket',
         icon: 'trending-down',
       })
@@ -842,6 +820,7 @@ router.post('/events/:id/resolve', authMiddleware, requireAdmin, async (req: Aut
 
     logAdmin('polymarket_event_resolve', req.user!.id, undefined, id, event.title, {
       resolution,
+      winningOption: winningOption.label,
       winningBets: winningBets.length,
       totalPayout: winningBets.reduce((sum, b) => sum + Math.floor(b.amount * odds), 0),
     });

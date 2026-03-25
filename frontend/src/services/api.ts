@@ -1459,6 +1459,13 @@ export const bombPartyApi = {
 };
 
 // Polymarket API
+export interface PolymarketOption {
+  key: string;
+  label: string;
+  color: string;
+  odds: number;
+}
+
 export interface PolymarketSuggestion {
   id: string;
   userId: string;
@@ -1468,6 +1475,7 @@ export interface PolymarketSuggestion {
   eventDate: string | null;
   suggestedYesOdds?: number | null;
   suggestedNoOdds?: number | null;
+  optionsConfig?: string | null;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   createdAt: string;
   reviewedAt: string | null;
@@ -1492,6 +1500,8 @@ export interface PolymarketEvent {
   eventDate: string;
   yesOdds: number;
   noOdds: number;
+  optionsConfig?: string | null;
+  options?: PolymarketOption[];
   status: 'OPEN' | 'CLOSED' | 'RESOLVED';
   resolution: string | null;
   resolvedAt: string | null;
@@ -1501,6 +1511,7 @@ export interface PolymarketEvent {
   totalVolume?: number;
   totalYes?: number;
   totalNo?: number;
+  optionStats?: Record<string, number>;
   betCount?: number;
   suggestion?: PolymarketSuggestion | null;
   bets?: PolymarketBet[];
@@ -1510,7 +1521,7 @@ export interface PolymarketBet {
   id: string;
   userId: string;
   eventId: string;
-  prediction: 'YES' | 'NO';
+  prediction: string;
   amount: number;
   payout: number | string | null;
   createdAt: string;
@@ -1522,6 +1533,7 @@ export interface PolymarketBet {
     eventDate: string;
     yesOdds: number;
     noOdds: number;
+    optionsConfig?: string | null;
   };
   user?: {
     id: string;
@@ -1541,13 +1553,19 @@ export const polymarketApi = {
     eventDate?: string;
     suggestedYesOdds?: number;
     suggestedNoOdds?: number;
+    optionsConfig?: PolymarketOption[];
   }) =>
     api.post<{ suggestion: PolymarketSuggestion }>('/polymarket/suggestions', data),
-  approveSuggestion: (id: string, data: { yesOdds: number; noOdds: number; eventDate?: string }) =>
+  approveSuggestion: (id: string, data: {
+    yesOdds?: number;
+    noOdds?: number;
+    optionsConfig?: PolymarketOption[];
+    eventDate?: string;
+  }) =>
     api.post<{ event: PolymarketEvent }>(`/polymarket/suggestions/${id}/approve`, data),
   rejectSuggestion: (id: string) =>
     api.post<{ success: boolean }>(`/polymarket/suggestions/${id}/reject`),
-  
+
   // Events
   getEvents: (status?: string) =>
     api.get<{ events: PolymarketEvent[] }>('/polymarket/events', { params: { status } }),
@@ -1558,20 +1576,30 @@ export const polymarketApi = {
     description: string;
     imageUrl?: string;
     eventDate: string;
-    yesOdds: number;
-    noOdds: number;
+    yesOdds?: number;
+    noOdds?: number;
+    optionsConfig?: PolymarketOption[];
     suggestionId?: string;
   }) => api.post<{ event: PolymarketEvent }>('/polymarket/events', data),
-  updateEvent: (id: string, data: Partial<PolymarketEvent>) =>
+  updateEvent: (id: string, data: {
+    title?: string;
+    description?: string;
+    imageUrl?: string | null;
+    eventDate?: string;
+    yesOdds?: number;
+    noOdds?: number;
+    optionsConfig?: PolymarketOption[] | null;
+    status?: PolymarketEvent['status'];
+  }) =>
     api.patch<{ event: PolymarketEvent }>(`/polymarket/events/${id}`, data),
-  resolveEvent: (id: string, resolution: 'YES' | 'NO') =>
+  resolveEvent: (id: string, resolution: string) =>
     api.post<{ success: boolean; resolution: string }>(`/polymarket/events/${id}/resolve`, { resolution }),
-  
+
   // Bets
   getBets: () => api.get<{ bets: PolymarketBet[] }>('/polymarket/bets'),
   getAllBets: (limit?: number) =>
     api.get<{ bets: PolymarketBet[] }>('/polymarket/bets/all', { params: { limit } }),
-  placeBet: (data: { eventId: string; prediction: 'YES' | 'NO'; amount: number }) =>
+  placeBet: (data: { eventId: string; prediction: string; amount: number }) =>
     api.post<{ bet: PolymarketBet }>('/polymarket/bets', data),
 };
 
