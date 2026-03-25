@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlayerHoverCard } from '@/components/ui/player-hover-card';
 import { PageShell } from '@/components/layout/page-shell';
 
-const GAME_SRC = '/polytrack/';
+const GAME_SRC = '/polytrack/index.html';
 const MEDAL_COLORS = ['text-yellow-400', 'text-slate-400', 'text-amber-600'];
 
 export default function Polytrack() {
