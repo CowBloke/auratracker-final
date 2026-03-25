@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlayerHoverCard } from '@/components/ui/player-hover-card';
 import { PageShell } from '@/components/layout/page-shell';
 
-const GAME_ORIGIN = 'https://iammyguy21th.github.io';
+const GAME_SRC = '/polytrack/';
 const MEDAL_COLORS = ['text-yellow-400', 'text-slate-400', 'text-amber-600'];
 
 export default function Polytrack() {
@@ -93,7 +93,7 @@ export default function Polytrack() {
   // Listen for finish events posted by the game iframe
   useEffect(() => {
     const handler = (event: MessageEvent) => {
-      if (event.origin !== GAME_ORIGIN) return;
+      if (event.origin !== window.location.origin) return;
       const data = event.data as { type?: string; timeMs?: number; trackNumber?: number };
       if (data?.type !== 'polytrack:finish') return;
       const ms = Number(data.timeMs);
@@ -137,7 +137,7 @@ export default function Polytrack() {
           )}
         >
           <iframe
-            src="https://iammyguy21th.github.io/polytrack.3/"
+            src={GAME_SRC}
             className="w-full h-full"
             title="PolyTrack"
             allow="fullscreen; autoplay"

@@ -611,6 +611,69 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
       }
     }
 
+    // Custom badge request
+    if (effect?.type === 'CUSTOM_BADGE') {
+      const { name, description, icon, backgroundColor, borderColor, rarity } = effectData || {};
+
+      if (!name?.trim() || !description?.trim()) {
+        return res.status(400).json({ error: 'name and description are required' });
+      }
+
+      const existing = await prisma.customBadgeRequest.findFirst({
+        where: { userId: req.user.id, status: 'pending' },
+      });
+      if (existing) {
+        return res.status(409).json({ error: 'Tu as déjà une demande de badge en attente' });
+      }
+
+      const request = await prisma.$transaction(async (tx) => {
+        if (userItem.quantity > 1) {
+          await tx.userItem.update({ where: { id: userItemId }, data: { quantity: { decrement: 1 } } });
+        } else {
+          await tx.userItem.delete({ where: { id: userItemId } });
+        }
+        return tx.customBadgeRequest.create({
+          data: {
+            userId: req.user!.id,
+            name: name.trim(),
+            description: description.trim(),
+            icon: icon ?? '⭐',
+            backgroundColor: backgroundColor ?? '#374151',
+            borderColor: borderColor ?? '#6b7280',
+            rarity: rarity ?? 'common',
+            pricePaid: userItem.item.price,
+          },
+        });
+      });
+
+      const admins = await prisma.user.findMany({
+        where: { isAdmin: true, isApproved: true },
+        select: { id: true },
+      });
+      await Promise.all(
+        admins.map((admin) =>
+          createNotification({
+            userId: admin.id,
+            type: 'ADMIN',
+            title: 'Nouvelle demande de badge',
+            body: `${req.user!.username} souhaite créer le badge "${name.trim()}"`,
+            link: '/admin?tab=badges',
+            icon: 'Award',
+            data: { requestId: request.id, requesterId: req.user!.id, requesterUsername: req.user!.username },
+          }),
+        ),
+      );
+
+      logMarketplace('item_use', req.user.id, req.user.username, {
+        itemId: userItem.item.id,
+        itemName: userItem.item.name,
+        effectType: 'CUSTOM_BADGE',
+        badgeName: name.trim(),
+      });
+
+      return res.json({ success: true, pending: true, effect: { type: 'CUSTOM_BADGE', requestId: request.id } });
+    }
+
     // Other item types
     res.json({
       success: true,

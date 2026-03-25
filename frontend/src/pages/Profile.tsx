@@ -13,19 +13,17 @@ import {
   SocialRelationship,
   SocialStats,
 } from '../services/api';
-import { Edit2, Loader2, Save, X } from 'lucide-react';
+import { CalendarDays, Edit2, Loader2, Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { TYPOGRAPHY } from '@/lib/design-system';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
 import { UserBadges } from '@/components/badges/UserBadges';
-import { toClanTagData } from '@/components/clans/ClanTag';
+import { ClanTag, toClanTagData } from '@/components/clans/ClanTag';
 import { BadgeCatalog } from '@/components/badges/BadgeSelector';
 import { ProfileBadgeSlots } from '@/components/badges/ProfileBadgeSlots';
 import { BadgeData } from '@/components/badges/BadgeIcon';
-import { CustomBadgeRequestDialog } from '@/components/badges/CustomBadgeRequestDialog';
-import { UsernameDisplay } from '@/components/ui/username-display';
 
 const PROFILE_GAME_CATALOG = [
   { gameType: 'russian_roulette', label: 'Russian Roulette' },
@@ -67,7 +65,6 @@ interface ProfileUser {
   auraCoinBalance: number;
   usernameColor?: string | null;
   profilePicture?: string | null;
-  profileBanner?: string | null;
   bio?: string | null;
   createdAt: string;
   clanTag?: { text: string; style: string | null } | null;
@@ -122,7 +119,6 @@ export default function Profile() {
   const [totalUsers, setTotalUsers] = useState<number | undefined>(undefined);
   const [equippedBadge1Id, setEquippedBadge1Id] = useState<string | null>(null);
   const [equippedBadge2Id, setEquippedBadge2Id] = useState<string | null>(null);
-  const [customBadgeDialogOpen, setCustomBadgeDialogOpen] = useState(false);
 
   const targetUserId = userId || currentUser?.id;
   const isOwnProfile = targetUserId === currentUser?.id;
@@ -303,6 +299,11 @@ export default function Profile() {
   const equippedBadge2 = userBadges.find((b) => b.id === equippedBadge2Id) ?? null;
   const equippedBadges = [equippedBadge1, equippedBadge2].filter(Boolean) as BadgeData[];
   const social = profileUser.social;
+  const clanTag = toClanTagData(profileUser.clanTag);
+  const memberSinceLabel = new Date(profileUser.createdAt).toLocaleDateString('fr-FR', {
+    month: 'long',
+    year: 'numeric',
+  });
   const statsByGameType = new Map(profileUser.gameStats.map((stat) => [stat.gameType, stat]));
   const knownGameTypes = new Set(PROFILE_GAME_CATALOG.map((entry) => entry.gameType));
   const excludedUnknownGameTypes = new Set([...knownGameTypes, 'bombparty']);
@@ -400,90 +401,103 @@ export default function Profile() {
   ];
 
   return (
-    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
-      <div className="overflow-hidden rounded-[28px] border border-border/40 bg-card">
-        <div className="relative h-40 md:h-56">
-          {profileUser.profileBanner ? (
-            <img
-              src={resolveImageUrl(profileUser.profileBanner)}
-              alt={`Banniere de ${profileUser.username}`}
-              className="absolute inset-0 h-full w-full object-cover"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
-          ) : null}
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/25 via-background/10 to-background/80" />
+    <div className="w-full px-0 pb-8">
+      <div className="mx-auto w-full max-w-6xl overflow-hidden rounded-[28px] border border-border/60 bg-card shadow-sm">
+        <div className="relative h-36 overflow-hidden border-b border-border/60 bg-gradient-to-br from-muted via-background to-muted/70 md:h-48">
+          <div className="absolute -left-20 top-0 h-48 w-48 rounded-full bg-foreground/[0.05] blur-3xl" />
+          <div className="absolute right-0 top-0 h-56 w-56 rounded-full bg-foreground/[0.04] blur-3xl" />
+          <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-card via-card/45 to-transparent" />
         </div>
 
-        <div className="px-4 pb-6 md:px-6">
-          <div className="-mt-12 flex items-start gap-6 md:-mt-16">
-            {profileUser.profilePicture ? (
-              <img
-                src={resolveImageUrl(profileUser.profilePicture)}
-                alt={profileUser.username}
-                className="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover border-4 border-background shrink-0 bg-background"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
-            ) : (
-              <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-muted/30 flex items-center justify-center border-4 border-background shrink-0">
-                <span
-                  className={cn(TYPOGRAPHY.H2, "md:text-4xl")}
-                  style={profileUser.usernameColor ? { color: profileUser.usernameColor } : undefined}
-                >
-                  {profileUser.username.slice(0, 2)}
-                </span>
-              </div>
-            )}
-
-            <div className="flex-1 min-w-0 pt-12 md:pt-16">
-              <div className="flex items-center gap-3">
-                <ProfileBadgeSlots
-                  badges={userBadges}
-                  equippedBadge1Id={equippedBadge1Id}
-                  equippedBadge2Id={equippedBadge2Id}
-                  editable={isOwnProfile}
-                  onEquip={handleEquipBadge}
-                />
-                <UsernameDisplay
-                  username={profileUser.username}
-                  firstName={profileUser.firstName}
-                  usernameColor={profileUser.usernameColor}
-                  clanTag={toClanTagData(profileUser.clanTag)}
-                  className={cn(TYPOGRAPHY.H1, "md:text-7xl")}
-                  labelClassName="text-sm md:text-base text-muted-foreground"
-                />
-              </div>
-              {!isOwnProfile && (
-                <div className="mt-4 flex flex-wrap gap-3">
-                  <Button onClick={handleFollowToggle} disabled={socialLoading}>
-                    {socialLoading ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : null}
+        <div className="relative z-10 border-b border-border/60 px-5 pb-6 pt-4 md:px-8">
+          <div className="flex flex-col gap-5">
+            <div className="relative z-20 -mt-16 flex flex-col gap-4 md:-mt-20 md:flex-row md:items-end md:justify-between">
+              <ProfileAvatar profileUser={profileUser} />
+              <div className="flex shrink-0 flex-wrap items-center gap-3 md:justify-end">
+                {isOwnProfile ? (
+                  <Button
+                    variant="outline"
+                    className="rounded-full px-5"
+                    onClick={() => setEditingBio(true)}
+                  >
+                    <Edit2 className="h-4 w-4" />
+                    Modifier la bio
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleFollowToggle}
+                    disabled={socialLoading}
+                    className="rounded-full px-5"
+                  >
+                    {socialLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                     {social?.isFollowing ? 'Ne plus suivre' : 'Suivre'}
                   </Button>
-                </div>
-              )}
-              <p className={cn(TYPOGRAPHY.SMALL, "mt-2")}>
-                Membre depuis {new Date(profileUser.createdAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+                )}
+              </div>
+            </div>
+
+            <div className="min-w-0 space-y-3">
+              <div className="flex flex-wrap items-center gap-3">
+                {isOwnProfile || equippedBadges.length > 0 ? (
+                  <ProfileBadgeSlots
+                    badges={userBadges}
+                    equippedBadge1Id={equippedBadge1Id}
+                    equippedBadge2Id={equippedBadge2Id}
+                    editable={isOwnProfile}
+                    variant="inline"
+                    onEquip={handleEquipBadge}
+                  />
+                ) : null}
+                <span
+                  className="min-w-0 truncate text-3xl font-semibold tracking-tight md:text-4xl"
+                  style={profileUser.usernameColor ? { color: profileUser.usernameColor } : undefined}
+                >
+                  {profileUser.username}
+                </span>
+                {clanTag ? (
+                  <ClanTag
+                    tag={clanTag}
+                    className="rounded-md px-2 py-1 text-[11px] font-semibold md:text-xs"
+                  />
+                ) : null}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground">
+                {profileUser.firstName ? (
+                  <span className="font-medium text-foreground/80">{profileUser.firstName}</span>
+                ) : null}
+                <span className="rounded-full border border-border/70 px-3 py-1 text-sm text-muted-foreground">
+                  @{profileUser.username}
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+                <span className="inline-flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4" />
+                  Membre depuis {memberSinceLabel}
+                </span>
+              </div>
+
+              <p className={cn('max-w-2xl text-sm leading-6 text-foreground/88', !profileUser.bio && 'text-muted-foreground')}>
+                {profileUser.bio ||
+                  (isOwnProfile
+                    ? 'Ajoute une description pour te presenter aux autres joueurs.'
+                    : 'Aucune description pour le moment.')}
               </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+              {headerSocialStats.map((item) => (
+                <div key={item.label} className="inline-flex items-center gap-2 text-muted-foreground">
+                  <span className="font-semibold text-foreground">{item.value}</span>
+                  <span>{item.label}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-        {headerSocialStats.map((item) => (
-          <div key={item.label} className="inline-flex items-center gap-2 text-muted-foreground">
-            <span className="font-semibold text-foreground">{item.value}</span>
-            <span>{item.label}</span>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid lg:grid-cols-[minmax(0,1.55fr)_340px]">
+        <div className="grid lg:grid-cols-[minmax(0,1.55fr)_340px]">
           <div className="min-w-0 lg:border-r lg:border-border/60">
             <SectionBlock
               title="A propos"
@@ -586,11 +600,7 @@ export default function Profile() {
               ) : null}
 
               {allBadges.length > 0 ? (
-                <BadgeCatalog
-                  allBadges={allBadges}
-                  earnedBadges={isOwnProfile ? userBadges : userBadges.filter((b) => b.category !== 'custom')}
-                  totalUsers={totalUsers}
-                />
+                <BadgeCatalog allBadges={allBadges} earnedBadges={userBadges} totalUsers={totalUsers} />
               ) : userBadges.length > 0 ? (
                 <div className="flex flex-wrap gap-1">
                   {userBadges.map((badge) => (
@@ -599,23 +609,6 @@ export default function Profile() {
                 </div>
               ) : (
                 <p className={TYPOGRAPHY.MUTED}>Aucun badge.</p>
-              )}
-
-              {isOwnProfile && (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-4 w-full text-xs text-muted-foreground"
-                    onClick={() => setCustomBadgeDialogOpen(true)}
-                  >
-                    + Demander un badge personnalisé
-                  </Button>
-                  <CustomBadgeRequestDialog
-                    open={customBadgeDialogOpen}
-                    onOpenChange={setCustomBadgeDialogOpen}
-                  />
-                </>
               )}
             </SectionBlock>
           </div>
@@ -678,6 +671,33 @@ export default function Profile() {
             </div>
           </aside>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ProfileAvatar({ profileUser }: { profileUser: ProfileUser }) {
+  if (profileUser.profilePicture) {
+    return (
+      <img
+        src={resolveImageUrl(profileUser.profilePicture)}
+        alt={profileUser.username}
+        className="relative z-20 h-24 w-24 shrink-0 rounded-full border-4 border-card object-cover shadow-sm md:h-32 md:w-32"
+        onError={(e) => {
+          (e.target as HTMLImageElement).style.display = 'none';
+        }}
+      />
+    );
+  }
+
+  return (
+    <div className="relative z-20 flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-4 border-card bg-muted/70 shadow-sm md:h-32 md:w-32">
+      <span
+        className="text-3xl font-semibold tracking-tight md:text-4xl"
+        style={profileUser.usernameColor ? { color: profileUser.usernameColor } : undefined}
+      >
+        {profileUser.username.slice(0, 2)}
+      </span>
     </div>
   );
 }

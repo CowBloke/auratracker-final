@@ -190,7 +190,7 @@ export const marketplaceApi = {
   purchase: (data: { itemId: string; quantity?: number }) =>
     api.post('/marketplace/purchase', data),
   getInventory: (userId: string) => api.get(`/marketplace/inventory/${userId}`),
-  useItem: (userItemId: string, effectData?: { color?: string; imageUrl?: string }) =>
+  useItem: (userItemId: string, effectData?: { color?: string; imageUrl?: string; name?: string; description?: string; icon?: string; backgroundColor?: string; borderColor?: string; rarity?: string }) =>
     api.post('/marketplace/use-item', { userItemId, effectData }),
   sellGiftItem: (userItemId: string) =>
     api.post<{ success: boolean; moneyEarned: number }>('/marketplace/sell-gift-item', { userItemId }),

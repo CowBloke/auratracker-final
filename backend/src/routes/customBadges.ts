@@ -18,6 +18,7 @@ const REQUEST_SELECT = {
   rarity: true,
   adminNote: true,
   badgeId: true,
+  pricePaid: true,
   createdAt: true,
   updatedAt: true,
 } as const;
@@ -209,9 +210,17 @@ router.post('/:id/reject', authMiddleware, adminMiddleware, async (req: AuthRequ
 
     const { adminNote } = req.body as { adminNote?: string };
 
-    await prisma.customBadgeRequest.update({
-      where: { id: request.id },
-      data: { status: 'rejected', adminNote: adminNote ?? null },
+    await prisma.$transaction(async (tx) => {
+      await tx.customBadgeRequest.update({
+        where: { id: request.id },
+        data: { status: 'rejected', adminNote: adminNote ?? null },
+      });
+      if (request.pricePaid > 0) {
+        await tx.user.update({
+          where: { id: request.userId },
+          data: { money: { increment: request.pricePaid } },
+        });
+      }
     });
 
     await createNotification({
@@ -219,13 +228,13 @@ router.post('/:id/reject', authMiddleware, adminMiddleware, async (req: AuthRequ
       type: 'SYSTEM',
       title: 'Badge personnalisé refusé',
       body: adminNote
-        ? `Ta demande de badge "${request.name}" a été refusée. Raison : ${adminNote}`
-        : `Ta demande de badge "${request.name}" a été refusée.`,
+        ? `Ta demande de badge "${request.name}" a été refusée. Raison : ${adminNote}. Tu as été remboursé $${request.pricePaid}.`
+        : `Ta demande de badge "${request.name}" a été refusée. Tu as été remboursé $${request.pricePaid}.`,
       icon: 'X',
-      data: { requestId: request.id },
+      data: { requestId: request.id, refunded: request.pricePaid },
     });
 
-    res.json({ success: true });
+    res.json({ success: true, refunded: request.pricePaid });
   } catch (error) {
     console.error('POST /custom-badges/:id/reject error:', error);
     res.status(500).json({ error: 'Failed to reject request' });

@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { marketplaceApi, uploadUserImage } from '../services/api';
 import { ImagePicker } from '@/components/ui/image-picker';
-import { Loader2, Palette, Camera, Package, Tag } from 'lucide-react';
+import { Loader2, Palette, Camera, Package, Tag, Award } from 'lucide-react';
 import { cn, humanizeUiLabel } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -14,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { BadgeIcon } from '@/components/badges/BadgeIcon';
 import { Card, CardContent } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { resolveImageUrl } from '@/lib/images';
@@ -51,10 +54,28 @@ const typeLabels: Record<string, string> = {
 };
 
 const PRESET_COLORS = [
-  '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', 
+  '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16',
   '#22c55e', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9',
   '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef',
   '#ec4899', '#f43f5e', '#ffffff', '#a1a1aa', '#71717a',
+];
+
+const BADGE_BG_PRESETS = [
+  '#374151', '#1e3a5f', '#4c1d95', '#7c2d12', '#14532d',
+  '#1f2937', '#0f172a', '#3b0764', '#431407', '#052e16',
+];
+
+const BADGE_BORDER_PRESETS = [
+  '#6b7280', '#3b82f6', '#a855f7', '#f97316', '#22c55e',
+  '#fbbf24', '#ef4444', '#06b6d4', '#ec4899', '#ffffff',
+];
+
+const RARITY_OPTIONS = [
+  { value: 'common', label: 'Commun' },
+  { value: 'uncommon', label: 'Peu commun' },
+  { value: 'rare', label: 'Rare' },
+  { value: 'epic', label: 'Épique' },
+  { value: 'legendary', label: 'Légendaire' },
 ];
 
 export default function Inventory() {
@@ -81,6 +102,16 @@ export default function Inventory() {
   const [imageItem, setImageItem] = useState<UserItem | null>(null);
   const [imageUrl, setImageUrl] = useState('');
   const [imageEffectType, setImageEffectType] = useState<ImageEffectType | null>(null);
+
+  // Custom badge state
+  const [customBadgeDialogOpen, setCustomBadgeDialogOpen] = useState(false);
+  const [customBadgeItem, setCustomBadgeItem] = useState<UserItem | null>(null);
+  const [customBadgeName, setCustomBadgeName] = useState('');
+  const [customBadgeDesc, setCustomBadgeDesc] = useState('');
+  const [customBadgeIcon, setCustomBadgeIcon] = useState('⭐');
+  const [customBadgeBg, setCustomBadgeBg] = useState('#374151');
+  const [customBadgeBorder, setCustomBadgeBorder] = useState('#6b7280');
+  const [customBadgeRarity, setCustomBadgeRarity] = useState('common');
 
   useEffect(() => {
     if (user) {
@@ -122,6 +153,19 @@ export default function Inventory() {
         return;
       }
       // AWARD_BADGE and other upgrades fall through to the generic use flow below
+    }
+
+    // Custom badge request
+    if (effect?.type === 'CUSTOM_BADGE') {
+      setCustomBadgeItem(userItem);
+      setCustomBadgeName('');
+      setCustomBadgeDesc('');
+      setCustomBadgeIcon('⭐');
+      setCustomBadgeBg('#374151');
+      setCustomBadgeBorder('#6b7280');
+      setCustomBadgeRarity('common');
+      setCustomBadgeDialogOpen(true);
+      return;
     }
 
     // Handle cosmetic items that need user input
@@ -290,6 +334,35 @@ export default function Inventory() {
     }
   };
 
+  const submitCustomBadge = async () => {
+    if (!customBadgeItem) return;
+    if (!customBadgeName.trim() || !customBadgeDesc.trim()) {
+      toast.error('Nom et description requis');
+      return;
+    }
+    try {
+      setUsing(customBadgeItem.id);
+      await marketplaceApi.useItem(customBadgeItem.id, {
+        name: customBadgeName.trim(),
+        description: customBadgeDesc.trim(),
+        icon: customBadgeIcon,
+        backgroundColor: customBadgeBg,
+        borderColor: customBadgeBorder,
+        rarity: customBadgeRarity,
+      });
+      await fetchInventory();
+      toast.success('Demande envoyée', {
+        description: 'Les admins examineront ta demande de badge.',
+      });
+      setCustomBadgeDialogOpen(false);
+      setCustomBadgeItem(null);
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Échec');
+    } finally {
+      setUsing(null);
+    }
+  };
+
   const getEffectIcon = (effect: ItemEffect | null) => {
     if (!effect) return null;
     switch (effect.type) {
@@ -305,6 +378,8 @@ export default function Inventory() {
         return <Tag className="w-4 h-4" />;
       case 'AWARD_BADGE':
         return <Package className="w-4 h-4" />;
+      case 'CUSTOM_BADGE':
+        return <Award className="w-4 h-4" />;
       default:
         return null;
     }
@@ -327,6 +402,8 @@ export default function Inventory() {
         return '+1 slot clan';
       case 'AWARD_BADGE':
         return 'Badge';
+      case 'CUSTOM_BADGE':
+        return 'Badge personnalisé';
       case 'BONUS_AURA':
         return `+${effect.value || '?'} aura`;
       case 'BONUS_MONEY':
@@ -651,6 +728,149 @@ export default function Inventory() {
             <Button onClick={applyClanTagUnlock} disabled={using !== null}>
               {using ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Débloquer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Custom Badge Dialog */}
+      <Dialog open={customBadgeDialogOpen} onOpenChange={(open) => {
+        setCustomBadgeDialogOpen(open);
+        if (!open) setCustomBadgeItem(null);
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className={cn(TYPOGRAPHY.H5, "flex items-center gap-2")}>
+              <Award className="w-5 h-5" />
+              Créer un badge personnalisé
+            </DialogTitle>
+            <DialogDescription>
+              Conçois ton badge. Un admin le validera avant qu'il soit ajouté à ton profil.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-2 space-y-4">
+            {/* Live preview */}
+            <div className="flex justify-center py-2">
+              <BadgeIcon badge={{
+                id: 'preview',
+                name: customBadgeName || 'Nom du badge',
+                description: customBadgeDesc || '',
+                backgroundType: 'solid',
+                backgroundColor: customBadgeBg,
+                icon: customBadgeIcon,
+                iconColor: '#ffffff',
+                borderColor: customBadgeBorder,
+                category: 'custom',
+                rarity: customBadgeRarity,
+              }} size="lg" />
+            </div>
+
+            {/* Name */}
+            <div className="space-y-1.5">
+              <label className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Nom</label>
+              <Input
+                value={customBadgeName}
+                onChange={(e) => setCustomBadgeName(e.target.value)}
+                placeholder="Nom du badge"
+                maxLength={40}
+              />
+            </div>
+
+            {/* Description */}
+            <div className="space-y-1.5">
+              <label className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Description</label>
+              <Textarea
+                value={customBadgeDesc}
+                onChange={(e) => setCustomBadgeDesc(e.target.value)}
+                placeholder="Description du badge"
+                maxLength={120}
+                rows={2}
+              />
+            </div>
+
+            {/* Icon + Rarity row */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Icône (emoji)</label>
+                <Input
+                  value={customBadgeIcon}
+                  onChange={(e) => setCustomBadgeIcon(e.target.value)}
+                  placeholder="⭐"
+                  maxLength={4}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Rareté</label>
+                <Select value={customBadgeRarity} onValueChange={setCustomBadgeRarity}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {RARITY_OPTIONS.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Background color */}
+            <div className="space-y-1.5">
+              <label className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Fond</label>
+              <div className="flex flex-wrap gap-2">
+                {BADGE_BG_PRESETS.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setCustomBadgeBg(c)}
+                    className={cn(
+                      "w-6 h-6 rounded border-2 transition-transform hover:scale-110",
+                      customBadgeBg === c ? 'border-foreground scale-110' : 'border-transparent'
+                    )}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+                <Input
+                  type="color"
+                  value={customBadgeBg}
+                  onChange={(e) => setCustomBadgeBg(e.target.value)}
+                  className="w-8 h-6 p-0.5 cursor-pointer"
+                />
+              </div>
+            </div>
+
+            {/* Border color */}
+            <div className="space-y-1.5">
+              <label className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Bordure</label>
+              <div className="flex flex-wrap gap-2">
+                {BADGE_BORDER_PRESETS.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setCustomBadgeBorder(c)}
+                    className={cn(
+                      "w-6 h-6 rounded border-2 transition-transform hover:scale-110",
+                      customBadgeBorder === c ? 'border-foreground scale-110' : 'border-transparent'
+                    )}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+                <Input
+                  type="color"
+                  value={customBadgeBorder}
+                  onChange={(e) => setCustomBadgeBorder(e.target.value)}
+                  className="w-8 h-6 p-0.5 cursor-pointer"
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCustomBadgeDialogOpen(false)}>
+              Annuler
+            </Button>
+            <Button
+              onClick={submitCustomBadge}
+              disabled={using !== null || !customBadgeName.trim() || !customBadgeDesc.trim()}
+            >
+              {using ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Envoyer la demande
             </Button>
           </DialogFooter>
         </DialogContent>

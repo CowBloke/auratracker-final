@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+
+<html>
+	<head>
+		<link rel="stylesheet" type="text/css" href="css/message_box_ui.css">
+		<link rel="stylesheet" type="text/css" href="css/customization.css">
+		<link rel="stylesheet" type="text/css" href="css/checkpoint_ui.css">
+		<link rel="stylesheet" type="text/css" href="css/debug_ui.css">
+		<link rel="stylesheet" type="text/css" href="css/editor.css">
+		<link rel="stylesheet" type="text/css" href="css/editor_height_selector.css">
+		<link rel="stylesheet" type="text/css" href="css/editor_checkpoint_order.css">
+		<link rel="stylesheet" type="text/css" href="css/hint.css">
+		<link rel="stylesheet" type="text/css" href="css/leaderboard.css">
+		<link rel="stylesheet" type="text/css" href="css/loading_spinner.css">
+		<link rel="stylesheet" type="text/css" href="css/loading_ui.css">
+		<link rel="stylesheet" type="text/css" href="css/menu.css">
+		<link rel="stylesheet" type="text/css" href="css/nickname.css">
+		<link rel="stylesheet" type="text/css" href="css/settings_menu.css">
+		<link rel="stylesheet" type="text/css" href="css/speedometer.css">
+		<link rel="stylesheet" type="text/css" href="css/theme.css">
+		<link rel="stylesheet" type="text/css" href="css/time_announcer.css">
+		<link rel="stylesheet" type="text/css" href="css/timer.css">
+		<link rel="stylesheet" type="text/css" href="css/track_export_ui.css">
+		<link rel="stylesheet" type="text/css" href="css/track_info.css">
+		<link rel="stylesheet" type="text/css" href="css/track_selection_ui.css">
+		<link rel="stylesheet" type="text/css" href="css/transition_system.css">
+		<link rel="stylesheet" type="text/css" href="css/verifier.css">
+		<link rel="icon" type="image/x-icon" href="images/favicon.ico">
+	</head>
+	<body>
+		<canvas id="screen"></canvas>
+		<div id="ui"></div>
+		<div id="transition-layer"></div>
+
+		<script src="lib/ammo.js" defer></script>
+
+		<script type="module" src="dist/main.bundle.js" defer></script>
+
+		<!-- AuraTracker bridge: detects race finish and posts time to parent -->
+		<script>
+		(function () {
+			function parseTimeMs(str) {
+				// Game format: "MM:SS.mmm" e.g. "00:12.345"
+				var m = /^(\d+):(\d{2}\.\d{3})$/.exec(str ? str.trim() : '');
+				if (!m) return null;
+				var ms = Math.round((parseInt(m[1], 10) * 60 + parseFloat(m[2])) * 1000);
+				return ms > 0 && ms < 600000 ? ms : null;
+			}
+
+			function notify(node) {
+				var currentEl = node.querySelector('.current');
+				if (!currentEl) return;
+				var ms = parseTimeMs(currentEl.textContent);
+				if (ms !== null) {
+					window.parent.postMessage({ type: 'polytrack:finish', timeMs: ms }, '*');
+				}
+			}
+
+			var observer = new MutationObserver(function (mutations) {
+				mutations.forEach(function (mutation) {
+					mutation.addedNodes.forEach(function (node) {
+						if (node.nodeType === 1 && node.classList && node.classList.contains('time-announcer')) {
+							notify(node);
+						}
+					});
+				});
+			});
+
+			function start() {
+				var ui = document.getElementById('ui');
+				if (ui) {
+					observer.observe(ui, { childList: true });
+				} else {
+					setTimeout(start, 50);
+				}
+			}
+
+			start();
+		})();
+		</script>
+	</body>
+</html>

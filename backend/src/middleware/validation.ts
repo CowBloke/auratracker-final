@@ -78,6 +78,13 @@ export const useItemSchema = z.object({
   effectData: z.object({
     color: z.string().optional(),
     imageUrl: z.string().optional(),
+    // Custom badge fields
+    name: z.string().optional(),
+    description: z.string().optional(),
+    icon: z.string().optional(),
+    backgroundColor: z.string().optional(),
+    borderColor: z.string().optional(),
+    rarity: z.string().optional(),
   }).optional(),
 });
 

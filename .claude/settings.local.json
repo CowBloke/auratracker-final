@@ -67,7 +67,9 @@
       "Bash(curl -sI \"https://app-polytrack.kodub.com/\")",
       "Bash(2)",
       "Bash(curl -s https://iammyguy21th.github.io/polytrack.3/)",
-      "Bash(curl -s https://iammyguy21th.github.io/polytrack.3/dist/main.bundle.js)"
+      "Bash(curl -s https://iammyguy21th.github.io/polytrack.3/dist/main.bundle.js)",
+      "Bash(grep -n \"postMessage\\\\|polytrack:finish\\\\|parent\\\\.\\\\|window\\\\.parent\\\\|top\\\\.\" c:/Users/cowbl/source/repos/CRust/auratracker-final/frontend/public/polytrack/dist/*.js)",
+      "Bash(xxd)"
     ]
   },
   "outputStyle": "default"

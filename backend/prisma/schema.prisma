@@ -1243,6 +1243,7 @@ model CustomBadgeRequest {
   rarity          String   @default("common")
   adminNote       String?
   badgeId         String?  @unique // Set on approval to the created Badge id
+  pricePaid       Int      @default(0) // Refunded on rejection
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
