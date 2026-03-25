@@ -36,9 +36,12 @@
 
 		<script src="dist/main.bundle.js" defer></script>
 
-		<!-- AuraTracker bridge: detects race finish and posts time to parent -->
+		<!-- AuraTracker bridge: detects race finish and posts time + track number to parent -->
 		<script>
 		(function () {
+			// Remembers which track the player last opened (set when .track-info appears)
+			var currentTrackNumber = null;
+
 			function parseTimeMs(str) {
 				// Game format: "MM:SS.mmm" e.g. "00:12.345"
 				var m = /^(\d+):(\d{2}\.\d{3})$/.exec(str ? str.trim() : '');
@@ -47,20 +50,32 @@
 				return ms > 0 && ms < 600000 ? ms : null;
 			}
 
-			function notify(node) {
+			function notifyFinish(node) {
 				var currentEl = node.querySelector('.current');
 				if (!currentEl) return;
 				var ms = parseTimeMs(currentEl.textContent);
 				if (ms !== null) {
-					window.parent.postMessage({ type: 'polytrack:finish', timeMs: ms }, '*');
+					var msg = { type: 'polytrack:finish', timeMs: ms };
+					if (currentTrackNumber !== null) msg.trackNumber = currentTrackNumber;
+					window.parent.postMessage(msg, '*');
 				}
 			}
 
 			var observer = new MutationObserver(function (mutations) {
 				mutations.forEach(function (mutation) {
 					mutation.addedNodes.forEach(function (node) {
-						if (node.nodeType === 1 && node.classList && node.classList.contains('time-announcer')) {
-							notify(node);
+						if (node.nodeType !== 1 || !node.classList) return;
+						// Race finished
+						if (node.classList.contains('time-announcer')) {
+							notifyFinish(node);
+						}
+						// Track info panel opened — capture which track the player chose
+						if (node.classList.contains('track-info')) {
+							var h2 = node.querySelector('h2');
+							if (h2) {
+								var m = /^Track\s+(\d+)$/.exec(h2.textContent ? h2.textContent.trim() : '');
+								if (m) currentTrackNumber = parseInt(m[1], 10);
+							}
 						}
 					});
 				});
