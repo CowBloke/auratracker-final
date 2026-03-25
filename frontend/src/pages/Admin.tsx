@@ -880,6 +880,7 @@ export default function Admin() {
   const [blockedPages, setBlockedPages] = useState<string[]>([]);
   const [blockedMessage, setBlockedMessage] = useState('');
   const [savingBlocks, setSavingBlocks] = useState(false);
+  const [fonctionnalitesOpen, setFonctionnalitesOpen] = useState(false);
   const [fakeOnlineEnabled, setFakeOnlineEnabled] = useState(true);
   const [savingFakeOnline, setSavingFakeOnline] = useState(false);
   const [announcementMessage, setAnnouncementMessage] = useState('');
@@ -1818,7 +1819,7 @@ export default function Admin() {
     });
   };
 
-  const saveBlockedPages = async () => {
+  const saveBlockedPages = async (): Promise<boolean> => {
     try {
       setSavingBlocks(true);
       const uniquePages = Array.from(new Set(blockedPages)).sort();
@@ -1829,9 +1830,11 @@ export default function Admin() {
       showMessage('success', 'Feature switches mis à jour');
       fetchSettings();
       refreshFeatures();
+      return true;
     } catch (error) {
       console.error('Failed to save page blocks:', error);
       showMessage('error', 'Erreur lors de la sauvegarde du blocage');
+      return false;
     } finally {
       setSavingBlocks(false);
     }
@@ -4103,91 +4106,110 @@ export default function Admin() {
             <CardHeader>
               <CardDescription>Fonctionnalités — activez ou désactivez chaque page du site. Une page désactivée disparaît de la navigation et est inaccessible par URL.</CardDescription>
             </CardHeader>
-            <CardContent className={SPACING.SECTION_SPACING}>
-              {loadingSettings ? (
-                <div className="flex justify-center py-12">
-                  <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <h3 className="font-medium">Pages du site</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {blockedPages.length > 0
+                      ? `${blockedPages.length} page${blockedPages.length > 1 ? 's' : ''} désactivée${blockedPages.length > 1 ? 's' : ''}`
+                      : 'Toutes les pages sont actives'}
+                  </p>
                 </div>
-              ) : (
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Message affiché si la page est accédée directement</label>
-                    <Textarea
-                      value={blockedMessage}
-                      onChange={(e) => setBlockedMessage(e.target.value)}
-                      placeholder="Ex: Cette page est momentanément désactivée."
-                      className="min-h-[100px]"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Laisser vide pour utiliser le message par défaut.
-                    </p>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium">Fonctionnalités</h3>
-                      <span className="text-xs text-muted-foreground">
-                        {blockedPages.length} désactivée{blockedPages.length > 1 ? 's' : ''}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {Object.entries(
-                        BLOCKABLE_PAGES.reduce<Record<string, typeof BLOCKABLE_PAGES>>((acc, page) => {
-                          acc[page.category] = acc[page.category] || [];
-                          acc[page.category].push(page);
-                          return acc;
-                        }, {} as Record<string, typeof BLOCKABLE_PAGES>)
-                      ).map(([category, pages]) => (
-                        <div
-                          key={category}
-                          className="p-4 border border-border/30 rounded-lg bg-muted/10 space-y-3"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="text-sm font-semibold">{category}</div>
-                            <span className="text-xs text-muted-foreground">
-                              {pages.filter(p => !blockedPages.includes(p.key)).length}/{pages.length} actives
-                            </span>
-                          </div>
-                          <div className="space-y-3">
-                            {pages.map((page) => (
-                              <div
-                                key={page.key}
-                                className="flex items-center justify-between"
-                              >
-                                <div>
-                                  <div className={cn("text-sm font-medium", blockedPages.includes(page.key) && "text-muted-foreground line-through")}>{page.label}</div>
-                                  <div className="text-xs text-muted-foreground">{page.path}</div>
-                                </div>
-                                <Switch
-                                  checked={!blockedPages.includes(page.key)}
-                                  onCheckedChange={() => toggleBlockedPage(page.key)}
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <Button
-                      onClick={saveBlockedPages}
-                      disabled={savingBlocks}
-                    >
-                      {savingBlocks ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <Save className="h-4 w-4 mr-2" />
-                      )}
-                      Sauvegarder
-                    </Button>
-                  </div>
-                </div>
-              )}
+                <Button variant="outline" onClick={() => setFonctionnalitesOpen(true)}>
+                  <Gamepad2 className="h-4 w-4 mr-2" />
+                  Gérer
+                </Button>
+              </div>
             </CardContent>
           </Card>
+
+          <Dialog open={fonctionnalitesOpen} onOpenChange={setFonctionnalitesOpen}>
+            <DialogContent className="max-w-xl max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
+              <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/40 shrink-0">
+                <DialogTitle>Fonctionnalités</DialogTitle>
+                <DialogDescription>
+                  Activez ou désactivez chaque page. Une page désactivée disparaît de la navigation et redirige vers un message.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="flex-1 overflow-y-auto">
+                <div className="px-6 py-4 border-b border-border/40 space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Message d&apos;erreur
+                  </label>
+                  <Textarea
+                    value={blockedMessage}
+                    onChange={(e) => setBlockedMessage(e.target.value)}
+                    placeholder="Ex: Cette page est momentanément désactivée."
+                    className="min-h-[70px] text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground">Laisser vide pour le message par défaut.</p>
+                </div>
+
+                {Object.entries(
+                  BLOCKABLE_PAGES.reduce<Record<string, typeof BLOCKABLE_PAGES>>((acc, page) => {
+                    acc[page.category] = acc[page.category] || [];
+                    acc[page.category].push(page);
+                    return acc;
+                  }, {} as Record<string, typeof BLOCKABLE_PAGES>)
+                ).map(([category, pages]) => (
+                  <div key={category}>
+                    <div className="px-6 pt-5 pb-1.5 flex items-center justify-between">
+                      <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+                        {category}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground/50">
+                        {pages.filter(p => !blockedPages.includes(p.key)).length}/{pages.length}
+                      </span>
+                    </div>
+                    <div className="mx-4 rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
+                      {pages.map((page) => {
+                        const isBlocked = blockedPages.includes(page.key);
+                        return (
+                          <div
+                            key={page.key}
+                            className="group flex items-center justify-between gap-4 px-4 py-3 hover:bg-muted/30 transition-colors cursor-default"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className={cn('text-sm font-medium leading-snug', isBlocked && 'text-muted-foreground/50 line-through')}>
+                                {page.label}
+                              </div>
+                              <div className="overflow-hidden max-h-0 group-hover:max-h-8 transition-all duration-150 ease-out">
+                                <p className="text-xs text-muted-foreground/70 pt-0.5 leading-tight">{page.description}</p>
+                              </div>
+                            </div>
+                            <Switch
+                              checked={!isBlocked}
+                              onCheckedChange={() => toggleBlockedPage(page.key)}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+                <div className="h-4" />
+              </div>
+
+              <div className="px-6 py-4 border-t border-border/40 flex items-center justify-between shrink-0 bg-background">
+                <span className="text-sm text-muted-foreground">
+                  {blockedPages.length > 0
+                    ? `${blockedPages.length} désactivée${blockedPages.length > 1 ? 's' : ''}`
+                    : 'Tout activé'}
+                </span>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setFonctionnalitesOpen(false)}>
+                    Annuler
+                  </Button>
+                  <Button onClick={async () => { const ok = await saveBlockedPages(); if (ok) setFonctionnalitesOpen(false); }} disabled={savingBlocks}>
+                    {savingBlocks ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                    Sauvegarder
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {user?.isSuperAdmin && (
             <Card>

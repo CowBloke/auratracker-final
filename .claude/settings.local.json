@@ -74,7 +74,18 @@
       "Bash(curl -s https://iammyguy21th.github.io/polytrack.3/index.html)",
       "Bash(curl -s -o /dev/null -w \"%{http_code} %{content_type}\" http://localhost:3000/polytrack/dist/main.bundle.js)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/api/auth/me)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:3000/polytrack/dist/main.bundle.js\")"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:3000/polytrack/dist/main.bundle.js\")",
+      "Bash(git -C c:/Users/cowbl/source/repos/CRust/auratracker-final add .gitignore frontend/public/polytrack/index.html)",
+      "Bash(git -C c:/Users/cowbl/source/repos/CRust/auratracker-final add -f frontend/public/polytrack/dist/main.bundle.js frontend/public/polytrack/dist/simulation_worker.bundle.js)",
+      "Bash(git -C c:/Users/cowbl/source/repos/CRust/auratracker-final status --short)",
+      "Bash(git -C c:/Users/cowbl/source/repos/CRust/auratracker-final ls-files --error-unmatch frontend/public/polytrack/dist/main.bundle.js)",
+      "Bash(git -C c:/Users/cowbl/source/repos/CRust/auratracker-final diff --cached --name-only)",
+      "Bash(git -C c:/Users/cowbl/source/repos/CRust/auratracker-final diff --cached .gitignore)",
+      "Bash(git -C c:/Users/cowbl/source/repos/CRust/auratracker-final diff .gitignore)",
+      "Bash(git -C c:/Users/cowbl/source/repos/CRust/auratracker-final show --stat 5b8a4b5)",
+      "Bash(git -C c:/Users/cowbl/source/repos/CRust/auratracker-final show --stat da93aec)",
+      "Bash(git -C c:/Users/cowbl/source/repos/CRust/auratracker-final show --stat a9a209b)",
+      "Bash(git -C:*)"
     ]
   },
   "outputStyle": "default"
