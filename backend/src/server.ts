@@ -89,6 +89,7 @@ app.use(cors({
 app.use(express.json({ limit: '25mb' }));
 app.use('/uploads', express.static(path.resolve('uploads')));
 app.use('/api/uploads', express.static(path.resolve('uploads')));
+app.use('/polytrack', express.static(path.resolve('../frontend/public/polytrack')));
 
 // REST Routes
 app.use('/api/auth', authRoutes);
