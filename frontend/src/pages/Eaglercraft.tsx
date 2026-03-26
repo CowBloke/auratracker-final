@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
+import { GamePauseButton } from '@/components/game/GamePauseButton';
+import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { cn } from '@/lib/utils';
 
@@ -15,8 +17,10 @@ const GAME_SRC = '/eaglercraft/index.html';
 export default function Eaglercraft() {
   const { containerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
   const [sessionKey, setSessionKey] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
 
   const restartSession = () => {
+    setIsPaused(false);
     setSessionKey((prev) => prev + 1);
   };
 
@@ -28,6 +32,7 @@ export default function Eaglercraft() {
           className={cn('flex flex-col gap-3', isFullscreen && 'min-h-screen w-screen bg-background px-4 py-4')}
         >
           <GameFullscreenToolbar isFullscreen={isFullscreen} onToggleFullscreen={toggleFullscreen} className="w-full">
+            <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} />
             <Button size="sm" variant="outline" onClick={restartSession}>
               <RotateCcw className="mr-2 h-4 w-4" />
               Recharger
@@ -41,6 +46,11 @@ export default function Eaglercraft() {
               title="Eaglercraft"
               className="block h-full w-full rounded-lg border border-border/30 bg-black"
               allow="fullscreen; autoplay; clipboard-read; clipboard-write"
+            />
+            <GamePauseOverlay
+              visible={isPaused}
+              onResume={() => setIsPaused(false)}
+              description="La session reste affichée mais les interactions sont gelées par-dessus."
             />
           </GameFullscreenStage>
         </div>

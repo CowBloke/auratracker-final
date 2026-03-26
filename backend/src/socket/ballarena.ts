@@ -20,17 +20,14 @@ export const EXIT_THRESHOLD = ARENA_RADIUS - BALL_RADIUS; // 218
 const STALEMATE_SPEED_THRESHOLD = 6; // px/s — both balls below this → new round
 const STALEMATE_TICKS_MIN = 60;    // wait at least ~1s before checking
 
-const INITIAL_POSITIONS: [[number, number], [number, number]] = [
-  [200, 300], // player index 0 (left)
-  [400, 300], // player index 1 (right)
-];
-
 // ─── Types ────────────────────────────────────────────────────────────────────
+type BallArenaMode = 'duo' | 'multiplayer';
+
 interface BallArenaPlayer {
   userId: string;
   username: string;
   usernameColor?: string | null;
-  playerIndex: 0 | 1;
+  playerIndex: number;
 }
 
 interface BallState {
@@ -46,6 +43,7 @@ interface BallState {
 
 interface BallArenaGame {
   partyId: string;
+  mode: BallArenaMode;
   players: BallArenaPlayer[];
   balls: BallState[];
   phase: 'prep' | 'playing' | 'finished';
@@ -64,6 +62,7 @@ interface BallArenaGame {
 
 interface PendingJoinPrompt {
   partyId: string;
+  mode: BallArenaMode;
   leaderId: string;
   responses: Map<string, boolean>;
   memberIds: string[];
@@ -74,6 +73,7 @@ interface PendingJoinPrompt {
 
 interface PendingPlayAgainPrompt {
   partyId: string;
+  mode: BallArenaMode;
   responses: Map<string, boolean>;
   players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
   timer: NodeJS.Timeout | null;
@@ -93,6 +93,24 @@ function dist2(ax: number, ay: number, bx: number, by: number): number {
   return Math.sqrt((ax - bx) ** 2 + (ay - by) ** 2);
 }
 
+function getInitialPositions(playerCount: number): Array<[number, number]> {
+  if (playerCount <= 2) {
+    return [
+      [200, 300],
+      [400, 300],
+    ];
+  }
+
+  const radius = Math.min(150, EXIT_THRESHOLD - 42);
+  return Array.from({ length: playerCount }, (_, index) => {
+    const angle = (-Math.PI / 2) + ((Math.PI * 2 * index) / playerCount);
+    return [
+      ARENA_CX + Math.cos(angle) * radius,
+      ARENA_CY + Math.sin(angle) * radius,
+    ];
+  });
+}
+
 function simStep(balls: BallState[]): void {
   const dt = SIM_STEP_MS / 1000;
 
@@ -105,26 +123,30 @@ function simStep(balls: BallState[]): void {
   }
 
   // Ball–ball elastic collision (equal masses)
-  const [b0, b1] = balls;
-  if (!b0.isOut && !b1.isOut) {
-    const d = dist2(b0.x, b0.y, b1.x, b1.y);
-    if (d < BALL_RADIUS * 2 && d > 0.001) {
-      const nx = (b1.x - b0.x) / d;
-      const ny = (b1.y - b0.y) / d;
-      const dvx = b0.vx - b1.vx;
-      const dvy = b0.vy - b1.vy;
-      const p = dvx * nx + dvy * ny;
-      if (p > 0) {
-        b0.vx -= p * nx;
-        b0.vy -= p * ny;
-        b1.vx += p * nx;
-        b1.vy += p * ny;
-        // Separate to prevent overlap
-        const overlap = BALL_RADIUS * 2 - d;
-        b0.x -= nx * overlap * 0.5;
-        b0.y -= ny * overlap * 0.5;
-        b1.x += nx * overlap * 0.5;
-        b1.y += ny * overlap * 0.5;
+  for (let i = 0; i < balls.length; i++) {
+    for (let j = i + 1; j < balls.length; j++) {
+      const b0 = balls[i];
+      const b1 = balls[j];
+      if (b0.isOut || b1.isOut) continue;
+      const d = dist2(b0.x, b0.y, b1.x, b1.y);
+      if (d < BALL_RADIUS * 2 && d > 0.001) {
+        const nx = (b1.x - b0.x) / d;
+        const ny = (b1.y - b0.y) / d;
+        const dvx = b0.vx - b1.vx;
+        const dvy = b0.vy - b1.vy;
+        const p = dvx * nx + dvy * ny;
+        if (p > 0) {
+          b0.vx -= p * nx;
+          b0.vy -= p * ny;
+          b1.vx += p * nx;
+          b1.vy += p * ny;
+          // Separate to prevent overlap
+          const overlap = BALL_RADIUS * 2 - d;
+          b0.x -= nx * overlap * 0.5;
+          b0.y -= ny * overlap * 0.5;
+          b1.x += nx * overlap * 0.5;
+          b1.y += ny * overlap * 0.5;
+        }
       }
     }
   }
@@ -142,6 +164,7 @@ function simStep(balls: BallState[]): void {
 function serializeState(game: BallArenaGame) {
   return {
     partyId: game.partyId,
+    mode: game.mode,
     phase: game.phase,
     prepStartTime: game.prepStartTime,
     prepTimeMs: PREP_TIME_MS,
@@ -220,10 +243,7 @@ function startSimulation(game: BallArenaGame, io: Server) {
 
   // Reset replay and record initial frame
   game.replayFrames = [];
-  game.replayFrames.push([
-    game.balls[0].x, game.balls[0].y, 0,
-    game.balls[1].x, game.balls[1].y, 0,
-  ]);
+  game.replayFrames.push(game.balls.flatMap((ball) => [ball.x, ball.y, ball.isOut ? 1 : 0]));
 
   game.tickCount = 0;
   game.simInterval = setInterval(() => {
@@ -237,24 +257,18 @@ function startSimulation(game: BallArenaGame, io: Server) {
 
     // Record replay frames (no live broadcast — client runs physics locally)
     if (game.tickCount % BROADCAST_EVERY_N_TICKS === 0) {
-      game.replayFrames.push([
-        game.balls[0].x, game.balls[0].y, game.balls[0].isOut ? 1 : 0,
-        game.balls[1].x, game.balls[1].y, game.balls[1].isOut ? 1 : 0,
-      ]);
+      game.replayFrames.push(game.balls.flatMap((ball) => [ball.x, ball.y, ball.isOut ? 1 : 0]));
     }
 
-    const b0Out = game.balls[0].isOut;
-    const b1Out = game.balls[1].isOut;
-    if (b0Out || b1Out) {
+    const alivePlayers = game.players.filter((_, index) => !game.balls[index].isOut);
+    if (alivePlayers.length <= 1) {
       stopSimulation(game);
       let winnerId: string | null = null;
       let isDraw = false;
-      if (b0Out && b1Out) {
+      if (alivePlayers.length === 0) {
         isDraw = true;
-      } else if (b0Out) {
-        winnerId = game.players[1].userId;
       } else {
-        winnerId = game.players[0].userId;
+        winnerId = alivePlayers[0].userId;
       }
       endGame(game, io, winnerId, isDraw);
       return;
@@ -262,9 +276,11 @@ function startSimulation(game: BallArenaGame, io: Server) {
 
     // Stalemate: both balls stopped, nobody out → new round
     if (game.tickCount >= STALEMATE_TICKS_MIN) {
-      const s0 = Math.sqrt(game.balls[0].vx ** 2 + game.balls[0].vy ** 2);
-      const s1 = Math.sqrt(game.balls[1].vx ** 2 + game.balls[1].vy ** 2);
-      if (s0 < STALEMATE_SPEED_THRESHOLD && s1 < STALEMATE_SPEED_THRESHOLD) {
+      const movingBalls = game.balls.filter((ball) => !ball.isOut);
+      const isStalemate = movingBalls.every((ball) => (
+        Math.sqrt(ball.vx ** 2 + ball.vy ** 2) < STALEMATE_SPEED_THRESHOLD
+      ));
+      if (movingBalls.length > 1 && isStalemate) {
         stopSimulation(game);
         resetForNewRound(game, io);
       }
@@ -310,27 +326,29 @@ async function endGame(
   try {
     if (!isDraw && winnerId) {
       const winner = game.players.find((p) => p.userId === winnerId)!;
-      const loser = game.players.find((p) => p.userId !== winnerId)!;
+      const losers = game.players.filter((p) => p.userId !== winnerId);
 
-      const [updatedWinner, updatedLoser] = await Promise.all([
-        prisma.user.update({
-          where: { id: winnerId },
-          data: { aura: { increment: winnerReward.aura }, money: { increment: winnerReward.money } },
-          select: { id: true, aura: true, money: true },
-        }),
+      const updatedWinner = await prisma.user.update({
+        where: { id: winnerId },
+        data: { aura: { increment: winnerReward.aura }, money: { increment: winnerReward.money } },
+        select: { id: true, aura: true, money: true },
+      });
+      const updatedLosers = await Promise.all(losers.map((loser) => (
         prisma.user.update({
           where: { id: loser.userId },
           data: { money: { increment: loserReward.money } },
           select: { id: true, aura: true, money: true },
-        }),
-      ]);
+        })
+      )));
 
       io.emit('economy:balance-update', { userId: updatedWinner.id, aura: updatedWinner.aura, money: updatedWinner.money });
-      io.emit('economy:balance-update', { userId: updatedLoser.id, aura: updatedLoser.aura, money: updatedLoser.money });
+      for (const updatedLoser of updatedLosers) {
+        io.emit('economy:balance-update', { userId: updatedLoser.id, aura: updatedLoser.aura, money: updatedLoser.money });
+      }
 
       await checkQuestProgress(winnerId, 'PLAY_GAMES', 1);
       await checkQuestProgress(winnerId, 'WIN_GAMES', 1);
-      await checkQuestProgress(loser.userId, 'PLAY_GAMES', 1);
+      await Promise.all(losers.map((loser) => checkQuestProgress(loser.userId, 'PLAY_GAMES', 1)));
 
       await Promise.all([
         prisma.gameStats.upsert({
@@ -338,11 +356,11 @@ async function endGame(
           create: { userId: winnerId, gameType: 'ball_arena', wins: 1, losses: 0, highScore: 1, totalPlayed: 1 },
           update: { wins: { increment: 1 }, totalPlayed: { increment: 1 } },
         }),
-        prisma.gameStats.upsert({
+        ...losers.map((loser) => prisma.gameStats.upsert({
           where: { userId_gameType: { userId: loser.userId, gameType: 'ball_arena' } },
           create: { userId: loser.userId, gameType: 'ball_arena', wins: 0, losses: 1, highScore: 0, totalPlayed: 1 },
           update: { losses: { increment: 1 }, totalPlayed: { increment: 1 } },
-        }),
+        })),
       ]);
 
       void recheckBadgeForCondition('BALL_ARENA_WIN');
@@ -354,6 +372,13 @@ async function endGame(
         rewards: { winner: winnerReward, loser: loserReward },
         replayFrames: game.replayFrames,
         players: game.players.map((p) => ({ userId: p.userId, username: p.username, usernameColor: p.usernameColor, playerIndex: p.playerIndex })),
+        results: game.players.map((player) => ({
+          userId: player.userId,
+          username: player.username,
+          usernameColor: player.usernameColor,
+          isWinner: player.userId === winnerId,
+          rewards: player.userId === winnerId ? winnerReward : loserReward,
+        })),
       });
 
       logGame('game_complete', winner.userId, winner.username, {
@@ -361,11 +386,13 @@ async function endGame(
         auraReward: winnerReward.aura, moneyReward: winnerReward.money,
         isMultiplayer: true, partyId: game.partyId,
       });
-      logGame('game_complete', loser.userId, loser.username, {
-        gameType: 'ball_arena', score: 0, won: false,
-        auraReward: loserReward.aura, moneyReward: loserReward.money,
-        isMultiplayer: true, partyId: game.partyId,
-      });
+      for (const loser of losers) {
+        logGame('game_complete', loser.userId, loser.username, {
+          gameType: 'ball_arena', score: 0, won: false,
+          auraReward: loserReward.aura, moneyReward: loserReward.money,
+          isMultiplayer: true, partyId: game.partyId,
+        });
+      }
     } else {
       const updated = await Promise.all(
         game.players.map((p) =>
@@ -390,6 +417,13 @@ async function endGame(
         rewards: { draw: drawReward },
         replayFrames: game.replayFrames,
         players: game.players.map((p) => ({ userId: p.userId, username: p.username, usernameColor: p.usernameColor, playerIndex: p.playerIndex })),
+        results: game.players.map((player) => ({
+          userId: player.userId,
+          username: player.username,
+          usernameColor: player.usernameColor,
+          isWinner: false,
+          rewards: drawReward,
+        })),
       });
     }
   } catch (error) {
@@ -399,6 +433,7 @@ async function endGame(
   // Play-again prompt
   const prompt: PendingPlayAgainPrompt = {
     partyId: game.partyId,
+    mode: game.mode,
     responses: new Map(),
     players: game.players.map((p) => ({ userId: p.userId, username: p.username, usernameColor: p.usernameColor })),
     timer: null,
@@ -408,6 +443,7 @@ async function endGame(
   prompt.timer = setTimeout(() => resolvePlayAgainPrompt(game.partyId, io), PLAY_AGAIN_TIMEOUT);
   io.to(`party:${game.partyId}`).emit('ballarena:play-again-prompt', {
     partyId: game.partyId,
+    mode: game.mode,
     timeLimit: PLAY_AGAIN_TIMEOUT,
     startTime: prompt.startTime,
     players: prompt.players,
@@ -440,13 +476,13 @@ async function resolvePlayAgainPrompt(partyId: string, io: Server) {
     orderBy: { joinedAt: 'asc' },
   });
 
-  if (members.length !== 2) {
+  if ((prompt.mode === 'duo' && members.length !== 2) || (prompt.mode === 'multiplayer' && members.length < 2)) {
     io.to(`party:${partyId}`).emit('ballarena:play-again-cancelled', {});
     if (duelPartyIds.has(partyId)) await deleteDuelParty(partyId, io);
     return;
   }
 
-  const game = createGame(partyId, members.map((m) => ({ user: m.user })));
+  const game = createGame(partyId, members.map((m) => ({ user: m.user })), prompt.mode);
   activeGames.set(partyId, game);
   emitState(game, io);
   game.prepTimeout = setTimeout(() => startSimulation(game, io), PREP_TIME_MS);
@@ -474,12 +510,12 @@ async function resolveJoinPrompt(partyId: string, io: Server) {
     orderBy: { joinedAt: 'asc' },
   });
 
-  if (members.length !== 2) {
+  if ((prompt.mode === 'duo' && members.length !== 2) || (prompt.mode === 'multiplayer' && members.length < 2)) {
     io.to(`party:${partyId}`).emit('ballarena:join-cancelled', {});
     return;
   }
 
-  const game = createGame(partyId, members.map((m) => ({ user: m.user })));
+  const game = createGame(partyId, members.map((m) => ({ user: m.user })), prompt.mode);
   activeGames.set(partyId, game);
   emitState(game, io);
   game.prepTimeout = setTimeout(() => startSimulation(game, io), PREP_TIME_MS);
@@ -488,19 +524,22 @@ async function resolveJoinPrompt(partyId: string, io: Server) {
 // ─── Game factory ─────────────────────────────────────────────────────────────
 function createGame(
   partyId: string,
-  players: Array<{ user: { id: string; username: string; usernameColor?: string | null } }>
+  players: Array<{ user: { id: string; username: string; usernameColor?: string | null } }>,
+  mode: BallArenaMode = 'duo'
 ): BallArenaGame {
+  const initialPositions = getInitialPositions(players.length);
   return {
     partyId,
+    mode,
     players: players.map((m, i) => ({
       userId: m.user.id,
       username: m.user.username,
       usernameColor: m.user.usernameColor ?? null,
-      playerIndex: i as 0 | 1,
+      playerIndex: i,
     })),
     balls: players.map((_, i) => ({
-      x: INITIAL_POSITIONS[i][0],
-      y: INITIAL_POSITIONS[i][1],
+      x: initialPositions[i][0],
+      y: initialPositions[i][1],
       vx: 0,
       vy: 0,
       plannedVx: 0,
@@ -530,7 +569,7 @@ export function startDirectBallArenaGame(
   io: Server
 ) {
   if (activeGames.has(partyId)) return;
-  const game = createGame(partyId, players);
+  const game = createGame(partyId, players, 'duo');
   activeGames.set(partyId, game);
   emitState(game, io);
   game.prepTimeout = setTimeout(() => startSimulation(game, io), PREP_TIME_MS);
@@ -565,6 +604,7 @@ export const setupBallArenaHandlers = (socket: Socket, io: Server) => {
       const responses = Array.from(joinPrompt.responses.entries()).map(([uid, v]) => ({ userId: uid, accepted: v }));
       socket.emit('ballarena:join-prompt', {
         partyId: joinPrompt.partyId,
+        mode: joinPrompt.mode,
         leaderId: joinPrompt.leaderId,
         timeLimit: JOIN_PROMPT_TIMEOUT,
         startTime: joinPrompt.startTime,
@@ -578,6 +618,7 @@ export const setupBallArenaHandlers = (socket: Socket, io: Server) => {
       const responses = Array.from(playAgainPrompt.responses.entries()).map(([uid, v]) => ({ userId: uid, playAgain: v }));
       socket.emit('ballarena:play-again-prompt', {
         partyId: playAgainPrompt.partyId,
+        mode: playAgainPrompt.mode,
         timeLimit: PLAY_AGAIN_TIMEOUT,
         startTime: playAgainPrompt.startTime,
         players: playAgainPrompt.players,
@@ -586,10 +627,11 @@ export const setupBallArenaHandlers = (socket: Socket, io: Server) => {
     }
   });
 
-  socket.on('ballarena:start', async (data: { partyId: string }) => {
+  socket.on('ballarena:start', async (data: { partyId: string; mode?: BallArenaMode }) => {
     const userId = socket.data.userId as string | undefined;
     if (!userId) return;
     const { partyId } = data;
+    const mode: BallArenaMode = data.mode === 'multiplayer' ? 'multiplayer' : 'duo';
 
     try {
       const membership = await prisma.partyMember.findUnique({
@@ -611,8 +653,12 @@ export const setupBallArenaHandlers = (socket: Socket, io: Server) => {
         socket.emit('ballarena:error', { message: 'Seul le leader peut lancer la partie.' });
         return;
       }
-      if (membership.party.members.length !== 2) {
-        socket.emit('ballarena:error', { message: 'Il faut exactement 2 joueurs.' });
+      if (mode === 'duo' && membership.party.members.length !== 2) {
+        socket.emit('ballarena:error', { message: 'Le mode duo demande exactement 2 joueurs.' });
+        return;
+      }
+      if (mode === 'multiplayer' && membership.party.members.length < 2) {
+        socket.emit('ballarena:error', { message: 'Le mode multijoueur demande au moins 2 joueurs.' });
         return;
       }
       if (activeGames.has(partyId) || pendingJoinPrompts.has(partyId)) {
@@ -630,6 +676,7 @@ export const setupBallArenaHandlers = (socket: Socket, io: Server) => {
 
       const prompt: PendingJoinPrompt = {
         partyId,
+        mode,
         leaderId: userId,
         responses: new Map(),
         memberIds,
@@ -643,6 +690,7 @@ export const setupBallArenaHandlers = (socket: Socket, io: Server) => {
 
       io.to(`party:${partyId}`).emit('ballarena:join-prompt', {
         partyId,
+        mode,
         leaderId: userId,
         timeLimit: JOIN_PROMPT_TIMEOUT,
         startTime: prompt.startTime,
@@ -754,6 +802,7 @@ export function sendPendingBallArenaPlayAgainPrompt(socket: Socket, partyId: str
   const responses = Array.from(prompt.responses.entries()).map(([uid, v]) => ({ userId: uid, playAgain: v }));
   socket.emit('ballarena:play-again-prompt', {
     partyId: prompt.partyId,
+    mode: prompt.mode,
     timeLimit: PLAY_AGAIN_TIMEOUT,
     startTime: prompt.startTime,
     players: prompt.players,

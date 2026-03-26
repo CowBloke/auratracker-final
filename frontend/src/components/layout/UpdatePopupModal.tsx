@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { usersApi, UserUpdatePopup } from '@/services/api';
 import { resolveImageUrl } from '@/lib/images';
 
 export default function UpdatePopupModal() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [popups, setPopups] = useState<UserUpdatePopup[]>([]);
   const [index, setIndex] = useState(0);
@@ -67,6 +69,11 @@ export default function UpdatePopupModal() {
     setIndex((value) => value + 1);
   };
 
+  const handleJoinClan = async () => {
+    await handleNext();
+    navigate('/clans');
+  };
+
   if (loading || !currentPopup) {
     return null;
   }
@@ -81,6 +88,9 @@ export default function UpdatePopupModal() {
       });
 
   const isLast = index === popups.length - 1;
+  const description = currentPopup.type === 'CLAN_PROMPT'
+    ? `Invitation a rejoindre un clan - ${index + 1}/${popups.length}`
+    : `Mise a jour du ${releaseDateLabel} - ${index + 1}/${popups.length}`;
 
   return (
     <Dialog open>
@@ -91,9 +101,7 @@ export default function UpdatePopupModal() {
       >
         <DialogHeader>
           <DialogTitle>{currentPopup.title}</DialogTitle>
-          <DialogDescription>
-            Mise a jour du {releaseDateLabel} • {index + 1}/{popups.length}
-          </DialogDescription>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -115,9 +123,15 @@ export default function UpdatePopupModal() {
         </div>
 
         <DialogFooter>
-          <Button onClick={handleNext} disabled={marking}>
-            {isLast ? 'Fermer' : 'Suivant'}
-          </Button>
+          {currentPopup.type === 'CLAN_PROMPT' ? (
+            <Button onClick={handleJoinClan} disabled={marking}>
+              Rejoindre un clan
+            </Button>
+          ) : (
+            <Button onClick={handleNext} disabled={marking}>
+              {isLast ? 'Fermer' : 'Suivant'}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

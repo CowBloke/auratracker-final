@@ -4,6 +4,7 @@ import { gamesApi, DailyRacerLeaderboardEntry } from '../services/api';
 import { Play, RotateCcw, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useHideGameLeaderboards } from '@/lib/game-preferences';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
@@ -436,6 +437,7 @@ interface Car {
 // COMPONENT
 // ============================================
 export default function Racer() {
+  const hideGameLeaderboards = useHideGameLeaderboards();
   const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
@@ -1422,6 +1424,7 @@ export default function Racer() {
           </GameFullscreenStage>
         </div>
 
+        {!hideGameLeaderboards && (
         <div
           className={cn(
             'w-full max-w-[1024px] border border-border/30 rounded-lg bg-card overflow-hidden shadow-sm 2xl:w-80 2xl:max-w-none',
@@ -1481,6 +1484,7 @@ export default function Racer() {
             )}
           </div>
         </div>
+        )}
       </div>
 
       <div className={cn('flex justify-center gap-8 text-xs text-muted-foreground', isFullscreen && 'hidden')}>

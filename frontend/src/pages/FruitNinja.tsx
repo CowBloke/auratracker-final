@@ -17,13 +17,13 @@ import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/Ga
 const CANVAS_WIDTH = 400;
 const CANVAS_HEIGHT = 600;
 const GAME_TYPE = 'fruit_ninja';
-const GRAVITY = 0.22;
+const GRAVITY = 0.28;
 const MAX_LIVES = 3;
-const FRUIT_RADIUS = 36;
+const FRUIT_RADIUS = 44;
 const MIN_SLICE_SPEED = 3;
 const COMBO_TIMEOUT_MS = 1400;
 const TRAIL_DURATION_MS = 110;
-const MAX_ACTIVE_FRUITS = 10;
+const MAX_ACTIVE_FRUITS = 12;
 const WOOD_PLANK_MIN_WIDTH = 60;
 const WOOD_PLANK_MAX_WIDTH = 96;
 
@@ -187,8 +187,8 @@ export default function FruitNinja() {
     const x = fromLeft
       ? FRUIT_RADIUS + Math.random() * 100
       : CANVAS_WIDTH - FRUIT_RADIUS - Math.random() * 100;
-    const vx = (fromLeft ? 1 : -1) * (1.2 + Math.random() * 2.5);
-    const peakFrac = 0.38 + Math.random() * 0.38;
+    const vx = (fromLeft ? 1 : -1) * (1.8 + Math.random() * 3.4);
+    const peakFrac = 0.34 + Math.random() * 0.32;
     const peak = CANVAS_HEIGHT * peakFrac;
     const vy = -Math.sqrt(2 * GRAVITY * peak);
     const fd = FRUIT_DATA[Math.floor(Math.random() * FRUIT_DATA.length)];
@@ -643,9 +643,16 @@ export default function FruitNinja() {
     if (shakeAmtRef.current > 0) shakeAmtRef.current = Math.max(0, shakeAmtRef.current - dt);
 
     // Spawn
-    const spawnInt = Math.max(500, 1750 - scoreRef.current * 0.55);
+    const spawnInt = Math.max(320, 1350 - scoreRef.current * 0.9);
     if (timestamp - lastSpawnRef.current > spawnInt) {
-      const batch = scoreRef.current > 300 && Math.random() < 0.35 ? 2 : 1;
+      const multiSpawnChance = scoreRef.current > 40
+        ? Math.min(0.72, 0.18 + scoreRef.current / 900)
+        : 0;
+      const batch = scoreRef.current > 220 && Math.random() < 0.28
+        ? 3
+        : Math.random() < multiSpawnChance
+          ? 2
+          : 1;
       for (let i = 0; i < batch; i++) spawnFruit();
       lastSpawnRef.current = timestamp;
     }

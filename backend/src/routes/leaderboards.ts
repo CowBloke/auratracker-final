@@ -22,11 +22,39 @@ const router = Router();
 
 type Period = 'daily' | 'weekly' | 'monthly';
 
-// Game types that can be filtered by period via GameScoreHistory
+// Game types that can be filtered by period via game_complete logs
 const PERIOD_GAME_TYPES = new Set([
   'doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird',
   'chrome_dino', 'solitaire', 'racer', 'tetris', 'knife_hit', 'minesweeper', 'casino',
 ]);
+
+const SCORE_GAME_CATEGORIES = {
+  doodle_jump: { gameType: 'doodle_jump', order: 'desc' as const },
+  doodle_jump_mort_subite: { gameType: 'doodle_jump_mort_subite', order: 'desc' as const },
+  game_2048: { gameType: 'game_2048', order: 'desc' as const },
+  flappy_bird: { gameType: 'flappy_bird', order: 'desc' as const },
+  chrome_dino: { gameType: 'chrome_dino', order: 'desc' as const },
+  solitaire: { gameType: 'solitaire', order: 'desc' as const },
+  racer: { gameType: 'racer', order: 'asc' as const },
+  tetris: { gameType: 'tetris', order: 'desc' as const },
+  knife_hit: { gameType: 'knife_hit', order: 'desc' as const },
+  minesweeper: { gameType: 'minesweeper', order: 'desc' as const },
+  casino: { gameType: 'casino', order: 'desc' as const },
+} as const;
+
+const WIN_GAME_CATEGORIES = {
+  chess: 'chess',
+  petit_bac: 'petit_bac',
+  puissance_4: 'puissance_4',
+  jackpot_5: 'jackpot_5',
+  ball_arena: 'ball_arena',
+  poker: 'poker',
+  battleship: 'battleship',
+  russian_roulette: 'russian_roulette',
+  levier_infernal: 'levier_infernal',
+  uno: 'uno',
+  morpion: 'morpion',
+} as const;
 
 function getPeriodStart(period: Period): Date {
   const now = new Date();
@@ -45,26 +73,88 @@ function getPeriodStart(period: Period): Date {
 async function getPeriodGameRankings(
   gameType: string,
   periodStart: Date,
-  limit: number,
-  skip: number,
   ascending = false,
 ): Promise<{ userId: string; username: string; usernameColor: string | null; value: number }[]> {
-  const aggFn = ascending ? 'MIN' : 'MAX';
-  const orderDir = ascending ? 'ASC' : 'DESC';
-  const rows = await prisma.$queryRawUnsafe<{ userId: string; username: string; usernameColor: string | null; highScore: number }[]>(
-    `SELECT gsh.userId, u.username, u.usernameColor,
-      ${aggFn}(gsh.score) as highScore
-    FROM "GameScoreHistory" gsh
-    JOIN "User" u ON gsh.userId = u.id
-    WHERE gsh.gameType = ?
-      AND gsh.createdAt >= ?
-      AND u.isSuperAdmin = 0
-    GROUP BY gsh.userId
-    ORDER BY highScore ${orderDir}
-    LIMIT ? OFFSET ?`,
-    gameType, periodStart.toISOString(), limit, skip,
-  );
-  return rows.map((r) => ({ userId: r.userId, username: r.username, usernameColor: r.usernameColor, value: Number(r.highScore) }));
+  const logs = await prisma.log.findMany({
+    where: {
+      type: 'GAME',
+      action: 'game_complete',
+      createdAt: { gte: periodStart },
+      userId: { not: null },
+      metadata: { not: null },
+    },
+    select: {
+      userId: true,
+      createdAt: true,
+      metadata: true,
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  const bestByUser = new Map<string, { value: number; achievedAt: Date }>();
+  for (const log of logs) {
+    if (!log.userId || !log.metadata) continue;
+
+    try {
+      const metadata = JSON.parse(log.metadata) as { gameType?: unknown; score?: unknown };
+      if (metadata.gameType !== gameType) continue;
+
+      const score = Number(metadata.score);
+      if (!Number.isFinite(score)) continue;
+
+      const currentBest = bestByUser.get(log.userId);
+      const isBetterScore = currentBest
+        ? ascending
+          ? score < currentBest.value
+          : score > currentBest.value
+        : false;
+      const isSameScoreEarlier = currentBest && score === currentBest.value && log.createdAt < currentBest.achievedAt;
+
+      if (!currentBest || isBetterScore || isSameScoreEarlier) {
+        bestByUser.set(log.userId, { value: score, achievedAt: log.createdAt });
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  const userIds = Array.from(bestByUser.keys());
+  if (userIds.length === 0) {
+    return [];
+  }
+
+  const users = await prisma.user.findMany({
+    where: {
+      id: { in: userIds },
+      isSuperAdmin: false,
+    },
+    select: {
+      id: true,
+      username: true,
+      usernameColor: true,
+    },
+  });
+  const userMap = new Map(users.map((user) => [user.id, user]));
+
+  return userIds
+    .filter((userId) => userMap.has(userId))
+    .map((userId) => ({
+      userId,
+      username: userMap.get(userId)!.username,
+      usernameColor: userMap.get(userId)!.usernameColor,
+      value: bestByUser.get(userId)!.value,
+      achievedAt: bestByUser.get(userId)!.achievedAt,
+    }))
+    .sort((a, b) => {
+      if (a.value !== b.value) {
+        return ascending ? a.value - b.value : b.value - a.value;
+      }
+      if (a.achievedAt.getTime() !== b.achievedAt.getTime()) {
+        return a.achievedAt.getTime() - b.achievedAt.getTime();
+      }
+      return a.username.localeCompare(b.username, 'fr');
+    })
+    .map(({ achievedAt: _achievedAt, ...ranking }) => ranking);
 }
 
 type LeaderboardCategory =
@@ -83,6 +173,18 @@ type LeaderboardCategory =
   | 'minesweeper'
   | 'casino'
   | 'casino_losses'
+  | 'chess'
+  | 'petit_bac'
+  | 'puissance_4'
+  | 'jackpot_5'
+  | 'ball_arena'
+  | 'poker'
+  | 'battleship'
+  | 'russian_roulette'
+  | 'levier_infernal'
+  | 'uno'
+  | 'morpion'
+  | 'polymarket_ratio'
   | 'games_played'
   | 'bombparty';
 
@@ -94,6 +196,8 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
 
     let rankings: any[] = [];
     let totalMoneyPrice: number | null = null;
+    const scoreCategoryConfig = SCORE_GAME_CATEGORIES[category as keyof typeof SCORE_GAME_CATEGORIES];
+    const winGameType = WIN_GAME_CATEGORIES[category as keyof typeof WIN_GAME_CATEGORIES];
 
     // Period-filtered leaderboard for score-based games
     if (period && (period === 'daily' || period === 'weekly' || period === 'monthly') && PERIOD_GAME_TYPES.has(category)) {
@@ -101,8 +205,9 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
       const ascending = category === 'racer';
       const take = parseInt(limit as string);
       const skip = parseInt(offset as string);
-      const periodRankings = await getPeriodGameRankings(category, periodStart, take, skip, ascending);
-      rankings = periodRankings.map((r, i) => ({
+      const allPeriodRankings = await getPeriodGameRankings(category, periodStart, ascending);
+      const visiblePeriodRankings = allPeriodRankings.slice(skip, skip + take);
+      rankings = visiblePeriodRankings.map((r, i) => ({
         rank: skip + i + 1,
         userId: r.userId,
         username: r.username,
@@ -149,37 +254,70 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
       // User's own rank in the period
       let userRank = null;
       if (req.user) {
-        const userEntry = rankings.find((r: any) => r.userId === req.user!.id);
-        if (userEntry) {
-          userRank = userEntry.rank;
-        } else {
-          const aggFn2 = ascending ? 'MIN' : 'MAX';
-          const cmp = ascending ? '<' : '>';
-          const userBestRows = await prisma.$queryRawUnsafe<{ best: number | null }[]>(
-            `SELECT ${aggFn2}(score) as best FROM "GameScoreHistory" WHERE gameType = ? AND createdAt >= ? AND userId = ?`,
-            category, periodStart.toISOString(), req.user.id,
-          );
-          const userBest = userBestRows[0]?.best != null ? Number(userBestRows[0].best) : null;
-          if (userBest !== null) {
-            const betterRows = await prisma.$queryRawUnsafe<{ cnt: bigint }[]>(
-              `SELECT COUNT(*) as cnt FROM (
-                SELECT gsh.userId FROM "GameScoreHistory" gsh
-                JOIN "User" u ON gsh.userId = u.id
-                WHERE gsh.gameType = ? AND gsh.createdAt >= ? AND u.isSuperAdmin = 0
-                GROUP BY gsh.userId
-                HAVING ${aggFn2}(gsh.score) ${cmp} ?
-              )`,
-              category, periodStart.toISOString(), userBest,
-            );
-            userRank = Number(betterRows[0]?.cnt ?? 0) + 1;
-          }
+        const userIndex = allPeriodRankings.findIndex((r) => r.userId === req.user!.id);
+        if (userIndex !== -1) {
+          userRank = userIndex + 1;
         }
       }
 
       return res.json({ rankings, userRank });
     }
 
-    switch (category) {
+    if (winGameType) {
+      rankings = await prisma.gameStats.findMany({
+        where: { gameType: winGameType, user: { isSuperAdmin: false } },
+        select: {
+          userId: true,
+          wins: true,
+          losses: true,
+          totalPlayed: true,
+          user: {
+            select: { username: true, usernameColor: true },
+          },
+        },
+        orderBy: [
+          { wins: 'desc' },
+          { totalPlayed: 'desc' },
+        ],
+        take: parseInt(limit as string),
+        skip: parseInt(offset as string),
+      });
+      rankings = rankings.map((s, i) => ({
+        rank: parseInt(offset as string) + i + 1,
+        userId: s.userId,
+        username: s.user.username,
+        usernameColor: s.user.usernameColor,
+        value: s.wins,
+        wins: s.wins,
+        losses: s.losses,
+        totalPlayed: s.totalPlayed,
+      }));
+    } else if (scoreCategoryConfig) {
+      rankings = await prisma.gameStats.findMany({
+        where: { gameType: scoreCategoryConfig.gameType, user: { isSuperAdmin: false } },
+        select: {
+          userId: true,
+          highScore: true,
+          wins: true,
+          totalPlayed: true,
+          user: {
+            select: { username: true, usernameColor: true },
+          },
+        },
+        orderBy: { highScore: scoreCategoryConfig.order },
+        take: parseInt(limit as string),
+        skip: parseInt(offset as string),
+      });
+      rankings = rankings.map((s, i) => ({
+        rank: parseInt(offset as string) + i + 1,
+        userId: s.userId,
+        username: s.user.username,
+        usernameColor: s.user.usernameColor,
+        value: s.highScore,
+        wins: category === 'solitaire' ? s.wins : undefined,
+        totalPlayed: category === 'solitaire' ? s.totalPlayed : undefined,
+      }));
+    } else switch (category) {
       case 'aura':
         rankings = await prisma.user.findMany({
           where: { isSuperAdmin: false },
@@ -264,263 +402,65 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
         break;
       }
         
-      case 'doodle_jump':
-        rankings = await prisma.gameStats.findMany({
-          where: { gameType: 'doodle_jump', user: { isSuperAdmin: false } },
+      case 'polymarket_ratio': {
+        const resolvedBets = await prisma.polymarketBet.findMany({
+          where: {
+            event: { status: 'RESOLVED' },
+            user: { isSuperAdmin: false },
+          },
           select: {
             userId: true,
-            highScore: true,
+            payout: true,
             user: {
               select: { username: true, usernameColor: true },
             },
           },
-          orderBy: { highScore: 'desc' },
-          take: parseInt(limit as string),
-          skip: parseInt(offset as string),
         });
-        rankings = rankings.map((s, i) => ({
-          rank: parseInt(offset as string) + i + 1,
-          userId: s.userId,
-          username: s.user.username,
-          usernameColor: s.user.usernameColor,
-          value: s.highScore,
-        }));
-        break;
 
-      case 'doodle_jump_mort_subite':
-        rankings = await prisma.gameStats.findMany({
-          where: { gameType: 'doodle_jump_mort_subite', user: { isSuperAdmin: false } },
-          select: {
-            userId: true,
-            highScore: true,
-            user: {
-              select: { username: true, usernameColor: true },
-            },
-          },
-          orderBy: { highScore: 'desc' },
-          take: parseInt(limit as string),
-          skip: parseInt(offset as string),
-        });
-        rankings = rankings.map((s, i) => ({
-          rank: parseInt(offset as string) + i + 1,
-          userId: s.userId,
-          username: s.user.username,
-          usernameColor: s.user.usernameColor,
-          value: s.highScore,
+        const statsByUser = new Map<string, {
+          username: string;
+          usernameColor: string | null;
+          wins: number;
+          losses: number;
+        }>();
+
+        for (const bet of resolvedBets) {
+          const current = statsByUser.get(bet.userId) ?? {
+            username: bet.user.username,
+            usernameColor: bet.user.usernameColor,
+            wins: 0,
+            losses: 0,
+          };
+          if (bet.payout !== null) current.wins += 1;
+          else current.losses += 1;
+          statsByUser.set(bet.userId, current);
+        }
+
+        const take = parseInt(limit as string);
+        const skip = parseInt(offset as string);
+        const sorted = Array.from(statsByUser.entries())
+          .filter(([, stat]) => stat.wins + stat.losses > 0)
+          .map(([userId, stat]) => ({
+            userId,
+            username: stat.username,
+            usernameColor: stat.usernameColor,
+            wins: stat.wins,
+            losses: stat.losses,
+            value: stat.losses === 0 ? stat.wins : stat.wins / stat.losses,
+          }))
+          .sort((a, b) => {
+            if (b.value !== a.value) return b.value - a.value;
+            if (b.wins !== a.wins) return b.wins - a.wins;
+            return a.losses - b.losses;
+          });
+
+        rankings = sorted.slice(skip, skip + take).map((entry, i) => ({
+          rank: skip + i + 1,
+          ...entry,
         }));
         break;
+      }
         
-      case 'game_2048':
-        rankings = await prisma.gameStats.findMany({
-          where: { gameType: 'game_2048', user: { isSuperAdmin: false } },
-          select: {
-            userId: true,
-            highScore: true,
-            user: {
-              select: { username: true, usernameColor: true },
-            },
-          },
-          orderBy: { highScore: 'desc' },
-          take: parseInt(limit as string),
-          skip: parseInt(offset as string),
-        });
-        rankings = rankings.map((s, i) => ({
-          rank: parseInt(offset as string) + i + 1,
-          userId: s.userId,
-          username: s.user.username,
-          usernameColor: s.user.usernameColor,
-          value: s.highScore,
-        }));
-        break;
-        
-      case 'flappy_bird':
-        rankings = await prisma.gameStats.findMany({
-          where: { gameType: 'flappy_bird', user: { isSuperAdmin: false } },
-          select: {
-            userId: true,
-            highScore: true,
-            user: {
-              select: { username: true, usernameColor: true },
-            },
-          },
-          orderBy: { highScore: 'desc' },
-          take: parseInt(limit as string),
-          skip: parseInt(offset as string),
-        });
-        rankings = rankings.map((s, i) => ({
-          rank: parseInt(offset as string) + i + 1,
-          userId: s.userId,
-          username: s.user.username,
-          usernameColor: s.user.usernameColor,
-          value: s.highScore,
-        }));
-        break;
-
-      case 'chrome_dino':
-        rankings = await prisma.gameStats.findMany({
-          where: { gameType: 'chrome_dino', user: { isSuperAdmin: false } },
-          select: {
-            userId: true,
-            highScore: true,
-            user: {
-              select: { username: true, usernameColor: true },
-            },
-          },
-          orderBy: { highScore: 'desc' },
-          take: parseInt(limit as string),
-          skip: parseInt(offset as string),
-        });
-        rankings = rankings.map((s, i) => ({
-          rank: parseInt(offset as string) + i + 1,
-          userId: s.userId,
-          username: s.user.username,
-          usernameColor: s.user.usernameColor,
-          value: s.highScore,
-        }));
-        break;
-
-      case 'solitaire':
-        rankings = await prisma.gameStats.findMany({
-          where: { gameType: 'solitaire', user: { isSuperAdmin: false } },
-          select: {
-            userId: true,
-            highScore: true,
-            wins: true,
-            totalPlayed: true,
-            user: {
-              select: { username: true, usernameColor: true },
-            },
-          },
-          orderBy: { highScore: 'desc' },
-          take: parseInt(limit as string),
-          skip: parseInt(offset as string),
-        });
-        rankings = rankings.map((s, i) => ({
-          rank: parseInt(offset as string) + i + 1,
-          userId: s.userId,
-          username: s.user.username,
-          usernameColor: s.user.usernameColor,
-          value: s.highScore,
-          wins: s.wins,
-          totalPlayed: s.totalPlayed,
-        }));
-        break;
-
-      case 'racer':
-        rankings = await prisma.gameStats.findMany({
-          where: { gameType: 'racer', user: { isSuperAdmin: false } },
-          select: {
-            userId: true,
-            highScore: true,
-            user: {
-              select: { username: true, usernameColor: true },
-            },
-          },
-          orderBy: { highScore: 'asc' },
-          take: parseInt(limit as string),
-          skip: parseInt(offset as string),
-        });
-        rankings = rankings.map((s, i) => ({
-          rank: parseInt(offset as string) + i + 1,
-          userId: s.userId,
-          username: s.user.username,
-          usernameColor: s.user.usernameColor,
-          value: s.highScore,
-        }));
-        break;
-
-      case 'tetris':
-        rankings = await prisma.gameStats.findMany({
-          where: { gameType: 'tetris', user: { isSuperAdmin: false } },
-          select: {
-            userId: true,
-            highScore: true,
-            user: {
-              select: { username: true, usernameColor: true },
-            },
-          },
-          orderBy: { highScore: 'desc' },
-          take: parseInt(limit as string),
-          skip: parseInt(offset as string),
-        });
-        rankings = rankings.map((s, i) => ({
-          rank: parseInt(offset as string) + i + 1,
-          userId: s.userId,
-          username: s.user.username,
-          usernameColor: s.user.usernameColor,
-          value: s.highScore,
-        }));
-        break;
-
-      case 'knife_hit':
-        rankings = await prisma.gameStats.findMany({
-          where: { gameType: 'knife_hit', user: { isSuperAdmin: false } },
-          select: {
-            userId: true,
-            highScore: true,
-            user: {
-              select: { username: true, usernameColor: true },
-            },
-          },
-          orderBy: { highScore: 'desc' },
-          take: parseInt(limit as string),
-          skip: parseInt(offset as string),
-        });
-        rankings = rankings.map((s, i) => ({
-          rank: parseInt(offset as string) + i + 1,
-          userId: s.userId,
-          username: s.user.username,
-          usernameColor: s.user.usernameColor,
-          value: s.highScore,
-        }));
-        break;
-
-      case 'minesweeper':
-        rankings = await prisma.gameStats.findMany({
-          where: { gameType: 'minesweeper', user: { isSuperAdmin: false } },
-          select: {
-            userId: true,
-            highScore: true,
-            user: {
-              select: { username: true, usernameColor: true },
-            },
-          },
-          orderBy: { highScore: 'desc' },
-          take: parseInt(limit as string),
-          skip: parseInt(offset as string),
-        });
-        rankings = rankings.map((s, i) => ({
-          rank: parseInt(offset as string) + i + 1,
-          userId: s.userId,
-          username: s.user.username,
-          usernameColor: s.user.usernameColor,
-          value: s.highScore,
-        }));
-        break;
-
-      case 'casino':
-        rankings = await prisma.gameStats.findMany({
-          where: { gameType: 'casino', user: { isSuperAdmin: false } },
-          select: {
-            userId: true,
-            highScore: true,
-            user: {
-              select: { username: true, usernameColor: true },
-            },
-          },
-          orderBy: { highScore: 'desc' },
-          take: parseInt(limit as string),
-          skip: parseInt(offset as string),
-        });
-        rankings = rankings.map((s, i) => ({
-          rank: parseInt(offset as string) + i + 1,
-          userId: s.userId,
-          username: s.user.username,
-          usernameColor: s.user.usernameColor,
-          value: s.highScore,
-        }));
-        break;
-
       case 'casino_losses': {
         // Get all non-admin user IDs first
         const nonAdminUsers = await prisma.user.findMany({
@@ -699,180 +639,45 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
       const userInRankings = rankings.find((r) => r.userId === req.user!.id);
       if (userInRankings) {
         userRank = userInRankings.rank;
-      } else if (category === 'casino') {
-        // Calculate user's rank even if not in top rankings
+      } else if (scoreCategoryConfig) {
         const userStats = await prisma.gameStats.findUnique({
           where: {
             userId_gameType: {
               userId: req.user.id,
-              gameType: 'casino',
+              gameType: scoreCategoryConfig.gameType,
             },
           },
         });
         if (userStats) {
-          const higherScores = await prisma.gameStats.count({
+          const betterScores = await prisma.gameStats.count({
             where: {
-              gameType: 'casino',
-              highScore: { gt: userStats.highScore },
+              gameType: scoreCategoryConfig.gameType,
+              highScore: scoreCategoryConfig.order === 'asc'
+                ? { lt: userStats.highScore }
+                : { gt: userStats.highScore },
               user: { isSuperAdmin: false },
             },
           });
-          userRank = higherScores + 1;
+          userRank = betterScores + 1;
         }
-      } else if (category === 'doodle_jump') {
-        // Calculate user's rank even if not in top rankings
+      } else if (winGameType) {
         const userStats = await prisma.gameStats.findUnique({
           where: {
             userId_gameType: {
               userId: req.user.id,
-              gameType: 'doodle_jump',
+              gameType: winGameType,
             },
           },
         });
         if (userStats) {
-          const higherScores = await prisma.gameStats.count({
+          const higherWins = await prisma.gameStats.count({
             where: {
-              gameType: 'doodle_jump',
-              highScore: { gt: userStats.highScore },
+              gameType: winGameType,
+              wins: { gt: userStats.wins },
               user: { isSuperAdmin: false },
             },
           });
-          userRank = higherScores + 1;
-        }
-      } else if (category === 'doodle_jump_mort_subite') {
-        // Calculate user's rank even if not in top rankings
-        const userStats = await prisma.gameStats.findUnique({
-          where: {
-            userId_gameType: {
-              userId: req.user.id,
-              gameType: 'doodle_jump_mort_subite',
-            },
-          },
-        });
-        if (userStats) {
-          const higherScores = await prisma.gameStats.count({
-            where: {
-              gameType: 'doodle_jump_mort_subite',
-              highScore: { gt: userStats.highScore },
-              user: { isSuperAdmin: false },
-            },
-          });
-          userRank = higherScores + 1;
-        }
-      } else if (category === 'game_2048') {
-        // Calculate user's rank even if not in top rankings
-        const userStats = await prisma.gameStats.findUnique({
-          where: {
-            userId_gameType: {
-              userId: req.user.id,
-              gameType: 'game_2048',
-            },
-          },
-        });
-        if (userStats) {
-          const higherScores = await prisma.gameStats.count({
-            where: {
-              gameType: 'game_2048',
-              highScore: { gt: userStats.highScore },
-              user: { isSuperAdmin: false },
-            },
-          });
-          userRank = higherScores + 1;
-        }
-      } else if (category === 'chrome_dino') {
-        const userStats = await prisma.gameStats.findUnique({
-          where: {
-            userId_gameType: {
-              userId: req.user.id,
-              gameType: 'chrome_dino',
-            },
-          },
-        });
-        if (userStats) {
-          const higherScores = await prisma.gameStats.count({
-            where: {
-              gameType: 'chrome_dino',
-              highScore: { gt: userStats.highScore },
-              user: { isSuperAdmin: false },
-            },
-          });
-          userRank = higherScores + 1;
-        }
-      } else if (category === 'racer') {
-        const userStats = await prisma.gameStats.findUnique({
-          where: {
-            userId_gameType: {
-              userId: req.user.id,
-              gameType: 'racer',
-            },
-          },
-        });
-        if (userStats) {
-          const lowerTimes = await prisma.gameStats.count({
-            where: {
-              gameType: 'racer',
-              highScore: { lt: userStats.highScore },
-              user: { isSuperAdmin: false },
-            },
-          });
-          userRank = lowerTimes + 1;
-        }
-      } else if (category === 'tetris') {
-        const userStats = await prisma.gameStats.findUnique({
-          where: {
-            userId_gameType: {
-              userId: req.user.id,
-              gameType: 'tetris',
-            },
-          },
-        });
-        if (userStats) {
-          const higherScores = await prisma.gameStats.count({
-            where: {
-              gameType: 'tetris',
-              highScore: { gt: userStats.highScore },
-              user: { isSuperAdmin: false },
-            },
-          });
-          userRank = higherScores + 1;
-        }
-      } else if (category === 'knife_hit') {
-        const userStats = await prisma.gameStats.findUnique({
-          where: {
-            userId_gameType: {
-              userId: req.user.id,
-              gameType: 'knife_hit',
-            },
-          },
-        });
-        if (userStats) {
-          const higherScores = await prisma.gameStats.count({
-            where: {
-              gameType: 'knife_hit',
-              highScore: { gt: userStats.highScore },
-              user: { isSuperAdmin: false },
-            },
-          });
-          userRank = higherScores + 1;
-        }
-      } else if (category === 'minesweeper') {
-        const userStats = await prisma.gameStats.findUnique({
-          where: {
-            userId_gameType: {
-              userId: req.user.id,
-              gameType: 'minesweeper',
-            },
-          },
-        });
-        if (userStats) {
-          const higherScores = await prisma.gameStats.count({
-            where: {
-              gameType: 'minesweeper',
-              highScore: { gt: userStats.highScore },
-              user: { isSuperAdmin: false },
-            },
-          });
-          userRank = higherScores + 1;
+          userRank = higherWins + 1;
         }
       } else if (category === 'bombparty') {
         const userStats = await prisma.bombPartyStats.findUnique({
@@ -902,6 +707,44 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
               AND (money + auraCoinBalance * ${priceToUse}) > ${userTotalValue}
           `;
           userRank = Number(higherTotals[0]?.count ?? 0) + 1;
+        }
+      } else if (category === 'polymarket_ratio') {
+        const userResolvedBets = await prisma.polymarketBet.findMany({
+          where: {
+            userId: req.user.id,
+            event: { status: 'RESOLVED' },
+          },
+          select: { payout: true },
+        });
+
+        if (userResolvedBets.length > 0) {
+          const userWins = userResolvedBets.filter((bet) => bet.payout !== null).length;
+          const userLosses = userResolvedBets.length - userWins;
+          const userRatio = userLosses === 0 ? userWins : userWins / userLosses;
+
+          const allResolvedBets = await prisma.polymarketBet.findMany({
+            where: {
+              event: { status: 'RESOLVED' },
+              user: { isSuperAdmin: false },
+            },
+            select: { userId: true, payout: true },
+          });
+
+          const ratiosByUser = new Map<string, { wins: number; losses: number }>();
+          for (const bet of allResolvedBets) {
+            const current = ratiosByUser.get(bet.userId) ?? { wins: 0, losses: 0 };
+            if (bet.payout !== null) current.wins += 1;
+            else current.losses += 1;
+            ratiosByUser.set(bet.userId, current);
+          }
+
+          const betterUsers = Array.from(ratiosByUser.values()).filter((entry) => {
+            const ratio = entry.losses === 0 ? entry.wins : entry.wins / entry.losses;
+            if (ratio !== userRatio) return ratio > userRatio;
+            if (entry.wins !== userWins) return entry.wins > userWins;
+            return entry.losses < userLosses;
+          }).length;
+          userRank = betterUsers + 1;
         }
       } else if (category === 'casino_losses') {
         // Calculate user's total casino losses

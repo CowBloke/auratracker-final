@@ -9,6 +9,8 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
+import { GamePauseButton } from '@/components/game/GamePauseButton';
+import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 
@@ -97,6 +99,8 @@ export default function FlappyBird() {
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [leaderboard, setLeaderboard] = useState<GameLeaderboardEntry[]>([]);
+  const [isPaused, setIsPaused] = useState(false);
+  const canPause = started && !gameOver;
 
   // Fetch stats and leaderboard on mount
   useEffect(() => {
@@ -186,6 +190,7 @@ export default function FlappyBird() {
     setScore(0);
     setGameOver(false);
     setStarted(true);
+    setIsPaused(false);
     setRewards(null);
     setIsNewHighScore(false);
   }, [generateInitialPipes]);
@@ -233,6 +238,12 @@ export default function FlappyBird() {
 
     ctx.setTransform(canvasScaleRef.current, 0, 0, canvasScaleRef.current, 0, 0);
     ctx.imageSmoothingEnabled = true;
+
+    if (isPaused) {
+      lastTimeRef.current = timestamp;
+      animationRef.current = requestAnimationFrame(gameLoop);
+      return;
+    }
 
     // Calculate delta time
     if (!lastTimeRef.current) lastTimeRef.current = timestamp;
@@ -363,15 +374,15 @@ export default function FlappyBird() {
 
     // Continue loop
     animationRef.current = requestAnimationFrame(gameLoop);
-  }, [handleGameOver, createPipe, colors]);
+  }, [handleGameOver, createPipe, colors, isPaused]);
 
   // ============================================
   // INPUT HANDLING
   // ============================================
   const handleJump = useCallback(() => {
-    if (!gameRunningRef.current || gameOver) return;
+    if (!gameRunningRef.current || gameOver || isPaused) return;
     velocityRef.current = JUMP_FORCE;
-  }, [gameOver]);
+  }, [gameOver, isPaused]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -403,6 +414,12 @@ export default function FlappyBird() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') {
+        if (!canPause) return;
+        e.preventDefault();
+        setIsPaused((current) => !current);
+        return;
+      }
       if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w') {
         e.preventDefault();
         handleJump();
@@ -421,7 +438,13 @@ export default function FlappyBird() {
       canvasRef.current?.removeEventListener('click', handleClick);
       cancelAnimationFrame(animationRef.current);
     };
-  }, [handleJump]);
+  }, [canPause, handleJump]);
+
+  useEffect(() => {
+    if (!canPause && isPaused) {
+      setIsPaused(false);
+    }
+  }, [canPause, isPaused]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -503,7 +526,9 @@ export default function FlappyBird() {
           isFullscreen={isFullscreen}
           onToggleFullscreen={toggleFullscreen}
           className="w-full max-w-[400px]"
-        />
+        >
+          <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} disabled={!canPause} />
+        </GameFullscreenToolbar>
 
         <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={CANVAS_WIDTH} baseHeight={CANVAS_HEIGHT}>
           <canvas
@@ -513,6 +538,7 @@ export default function FlappyBird() {
             className="block h-full w-full cursor-pointer rounded-lg border border-border"
             style={{ imageRendering: 'auto' }}
           />
+          <GamePauseOverlay visible={isPaused} onResume={() => setIsPaused(false)} />
           {!started && (
             <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/80">
               <div className="text-center space-y-4">

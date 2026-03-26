@@ -9,6 +9,8 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
+import { GamePauseButton } from '@/components/game/GamePauseButton';
+import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 import { ArrowDown, ArrowUp, Gamepad2, Play, RotateCcw, Wind } from 'lucide-react';
@@ -222,6 +224,8 @@ export default function ChromeDino() {
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [leaderboard, setLeaderboard] = useState<GameLeaderboardEntry[]>([]);
+  const [isPaused, setIsPaused] = useState(false);
+  const canPause = started && !gameOver;
 
   const playerRef = useRef({
     y: GROUND_Y,
@@ -326,6 +330,7 @@ export default function ChromeDino() {
     lastTimeRef.current = 0;
     setStarted(true);
     setGameOver(false);
+    setIsPaused(false);
     setScore(0);
     setRewards(null);
     setIsNewHighScore(false);
@@ -385,9 +390,9 @@ export default function ChromeDino() {
       initGame();
       return;
     }
-    if (gameOver) return;
+    if (gameOver || isPaused) return;
     playerRef.current.jumpQueued = true;
-  }, [gameOver, initGame, started]);
+  }, [gameOver, initGame, isPaused, started]);
 
   const setDuck = useCallback((ducking: boolean) => {
     playerRef.current.ducking = ducking;
@@ -395,6 +400,13 @@ export default function ChromeDino() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.code === 'KeyP' || event.code === 'Escape') {
+        if (!canPause) return;
+        event.preventDefault();
+        setIsPaused((current) => !current);
+        return;
+      }
+
       if (event.code === 'Space' || event.code === 'ArrowUp' || event.code === 'KeyW') {
         event.preventDefault();
         queueJump();
@@ -429,7 +441,7 @@ export default function ChromeDino() {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, [gameOver, initGame, queueJump, setDuck, started]);
+  }, [canPause, gameOver, initGame, queueJump, setDuck, started]);
 
   const drawBackground = useCallback((ctx: CanvasRenderingContext2D) => {
     ctx.fillStyle = palette.skyTop;
@@ -642,6 +654,12 @@ export default function ChromeDino() {
     const delta = Math.min((timestamp - lastTimeRef.current) / 1000, 0.033);
     lastTimeRef.current = timestamp;
 
+    if (isPaused) {
+      drawScene(ctx);
+      animationRef.current = requestAnimationFrame(gameLoop);
+      return;
+    }
+
     cloudsRef.current = cloudsRef.current.map((cloud) => {
       const nextX = cloud.x - cloud.speed * delta;
       return {
@@ -755,7 +773,13 @@ export default function ChromeDino() {
 
     drawScene(ctx);
     animationRef.current = requestAnimationFrame(gameLoop);
-  }, [drawScene, endGame, spawnDust]);
+  }, [drawScene, endGame, isPaused, spawnDust]);
+
+  useEffect(() => {
+    if (!canPause && isPaused) {
+      setIsPaused(false);
+    }
+  }, [canPause, isPaused]);
 
   useEffect(() => {
     animationRef.current = requestAnimationFrame(gameLoop);
@@ -842,7 +866,9 @@ export default function ChromeDino() {
             isFullscreen={isFullscreen}
             onToggleFullscreen={toggleFullscreen}
             className="w-full max-w-[960px]"
-          />
+          >
+            <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} disabled={!canPause} />
+          </GameFullscreenToolbar>
 
           <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={CANVAS_WIDTH} baseHeight={CANVAS_HEIGHT}>
             <canvas
@@ -856,6 +882,7 @@ export default function ChromeDino() {
                 queueJump();
               }}
             />
+            <GamePauseOverlay visible={isPaused} onResume={() => setIsPaused(false)} />
 
             {!started && (
               <div className="absolute inset-0 flex items-center justify-center bg-[#efefef]/92">
@@ -900,6 +927,7 @@ export default function ChromeDino() {
               variant="outline"
               className="h-12"
               onClick={() => queueJump()}
+              disabled={isPaused}
             >
               <ArrowUp className="mr-2 h-4 w-4" />
               Sauter
@@ -908,6 +936,7 @@ export default function ChromeDino() {
               type="button"
               variant="outline"
               className="h-12"
+              disabled={isPaused}
               onPointerDown={() => setDuck(true)}
               onPointerUp={() => setDuck(false)}
               onPointerLeave={() => setDuck(false)}

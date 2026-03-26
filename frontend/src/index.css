@@ -207,6 +207,17 @@
     }
   }
 
+  .animate-tile-appear {
+    animation: appear 200ms ease 100ms;
+    animation-fill-mode: backwards;
+  }
+
+  .animate-tile-merge {
+    z-index: 20;
+    animation: pop 200ms ease 100ms;
+    animation-fill-mode: backwards;
+  }
+
   .tile-new .tile-inner {
     animation: appear 200ms ease 100ms;
     animation-fill-mode: backwards;

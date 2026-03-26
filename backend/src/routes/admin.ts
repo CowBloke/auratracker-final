@@ -26,10 +26,11 @@ const ANNOUNCEMENT_KEY = 'topbar_announcement';
 const ANNOUNCEMENT_MAX_LENGTH = 120;
 const AURACOIN_BUY_FEE_PERCENTAGE_KEY = 'auracoin_buy_fee_percentage';
 const DUEL_MATCHMAKING_ENABLED_SETTING_KEY = 'duel_matchmaking_enabled';
+const CLASH_ATTACK_COOLDOWN_MINUTES_KEY = 'clash_attack_cooldown_minutes';
 const UPDATE_POPUP_UPLOAD_DIR = path.resolve('uploads', 'update-popups');
 const ITEM_UPLOAD_DIR = path.resolve('uploads', 'items');
-const MAX_UPDATE_POPUP_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
-const MAX_ITEM_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_UPDATE_POPUP_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
+const MAX_ITEM_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 const ADMIN_CLAN_MAX_MEMBERS_LIMIT = 12;
 const LOG_EXPORT_BATCH_SIZE = 5000;
 
@@ -117,6 +118,46 @@ const buildLogWhereClause = (query: Record<string, unknown>) => {
 
 const PAGE_BREAKDOWN_LIMIT = 6;
 const GAME_BREAKDOWN_LIMIT = 6;
+
+const UPDATE_POPUP_TYPES = new Set(['UPDATE', 'CLAN_PROMPT']);
+const UPDATE_POPUP_AUDIENCES = new Set(['ALL', 'NO_CLAN', 'SELECTED_USERS']);
+
+const parseUpdatePopupTargetUserIds = (value: unknown): string[] | null => {
+  if (value === undefined || value === null) {
+    return [];
+  }
+
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  return Array.from(
+    new Set(
+      value
+        .filter((entry): entry is string => typeof entry === 'string')
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+    )
+  );
+};
+
+const serializeAdminUpdatePopup = <TPopup extends { targetUserIds: string }>(popup: TPopup) => {
+  let targetUserIds: string[] = [];
+
+  try {
+    const parsed = JSON.parse(popup.targetUserIds);
+    if (Array.isArray(parsed)) {
+      targetUserIds = parsed.filter((entry): entry is string => typeof entry === 'string');
+    }
+  } catch {
+    targetUserIds = [];
+  }
+
+  return {
+    ...popup,
+    targetUserIds,
+  };
+};
 
 type HourBucket = {
   hour: number;
@@ -2289,6 +2330,13 @@ router.put('/settings/:key', authMiddleware, requireAdmin, async (req: AuthReque
       }
     }
 
+    if (key === CLASH_ATTACK_COOLDOWN_MINUTES_KEY) {
+      const numValue = Number.parseInt(normalizedValue, 10);
+      if (!Number.isInteger(numValue) || numValue < 0 || numValue > 1440) {
+        return res.status(400).json({ error: 'Clash attack cooldown must be an integer between 0 and 1440 minutes' });
+      }
+    }
+
     const setting = await prisma.gameSettings.upsert({
       where: { key },
       create: { key, value: normalizedValue },
@@ -2396,6 +2444,14 @@ router.put('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, r
         const numValue = Number.parseFloat(normalizedValue);
         if (!Number.isFinite(numValue) || numValue < 0 || numValue > 0.5) {
           errors.push(`${key}: AuraCoin buy fee must be between 0 and 0.5`);
+          continue;
+        }
+      }
+
+      if (key === CLASH_ATTACK_COOLDOWN_MINUTES_KEY) {
+        const numValue = Number.parseInt(normalizedValue, 10);
+        if (!Number.isInteger(numValue) || numValue < 0 || numValue > 1440) {
+          errors.push(`${key}: Clash attack cooldown must be an integer between 0 and 1440 minutes`);
           continue;
         }
       }
@@ -2514,7 +2570,7 @@ router.get('/update-popups', authMiddleware, requireAdmin, async (_req: AuthRequ
       ],
     });
 
-    res.json({ popups });
+    res.json({ popups: popups.map(serializeAdminUpdatePopup) });
   } catch (error) {
     console.error('Admin get update popups error:', error);
     res.status(500).json({ error: 'Failed to get update popups' });
@@ -2528,6 +2584,9 @@ router.post('/update-popups', authMiddleware, requireAdmin, async (req: AuthRequ
     const message = typeof req.body.message === 'string' ? req.body.message.trim() : '';
     const summary = typeof req.body.summary === 'string' ? req.body.summary.trim() : '';
     const imageUrl = typeof req.body.imageUrl === 'string' ? req.body.imageUrl.trim() : '';
+    const type = typeof req.body.type === 'string' ? req.body.type.trim().toUpperCase() : 'UPDATE';
+    const audience = typeof req.body.audience === 'string' ? req.body.audience.trim().toUpperCase() : 'ALL';
+    const targetUserIds = parseUpdatePopupTargetUserIds(req.body.targetUserIds);
     const releaseDateInput = typeof req.body.releaseDate === 'string' ? req.body.releaseDate : '';
     const isPublished = req.body.isPublished !== false;
 
@@ -2537,6 +2596,22 @@ router.post('/update-popups', authMiddleware, requireAdmin, async (req: AuthRequ
 
     if (imageUrl && !isAllowedImageUrl(imageUrl)) {
       return res.status(400).json({ error: 'Image must be uploaded or a valid URL' });
+    }
+
+    if (!UPDATE_POPUP_TYPES.has(type)) {
+      return res.status(400).json({ error: 'Invalid popup type' });
+    }
+
+    if (!UPDATE_POPUP_AUDIENCES.has(audience)) {
+      return res.status(400).json({ error: 'Invalid popup audience' });
+    }
+
+    if (targetUserIds === null) {
+      return res.status(400).json({ error: 'targetUserIds must be an array of user IDs' });
+    }
+
+    if (audience === 'SELECTED_USERS' && targetUserIds.length === 0) {
+      return res.status(400).json({ error: 'At least one user must be selected' });
     }
 
     const releaseDate = releaseDateInput ? new Date(releaseDateInput) : new Date();
@@ -2550,6 +2625,9 @@ router.post('/update-popups', authMiddleware, requireAdmin, async (req: AuthRequ
         message,
         summary: summary || null,
         imageUrl: imageUrl || null,
+        type,
+        audience,
+        targetUserIds: JSON.stringify(targetUserIds),
         releaseDate,
         isPublished,
         createdById: req.user!.id,
@@ -2572,9 +2650,11 @@ router.post('/update-popups', authMiddleware, requireAdmin, async (req: AuthRequ
     logAdmin('update_popup_create', req.user!.id, req.user!.username, popup.id, popup.title, {
       releaseDate: popup.releaseDate.toISOString(),
       isPublished: popup.isPublished,
+      type: popup.type,
+      audience: popup.audience,
     });
 
-    res.status(201).json({ popup });
+    res.status(201).json({ popup: serializeAdminUpdatePopup(popup) });
   } catch (error) {
     console.error('Admin create update popup error:', error);
     res.status(500).json({ error: 'Failed to create update popup' });
@@ -2590,6 +2670,9 @@ router.put('/update-popups/:id', authMiddleware, requireAdmin, async (req: AuthR
       message?: string;
       summary?: string | null;
       imageUrl?: string | null;
+      type?: string;
+      audience?: string;
+      targetUserIds?: string;
       releaseDate?: Date;
       isPublished?: boolean;
     } = {};
@@ -2633,6 +2716,36 @@ router.put('/update-popups/:id', authMiddleware, requireAdmin, async (req: AuthR
       }
     }
 
+    if (req.body.type !== undefined) {
+      if (typeof req.body.type !== 'string') {
+        return res.status(400).json({ error: 'Invalid popup type' });
+      }
+      const parsedType = req.body.type.trim().toUpperCase();
+      if (!UPDATE_POPUP_TYPES.has(parsedType)) {
+        return res.status(400).json({ error: 'Invalid popup type' });
+      }
+      data.type = parsedType;
+    }
+
+    if (req.body.audience !== undefined) {
+      if (typeof req.body.audience !== 'string') {
+        return res.status(400).json({ error: 'Invalid popup audience' });
+      }
+      const parsedAudience = req.body.audience.trim().toUpperCase();
+      if (!UPDATE_POPUP_AUDIENCES.has(parsedAudience)) {
+        return res.status(400).json({ error: 'Invalid popup audience' });
+      }
+      data.audience = parsedAudience;
+    }
+
+    if (req.body.targetUserIds !== undefined) {
+      const parsedTargetUserIds = parseUpdatePopupTargetUserIds(req.body.targetUserIds);
+      if (parsedTargetUserIds === null) {
+        return res.status(400).json({ error: 'targetUserIds must be an array of user IDs' });
+      }
+      data.targetUserIds = JSON.stringify(parsedTargetUserIds);
+    }
+
     if (req.body.releaseDate !== undefined) {
       if (typeof req.body.releaseDate !== 'string') {
         return res.status(400).json({ error: 'Invalid release date' });
@@ -2649,6 +2762,34 @@ router.put('/update-popups/:id', authMiddleware, requireAdmin, async (req: AuthR
         return res.status(400).json({ error: 'isPublished must be a boolean' });
       }
       data.isPublished = req.body.isPublished;
+    }
+
+    const existingPopup = await prisma.updatePopup.findUnique({
+      where: { id },
+      select: {
+        audience: true,
+        targetUserIds: true,
+      },
+    });
+
+    if (!existingPopup) {
+      return res.status(404).json({ error: 'Update popup not found' });
+    }
+
+    let parsedFinalTargetUserIds: string[] = [];
+    try {
+      parsedFinalTargetUserIds = JSON.parse(data.targetUserIds ?? existingPopup.targetUserIds);
+    } catch {
+      return res.status(400).json({ error: 'Invalid target user IDs' });
+    }
+
+    if (!Array.isArray(parsedFinalTargetUserIds) || parsedFinalTargetUserIds.some((entry) => typeof entry !== 'string')) {
+      return res.status(400).json({ error: 'Invalid target user IDs' });
+    }
+
+    const finalAudience = data.audience ?? existingPopup.audience;
+    if (finalAudience === 'SELECTED_USERS' && parsedFinalTargetUserIds.length === 0) {
+      return res.status(400).json({ error: 'At least one user must be selected' });
     }
 
     const popup = await prisma.updatePopup.update({
@@ -2673,7 +2814,7 @@ router.put('/update-popups/:id', authMiddleware, requireAdmin, async (req: AuthR
       changedFields: Object.keys(data),
     });
 
-    res.json({ popup });
+    res.json({ popup: serializeAdminUpdatePopup(popup) });
   } catch (error) {
     console.error('Admin update update popup error:', error);
     res.status(500).json({ error: 'Failed to update update popup' });
@@ -2725,7 +2866,7 @@ router.post('/update-popups/upload-image', authMiddleware, requireAdmin, async (
     }
 
     if (buffer.byteLength > MAX_UPDATE_POPUP_IMAGE_SIZE_BYTES) {
-      return res.status(400).json({ error: 'Image too large (max 5MB)' });
+      return res.status(400).json({ error: 'Image too large (max 10MB)' });
     }
 
     ensureUpdatePopupUploadDir();
@@ -2769,7 +2910,7 @@ router.post('/items/upload-image', authMiddleware, requireAdmin, async (req: Aut
     }
 
     if (buffer.byteLength > MAX_ITEM_IMAGE_SIZE_BYTES) {
-      return res.status(400).json({ error: 'Image too large (max 5MB)' });
+      return res.status(400).json({ error: 'Image too large (max 10MB)' });
     }
 
     if (!fs.existsSync(ITEM_UPLOAD_DIR)) {

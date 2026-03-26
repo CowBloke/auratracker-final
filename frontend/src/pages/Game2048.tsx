@@ -6,6 +6,8 @@ import { Play, RotateCcw, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'luci
 import { cn } from '@/lib/utils';
 import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
+import { GamePauseButton } from '@/components/game/GamePauseButton';
+import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -247,9 +249,11 @@ export default function Game2048() {
   const [leaderboard, setLeaderboard] = useState<GameLeaderboardEntry[]>([]);
   const [won, setWon] = useState(false);
   const [showWinMessage, setShowWinMessage] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
 
   const tilesRef = useRef<Tile[]>(tiles);
   const scoreRef = useRef(0);
+  const canPause = started && !gameOver;
   
   // Fetch stats and leaderboard on mount
   useEffect(() => {
@@ -303,6 +307,7 @@ export default function Game2048() {
     setScore(0);
     setGameOver(false);
     setStarted(true);
+    setIsPaused(false);
     setRewards(null);
     setIsNewHighScore(false);
     setWon(false);
@@ -341,7 +346,7 @@ export default function Game2048() {
   
   // Handle move
   const handleMove = useCallback((direction: Direction) => {
-    if (!started || gameOver) return;
+    if (!started || gameOver || isPaused) return;
 
     const currentTiles = tilesRef.current;
     const { tiles: movedTiles, score: moveScore, moved } = moveTiles(currentTiles, direction);
@@ -371,17 +376,23 @@ export default function Game2048() {
         return withNewTile;
       });
     }, 150); // Match this with CSS transition duration
-  }, [started, gameOver, won, handleGameOver]);
+  }, [started, gameOver, isPaused, won, handleGameOver]);
   
   // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') {
+        if (!canPause) return;
+        e.preventDefault();
+        setIsPaused((current) => !current);
+        return;
+      }
       if ((e.key === 'r' || e.key === 'R') && gameOver) {
         e.preventDefault();
         initGame();
         return;
       }
-      if (!started || gameOver) return;
+      if (!started || gameOver || isPaused) return;
 
       switch (e.key) {
         case 'ArrowUp':
@@ -413,7 +424,13 @@ export default function Game2048() {
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [started, gameOver, handleMove, initGame]);
+  }, [canPause, started, gameOver, isPaused, handleMove, initGame]);
+
+  useEffect(() => {
+    if (!canPause && isPaused) {
+      setIsPaused(false);
+    }
+  }, [canPause, isPaused]);
   
   // Touch/swipe controls
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -426,6 +443,7 @@ export default function Game2048() {
   };
   
   const handleTouchEnd = (e: React.TouchEvent) => {
+    if (isPaused) return;
     if (!touchStartRef.current) return;
     
     const touchEnd = {
@@ -455,11 +473,18 @@ export default function Game2048() {
   return (
     <div className={cn(
       'grid items-start gap-4 px-4 pb-6 lg:px-6 lg:pb-8',
-      isFullscreen ? 'grid-cols-1 justify-items-center' : 'grid-cols-[1fr_auto_1fr]'
+      isFullscreen
+        ? 'grid-cols-1 justify-items-center'
+        : 'grid-cols-1 justify-items-center xl:grid-cols-[minmax(220px,1fr)_auto_minmax(220px,1fr)] xl:justify-items-stretch'
     )}>
 
       {/* ── Left column ── */}
-      <div className={cn('flex flex-col gap-3', isFullscreen && 'hidden')}>
+      <div
+        className={cn(
+          'order-2 flex w-full max-w-[390px] flex-col gap-3 xl:order-1 xl:max-w-none',
+          isFullscreen && 'hidden'
+        )}
+      >
         <Card>
           <CardHeader className="px-4 py-3">
             <CardTitle className="text-sm font-medium">Score</CardTitle>
@@ -515,7 +540,7 @@ export default function Game2048() {
       <div
         ref={gameContainerRef}
         className={cn(
-          'flex flex-col gap-3',
+          'order-1 flex w-full max-w-[390px] flex-col gap-3 xl:order-2 xl:max-w-none',
           isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
         )}
         onTouchStart={handleTouchStart}
@@ -525,12 +550,15 @@ export default function Game2048() {
           isFullscreen={isFullscreen}
           onToggleFullscreen={toggleFullscreen}
           className="w-full max-w-[390px]"
-        />
+        >
+          <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} disabled={!canPause} />
+        </GameFullscreenToolbar>
 
         <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={BOARD_SIZE} baseHeight={BOARD_SIZE}>
           <div
             className="relative h-full w-full border border-border/30 rounded-lg bg-muted/20 p-2"
           >
+          <GamePauseOverlay visible={isPaused} onResume={() => setIsPaused(false)} />
           {/* Background grid */}
           <div className="absolute inset-2 grid grid-cols-4 gap-2.5">
             {Array.from({ length: GRID_SIZE * GRID_SIZE }).map((_, i) => (
@@ -633,15 +661,17 @@ export default function Game2048() {
       </div>
 
       {/* ── Right column — leaderboard ── */}
-      <GameLeaderboard
-        entries={leaderboard}
-        currentUserId={user?.id}
-        personalHighScore={highScore}
-        isAdmin={user?.isAdmin}
-        onDeleteScore={handleDeleteScore}
-        maxHeight={350}
-        hidden={isFullscreen}
-      />
+      <div className={cn('order-3 w-full max-w-[390px] xl:max-w-none', isFullscreen && 'hidden')}>
+        <GameLeaderboard
+          entries={leaderboard}
+          currentUserId={user?.id}
+          personalHighScore={highScore}
+          isAdmin={user?.isAdmin}
+          onDeleteScore={handleDeleteScore}
+          maxHeight={350}
+          hidden={isFullscreen}
+        />
+      </div>
 
     </div>
   );

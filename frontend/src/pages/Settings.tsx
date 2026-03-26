@@ -13,6 +13,7 @@ import { PageShell } from '@/components/layout/page-shell';
 import { ReferralSummary, authApi, usersApi } from '@/services/api';
 import ReferralClaimAnimation from '@/components/referrals/ReferralClaimAnimation';
 import { toast } from 'sonner';
+import { setHideGameLeaderboardsPreference, useHideGameLeaderboards } from '@/lib/game-preferences';
 
 interface ColorSchemeEntry {
   id: string;
@@ -53,6 +54,7 @@ export default function Settings() {
   const [referralSummary, setReferralSummary] = useState<ReferralSummary | null>(null);
   const [referralClaimOpen, setReferralClaimOpen] = useState(false);
   const [referralLoading, setReferralLoading] = useState(false);
+  const hideGameLeaderboards = useHideGameLeaderboards();
 
   // Name change state
   const [requestedUsername, setRequestedUsername] = useState('');
@@ -289,6 +291,33 @@ export default function Settings() {
               <code className="font-mono">public/themes/</code> et ajoute une entrée dans{' '}
               <code className="font-mono">manifest.json</code>.
             </p>
+          </section>
+
+          <section className="space-y-3">
+            <div>
+              <p className="text-xs text-muted-foreground">Jeux</p>
+              <h3 className="text-sm font-medium">Masque le classement sur toutes les pages de jeux.</h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => setHideGameLeaderboardsPreference(!hideGameLeaderboards)}
+              className={cn(
+                'flex w-full max-w-sm items-center justify-between rounded-lg border px-4 py-3 text-left text-sm transition-colors',
+                hideGameLeaderboards
+                  ? 'border-foreground bg-foreground/5 text-foreground'
+                  : 'border-border/40 text-muted-foreground hover:border-border hover:text-foreground'
+              )}
+            >
+              <div>
+                <p className="font-medium">Sans classement</p>
+                <p className="text-xs text-muted-foreground">
+                  {hideGameLeaderboards ? 'Les classements des jeux sont masqués.' : 'Les classements des jeux restent visibles.'}
+                </p>
+              </div>
+              <span className="text-xs font-semibold uppercase tracking-wide">
+                {hideGameLeaderboards ? 'Actif' : 'Inactif'}
+              </span>
+            </button>
           </section>
         </TabsContent>
 

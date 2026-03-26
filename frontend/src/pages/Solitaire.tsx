@@ -4,6 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { gamesApi } from '@/services/api';
 import { cn } from '@/lib/utils';
 import { GameFullscreenButton } from '@/components/game/GameFullscreenButton';
+import { GamePauseButton } from '@/components/game/GamePauseButton';
+import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -190,6 +192,7 @@ export default function Solitaire() {
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [cardWidth, setCardWidth] = useState(96);
+  const [isPaused, setIsPaused] = useState(false);
 
   const score = useMemo(() => computeScore(moves, seconds), [moves, seconds]);
   const completedCards = useMemo(
@@ -224,14 +227,14 @@ export default function Solitaire() {
   }, [user]);
 
   useEffect(() => {
-    if (isWon) {
+    if (isWon || isPaused) {
       return;
     }
     const interval = window.setInterval(() => {
       setSeconds((prev) => prev + 1);
     }, 1000);
     return () => window.clearInterval(interval);
-  }, [isWon]);
+  }, [isPaused, isWon]);
 
   const submitResult = async (won: boolean, finalScore: number) => {
     if (hasSubmittedResult || !user) {
@@ -432,6 +435,7 @@ export default function Solitaire() {
   };
 
   const drawFromStock = () => {
+    if (isPaused) return;
     if (game.stock.length === 0 && game.waste.length === 0) {
       return;
     }
@@ -485,7 +489,14 @@ export default function Solitaire() {
     setIsWon(false);
     setRewards(null);
     setIsNewHighScore(false);
+    setIsPaused(false);
   };
+
+  useEffect(() => {
+    if (isWon && isPaused) {
+      setIsPaused(false);
+    }
+  }, [isPaused, isWon]);
 
   const formatTime = (value: number) => {
     const minutes = Math.floor(value / 60)
@@ -552,6 +563,7 @@ export default function Solitaire() {
           <RotateCcw className="h-4 w-4" />
           Nouvelle partie
         </Button>
+        <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} disabled={isWon} className="w-full" />
       </div>
 
       <Card
@@ -570,6 +582,7 @@ export default function Solitaire() {
                   Nouvelle partie
                 </Button>
               )}
+              <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} disabled={isWon} />
               <GameFullscreenButton isFullscreen={isFullscreen} onClick={toggleFullscreen} />
             </div>
           </div>
@@ -587,7 +600,9 @@ export default function Solitaire() {
                 '--pile-col-w': `${cardWidth + pilePadding * 2}px`,
               } as CSSProperties
             }
+            className="relative"
           >
+          <GamePauseOverlay visible={isPaused} onResume={() => setIsPaused(false)} />
           <div className="mb-4 flex items-start justify-between gap-[var(--pile-gap)]">
             <div className="flex gap-[var(--pile-gap)]">
               <div className="rounded-xl border border-border/40 bg-muted/25 p-2">

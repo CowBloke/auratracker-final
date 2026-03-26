@@ -13,6 +13,22 @@ import {
 const router = Router();
 const ANNOUNCEMENT_KEY = 'topbar_announcement';
 
+const parseStoredTargetUserIds = (value: string | null | undefined): string[] => {
+  if (!value) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed.filter((entry): entry is string => typeof entry === 'string');
+  } catch {
+    return [];
+  }
+};
+
 // Get all users (for the 40-user community)
 router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
@@ -241,6 +257,11 @@ router.get('/announcement', authMiddleware, async (req: AuthRequest, res: Respon
 router.get('/update-popups/pending', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const now = new Date();
+    const hasClan = await prisma.clanMember.findUnique({
+      where: { userId: req.user!.id },
+      select: { id: true },
+    });
+
     const popups = await prisma.updatePopup.findMany({
       where: {
         isPublished: true,
@@ -261,12 +282,29 @@ router.get('/update-popups/pending', authMiddleware, async (req: AuthRequest, re
         summary: true,
         message: true,
         imageUrl: true,
+        type: true,
+        audience: true,
+        targetUserIds: true,
         releaseDate: true,
         createdAt: true,
       },
     });
 
-    res.json({ popups });
+    const filteredPopups = popups
+      .filter((popup) => {
+        if (popup.audience === 'NO_CLAN' && hasClan) {
+          return false;
+        }
+
+        if (popup.audience === 'SELECTED_USERS') {
+          return parseStoredTargetUserIds(popup.targetUserIds).includes(req.user!.id);
+        }
+
+        return true;
+      })
+      .map(({ audience: _audience, targetUserIds: _targetUserIds, ...popup }) => popup);
+
+    res.json({ popups: filteredPopups });
   } catch (error) {
     console.error('Get pending update popups error:', error);
     res.status(500).json({ error: 'Failed to get pending update popups' });

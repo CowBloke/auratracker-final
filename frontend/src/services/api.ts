@@ -97,6 +97,7 @@ export interface UserUpdatePopup {
   summary: string | null;
   message: string;
   imageUrl: string | null;
+  type: 'UPDATE' | 'CLAN_PROMPT';
   releaseDate: string;
   createdAt: string;
 }
@@ -214,6 +215,8 @@ export const marketplaceApi = {
 export const gamesApi = {
   getStats: (gameType: string, userId: string) =>
     api.get(`/games/${gameType}/stats/${userId}`),
+  getCatalogStats: () =>
+    api.get<{ global: Record<string, number>; personal: Record<string, number> }>('/games/catalog/stats'),
   complete: (gameType: string, data: { score: number; won: boolean; duration?: number; bet?: number; netGain?: number; maxTile?: number; difficulty?: string }) =>
     api.post(`/games/${gameType}/complete`, data),
   getLeaderboard: (gameType: string, limit?: number) =>
@@ -904,6 +907,9 @@ export interface AdminUpdatePopup {
   summary: string | null;
   message: string;
   imageUrl: string | null;
+  type: 'UPDATE' | 'CLAN_PROMPT';
+  audience: 'ALL' | 'NO_CLAN' | 'SELECTED_USERS';
+  targetUserIds: string[];
   releaseDate: string;
   isPublished: boolean;
   createdAt: string;
@@ -1313,6 +1319,9 @@ export const adminApi = {
     summary?: string;
     message: string;
     imageUrl?: string;
+    type?: 'UPDATE' | 'CLAN_PROMPT';
+    audience?: 'ALL' | 'NO_CLAN' | 'SELECTED_USERS';
+    targetUserIds?: string[];
     releaseDate?: string;
     isPublished?: boolean;
   }) => api.post<{ popup: AdminUpdatePopup }>('/admin/update-popups', data),
@@ -1321,6 +1330,9 @@ export const adminApi = {
     summary: string | null;
     message: string;
     imageUrl: string | null;
+    type: 'UPDATE' | 'CLAN_PROMPT';
+    audience: 'ALL' | 'NO_CLAN' | 'SELECTED_USERS';
+    targetUserIds: string[];
     releaseDate: string;
     isPublished: boolean;
   }>) => api.put<{ popup: AdminUpdatePopup }>(`/admin/update-popups/${id}`, data),

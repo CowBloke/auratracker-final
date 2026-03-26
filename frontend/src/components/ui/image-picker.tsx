@@ -5,6 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { resolveImageUrl } from '@/lib/images';
 
+const DEFAULT_MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
+const DEFAULT_MAX_IMAGE_SIZE_LABEL = '10 Mo';
+
 interface ImagePickerProps {
   value: string;
   onChange: (url: string) => void;
@@ -13,6 +16,8 @@ interface ImagePickerProps {
   placeholder?: string;
   className?: string;
   hidePreview?: boolean;
+  maxSizeBytes?: number;
+  maxSizeLabel?: string;
 }
 
 export function ImagePicker({
@@ -23,17 +28,28 @@ export function ImagePicker({
   placeholder = 'https://...',
   className,
   hidePreview = false,
+  maxSizeBytes = DEFAULT_MAX_IMAGE_SIZE_BYTES,
+  maxSizeLabel = DEFAULT_MAX_IMAGE_SIZE_LABEL,
 }: ImagePickerProps) {
   const [uploading, setUploading] = useState(false);
   const [dropzoneActive, setDropzoneActive] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const isDisabled = disabled || uploading;
 
   const handleFile = async (file: File | null) => {
     if (!file || isDisabled) return;
-    if (!file.type.startsWith('image/')) return;
+    if (!file.type.startsWith('image/')) {
+      setErrorMessage('Seules les images sont acceptées.');
+      return;
+    }
+    if (file.size > maxSizeBytes) {
+      setErrorMessage(`Image trop lourde. Taille max: ${maxSizeLabel}.`);
+      return;
+    }
     try {
+      setErrorMessage(null);
       setUploading(true);
       const url = await uploadFn(file);
       onChange(url);
@@ -99,12 +115,21 @@ export function ImagePicker({
             Upload en cours...
           </span>
         ) : (
-          <span className="flex items-center justify-center gap-2 text-muted-foreground">
-            <Upload className="h-4 w-4" />
-            Cliquez, glissez ou collez (Ctrl+V)
+          <span className="flex flex-col items-center justify-center gap-1 text-muted-foreground">
+            <span className="flex items-center justify-center gap-2">
+              <Upload className="h-4 w-4" />
+              Cliquez, glissez ou collez (Ctrl+V)
+            </span>
+            <span className="text-xs">
+              Taille max: {maxSizeLabel}
+            </span>
           </span>
         )}
       </div>
+
+      {errorMessage && (
+        <p className="text-xs text-destructive">{errorMessage}</p>
+      )}
 
       <Input
         value={value}

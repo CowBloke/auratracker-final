@@ -1,15 +1,19 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageShell } from '@/components/layout/page-shell';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { resolveThemeImageUrl } from '@/lib/images';
+import { gamesApi } from '@/services/api';
 
 type GamesTab = 'singleplayer' | 'multiplayer' | 'all';
 type MultiplayerTab = 'all' | 'duel' | 'party';
+type SortOption = 'default' | 'popular' | 'newest' | 'most-played';
 type Game = (typeof games)[number];
 
 const games = [
@@ -21,6 +25,8 @@ const games = [
     type: 'Party',
     requiresParty: true,
     image: '/images/games/rouletterusse.png',
+    statsKeys: ['levier_infernal'],
+    releaseRank: 4,
   },
   {
     id: 'russian-roulette',
@@ -30,6 +36,8 @@ const games = [
     type: 'Party',
     requiresParty: true,
     image: '/images/games/rouletterusse.png',
+    statsKeys: ['russian_roulette'],
+    releaseRank: 3,
   },
   {
     id: 'jackpot-5',
@@ -39,6 +47,8 @@ const games = [
     type: 'Party',
     requiresParty: true,
     image: '/images/games/cashmachine.png',
+    statsKeys: ['jackpot_5'],
+    releaseRank: 10,
   },
   {
     id: 'bomb-party',
@@ -48,6 +58,8 @@ const games = [
     type: 'Party',
     requiresParty: true,
     image: '/images/games/bombparty.png',
+    statsKeys: ['bombparty'],
+    releaseRank: 12,
   },
   {
     id: 'poker',
@@ -57,6 +69,8 @@ const games = [
     type: 'Party',
     requiresParty: true,
     image: '/images/games/poker.png',
+    statsKeys: ['poker'],
+    releaseRank: 11,
   },
   {
     id: 'petit-bac',
@@ -66,6 +80,8 @@ const games = [
     type: 'Party',
     requiresParty: true,
     image: '/images/games/petitbac.png',
+    statsKeys: ['petit_bac'],
+    releaseRank: 13,
   },
   {
     id: 'uno',
@@ -76,6 +92,8 @@ const games = [
     requiresParty: true,
     emoji: '🃏',
     image: '/images/games/uno.png',
+    statsKeys: ['uno'],
+    releaseRank: 24,
   },
   {
     id: 'bataille-navale',
@@ -85,6 +103,8 @@ const games = [
     type: 'Duel',
     requiresParty: true,
     image: '/images/games/bataillenavale.png',
+    statsKeys: ['battleship'],
+    releaseRank: 8,
   },
   {
     id: 'doodle-jump',
@@ -93,6 +113,8 @@ const games = [
     description: 'Saute le plus haut possible pour gagner des récompenses.',
     type: 'Score',
     image: '/images/games/doodlejump.png',
+    statsKeys: ['doodle_jump', 'doodle_jump_mort_subite'],
+    releaseRank: 1,
   },
   {
     id: 'logic-lab',
@@ -101,6 +123,8 @@ const games = [
     description: 'Grilles Sudoku générées à la volée, plusieurs niveaux et classement sur tes meilleures résolutions.',
     type: 'Logique',
     image: '/images/games/sudoku.png',
+    statsKeys: ['logic_lab'],
+    releaseRank: 25,
   },
   {
     id: 'minesweeper',
@@ -110,6 +134,8 @@ const games = [
     type: 'Logique',
     emoji: '💣',
     image: '/images/games/minesweeper.png',
+    statsKeys: ['minesweeper'],
+    releaseRank: 26,
   },
   {
     id: 'game-2048',
@@ -118,6 +144,8 @@ const games = [
     description: 'Fusionne les tuiles pour atteindre 2048 et gagner des récompenses.',
     type: 'Score',
     image: '/images/games/2048.png',
+    statsKeys: ['game_2048'],
+    releaseRank: 2,
   },
   {
     id: 'flappy-bird',
@@ -126,6 +154,8 @@ const games = [
     description: 'Évite les tuyaux et survole le plus loin possible pour gagner des récompenses.',
     type: 'Score',
     image: '/images/games/flappybird.png',
+    statsKeys: ['flappy_bird'],
+    releaseRank: 5,
   },
   {
     id: 'chrome-dino',
@@ -135,6 +165,8 @@ const games = [
     type: 'Arcade',
     emoji: '🦖',
     image: '/images/games/dino.png',
+    statsKeys: ['chrome_dino'],
+    releaseRank: 15,
   },
   {
     id: 'stack-tower',
@@ -144,6 +176,8 @@ const games = [
     type: 'Arcade',
     emoji: '🧱',
     image: '/images/games/stack.png',
+    statsKeys: ['stack_tower'],
+    releaseRank: 16,
   },
   {
     id: 'fruit-ninja',
@@ -153,6 +187,8 @@ const games = [
     type: 'Arcade',
     emoji: '🍉',
     image: '/images/games/fruitninja.png',
+    statsKeys: ['fruit_ninja'],
+    releaseRank: 28,
   },
   {
     id: 'qs-watermelon',
@@ -161,6 +197,8 @@ const games = [
     description: 'Lâche les fruits dans la cuve, fusionne les doublons et vise la pastèque sans dépasser la ligne.',
     type: 'Arcade',
     image: '/images/games/qswatermelon.svg',
+    statsKeys: ['qs_watermelon'],
+    releaseRank: 17,
   },
   {
     id: 'geometry-dash',
@@ -169,6 +207,8 @@ const games = [
     description: 'Cours en rythme, saute au pixel près et tiens le plus loin possible dans ce dash arcade.',
     type: 'Arcade',
     image: '/images/games/geometrydash.png',
+    statsKeys: ['geometry_dash'],
+    releaseRank: 18,
   },
   {
     id: 'casino',
@@ -177,6 +217,8 @@ const games = [
     description: 'Choisis entre machine a sous et roulette animee.',
     type: 'Chance',
     image: '/images/games/casino.png',
+    statsKeys: ['casino'],
+    releaseRank: 6,
   },
   {
     id: 'aura-coin',
@@ -185,6 +227,8 @@ const games = [
     description: 'Trade la cryptomonnaie virtuelle. Achete bas, vends haut.',
     type: 'Trading',
     image: '/images/games/auracoin.png',
+    statsKeys: [],
+    releaseRank: 7,
   },
   {
     id: 'solitaire',
@@ -193,6 +237,8 @@ const games = [
     description: 'Le classique jeu de cartes. Empile les cartes pour gagner.',
     type: 'Score',
     image: '/images/games/solitaire.png',
+    statsKeys: ['solitaire'],
+    releaseRank: 9,
   },
   {
     id: 'racer',
@@ -201,6 +247,8 @@ const games = [
     description: 'Course pseudo-3D style Outrun. Évite les voitures et finis le tour le plus vite possible.',
     type: 'Score',
     image: '/images/games/racer.png',
+    statsKeys: ['racer', 'racer_daily'],
+    releaseRank: 21,
   },
   {
     id: 'tetris',
@@ -209,6 +257,8 @@ const games = [
     description: 'Le classique jeu de puzzle. Empile les pieces et complete des lignes pour gagner des points.',
     type: 'Score',
     image: '/images/games/tetris.png',
+    statsKeys: ['tetris'],
+    releaseRank: 22,
   },
   {
     id: 'knife-hit',
@@ -217,6 +267,8 @@ const games = [
     description: 'Lance au bon moment, evite les lames en place et grimpe de niveau en niveau.',
     type: 'Arcade',
     image: '/images/games/knifehit.png',
+    statsKeys: ['knife_hit'],
+    releaseRank: 23,
   },
   {
     id: 'clash-village',
@@ -225,6 +277,8 @@ const games = [
     description: 'Bâtis ton village, renforce tes défenses et pille les réserves ennemies dans des raids asynchrones.',
     type: 'Strategy',
     image: '/images/games/clashvillage.svg',
+    statsKeys: ['clash_village'],
+    releaseRank: 29,
   },
   {
     id: 'goyave-empire',
@@ -233,6 +287,8 @@ const games = [
     description: "Construis un empire de goyaves. Récolte, améliore et encaisse des récompenses.",
     type: 'Idle',
     image: '/images/games/goyaveempire.png',
+    statsKeys: ['goyave_empire'],
+    releaseRank: 30,
   },
   {
     id: 'polytrack',
@@ -242,6 +298,8 @@ const games = [
     type: 'Score',
     emoji: '🏎️',
     image: '/images/games/racer.png',
+    statsKeys: [],
+    releaseRank: 31,
   },
   {
     id: 'eaglercraft',
@@ -251,6 +309,8 @@ const games = [
     type: 'Sandbox',
     emoji: '⛏️',
     image: '/images/games/geometrydash.png',
+    statsKeys: [],
+    releaseRank: 32,
   },
   {
     id: 'puissance-quatre',
@@ -260,6 +320,8 @@ const games = [
     type: 'Duel',
     requiresParty: true,
     image: '/images/games/puissance4.png',
+    statsKeys: ['puissance_4'],
+    releaseRank: 19,
   },
   {
     id: 'echecs',
@@ -269,6 +331,8 @@ const games = [
     type: 'Duel',
     requiresParty: true,
     image: '/images/games/chess.png',
+    statsKeys: ['chess'],
+    releaseRank: 20,
   },
   {
     id: 'ball-arena',
@@ -279,6 +343,8 @@ const games = [
     requiresParty: true,
     emoji: '🎱',
     image: '/images/games/ballarena.png',
+    statsKeys: ['ball_arena'],
+    releaseRank: 27,
   },
   {
     id: 'morpion',
@@ -288,6 +354,8 @@ const games = [
     type: 'Duel',
     requiresParty: true,
     image: '/images/games/puissance4.png',
+    statsKeys: ['morpion'],
+    releaseRank: 14,
   },
 ];
 
@@ -309,21 +377,61 @@ const tabConfig: Array<{ id: GamesTab; label: string }> = [
 export default function Games() {
   const [activeTab, setActiveTab] = useState<GamesTab>('all');
   const [activeMultiplayerTab, setActiveMultiplayerTab] = useState<MultiplayerTab>('all');
+  const [sortBy, setSortBy] = useState<SortOption>('default');
+  const [catalogStats, setCatalogStats] = useState<{ global: Record<string, number>; personal: Record<string, number> }>({
+    global: {},
+    personal: {},
+  });
   const { maintenanceStatus } = useFeatures();
   const { theme } = useTheme();
+  const { user } = useAuth();
   const disabledPages = maintenanceStatus.disabledPages;
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchCatalogStats = async () => {
+      try {
+        const response = await gamesApi.getCatalogStats();
+        if (!cancelled) {
+          setCatalogStats(response.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch games catalog stats:', error);
+      }
+    };
+
+    if (user) {
+      fetchCatalogStats();
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   const visibleGames = useMemo(() => games.filter((game) => !disabledPages.includes(game.pageKey)), [disabledPages]);
-  const multiplayerGames = useMemo(() => visibleGames.filter((game) => game.requiresParty), [visibleGames]);
-  const soloGames = useMemo(() => visibleGames.filter((game) => !game.requiresParty), [visibleGames]);
-  const duelGames = useMemo(
-    () => multiplayerGames.filter((game) => game.type === 'Duel'),
-    [multiplayerGames],
-  );
-  const partyGames = useMemo(
-    () => multiplayerGames.filter((game) => game.type === 'Party'),
-    [multiplayerGames],
-  );
+  const getGlobalPlayCount = (game: Game) =>
+    game.statsKeys.reduce((total, key) => total + (catalogStats.global[key] ?? 0), 0);
+  const getPersonalPlayCount = (game: Game) =>
+    game.statsKeys.reduce((total, key) => total + (catalogStats.personal[key] ?? 0), 0);
+  const sortGames = (list: Game[]) => [...list].sort((a, b) => {
+    if (sortBy === 'popular') {
+      return getGlobalPlayCount(b) - getGlobalPlayCount(a) || b.releaseRank - a.releaseRank;
+    }
+    if (sortBy === 'newest') {
+      return b.releaseRank - a.releaseRank;
+    }
+    if (sortBy === 'most-played') {
+      return getPersonalPlayCount(b) - getPersonalPlayCount(a) || getGlobalPlayCount(b) - getGlobalPlayCount(a);
+    }
+    return games.findIndex((game) => game.id === a.id) - games.findIndex((game) => game.id === b.id);
+  });
+
+  const multiplayerGames = useMemo(() => sortGames(visibleGames.filter((game) => game.requiresParty)), [visibleGames, sortBy, catalogStats]);
+  const soloGames = useMemo(() => sortGames(visibleGames.filter((game) => !game.requiresParty)), [visibleGames, sortBy, catalogStats]);
+  const duelGames = useMemo(() => sortGames(multiplayerGames.filter((game) => game.type === 'Duel')), [multiplayerGames, sortBy, catalogStats]);
+  const partyGames = useMemo(() => sortGames(multiplayerGames.filter((game) => game.type === 'Party')), [multiplayerGames, sortBy, catalogStats]);
 
   const getGameLink = (gameId: string) => {
     if (gameId === 'russian-roulette') {
@@ -448,18 +556,36 @@ export default function Games() {
         </TabsList>
 
         <TabsContent value={activeTab} className={SPACING.CARD_SPACING}>
-          {activeTab === 'multiplayer' && (
-            <Tabs
-              value={activeMultiplayerTab}
-              onValueChange={(value) => setActiveMultiplayerTab(value as MultiplayerTab)}
-            >
-              <TabsList className="h-auto flex-wrap">
-                <TabsTrigger value="all">Tous</TabsTrigger>
-                <TabsTrigger value="party">Party</TabsTrigger>
-                <TabsTrigger value="duel">Duel</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          )}
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            {activeTab === 'multiplayer' ? (
+              <Tabs
+                value={activeMultiplayerTab}
+                onValueChange={(value) => setActiveMultiplayerTab(value as MultiplayerTab)}
+              >
+                <TabsList className="h-auto flex-wrap">
+                  <TabsTrigger value="all">Tous</TabsTrigger>
+                  <TabsTrigger value="party">Party</TabsTrigger>
+                  <TabsTrigger value="duel">Duel</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            ) : (
+              <div />
+            )}
+
+            <div className="w-full md:w-[220px]">
+              <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Trier les jeux" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">Ordre par défaut</SelectItem>
+                  <SelectItem value="popular">Populaire</SelectItem>
+                  <SelectItem value="newest">Nouveaux</SelectItem>
+                  <SelectItem value="most-played">Plus joués</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
           {activeTab === 'all' ? (
             <div className="space-y-8">

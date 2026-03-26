@@ -7,7 +7,7 @@ import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 const router = Router();
 
 const USER_IMAGE_UPLOAD_DIR = path.resolve('uploads', 'user-images');
-const MAX_USER_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_USER_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 
 const inferImageExtension = (mimeType: string) => {
   switch (mimeType.toLowerCase()) {
@@ -40,7 +40,7 @@ router.post('/image', authMiddleware, async (req: AuthRequest, res: Response) =>
     }
 
     if (buffer.byteLength > MAX_USER_IMAGE_SIZE_BYTES) {
-      return res.status(400).json({ error: 'Image too large (max 5MB)' });
+      return res.status(400).json({ error: 'Image too large (max 10MB)' });
     }
 
     if (!fs.existsSync(USER_IMAGE_UPLOAD_DIR)) {

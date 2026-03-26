@@ -226,12 +226,288 @@ const getHandTotal = (hand: BlackjackCard[]) => {
 
   return total;
 };
+
+type CasinoCelebrationGame = 'roulette' | 'slots' | 'blackjack';
+type CasinoCelebrationTier = 'small' | 'big' | 'mega' | 'jackpot';
+
+interface CasinoCelebration {
+  id: number;
+  game: CasinoCelebrationGame;
+  tier: CasinoCelebrationTier;
+  netGain: number;
+  grossWin: number;
+  bet: number;
+  headline: string;
+  subheadline: string;
+  cathyLines: string[];
+  popupBursts: string[];
+  accentClass: string;
+  glowClass: string;
+  chipCount: number;
+}
+
+const CASINO_GAME_LABELS: Record<CasinoCelebrationGame, string> = {
+  roulette: 'Roulette',
+  slots: 'Machine a sous',
+  blackjack: 'Blackjack',
+};
+
+const getCelebrationTier = (netGain: number, grossWin: number, bet: number): CasinoCelebrationTier => {
+  if (netGain >= 3000 || grossWin >= 6000 || netGain >= Math.max(1, bet) * 20) return 'jackpot';
+  if (netGain >= 1200 || grossWin >= 2500 || netGain >= Math.max(1, bet) * 8) return 'mega';
+  if (netGain >= 350 || grossWin >= 800 || netGain >= Math.max(1, bet) * 3) return 'big';
+  return 'small';
+};
+
+const buildCelebration = (
+  game: CasinoCelebrationGame,
+  netGain: number,
+  grossWin: number,
+  bet: number,
+): CasinoCelebration | null => {
+  if (netGain <= 0) return null;
+
+  const tier = getCelebrationTier(netGain, grossWin, bet);
+  const gameLabel = CASINO_GAME_LABELS[game];
+
+  if (tier === 'jackpot') {
+    return {
+      id: Date.now() + Math.floor(Math.random() * 1000),
+      game,
+      tier,
+      netGain,
+      grossWin,
+      bet,
+      headline: 'MEGA JACKPOT',
+      subheadline: `${gameLabel} s'emballe, la salle explose et Cathy appelle presque la securite.`,
+      cathyLines: [
+        'Cathy: ON LE GARDE OU ON LE MET EN VITRINE CE GAIN ?',
+        'Cathy: Tout le casino te regarde, continue comme ca.',
+        'Cathy: Sirenes, jetons, flashs... c est un vrai braquage legal.',
+      ],
+      popupBursts: ['GAIN MONSTRE', 'TABLE EN FUSION', 'CATHY EN PLS', 'JACKPOT x100'],
+      accentClass: 'from-amber-200 via-yellow-300 to-orange-500',
+      glowClass: 'shadow-[0_0_90px_rgba(251,191,36,0.55)]',
+      chipCount: 24,
+    };
+  }
+
+  if (tier === 'mega') {
+    return {
+      id: Date.now() + Math.floor(Math.random() * 1000),
+      game,
+      tier,
+      netGain,
+      grossWin,
+      bet,
+      headline: 'GROSSE VICTOIRE',
+      subheadline: `${gameLabel} vient de sortir un gain enorme. Cathy declenche les lumieres VIP.`,
+      cathyLines: [
+        'Cathy: Ouh la, la machine chante pour toi.',
+        'Cathy: C est le genre de coup qui rend jaloux la table d a cote.',
+        'Cathy: On veut du bruit, on veut des popups, on veut du cash.',
+      ],
+      popupBursts: ['BIG WIN', 'VIP ALERT', 'PLUIE DE JETONS'],
+      accentClass: 'from-fuchsia-300 via-pink-400 to-orange-400',
+      glowClass: 'shadow-[0_0_70px_rgba(244,114,182,0.42)]',
+      chipCount: 18,
+    };
+  }
+
+  if (tier === 'big') {
+    return {
+      id: Date.now() + Math.floor(Math.random() * 1000),
+      game,
+      tier,
+      netGain,
+      grossWin,
+      bet,
+      headline: 'BELLE MONTEE',
+      subheadline: `${gameLabel} t envoie un bon shot de dopamine et Cathy monte le volume.`,
+      cathyLines: [
+        'Cathy: Ouiii, ca commence a sentir la bonne soiree.',
+        'Cathy: On garde la cadence, le casino adore ca.',
+      ],
+      popupBursts: ['GAIN', 'SERIE CHAUDE'],
+      accentClass: 'from-emerald-300 via-lime-300 to-yellow-300',
+      glowClass: 'shadow-[0_0_56px_rgba(74,222,128,0.34)]',
+      chipCount: 12,
+    };
+  }
+
+  return {
+    id: Date.now() + Math.floor(Math.random() * 1000),
+    game,
+    tier,
+    netGain,
+    grossWin,
+    bet,
+    headline: 'PETIT GAIN',
+    subheadline: `${gameLabel} paie. Cathy te glisse un petit "on continue".`,
+    cathyLines: ['Cathy: Petit billet, grande confiance.'],
+    popupBursts: ['+ CASH'],
+    accentClass: 'from-sky-300 via-cyan-300 to-teal-300',
+    glowClass: 'shadow-[0_0_40px_rgba(34,211,238,0.26)]',
+    chipCount: 8,
+  };
+};
+
+function CasinoCelebrationLayer({
+  celebration,
+  onDismiss,
+}: {
+  celebration: CasinoCelebration | null;
+  onDismiss: () => void;
+}) {
+  if (!celebration) return null;
+
+  return (
+    <>
+      <style>{`
+        @keyframes casinoPulse {
+          0% { opacity: 0.28; transform: scale(0.94); }
+          50% { opacity: 0.9; transform: scale(1.04); }
+          100% { opacity: 0.28; transform: scale(0.94); }
+        }
+        @keyframes casinoFloat {
+          0% { opacity: 0; transform: translateY(20px) scale(0.9); }
+          15% { opacity: 1; }
+          100% { opacity: 0; transform: translateY(-44px) scale(1.08); }
+        }
+        @keyframes casinoFall {
+          0% { opacity: 0; transform: translate3d(0,-16vh,0) rotate(0deg); }
+          15% { opacity: 1; }
+          100% { opacity: 0; transform: translate3d(18px,88vh,0) rotate(540deg); }
+        }
+        @keyframes casinoBanner {
+          0% { opacity: 0; transform: translateY(18px) scale(0.94); }
+          12% { opacity: 1; transform: translateY(0) scale(1); }
+          80% { opacity: 1; transform: translateY(0) scale(1); }
+          100% { opacity: 0; transform: translateY(-16px) scale(1.02); }
+        }
+      `}</style>
+
+      <div className="pointer-events-none fixed inset-0 z-40 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.12),transparent_55%)]" />
+        <div
+          className={cn(
+            'absolute left-1/2 top-1/2 h-[40rem] w-[40rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br blur-3xl',
+            celebration.accentClass,
+            celebration.glowClass,
+          )}
+          style={{ animation: 'casinoPulse 1.8s ease-in-out infinite' }}
+        />
+
+        {Array.from({ length: celebration.chipCount }, (_, index) => {
+          const left = 4 + ((index * 91) % 92);
+          const delay = (index % 6) * 110;
+          const duration = 1700 + (index % 5) * 180;
+          const size = 20 + (index % 4) * 8;
+          const tokens = ['💸', '🪙', '✨', '🎰'];
+          return (
+            <div
+              key={`${celebration.id}-chip-${index}`}
+              className="absolute top-0 text-center"
+              style={{
+                left: `${left}%`,
+                fontSize: `${size}px`,
+                animation: `casinoFall ${duration}ms linear ${delay}ms infinite`,
+              }}
+            >
+              {tokens[index % tokens.length]}
+            </div>
+          );
+        })}
+
+        {celebration.popupBursts.map((message, index) => (
+          <div
+            key={`${celebration.id}-popup-${message}-${index}`}
+            className={cn(
+              'absolute rounded-full border border-white/30 bg-black/65 px-4 py-2 text-xs font-black uppercase tracking-[0.28em] text-white backdrop-blur-md',
+              celebration.glowClass,
+            )}
+            style={{
+              left: `${10 + ((index * 23) % 70)}%`,
+              top: `${18 + ((index * 17) % 40)}%`,
+              animation: `casinoFloat ${2200 + index * 180}ms ease-out ${index * 120}ms infinite`,
+            }}
+          >
+            {message}
+          </div>
+        ))}
+
+        <div
+          className="absolute left-1/2 top-[10%] w-[min(92vw,42rem)] -translate-x-1/2"
+          style={{ animation: 'casinoBanner 4.6s ease-out forwards' }}
+        >
+          <div className={cn('rounded-[2rem] border border-white/20 bg-black/70 p-5 text-white backdrop-blur-xl', celebration.glowClass)}>
+            <div className={cn('inline-flex rounded-full bg-gradient-to-r px-3 py-1 text-[10px] font-black uppercase tracking-[0.32em] text-black', celebration.accentClass)}>
+              {CASINO_GAME_LABELS[celebration.game]}
+            </div>
+            <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-2xl font-black tracking-[0.08em] sm:text-4xl">{celebration.headline}</p>
+                <p className="mt-2 max-w-2xl text-sm text-white/80">{celebration.subheadline}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[11px] uppercase tracking-[0.28em] text-white/60">Gain net</p>
+                <p className="text-3xl font-black text-emerald-300 sm:text-5xl">+${celebration.netGain.toLocaleString()}</p>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+              {celebration.cathyLines.map((line) => (
+                <div key={line} className="rounded-2xl border border-white/10 bg-white/10 px-3 py-3 text-sm text-white/90">
+                  {line}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="pointer-events-auto absolute right-4 top-4 rounded-full border border-white/20 bg-black/60 px-3 py-2 text-xs font-semibold text-white/80 backdrop-blur"
+        >
+          Fermer les effets
+        </button>
+      </div>
+    </>
+  );
+}
 // -----------------------------
 // Main Casino page
 // -----------------------------
 export default function Casino() {
   const [activeGame, setActiveGame] = useState<GameTab | null>(null);
+  const [celebration, setCelebration] = useState<CasinoCelebration | null>(null);
   const { theme } = useTheme();
+
+  useEffect(() => {
+    if (!celebration) return undefined;
+
+    const duration =
+      celebration.tier === 'jackpot'
+        ? 9000
+        : celebration.tier === 'mega'
+          ? 7500
+          : celebration.tier === 'big'
+            ? 6200
+            : 4800;
+
+    const timeout = window.setTimeout(() => {
+      setCelebration((current) => (current?.id === celebration.id ? null : current));
+    }, duration);
+
+    return () => window.clearTimeout(timeout);
+  }, [celebration]);
+
+  const triggerCelebration = useCallback((game: CasinoCelebrationGame, netGain: number, grossWin: number, bet: number) => {
+    const nextCelebration = buildCelebration(game, netGain, grossWin, bet);
+    if (nextCelebration) {
+      setCelebration(nextCelebration);
+    }
+  }, []);
 
   const gameCards: Array<{
     id: GameTab;
@@ -261,14 +537,15 @@ export default function Casino() {
 
   return (
     <PageShell size="wide">
+      <CasinoCelebrationLayer celebration={celebration} onDismiss={() => setCelebration(null)} />
       {activeGame ? (
         <section className="space-y-4">
           {activeGame === 'roulette' ? (
-            <RouletteGame onExit={() => setActiveGame(null)} />
+            <RouletteGame onExit={() => setActiveGame(null)} onCelebrate={triggerCelebration} />
           ) : activeGame === 'slots' ? (
-            <SlotMachineGame onBetChange={() => {}} />
+            <SlotMachineGame onBetChange={() => {}} onCelebrate={triggerCelebration} />
           ) : (
-            <BlackjackGame onBetChange={() => {}} />
+            <BlackjackGame onBetChange={() => {}} onCelebrate={triggerCelebration} />
           )}
         </section>
       ) : (
@@ -315,7 +592,13 @@ const getBetLabel = (bet: Bet): string => {
   }
 };
 
-function RouletteGame({ onExit }: { onExit?: () => void }) {
+function RouletteGame({
+  onExit,
+  onCelebrate,
+}: {
+  onExit?: () => void;
+  onCelebrate?: (game: CasinoCelebrationGame, netGain: number, grossWin: number, bet: number) => void;
+}) {
   const { user, refreshUser } = useAuth();
   const [bets, setBets] = useState<Bet[]>([]);
   const [chipValue, setChipValue] = useState(25);
@@ -437,6 +720,7 @@ function RouletteGame({ onExit }: { onExit?: () => void }) {
       };
 
       setLastResult(spinResult);
+      onCelebrate?.('roulette', net, payout, totalBet);
 
       try {
         const response = await gamesApi.complete('casino', {
@@ -464,6 +748,7 @@ function RouletteGame({ onExit }: { onExit?: () => void }) {
     totalBet,
     wheelRotation,
     calculatePayout,
+    onCelebrate,
     refreshUser,
   ]);
 
@@ -921,7 +1206,13 @@ function RouletteGame({ onExit }: { onExit?: () => void }) {
 // -----------------------------
 // Blackjack Component
 // -----------------------------
-function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void }) {
+function BlackjackGame({
+  onBetChange,
+  onCelebrate,
+}: {
+  onBetChange?: (value: number) => void;
+  onCelebrate?: (game: CasinoCelebrationGame, netGain: number, grossWin: number, bet: number) => void;
+}) {
   const { user, refreshUser } = useAuth();
   const [bet, setBet] = useState(100);
   const [betDraft, setBetDraft] = useState('100');
@@ -963,6 +1254,7 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
       setHands(finalHands);
       setNetGain(net);
       setStatus('finished');
+      onCelebrate?.('blackjack', net, payoutAmount, totalRoundBet);
 
       if (!user) return;
 
@@ -984,7 +1276,7 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
         console.error('Failed to submit blackjack:', err);
       }
     },
-    [refreshUser, user]
+    [onCelebrate, refreshUser, user]
   );
 
   const getHandPayout = useCallback((hand: BlackjackHand) => {
@@ -1559,7 +1851,13 @@ function BlackjackGame({ onBetChange }: { onBetChange?: (value: number) => void 
 // -----------------------------
 // Slot Machine Component (previous experience)
 // -----------------------------
-function SlotMachineGame({ onBetChange }: { onBetChange?: (value: number) => void }) {
+function SlotMachineGame({
+  onBetChange,
+  onCelebrate,
+}: {
+  onBetChange?: (value: number) => void;
+  onCelebrate?: (game: CasinoCelebrationGame, netGain: number, grossWin: number, bet: number) => void;
+}) {
   const { user, refreshUser } = useAuth();
   const [bet, setBet] = useState(50);
   const [spinning, setSpinning] = useState(false);
@@ -1637,18 +1935,20 @@ function SlotMachineGame({ onBetChange }: { onBetChange?: (value: number) => voi
       
       const finalReels = generateReels();
       const result = calculateWin(finalReels);
+      const netGain = result.winAmount - bet;
       
       setReels(finalReels);
       setWinAmount(result.winAmount);
       setLastResult({ reels: finalReels, ...result });
       setIsSpinning(false);
+      onCelebrate?.('slots', netGain, result.winAmount, bet);
 
       try {
         const response = await gamesApi.complete('casino', {
           score: result.winAmount,
           won: result.winAmount > 0,
           bet,
-          netGain: result.winAmount - bet,
+          netGain,
         });
 
         setRewards({
@@ -1663,7 +1963,7 @@ function SlotMachineGame({ onBetChange }: { onBetChange?: (value: number) => voi
 
       setSpinning(false);
     }, SLOT_SPIN_DURATION);
-  }, [bet, user, spinning, refreshUser]);
+  }, [bet, user, spinning, refreshUser, onCelebrate]);
 
   const canSpin = user && user.money >= bet && !spinning;
 

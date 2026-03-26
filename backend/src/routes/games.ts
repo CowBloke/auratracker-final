@@ -587,6 +587,7 @@ function calculateTetrisRewards(score: number, isNewHighScore: boolean): { money
 
 function calculateKnifeHitRewards(score: number, isNewHighScore: boolean): { money: number; aura: number } {
   const config = GAME_REWARDS.knife_hit;
+  const minScoreForAuraReward = 50;
 
   if (score < config.minScoreForReward) {
     return { money: 0, aura: 0 };
@@ -600,8 +601,8 @@ function calculateKnifeHitRewards(score: number, isNewHighScore: boolean): { mon
     }
   }
 
-  let auraReward = selectedTier.auraBonus;
-  if (isNewHighScore) {
+  let auraReward = score >= minScoreForAuraReward ? selectedTier.auraBonus : 0;
+  if (isNewHighScore && score >= minScoreForAuraReward) {
     auraReward += Math.min(Math.floor(score / 20), 8);
   }
 
@@ -864,6 +865,52 @@ router.get('/:gameType/stats/:userId', authMiddleware, async (req: AuthRequest, 
   }
 });
 
+// Get aggregated stats for the games catalog
+router.get('/catalog/stats', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const [globalStats, personalStats] = await Promise.all([
+      prisma.gameStats.groupBy({
+        by: ['gameType'],
+        where: {
+          user: {
+            isSuperAdmin: false,
+          },
+        },
+        _sum: {
+          totalPlayed: true,
+        },
+      }),
+      prisma.gameStats.findMany({
+        where: {
+          userId: req.user.id,
+        },
+        select: {
+          gameType: true,
+          totalPlayed: true,
+        },
+      }),
+    ]);
+
+    res.json({
+      global: globalStats.reduce<Record<string, number>>((acc, entry) => {
+        acc[entry.gameType] = entry._sum.totalPlayed ?? 0;
+        return acc;
+      }, {}),
+      personal: personalStats.reduce<Record<string, number>>((acc, entry) => {
+        acc[entry.gameType] = entry.totalPlayed;
+        return acc;
+      }, {}),
+    });
+  } catch (error) {
+    console.error('Get games catalog stats error:', error);
+    res.status(500).json({ error: 'Failed to get games catalog stats' });
+  }
+});
+
 // Complete a game
 router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema), async (req: AuthRequest, res: Response) => {
   try {
@@ -918,6 +965,7 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
     // Calculate rewards
     let auraReward = 0;
     let moneyReward = 0;
+    const badgeUpdateTasks: Promise<unknown>[] = [];
     
     if (isDoodleJumpType(gameType)) {
       const rewards = calculateDoodleJumpRewards(score, isNewHighScore);
@@ -1088,8 +1136,8 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
         newHighScore: score,
         previousHighScore: currentStats?.highScore || 0,
       });
-      // Immediately recalculate the champion badge for this game (non-blocking)
-      void recheckBadgeForCondition(`GAME_HIGHSCORE_${gameType}`);
+      // Recalculate the champion badge for this game before the client refreshes user data.
+      badgeUpdateTasks.push(recheckBadgeForCondition(`GAME_HIGHSCORE_${gameType}`));
     }
 
     const isNewGlobalRecord = gameType === 'racer'
@@ -1122,8 +1170,8 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
           highScore: isNewTileRecord ? maxTile : undefined,
         },
       });
-      if (maxTile >= 2048) void recheckBadgeForCondition('GAME_2048_TILE_2048');
-      if (maxTile >= 4096) void recheckBadgeForCondition('GAME_2048_TILE_4096');
+      if (maxTile >= 2048) badgeUpdateTasks.push(recheckBadgeForCondition('GAME_2048_TILE_2048'));
+      if (maxTile >= 4096) badgeUpdateTasks.push(recheckBadgeForCondition('GAME_2048_TILE_4096'));
     }
 
     // Sudoku difficulty badge tracking (logic_lab with difficulty param)
@@ -1136,8 +1184,8 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
         update: { wins: { increment: 1 }, totalPlayed: { increment: 1 }, highScore: score > (currentStats?.highScore ?? 0) ? score : undefined },
       });
       const condMap: Record<string, string> = { easy: 'SUDOKU_EASY', medium: 'SUDOKU_MEDIUM', hard: 'SUDOKU_HARD', expert: 'SUDOKU_EXPERT' };
-      if (condMap[diffKey]) void recheckBadgeForCondition(condMap[diffKey]);
-      void recheckBadgeForCondition('SUDOKU_COMPLETED');
+      if (condMap[diffKey]) badgeUpdateTasks.push(recheckBadgeForCondition(condMap[diffKey]));
+      badgeUpdateTasks.push(recheckBadgeForCondition('SUDOKU_COMPLETED'));
     }
 
     // Minesweeper difficulty badge tracking
@@ -1150,18 +1198,18 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
         update: { wins: { increment: 1 }, totalPlayed: { increment: 1 }, highScore: score > (currentStats?.highScore ?? 0) ? score : undefined },
       });
       const condMap: Record<string, string> = { debutant: 'MINESWEEPER_DEBUTANT', intermediaire: 'MINESWEEPER_INTERMEDIAIRE', expert: 'MINESWEEPER_EXPERT' };
-      if (condMap[diffKey]) void recheckBadgeForCondition(condMap[diffKey]);
-      void recheckBadgeForCondition('MINESWEEPER_WIN');
+      if (condMap[diffKey]) badgeUpdateTasks.push(recheckBadgeForCondition(condMap[diffKey]));
+      badgeUpdateTasks.push(recheckBadgeForCondition('MINESWEEPER_WIN'));
     }
 
     // Solitaire win badge
     if (gameType === 'solitaire' && won) {
-      void recheckBadgeForCondition('SOLITAIRE_WIN');
+      badgeUpdateTasks.push(recheckBadgeForCondition('SOLITAIRE_WIN'));
     }
 
     // Racer completion badge (any valid lap time submitted)
     if (gameType === 'racer') {
-      void recheckBadgeForCondition('RACER_LAP');
+      badgeUpdateTasks.push(recheckBadgeForCondition('RACER_LAP'));
     }
 
     // Casino big bet badges
@@ -1175,7 +1223,7 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
             create: { userId: req.user.id, gameType: betGameType, wins: 1, losses: 0, highScore: bet, totalPlayed: 1 },
             update: { wins: { increment: 1 }, totalPlayed: { increment: 1 }, highScore: bet > 0 ? Math.max(bet, 0) : undefined },
           });
-          void recheckBadgeForCondition(`CASINO_BET_${threshold}`);
+          badgeUpdateTasks.push(recheckBadgeForCondition(`CASINO_BET_${threshold}`));
         }
       }
     }
@@ -1184,10 +1232,10 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
     if (won) {
       const hour = new Date().getHours();
       if (hour >= 2 && hour < 5) {
-        void awardBadgeByKey(req.user.id, 'NIGHT_OWL_WIN', 'Victoire entre 2h et 5h du matin');
+        badgeUpdateTasks.push(awardBadgeByKey(req.user.id, 'NIGHT_OWL_WIN', 'Victoire entre 2h et 5h du matin'));
       }
       if (hour < 7) {
-        void awardBadgeByKey(req.user.id, 'EARLY_BIRD_WIN', 'Victoire avant 7h du matin');
+        badgeUpdateTasks.push(awardBadgeByKey(req.user.id, 'EARLY_BIRD_WIN', 'Victoire avant 7h du matin'));
       }
     }
 
@@ -1204,7 +1252,7 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
         update: { highScore: newStreak, totalPlayed: { increment: 1 } },
       });
       if (won && newStreak >= 10) {
-        void awardBadgeByKey(req.user.id, 'PERFECT_10', '10 victoires consécutives');
+        badgeUpdateTasks.push(awardBadgeByKey(req.user.id, 'PERFECT_10', '10 victoires consécutives'));
       }
     }
 
@@ -1286,6 +1334,10 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       if (won) {
         await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
       }
+    }
+
+    if (badgeUpdateTasks.length > 0) {
+      await Promise.all(badgeUpdateTasks);
     }
 
     res.json({

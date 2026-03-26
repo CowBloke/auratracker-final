@@ -9,6 +9,8 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
+import { GamePauseButton } from '@/components/game/GamePauseButton';
+import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 import { Play, RotateCcw, Zap, Gauge, Mountain } from 'lucide-react';
@@ -242,6 +244,8 @@ export default function GeometryDash() {
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [leaderboard, setLeaderboard] = useState<GameLeaderboardEntry[]>([]);
+  const [isPaused, setIsPaused] = useState(false);
+  const canPause = started && !gameOver;
 
   const fetchStats = useCallback(async () => {
     if (!user?.id) return;
@@ -340,6 +344,7 @@ export default function GeometryDash() {
     resetWorld();
     setStarted(true);
     setGameOver(false);
+    setIsPaused(false);
     setScore(0);
     setRewards(null);
     setIsNewHighScore(false);
@@ -378,12 +383,19 @@ export default function GeometryDash() {
   }, [spawnBurst, submitScore]);
 
   const queueJump = useCallback(() => {
-    if (!started || gameOver) return;
+    if (!started || gameOver || isPaused) return;
     playerRef.current.jumpBuffer = INPUT_BUFFER;
-  }, [gameOver, started]);
+  }, [gameOver, isPaused, started]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.code === 'KeyP' || event.code === 'Escape') {
+        if (!canPause) return;
+        event.preventDefault();
+        setIsPaused((current) => !current);
+        return;
+      }
+
       if (event.code === 'Space' || event.code === 'ArrowUp' || event.code === 'KeyW') {
         event.preventDefault();
         if (!started) {
@@ -401,7 +413,7 @@ export default function GeometryDash() {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [gameOver, initGame, queueJump, started]);
+  }, [canPause, gameOver, initGame, queueJump, started]);
 
   const drawScene = useCallback((ctx: CanvasRenderingContext2D) => {
     const player = playerRef.current;
@@ -549,6 +561,12 @@ export default function GeometryDash() {
     const delta = Math.min((timestamp - lastTimeRef.current) / 1000, 0.033);
     lastTimeRef.current = timestamp;
 
+    if (isPaused) {
+      drawScene(ctx);
+      animationRef.current = requestAnimationFrame(gameLoop);
+      return;
+    }
+
     if (gameRunningRef.current) {
       const player = playerRef.current;
       const speed = Math.min(MAX_SPEED, START_SPEED + distanceRef.current * SPEED_GAIN);
@@ -688,7 +706,13 @@ export default function GeometryDash() {
 
     drawScene(ctx);
     animationRef.current = requestAnimationFrame(gameLoop);
-  }, [addObstaclePattern, drawScene, endGame, gameOver, spawnBurst]);
+  }, [addObstaclePattern, drawScene, endGame, gameOver, isPaused, spawnBurst]);
+
+  useEffect(() => {
+    if (!canPause && isPaused) {
+      setIsPaused(false);
+    }
+  }, [canPause, isPaused]);
 
   useEffect(() => {
     animationRef.current = requestAnimationFrame(gameLoop);
@@ -765,7 +789,9 @@ export default function GeometryDash() {
             isFullscreen={isFullscreen}
             onToggleFullscreen={toggleFullscreen}
             className="w-full max-w-[960px]"
-          />
+          >
+            <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} disabled={!canPause} />
+          </GameFullscreenToolbar>
 
           <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={CANVAS_WIDTH} baseHeight={CANVAS_HEIGHT}>
             <canvas
@@ -774,6 +800,7 @@ export default function GeometryDash() {
               height={CANVAS_HEIGHT}
               className="block h-full w-full cursor-pointer rounded-lg border border-border bg-black/20"
               onMouseDown={() => {
+                if (isPaused) return;
                 if (!started) {
                   initGame();
                   return;
@@ -782,6 +809,7 @@ export default function GeometryDash() {
               }}
               onTouchStart={(event) => {
                 event.preventDefault();
+                if (isPaused) return;
                 if (!started) {
                   initGame();
                   return;
@@ -789,6 +817,7 @@ export default function GeometryDash() {
                 queueJump();
               }}
             />
+            <GamePauseOverlay visible={isPaused} onResume={() => setIsPaused(false)} />
 
             {!started && (
               <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/80">

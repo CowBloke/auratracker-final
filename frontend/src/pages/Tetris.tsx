@@ -8,6 +8,8 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
+import { GamePauseButton } from '@/components/game/GamePauseButton';
+import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 
@@ -33,6 +35,7 @@ export default function Tetris() {
   const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [lastScore, setLastScore] = useState<number | null>(null);
   const [sessionKey, setSessionKey] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
   const lastSubmittedRef = useRef<string>('');
 
   const fetchStats = useCallback(async () => {
@@ -120,6 +123,7 @@ export default function Tetris() {
     setRewards(null);
     setIsNewHighScore(false);
     setLastScore(null);
+    setIsPaused(false);
     setSessionKey((prev) => prev + 1);
   };
 
@@ -203,6 +207,7 @@ export default function Tetris() {
         )}
       >
         <GameFullscreenToolbar isFullscreen={isFullscreen} onToggleFullscreen={toggleFullscreen} className="w-full">
+          <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} />
           {isFullscreen && (
             <Button size="sm" variant="outline" onClick={restartSession}>
               <RotateCcw className="mr-2 h-4 w-4" />
@@ -217,6 +222,11 @@ export default function Tetris() {
             src={`/tetrjs/index.html?k=${sessionKey}`}
             title="Tetris"
             className="block h-full w-full rounded-lg border border-border/30 bg-black"
+          />
+          <GamePauseOverlay
+            visible={isPaused}
+            onResume={() => setIsPaused(false)}
+            description="La surface du jeu est verrouillée jusqu'à la reprise."
           />
         </GameFullscreenStage>
       </div>

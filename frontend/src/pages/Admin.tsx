@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { adminApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, supportApi, SupportThread, SupportMessage, customBadgesApi, CustomBadgeRequest } from '../services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Slider } from '@/components/ui/slider';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
@@ -87,6 +88,8 @@ const ROLE_LABELS = {
 } as const;
 
 type AdminRole = keyof typeof ROLE_LABELS;
+type AdminTab = 'inbox' | 'users' | 'clubs' | 'logs' | 'bans' | 'content' | 'settings' | 'activity' | 'badges' | 'support' | 'communication';
+const ADMIN_TABS: AdminTab[] = ['inbox', 'users', 'clubs', 'logs', 'bans', 'content', 'settings', 'activity', 'badges', 'support', 'communication'];
 
 type ArchivedRegistration = PendingUser & {
   registrationStatus: 'APPROVED' | 'REJECTED';
@@ -352,6 +355,21 @@ const formatDurationShort = (totalSeconds: number): string => {
   return `${seconds}s`;
 };
 
+const formatTimelineMinutes = (totalMinutes: number): string => {
+  const safeMinutes = Math.max(0, Math.min(1439, Math.round(totalMinutes)));
+  const hours = Math.floor(safeMinutes / 60);
+  const minutes = safeMinutes % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+};
+
+const buildTimelineDateTime = (date: string, totalMinutes: number, boundary: 'start' | 'end'): string => {
+  const safeMinutes = Math.max(0, Math.min(1439, Math.round(totalMinutes)));
+  const hours = Math.floor(safeMinutes / 60);
+  const minutes = safeMinutes % 60;
+  const seconds = boundary === 'start' ? '00' : '59';
+  return `${date}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${seconds}`;
+};
+
 const getGameDisplayInfo = (log: ActivityLog): { gameType: string; gameLabel: string; isMultiplayer: boolean } => {
   const metadata = log.metadata || {};
   const metadataGameType = typeof metadata.gameType === 'string' ? metadata.gameType : '';
@@ -568,10 +586,13 @@ const defaultItemForm: ItemFormData = {
 };
 
 interface UpdatePopupFormData {
+  type: 'UPDATE' | 'CLAN_PROMPT';
   title: string;
   summary: string;
   message: string;
   imageUrl: string;
+  audience: 'ALL' | 'NO_CLAN' | 'SELECTED_USERS';
+  targetUserIds: string[];
   releaseDate: string;
   publishMode: 'draft' | 'now' | 'scheduled';
   isPublished: boolean;
@@ -598,10 +619,13 @@ const getUpdatePopupPublishMode = (popup: Pick<AdminUpdatePopup, 'isPublished' |
 };
 
 const defaultUpdatePopupForm: UpdatePopupFormData = {
+  type: 'UPDATE',
   title: '',
   summary: '',
   message: '',
   imageUrl: '',
+  audience: 'ALL',
+  targetUserIds: [],
   releaseDate: toDateTimeLocalValue(new Date()),
   publishMode: 'now',
   isPublished: true,
@@ -609,6 +633,7 @@ const defaultUpdatePopupForm: UpdatePopupFormData = {
 
 export default function Admin() {
   const { user } = useAuth();
+  const location = useLocation();
   const { socket } = useSocketBase();
   const { refreshFeatures } = useFeatures();
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -639,7 +664,7 @@ export default function Admin() {
   const [massBanTargetIds, setMassBanTargetIds] = useState<string[]>([]);
   const [clearingChat, setClearingChat] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'inbox' | 'users' | 'clubs' | 'logs' | 'bans' | 'content' | 'settings' | 'activity' | 'badges' | 'support' | 'communication'>('inbox');
+  const [activeTab, setActiveTab] = useState<AdminTab>('inbox');
   const [announcementOpen, setAnnouncementOpen] = useState(false);
   const [loginCommOpen, setLoginCommOpen] = useState(false);
   const [updatesOpen, setUpdatesOpen] = useState(false);
@@ -975,6 +1000,9 @@ export default function Admin() {
     username: '',
     gameType: 'ALL',
   });
+  const [logTimelineEnabled, setLogTimelineEnabled] = useState(false);
+  const [logTimelineDate, setLogTimelineDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [logTimelineRange, setLogTimelineRange] = useState<[number, number]>([0, 1439]);
   const [logsPage, setLogsPage] = useState(0);
   const [totalLogs, setTotalLogs] = useState(0);
   const [expandedLogIds, setExpandedLogIds] = useState<Set<string>>(new Set());
@@ -1017,6 +1045,8 @@ export default function Admin() {
   const [savingReferralReward, setSavingReferralReward] = useState(false);
   const [auraCoinBuyFeePercentage, setAuraCoinBuyFeePercentage] = useState('0.02');
   const [savingAuraCoinBuyFee, setSavingAuraCoinBuyFee] = useState(false);
+  const [clashAttackCooldownMinutes, setClashAttackCooldownMinutes] = useState('10');
+  const [savingClashAttackCooldown, setSavingClashAttackCooldown] = useState(false);
   const [loginMessage, setLoginMessage] = useState('');
   const [loginRegisterCtaEnabled, setLoginRegisterCtaEnabled] = useState(true);
   const [savingLoginMessage, setSavingLoginMessage] = useState(false);
@@ -1115,6 +1145,11 @@ export default function Admin() {
       return;
     }
 
+    if (updatePopupForm.audience === 'SELECTED_USERS' && updatePopupForm.targetUserIds.length === 0) {
+      showMessage('error', 'Sélectionne au moins un utilisateur');
+      return;
+    }
+
     let releaseDateIso = new Date().toISOString();
     if (updatePopupForm.publishMode === 'scheduled') {
       const parsedReleaseDate = new Date(updatePopupForm.releaseDate);
@@ -1130,10 +1165,13 @@ export default function Admin() {
     try {
       setSavingUpdatePopup(true);
       const payload = {
+        type: updatePopupForm.type,
         title,
         message,
         summary: summary || undefined,
         imageUrl: imageUrl || undefined,
+        audience: updatePopupForm.audience,
+        targetUserIds: updatePopupForm.targetUserIds,
         releaseDate: releaseDateIso,
         isPublished,
       };
@@ -1187,10 +1225,13 @@ export default function Admin() {
   const handleEditUpdatePopup = (popup: AdminUpdatePopup) => {
     setEditingUpdatePopupId(popup.id);
     setUpdatePopupForm({
+      type: popup.type,
       title: popup.title,
       summary: popup.summary || '',
       message: popup.message,
       imageUrl: popup.imageUrl || '',
+      audience: popup.audience,
+      targetUserIds: popup.targetUserIds || [],
       releaseDate: toDateTimeLocalValue(popup.releaseDate),
       publishMode: getUpdatePopupPublishMode(popup),
       isPublished: popup.isPublished,
@@ -1243,6 +1284,8 @@ export default function Admin() {
     fetchWarnings();
     fetchBanAppeals();
     fetchNameChangeRequests();
+    fetchBadges();
+    fetchCustomBadgeRequests();
     fetchLogs();
     fetchLogStats();
     fetchSettings();
@@ -1251,6 +1294,13 @@ export default function Admin() {
     fetchActivityBreakdown(new Date().toISOString().slice(0, 10));
     fetchSupportThreads();
   }, []);
+
+  useEffect(() => {
+    const tab = new URLSearchParams(location.search).get('tab');
+    if (tab && ADMIN_TABS.includes(tab as AdminTab)) {
+      setActiveTab(tab as AdminTab);
+    }
+  }, [location.search]);
 
   // Real-time support messages for admin
   useEffect(() => {
@@ -1750,10 +1800,18 @@ export default function Admin() {
       setLoadingLogs(true);
       const filterType = typeOverride !== undefined ? typeOverride : logFilter.type;
       const filterGameType = gameTypeOverride !== undefined ? gameTypeOverride : logFilter.gameType;
+      const startDate = logTimelineEnabled && logTimelineDate
+        ? buildTimelineDateTime(logTimelineDate, logTimelineRange[0], 'start')
+        : undefined;
+      const endDate = logTimelineEnabled && logTimelineDate
+        ? buildTimelineDateTime(logTimelineDate, logTimelineRange[1], 'end')
+        : undefined;
       const res = await adminApi.getLogs({
         type: filterType !== 'ALL' ? filterType : undefined,
         gameType: filterGameType !== 'ALL' ? filterGameType : undefined,
         username: logFilter.username || undefined,
+        startDate,
+        endDate,
         limit: logsPerPage,
         offset: page * logsPerPage,
       });
@@ -1787,9 +1845,15 @@ export default function Admin() {
     try {
       setDownloadLogsError(null);
       setDownloadingLogs(true);
+      const timelineStartDate = logTimelineEnabled && logTimelineDate
+        ? buildTimelineDateTime(logTimelineDate, logTimelineRange[0], 'start')
+        : undefined;
+      const timelineEndDate = logTimelineEnabled && logTimelineDate
+        ? buildTimelineDateTime(logTimelineDate, logTimelineRange[1], 'end')
+        : undefined;
       const res = await adminApi.downloadLogs({
-        startDate: downloadLogsMode === 'range' ? downloadLogsStartDate : undefined,
-        endDate: downloadLogsMode === 'range' ? downloadLogsEndDate : undefined,
+        startDate: downloadLogsMode === 'range' ? downloadLogsStartDate : timelineStartDate,
+        endDate: downloadLogsMode === 'range' ? downloadLogsEndDate : timelineEndDate,
         type: logFilter.type !== 'ALL' ? logFilter.type : undefined,
         gameType: logFilter.gameType !== 'ALL' ? logFilter.gameType : undefined,
         username: logFilter.username || undefined,
@@ -1840,6 +1904,7 @@ export default function Admin() {
       setReferralEnabled(res.data.settings.referral_enabled !== 'false');
       setReferralRewardAmount(res.data.settings.referral_reward_amount || '250');
       setAuraCoinBuyFeePercentage(res.data.settings.auracoin_buy_fee_percentage || '0.02');
+      setClashAttackCooldownMinutes(res.data.settings.clash_attack_cooldown_minutes || '10');
       setMaintenanceMessage(res.data.settings.maintenance_message || '');
       setBlockedMessage(res.data.settings.blocked_message || '');
       setLoginMessage(res.data.settings.login_message || '');
@@ -2069,6 +2134,26 @@ export default function Admin() {
       showMessage('error', 'Erreur lors de la sauvegarde des frais AuraCoin');
     } finally {
       setSavingAuraCoinBuyFee(false);
+    }
+  };
+
+  const saveClashAttackCooldown = async () => {
+    try {
+      const parsed = Number.parseInt(clashAttackCooldownMinutes, 10);
+      if (!Number.isInteger(parsed) || parsed < 0 || parsed > 1440) {
+        showMessage('error', 'Le cooldown d attaque Clash doit etre un entier entre 0 et 1440 minutes');
+        return;
+      }
+
+      setSavingClashAttackCooldown(true);
+      await adminApi.updateSetting('clash_attack_cooldown_minutes', parsed);
+      setClashAttackCooldownMinutes(String(parsed));
+      showMessage('success', 'Cooldown d attaque Clash sauvegarde');
+    } catch (error) {
+      console.error('Failed to save Clash attack cooldown:', error);
+      showMessage('error', 'Erreur lors de la sauvegarde du cooldown Clash');
+    } finally {
+      setSavingClashAttackCooldown(false);
     }
   };
 
@@ -2812,7 +2897,7 @@ export default function Admin() {
         {/* Tabs */}
         <Tabs
           value={activeTab}
-          onValueChange={(v) => setActiveTab(v as typeof activeTab)}
+          onValueChange={(v) => setActiveTab(v as AdminTab)}
           className={SPACING.SECTION_SPACING}
         >
           <TabsList className="flex flex-wrap h-auto p-1">
@@ -4107,6 +4192,34 @@ export default function Admin() {
             </div>
           </div>
 
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Clash Village</p>
+            <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
+              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                <div>
+                  <div className="text-sm font-medium">Cooldown d&apos;attaque</div>
+                  <div className="text-xs text-muted-foreground">Temps d&apos;attente appliqué après un raid réussi ou raté. Mettre `0` pour désactiver le cooldown.</div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Input
+                    id="clash-attack-cooldown"
+                    type="number"
+                    min={0}
+                    max={1440}
+                    step={1}
+                    value={clashAttackCooldownMinutes}
+                    onChange={(event) => setClashAttackCooldownMinutes(event.target.value)}
+                    className="w-24 h-8 text-sm"
+                  />
+                  <span className="text-xs text-muted-foreground">min</span>
+                  <Button size="sm" onClick={saveClashAttackCooldown} disabled={savingClashAttackCooldown}>
+                    {savingClashAttackCooldown ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* ── Communication ─────────────────────────────────── */}
           <div className="space-y-1.5">
             <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Communication</p>
@@ -4144,14 +4257,14 @@ export default function Admin() {
 
               <div className="flex items-center justify-between gap-4 px-4 py-3.5">
                 <div>
-                  <div className="text-sm font-medium">Updates</div>
+                  <div className="text-sm font-medium">Updates et popup clan</div>
                   <div className="text-xs text-muted-foreground">
-                    {updatePopups.filter(p => p.isPublished).length} publiée{updatePopups.filter(p => p.isPublished).length !== 1 ? 's' : ''} · {updatePopups.length} au total
+                    Gère les updates classiques et la popup qui force les utilisateurs à rejoindre un clan.
                   </div>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => setUpdatesOpen(true)} className="shrink-0">
                   <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-                  Gérer
+                  Ouvrir
                 </Button>
               </div>
 
@@ -4246,8 +4359,8 @@ export default function Admin() {
           <Dialog open={updatesOpen} onOpenChange={setUpdatesOpen}>
             <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden">
               <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/40 shrink-0">
-                <DialogTitle>Updates</DialogTitle>
-                <DialogDescription>Gérez les popups d&apos;annonce de mise à jour affichées aux joueurs.</DialogDescription>
+                <DialogTitle>Updates et popup clan</DialogTitle>
+                <DialogDescription>Gérez les updates classiques et les popups qui redirigent vers la page des clans.</DialogDescription>
               </DialogHeader>
               <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
                 {/* Preview */}
@@ -4260,6 +4373,7 @@ export default function Admin() {
                     <div>
                       <h4 className="text-lg font-semibold">{updatePopupForm.title || 'Titre de la mise à jour'}</h4>
                       <p className="text-xs text-muted-foreground">
+                        {updatePopupForm.type === 'CLAN_PROMPT' ? 'Popup clan' : 'Popup update'} ·{' '}
                         {updatePopupForm.publishMode === 'draft'
                           ? 'Brouillon non visible'
                           : updatePopupForm.publishMode === 'scheduled'
@@ -4299,12 +4413,37 @@ export default function Admin() {
                     </div>
                   </div>
                   <div className="space-y-2">
+                    <label className="text-sm font-medium">Type</label>
+                    <Select
+                      value={updatePopupForm.type}
+                      onValueChange={(value: 'UPDATE' | 'CLAN_PROMPT') => setUpdatePopupForm((prev) => ({
+                        ...prev,
+                        type: value,
+                        title: prev.title || (value === 'CLAN_PROMPT' ? 'Rejoins un clan' : ''),
+                      }))}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="UPDATE">Update classique</SelectItem>
+                        <SelectItem value="CLAN_PROMPT">Popup rejoindre un clan</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
                     <label className="text-sm font-medium">Titre *</label>
-                    <Input value={updatePopupForm.title} onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, title: e.target.value }))} placeholder="Ex: Mise à jour 1.8.0" />
+                    <Input
+                      value={updatePopupForm.title}
+                      onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, title: e.target.value }))}
+                      placeholder={updatePopupForm.type === 'CLAN_PROMPT' ? 'Ex: Rejoins un clan maintenant' : 'Ex: Mise à jour 1.8.0'}
+                    />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Sous-titre</label>
-                    <Input value={updatePopupForm.summary} onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, summary: e.target.value }))} placeholder="Ex: Nouvelles features, équilibrage et fixes" />
+                    <Input
+                      value={updatePopupForm.summary}
+                      onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, summary: e.target.value }))}
+                      placeholder={updatePopupForm.type === 'CLAN_PROMPT' ? 'Ex: Trouve une equipe et participe aux guerres' : 'Ex: Nouvelles features, équilibrage et fixes'}
+                    />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Message *</label>
@@ -4312,9 +4451,61 @@ export default function Admin() {
                       value={updatePopupForm.message}
                       onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, message: e.target.value }))}
                       rows={8}
-                      placeholder={'Ex: • Nouveau mode de jeu\n• Ajustement des récompenses\n• Corrections de bugs'}
+                      placeholder={updatePopupForm.type === 'CLAN_PROMPT'
+                        ? 'Ex: Rejoins un clan pour participer aux guerres, discuter avec ton equipe et progresser plus vite.'
+                        : 'Ex: • Nouveau mode de jeu\n• Ajustement des récompenses\n• Corrections de bugs'}
                     />
                   </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Audience</label>
+                    <Select
+                      value={updatePopupForm.audience}
+                      onValueChange={(value: 'ALL' | 'NO_CLAN' | 'SELECTED_USERS') => setUpdatePopupForm((prev) => ({
+                        ...prev,
+                        audience: value,
+                        targetUserIds: value === 'SELECTED_USERS' ? prev.targetUserIds : [],
+                      }))}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="NO_CLAN">Envoyer aux personnes sans clan</SelectItem>
+                        <SelectItem value="ALL">Envoyer a tout le monde</SelectItem>
+                        <SelectItem value="SELECTED_USERS">Selectionner des utilisateurs</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {updatePopupForm.audience === 'NO_CLAN'
+                        ? 'La popup sera visible uniquement pour les utilisateurs qui ne sont dans aucun clan.'
+                        : updatePopupForm.audience === 'ALL'
+                          ? 'La popup sera visible par tout le monde selon la date de diffusion.'
+                          : 'Choisis exactement les utilisateurs qui recevront la popup.'}
+                    </p>
+                  </div>
+                  {updatePopupForm.audience === 'SELECTED_USERS' && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Utilisateurs ciblés</label>
+                      <div className="max-h-56 overflow-y-auto rounded-md border bg-background/60 p-2 space-y-2">
+                        {users.map((u) => {
+                          const checked = updatePopupForm.targetUserIds.includes(u.id);
+                          return (
+                            <label key={u.id} className="flex items-center gap-3 rounded-md px-2 py-1.5 hover:bg-muted/40">
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(isChecked) => setUpdatePopupForm((prev) => ({
+                                  ...prev,
+                                  targetUserIds: isChecked
+                                    ? [...prev.targetUserIds, u.id]
+                                    : prev.targetUserIds.filter((id) => id !== u.id),
+                                }))}
+                              />
+                              <span className="text-sm">{u.username}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      <p className="text-xs text-muted-foreground">{updatePopupForm.targetUserIds.length} utilisateur(s) sélectionné(s)</p>
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Mode de diffusion</label>
@@ -4395,6 +4586,12 @@ export default function Admin() {
                               <div className="min-w-0 space-y-1">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="font-medium">{popup.title}</span>
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300">
+                                    {popup.type === 'CLAN_PROMPT' ? 'Clan' : 'Update'}
+                                  </span>
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                                    {popup.audience === 'NO_CLAN' ? 'Sans clan' : popup.audience === 'SELECTED_USERS' ? 'Sélection' : 'Tout le monde'}
+                                  </span>
                                   <span className={cn('text-xs px-2 py-0.5 rounded-full', statusClass)}>{statusLabel}</span>
                                   <span className="text-xs text-muted-foreground">
                                     {isScheduled ? `Diffusion le ${new Date(popup.releaseDate).toLocaleString('fr-FR')}` : new Date(popup.releaseDate).toLocaleString('fr-FR')}
@@ -5063,6 +5260,107 @@ export default function Admin() {
             </ToggleGroup>
           )}
 
+          <Card className="border-border/40 bg-background/70">
+            <CardHeader className="pb-3">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <div className="text-sm font-semibold">Filtre horaire</div>
+                  <div className="text-xs text-muted-foreground">
+                    Sélectionne un créneau précis sur une journée via la timeline.
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-muted-foreground">
+                    {logTimelineEnabled ? 'Activé' : 'Désactivé'}
+                  </span>
+                  <Switch
+                    checked={logTimelineEnabled}
+                    onCheckedChange={(checked) => {
+                      setLogTimelineEnabled(checked);
+                      setTimeout(() => fetchLogs(0), 0);
+                    }}
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-end">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Jour</label>
+                  <Input
+                    type="date"
+                    value={logTimelineDate}
+                    disabled={!logTimelineEnabled}
+                    onChange={(e) => {
+                      setLogTimelineDate(e.target.value);
+                      setTimeout(() => fetchLogs(0), 0);
+                    }}
+                    className="h-9 w-full md:w-[210px]"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={!logTimelineEnabled}
+                  onClick={() => {
+                    setLogTimelineRange([0, 1439]);
+                    setTimeout(() => fetchLogs(0), 0);
+                  }}
+                  className="h-9 md:self-end"
+                >
+                  Toute la journée
+                </Button>
+              </div>
+
+              <div className={cn("space-y-4 transition-opacity", !logTimelineEnabled && "opacity-50")}>
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <span className="rounded-full border border-border/50 px-2.5 py-1 font-mono">
+                    Début {formatTimelineMinutes(logTimelineRange[0])}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {Math.max(15, logTimelineRange[1] - logTimelineRange[0] + 1)} min sélectionnées
+                  </span>
+                  <span className="rounded-full border border-border/50 px-2.5 py-1 font-mono">
+                    Fin {formatTimelineMinutes(logTimelineRange[1])}
+                  </span>
+                </div>
+
+                <div className="rounded-xl border border-border/40 bg-muted/20 px-4 py-5">
+                  <Slider
+                    min={0}
+                    max={1439}
+                    step={15}
+                    minStepsBetweenThumbs={1}
+                    value={logTimelineRange}
+                    disabled={!logTimelineEnabled}
+                    onValueChange={(value) => {
+                      if (value.length !== 2) return;
+                      setLogTimelineRange([value[0], value[1]]);
+                    }}
+                    onValueCommit={(value) => {
+                      if (value.length !== 2) return;
+                      setLogTimelineRange([value[0], value[1]]);
+                      fetchLogs(0);
+                    }}
+                    className="py-3"
+                  />
+
+                  <div className="mt-3 grid grid-cols-6 gap-2 text-[11px] text-muted-foreground sm:grid-cols-8 lg:grid-cols-12">
+                    {Array.from({ length: 12 }, (_, index) => {
+                      const hour = index * 2;
+                      return (
+                        <div key={hour} className="text-center font-mono">
+                          {String(hour).padStart(2, '0')}h
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Search Bar + Download */}
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <div className="relative flex-1">
@@ -5102,7 +5400,7 @@ export default function Admin() {
               <DialogHeader>
                 <DialogTitle>Télécharger les logs</DialogTitle>
                 <DialogDescription>
-                  Exporte une plage de dates précise ou tous les logs. Les filtres actuels seront appliqués.
+                  Exporte une plage de dates précise ou tous les logs. Les filtres actuels, y compris le créneau horaire s'il est activé, seront appliqués.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">

@@ -182,6 +182,9 @@ export const petitBacEvents = {
   submit: (partyId: string, userId: string, answers: Record<string, string>) => {
     socket?.emit('petitbac:submit', { partyId, userId, answers });
   },
+  submitReview: (partyId: string, userId: string, validations: Record<string, Record<string, boolean>>) => {
+    socket?.emit('petitbac:submit-review', { partyId, userId, validations });
+  },
   leave: (partyId: string, userId: string) => {
     socket?.emit('petitbac:leave', { partyId, userId });
   },

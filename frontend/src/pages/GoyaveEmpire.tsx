@@ -5,7 +5,10 @@ import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/Ga
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { useHideGameLeaderboards } from '@/lib/game-preferences';
 import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
+import { GamePauseButton } from '@/components/game/GamePauseButton';
+import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 
 // ---- Constants ----
@@ -208,6 +211,7 @@ function persistSave(state: SaveState): void {
 
 // ---- Component ----
 export default function GoyaveEmpire() {
+  const hideGameLeaderboards = useHideGameLeaderboards();
   const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
   const { user, refreshUser } = useAuth();
 
@@ -220,6 +224,7 @@ export default function GoyaveEmpire() {
   const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showActiveLeaderboard, setShowActiveLeaderboard] = useState(true);
+  const [isPaused, setIsPaused] = useState(false);
 
   const saveRef = useRef<SaveState>(save);
   saveRef.current = save;
@@ -319,6 +324,7 @@ export default function GoyaveEmpire() {
   // Game tick
   useEffect(() => {
     const interval = setInterval(() => {
+      if (isPaused) return;
       setSave((prev) => {
         const now = Date.now();
         const dt = (now - prev.lastTick) / 1000;
@@ -330,7 +336,7 @@ export default function GoyaveEmpire() {
       });
     }, TICK_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, []);
+  }, [isPaused]);
 
   // Leaderboard
   const fetchCashOutLeaderboard = useCallback(async () => {
@@ -359,17 +365,25 @@ export default function GoyaveEmpire() {
     return () => clearInterval(interval);
   }, [fetchActiveLeaderboard]);
 
+  useEffect(() => {
+    if (hideGameLeaderboards && showLeaderboard) {
+      setShowLeaderboard(false);
+    }
+  }, [hideGameLeaderboards, showLeaderboard]);
+
   // Actions
   const handleClick = useCallback(() => {
+    if (isPaused) return;
     setSave((prev) => {
       const power = effectiveClickPower(prev.clickPower, prev.upgrades);
       const next: SaveState = { ...prev, guavas: prev.guavas + power, totalGuavas: prev.totalGuavas + power };
       persistSave(next);
       return next;
     });
-  }, []);
+  }, [isPaused]);
 
   const buyBuilding = useCallback((defId: string) => {
+    if (isPaused) return;
     setSave((prev) => {
       const def = BUILDINGS.find((b) => b.id === defId)!;
       const owned = prev.buildings[defId] ?? 0;
@@ -379,9 +393,10 @@ export default function GoyaveEmpire() {
       persistSave(next);
       return next;
     });
-  }, []);
+  }, [isPaused]);
 
   const buyUpgrade = useCallback((upgradeId: string) => {
+    if (isPaused) return;
     setSave((prev) => {
       const upg = UPGRADES.find((u) => u.id === upgradeId)!;
       if (prev.guavas < upg.cost || prev.upgrades.includes(upgradeId)) return prev;
@@ -389,7 +404,7 @@ export default function GoyaveEmpire() {
       persistSave(next);
       return next;
     });
-  }, []);
+  }, [isPaused]);
 
   const handleCashOut = useCallback(async () => {
     if (!user || isCashingOut) return;
@@ -444,9 +459,12 @@ export default function GoyaveEmpire() {
           isFullscreen && 'min-h-screen w-screen bg-background p-4'
         )}
       >
-        <GameFullscreenToolbar isFullscreen={isFullscreen} onToggleFullscreen={toggleFullscreen} className="w-full" />
+        <GameFullscreenToolbar isFullscreen={isFullscreen} onToggleFullscreen={toggleFullscreen} className="w-full">
+          <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} />
+        </GameFullscreenToolbar>
 
         <div className="relative flex gap-0 items-stretch w-full" style={{ height: PANEL_HEIGHT }}>
+        <GamePauseOverlay visible={isPaused} onResume={() => setIsPaused(false)} />
 
         {/* ── LEFT: Upgrades ── */}
         <div className="flex-shrink-0 border border-border/30 border-r-0 rounded-l-xl bg-card flex flex-col overflow-hidden" style={{ width: 192 }}>
@@ -602,12 +620,14 @@ export default function GoyaveEmpire() {
             >
               Bâtiments
             </button>
-            <button
-              onClick={() => setShowLeaderboard(true)}
-              className={`flex-1 py-3 text-sm font-medium transition-colors ${showLeaderboard ? 'bg-muted/40 text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-            >
-              Classements
-            </button>
+            {!hideGameLeaderboards && (
+              <button
+                onClick={() => setShowLeaderboard(true)}
+                className={`flex-1 py-3 text-sm font-medium transition-colors ${showLeaderboard ? 'bg-muted/40 text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Classements
+              </button>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto">

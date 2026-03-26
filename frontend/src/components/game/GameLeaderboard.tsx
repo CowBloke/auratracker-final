@@ -6,6 +6,7 @@ import { UserBadges } from '@/components/badges/UserBadges';
 import type { BadgeData } from '@/components/badges/BadgeIcon';
 import { ClanTag, toClanTagData } from '@/components/clans/ClanTag';
 import { PlayerHoverCard } from '@/components/ui/player-hover-card';
+import { useHideGameLeaderboards } from '@/lib/game-preferences';
 
 export interface GameLeaderboardEntry {
   id: string;
@@ -129,6 +130,12 @@ export function GameLeaderboard({
   hidden,
   noCard,
 }: GameLeaderboardProps) {
+  const hideGameLeaderboards = useHideGameLeaderboards();
+
+  if (hideGameLeaderboards) {
+    return null;
+  }
+
   const recordDuJeu = entries.length > 0 ? entries[0].highScore : null;
   const recordPersonnelFromEntries = currentUserId
     ? entries.find((entry) => entry.user.id === currentUserId)?.highScore

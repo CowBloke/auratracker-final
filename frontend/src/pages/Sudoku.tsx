@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Brain, Eraser, RefreshCcw, Target } from 'lucide-react';
 import { GameFullscreenButton } from '@/components/game/GameFullscreenButton';
+import { GamePauseButton } from '@/components/game/GamePauseButton';
+import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 
@@ -268,8 +270,10 @@ export default function Sudoku() {
   const [completed, setCompleted] = useState(false);
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
 
   const currentScore = getCompletionScore(difficulty, elapsedSeconds, hintsUsed, mistakesFound);
+  const canPause = !completed;
 
   useEffect(() => {
     if (!user) {
@@ -294,11 +298,11 @@ export default function Sudoku() {
 
   useEffect(() => {
     const interval = window.setInterval(() => {
-      setElapsedSeconds((previous) => (completed ? previous : previous + 1));
+      setElapsedSeconds((previous) => (completed || isPaused ? previous : previous + 1));
     }, 1000);
 
     return () => window.clearInterval(interval);
-  }, [completed]);
+  }, [completed, isPaused]);
 
   const generateNewPuzzle = (nextDifficulty: Difficulty = difficulty) => {
     submitLockRef.current = false;
@@ -315,10 +319,18 @@ export default function Sudoku() {
     setCompleted(false);
     setRewards(null);
     setIsNewHighScore(false);
+    setIsPaused(false);
   };
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'p' || event.key === 'P' || event.key === 'Escape') {
+        if (!canPause) return;
+        event.preventDefault();
+        setIsPaused((current) => !current);
+        return;
+      }
+      if (isPaused) return;
       if (event.key.startsWith('Arrow')) {
         event.preventDefault();
         setSelectedCell((previous) => {
@@ -375,9 +387,10 @@ export default function Sudoku() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [completed, initialGrid, selectedCell]);
+  }, [canPause, completed, initialGrid, isPaused, selectedCell]);
 
   const updateCell = (value: number) => {
+    if (isPaused) return;
     setDraftGrid((previous) =>
       previous.map((row, rowIndex) =>
         row.map((cell, columnIndex) => {
@@ -394,6 +407,7 @@ export default function Sudoku() {
   };
 
   const validateGrid = () => {
+    if (isPaused) return;
     let nextMistakes = 0;
     for (let row = 0; row < GRID_SIZE; row += 1) {
       for (let column = 0; column < GRID_SIZE; column += 1) {
@@ -407,7 +421,7 @@ export default function Sudoku() {
   };
 
   const useHint = () => {
-    if (completed || hintsUsed >= 3) {
+    if (completed || hintsUsed >= 3 || isPaused) {
       return;
     }
 
@@ -434,6 +448,12 @@ export default function Sudoku() {
     setSelectedCell(hintCell);
     setHintsUsed((previous) => previous + 1);
   };
+
+  useEffect(() => {
+    if (!canPause && isPaused) {
+      setIsPaused(false);
+    }
+  }, [canPause, isPaused]);
 
   const submitCompletedPuzzle = async (finalScore: number) => {
     if (!user || submitLockRef.current) {
@@ -531,6 +551,7 @@ export default function Sudoku() {
                 <RefreshCcw className="mr-2 h-4 w-4" />
                 Nouvelle grille
               </Button>
+              <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} disabled={!canPause} className="w-full" />
             </CardContent>
           </Card>
 
@@ -596,6 +617,7 @@ export default function Sudoku() {
                   <RefreshCcw className="mr-2 h-4 w-4" />
                   Nouvelle grille
                 </Button>
+                <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} disabled={!canPause} />
               </div>
             ) : (
               <div />
@@ -603,7 +625,8 @@ export default function Sudoku() {
             <GameFullscreenButton isFullscreen={isFullscreen} onClick={toggleFullscreen} />
           </div>
 
-          <div className="rounded-[2rem] border border-stone-300 bg-[linear-gradient(180deg,#fdfcf8,#f4efe4)] p-4 shadow-[0_24px_80px_rgba(15,23,42,0.12)] sm:p-6">
+          <div className="relative rounded-[2rem] border border-stone-300 bg-[linear-gradient(180deg,#fdfcf8,#f4efe4)] p-4 shadow-[0_24px_80px_rgba(15,23,42,0.12)] sm:p-6">
+            <GamePauseOverlay visible={isPaused} onResume={() => setIsPaused(false)} />
             <div className="rounded-sm border-[3px] border-stone-900 bg-white shadow-[0_8px_18px_rgba(0,0,0,0.08)]">
               <div className="grid grid-cols-9">
                 {draftGrid.map((row, rowIndex) =>

@@ -22,6 +22,12 @@ const THROW_START_Y = CANVAS_SIZE - 46;
 const THROW_SPEED = 1.42;
 const MIN_SPAWN_GAP = 0.48;
 const HUD_PILL_RADIUS = 18;
+const REPLAY_BUTTON_SLOTS = [
+  { left: '0%', top: '0%' },
+  { left: '54%', top: '0%' },
+  { left: '0%', top: '50%' },
+  { left: '54%', top: '50%' },
+] as const;
 
 type KnifeFlightState = 'ready' | 'flying';
 type FeintPattern = 'none' | 'pulse' | 'snap' | 'stutter' | 'chaos';
@@ -429,10 +435,16 @@ export default function KnifeHit() {
   const [worldIndex, setWorldIndex] = useState(0);
   const [knifeSkinIndex, setKnifeSkinIndex] = useState(0);
   const [logSkinIndex, setLogSkinIndex] = useState(0);
+  const [replayButtonSlotIndex, setReplayButtonSlotIndex] = useState(0);
 
   const palette = useMemo(() => WORLD_PALETTES[worldIndex], [worldIndex]);
   const knifeSkin = useMemo(() => KNIFE_SKINS[knifeSkinIndex], [knifeSkinIndex]);
   const logSkin = useMemo(() => LOG_SKINS[logSkinIndex], [logSkinIndex]);
+  const replayButtonSlot = REPLAY_BUTTON_SLOTS[replayButtonSlotIndex] ?? REPLAY_BUTTON_SLOTS[0];
+
+  const randomizeReplayButtonPlacement = useCallback(() => {
+    setReplayButtonSlotIndex((currentIndex) => pickRandomIndex(REPLAY_BUTTON_SLOTS.length, currentIndex));
+  }, []);
 
   const fetchStats = useCallback(async () => {
     if (!user) return;
@@ -502,10 +514,11 @@ export default function KnifeHit() {
     setGameOver(false);
     setRewards(null);
     setIsNewHighScore(false);
+    randomizeReplayButtonPlacement();
     setupLevel(1, false);
     gameRunningRef.current = true;
     lastTimeRef.current = 0;
-  }, [setupLevel]);
+  }, [randomizeReplayButtonPlacement, setupLevel]);
 
   const submitScore = useCallback(async (finalScore: number) => {
     if (!user || submittedRef.current) return;
@@ -532,9 +545,10 @@ export default function KnifeHit() {
 
   const endGame = useCallback(() => {
     gameRunningRef.current = false;
+    randomizeReplayButtonPlacement();
     setGameOver(true);
     void submitScore(scoreRef.current);
-  }, [submitScore]);
+  }, [randomizeReplayButtonPlacement, submitScore]);
 
   const advanceLevel = useCallback(() => {
     const nextLevel = levelRef.current + 1;
@@ -1183,10 +1197,16 @@ export default function KnifeHit() {
                       +${rewards.money} · +{rewards.aura} aura
                     </p>
                   )}
-                  <Button className="mt-4 w-full" onClick={startGame}>
-                    <RotateCcw className="mr-2 h-4 w-4" />
-                    Nouvelle run
-                  </Button>
+                  <div className="relative mt-4 h-28">
+                    <Button
+                      className="absolute w-[46%] min-w-[132px]"
+                      style={replayButtonSlot}
+                      onClick={startGame}
+                    >
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      Nouvelle run
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}

@@ -12,6 +12,7 @@ import { UsernameDisplay } from '@/components/ui/username-display';
 import { toast } from '@/hooks/use-toast';
 import { SPACING, TYPOGRAPHY } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { useHideGameLeaderboards } from '@/lib/game-preferences';
 
 type TabId = 'village' | 'attack' | 'journal' | 'leaderboard';
 
@@ -211,6 +212,7 @@ function BuildingInspector({
 
 export default function ClashVillage() {
   const { user, refreshUser } = useAuth();
+  const hideGameLeaderboards = useHideGameLeaderboards();
   const [activeTab, setActiveTab] = useState<TabId>('village');
   const [state, setState] = useState<ClashStateResponse | null>(null);
   const [targets, setTargets] = useState<ClashTarget[]>([]);
@@ -234,6 +236,12 @@ export default function ClashVillage() {
     const interval = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (hideGameLeaderboards && activeTab === 'leaderboard') {
+      setActiveTab('village');
+    }
+  }, [activeTab, hideGameLeaderboards]);
 
   const loadPage = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!silent) setLoading(true);
@@ -428,7 +436,7 @@ export default function ClashVillage() {
           <TabsTrigger value="village">Village</TabsTrigger>
           <TabsTrigger value="attack">Attaquer</TabsTrigger>
           <TabsTrigger value="journal">Journal</TabsTrigger>
-          <TabsTrigger value="leaderboard">Classement</TabsTrigger>
+          {!hideGameLeaderboards && <TabsTrigger value="leaderboard">Classement</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="village" className={SPACING.SECTION_SPACING}>
@@ -727,6 +735,7 @@ export default function ClashVillage() {
           </div>
         </TabsContent>
 
+        {!hideGameLeaderboards && (
         <TabsContent value="leaderboard" className={SPACING.SECTION_SPACING}>
           <div className="grid gap-6 xl:grid-cols-3">
             {[
@@ -770,6 +779,7 @@ export default function ClashVillage() {
             ))}
           </div>
         </TabsContent>
+        )}
       </Tabs>
     </PageShell>
   );

@@ -1094,6 +1094,9 @@ model UpdatePopup {
   summary     String? // Optional short subtitle/summary
   message     String
   imageUrl    String?
+  type        String   @default("UPDATE") // "UPDATE" | "CLAN_PROMPT"
+  audience    String   @default("ALL") // "ALL" | "NO_CLAN" | "SELECTED_USERS"
+  targetUserIds String @default("[]") // JSON array of user IDs for SELECTED_USERS
   releaseDate DateTime @default(now())
   isPublished Boolean  @default(true)
   createdById String

@@ -14,6 +14,7 @@ const STEAL_COEFFICIENT = 0.35;
 const MATCHMAKING_TARGET_COUNT = 6;
 const MATCHMAKING_PRIMARY_RANGE = 200;
 const MATCHMAKING_FALLBACK_RANGE = 500;
+const ATTACK_COOLDOWN_SETTING_KEY = 'clash_attack_cooldown_minutes';
 
 const BUILDING_TYPES = ['townHall', 'goldStorage', 'vault', 'cannon', 'wall'] as const;
 type BuildingType = (typeof BUILDING_TYPES)[number];
@@ -72,6 +73,20 @@ function clamp(value: number, min: number, max: number) {
 
 function addMinutes(date: Date, minutes: number) {
   return new Date(date.getTime() + minutes * 60_000);
+}
+
+async function getAttackCooldownMinutes(db: PrismaClient | Prisma.TransactionClient) {
+  const setting = await db.gameSettings.findUnique({
+    where: { key: ATTACK_COOLDOWN_SETTING_KEY },
+    select: { value: true },
+  });
+
+  const parsed = Number.parseInt(setting?.value ?? '', 10);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return ATTACK_COOLDOWN_MINUTES;
+  }
+
+  return parsed;
 }
 
 function safeJsonParse<T>(raw: string, fallback: T): T {
@@ -598,6 +613,7 @@ router.post('/attack', authMiddleware, async (req: AuthRequest, res: Response) =
 
     const battle = await prisma.$transaction(async (tx) => {
       const now = new Date();
+      const attackCooldownMinutes = await getAttackCooldownMinutes(tx);
       const attackerVillage = await ensureVillage(tx, req.user!.id);
       const defenderVillage = await tx.clashVillage.findUnique({
         where: { userId: payload.defenderUserId },
@@ -660,7 +676,7 @@ router.post('/attack', authMiddleware, async (req: AuthRequest, res: Response) =
         data: {
           moneyInStorage: { increment: moneyStolen },
           trophies: { increment: trophyDelta.attacker },
-          attackCooldownUntil: addMinutes(now, ATTACK_COOLDOWN_MINUTES),
+          attackCooldownUntil: addMinutes(now, attackCooldownMinutes),
         },
       });
 
@@ -716,7 +732,7 @@ router.post('/attack', authMiddleware, async (req: AuthRequest, res: Response) =
             villageId: attackerVillage.id,
             type: 'COOLDOWN',
             title: 'Armée en récupération',
-            detail: `Prochaine attaque disponible dans ${ATTACK_COOLDOWN_MINUTES} minutes.`,
+            detail: `Prochaine attaque disponible dans ${attackCooldownMinutes} minutes.`,
             relatedUserId: defenderVillage.userId,
           },
         ],
@@ -728,6 +744,7 @@ router.post('/attack', authMiddleware, async (req: AuthRequest, res: Response) =
         defenderVillage: updatedDefenderVillage,
         defenderUser: defenderVillage.user,
         result,
+        attackCooldownMinutes,
       };
     });
 

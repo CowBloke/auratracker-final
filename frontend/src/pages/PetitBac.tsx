@@ -17,7 +17,7 @@ const DEFAULT_CATEGORIES = ['Prenom', 'Ville', 'Pays', 'Animal', 'Objet', 'Metie
 export default function PetitBac() {
   const { user } = useAuth();
   const { currentParty, partyMembers } = usePartySocket();
-  const { petitBacGame, petitBacRoundResult, petitBacGameOver, startPetitBac, submitPetitBac, leavePetitBac, clearPetitBacGameOver } = useGameSocket();
+  const { petitBacGame, petitBacReviewState, petitBacRoundResult, petitBacGameOver, startPetitBac, submitPetitBac, submitPetitBacReview, leavePetitBac, clearPetitBacGameOver } = useGameSocket();
 
   const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
   const myPlayer = petitBacGame?.players.find((p) => p.userId === user?.id);
@@ -26,6 +26,7 @@ export default function PetitBac() {
   const [roundDuration, setRoundDuration] = useState(60);
   const [categoriesInput, setCategoriesInput] = useState(DEFAULT_CATEGORIES.join(', '));
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [reviewVotes, setReviewVotes] = useState<Record<string, Record<string, boolean>>>({});
   const [timeLeft, setTimeLeft] = useState(0);
 
   const categories = useMemo(() => {
@@ -56,6 +57,28 @@ export default function PetitBac() {
     setAnswers(nextAnswers);
   }, [petitBacGame?.roundStartTime, petitBacGame?.categories, petitBacGame?.phase]);
 
+  useEffect(() => {
+    if (!petitBacReviewState || !user) return;
+    const myAssignments = petitBacReviewState.reviewAssignments.find((entry) => entry.reviewerId === user.id)?.targets || [];
+    const nextVotes: Record<string, Record<string, boolean>> = {};
+    for (const assignment of myAssignments) {
+      nextVotes[assignment.playerId] = nextVotes[assignment.playerId] || {};
+      nextVotes[assignment.playerId][assignment.category] = true;
+    }
+    setReviewVotes(nextVotes);
+  }, [petitBacReviewState, user?.id]);
+
+  const myReviewAssignments = useMemo(() => {
+    if (!petitBacReviewState || !user) return [];
+    return petitBacReviewState.reviewAssignments.find((entry) => entry.reviewerId === user.id)?.targets || [];
+  }, [petitBacReviewState, user?.id]);
+
+  const myPendingReviewCount = useMemo(() => {
+    return myReviewAssignments.filter((assignment) => typeof reviewVotes[assignment.playerId]?.[assignment.category] !== 'boolean').length;
+  }, [myReviewAssignments, reviewVotes]);
+
+  const hasSubmittedReview = !!(user && petitBacReviewState?.completedReviewerIds.includes(user.id));
+
   const handleStart = () => {
     const safeRounds = Math.min(Math.max(rounds, 1), 10);
     const safeDuration = Math.min(Math.max(roundDuration, 15), 120);
@@ -65,6 +88,11 @@ export default function PetitBac() {
   const handleSubmit = () => {
     if (!petitBacGame || petitBacGame.phase !== 'playing') return;
     submitPetitBac(answers);
+  };
+
+  const handleSubmitReview = () => {
+    if (!petitBacGame || petitBacGame.phase !== 'review' || myPendingReviewCount > 0 || hasSubmittedReview) return;
+    submitPetitBacReview(reviewVotes);
   };
 
   const playAgainModals = (
@@ -233,7 +261,7 @@ export default function PetitBac() {
 
       <Card>
         <CardContent className="p-6 grid gap-6">
-        <div className="flex flex-wrap items-center gap-6">
+          <div className="flex flex-wrap items-center gap-6">
           <div className="text-xs   text-muted-foreground">
             Manche {petitBacGame.round}/{petitBacGame.maxRounds}
           </div>
@@ -241,32 +269,105 @@ export default function PetitBac() {
             {petitBacGame.currentLetter}
           </div>
           <div className="text-sm text-muted-foreground">
-            {petitBacGame.phase === 'playing' ? `${timeLeft}s` : 'Scores'}
+            {petitBacGame.phase === 'playing' ? `${timeLeft}s` : petitBacGame.phase === 'review' ? 'Verification' : 'Scores'}
           </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-[2fr,1fr]">
           <div className="space-y-4">
-            {petitBacGame.categories.map((category) => (
-              <div key={category} className="grid gap-2">
-                <label className="text-xs   text-muted-foreground">
-                  {category}
-                </label>
-                <Input
-                  value={answers[category] || ''}
-                  onChange={(e) => setAnswers((prev) => ({ ...prev, [category]: e.target.value }))}
+            {petitBacGame.phase === 'playing' ? (
+              <>
+                {petitBacGame.categories.map((category) => (
+                  <div key={category} className="grid gap-2">
+                    <label className="text-xs   text-muted-foreground">
+                      {category}
+                    </label>
+                    <Input
+                      value={answers[category] || ''}
+                      onChange={(e) => setAnswers((prev) => ({ ...prev, [category]: e.target.value }))}
+                      disabled={petitBacGame.phase !== 'playing' || myPlayer?.submitted}
+                    />
+                  </div>
+                ))}
+                <Button
+                  onClick={handleSubmit}
                   disabled={petitBacGame.phase !== 'playing' || myPlayer?.submitted}
-                />
+                  className="gap-2"
+                >
+                  <Send className="h-4 w-4" />
+                  Valider
+                </Button>
+              </>
+            ) : petitBacGame.phase === 'review' && petitBacReviewState ? (
+              <div className="space-y-4">
+                <div className="rounded-lg border p-4 text-sm text-muted-foreground">
+                  Verifie les reponses des autres joueurs. Une reponse compte seulement si tous les autres la valident.
+                </div>
+                {petitBacReviewState.submissions
+                  .filter((submission) => submission.userId !== user?.id)
+                  .map((submission) => (
+                    <div key={submission.userId} className="rounded-lg border p-4 space-y-3">
+                      <UsernameDisplay username={submission.username} className="font-medium" />
+                      <div className="grid gap-2">
+                        {petitBacReviewState.categories.map((category) => {
+                          const rawValue = submission.answers[category] || '';
+                          const needsReview = myReviewAssignments.some((assignment) => assignment.playerId === submission.userId && assignment.category === category);
+                          const selectedVote = reviewVotes[submission.userId]?.[category];
+
+                          return (
+                            <div key={category} className="rounded border border-border/50 p-3 space-y-2">
+                              <div className="flex items-center justify-between gap-3 text-sm">
+                                <span className="text-muted-foreground">{category}</span>
+                                <span>{rawValue || '—'}</span>
+                              </div>
+                              {needsReview ? (
+                                <div className="flex gap-2">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={selectedVote ? 'default' : 'outline'}
+                                    onClick={() => setReviewVotes((prev) => ({
+                                      ...prev,
+                                      [submission.userId]: { ...(prev[submission.userId] || {}), [category]: true },
+                                    }))}
+                                    disabled={hasSubmittedReview}
+                                  >
+                                    Valide
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={selectedVote === false ? 'destructive' : 'outline'}
+                                    onClick={() => setReviewVotes((prev) => ({
+                                      ...prev,
+                                      [submission.userId]: { ...(prev[submission.userId] || {}), [category]: false },
+                                    }))}
+                                    disabled={hasSubmittedReview}
+                                  >
+                                    Refuse
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="text-xs text-muted-foreground">
+                                  Pas de validation necessaire.
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                <Button
+                  onClick={handleSubmitReview}
+                  disabled={hasSubmittedReview || myPendingReviewCount > 0}
+                  className="gap-2"
+                >
+                  <Send className="h-4 w-4" />
+                  {hasSubmittedReview ? 'Verification envoyee' : 'Envoyer ma verification'}
+                </Button>
               </div>
-            ))}
-            <Button
-              onClick={handleSubmit}
-              disabled={petitBacGame.phase !== 'playing' || myPlayer?.submitted}
-              className="gap-2"
-            >
-              <Send className="h-4 w-4" />
-              Valider
-            </Button>
+            ) : null}
           </div>
 
           <div className="space-y-3">
@@ -285,13 +386,24 @@ export default function PetitBac() {
                     <span
                       className={cn(
                         'h-2 w-2 rounded-full',
-                        player.submitted ? 'bg-green-500' : 'bg-yellow-500'
+                        petitBacGame.phase === 'review'
+                          ? petitBacReviewState?.completedReviewerIds.includes(player.userId)
+                            ? 'bg-green-500'
+                            : 'bg-yellow-500'
+                          : player.submitted
+                            ? 'bg-green-500'
+                            : 'bg-yellow-500'
                       )}
                     />
                   </div>
                 </div>
               ))}
             </div>
+            {petitBacGame.phase === 'review' && (
+              <div className="text-xs text-muted-foreground">
+                Verifications: {petitBacGame.reviewProgress.completed}/{petitBacGame.reviewProgress.total}
+              </div>
+            )}
           </div>
         </div>
 
@@ -313,7 +425,15 @@ export default function PetitBac() {
                     {petitBacRoundResult.categories.map((category) => (
                       <div key={category} className="flex items-center justify-between">
                         <span>{category}</span>
-                        <span>{submission.answers[category] || '—'} · {submission.perCategoryScores[category] ?? 0}</span>
+                        <span>
+                          {submission.answers[category] || '—'} · {submission.perCategoryScores[category] ?? 0}
+                          {' · '}
+                          {submission.validationStatus[category] === 'accepted'
+                            ? 'valide'
+                            : submission.validationStatus[category] === 'rejected'
+                              ? 'refuse'
+                              : 'hors lettre'}
+                        </span>
                       </div>
                     ))}
                   </div>

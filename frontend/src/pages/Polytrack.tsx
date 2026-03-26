@@ -6,12 +6,16 @@ import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlayerHoverCard } from '@/components/ui/player-hover-card';
 import { PageShell } from '@/components/layout/page-shell';
+import { GamePauseButton } from '@/components/game/GamePauseButton';
+import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
+import { useHideGameLeaderboards } from '@/lib/game-preferences';
 
 const GAME_SRC = '/polytrack/index.html';
 const MEDAL_COLORS = ['text-yellow-400', 'text-slate-400', 'text-amber-600'];
 
 export default function Polytrack() {
   const { user } = useAuth();
+  const hideGameLeaderboards = useHideGameLeaderboards();
 
   const [tracks, setTracks] = useState<PolytrackTrack[]>([]);
   const [selectedTrack, setSelectedTrack] = useState<number>(1);
@@ -24,6 +28,7 @@ export default function Polytrack() {
   const [pendingMs, setPendingMs] = useState<number | null>(null);
   const [submitResult, setSubmitResult] = useState<{ saved: boolean; isGlobalRecord: boolean; isNewPB: boolean; timeDisplay: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
 
   // Fullscreen
   const [fullscreen, setFullscreen] = useState(false);
@@ -143,6 +148,9 @@ export default function Polytrack() {
             allow="fullscreen; autoplay"
             style={{ border: 'none', display: 'block' }}
           />
+          <div className="absolute left-2 top-2 z-10">
+            <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} />
+          </div>
           <button
             onClick={toggleFullscreen}
             className="absolute top-2 right-2 z-10 bg-black/60 hover:bg-black/80 text-white rounded-md p-1.5 transition-colors"
@@ -150,6 +158,11 @@ export default function Polytrack() {
           >
             {fullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
           </button>
+          <GamePauseOverlay
+            visible={isPaused}
+            onResume={() => setIsPaused(false)}
+            description="Le time trial reste affiché mais l'écran est mis en pause côté interface."
+          />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -251,6 +264,7 @@ export default function Polytrack() {
           </div>
 
           {/* Leaderboard */}
+          {!hideGameLeaderboards && (
           <Card className="lg:col-span-2">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -313,6 +327,7 @@ export default function Polytrack() {
               )}
             </CardContent>
           </Card>
+          )}
         </div>
       </div>
     </PageShell>

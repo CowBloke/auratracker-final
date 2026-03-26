@@ -20,10 +20,12 @@ interface PetitBacGame {
   maxRounds: number;
   roundDuration: number;
   roundStartTime: number;
-  phase: 'playing' | 'scoring';
+  phase: 'playing' | 'review' | 'scoring';
   isActive: boolean;
   roundTimer: NodeJS.Timeout | null;
   answers: Map<string, Record<string, string>>;
+  reviewAssignments: Map<string, Array<{ playerId: string; category: string }>>;
+  reviewVotes: Map<string, Map<string, Record<string, boolean>>>;
 }
 
 interface PendingJoinPrompt {
@@ -99,6 +101,11 @@ function sanitizeCategories(categories?: string[]): string[] {
 }
 
 function serializeGameState(game: PetitBacGame) {
+  const pendingReviews = Array.from(game.reviewAssignments.values()).reduce((total, assignments) => total + assignments.length, 0);
+  const completedReviews = Array.from(game.reviewVotes.values()).reduce((total, playerVotes) => {
+    return total + Array.from(playerVotes.values()).reduce((playerTotal, categories) => playerTotal + Object.keys(categories).length, 0);
+  }, 0);
+
   return {
     partyId: game.partyId,
     players: game.players.map((p) => ({
@@ -116,6 +123,28 @@ function serializeGameState(game: PetitBacGame) {
     roundStartTime: game.roundStartTime,
     phase: game.phase,
     submittedCount: game.players.filter((p) => p.submitted).length,
+    reviewProgress: {
+      completed: completedReviews,
+      total: pendingReviews,
+    },
+  };
+}
+
+function serializeReviewState(game: PetitBacGame) {
+  return {
+    round: game.round,
+    letter: game.currentLetter,
+    categories: game.categories,
+    submissions: game.players.map((player) => ({
+      userId: player.userId,
+      username: player.username,
+      answers: game.answers.get(player.userId) || {},
+    })),
+    reviewAssignments: Array.from(game.reviewAssignments.entries()).map(([reviewerId, targets]) => ({
+      reviewerId,
+      targets,
+    })),
+    completedReviewerIds: Array.from(game.reviewVotes.keys()),
   };
 }
 
@@ -265,7 +294,44 @@ export const setupPetitBacHandlers = (socket: Socket, io: Server) => {
     });
 
     if (game.players.every((p) => p.submitted)) {
-      endRound(game, io);
+      beginReviewPhase(game, io);
+    }
+  });
+
+  socket.on('petitbac:submit-review', (data: {
+    partyId: string;
+    userId: string;
+    validations: Record<string, Record<string, boolean>>;
+  }) => {
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const { partyId, validations } = data;
+    const game = activeGames.get(partyId);
+    if (!game || !game.isActive || game.phase !== 'review') return;
+
+    const assignments = game.reviewAssignments.get(userId) || [];
+    if (assignments.length === 0) return;
+
+    const reviewMap = new Map<string, Record<string, boolean>>();
+    for (const assignment of assignments) {
+      const decision = validations?.[assignment.playerId]?.[assignment.category];
+      if (typeof decision !== 'boolean') {
+        return;
+      }
+      const playerReviews = reviewMap.get(assignment.playerId) || {};
+      playerReviews[assignment.category] = decision;
+      reviewMap.set(assignment.playerId, playerReviews);
+    }
+
+    game.reviewVotes.set(userId, reviewMap);
+
+    io.to(`party:${partyId}`).emit('petitbac:review-progress', {
+      game: serializeGameState(game),
+      completedReviewerIds: Array.from(game.reviewVotes.keys()),
+    });
+
+    if (game.players.every((player) => (game.reviewAssignments.get(player.userId) || []).length === 0 || game.reviewVotes.has(player.userId))) {
+      finalizeRound(game, io);
     }
   });
 
@@ -281,11 +347,36 @@ export const setupPetitBacHandlers = (socket: Socket, io: Server) => {
 
     game.players.splice(playerIndex, 1);
     game.answers.delete(userId);
+    game.reviewAssignments.delete(userId);
+    game.reviewVotes.delete(userId);
+    game.reviewAssignments.forEach((assignments, reviewerId) => {
+      const filtered = assignments.filter((assignment) => assignment.playerId !== userId);
+      game.reviewAssignments.set(reviewerId, filtered);
+    });
+    game.reviewVotes.forEach((votes) => {
+      votes.delete(userId);
+    });
 
     io.to(`party:${partyId}`).emit('petitbac:player-left', { userId });
 
     if (game.players.length < 2) {
       await endGame(game, io);
+      return;
+    }
+
+    if (game.phase === 'playing' && game.players.every((p) => p.submitted)) {
+      beginReviewPhase(game, io);
+      return;
+    }
+
+    if (game.phase === 'review') {
+      io.to(`party:${partyId}`).emit('petitbac:review-progress', {
+        game: serializeGameState(game),
+        completedReviewerIds: Array.from(game.reviewVotes.keys()),
+      });
+      if (game.players.every((player) => (game.reviewAssignments.get(player.userId) || []).length === 0 || game.reviewVotes.has(player.userId))) {
+        finalizeRound(game, io);
+      }
     }
   });
 
@@ -392,6 +483,8 @@ async function resolveJoinPrompt(partyId: string, io: Server) {
     isActive: true,
     roundTimer: null,
     answers: new Map(),
+    reviewAssignments: new Map(),
+    reviewVotes: new Map(),
   };
 
   activeGames.set(partyId, game);
@@ -405,11 +498,31 @@ function startRoundTimer(game: PetitBacGame, io: Server) {
     clearTimeout(game.roundTimer);
   }
   game.roundTimer = setTimeout(() => {
-    endRound(game, io);
+    beginReviewPhase(game, io);
   }, game.roundDuration);
 }
 
-function endRound(game: PetitBacGame, io: Server) {
+function buildReviewAssignments(game: PetitBacGame) {
+  const assignments = new Map<string, Array<{ playerId: string; category: string }>>();
+
+  for (const reviewer of game.players) {
+    const reviewerAssignments: Array<{ playerId: string; category: string }> = [];
+    for (const target of game.players) {
+      if (target.userId === reviewer.userId) continue;
+      const answers = game.answers.get(target.userId) || {};
+      for (const category of game.categories) {
+        if ((answers[category] || '').trim()) {
+          reviewerAssignments.push({ playerId: target.userId, category });
+        }
+      }
+    }
+    assignments.set(reviewer.userId, reviewerAssignments);
+  }
+
+  return assignments;
+}
+
+function beginReviewPhase(game: PetitBacGame, io: Server) {
   if (!game.isActive || game.phase !== 'playing') return;
 
   if (game.roundTimer) {
@@ -417,12 +530,31 @@ function endRound(game: PetitBacGame, io: Server) {
     game.roundTimer = null;
   }
 
+  game.phase = 'review';
+  game.reviewAssignments = buildReviewAssignments(game);
+  game.reviewVotes.clear();
+
+  io.to(`party:${game.partyId}`).emit('petitbac:review-started', {
+    game: serializeGameState(game),
+    result: serializeReviewState(game),
+  });
+
+  const noReviewsNeeded = game.players.every((player) => (game.reviewAssignments.get(player.userId) || []).length === 0);
+  if (noReviewsNeeded) {
+    finalizeRound(game, io);
+  }
+}
+
+function finalizeRound(game: PetitBacGame, io: Server) {
+  if (!game.isActive || game.phase !== 'review') return;
+
   const letter = normalizeValue(game.currentLetter)[0];
   const roundScores: Array<{
     userId: string;
     username: string;
     answers: Record<string, string>;
     perCategoryScores: Record<string, number>;
+    validationStatus: Record<string, 'accepted' | 'rejected' | 'auto-rejected'>;
     score: number;
     totalScore: number;
   }> = [];
@@ -443,17 +575,29 @@ function endRound(game: PetitBacGame, io: Server) {
     const answers = game.answers.get(player.userId) || {};
     let totalRoundScore = 0;
     const perCategoryScores: Record<string, number> = {};
+    const validationStatus: Record<string, 'accepted' | 'rejected' | 'auto-rejected'> = {};
 
     for (const category of game.categories) {
       const rawAnswer = answers[category] || '';
       const normalized = normalizeValue(rawAnswer);
       if (!normalized || normalized[0] !== letter) {
         perCategoryScores[category] = 0;
+        validationStatus[category] = 'auto-rejected';
+        continue;
+      }
+      const reviews = game.players
+        .filter((reviewer) => reviewer.userId !== player.userId)
+        .map((reviewer) => game.reviewVotes.get(reviewer.userId)?.get(player.userId)?.[category] ?? false);
+      const isAccepted = reviews.length > 0 && reviews.every(Boolean);
+      if (!isAccepted) {
+        perCategoryScores[category] = 0;
+        validationStatus[category] = 'rejected';
         continue;
       }
       const count = categoryAnswerMap[category][normalized] || 0;
       const score = count <= 1 ? 10 : 5;
       perCategoryScores[category] = score;
+      validationStatus[category] = 'accepted';
       totalRoundScore += score;
     }
 
@@ -464,6 +608,7 @@ function endRound(game: PetitBacGame, io: Server) {
       username: player.username,
       answers,
       perCategoryScores,
+      validationStatus,
       score: totalRoundScore,
       totalScore: player.score,
     });
@@ -493,6 +638,8 @@ function endRound(game: PetitBacGame, io: Server) {
     game.roundStartTime = Date.now();
     game.phase = 'playing';
     game.answers.clear();
+    game.reviewAssignments.clear();
+    game.reviewVotes.clear();
     game.players.forEach((p) => {
       p.submitted = false;
     });
@@ -653,6 +800,8 @@ async function resolvePlayAgainPrompt(partyId: string, io: Server) {
     isActive: true,
     roundTimer: null,
     answers: new Map(),
+    reviewAssignments: new Map(),
+    reviewVotes: new Map(),
   };
 
   activeGames.set(partyId, game);
@@ -697,4 +846,10 @@ export function sendActivePetitBacGameState(socket: Socket, partyId: string, use
   if (!isPlayer) return;
 
   socket.emit('petitbac:started', serializeGameState(game));
+  if (game.phase === 'review') {
+    socket.emit('petitbac:review-started', {
+      game: serializeGameState(game),
+      result: serializeReviewState(game),
+    });
+  }
 }
