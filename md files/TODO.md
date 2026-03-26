@@ -3,3 +3,14 @@
 - table casino
 - plus d"objets
 - pouvoir dm joueurs de admin
+- raccorucis claviers
+- bug ball arena multijouer
+- rechercher jeux
+- populaire de base
+- enlever partie gauche jeux
+- classements clash
+- badge demande
+- lootboxes
+- objet bannière
+- limite 1 badge perso
+- boost permanent clan

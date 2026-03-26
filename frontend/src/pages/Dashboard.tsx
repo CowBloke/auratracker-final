@@ -150,7 +150,6 @@ const quickActions: QuickAction[] = [
   { id: 'games', label: 'Tous les jeux', path: '/games', icon: Gamepad2, color: 'text-orange-500', bg: 'bg-orange-500/15' },
   { id: 'inventory', label: 'Inventaire', path: '/inventory', icon: Package, color: 'text-cyan-500', bg: 'bg-cyan-500/15' },
   { id: 'inbox', label: 'Inbox', path: '/inbox', icon: GiftIcon, color: 'text-pink-500', bg: 'bg-pink-500/15' },
-  { id: 'pass', label: 'Pass', path: '/pass', icon: Star, color: 'text-yellow-500', bg: 'bg-yellow-500/15' },
   { id: 'settings', label: 'Réglages', path: '/settings', icon: Coins, color: 'text-zinc-500', bg: 'bg-zinc-500/15' },
 ];
 const defaultQuickActionIds = ['create-party', 'quests', 'games', 'inbox'];

@@ -150,34 +150,6 @@ export const economyApi = {
     api.post('/economy/gift-aura', data),
 };
 
-// Pass API
-export interface PassStatus {
-  streak: number;
-  status: 'available' | 'claimed';
-  resetNotice: boolean;
-  claimDay: number;
-  claimReward: number;
-  nextReward: number;
-  nextReset: string;
-}
-
-export interface PassClaimResponse {
-  success: boolean;
-  reward: number;
-  streak: number;
-  claimDay: number;
-  nextReward: number;
-  newBalance: {
-    money: number;
-    aura: number;
-  };
-}
-
-export const passApi = {
-  getStatus: () => api.get<PassStatus>('/pass/status'),
-  claim: () => api.post<PassClaimResponse>('/pass/claim'),
-};
-
 export interface ShopCategory {
   id: string;
   label: string;

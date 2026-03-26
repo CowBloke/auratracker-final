@@ -171,7 +171,6 @@ const ACTION_LABELS: Record<string, string> = {
   transfer: 'Transfert',
   gift_aura: 'Don d\'aura',
   balance_change: 'Modification solde',
-  pass_reward: 'Récompense pass',
   // Party
   party_create: 'Groupe créé',
   party_join: 'Rejoint groupe',
@@ -312,7 +311,6 @@ const GAME_TYPE_LABELS: Record<string, string> = {
   uno: 'Uno',
   morpion: 'Morpion',
   russian_roulette: 'Russian Roulette',
-  jackpot_5: 'Jackpot 5',
 };
 
 const MULTIPLAYER_GAME_TYPES = new Set([
@@ -326,7 +324,6 @@ const MULTIPLAYER_GAME_TYPES = new Set([
   'uno',
   'morpion',
   'russian_roulette',
-  'jackpot_5',
 ]);
 const ACTIVITY_BREAKDOWN_COLORS = ['#2563eb', '#f97316', '#10b981', '#eab308', '#8b5cf6', '#ef4444'];
 
@@ -552,7 +549,6 @@ const GAME_TYPES = [
   { value: 'uno', label: 'Uno' },
   { value: 'morpion', label: 'Morpion' },
   { value: 'russian_roulette', label: 'Russian Roulette' },
-  { value: 'jackpot_5', label: 'Jackpot 5' },
 ];
 
 interface ItemFormData {

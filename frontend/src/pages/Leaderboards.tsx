@@ -30,7 +30,7 @@ interface Ranking {
 type StatItem = { label: string; value: string; hint?: string };
 type StatSection = { title: string; items: StatItem[] };
 
-type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'doodle_jump_mort_subite' | 'game_2048' | 'flappy_bird' | 'chrome_dino' | 'stack_tower' | 'geometry_dash' | 'qs_watermelon' | 'solitaire' | 'racer' | 'tetris' | 'knife_hit' | 'minesweeper' | 'fruit_ninja' | 'goyave_empire' | 'logic_lab' | 'casino' | 'casino_losses' | 'chess' | 'petit_bac' | 'puissance_4' | 'jackpot_5' | 'ball_arena' | 'poker' | 'battleship' | 'russian_roulette' | 'levier_infernal' | 'uno' | 'morpion' | 'polymarket_ratio' | 'games_played' | 'bombparty';
+type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'doodle_jump_mort_subite' | 'game_2048' | 'flappy_bird' | 'chrome_dino' | 'stack_tower' | 'geometry_dash' | 'qs_watermelon' | 'solitaire' | 'racer' | 'tetris' | 'knife_hit' | 'minesweeper' | 'fruit_ninja' | 'goyave_empire' | 'logic_lab' | 'casino' | 'casino_losses' | 'chess' | 'petit_bac' | 'puissance_4' | 'ball_arena' | 'poker' | 'battleship' | 'russian_roulette' | 'levier_infernal' | 'uno' | 'morpion' | 'polymarket_ratio' | 'games_played' | 'bombparty';
 type View = Category | 'nombres';
 type Period = 'all' | 'monthly' | 'weekly' | 'daily';
 
@@ -72,7 +72,6 @@ const categories: { id: Category; name: string; valueLabel: string; icon: typeof
   { id: 'chess', name: 'Échecs', valueLabel: 'victoires', icon: Hash },
   { id: 'petit_bac', name: 'Petit Bac', valueLabel: 'victoires', icon: Sparkles },
   { id: 'puissance_4', name: 'Puissance 4', valueLabel: 'victoires', icon: Layers },
-  { id: 'jackpot_5', name: 'Jackpot 5', valueLabel: 'victoires', icon: Gem },
   { id: 'ball_arena', name: 'Ball Arena', valueLabel: 'victoires', icon: Target },
   { id: 'poker', name: 'Poker', valueLabel: 'victoires', icon: Diamond },
   { id: 'battleship', name: 'Bataille Navale', valueLabel: 'victoires', icon: Target },
@@ -86,7 +85,7 @@ const categories: { id: Category; name: string; valueLabel: string; icon: typeof
 ];
 
 const economyCategories: Category[] = ['aura', 'money', 'total_money', 'auracoin'];
-const gameCategories: Category[] = ['doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird', 'chrome_dino', 'stack_tower', 'geometry_dash', 'qs_watermelon', 'solitaire', 'racer', 'tetris', 'knife_hit', 'minesweeper', 'fruit_ninja', 'goyave_empire', 'logic_lab', 'casino', 'casino_losses', 'chess', 'petit_bac', 'puissance_4', 'jackpot_5', 'ball_arena', 'poker', 'battleship', 'russian_roulette', 'levier_infernal', 'uno', 'morpion', 'polymarket_ratio', 'bombparty', 'games_played'];
+const gameCategories: Category[] = ['doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird', 'chrome_dino', 'stack_tower', 'geometry_dash', 'qs_watermelon', 'solitaire', 'racer', 'tetris', 'knife_hit', 'minesweeper', 'fruit_ninja', 'goyave_empire', 'logic_lab', 'casino', 'casino_losses', 'chess', 'petit_bac', 'puissance_4', 'ball_arena', 'poker', 'battleship', 'russian_roulette', 'levier_infernal', 'uno', 'morpion', 'polymarket_ratio', 'bombparty', 'games_played'];
 const genericGameCategories: Category[] = ['stack_tower', 'geometry_dash', 'qs_watermelon', 'fruit_ninja', 'goyave_empire', 'logic_lab'];
 const deletableGameCategories: Partial<Record<Category, string>> = {
   doodle_jump: 'doodle_jump',
@@ -109,7 +108,6 @@ const deletableGameCategories: Partial<Record<Category, string>> = {
   chess: 'chess',
   petit_bac: 'petit_bac',
   puissance_4: 'puissance_4',
-  jackpot_5: 'jackpot_5',
   ball_arena: 'ball_arena',
   poker: 'poker',
   battleship: 'battleship',
@@ -119,7 +117,7 @@ const deletableGameCategories: Partial<Record<Category, string>> = {
   morpion: 'morpion',
 };
 
-const gamesCatalog = ['Doodle Jump', 'Démineur', '2048', 'Flappy Bird', 'Chrome Dino', 'Stack Tower', 'Geometry Dash', 'Fruit Ninja', 'Goyave Empire', 'Sudoku', 'Casino', 'Bomb Party', 'Poker', 'Petit Bac', 'Bataille Navale', 'Solitaire', 'Racer', 'Tetris', 'Knife Hit', 'Polymarket', 'Échecs', 'Puissance 4', 'Jackpot 5', 'Ball Arena', 'Roulette Russe', 'Levier Infernal', 'Uno', 'Morpion'];
+const gamesCatalog = ['Doodle Jump', 'Démineur', '2048', 'Flappy Bird', 'Chrome Dino', 'Stack Tower', 'Geometry Dash', 'Fruit Ninja', 'Goyave Empire', 'Sudoku', 'Casino', 'Bomb Party', 'Poker', 'Petit Bac', 'Bataille Navale', 'Solitaire', 'Racer', 'Tetris', 'Knife Hit', 'Polymarket', 'Échecs', 'Puissance 4', 'Ball Arena', 'Roulette Russe', 'Levier Infernal', 'Uno', 'Morpion'];
 
 const formatNumber = (value: number, digits = 0) =>
   value.toLocaleString('fr-FR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
