@@ -547,45 +547,43 @@ export default function Games() {
   return (
     <PageShell>
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as GamesTab)} className={SPACING.SECTION_SPACING}>
-        <TabsList className="h-auto flex-wrap">
-          {tabConfig.map((tab) => (
-            <TabsTrigger key={tab.id} value={tab.id}>
-              {tab.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <TabsList className="h-auto flex-wrap">
+            {tabConfig.map((tab) => (
+              <TabsTrigger key={tab.id} value={tab.id}>
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          <div className="w-[220px]">
+            <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Trier les jeux" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">Ordre par défaut</SelectItem>
+                <SelectItem value="popular">Populaire</SelectItem>
+                <SelectItem value="newest">Nouveaux</SelectItem>
+                <SelectItem value="most-played">Plus joués</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
         <TabsContent value={activeTab} className={SPACING.CARD_SPACING}>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            {activeTab === 'multiplayer' ? (
-              <Tabs
-                value={activeMultiplayerTab}
-                onValueChange={(value) => setActiveMultiplayerTab(value as MultiplayerTab)}
-              >
-                <TabsList className="h-auto flex-wrap">
-                  <TabsTrigger value="all">Tous</TabsTrigger>
-                  <TabsTrigger value="party">Party</TabsTrigger>
-                  <TabsTrigger value="duel">Duel</TabsTrigger>
-                </TabsList>
-              </Tabs>
-            ) : (
-              <div />
-            )}
-
-            <div className="w-[220px]">
-              <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Trier les jeux" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="default">Ordre par défaut</SelectItem>
-                  <SelectItem value="popular">Populaire</SelectItem>
-                  <SelectItem value="newest">Nouveaux</SelectItem>
-                  <SelectItem value="most-played">Plus joués</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          {activeTab === 'multiplayer' && (
+            <Tabs
+              value={activeMultiplayerTab}
+              onValueChange={(value) => setActiveMultiplayerTab(value as MultiplayerTab)}
+            >
+              <TabsList className="h-auto flex-wrap">
+                <TabsTrigger value="all">Tous</TabsTrigger>
+                <TabsTrigger value="party">Party</TabsTrigger>
+                <TabsTrigger value="duel">Duel</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
 
           {activeTab === 'all' ? (
             <div className="space-y-8">
