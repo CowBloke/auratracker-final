@@ -244,6 +244,15 @@ const games = [
     image: '/images/games/racer.png',
   },
   {
+    id: 'eaglercraft',
+    pageKey: 'game-eaglercraft',
+    name: 'Eaglercraft',
+    description: 'Version navigateur façon Minecraft 1.8, jouable directement depuis le site en plein écran.',
+    type: 'Sandbox',
+    emoji: '⛏️',
+    image: '/images/games/geometrydash.png',
+  },
+  {
     id: 'puissance-quatre',
     pageKey: 'game-puissance-quatre',
     name: 'Puissance 4',
@@ -379,6 +388,9 @@ export default function Games() {
     }
     if (gameId === 'echecs') {
       return '/games/echecs';
+    }
+    if (gameId === 'eaglercraft') {
+      return '/games/eaglercraft';
     }
     return `/games/${gameId}`;
   };

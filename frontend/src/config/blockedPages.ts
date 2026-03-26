@@ -47,6 +47,7 @@ export const BLOCKABLE_PAGES: BlockablePage[] = [
   { key: 'game-levier-infernal', path: '/games/levier-infernal', label: 'Levier Infernal', category: 'Jeux', description: 'Jeu de réflexes — actionnez les leviers au bon moment.' },
   { key: 'game-uno', path: '/games/uno', label: 'Uno', category: 'Jeux', description: 'Jeu de cartes Uno multijoueur.' },
   { key: 'game-polytrack', path: '/games/polytrack', label: 'Polytrack', category: 'Jeux', description: 'Jeu de course sur piste — battez votre meilleur temps.' },
+  { key: 'game-eaglercraft', path: '/games/eaglercraft', label: 'Eaglercraft', category: 'Jeux', description: 'Version navigateur de Minecraft jouable directement depuis le site.' },
   { key: 'leaderboards', path: '/leaderboards', label: 'Classements', category: 'Communauté', description: 'Classements généraux des joueurs par aura et par jeu.' },
   { key: 'leaderboards-numbers', path: '/leaderboards/nombres', label: 'Classement Nombres', category: 'Communauté', description: 'Classement spécial basé sur les scores de la section Nombres.' },
   { key: 'party', path: '/party', label: 'Party', category: 'Communauté', description: 'Salons de jeu en groupe — créez ou rejoignez une party.' },
