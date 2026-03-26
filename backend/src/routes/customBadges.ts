@@ -41,12 +41,12 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'name and description are required' });
     }
 
-    // Only one pending request allowed at a time
+    // Only one custom badge allowed (pending or already approved)
     const existing = await prisma.customBadgeRequest.findFirst({
-      where: { userId: req.user.id, status: 'pending' },
+      where: { userId: req.user.id, status: { in: ['pending', 'approved'] } },
     });
     if (existing) {
-      return res.status(409).json({ error: 'Tu as déjà une demande de badge en attente' });
+      return res.status(409).json({ error: 'Tu as déjà un badge personnalisé ou une demande en cours.' });
     }
 
     const request = await prisma.customBadgeRequest.create({

@@ -118,6 +118,16 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
     }
     
     const effect = parseItemEffect(item.effect);
+
+    if (effect?.type === 'CUSTOM_BADGE') {
+      const existingCustomBadge = await prisma.customBadgeRequest.findFirst({
+        where: { userId: req.user.id, status: { in: ['pending', 'approved'] } },
+      });
+      if (existingCustomBadge) {
+        return res.status(400).json({ error: 'Tu as déjà un badge personnalisé ou une demande en cours.' });
+      }
+    }
+
     const isClanTagUnlock = effect?.type === 'CLAN_TAG_UNLOCK';
     const isClanSlotUpgrade = effect?.type === 'CLAN_SLOT_UPGRADE';
     const isClanUpgrade = isClanTagUnlock || isClanSlotUpgrade;
@@ -623,10 +633,10 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
       }
 
       const existing = await prisma.customBadgeRequest.findFirst({
-        where: { userId: req.user.id, status: 'pending' },
+        where: { userId: req.user.id, status: { in: ['pending', 'approved'] } },
       });
       if (existing) {
-        return res.status(409).json({ error: 'Tu as déjà une demande de badge en attente' });
+        return res.status(409).json({ error: 'Tu as déjà un badge personnalisé ou une demande en cours.' });
       }
 
       const request = await prisma.$transaction(async (tx) => {
