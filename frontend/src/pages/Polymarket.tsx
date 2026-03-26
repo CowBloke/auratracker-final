@@ -2,8 +2,15 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import {
   polymarketApi, PolymarketEvent, PolymarketSuggestion, PolymarketBet,
-  PolymarketOption, uploadUserImage,
+  uploadUserImage,
 } from '../services/api';
+
+interface PolymarketOption {
+  key: string;
+  label: string;
+  color: string;
+  odds: number;
+}
 import { ImagePicker } from '@/components/ui/image-picker';
 import {
   Loader2, Plus, Calendar,
@@ -37,22 +44,15 @@ interface DraftOption {
   odds: string; // string for controlled input
 }
 
-/** Returns the options array for any event. Falls back to YES/NO for legacy events. */
-function getEventOptions(event: Pick<PolymarketEvent, 'yesOdds' | 'noOdds' | 'optionsConfig' | 'options'>): PolymarketOption[] {
-  if (event.options && event.options.length >= 2) return event.options;
-  if (event.optionsConfig) {
-    try {
-      const parsed = JSON.parse(event.optionsConfig) as PolymarketOption[];
-      if (Array.isArray(parsed) && parsed.length >= 2) return parsed;
-    } catch { /* fall through */ }
-  }
+/** Returns the YES/NO options for an event. */
+function getEventOptions(event: Pick<PolymarketEvent, 'yesOdds' | 'noOdds'>): PolymarketOption[] {
   return [
     { key: 'YES', label: 'Oui', color: '#22c55e', odds: event.yesOdds },
     { key: 'NO',  label: 'Non', color: '#ef4444', odds: event.noOdds  },
   ];
 }
 
-function getOptionByKey(event: Pick<PolymarketEvent, 'yesOdds' | 'noOdds' | 'optionsConfig' | 'options'>, key: string): PolymarketOption | undefined {
+function getOptionByKey(event: Pick<PolymarketEvent, 'yesOdds' | 'noOdds'>, key: string): PolymarketOption | undefined {
   return getEventOptions(event).find((o) => o.key === key);
 }
 
@@ -450,10 +450,11 @@ export default function Polymarket() {
       };
       if (eventDate.trim()) payload.eventDate = eventDate;
       if (optionsPayload) {
-        payload.optionsConfig = optionsPayload;
-        if (optionsPayload.length === 2 && optionsPayload[0].key === 'YES') {
-          payload.suggestedYesOdds = optionsPayload[0].odds;
-          payload.suggestedNoOdds = optionsPayload[1].odds;
+        const yesOpt = optionsPayload.find(o => o.key === 'YES') ?? optionsPayload[0];
+        const noOpt = optionsPayload.find(o => o.key === 'NO') ?? optionsPayload[1];
+        if (yesOpt && noOpt) {
+          payload.suggestedYesOdds = yesOpt.odds;
+          payload.suggestedNoOdds = noOpt.odds;
         }
       }
 
@@ -480,7 +481,7 @@ export default function Polymarket() {
 
     setBetSubmitting(true);
     try {
-      await polymarketApi.placeBet({ eventId: selectedEvent.id, prediction: betPrediction, amount: parseInt(betAmount) });
+      await polymarketApi.placeBet({ eventId: selectedEvent.id, prediction: betPrediction as 'YES' | 'NO', amount: parseInt(betAmount) });
       const label = getOptionByKey(selectedEvent, betPrediction)?.label || betPrediction;
       toast({ title: 'Pari placé', description: `Vous avez parié ${betAmount} sur ${label}` });
       setBetDialogOpen(false);
@@ -516,8 +517,11 @@ export default function Polymarket() {
     }
 
     try {
+      const yesOdds = optionsPayload.find(o => o.key === 'YES')?.odds ?? optionsPayload[0]?.odds;
+      const noOdds = optionsPayload.find(o => o.key === 'NO')?.odds ?? optionsPayload[1]?.odds;
       await polymarketApi.approveSuggestion(selectedSuggestion.id, {
-        optionsConfig: optionsPayload,
+        yesOdds,
+        noOdds,
         eventDate: approveEventDate || undefined,
       });
       toast({ title: 'Suggestion approuvée', description: 'L\'événement a été créé avec succès' });
@@ -550,7 +554,7 @@ export default function Polymarket() {
   const handleResolveEvent = async () => {
     if (!selectedEventForResolve) return;
     try {
-      await polymarketApi.resolveEvent(selectedEventForResolve.id, resolution);
+      await polymarketApi.resolveEvent(selectedEventForResolve.id, resolution as 'YES' | 'NO');
       const label = getOptionByKey(selectedEventForResolve, resolution)?.label || resolution;
       toast({ title: 'Événement résolu', description: `Résolution: ${label}` });
       setResolveDialogOpen(false);
@@ -566,17 +570,9 @@ export default function Polymarket() {
   const openEditEventDialog = (event: PolymarketEvent) => {
     setSelectedEventForEdit(event);
     setEditEventImageUrl(event.imageUrl || '');
-
-    const options = getEventOptions(event);
-    const isCustom = options.length !== 2 || options[0].key !== 'YES' || options[1].key !== 'NO';
-    if (isCustom) {
-      setEditMode('custom');
-      setEditCustomDrafts(options.map((o, i) => makeDraftOption(i, o)));
-    } else {
-      setEditMode('binary');
-      setEditBinaryYes(options[0].odds.toString());
-      setEditBinaryNo(options[1].odds.toString());
-    }
+    setEditMode('binary');
+    setEditBinaryYes(event.yesOdds.toString());
+    setEditBinaryNo(event.noOdds.toString());
     setEditEventDialogOpen(true);
   };
 
@@ -609,6 +605,9 @@ export default function Polymarket() {
       return;
     }
 
+    const yesOdds = optionsPayload.find(o => o.key === 'YES')?.odds ?? optionsPayload[0]?.odds;
+    const noOdds = optionsPayload.find(o => o.key === 'NO')?.odds ?? optionsPayload[1]?.odds;
+
     setEditSubmitting(true);
     try {
       await polymarketApi.updateEvent(selectedEventForEdit.id, {
@@ -616,7 +615,8 @@ export default function Polymarket() {
         description: descriptionValue,
         eventDate: eventDateValue,
         imageUrl: editEventImageUrl.trim() || null,
-        optionsConfig: optionsPayload,
+        yesOdds,
+        noOdds,
         status: statusValue,
       });
       toast({ title: 'Événement modifié', description: 'Les changements ont été enregistrés.' });
@@ -694,7 +694,7 @@ export default function Polymarket() {
                   const userBet = bets.find((b) => b.eventId === event.id);
                   const canBet = !userBet && event.status === 'OPEN' && new Date(event.eventDate) > new Date();
                   const options = getEventOptions(event);
-                  const optionStats = event.optionStats || { YES: event.totalYes || 0, NO: event.totalNo || 0 };
+                  const optionStats: Record<string, number> = { YES: event.totalYes || 0, NO: event.totalNo || 0 };
                   const totalVolume = event.totalVolume || 0;
 
                   return (
@@ -1082,10 +1082,6 @@ export default function Polymarket() {
                   ) : (
                     <div className="space-y-4">
                       {pendingSuggestions.map((suggestion) => {
-                        let suggestedOptions: PolymarketOption[] | null = null;
-                        if (suggestion.optionsConfig) {
-                          try { suggestedOptions = JSON.parse(suggestion.optionsConfig); } catch { /* ignore */ }
-                        }
                         return (
                           <Card key={suggestion.id}>
                             <CardHeader>
@@ -1099,25 +1095,7 @@ export default function Polymarket() {
                               <div className="text-sm text-muted-foreground">
                                 Date: {suggestion.eventDate ? new Date(suggestion.eventDate).toLocaleDateString('fr-FR') : 'Non renseignée'}
                               </div>
-                              {suggestedOptions ? (
-                                <div className="space-y-1">
-                                  <div className="text-sm text-muted-foreground">Options suggérées:</div>
-                                  <div className="h-5 w-full rounded overflow-hidden flex">
-                                    {suggestedOptions.map((opt, i) => (
-                                      <div key={i} className="h-full flex-1" style={{ background: opt.color }} />
-                                    ))}
-                                  </div>
-                                  <div className="flex gap-3 flex-wrap">
-                                    {suggestedOptions.map((opt) => (
-                                      <span key={opt.key} className="flex items-center gap-1 text-sm">
-                                        <span className="w-2 h-2 rounded-full" style={{ background: opt.color }} />
-                                        {opt.label}
-                                        {opt.odds > 1 && <span className="text-muted-foreground">{opt.odds.toFixed(2)}x</span>}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              ) : suggestion.suggestedYesOdds && suggestion.suggestedNoOdds ? (
+                              {suggestion.suggestedYesOdds && suggestion.suggestedNoOdds ? (
                                 <div className="text-sm text-muted-foreground">
                                   Cotes proposées: Oui {suggestion.suggestedYesOdds.toFixed(2)}x / Non {suggestion.suggestedNoOdds.toFixed(2)}x
                                 </div>
@@ -1128,22 +1106,9 @@ export default function Polymarket() {
                                   size="sm"
                                   onClick={() => {
                                     setSelectedSuggestion(suggestion);
-                                    // Pre-fill options from suggestion
-                                    if (suggestedOptions && suggestedOptions.length >= 2) {
-                                      const isCustom = suggestedOptions.length > 2 || suggestedOptions[0].key !== 'YES';
-                                      if (isCustom) {
-                                        setApproveMode('custom');
-                                        setApproveCustomDrafts(suggestedOptions.map((o, i) => makeDraftOption(i, o)));
-                                      } else {
-                                        setApproveMode('binary');
-                                        setApproveBinaryYes(suggestedOptions[0].odds > 1 ? suggestedOptions[0].odds.toString() : '');
-                                        setApproveBinaryNo(suggestedOptions[1].odds > 1 ? suggestedOptions[1].odds.toString() : '');
-                                      }
-                                    } else {
-                                      setApproveMode('binary');
-                                      setApproveBinaryYes(suggestion.suggestedYesOdds?.toString() || '');
-                                      setApproveBinaryNo(suggestion.suggestedNoOdds?.toString() || '');
-                                    }
+                                    setApproveMode('binary');
+                                    setApproveBinaryYes(suggestion.suggestedYesOdds?.toString() || '');
+                                    setApproveBinaryNo(suggestion.suggestedNoOdds?.toString() || '');
                                     setApproveEventDate(formatDateTimeLocal(suggestion.eventDate));
                                     setApproveDialogOpen(true);
                                   }}
@@ -1481,12 +1446,15 @@ export default function Polymarket() {
               }
 
               try {
+                const yesOdds = optionsPayload.find(o => o.key === 'YES')?.odds ?? optionsPayload[0]?.odds;
+                const noOdds = optionsPayload.find(o => o.key === 'NO')?.odds ?? optionsPayload[1]?.odds;
                 await polymarketApi.createEvent({
                   title: formData.get('title') as string,
                   description: formData.get('description') as string,
                   imageUrl: createEventImageUrl.trim() || undefined,
                   eventDate: formData.get('eventDate') as string,
-                  optionsConfig: optionsPayload,
+                  yesOdds,
+                  noOdds,
                 });
                 toast({ title: 'Événement créé', description: 'L\'événement a été créé avec succès' });
                 setCreateEventDialogOpen(false);
