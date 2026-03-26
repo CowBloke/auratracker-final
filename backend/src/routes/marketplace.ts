@@ -476,14 +476,17 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
         });
       }
       
-      // Unknown cosmetic effect type - just return the effect info
-      return res.json({
-        success: false,
-        needsInput: true,
-        effect,
-      });
+      // CUSTOM_BADGE — fall through to the dedicated handler below
+      if (effect.type !== 'CUSTOM_BADGE') {
+        // Unknown cosmetic effect type - just return the effect info
+        return res.json({
+          success: false,
+          needsInput: true,
+          effect,
+        });
+      }
     }
-    
+
     // Consumable items
     if (userItem.item.type === 'CONSUMABLE') {
       // Decrement quantity or delete if last one
