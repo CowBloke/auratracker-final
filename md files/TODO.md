@@ -16,3 +16,4 @@
 - forcer rejoindre clan
 - plus d"objets
 - bouton pause
+- pouvoir dm joueurs de admin
