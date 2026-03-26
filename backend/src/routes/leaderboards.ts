@@ -46,7 +46,6 @@ const WIN_GAME_CATEGORIES = {
   chess: 'chess',
   petit_bac: 'petit_bac',
   puissance_4: 'puissance_4',
-  jackpot_5: 'jackpot_5',
   ball_arena: 'ball_arena',
   poker: 'poker',
   battleship: 'battleship',
@@ -176,7 +175,6 @@ type LeaderboardCategory =
   | 'chess'
   | 'petit_bac'
   | 'puissance_4'
-  | 'jackpot_5'
   | 'ball_arena'
   | 'poker'
   | 'battleship'

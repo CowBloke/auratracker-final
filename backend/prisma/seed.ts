@@ -25,13 +25,7 @@ const MOCK_IMAGE = {
   bannerC: '/images/mock/nir-himi-gSIjbABf9sc-unsplash.jpg',
 };
 
-const startOfDay = (date = new Date()) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
 const hoursAgo = (hours: number) => new Date(Date.now() - hours * 60 * 60 * 1000);
-const daysAgo = (days: number, hour = 12) => {
-  const date = startOfDay(new Date(Date.now() - days * 24 * 60 * 60 * 1000));
-  date.setHours(hour, 0, 0, 0);
-  return date;
-};
 
 const getExistingTables = async () => {
   const rows = await prisma.$queryRaw<Array<{ name: string }>>`
@@ -111,8 +105,6 @@ async function main() {
       profilePicture: MOCK_IMAGE.lena,
       profileBanner: MOCK_IMAGE.bannerA,
       bio: 'Public parties, inbox zero, and far too many side quests.',
-      dailyPassStreak: 6,
-      lastDailyPassClaim: daysAgo(0, 9),
       isApproved: true,
     },
     {
@@ -126,8 +118,6 @@ async function main() {
       profilePicture: MOCK_IMAGE.milo,
       profileBanner: MOCK_IMAGE.bannerB,
       bio: 'Always in the shop, always one cosmetic ahead.',
-      dailyPassStreak: 3,
-      lastDailyPassClaim: daysAgo(1, 8),
       isApproved: true,
     },
     {
@@ -141,8 +131,6 @@ async function main() {
       profilePicture: MOCK_IMAGE.milo,
       profileBanner: MOCK_IMAGE.bannerC,
       bio: 'Racer hot laps and Doodle marathons.',
-      dailyPassStreak: 9,
-      lastDailyPassClaim: daysAgo(0, 7),
       isApproved: true,
     },
     {
@@ -156,8 +144,6 @@ async function main() {
       profilePicture: MOCK_IMAGE.salma,
       profileBanner: MOCK_IMAGE.bannerA,
       bio: 'Top of the boards, first in line for every update.',
-      dailyPassStreak: 5,
-      lastDailyPassClaim: daysAgo(2, 8),
       isApproved: true,
     },
     {
@@ -171,8 +157,6 @@ async function main() {
       profilePicture: MOCK_IMAGE.salma,
       profileBanner: MOCK_IMAGE.bannerB,
       bio: 'Gift economy gremlin and inventory curator.',
-      dailyPassStreak: 2,
-      lastDailyPassClaim: null,
       isApproved: true,
     },
     {
@@ -186,8 +170,6 @@ async function main() {
       profilePicture: MOCK_IMAGE.lena,
       profileBanner: MOCK_IMAGE.bannerC,
       bio: 'Still learning, still betting, still asking for rematches.',
-      dailyPassStreak: 1,
-      lastDailyPassClaim: daysAgo(1, 10),
       isApproved: true,
     },
     {
@@ -201,8 +183,6 @@ async function main() {
       profilePicture: MOCK_IMAGE.salma,
       profileBanner: MOCK_IMAGE.bannerA,
       bio: 'Clan organizer and quest optimizer.',
-      dailyPassStreak: 7,
-      lastDailyPassClaim: daysAgo(0, 6),
       isApproved: true,
     },
     {
@@ -216,8 +196,6 @@ async function main() {
       profilePicture: MOCK_IMAGE.milo,
       profileBanner: MOCK_IMAGE.bannerB,
       bio: 'Casual cards, serious clan loyalty.',
-      dailyPassStreak: 4,
-      lastDailyPassClaim: daysAgo(0, 11),
       isApproved: true,
     },
     {
@@ -230,8 +208,6 @@ async function main() {
       usernameColor: '#F472B6',
       profilePicture: null,
       bio: null,
-      dailyPassStreak: 0,
-      lastDailyPassClaim: null,
       motivationMessage: 'Je veux surtout tester les quetes, les clans et les cadeaux.',
       isApproved: false,
     },
@@ -245,8 +221,6 @@ async function main() {
       usernameColor: '#60A5FA',
       profilePicture: null,
       bio: null,
-      dailyPassStreak: 0,
-      lastDailyPassClaim: null,
       motivationMessage: 'J arrive pour Bomb Party, Polymarket et le chat.',
       isApproved: false,
     },
@@ -390,8 +364,6 @@ async function main() {
       profilePicture: user.profilePicture,
       profileBanner: user.profileBanner,
       bio: user.bio,
-      dailyPassStreak: user.dailyPassStreak,
-      lastDailyPassClaim: user.lastDailyPassClaim,
       motivationMessage: user.motivationMessage ?? null,
     })),
   });

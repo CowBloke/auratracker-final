@@ -336,7 +336,7 @@ router.get('/admin/all-users', authMiddleware, adminMiddleware, async (_req: Aut
 });
 
 // ─── Admin: POST /badges/check-auto ──────────────────────────────────────────
-// Manually trigger the auto-badge check + auto-equip pass
+// Manually trigger the auto-badge check + auto-equip
 router.post('/check-auto', authMiddleware, adminMiddleware, async (_req: AuthRequest, res: Response) => {
   try {
     await checkAndUpdateAutoBadges();

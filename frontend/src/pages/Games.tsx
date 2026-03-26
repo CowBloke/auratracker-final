@@ -40,17 +40,6 @@ const games = [
     releaseRank: 3,
   },
   {
-    id: 'jackpot-5',
-    pageKey: 'game-jackpot-5',
-    name: 'Jackpot 5',
-    description: 'Choisis 5 chiffres, attends le tirage et décroche des gains selon tes correspondances.',
-    type: 'Party',
-    requiresParty: true,
-    image: '/images/games/cashmachine.png',
-    statsKeys: ['jackpot_5'],
-    releaseRank: 10,
-  },
-  {
     id: 'bomb-party',
     pageKey: 'game-bomb-party',
     name: 'Bomb Party',
@@ -439,9 +428,6 @@ export default function Games() {
     }
     if (gameId === 'bomb-party') {
       return '/games/bomb-party';
-    }
-    if (gameId === 'jackpot-5') {
-      return '/games/jackpot-5';
     }
     if (gameId === 'poker') {
       return '/games/poker';

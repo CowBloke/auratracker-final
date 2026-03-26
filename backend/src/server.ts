@@ -28,7 +28,6 @@ import uploadsRoutes from './routes/uploads.js';
 import maintenanceRoutes from './routes/maintenance.js';
 import clansRoutes, { advanceClanWarsState } from './routes/clans.js';
 import polymarketRoutes from './routes/polymarket.js';
-import passRoutes from './routes/pass.js';
 import questsRoutes from './routes/quests.js';
 import solitaireRoutes from './routes/solitaire.js';
 import giftsRoutes from './routes/gifts.js';
@@ -54,7 +53,6 @@ import { setupRussianRouletteHandlers } from './socket/russianroulette.js';
 import { setupBallArenaHandlers } from './socket/ballarena.js';
 import { setupUnoHandlers } from './socket/uno.js';
 import { setupMorpionHandlers } from './socket/morpion.js';
-import { setupJackpot5Handlers } from './socket/jackpot5.js';
 import { setupLeverBlastHandlers } from './socket/leverblast.js';
 
 // Logger
@@ -106,7 +104,6 @@ app.use('/api/uploads', uploadsRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/clans', clansRoutes);
 app.use('/api/polymarket', polymarketRoutes);
-app.use('/api/pass', passRoutes);
 app.use('/api/quests', questsRoutes);
 app.use('/api/solitaire', solitaireRoutes);
 app.use('/api/gifts', giftsRoutes);
@@ -275,7 +272,6 @@ io.on('connection', (socket) => {
   setupBallArenaHandlers(socket, io);
   setupUnoHandlers(socket, io);
   setupMorpionHandlers(socket, io);
-  setupJackpot5Handlers(socket, io);
   setupLeverBlastHandlers(socket, io);
 
   socket.on('disconnect', () => {

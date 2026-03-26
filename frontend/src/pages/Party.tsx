@@ -28,13 +28,6 @@ interface User {
 
 const multiplayerGames = [
   {
-    id: 'jackpot-5',
-    name: 'Jackpot 5',
-    description: 'Choisis 5 chiffres et compare ta grille au tirage pour toucher des gains.',
-    type: 'Party',
-    image: '/images/games/cashmachine.png',
-  },
-  {
     id: 'bomb-party',
     name: 'Bomb Party',
     description: 'Trouve des mots contenant les lettres avant que la bombe explose.',
@@ -97,7 +90,6 @@ const duelGames = [
 
 const getGameLink = (gameId: string) => {
   if (gameId === 'bomb-party') return '/games/bomb-party';
-  if (gameId === 'jackpot-5') return '/games/jackpot-5';
   if (gameId === 'petit-bac') return '/games/petit-bac';
   if (gameId === 'poker') return '/games/poker';
   if (gameId === 'levier-infernal') return '/games/levier-infernal';
