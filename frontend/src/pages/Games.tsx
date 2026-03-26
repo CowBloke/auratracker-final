@@ -377,7 +377,7 @@ const tabConfig: Array<{ id: GamesTab; label: string }> = [
 export default function Games() {
   const [activeTab, setActiveTab] = useState<GamesTab>('all');
   const [activeMultiplayerTab, setActiveMultiplayerTab] = useState<MultiplayerTab>('all');
-  const [sortBy, setSortBy] = useState<SortOption>('default');
+  const [sortBy, setSortBy] = useState<SortOption>('popular');
   const [catalogStats, setCatalogStats] = useState<{ global: Record<string, number>; personal: Record<string, number> }>({
     global: {},
     personal: {},
@@ -556,7 +556,7 @@ export default function Games() {
         </TabsList>
 
         <TabsContent value={activeTab} className={SPACING.CARD_SPACING}>
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             {activeTab === 'multiplayer' ? (
               <Tabs
                 value={activeMultiplayerTab}
@@ -572,7 +572,7 @@ export default function Games() {
               <div />
             )}
 
-            <div className="w-full md:w-[220px]">
+            <div className="w-[220px]">
               <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Trier les jeux" />
