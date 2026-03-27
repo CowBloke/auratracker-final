@@ -201,44 +201,46 @@ export function SiteHeader() {
 
   return (
     <header className={cn(
-      "sticky top-0 z-10 flex h-14 items-center justify-between border-b px-6 transition-all duration-300",
+      "sticky top-0 z-10 flex h-14 items-center justify-between border-b px-3 sm:px-6 transition-all duration-300",
       scrolled
         ? "border-border/20 bg-background"
         : "border-border/40 bg-background"
     )}>
-      <div className="flex min-w-0 items-center gap-3">
-        <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
+      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+        <SidebarTrigger className="flex-shrink-0 text-muted-foreground hover:text-foreground" />
         {announcement && (
-          <div className="flex max-w-[45vw] min-w-0 items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs text-amber-400">
+          <div className="hidden sm:flex max-w-[45vw] min-w-0 items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs text-amber-400">
             <span className="font-medium  ">Annonce</span>
             <span className="truncate">{announcement}</span>
           </div>
         )}
-        <Breadcrumb>
-          <BreadcrumbList>
-            {breadcrumbItems.map((item, index) => {
-              const isLast = index === breadcrumbItems.length - 1;
-              return (
-                <div key={item.path} className="flex items-center gap-1.5">
-                  {index > 0 && <BreadcrumbSeparator />}
-                  <BreadcrumbItem>
-                    {isLast ? (
-                      <BreadcrumbPage>{item.label}</BreadcrumbPage>
-                    ) : (
-                      <BreadcrumbLink asChild>
-                        <Link to={item.path}>{item.label}</Link>
-                      </BreadcrumbLink>
-                    )}
-                  </BreadcrumbItem>
-                </div>
-              );
-            })}
-          </BreadcrumbList>
-        </Breadcrumb>
+        <div className="hidden sm:block">
+          <Breadcrumb>
+            <BreadcrumbList>
+              {breadcrumbItems.map((item, index) => {
+                const isLast = index === breadcrumbItems.length - 1;
+                return (
+                  <div key={item.path} className="flex items-center gap-1.5">
+                    {index > 0 && <BreadcrumbSeparator />}
+                    <BreadcrumbItem>
+                      {isLast ? (
+                        <BreadcrumbPage>{item.label}</BreadcrumbPage>
+                      ) : (
+                        <BreadcrumbLink asChild>
+                          <Link to={item.path}>{item.label}</Link>
+                        </BreadcrumbLink>
+                      )}
+                    </BreadcrumbItem>
+                  </div>
+                );
+              })}
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
       </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-8 text-sm">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-8 text-sm">
           {!currentParty && (
             <DropdownMenu
               onOpenChange={(open) => {
@@ -321,7 +323,7 @@ export function SiteHeader() {
               type="button"
               variant={duelMatchmakingQueued ? 'default' : 'outline'}
               size="sm"
-              className="h-8 gap-2"
+              className="hidden sm:inline-flex h-8 gap-2"
               onClick={() => {
                 if (duelMatchmakingQueued) {
                   leaveDuelMatchmaking();
@@ -349,7 +351,7 @@ export function SiteHeader() {
                     className="h-auto gap-1 px-0 py-0 text-sm text-muted-foreground hover:text-foreground"
                   >
                     <Users className="h-4 w-4" />
-                    <span>{currentParty.name || 'Groupe'}</span>
+                    <span className="hidden sm:inline">{currentParty.name || 'Groupe'}</span>
                     <span className="text-xs">
                       ({partyMembers.length}/{currentParty.maxSize})
                     </span>
@@ -483,7 +485,7 @@ export function SiteHeader() {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <div className={`h-1.5 w-1.5 rounded-full ${connected ? 'bg-green-500' : 'bg-muted-foreground'}`} />
-              <span className="text-muted-foreground">
+              <span className="hidden sm:inline text-muted-foreground">
                 {connected ? 'online' : 'offline'}
               </span>
             </div>
@@ -505,11 +507,11 @@ export function SiteHeader() {
                     variant="ghost"
                     className="h-auto gap-1 px-0 py-0 text-sm text-muted-foreground hover:text-foreground"
                   >
-                    <span className="text-green-500">{onlineCount} connectés</span>
+                    <span className="text-green-500">{onlineCount}<span className="hidden sm:inline"> connectés</span></span>
                     {showUsers ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                   </Button>
                 </CollapsibleTrigger>
-                <CollapsibleContent className="absolute left-0 top-full z-50 mt-2 w-64">
+                <CollapsibleContent className="absolute right-0 top-full z-50 mt-2 w-64">
                   <div className="rounded-md border border-border/60 bg-background/95 shadow-lg">
                     <ScrollArea className="h-48">
                       <div className="space-y-1 px-3 py-2">
@@ -637,7 +639,8 @@ export function SiteHeader() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" variant="ghost" className="h-auto gap-2 px-0 py-0 text-sm text-muted-foreground hover:text-foreground">
+              <Button type="button" variant="ghost" className="hidden sm:inline-flex h-auto gap-2 px-0 py-0 text-sm text-muted-foreground hover:text-foreground">
+                <Zap className="h-4 w-4" />
                 <span>Effets</span>
                 <span className="text-xs text-foreground">{clanEffects.length}</span>
               </Button>
@@ -670,9 +673,11 @@ export function SiteHeader() {
 
           <div className="flex items-center gap-6 tabular-nums">
             <span className="inline-flex items-center gap-1.5 text-foreground">
+              <Sparkles className="h-3.5 w-3.5 text-violet-400" aria-hidden="true" />
               {user?.aura.toLocaleString()} <span className="text-muted-foreground">aura</span>
             </span>
             <span className="inline-flex items-center gap-1.5 text-foreground">
+              <CircleDollarSign className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
               ${user?.money.toLocaleString()} <span className="text-muted-foreground">argent</span>
             </span>
           </div>
