@@ -45,7 +45,7 @@ export default function Eaglercraft() {
               src={`${GAME_SRC}?k=${sessionKey}`}
               title="Eaglercraft"
               className="block h-full w-full rounded-lg border border-border/30 bg-black"
-              allow="fullscreen; autoplay; clipboard-read; clipboard-write; pointer-lock"
+              allow="fullscreen; autoplay; clipboard-read; clipboard-write; pointer-lock; keyboard-map"
             />
             <GamePauseOverlay
               visible={isPaused}

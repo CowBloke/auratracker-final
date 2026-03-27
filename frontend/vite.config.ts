@@ -24,7 +24,8 @@ function serveStaticGame(mountPath: string, dirName: string): Plugin {
     configureServer(server) {
       // Runs BEFORE Vite's own transform middleware — JS/HTML files won't be mangled
       server.middlewares.use(`/${mountPath}`, (req, res, next) => {
-        const url = req.url ?? '/';
+        const rawUrl = req.url ?? '/';
+        const url = rawUrl.split('?')[0];
         const filePath = path.join(gameDir, url === '/' ? 'index.html' : url);
         // Path traversal guard
         if (!filePath.startsWith(gameDir)) return next();

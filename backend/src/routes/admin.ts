@@ -1652,12 +1652,13 @@ router.post('/rare', authMiddleware, requireAdmin, validate(adminRareActionSchem
         });
       } catch (error: unknown) {
         console.error('Deploy script error:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        const errorOutput = (error as { stderr?: string })?.stderr || '';
+        const execErr = error as { message?: string; stdout?: string; stderr?: string };
+        const errorMessage = execErr.message || 'Unknown error';
         return res.status(500).json({
           error: 'Deploy script failed',
           message: errorMessage,
-          stderr: errorOutput,
+          stdout: execErr.stdout || '',
+          stderr: execErr.stderr || '',
         });
       }
     }

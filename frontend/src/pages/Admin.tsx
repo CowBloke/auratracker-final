@@ -1020,6 +1020,7 @@ export default function Admin() {
   const [backfillResult, setBackfillResult] = useState<{ inserted: number; skipped: number } | null>(null);
   const [deploying, setDeploying] = useState(false);
   const [deployOutput, setDeployOutput] = useState<{ success: boolean; stdout: string; stderr: string; message: string } | null>(null);
+  const [deployModalOpen, setDeployModalOpen] = useState(false);
 
   // Settings state
   const [loadingSettings, setLoadingSettings] = useState(false);
@@ -4748,44 +4749,67 @@ export default function Admin() {
                   <div className="text-sm font-medium">Déployer la dernière version</div>
                   <div className="text-xs text-muted-foreground">Exécute <code className="font-mono bg-muted/40 px-1 rounded">/var/scripts/deploy.sh</code> sur le serveur pour mettre en ligne les derniers changements Git.</div>
                   {deployOutput && (
-                    <div className="mt-2 space-y-1">
-                      {deployOutput.success
-                        ? <p className="text-xs text-green-500 font-medium">✓ {deployOutput.message}</p>
-                        : <p className="text-xs text-destructive font-medium">✗ {deployOutput.message}</p>
-                      }
-                      {(deployOutput.stdout || deployOutput.stderr) && (
-                        <pre className="text-[10px] font-mono bg-muted/30 border border-border/40 rounded p-2 max-h-48 overflow-auto whitespace-pre-wrap break-all text-muted-foreground">
-                          {[deployOutput.stdout, deployOutput.stderr].filter(Boolean).join('\n---\n')}
-                        </pre>
-                      )}
-                    </div>
+                    <button
+                      onClick={() => setDeployModalOpen(true)}
+                      className={`mt-1.5 text-xs font-medium underline-offset-2 hover:underline ${deployOutput.success ? 'text-green-500' : 'text-destructive'}`}
+                    >
+                      {deployOutput.success ? '✓ Succès — voir la sortie' : '✗ Échec — voir la sortie'}
+                    </button>
                   )}
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={deploying}
-                  className="shrink-0"
-                  onClick={async () => {
-                    if (!confirm('Lancer le déploiement ? Le serveur va pull les changements Git et redémarrer.')) return;
-                    setDeploying(true);
-                    setDeployOutput(null);
-                    try {
-                      const res = await adminApi.deploy();
-                      setDeployOutput({ success: true, stdout: res.data.stdout || '', stderr: res.data.stderr || '', message: res.data.message });
-                    } catch (err: unknown) {
-                      const data = (err as { response?: { data?: { message?: string; stderr?: string } } })?.response?.data;
-                      setDeployOutput({ success: false, stdout: '', stderr: data?.stderr || '', message: data?.message || 'Erreur inconnue' });
-                    } finally {
-                      setDeploying(false);
-                    }
-                  }}
-                >
-                  {deploying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Terminal className="h-3.5 w-3.5" />}
-                </Button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={deploying}
+                    onClick={async () => {
+                      if (!confirm('Lancer le déploiement ? Le serveur va pull les changements Git et redémarrer.')) return;
+                      setDeploying(true);
+                      setDeployOutput(null);
+                      try {
+                        const res = await adminApi.deploy();
+                        setDeployOutput({ success: true, stdout: res.data.stdout || '', stderr: res.data.stderr || '', message: res.data.message });
+                        setDeployModalOpen(true);
+                      } catch (err: unknown) {
+                        const d = (err as { response?: { data?: { message?: string; stdout?: string; stderr?: string } } })?.response?.data;
+                        setDeployOutput({ success: false, stdout: d?.stdout || '', stderr: d?.stderr || '', message: d?.message || String(err) });
+                        setDeployModalOpen(true);
+                      } finally {
+                        setDeploying(false);
+                      }
+                    }}
+                  >
+                    {deploying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Terminal className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
+
+          {/* Deploy output modal */}
+          <Dialog open={deployModalOpen} onOpenChange={setDeployModalOpen}>
+            <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
+              <DialogHeader className="px-6 pt-5 pb-4 border-b border-border/40 shrink-0">
+                <DialogTitle className="flex items-center gap-2">
+                  <Terminal className="h-4 w-4" />
+                  Sortie du déploiement
+                </DialogTitle>
+                <DialogDescription>
+                  {deployOutput?.success ? 'Le script s\'est terminé avec succès.' : 'Le script a échoué.'}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex-1 overflow-y-auto p-4">
+                <pre className="text-[11px] font-mono bg-black/80 text-green-400 rounded-lg p-4 whitespace-pre-wrap break-all leading-relaxed min-h-[200px]">
+                  {deployOutput
+                    ? [deployOutput.stdout, deployOutput.stderr].filter(Boolean).join('\n') || deployOutput.message
+                    : ''}
+                </pre>
+              </div>
+              <div className="px-6 py-4 border-t border-border/40 shrink-0 flex justify-end">
+                <Button variant="outline" size="sm" onClick={() => setDeployModalOpen(false)}>Fermer</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {/* ── Classements (superAdmin) ───────────────────────── */}
           {user?.isSuperAdmin && (
