@@ -208,6 +208,12 @@ export default function Clans() {
   const [editImageUrl, setEditImageUrl] = useState('');
   const [savingImage, setSavingImage] = useState(false);
 
+  // Banner item dialog state
+  const [bannerItemDialogOpen, setBannerItemDialogOpen] = useState(false);
+  const [bannerItemId, setBannerItemId] = useState<string | null>(null);
+  const [bannerItemImgUrl, setBannerItemImgUrl] = useState('');
+  const [savingBannerItem, setSavingBannerItem] = useState(false);
+
   // Tag editor state
   const [tagText, setTagText] = useState('');
   const [tagStyle, setTagStyle] = useState<ClanTagStyle>(DEFAULT_CLAN_TAG_STYLE);
@@ -776,24 +782,57 @@ export default function Clans() {
     }
   };
 
+  const parseClanItemEffect = (effect: string | null): { type?: string } | null => {
+    try { return effect ? JSON.parse(effect) : null; } catch { return null; }
+  };
+
   const handleUseClanItem = async (clanItem: ClanOwnedItem) => {
     if (!selectedClan || usingClanItemId) return;
+    const effect = parseClanItemEffect(clanItem.item.effect);
+    if (effect?.type === "CLAN_BANNER") {
+      setBannerItemId(clanItem.id);
+      setBannerItemImgUrl("");
+      setBannerItemDialogOpen(true);
+      return;
+    }
     try {
       setUsingClanItemId(clanItem.id);
       await clansApi.useOwnedItem(selectedClan.id, clanItem.id);
       await Promise.all([fetchClanDetail(selectedClan.id), refreshUser()]);
       toast({
-        title: 'Effet activé',
-        description: `${clanItem.item.name} booste maintenant les gains d'argent du clan.`,
+        title: "Effet active",
+        description: `${clanItem.item.name} booste maintenant les gains d’argent du clan.`,
       });
     } catch (error: any) {
       toast({
-        title: 'Activation impossible',
-        description: error.response?.data?.error || 'Impossible d’activer cet objet.',
-        variant: 'destructive',
+        title: "Activation impossible",
+        description: error.response?.data?.error || "Impossible d’activer cet objet.",
+        variant: "destructive",
       });
     } finally {
       setUsingClanItemId(null);
+    }
+  };
+
+  const handleApplyBannerItem = async () => {
+    if (!selectedClan || !bannerItemId || !bannerItemImgUrl.trim()) return;
+    try {
+      setSavingBannerItem(true);
+      await clansApi.useOwnedItem(selectedClan.id, bannerItemId, { imageUrl: bannerItemImgUrl.trim() });
+      const bannerUrl = bannerItemImgUrl.trim();
+      setSelectedClan((prev) => prev ? { ...prev, banner: bannerUrl } : prev);
+      setClans((prev) => prev.map((c) => c.id === selectedClan.id ? { ...c, banner: bannerUrl } : c));
+      setBannerItemDialogOpen(false);
+      toast({ title: "Banniere de clan appliquee" });
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.response?.data?.error || "Impossible d’appliquer la banniere.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingBannerItem(false);
+      setBannerItemId(null);
     }
   };
 
@@ -972,64 +1011,79 @@ export default function Clans() {
                 </Card>
               ) : (
                 <>
-                  {/* Compact clan header */}
-                  <Card className={panelClassName}>
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
+                  {/* Twitter-style clan profile header */}
+                  <Card className={cn(panelClassName, "overflow-hidden")}>
+                    {/* Banner */}
+                    <div className="relative h-28 overflow-hidden bg-gradient-to-br from-muted via-background to-muted/70">
+                      {selectedClan.banner ? (
+                        <>
+                          <img
+                            src={resolveImageUrl(selectedClan.banner)}
+                            alt={selectedClan.name}
+                            className="absolute inset-0 h-full w-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/20" />
+                        </>
+                      ) : null}
+                      <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-card to-transparent" />
+                    </div>
+
+                    <CardContent className="px-4 pb-5 pt-0">
+                      <div className="-mt-8 flex items-end justify-between gap-3">
                         <div className="relative shrink-0">
-                          <Avatar className="h-12 w-12 rounded-xl border border-border/50 bg-muted/20">
+                          <Avatar className="h-16 w-16 rounded-2xl border-[3px] border-card bg-muted/20 shadow-sm">
                             <AvatarImage src={resolveImageUrl(selectedClan.imageUrl)} alt={selectedClan.name} />
-                            <AvatarFallback className="rounded-xl text-base">{getAvatarFallback(selectedClan.name)}</AvatarFallback>
+                            <AvatarFallback className="rounded-2xl text-base font-semibold">{getAvatarFallback(selectedClan.name)}</AvatarFallback>
                           </Avatar>
                           {selectedClan.viewer.isLeader ? (
                             <button
                               type="button"
-                              className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/50 opacity-0 hover:opacity-100 transition-opacity"
-                              onClick={() => { setEditImageUrl(selectedClan.imageUrl ?? ''); setImageEditOpen(true); }}
-                              title="Modifier l'image"
+                              className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/50 opacity-0 hover:opacity-100 transition-opacity"
+                              onClick={() => { setEditImageUrl(selectedClan.imageUrl ?? ""); setImageEditOpen(true); }}
                             >
-                              <Pencil className="h-4 w-4 text-white" />
+                              <Pencil className="h-3.5 w-3.5 text-white" />
                             </button>
                           ) : null}
                         </div>
-                        <div className="min-w-0 flex-1 space-y-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h1 className="text-xl font-semibold tracking-tight">{selectedClan.name}</h1>
-                            <Badge variant={selectedClan.isPublic ? 'secondary' : 'outline'}>
-                              {selectedClan.isPublic ? 'Ouvert' : 'Privé'}
-                            </Badge>
-                            <Badge variant="outline">Niveau {selectedClan.level}</Badge>
-                            {selectedClan.viewer.isLeader ? (
-                              <Badge className="gap-1">
-                                <Crown className="h-3 w-3" />
-                                Chef
-                              </Badge>
-                            ) : null}
-                          </div>
-                          <p className="line-clamp-1 text-sm text-muted-foreground">
-                            {selectedClan.description || 'Aucune description.'}
-                          </p>
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-                            <UsernameDisplay username={selectedClan.leader.username} usernameColor={selectedClan.leader.usernameColor} />
-                            <span>•</span>
-                            <span>{selectedClan.memberCount}/{selectedClan.maxMembers} membres</span>
-                            <span>•</span>
-                            <span>{formatAura(selectedClan.totalAura)} aura</span>
-                          </div>
-                        </div>
-                        <div className="flex shrink-0 flex-wrap gap-2">
+                        <div className="flex shrink-0 flex-wrap gap-2 pb-1">
                           {canJoinSelectedClan ? (
-                            <Button size="sm" onClick={handleJoin} disabled={actionLoading || selectedClan.viewer.hasPendingRequest}>
+                            <Button size="sm" className="rounded-full px-4" onClick={handleJoin} disabled={actionLoading || selectedClan.viewer.hasPendingRequest}>
                               {actionLoading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
-                              {selectedClan.viewer.hasPendingRequest ? 'En attente' : 'Rejoindre'}
+                              {selectedClan.viewer.hasPendingRequest ? "En attente" : "Rejoindre"}
                             </Button>
                           ) : null}
                           {selectedClan.viewer.isMember ? (
-                            <Button size="sm" variant="outline" onClick={handleLeave} disabled={actionLoading}>
-                              <LogOut className="mr-1.5 h-3.5 w-3.5" />
+                            <Button size="sm" variant="outline" className="rounded-full px-4" onClick={handleLeave} disabled={actionLoading}>
+                              <LogOut className="h-3.5 w-3.5" />
                               Quitter
                             </Button>
                           ) : null}
+                        </div>
+                      </div>
+
+                      <div className="mt-3 space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <h1 className="text-xl font-semibold tracking-tight">{selectedClan.name}</h1>
+                          {selectedClan.viewer.isLeader ? <Crown className="h-4 w-4 text-amber-500" /> : null}
+                        </div>
+
+                        {selectedClan.description ? (
+                          <p className="text-sm text-muted-foreground">{selectedClan.description}</p>
+                        ) : null}
+
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                          <span>
+                            <span className="font-medium text-foreground">{selectedClan.memberCount}</span>
+                            /{selectedClan.maxMembers} membres
+                          </span>
+                          <span>{formatAura(selectedClan.totalAura)} aura</span>
+                          <Badge variant="outline" className="h-5 rounded-full px-2 text-xs">Niv. {selectedClan.level}</Badge>
+                          {!selectedClan.isPublic ? <Badge variant="outline" className="h-5 rounded-full px-2 text-xs">Prive</Badge> : null}
+                        </div>
+
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <span>Chef :</span>
+                          <UsernameDisplay username={selectedClan.leader.username} usernameColor={selectedClan.leader.usernameColor} />
                         </div>
                       </div>
                     </CardContent>
@@ -1909,6 +1963,32 @@ export default function Clans() {
             <Button onClick={handleSaveImage} disabled={savingImage}>
               {savingImage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Enregistrer
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={bannerItemDialogOpen} onOpenChange={setBannerItemDialogOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Appliquer une banniere de clan</DialogTitle>
+            <DialogDescription>
+              Choisissez l'image qui sera affichee en haut du profil du clan.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <ImagePicker
+              value={bannerItemImgUrl}
+              onChange={setBannerItemImgUrl}
+              uploadFn={uploadClanImageFile}
+              disabled={savingBannerItem}
+            />
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => setBannerItemDialogOpen(false)} disabled={savingBannerItem}>Annuler</Button>
+            <Button onClick={handleApplyBannerItem} disabled={savingBannerItem || !bannerItemImgUrl.trim()}>
+              {savingBannerItem ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Appliquer
             </Button>
           </div>
         </DialogContent>

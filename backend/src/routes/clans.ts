@@ -11,6 +11,7 @@ import {
   parseClanEffectPayload,
   serializeClanEffect,
 } from '../utils/clanEffects.js';
+import { isAllowedImageUrl } from '../utils/uploads.js';
 
 const router = Router();
 
@@ -293,6 +294,7 @@ const mapClanSummary = (clan: ClanWithMembers | ClanDetailPayload) => ({
   name: clan.name,
   description: clan.description,
   imageUrl: clan.imageUrl,
+  banner: clan.banner ?? null,
   isPublic: clan.isPublic,
   maxMembers: clan.maxMembers,
   memberCount: clan.members.length,
@@ -1085,6 +1087,29 @@ router.post('/:id/items/:clanItemId/use', authMiddleware, async (req: AuthReques
 
     if (!clanItem || clanItem.clanId !== clanId || clanItem.quantity <= 0) {
       return res.status(404).json({ error: 'Objet de clan introuvable.' });
+    }
+
+    // CLAN_BANNER: sets the clan's banner image
+    let parsedEffect: { type?: string } | null = null;
+    try { parsedEffect = clanItem.item.effect ? JSON.parse(clanItem.item.effect) : null; } catch {}
+
+    if (parsedEffect?.type === 'CLAN_BANNER') {
+      const { imageUrl } = req.body;
+      if (!imageUrl || typeof imageUrl !== 'string') {
+        return res.status(400).json({ error: 'Une URL d\'image est requise pour la bannière.' });
+      }
+      if (!isAllowedImageUrl(imageUrl)) {
+        return res.status(400).json({ error: 'URL d\'image invalide.' });
+      }
+      await prisma.$transaction(async (tx) => {
+        await tx.clan.update({ where: { id: clanId }, data: { banner: imageUrl.trim() } });
+        if (clanItem.quantity > 1) {
+          await tx.clanOwnedItem.update({ where: { id: clanItem.id }, data: { quantity: { decrement: 1 } } });
+        } else {
+          await tx.clanOwnedItem.delete({ where: { id: clanItem.id } });
+        }
+      });
+      return res.json({ success: true, effect: { type: 'CLAN_BANNER', banner: imageUrl.trim() } });
     }
 
     if (!isClanGameMoneyBoostEffect(clanItem.item.effect)) {
