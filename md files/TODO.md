@@ -14,3 +14,14 @@
 - objet bannière
 - limite 1 badge perso
 - boost permanent clan
+- redirection page
+- widgets visuels comme auracoin
+- spectate doodle skin
+- navbar plié toujours
+- améliorer UI simple interfaces jeux
+- tous les jeux navabr
+- racer/polytrack image jeux
+- spec relancer
+- aligner tabs et menu deroualant
+- analyse jours heures
+- top bar transarente
