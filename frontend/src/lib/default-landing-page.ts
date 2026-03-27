@@ -3,15 +3,15 @@ export const DEFAULT_LANDING_PAGE_KEY = 'default_landing_page';
 export const DEFAULT_LANDING_PAGE = '/dashboard';
 
 export const DEFAULT_LANDING_PAGE_OPTIONS = [
-  { value: '/dashboard', label: 'Dashboard' },
+  { value: '/dashboard', label: 'Tableau de bord' },
   { value: '/games', label: 'Jeux' },
   { value: '/market', label: 'Boutique' },
-  { value: '/party', label: 'Party' },
-  { value: '/clans', label: 'Clans' },
+  { value: '/party', label: 'Groupe' },
+  { value: '/clans', label: 'Guildes' },
   { value: '/polymarket', label: 'Polymarket' },
   { value: '/leaderboards', label: 'Classements' },
-  { value: '/inbox', label: 'Inbox' },
-  { value: '/quests', label: 'Quetes' },
+  { value: '/inbox', label: 'Boîte de réception' },
+  { value: '/quests', label: 'Quêtes' },
   { value: '/support', label: 'Support' },
 ] as const;
 

@@ -86,7 +86,7 @@ const getStatusLabel = (status: ClanWarState['status']) => {
     case 'PREPARING':
       return 'Préparation';
     case 'ACTIVE':
-      return 'Active';
+      return 'En cours';
     case 'COMPLETED':
       return 'Terminée';
     default:
@@ -905,7 +905,7 @@ export default function Clans() {
                           <div className="space-y-1">
                             <div className="text-xs text-muted-foreground">Guerre #{war.id.slice(0, 6)}</div>
                             <div className="font-medium">
-                              {war.attackerClan.name} <span className="text-muted-foreground">vs</span> {war.defenderClan.name}
+                              {war.attackerClan.name} <span className="text-muted-foreground">contre</span> {war.defenderClan.name}
                             </div>
                           </div>
                           <Badge variant={getStatusVariant(war.status)}>{getStatusLabel(war.status)}</Badge>
@@ -1176,7 +1176,7 @@ export default function Clans() {
                                       <div className="text-xs text-muted-foreground">+{effect.value}% sur l&apos;argent gagné en jeu</div>
                                     </div>
                                     <Badge variant={effect.isActive ? 'secondary' : 'outline'}>
-                                      {effect.isActive ? 'Actif' : 'Cooldown'}
+                                      {effect.isActive ? 'Actif' : 'Temps de recharge'}
                                     </Badge>
                                   </div>
                                   <div className="mt-2 text-xs text-muted-foreground">{formatEffectCooldown(effect)}</div>
@@ -1594,7 +1594,7 @@ export default function Clans() {
                               </div>
                               <div className={mutedPanelClassName}>
                                 <div className="px-3 py-2">
-                                  <div className="text-xs text-muted-foreground">Cooldown</div>
+                                  <div className="text-xs text-muted-foreground">Temps de recharge</div>
                                   <div className="text-sm">
                                     {selectedClan.warHub.cooldownEndsAt
                                       ? `Disponible dans ${formatCountdown(selectedClan.warHub.cooldownEndsAt)}`
@@ -1624,7 +1624,7 @@ export default function Clans() {
                                   <span className="text-sm text-muted-foreground">Objectif {selectedWar.targetScore} points</span>
                                 </div>
                                 <h2 className="mt-2 text-2xl font-semibold tracking-tight">
-                                  {selectedWar.attackerClan.name} vs {selectedWar.defenderClan.name}
+                                  {selectedWar.attackerClan.name} contre {selectedWar.defenderClan.name}
                                 </h2>
                                 <p className="mt-2 text-sm text-muted-foreground">
                                   {selectedWar.status === 'ACTIVE'
@@ -1846,7 +1846,7 @@ export default function Clans() {
                                   <div className="flex flex-wrap items-start justify-between gap-3">
                                     <div className="min-w-0 space-y-1">
                                       <div className="text-sm font-medium">
-                                        {war.attackerClan.name} <span className="text-muted-foreground">vs</span> {war.defenderClan.name}
+                                        {war.attackerClan.name} <span className="text-muted-foreground">contre</span> {war.defenderClan.name}
                                       </div>
                                       <div className="text-xs text-muted-foreground">
                                         Début: {formatDate(war.startsAt)} • Fin: {formatDate(war.completedAt)}

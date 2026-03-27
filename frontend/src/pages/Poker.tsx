@@ -640,12 +640,12 @@ export default function Poker() {
         <UICard>
           <CardContent className="py-14 text-center space-y-6">
             <p className="text-sm text-muted-foreground">
-              Crée ou rejoins une party pour lancer une table de poker.
+              Crée ou rejoins un groupe pour lancer une table de poker.
             </p>
             <Button asChild>
               <Link to="/party" className="inline-flex items-center gap-2">
                 <Users className="h-4 w-4" />
-                Aller aux parties
+                Aller aux groupes
               </Link>
             </Button>
           </CardContent>
@@ -666,7 +666,7 @@ export default function Poker() {
     <PageShell className="space-y-6">
       <PageHeader
         title="Poker"
-        description={`Party: ${currentParty.name || 'Sans nom'}`}
+        description={`Groupe : ${currentParty.name || 'Sans nom'}`}
         actions={(
           <>
             <Button asChild variant="outline" size="sm">

@@ -8,7 +8,7 @@ const GAME_NAMES: Record<string, string> = {
   chess: 'Échecs',
   battleship: 'Bataille Navale',
   p4: 'Puissance 4',
-  ballarena: 'Ball Arena',
+  ballarena: 'Arène des balles',
   uno: 'Uno',
   morpion: 'Morpion',
 };

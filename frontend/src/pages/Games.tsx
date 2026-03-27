@@ -22,8 +22,8 @@ const games = [
     id: 'levier-infernal',
     pageKey: 'game-levier-infernal',
     name: 'Levier Infernal',
-    description: 'Mini-jeu party inspiré de Mario: chacun tire un levier, l’un explose, le dernier survivant gagne.',
-    type: 'Party',
+    description: 'Mini-jeu en groupe inspiré de Mario : chacun tire un levier, l’un explose, le dernier survivant gagne.',
+    type: 'Groupe',
     requiresParty: true,
     image: '/images/games/leviers.png',
     statsKeys: ['levier_infernal'],
@@ -32,9 +32,9 @@ const games = [
   {
     id: 'russian-roulette',
     pageKey: 'game-russian-roulette',
-    name: 'Russian Roulette',
+    name: 'Roulette russe',
     description: 'Assis autour d\'une table sombre, chacun tire à son tour. Le dernier en vie gagne.',
-    type: 'Party',
+    type: 'Groupe',
     requiresParty: true,
     image: '/images/games/rouletterusse.png',
     statsKeys: ['russian_roulette'],
@@ -43,9 +43,9 @@ const games = [
   {
     id: 'bomb-party',
     pageKey: 'game-bomb-party',
-    name: 'Bomb Party',
+    name: 'Bombe de mots',
     description: 'Trouve des mots contenant les lettres avant que la bombe explose.',
-    type: 'Party',
+    type: 'Groupe',
     requiresParty: true,
     image: '/images/games/bombparty.png',
     statsKeys: ['bombparty'],
@@ -55,8 +55,8 @@ const games = [
     id: 'poker',
     pageKey: 'game-poker',
     name: 'Poker',
-    description: "Hold'em minimaliste en party, blindes fixes et rounds rapides.",
-    type: 'Party',
+    description: "Hold'em minimaliste en groupe, blindes fixes et manches rapides.",
+    type: 'Groupe',
     requiresParty: true,
     image: '/images/games/poker.png',
     statsKeys: ['poker'],
@@ -67,7 +67,7 @@ const games = [
     pageKey: 'game-petit-bac',
     name: 'Petit Bac',
     description: 'Remplis les categories avec la bonne lettre avant la fin du temps.',
-    type: 'Party',
+    type: 'Groupe',
     requiresParty: true,
     image: '/images/games/petitbac.png',
     statsKeys: ['petit_bac'],
@@ -78,7 +78,7 @@ const games = [
     pageKey: 'game-uno',
     name: 'UNO',
     description: 'Le classique jeu de cartes : aligne les couleurs et valeurs, joue des actions et fais UNO en premier.',
-    type: 'Party',
+    type: 'Groupe',
     requiresParty: true,
     emoji: '🃏',
     image: '/images/games/uno.png',
@@ -161,7 +161,7 @@ const games = [
   {
     id: 'stack-tower',
     pageKey: 'game-stack-tower',
-    name: 'Stack Tower',
+    name: 'Tour empilée',
     description: 'Empile des blocs en rythme et vise des coupes parfaites pour monter la tour le plus haut possible.',
     type: 'Arcade',
     emoji: '🧱',
@@ -327,7 +327,7 @@ const games = [
   {
     id: 'ball-arena',
     pageKey: 'game-ball-arena',
-    name: 'Ball Arena',
+    name: 'Arène des balles',
     description: "Vise et propulse ton adversaire hors de l'arène. Glisse pour choisir direction et puissance.",
     type: 'Duel',
     requiresParty: true,
@@ -429,7 +429,7 @@ export default function Games() {
   const multiplayerGames = useMemo(() => filterGames(sortGames(visibleGames.filter((game) => game.requiresParty))), [visibleGames, sortBy, catalogStats, normalizedSearchQuery]);
   const soloGames = useMemo(() => filterGames(sortGames(visibleGames.filter((game) => !game.requiresParty))), [visibleGames, sortBy, catalogStats, normalizedSearchQuery]);
   const duelGames = useMemo(() => filterGames(sortGames(visibleGames.filter((game) => game.requiresParty && game.type === 'Duel'))), [visibleGames, sortBy, catalogStats, normalizedSearchQuery]);
-  const partyGames = useMemo(() => filterGames(sortGames(visibleGames.filter((game) => game.requiresParty && game.type === 'Party'))), [visibleGames, sortBy, catalogStats, normalizedSearchQuery]);
+  const partyGames = useMemo(() => filterGames(sortGames(visibleGames.filter((game) => game.requiresParty && game.type === 'Groupe'))), [visibleGames, sortBy, catalogStats, normalizedSearchQuery]);
 
   const getGameLink = (gameId: string) => {
     if (gameId === 'russian-roulette') {
@@ -589,7 +589,7 @@ export default function Games() {
             >
               <TabsList className="h-auto flex-wrap">
                 <TabsTrigger value="all">Tous</TabsTrigger>
-                <TabsTrigger value="party">Party</TabsTrigger>
+                <TabsTrigger value="party">Groupe</TabsTrigger>
                 <TabsTrigger value="duel">Duel</TabsTrigger>
               </TabsList>
             </Tabs>
@@ -599,7 +599,7 @@ export default function Games() {
             <div className="space-y-8">
               <section className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/90">Singleplayer</h2>
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/90">Solo</h2>
                   <div className="h-px flex-1 bg-border/70" />
                 </div>
                 {soloGames.length > 0 ? (
@@ -613,7 +613,7 @@ export default function Games() {
 
               <section className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/90">Multiplayer</h2>
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/90">Multijoueur</h2>
                   <div className="h-px flex-1 bg-border/70" />
                 </div>
                 {multiplayerGames.length > 0 ? (

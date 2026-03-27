@@ -62,9 +62,9 @@ interface SearchUser {
 
 const navItems = [
   { to: '/leaderboards', label: 'Classement', icon: Trophy },
-  { to: '/party', label: 'Party', icon: Users },
-  { to: '/clans', label: 'Clans', icon: Flag },
-  { to: '/market', label: 'Shop', icon: Store },
+  { to: '/party', label: 'Groupe', icon: Users },
+  { to: '/clans', label: 'Guildes', icon: Flag },
+  { to: '/market', label: 'Boutique', icon: Store },
   { to: '/inventory', label: 'Inventaire', icon: Backpack },
   { to: '/quests', label: 'Quêtes', icon: Target },
   { to: '/suggestions', label: 'Suggestions', icon: Lightbulb },
@@ -77,8 +77,8 @@ const adminItems = [
 
 const gameItems = [
   { to: '/games/levier-infernal', label: 'Levier Infernal', image: '/images/games/leviers.png' },
-  { to: '/games/russian-roulette', label: 'Russian Roulette', image: '/images/games/rouletterusse.png' },
-  { to: '/games/bomb-party', label: 'Bomb Party', image: '/images/games/bombparty.png' },
+  { to: '/games/russian-roulette', label: 'Roulette russe', image: '/images/games/rouletterusse.png' },
+  { to: '/games/bomb-party', label: 'Bombe de mots', image: '/images/games/bombparty.png' },
   { to: '/games/poker', label: 'Poker', image: '/images/games/poker.png' },
   { to: '/games/petit-bac', label: 'Petit Bac', image: '/images/games/petitbac.png' },
   { to: '/games/uno', label: 'UNO', image: '/images/games/uno.png' },
@@ -91,7 +91,7 @@ const gameItems = [
   { to: '/games/chrome-dino', label: 'Chrome Dino', image: '/images/games/dino.png' },
   { to: '/games/fruit-ninja', label: 'Fruit Ninja', image: '/images/games/fruitninja.png' },
   { to: '/games/qs-watermelon', label: 'QS Watermelon', image: '/images/games/suika.png' },
-  { to: '/games/stack-tower', label: 'Stack Tower', image: '/images/games/stack.png' },
+  { to: '/games/stack-tower', label: 'Tour empilée', image: '/images/games/stack.png' },
   { to: '/games/geometry-dash', label: 'Geometry Dash', image: '/images/games/geometrydash.png' },
   { to: '/games/casino', label: 'Casino', image: '/images/games/casino.png' },
   { to: '/games/aura-coin', label: 'Aura Coin', image: '/images/games/auracoin.png' },
@@ -105,7 +105,7 @@ const gameItems = [
   { to: '/games/eaglercraft', label: 'Eaglercraft', image: '/images/games/minecraft.png' },
   { to: '/games/puissance-quatre', label: 'Puissance 4', image: '/images/games/puissance4.png' },
   { to: '/games/echecs', label: 'Échecs', image: '/images/games/chess.png' },
-  { to: '/games/ball-arena', label: 'Ball Arena', image: '/images/games/ballarena.png' },
+  { to: '/games/ball-arena', label: 'Arène des balles', image: '/images/games/ballarena.png' },
   { to: '/games/morpion', label: 'Morpion', image: '/images/games/morpion.png' },
 ];
 

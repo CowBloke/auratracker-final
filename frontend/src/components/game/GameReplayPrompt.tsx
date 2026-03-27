@@ -68,7 +68,7 @@ export default function GameReplayPrompt({
                   </span>
                   {response ? (
                     <span className={cn('text-xs', response.playAgain ? 'text-green-500' : 'text-red-500')}>
-                      {response.playAgain ? 'Replay' : 'Leave'}
+                      {response.playAgain ? 'Rejouer' : 'Quitter'}
                     </span>
                   ) : (
                     <span className="text-xs text-muted-foreground">En attente</span>
@@ -86,17 +86,17 @@ export default function GameReplayPrompt({
         <DialogFooter className="gap-2">
           {hasResponded ? (
             <div className="w-full text-center text-sm text-muted-foreground">
-              {myResponse.playAgain ? 'Tu as choisi Replay.' : 'Tu as choisi Leave.'}
+              {myResponse.playAgain ? 'Tu as choisi de rejouer.' : 'Tu as choisi de quitter.'}
             </div>
           ) : (
             <>
               <Button variant="outline" className="flex-1" onClick={onLeave}>
                 <X className="h-4 w-4 mr-2" />
-                Leave
+                Quitter
               </Button>
               <Button className="flex-1" onClick={onPlayAgain}>
                 <RotateCcw className="h-4 w-4 mr-2" />
-                Replay
+                Rejouer
               </Button>
             </>
           )}

@@ -1002,62 +1002,6 @@ export default function Polymarket() {
           {user?.isAdmin && (
             <TabsContent value="admin" className={SPACING.SECTION_SPACING}>
               <div className={SPACING.SECTION_SPACING}>
-                {/* Events list */}
-                <div>
-                  <h3 className={TYPOGRAPHY.H4}>Événements</h3>
-                  {events.length === 0 ? (
-                    <Card>
-                      <CardContent className="py-8 text-center text-muted-foreground">Aucun événement disponible</CardContent>
-                    </Card>
-                  ) : (
-                    <div className="space-y-3">
-                      {events.map((event) => {
-                        const options = getEventOptions(event);
-                        return (
-                          <Card key={event.id}>
-                            <CardContent className="py-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                              <div className="space-y-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-medium">{event.title}</span>
-                                  <Badge variant={event.status === 'OPEN' ? 'default' : 'secondary'}>{event.status}</Badge>
-                                </div>
-                                <div className="text-sm text-muted-foreground">
-                                  {new Date(event.eventDate).toLocaleString('fr-FR')}
-                                </div>
-                                <div className="text-sm text-muted-foreground flex flex-wrap gap-2">
-                                  {options.map((opt) => (
-                                    <span key={opt.key} className="flex items-center gap-1">
-                                      <span className="w-2 h-2 rounded-full" style={{ background: opt.color }} />
-                                      {opt.label} {opt.odds.toFixed(2)}x
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                              <div className="flex gap-2 shrink-0">
-                                <Button variant="outline" size="sm" onClick={() => openEditEventDialog(event)}>
-                                  Modifier
-                                </Button>
-                                {event.status === 'OPEN' && (
-                                  <Button
-                                    size="sm"
-                                    onClick={() => {
-                                      setSelectedEventForResolve(event);
-                                      setResolution(options[0]?.key || 'YES');
-                                      setResolveDialogOpen(true);
-                                    }}
-                                  >
-                                    Résoudre
-                                  </Button>
-                                )}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
                 {/* Pending suggestions */}
                 <div>
                   <h3 className={TYPOGRAPHY.H4}>Suggestions en attente</h3>
@@ -1106,6 +1050,62 @@ export default function Polymarket() {
                                   <X className="h-4 w-4 mr-2" />
                                   Rejeter
                                 </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Events list */}
+                <div>
+                  <h3 className={TYPOGRAPHY.H4}>Événements</h3>
+                  {events.length === 0 ? (
+                    <Card>
+                      <CardContent className="py-8 text-center text-muted-foreground">Aucun événement disponible</CardContent>
+                    </Card>
+                  ) : (
+                    <div className="space-y-3">
+                      {events.map((event) => {
+                        const options = getEventOptions(event);
+                        return (
+                          <Card key={event.id}>
+                            <CardContent className="py-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                              <div className="space-y-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-medium">{event.title}</span>
+                                  <Badge variant={event.status === 'OPEN' ? 'default' : 'secondary'}>{event.status}</Badge>
+                                </div>
+                                <div className="text-sm text-muted-foreground">
+                                  {new Date(event.eventDate).toLocaleString('fr-FR')}
+                                </div>
+                                <div className="text-sm text-muted-foreground flex flex-wrap gap-2">
+                                  {options.map((opt) => (
+                                    <span key={opt.key} className="flex items-center gap-1">
+                                      <span className="w-2 h-2 rounded-full" style={{ background: opt.color }} />
+                                      {opt.label} {opt.odds.toFixed(2)}x
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                              <div className="flex gap-2 shrink-0">
+                                <Button variant="outline" size="sm" onClick={() => openEditEventDialog(event)}>
+                                  Modifier
+                                </Button>
+                                {event.status === 'OPEN' && (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedEventForResolve(event);
+                                      setResolution(options[0]?.key || 'YES');
+                                      setResolveDialogOpen(true);
+                                    }}
+                                  >
+                                    Résoudre
+                                  </Button>
+                                )}
                               </div>
                             </CardContent>
                           </Card>

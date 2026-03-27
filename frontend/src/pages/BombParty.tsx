@@ -129,7 +129,7 @@ export default function BombParty() {
     return (
       <PageShell>
         <PageHeader
-          title="Bomb Party"
+          title="Bombe de mots"
           description="Trouve des mots contenant les lettres avant que la bombe explose."
           actions={(
             <Button asChild variant="outline" size="sm">
@@ -143,12 +143,12 @@ export default function BombParty() {
         <Card>
           <CardContent className="py-14 text-center space-y-6">
             <p className="text-sm text-muted-foreground">
-              Rejoins ou cree une party pour jouer a Bomb Party
+              Rejoins ou crée un groupe pour jouer à Bombe de mots
             </p>
             <Button asChild>
               <Link to="/party" className="inline-flex items-center gap-2">
                 <Users className="h-4 w-4" />
-                Aller aux parties
+                Aller aux groupes
               </Link>
             </Button>
           </CardContent>
@@ -162,8 +162,8 @@ export default function BombParty() {
     return (
       <PageShell>
         <PageHeader
-          title="Bomb Party"
-          description={`Party: ${currentParty.name || 'Sans nom'}`}
+          title="Bombe de mots"
+          description={`Groupe : ${currentParty.name || 'Sans nom'}`}
           actions={(
             <Button asChild variant="outline" size="sm">
               <Link to="/games" className="inline-flex items-center gap-2">
@@ -177,7 +177,7 @@ export default function BombParty() {
         <Card>
           <CardContent className="p-6 space-y-4">
             <h2 className="text-sm text-muted-foreground">
-              Joueurs dans la party ({partyMembers.length})
+              Joueurs du groupe ({partyMembers.length})
             </h2>
             <div className="space-y-0">
               {partyMembers.map((member) => (
@@ -312,8 +312,8 @@ export default function BombParty() {
   return (
     <PageShell>
       <PageHeader
-        title="Bomb Party"
-        description={`Party: ${currentParty.name || 'Sans nom'}`}
+        title="Bombe de mots"
+        description={`Groupe : ${currentParty.name || 'Sans nom'}`}
         actions={(
           <>
             <Button asChild variant="outline" size="sm">

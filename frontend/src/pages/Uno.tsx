@@ -620,14 +620,14 @@ export default function Uno() {
         />
         <Card>
           <CardContent className="py-10 px-6 text-center space-y-4">
-            <p className="text-sm text-muted-foreground">Joue en 2-4 joueurs en créant ou rejoignant une party.</p>
+            <p className="text-sm text-muted-foreground">Joue en 2-4 joueurs en créant ou rejoignant un groupe.</p>
             <div className="flex flex-col gap-2 max-w-xs mx-auto">
               <Button onClick={() => { setChallengeSearch(''); requestOnlineUsers(); setShowChallengePicker(true); }}>
                 <Swords className="h-4 w-4 mr-2" />
                 Défier un joueur
               </Button>
               <Button asChild variant="outline">
-                <Link to="/party">Via une party</Link>
+                <Link to="/party">Via un groupe</Link>
               </Button>
             </div>
           </CardContent>
@@ -689,7 +689,7 @@ export default function Uno() {
       <PageShell>
         <PageHeader
           title="UNO"
-          description={`Party : ${currentParty.name || 'Sans nom'}`}
+          description={`Groupe : ${currentParty.name || 'Sans nom'}`}
           actions={
             <Button asChild variant="outline" size="sm">
               <Link to="/games" className="inline-flex items-center gap-2">
@@ -783,7 +783,7 @@ export default function Uno() {
 
       <PageHeader
         title="UNO"
-        description={`Party : ${currentParty.name || 'Sans nom'}`}
+        description={`Groupe : ${currentParty.name || 'Sans nom'}`}
         actions={
           <>
             <Button asChild variant="outline" size="sm">

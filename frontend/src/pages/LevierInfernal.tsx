@@ -81,10 +81,10 @@ export default function LevierInfernal() {
             Retour aux jeux
           </Link>
           <div className="rounded-3xl border border-border/50 bg-card p-8 text-center">
-            <p className="text-lg font-semibold">Levier Infernal se joue en party.</p>
-            <p className="mt-2 text-sm text-muted-foreground">Crée ou rejoins une party avant de lancer la manche.</p>
+            <p className="text-lg font-semibold">Levier Infernal se joue en groupe.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Crée ou rejoins un groupe avant de lancer la manche.</p>
             <Button asChild className="mt-6">
-              <Link to="/party">Aller à la party</Link>
+              <Link to="/party">Aller au groupe</Link>
             </Button>
           </div>
         </div>
@@ -99,7 +99,7 @@ export default function LevierInfernal() {
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-red-200">
               <Flame className="h-3.5 w-3.5" />
-              Party Mario-like
+              Groupe façon Mario
             </div>
             <h1 className="mt-3 text-3xl font-semibold tracking-tight">Levier Infernal</h1>
             <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
@@ -110,7 +110,7 @@ export default function LevierInfernal() {
             <Button asChild variant="outline">
               <Link to="/party">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Retour party
+                Retour au groupe
               </Link>
             </Button>
             {isLeader && !leverBlastGame && !leverBlastPlayAgainPrompt && (
@@ -130,7 +130,7 @@ export default function LevierInfernal() {
                 <p className="mt-1 text-sm text-red-100/80">{lastEventText}</p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-right">
-                <p className="text-[11px] uppercase tracking-[0.24em] text-red-100/60">Round</p>
+                <p className="text-[11px] uppercase tracking-[0.24em] text-red-100/60">Manche</p>
                 <p className="text-2xl font-semibold">{leverBlastGame?.round ?? 0}</p>
               </div>
             </div>

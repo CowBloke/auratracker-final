@@ -26,7 +26,7 @@ import { ProfileBadgeSlots } from '@/components/badges/ProfileBadgeSlots';
 import { BadgeData } from '@/components/badges/BadgeIcon';
 
 const PROFILE_GAME_CATALOG = [
-  { gameType: 'russian_roulette', label: 'Russian Roulette' },
+  { gameType: 'russian_roulette', label: 'Roulette russe' },
   { gameType: 'poker', label: 'Poker' },
   { gameType: 'petit_bac', label: 'Petit Bac' },
   { gameType: 'uno', label: 'UNO' },
@@ -38,7 +38,7 @@ const PROFILE_GAME_CATALOG = [
   { gameType: 'game_2048', label: '2048' },
   { gameType: 'flappy_bird', label: 'Flappy Bird' },
   { gameType: 'chrome_dino', label: 'Chrome Dino' },
-  { gameType: 'stack_tower', label: 'Stack Tower' },
+  { gameType: 'stack_tower', label: 'Tour empilée' },
   { gameType: 'fruit_ninja', label: 'Fruit Ninja' },
   { gameType: 'qs_watermelon', label: 'QS Watermelon' },
   { gameType: 'geometry_dash', label: 'Geometry Dash' },
@@ -50,7 +50,7 @@ const PROFILE_GAME_CATALOG = [
   { gameType: 'goyave_empire', label: 'Goyave Empire' },
   { gameType: 'puissance_4', label: 'Puissance 4' },
   { gameType: 'chess', label: 'Echecs' },
-  { gameType: 'ballarena', label: 'Ball Arena' },
+  { gameType: 'ballarena', label: 'Arène des balles' },
   { gameType: 'morpion', label: 'Morpion' },
 ] as const;
 
@@ -344,7 +344,7 @@ export default function Profile() {
       ],
     },
     {
-      label: 'Bomb Party',
+      label: 'Bombe de mots',
       playedCount: bombPartyStats?.totalPlayed ?? 0,
       metrics: bombPartyStats
         ? [

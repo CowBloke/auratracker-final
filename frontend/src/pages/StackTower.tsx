@@ -680,7 +680,7 @@ export default function StackTower() {
             <CardHeader className="px-4 py-3">
               <CardTitle className="flex items-center gap-2 text-sm font-medium">
                 <Trophy className="h-4 w-4 text-muted-foreground" />
-                Stack Tower
+                Tour empilée
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 px-4 pb-4">
@@ -750,7 +750,7 @@ export default function StackTower() {
               {state === 'ready' && (
                 <div className="absolute inset-0 flex items-center justify-center bg-background/65">
                   <div className="text-center">
-                    <p className="text-3xl font-light">Stack Tower</p>
+                    <p className="text-3xl font-light">Tour empilée</p>
                     <p className="mt-2 text-sm text-muted-foreground">Clique ou appuie sur Espace pour démarrer</p>
                   </div>
                 </div>

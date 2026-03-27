@@ -33,7 +33,7 @@ const gamesCatalog = [
   '2048',
   'Flappy Bird',
   'Casino',
-  'Bomb Party',
+  'Bombe de mots',
   'Poker',
   'Petit Bac',
   'Bataille Navale',
@@ -103,7 +103,7 @@ export default function Numbers() {
             items: [
               { label: 'Joueurs inscrits', value: formatNumber(totalUsers), hint: 'Tous les profils actifs et valides.' },
               { label: 'Nouveaux joueurs (7 jours)', value: formatNumber(newUsers7d), hint: 'Arrivees recentes dans la communaute.' },
-              { label: 'Clans actifs', value: formatNumber(totalClans), hint: 'Clans qui comptent au moins un membre.' },
+              { label: 'Guildes actives', value: formatNumber(totalClans), hint: 'Guildes qui comptent au moins un membre.' },
               { label: 'Membres en clan', value: formatNumber(totalClanMembers), hint: 'Somme des membres dans tous les clans.' },
             ],
           },

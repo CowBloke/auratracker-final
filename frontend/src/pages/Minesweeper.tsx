@@ -505,7 +505,7 @@ export default function Minesweeper() {
                   <p className="text-xl font-semibold tabular-nums">{highScore}</p>
                 </div>
                 <div className="rounded-xl border border-border/60 p-3">
-                  <p className="text-xs text-muted-foreground">Winrate</p>
+                  <p className="text-xs text-muted-foreground">Taux de victoire</p>
                   <p className="text-xl font-semibold tabular-nums">{winRate}%</p>
                 </div>
               </div>

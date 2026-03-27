@@ -398,7 +398,7 @@ export default function BatailleNavale() {
                 Défier un joueur
               </Button>
               <Button asChild variant="outline">
-                <Link to="/party">Via une party</Link>
+                <Link to="/party">Via un groupe</Link>
               </Button>
             </div>
           </CardContent>
@@ -467,7 +467,7 @@ export default function BatailleNavale() {
       <PageShell>
         <PageHeader
           title="Bataille Navale"
-          description={`Party: ${currentParty.name || 'Sans nom'}`}
+          description={`Groupe : ${currentParty.name || 'Sans nom'}`}
           actions={(
             <Button asChild variant="outline" size="sm">
               <Link to="/games" className="inline-flex items-center gap-2">
@@ -539,7 +539,7 @@ export default function BatailleNavale() {
     <PageShell>
       <PageHeader
         title="Bataille Navale"
-        description={`Party: ${currentParty.name || 'Sans nom'}`}
+        description={`Groupe : ${currentParty.name || 'Sans nom'}`}
         actions={(
           <>
             <Button asChild variant="outline" size="sm">

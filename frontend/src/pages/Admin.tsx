@@ -57,7 +57,7 @@ const EFFECT_TYPES = [
   { value: 'PROFILE_BANNER', label: 'Bannière de profil', description: 'Permet de téléverser une bannière affichée en haut du profil' },
   { value: 'BONUS_AURA', label: 'Bonus Aura', description: 'Donne un bonus d\'aura à l\'utilisation' },
   { value: 'BONUS_MONEY', label: 'Bonus Argent', description: 'Donne un bonus d\'argent à l\'utilisation' },
-  { value: 'DOODLE_JUMP_SKIN', label: 'Skin Doodle Jump', description: 'Débloque un skin personnalisé dans Doodle Jump (sélectionner une image pour le skin)' },
+  { value: 'DOODLE_JUMP_SKIN', label: 'Apparence Doodle Jump', description: 'Débloque une apparence personnalisée dans Doodle Jump (sélectionner une image pour l’apparence)' },
   { value: 'CLAN_TAG_UNLOCK', label: 'Tag de clan', description: 'Débloque le tag de clan pour le clan du membre acheteur. Un clan ne peut l\'acheter qu\'une fois.' },
   { value: 'CLAN_SLOT_UPGRADE', label: '+1 Slot clan', description: 'Ajoute un slot membre supplémentaire au clan. Un clan ne peut l\'acheter qu\'une fois. S\'applique automatiquement à l\'achat.' },
   { value: 'CLAN_GAME_MONEY_BOOST', label: 'Boost gains clan', description: 'Objet de clan consommable: active un boost en % sur l\'argent gagné en jeu pour tous les membres du clan.' },
@@ -304,7 +304,7 @@ const GAME_TYPE_LABELS: Record<string, string> = {
   game_2048: '2048',
   flappy_bird: 'Flappy Bird',
   chrome_dino: 'Chrome Dino',
-  stack_tower: 'Stack Tower',
+  stack_tower: 'Tour empilée',
   geometry_dash: 'Geometry Dash',
   qs_watermelon: 'QS Watermelon',
   solitaire: 'Solitaire',
@@ -317,16 +317,16 @@ const GAME_TYPE_LABELS: Record<string, string> = {
   logic_lab: 'Sudoku',
   fruit_ninja: 'Fruit Ninja',
   casino: 'Casino',
-  bombparty: 'Bomb Party',
+  bombparty: 'Bombe de mots',
   petit_bac: 'Petit Bac',
   poker: 'Poker',
   battleship: 'Bataille Navale',
   chess: 'Échecs',
   puissance_4: 'Puissance 4',
-  ball_arena: 'Ball Arena',
+  ball_arena: 'Arène des balles',
   uno: 'Uno',
   morpion: 'Morpion',
-  russian_roulette: 'Russian Roulette',
+  russian_roulette: 'Roulette russe',
 };
 
 const MULTIPLAYER_GAME_TYPES = new Set([
@@ -538,7 +538,7 @@ const GAME_TYPES = [
   { value: 'game_2048', label: '2048' },
   { value: 'flappy_bird', label: 'Flappy Bird' },
   { value: 'chrome_dino', label: 'Chrome Dino' },
-  { value: 'stack_tower', label: 'Stack Tower' },
+  { value: 'stack_tower', label: 'Tour empilée' },
   { value: 'geometry_dash', label: 'Geometry Dash' },
   { value: 'qs_watermelon', label: 'QS Watermelon' },
   { value: 'solitaire', label: 'Solitaire' },
@@ -551,16 +551,16 @@ const GAME_TYPES = [
   { value: 'logic_lab', label: 'Sudoku' },
   { value: 'fruit_ninja', label: 'Fruit Ninja' },
   { value: 'casino', label: 'Casino' },
-  { value: 'bombparty', label: 'Bomb Party' },
+  { value: 'bombparty', label: 'Bombe de mots' },
   { value: 'petit_bac', label: 'Petit Bac' },
   { value: 'poker', label: 'Poker' },
   { value: 'battleship', label: 'Bataille Navale' },
   { value: 'chess', label: 'Échecs' },
   { value: 'puissance_4', label: 'Puissance 4' },
-  { value: 'ball_arena', label: 'Ball Arena' },
+  { value: 'ball_arena', label: 'Arène des balles' },
   { value: 'uno', label: 'Uno' },
   { value: 'morpion', label: 'Morpion' },
-  { value: 'russian_roulette', label: 'Russian Roulette' },
+  { value: 'russian_roulette', label: 'Roulette russe' },
 ];
 
 interface ItemFormData {
@@ -1190,10 +1190,10 @@ export default function Admin() {
 
       if (editingUpdatePopupId) {
         await adminApi.updateUpdatePopup(editingUpdatePopupId, payload);
-        showMessage('success', 'Update modifiée');
+        showMessage('success', 'Annonce modifiée');
       } else {
         await adminApi.createUpdatePopup(payload);
-        showMessage('success', 'Update créée');
+        showMessage('success', 'Annonce créée');
       }
 
       resetUpdatePopupForm();
@@ -1212,7 +1212,7 @@ export default function Admin() {
       if (editingUpdatePopupId === id) {
         resetUpdatePopupForm();
       }
-      showMessage('success', 'Update supprimée');
+      showMessage('success', 'Annonce supprimée');
       fetchUpdatePopups();
     } catch {
       showMessage('error', 'Erreur lors de la suppression');
@@ -1225,7 +1225,7 @@ export default function Admin() {
     try {
       setUpdatingUpdatePopupId(popup.id);
       await adminApi.updateUpdatePopup(popup.id, { isPublished });
-      showMessage('success', isPublished ? 'Update publiée' : 'Update masquée');
+      showMessage('success', isPublished ? 'Annonce publiée' : 'Annonce masquée');
       fetchUpdatePopups();
     } catch {
       showMessage('error', 'Erreur lors de la mise à jour');
@@ -1586,7 +1586,7 @@ export default function Admin() {
       const id = djForcedSkinSelected === '__none__' ? null : djForcedSkinSelected;
       const res = await adminApi.setDjForcedSkin(id);
       setDjForcedSkinId(res.data.itemId);
-      showMessage('success', id ? 'Skin forcé appliqué' : 'Rotation normale rétablie');
+      showMessage('success', id ? 'Apparence forcée appliquée' : 'Rotation normale rétablie');
     } catch { showMessage('error', 'Erreur'); } finally {
       setDjForcedSkinSaving(false);
     }
@@ -2166,7 +2166,7 @@ export default function Admin() {
       setSavingClashAttackCooldown(true);
       await adminApi.updateSetting('clash_attack_cooldown_minutes', parsed);
       setClashAttackCooldownMinutes(String(parsed));
-      showMessage('success', 'Cooldown d attaque Clash sauvegarde');
+      showMessage('success', "Temps de recharge d'attaque Clash sauvegardé");
     } catch (error) {
       console.error('Failed to save Clash attack cooldown:', error);
       showMessage('error', 'Erreur lors de la sauvegarde du cooldown Clash');
@@ -2942,7 +2942,7 @@ export default function Admin() {
         >
           <TabsList className="flex flex-wrap h-auto p-1">
           <TabsTrigger value="inbox">
-            Inbox
+            Boîte de réception
             {(pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length + banAppeals.filter(a => a.status === 'PENDING').length + nameChangeRequests.filter(n => n.status === 'PENDING').length) > 0 && (
               <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[11px] font-semibold leading-none">
                 {pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length + banAppeals.filter(a => a.status === 'PENDING').length + nameChangeRequests.filter(n => n.status === 'PENDING').length}
@@ -3986,7 +3986,7 @@ export default function Admin() {
                     <CardHeader className="pb-3">
                       <div className="flex items-center gap-2">
                         <Gamepad2 className="h-3.5 w-3.5 text-violet-400" />
-                        <CardDescription className="text-violet-300">Skin forcé du jour</CardDescription>
+                        <CardDescription className="text-violet-300">Apparence forcée du jour</CardDescription>
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-3">
@@ -4223,8 +4223,8 @@ export default function Admin() {
             <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
               <div className="flex items-center justify-between gap-4 px-4 py-3.5">
                 <div>
-                  <div className="text-sm font-medium">Cooldown d&apos;attaque</div>
-                  <div className="text-xs text-muted-foreground">Temps d&apos;attente appliqué après un raid réussi ou raté. Mettre `0` pour désactiver le cooldown.</div>
+                  <div className="text-sm font-medium">Temps de recharge d&apos;attaque</div>
+                  <div className="text-xs text-muted-foreground">Temps d&apos;attente appliqué après un raid réussi ou raté. Mettre `0` pour désactiver ce temps de recharge.</div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <Input
@@ -4285,7 +4285,7 @@ export default function Admin() {
                 <div>
                   <div className="text-sm font-medium">Page principale du site</div>
                   <div className="text-xs text-muted-foreground">
-                    {DEFAULT_LANDING_PAGE_OPTIONS.find((option) => option.value === defaultLandingPage)?.label ?? 'Dashboard'}
+                    {DEFAULT_LANDING_PAGE_OPTIONS.find((option) => option.value === defaultLandingPage)?.label ?? 'Tableau de bord'}
                     {' '}ouvre quand un utilisateur connecte arrive sur `auratracker.xyz`.
                   </div>
                 </div>
@@ -4477,7 +4477,7 @@ export default function Admin() {
                     >
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="UPDATE">Update classique</SelectItem>
+                        <SelectItem value="UPDATE">Annonce classique</SelectItem>
                         <SelectItem value="CLAN_PROMPT">Popup rejoindre un clan</SelectItem>
                       </SelectContent>
                     </Select>
@@ -4640,7 +4640,7 @@ export default function Admin() {
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="font-medium">{popup.title}</span>
                                   <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300">
-                                    {popup.type === 'CLAN_PROMPT' ? 'Clan' : 'Update'}
+                                    {popup.type === 'CLAN_PROMPT' ? 'Clan' : 'Annonce'}
                                   </span>
                                   <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
                                     {popup.audience === 'NO_CLAN' ? 'Sans clan' : popup.audience === 'SELECTED_USERS' ? 'Sélection' : 'Tout le monde'}
@@ -7746,7 +7746,7 @@ export default function Admin() {
                                 <SelectItem value="GAME_HIGHSCORE_logic_lab">🧠 Champion Logic Lab</SelectItem>
                                 <SelectItem value="GAME_HIGHSCORE_minesweeper">💣 Champion Démineur</SelectItem>
                                 <SelectItem value="GAME_HIGHSCORE_casino">🎰 Champion Casino</SelectItem>
-                                <SelectItem value="BOMBPARTY_TOP_WINS">💥 Champion Bomb Party (victoires)</SelectItem>
+                                <SelectItem value="BOMBPARTY_TOP_WINS">💥 Champion Bombe de mots (victoires)</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>

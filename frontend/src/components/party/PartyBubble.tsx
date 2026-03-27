@@ -24,11 +24,11 @@ export default function PartyBubble() {
 
   const isLeader = partyMembers.find((m) => m.userId === user?.id)?.isLeader;
   const gameStatus = bombPartyGame
-    ? `Bomb Party - Round ${bombPartyGame.round}`
+    ? `Bombe de mots - Manche ${bombPartyGame.round}`
     : petitBacGame
       ? `Petit Bac - Manche ${petitBacGame.round}/${petitBacGame.maxRounds}`
       : 'En attente';
-  const inviteLabel = currentParty.name ? `Rejoins ${currentParty.name}` : 'Rejoins ma party';
+  const inviteLabel = currentParty.name ? `Rejoins ${currentParty.name}` : 'Rejoins mon groupe';
   const inviteVisibility = currentParty.isPublic ? 'public' : 'private';
 
   const sendChatInvite = () => {
@@ -48,7 +48,7 @@ export default function PartyBubble() {
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />
             <span className="font-medium text-sm">
-              {currentParty.name || 'Party'}
+              {currentParty.name || 'Groupe'}
             </span>
             <span className="text-xs text-muted-foreground">
               ({partyMembers.length}/{currentParty.maxSize})

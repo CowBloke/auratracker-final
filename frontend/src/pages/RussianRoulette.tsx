@@ -412,12 +412,12 @@ export default function RussianRoulette() {
       <PageShell>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
           <Button variant="ghost" size="icon" asChild><Link to="/games"><ArrowLeft size={18} /></Link></Button>
-          <h1 style={{ fontSize: 20, fontWeight: 800, letterSpacing: 0.5 }}>Russian Roulette</h1>
+          <h1 style={{ fontSize: 20, fontWeight: 800, letterSpacing: 0.5 }}>Roulette russe</h1>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '60px 0', color: 'rgba(140,140,140,0.7)' }}>
           <Users size={48} style={{ opacity: 0.4 }} />
-          <p style={{ fontSize: 14, textAlign: 'center', maxWidth: 300 }}>Tu dois être dans une party pour jouer à Russian Roulette.</p>
-          <Button variant="outline" asChild><Link to="/party">Rejoindre une party</Link></Button>
+          <p style={{ fontSize: 14, textAlign: 'center', maxWidth: 300 }}>Tu dois être dans un groupe pour jouer à la roulette russe.</p>
+          <Button variant="outline" asChild><Link to="/party">Rejoindre un groupe</Link></Button>
         </div>
       </PageShell>
     );
@@ -499,7 +499,7 @@ export default function RussianRoulette() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
           <Button variant="ghost" size="icon" asChild><Link to="/games"><ArrowLeft size={18} /></Link></Button>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 800, letterSpacing: 0.5 }}>Russian Roulette</h1>
+            <h1 style={{ fontSize: 20, fontWeight: 800, letterSpacing: 0.5 }}>Roulette russe</h1>
             <p style={{ fontSize: 11, color: 'rgba(140,140,140,0.6)', marginTop: 1 }}>Qui ose tirer le dernier ?</p>
           </div>
         </div>
@@ -605,7 +605,7 @@ export default function RussianRoulette() {
         {!rouletteGame && !rouletteGameOver && (
           <div className="rr-slide-in" style={{ border: '1px solid hsl(var(--border))', borderRadius: 14, padding: '28px 24px', textAlign: 'center' }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>🔫</div>
-            <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Russian Roulette</h2>
+            <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Roulette russe</h2>
             <p style={{ fontSize: 13, color: 'rgba(140,140,140,0.7)', maxWidth: 320, margin: '0 auto 20px', lineHeight: 1.6 }}>
               2 à 6 joueurs s'assoient autour de la table. À tour de rôle, chacun tire — ou passe. Le dernier en vie gagne.
             </p>

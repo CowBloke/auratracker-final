@@ -126,7 +126,7 @@ export function NavUser({
               <DropdownMenuItem asChild>
                 <Link to="/settings">
                   <Settings />
-                  Reglages
+                  Réglages
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={toggleTheme}>

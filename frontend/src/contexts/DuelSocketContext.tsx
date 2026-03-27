@@ -120,7 +120,7 @@ export function DuelSocketProvider({ children }: { children: React.ReactNode }) 
 
     s.on('duel:matchmaking-match-found', (data: { gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' | 'morpion' }) => {
       import('sonner').then(({ toast }) => {
-        const labels = { chess: 'Echecs', battleship: 'Bataille navale', p4: 'Puissance 4', ballarena: 'Ball Arena', uno: 'UNO', morpion: 'Morpion' } as const;
+        const labels = { chess: 'Echecs', battleship: 'Bataille navale', p4: 'Puissance 4', ballarena: 'Arène des balles', uno: 'UNO', morpion: 'Morpion' } as const;
         toast('Adversaire trouve !', { description: `Duel ${labels[data.gameType] ?? 'aleatoire'} en cours de lancement...` });
       });
     });

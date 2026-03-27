@@ -180,7 +180,7 @@ export default function Morpion() {
                 Defier un joueur
               </Button>
               <Button asChild variant="outline">
-                <Link to="/party">Via une party</Link>
+                <Link to="/party">Via un groupe</Link>
               </Button>
             </div>
           </CardContent>

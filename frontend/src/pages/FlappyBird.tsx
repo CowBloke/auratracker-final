@@ -553,7 +553,7 @@ export default function FlappyBird() {
           {gameOver && (
             <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/90">
               <div className="text-center space-y-4 p-6">
-                <p className="text-2xl font-light">Game Over</p>
+                <p className="text-2xl font-light">Partie terminée</p>
                 <p className="text-3xl tabular-nums">{score}</p>
                 {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
                 {rewards && (

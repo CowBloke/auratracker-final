@@ -1644,7 +1644,7 @@ export default function DoodleJump() {
         {/* Skin selector */}
         <Card>
           <CardHeader className="px-4 py-3">
-            <CardTitle className="text-sm font-medium">Skin</CardTitle>
+            <CardTitle className="text-sm font-medium">Apparence</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4">
             <div className={`grid grid-cols-4 gap-1.5 ${isPlaying ? 'opacity-40 pointer-events-none' : ''}`}>

@@ -110,7 +110,7 @@ export default function PartyChatFloating({ rightOffset }: PartyChatFloatingProp
             <div className="min-w-0">
               <p className="truncate text-sm font-medium">{title}</p>
               <p className="truncate text-xs text-muted-foreground">
-                {currentParty.name || (isDuel ? 'Duel en cours' : 'Party active')} · {partyMembers.length}/{currentParty.maxSize}
+                {currentParty.name || (isDuel ? 'Duel en cours' : 'Groupe actif')} · {partyMembers.length}/{currentParty.maxSize}
               </p>
             </div>
           </button>

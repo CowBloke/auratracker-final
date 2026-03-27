@@ -358,7 +358,7 @@ export default function Inventory() {
       case 'PROFILE_BANNER':
         return 'Banniere de profil';
       case 'DOODLE_JUMP_SKIN':
-        return 'Skin Doodle Jump';
+        return 'Apparence Doodle Jump';
       case 'CLAN_TAG_UNLOCK':
         return 'Tag de clan';
       case 'CLAN_SLOT_UPGRADE':

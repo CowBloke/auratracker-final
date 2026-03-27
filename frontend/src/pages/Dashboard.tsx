@@ -59,7 +59,7 @@ const welcomeTemplates = [
   'Bienvenue, {username}',
   'Heureux de te revoir {username}, prêt pour AuraTracker ?',
   'Salut {username} ! On lance une partie ?',
-  'Yo {username}, le crew t’attend.',
+  'Yo {username}, l’équipe t’attend.',
   'Hey {username}, tu reviens charger l’aura ?',
   '{username}, ça faisait longtemps !',
   'Content de te revoir {username} !',
@@ -68,10 +68,10 @@ const welcomeTemplates = [
   'Bon retour {username}, ça va chauffer.',
   '{username}, on remet ça ?',
   'Bienvenue à bord, {username}.',
-  'Hello {username}, ça part en jeux ?',
+  'Salut {username}, on part sur des jeux ?',
   '{username}, le tableau de bord est prêt.',
   'Heureux de te revoir {username} !',
-  'Bon retour {username}, ready ?',
+  'Bon retour {username}, tu es prêt ?',
 ];
 
 const pickWelcomeMessage = (username?: string) => {
@@ -82,11 +82,11 @@ const pickWelcomeMessage = (username?: string) => {
 
 const gameShortcuts: GameShortcut[] = [
   { id: 'levier-infernal', label: 'Levier Infernal', path: '/games/levier-infernal', description: 'Leviers, bluff et explosion.', image: '/images/games/rouletterusse.png' },
-  { id: 'bomb-party', label: 'Bomb Party', path: '/games/bomb-party', description: 'Mots explosifs en équipe.', image: '/images/games/bombparty.png' },
+  { id: 'bomb-party', label: 'Bombe de mots', path: '/games/bomb-party', description: 'Mots explosifs en équipe.', image: '/images/games/bombparty.png' },
   { id: 'poker', label: 'Poker', path: '/games/poker', description: 'Table rapide, mise prudente.', image: '/images/games/poker.png' },
   { id: 'petit-bac', label: 'Petit Bac', path: '/games/petit-bac', description: 'Catégories, lettres, vitesse.', image: '/images/games/petitbac.png' },
   { id: 'casino', label: 'Casino', path: '/games/casino', description: 'Mini-jeux et mises rapides.', image: '/images/games/casino.png' },
-  { id: 'aura-coin', label: 'Aura Coin', path: '/games/aura-coin', description: 'Suivi des coins aura.', image: '/images/games/auracoin.png' },
+  { id: 'aura-coin', label: 'Aura Coin', path: '/games/aura-coin', description: 'Suivi des pièces aura.', image: '/images/games/auracoin.png' },
   { id: 'polymarket', label: 'Polymarket', path: '/polymarket', description: 'Paris en temps réel.' },
   { id: 'doodle-jump', label: 'Doodle Jump', path: '/games/doodle-jump', description: 'Grimpe sans fin.', image: '/images/games/doodlejump.png' },
   { id: '2048', label: '2048', path: '/games/2048', description: "Fusionne jusqu'à 2048.", image: '/images/games/2048.png' },
@@ -818,7 +818,7 @@ export default function Dashboard() {
                       </CardHeader>
                       <CardContent className={cn(dashboardWidgetContentClass, "overflow-y-auto")}>
                         {publicParties.length === 0 ? (
-                          <p className={TYPOGRAPHY.SMALL}>Aucune party active.</p>
+                          <p className={TYPOGRAPHY.SMALL}>Aucun groupe actif.</p>
                         ) : (
                           <div className="space-y-2.5">
                             {publicParties.slice(0, 6).map((party) => {
@@ -828,7 +828,7 @@ export default function Dashboard() {
                               return (
                                 <div key={party.id} className={dashboardRowClass}>
                                   <div className="min-w-0">
-                                    <p className={TYPOGRAPHY.SMALL}>{party.name || 'Party sans nom'}</p>
+                                    <p className={TYPOGRAPHY.SMALL}>{party.name || 'Groupe sans nom'}</p>
                                     <p className={cn(TYPOGRAPHY.XS, "truncate text-muted-foreground")}>
                                       {party.selectedGame?.gameName || 'Pas de jeu'} · {party.memberCount}/{party.maxSize}
                                     </p>
@@ -897,7 +897,7 @@ export default function Dashboard() {
                                       <div className="min-w-0">
                                         <div className="flex items-center gap-2">
                                           <p className="truncate text-sm font-medium">
-                                            {isViewerWar && opponent ? `Vs ${opponent.name}` : `${war.attackerClan.name} vs ${war.defenderClan.name}`}
+                                            {isViewerWar && opponent ? `Contre ${opponent.name}` : `${war.attackerClan.name} contre ${war.defenderClan.name}`}
                                           </p>
                                           {isViewerWar && (
                                             <Badge variant="outline" className="border-border/50 bg-background text-[10px] uppercase tracking-[0.18em]">

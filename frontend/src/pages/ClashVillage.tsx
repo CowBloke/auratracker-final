@@ -418,7 +418,7 @@ export default function ClashVillage() {
           detail={`Coffre protégé à ${formatPercent(village.vaultProtectionPct)}`}
         />
         <InfoStat
-          label="Cooldown"
+          label="Temps de recharge"
           value={attackCooldown ?? 'Disponible'}
           icon={<Sword className="h-4 w-4" />}
           detail={village.attackCooldownUntil ? `Fin le ${formatDate(village.attackCooldownUntil)}` : 'Ton armée est prête'}

@@ -29,30 +29,30 @@ interface User {
 const multiplayerGames = [
   {
     id: 'bomb-party',
-    name: 'Bomb Party',
+    name: 'Bombe de mots',
     description: 'Trouve des mots contenant les lettres avant que la bombe explose.',
-    type: 'Party',
+    type: 'Groupe',
     image: '/images/games/bombparty.png',
   },
   {
     id: 'petit-bac',
     name: 'Petit Bac',
     description: 'Remplis les categories avec la bonne lettre avant la fin du temps.',
-    type: 'Party',
+    type: 'Groupe',
     image: '/images/games/petitbac.png',
   },
   {
     id: 'poker',
     name: 'Poker',
     description: 'Joue une table entre amis, blindes et stack personnalisables.',
-    type: 'Party',
+    type: 'Groupe',
     image: '/images/games/poker.png',
   },
   {
     id: 'levier-infernal',
     name: 'Levier Infernal',
     description: 'Choisis un levier, prie pour survivre et laisse le classement se jouer aux victoires.',
-    type: 'Party',
+    type: 'Groupe',
     image: '/images/games/rouletterusse.png',
   },
 ];
@@ -250,7 +250,7 @@ export default function Party() {
                 className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
               >
                 <div>
-                  <p className={TYPOGRAPHY.SMALL}>{invite.partyName || 'Party sans nom'}</p>
+                  <p className={TYPOGRAPHY.SMALL}>{invite.partyName || 'Groupe sans nom'}</p>
                   <p className={TYPOGRAPHY.XS}>
                     de <UsernameDisplay username={invite.inviterUsername} />
                   </p>
@@ -278,14 +278,14 @@ export default function Party() {
       )}
 
 
-      {/* Current Party or Public Parties */}
+      {/* Groupe actuel ou groupes publics */}
       {currentParty ? (
         <Card>
           <CardContent className={`p-6 ${SPACING.SECTION_SPACING}`}>
             <div className="flex items-center justify-between">
               <div>
                 <h2 className={TYPOGRAPHY.H2}>
-                  {currentParty.name || 'Ta party'}
+                  {currentParty.name || 'Ton groupe'}
                 </h2>
                 <p className={TYPOGRAPHY.SMALL}>
                   {currentParty.isPublic ? 'Publique' : 'Privée'} · {partyMembers.length}/{currentParty.maxSize}
@@ -309,7 +309,7 @@ export default function Party() {
                     size="sm"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
-                    Supprimer la party
+                    Supprimer le groupe
                   </Button>
                 ) : (
                   <Button
@@ -339,7 +339,7 @@ export default function Party() {
                       <span className={TYPOGRAPHY.SMALL}>
                         <UsernameDisplay username={member.username} usernameColor={member.usernameColor} />
                         {member.isLeader && (
-                          <span className={cn(TYPOGRAPHY.XS, "ml-2 text-muted-foreground")}>leader</span>
+                          <span className={cn(TYPOGRAPHY.XS, "ml-2 text-muted-foreground")}>chef</span>
                         )}
                         {member.userId === user?.id && (
                           <span className={cn(TYPOGRAPHY.XS, "ml-2 text-muted-foreground")}>(toi)</span>
@@ -384,7 +384,7 @@ export default function Party() {
                         <div>
                           <p className={TYPOGRAPHY.SMALL}>{partySelectedGame.gameName}</p>
                           <p className={TYPOGRAPHY.XS}>
-                            selectionne par{' '}
+                            sélectionné par{' '}
                             <UsernameDisplay
                               username={partySelectedGame.selectedByName}
                               usernameColor={partySelectedGame.selectedByColor}
@@ -408,7 +408,7 @@ export default function Party() {
                 </Card>
               ) : (
                 <p className={TYPOGRAPHY.SMALL}>
-                  Aucun jeu selectionne pour le moment
+                  Aucun jeu sélectionné pour le moment
                 </p>
               )}
 
@@ -443,8 +443,8 @@ export default function Party() {
                         }
                         disabled={isDisabled}
                         title={isLeader
-                          ? isSelected ? 'Selectionne' : 'Choisir'
-                          : isSelected ? 'Selectionne' : hasSuggested ? 'Suggere' : 'Suggerer'}
+                          ? isSelected ? 'Sélectionné' : 'Choisir'
+                          : isSelected ? 'Sélectionné' : hasSuggested ? 'Suggéré' : 'Suggérer'}
                         className={cn(
                           'relative h-12 w-12 shrink-0 rounded-md overflow-hidden border-2 transition-all',
                           isSelected
@@ -575,7 +575,7 @@ export default function Party() {
           <CardContent className={`p-6 ${SPACING.SECTION_SPACING}`}>
             <div className="flex items-center justify-between gap-3">
               <h2 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground  ")}>
-                Parties ouvertes
+                Groupes ouverts
               </h2>
               <div className="flex items-center gap-2">
                 <Button
@@ -598,7 +598,7 @@ export default function Party() {
 
             {publicParties.length === 0 ? (
               <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
-                Aucune party disponible
+                Aucun groupe disponible
               </p>
             ) : (
               <div className={SPACING.SECTION_SPACING}>
@@ -614,9 +614,9 @@ export default function Party() {
                       >
                         <div className="space-y-1">
                           <div className="flex items-center gap-3">
-                            <p className={TYPOGRAPHY.SMALL}>{party.name || (isDuel ? 'Duel sans nom' : 'Party sans nom')}</p>
+                            <p className={TYPOGRAPHY.SMALL}>{party.name || (isDuel ? 'Duel sans nom' : 'Groupe sans nom')}</p>
                             <span className={cn(TYPOGRAPHY.XS, "  text-muted-foreground")}>
-                              {isDuel ? 'Duel' : 'Party'}
+                              {isDuel ? 'Duel' : 'Groupe'}
                             </span>
                           </div>
                           <p className={TYPOGRAPHY.XS}>
@@ -653,11 +653,11 @@ export default function Party() {
       )}
       </PageShell>
 
-      {/* Create Party Modal */}
+      {/* Fenêtre de création de groupe */}
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Créer une party</DialogTitle>
+            <DialogTitle>Créer un groupe</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -673,7 +673,7 @@ export default function Party() {
                 }}
               >
                 <TabsList className="h-auto flex-wrap">
-                  <TabsTrigger value="party">Party</TabsTrigger>
+                  <TabsTrigger value="party">Groupe</TabsTrigger>
                   <TabsTrigger value="duel">Duel</TabsTrigger>
                 </TabsList>
               </Tabs>
@@ -778,11 +778,11 @@ export default function Party() {
         </DialogContent>
       </Dialog>
 
-      {/* Bomb Party start dialog */}
+      {/* Fenêtre de lancement Bombe de mots */}
       <Dialog open={showBpDialog} onOpenChange={setShowBpDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-normal">Bomb Party — Options</DialogTitle>
+            <DialogTitle className="font-normal">Bombe de mots — Options</DialogTitle>
           </DialogHeader>
           <div className="space-y-6">
             <div className="space-y-2">
@@ -805,7 +805,7 @@ export default function Party() {
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-sm text-muted-foreground">Difficulte</label>
+              <label className="text-sm text-muted-foreground">Difficulté</label>
               <div className="flex gap-2">
                 {(['easy', 'medium', 'hard'] as const).map((d) => (
                   <Button variant="ghost"
@@ -917,7 +917,7 @@ export default function Party() {
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-sm text-muted-foreground">Big blind</label>
+              <label className="text-sm text-muted-foreground">Grosse blinde</label>
               <div className="flex gap-2">
                 {[10, 20, 50, 100].map((b) => (
                   <Button variant="ghost"

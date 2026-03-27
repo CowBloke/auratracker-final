@@ -44,9 +44,6 @@ import {
   Eye,
   Monitor,
   Crosshair,
-  Sparkles,
-  CircleDollarSign,
-  Zap,
 } from 'lucide-react';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { InboxDropdown } from '@/components/inbox/InboxDropdown';
@@ -112,11 +109,11 @@ export function SiteHeader() {
     return sessionsByUser;
   }, [chessSpectateSessions]);
   const gameStatus = bombPartyGame
-    ? `Bomb Party - Round ${bombPartyGame.round}`
+    ? `Bombe de mots - Manche ${bombPartyGame.round}`
     : petitBacGame
       ? `Petit Bac - Manche ${petitBacGame.round}/${petitBacGame.maxRounds}`
       : 'En attente';
-  const inviteLabel = currentParty?.name ? `Rejoins ${currentParty.name}` : 'Rejoins ma party';
+  const inviteLabel = currentParty?.name ? `Rejoins ${currentParty.name}` : 'Rejoins mon groupe';
   const inviteVisibility = currentParty?.isPublic ? 'public' : 'private';
   const duelMatchmakingEnabled = maintenanceStatus.duelMatchmakingEnabled;
   const availableParties = useMemo(
@@ -158,11 +155,11 @@ export function SiteHeader() {
     const items = [];
 
     if (location.pathname === '/') {
-      return [{ label: 'Dashboard', path: '/' }];
+      return [{ label: 'Tableau de bord', path: '/' }];
     }
 
     items.push({
-      label: 'Dashboard',
+      label: 'Tableau de bord',
       path: '/',
     });
 
@@ -256,8 +253,8 @@ export function SiteHeader() {
                   variant="outline"
                   size="sm"
                   className="h-8 px-2"
-                  title="Rejoindre une party"
-                  aria-label="Rejoindre une party"
+                  title="Rejoindre un groupe"
+                  aria-label="Rejoindre un groupe"
                 >
                   <Users className="h-4 w-4" />
                   <ChevronDown className="h-3 w-3" />
@@ -277,7 +274,7 @@ export function SiteHeader() {
                       >
                         <div className="min-w-0 flex-1">
                           <div className="truncate font-medium">
-                            {party.name || (isDuel ? 'Duel sans nom' : 'Party sans nom')}
+                            {party.name || (isDuel ? 'Duel sans nom' : 'Groupe sans nom')}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {party.memberCount}/{party.maxSize} membres
@@ -300,7 +297,7 @@ export function SiteHeader() {
                   })
                 ) : (
                   <>
-                    <DropdownMenuItem disabled>Aucune party en cours</DropdownMenuItem>
+                    <DropdownMenuItem disabled>Aucun groupe en cours</DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       onSelect={(event) => {
@@ -311,7 +308,7 @@ export function SiteHeader() {
                       className="gap-2"
                     >
                       <UserPlus className="h-4 w-4" />
-                      Créer une party
+                      Créer un groupe
                     </DropdownMenuItem>
                   </>
                 )}
@@ -352,7 +349,7 @@ export function SiteHeader() {
                     className="h-auto gap-1 px-0 py-0 text-sm text-muted-foreground hover:text-foreground"
                   >
                     <Users className="h-4 w-4" />
-                    <span>{currentParty.name || 'Party'}</span>
+                    <span>{currentParty.name || 'Groupe'}</span>
                     <span className="text-xs">
                       ({partyMembers.length}/{currentParty.maxSize})
                     </span>
@@ -641,7 +638,6 @@ export function SiteHeader() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button type="button" variant="ghost" className="h-auto gap-2 px-0 py-0 text-sm text-muted-foreground hover:text-foreground">
-                <Zap className="h-4 w-4" />
                 <span>Effets</span>
                 <span className="text-xs text-foreground">{clanEffects.length}</span>
               </Button>
@@ -657,7 +653,7 @@ export function SiteHeader() {
                     <div className="flex w-full items-center justify-between gap-3">
                       <span className="font-medium text-foreground">{effect.name}</span>
                       <span className={cn('text-[10px] uppercase tracking-[0.18em]', effect.isActive ? 'text-emerald-400' : 'text-amber-400')}>
-                        {effect.isActive ? 'Actif' : 'Cooldown'}
+                        {effect.isActive ? 'Actif' : 'Temps de recharge'}
                       </span>
                     </div>
                     <div className="text-xs text-muted-foreground">
@@ -674,11 +670,9 @@ export function SiteHeader() {
 
           <div className="flex items-center gap-6 tabular-nums">
             <span className="inline-flex items-center gap-1.5 text-foreground">
-              <Sparkles className="h-3.5 w-3.5 text-violet-400" aria-hidden="true" />
               {user?.aura.toLocaleString()} <span className="text-muted-foreground">aura</span>
             </span>
             <span className="inline-flex items-center gap-1.5 text-foreground">
-              <CircleDollarSign className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
               ${user?.money.toLocaleString()} <span className="text-muted-foreground">argent</span>
             </span>
           </div>

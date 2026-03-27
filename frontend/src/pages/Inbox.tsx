@@ -104,7 +104,7 @@ const CATEGORIES = [
   { id: 'all',        label: 'Tout',       Icon: Inbox,      types: null },
   { id: 'unread',     label: 'Non lus',    Icon: Eye,        types: null },
   { id: 'aura',       label: 'Aura',       Icon: Star,       types: ['AURA_RECEIVED'] },
-  { id: 'clans',      label: 'Clans',      Icon: Users,      types: CLAN_TYPES },
+  { id: 'clans',      label: 'Guildes',    Icon: Users,      types: CLAN_TYPES },
   { id: 'social',     label: 'Social',     Icon: MessageSquare, types: ['SOCIAL_FOLLOW', 'SOCIAL_CONNECTION'] },
   { id: 'quetes',     label: 'Quêtes',     Icon: Zap,        types: ['QUEST_COMPLETED'] },
   { id: 'polymarket', label: 'Polymarket', Icon: TrendingUp, types: POLY_TYPES },

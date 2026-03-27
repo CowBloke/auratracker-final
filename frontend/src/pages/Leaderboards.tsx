@@ -56,7 +56,7 @@ const categories: { id: Category; name: string; valueLabel: string; icon: typeof
   { id: 'game_2048', name: '2048', valueLabel: 'score', icon: Layers },
   { id: 'flappy_bird', name: 'Flappy Bird', valueLabel: 'score', icon: Wind },
   { id: 'chrome_dino', name: 'Chrome Dino', valueLabel: 'score', icon: Gamepad2 },
-  { id: 'stack_tower', name: 'Stack Tower', valueLabel: 'score', icon: Layers },
+  { id: 'stack_tower', name: 'Tour empilée', valueLabel: 'score', icon: Layers },
   { id: 'geometry_dash', name: 'Geometry Dash', valueLabel: 'score', icon: ArrowUp },
   { id: 'qs_watermelon', name: 'QS Watermelon', valueLabel: 'score', icon: Sparkles },
   { id: 'solitaire', name: 'Solitaire', valueLabel: 'score', icon: Diamond },
@@ -72,7 +72,7 @@ const categories: { id: Category; name: string; valueLabel: string; icon: typeof
   { id: 'chess', name: 'Échecs', valueLabel: 'victoires', icon: Hash },
   { id: 'petit_bac', name: 'Petit Bac', valueLabel: 'victoires', icon: Sparkles },
   { id: 'puissance_4', name: 'Puissance 4', valueLabel: 'victoires', icon: Layers },
-  { id: 'ball_arena', name: 'Ball Arena', valueLabel: 'victoires', icon: Target },
+  { id: 'ball_arena', name: 'Arène des balles', valueLabel: 'victoires', icon: Target },
   { id: 'poker', name: 'Poker', valueLabel: 'victoires', icon: Diamond },
   { id: 'battleship', name: 'Bataille Navale', valueLabel: 'victoires', icon: Target },
   { id: 'russian_roulette', name: 'Roulette Russe', valueLabel: 'victoires', icon: Skull },
@@ -80,7 +80,7 @@ const categories: { id: Category; name: string; valueLabel: string; icon: typeof
   { id: 'uno', name: 'Uno', valueLabel: 'victoires', icon: Layers },
   { id: 'morpion', name: 'Morpion', valueLabel: 'victoires', icon: Hash },
   { id: 'polymarket_ratio', name: 'Polymarket', valueLabel: 'ratio', icon: TrendingUp },
-  { id: 'bombparty', name: 'Bomb Party', valueLabel: 'victoires', icon: Flame },
+  { id: 'bombparty', name: 'Bombe de mots', valueLabel: 'victoires', icon: Flame },
   { id: 'games_played', name: 'Parties', valueLabel: 'jeux', icon: Gamepad2 },
 ];
 
@@ -117,7 +117,7 @@ const deletableGameCategories: Partial<Record<Category, string>> = {
   morpion: 'morpion',
 };
 
-const gamesCatalog = ['Doodle Jump', 'Démineur', '2048', 'Flappy Bird', 'Chrome Dino', 'Stack Tower', 'Geometry Dash', 'Fruit Ninja', 'Goyave Empire', 'Sudoku', 'Casino', 'Bomb Party', 'Poker', 'Petit Bac', 'Bataille Navale', 'Solitaire', 'Racer', 'Tetris', 'Knife Hit', 'Polymarket', 'Échecs', 'Puissance 4', 'Ball Arena', 'Roulette Russe', 'Levier Infernal', 'Uno', 'Morpion'];
+const gamesCatalog = ['Doodle Jump', 'Démineur', '2048', 'Flappy Bird', 'Chrome Dino', 'Tour empilée', 'Geometry Dash', 'Fruit Ninja', 'Goyave Empire', 'Sudoku', 'Casino', 'Bombe de mots', 'Poker', 'Petit Bac', 'Bataille navale', 'Solitaire', 'Racer', 'Tetris', 'Knife Hit', 'Polymarket', 'Échecs', 'Puissance 4', 'Arène des balles', 'Roulette russe', 'Levier Infernal', 'Uno', 'Morpion'];
 
 const formatNumber = (value: number, digits = 0) =>
   value.toLocaleString('fr-FR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
@@ -238,7 +238,7 @@ export default function Leaderboards() {
           items: [
             { label: 'Joueurs inscrits', value: formatNumber(totalUsers), hint: 'Tous les profils actifs et valides.' },
             { label: 'Nouveaux joueurs (7 jours)', value: formatNumber(newUsers7d), hint: 'Arrivées récentes dans la communauté.' },
-            { label: 'Clans actifs', value: formatNumber(totalClans), hint: 'Clans qui comptent au moins un membre.' },
+            { label: 'Guildes actives', value: formatNumber(totalClans), hint: 'Guildes qui comptent au moins un membre.' },
             { label: 'Membres en clan', value: formatNumber(totalClanMembers), hint: 'Somme des membres dans tous les clans.' },
           ],
         },

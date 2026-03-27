@@ -9,55 +9,9 @@ import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { toast } from 'sonner';
 import {
-  Coins, Loader2, Package, Sparkles, Zap, TrendingUp,
-  Timer, Flame, Star, Gamepad2, RotateCcw, ShoppingCart,
+  Loader2, Package,
+  Timer, Gamepad2, RotateCcw, ShoppingCart,
 } from 'lucide-react';
-
-// ─── Category config ───────────────────────────────────────────────────────────
-
-const CATEGORY_CFG: Record<string, {
-  Icon: React.ComponentType<{ className?: string }>;
-  color: string;
-  strip: string;
-  headerBg: string;
-  headerText: string;
-  priceBadge: string;
-  buyBtn: string;
-  pillActive: string;
-}> = {
-  COSMETIC: {
-    Icon: Sparkles,
-    color: 'text-violet-500',
-    strip: 'from-violet-500/80 to-violet-400/40',
-    headerBg: 'border-violet-500/25 bg-violet-500/5',
-    headerText: 'text-foreground',
-    priceBadge: 'bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/30',
-    buyBtn: 'bg-foreground text-background hover:bg-foreground/90',
-    pillActive: 'bg-violet-500/10 text-foreground border-violet-500/30',
-  },
-  CONSUMABLE: {
-    Icon: Zap,
-    color: 'text-amber-500',
-    strip: 'from-amber-500/80 to-amber-300/40',
-    headerBg: 'border-amber-500/25 bg-amber-500/5',
-    headerText: 'text-foreground',
-    priceBadge: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30',
-    buyBtn: 'bg-foreground text-background hover:bg-foreground/90',
-    pillActive: 'bg-amber-500/10 text-foreground border-amber-500/30',
-  },
-  UPGRADE: {
-    Icon: TrendingUp,
-    color: 'text-sky-500',
-    strip: 'from-sky-500/80 to-sky-300/40',
-    headerBg: 'border-sky-500/25 bg-sky-500/5',
-    headerText: 'text-foreground',
-    priceBadge: 'bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30',
-    buyBtn: 'bg-foreground text-background hover:bg-foreground/90',
-    pillActive: 'bg-sky-500/10 text-foreground border-sky-500/30',
-  },
-};
-
-const FALLBACK_CFG = CATEGORY_CFG.COSMETIC;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -82,7 +36,7 @@ const getEffectLabel = (effect: string | null) => {
     if (p.type === 'USERNAME_COLOR') return 'Couleur de pseudo';
     if (p.type === 'PROFILE_PICTURE') return 'Photo de profil';
     if (p.type === 'PROFILE_BANNER') return 'Banniere de profil';
-    if (p.type === 'DOODLE_JUMP_SKIN') return 'Skin Doodle Jump';
+    if (p.type === 'DOODLE_JUMP_SKIN') return 'Apparence Doodle Jump';
     if (p.type === 'CLAN_GAME_MONEY_BOOST') return `Boost clan +${p.percentage ?? 0}%`;
     if (p.type === 'CLAN_BANNER') return 'Bannière de clan';
   } catch { /**/ }
@@ -238,10 +192,7 @@ function useCountdown(targetIso: string | null): string {
 // ─── Price color helper ────────────────────────────────────────────────────────
 
 function priceColor(price: number) {
-  if (price === 0) return 'text-green-400';
-  if (price <= 100) return 'text-emerald-400';
-  if (price <= 500) return 'text-amber-400';
-  return 'text-red-400';
+  return price === 0 ? 'text-foreground' : 'text-muted-foreground';
 }
 
 // ─── ShopCard ─────────────────────────────────────────────────────────────────
@@ -275,7 +226,6 @@ function ShopCard({
     ? (clanStatus?.clanBankMoney ?? 0) >= item.price
     : (user?.money ?? 0) >= item.price;
   const skinUrl = getSkinImageUrl(item.effect);
-  const cfg = CATEGORY_CFG[item.type] ?? FALLBACK_CFG;
   const isBuying = buyingItemId === item.id;
   const isOwnedSkin = isDoodleJumpSkin(item) && ownedSkinItemIds.has(item.id);
 
@@ -287,26 +237,21 @@ function ShopCard({
           <img
             src={resolveImageUrl(item.imageUrl)}
             alt={item.name}
-            className="h-44 w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className="h-44 w-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
         </div>
       );
     }
     return (
-      <div className={cn('flex h-36 w-full items-center justify-center', cfg.headerBg.split(' ')[0])}>
-        <Package className={cn('h-12 w-12 opacity-40', cfg.color)} />
+      <div className="flex h-36 w-full items-center justify-center bg-muted/20">
+        <Package className="h-12 w-12 opacity-30 text-muted-foreground" />
       </div>
     );
   };
 
   return (
-    <Card className={cn(
-      'group overflow-hidden border-border/60 shadow-sm transition-all duration-200',
-      'hover:-translate-y-0.5 hover:border-border hover:shadow-md',
-    )}>
-      {/* Colored accent strip */}
-      <div className={cn('h-0.5 w-full bg-gradient-to-r', cfg.strip)} />
+    <Card className="overflow-hidden border-border/60 bg-card shadow-none">
       <CardContent className="p-0">
         {renderMedia()}
         <div className="space-y-3 p-4">
@@ -314,19 +259,12 @@ function ShopCard({
             <div className="min-w-0 flex-1">
               <h3 className="truncate font-semibold text-foreground">{item.name}</h3>
               {effectLabel && (
-                <span className={cn(
-                  'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium border mt-1',
-                  cfg.priceBadge,
-                )}>
-                  <cfg.Icon className="h-3 w-3" />
+                <span className="mt-1 inline-flex items-center rounded-full border border-border/60 px-2 py-0.5 text-xs font-medium text-muted-foreground">
                   {effectLabel}
                 </span>
               )}
             </div>
-            <div className={cn(
-              'shrink-0 rounded-lg border px-2.5 py-1 text-sm font-bold tabular-nums',
-              cfg.priceBadge,
-            )}>
+            <div className="shrink-0 rounded-lg border border-border/60 px-2.5 py-1 text-sm font-medium tabular-nums text-muted-foreground">
               ${item.price}
             </div>
           </div>
@@ -337,10 +275,10 @@ function ShopCard({
             onClick={() => onPurchase(item)}
             disabled={!canAfford || isBuying || isOwnedSkin || isAlreadyPurchased}
             className={cn(
-              'w-full rounded-lg text-sm font-semibold transition-all duration-150',
+              'w-full rounded-lg border text-sm font-medium',
               canAfford && !isBuying && !isOwnedSkin && !isAlreadyPurchased
-                ? cn(cfg.buyBtn)
-                : 'bg-muted/20 text-muted-foreground/50 border border-border/20',
+                ? 'border-border/60 bg-transparent text-foreground'
+                : 'border-border/40 bg-muted/20 text-muted-foreground/50',
             )}
           >
             <span className="flex items-center justify-center gap-2">
@@ -384,13 +322,12 @@ function DjSkinCard({
   const isOwnedSkin = ownedSkinItemIds.has(item.id);
 
   return (
-    <Card className="group overflow-hidden border-border/60 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-md">
-      <div className="h-0.5 bg-gradient-to-r from-violet-500/80 to-violet-300/40" />
+    <Card className="overflow-hidden border-border/60 bg-card shadow-none">
       <CardContent className="p-0">
         {skinUrl
           ? <DoodleJumpSkinPreview skinImageUrl={skinUrl} />
-          : <div className="flex h-36 items-center justify-center bg-violet-500/5">
-              <Gamepad2 className="h-12 w-12 text-violet-500/40" />
+          : <div className="flex h-36 items-center justify-center bg-muted/20">
+              <Gamepad2 className="h-12 w-12 text-muted-foreground/40" />
             </div>
         }
         <div className="space-y-3 p-4">
@@ -405,10 +342,10 @@ function DjSkinCard({
             onClick={() => onPurchase(item)}
             disabled={!canAfford || isBuying || isOwnedSkin}
             className={cn(
-              'w-full rounded-lg text-sm font-semibold transition-all duration-150',
+              'w-full rounded-lg border text-sm font-medium',
               canAfford && !isBuying && !isOwnedSkin
-                ? 'bg-foreground text-background hover:bg-foreground/90'
-                : 'bg-muted/20 text-muted-foreground/50 border border-border/20',
+                ? 'border-border/60 bg-transparent text-foreground'
+                : 'border-border/40 bg-muted/20 text-muted-foreground/50',
             )}
           >
             <span className="flex items-center justify-center gap-2">
@@ -464,21 +401,21 @@ function DoodleJumpShopSection({
   if (!loading && !hasStatic && !hasRotating) return null;
 
   return (
-    <div className="space-y-6 rounded-xl border border-border/60 bg-card p-5 shadow-sm md:p-6">
+    <div className="space-y-6 rounded-xl border border-border/60 bg-card p-5 shadow-none md:p-6">
       {/* Section header */}
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-500/10">
-          <Gamepad2 className="h-5 w-5 text-violet-400" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border/60 bg-muted/20">
+          <Gamepad2 className="h-5 w-5 text-muted-foreground" />
         </div>
         <div>
-          <h2 className="text-base font-semibold tracking-tight">Skins Doodle Jump</h2>
+          <h2 className="text-base font-semibold tracking-tight">Apparences Doodle Jump</h2>
           <p className="text-xs text-muted-foreground">Personnalise ton personnage dans Doodle Jump</p>
         </div>
       </div>
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-violet-400" />
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : (
         <div className="space-y-8">
@@ -486,11 +423,11 @@ function DoodleJumpShopSection({
           {/* Rotating / daily skins — first */}
           {hasRotating && (
             <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-orange-500/25 bg-orange-500/10 px-3 py-1 text-xs font-semibold text-orange-700 dark:text-orange-300">
-                  <Flame className="h-3.5 w-3.5" />
-                  SKINS DU JOUR
-                </span>
+              <div className="flex items-center gap-3">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-foreground/90">
+                  Apparences du jour
+                </h3>
+                <div className="h-px flex-1 bg-border/70" />
                 {countdown && (
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-border/50 bg-muted/30 px-2.5 py-1 text-xs text-muted-foreground">
                     <Timer className="h-3 w-3" />
@@ -517,11 +454,11 @@ function DoodleJumpShopSection({
           {/* Static / permanent skins — below */}
           {hasStatic && (
             <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-700 dark:text-violet-300">
-                  <Star className="h-3.5 w-3.5" />
-                  SKINS PERMANENTS
-                </span>
+              <div className="flex items-center gap-3">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-foreground/90">
+                  Apparences permanentes
+                </h3>
+                <div className="h-px flex-1 bg-border/70" />
                 <span className="text-xs text-muted-foreground">Toujours disponibles</span>
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -681,11 +618,11 @@ export default function Shop() {
           : isClanBannerPurchase
           ? 'Bannière de clan achetée'
           : isDj
-          ? `Skin "${item.name}" débloqué !`
+          ? `Apparence "${item.name}" débloquée !`
           : 'Achat confirme',
         {
           description: isClanTagUnlock
-            ? 'Le tag est maintenant actif pour ton clan. Va dans Clans pour le personnaliser.'
+            ? 'Le tag est maintenant actif pour ton clan. Va dans Guildes pour le personnaliser.'
             : isClanSlotUpgrade
             ? 'Ton clan gagne un membre maximum supplémentaire.'
             : isClanMoneyBoost
@@ -708,31 +645,17 @@ export default function Shop() {
   return (
     <PageShell>
       <Tabs value={filter} onValueChange={setFilter} className="space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <TabsList className="h-auto flex-wrap">
-            {VIRTUAL_FILTERS.map(entry => {
-              const cfg = entry.value === 'ALL'
-                ? null
-                : entry.value === 'DOODLE_JUMP'
-                  ? null
-                  : CATEGORY_CFG[entry.value];
-
-              return (
-                <TabsTrigger key={entry.value} value={entry.value}>
-                  {cfg && <cfg.Icon className="h-3.5 w-3.5" />}
-                  {entry.value === 'DOODLE_JUMP' && <Gamepad2 className="h-3.5 w-3.5" />}
-                  {entry.label}
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
-
-          <div className="inline-flex items-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-sm">
-            <Coins className="h-4 w-4 text-amber-500" />
-            <span className="text-muted-foreground">Solde</span>
-            <span className="font-semibold tabular-nums text-foreground">${user?.money ?? 0}</span>
-          </div>
-        </div>
+        <TabsList className="h-auto flex-wrap border-border/60 bg-muted/20">
+          {VIRTUAL_FILTERS.map(entry => (
+            <TabsTrigger
+              key={entry.value}
+              value={entry.value}
+              className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground"
+            >
+              {entry.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
         {loading ? (
           <div className="flex justify-center py-20">
@@ -749,18 +672,14 @@ export default function Shop() {
               />
 
               {sections.map(section => {
-                const cfg = CATEGORY_CFG[section.id];
                 return (
                   <div key={section.id} className="space-y-4">
-                    <div className={cn(
-                      'flex items-center gap-3 rounded-lg border px-4 py-3 shadow-sm',
-                      cfg?.headerBg ?? 'border-border/60 bg-muted/20',
-                    )}>
-                      {cfg && <cfg.Icon className={cn('h-4 w-4', cfg.color)} />}
-                      <span className={cn('font-semibold text-sm', cfg?.headerText ?? 'text-foreground')}>
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/90">
                         {section.label}
-                      </span>
-                      <span className="ml-auto rounded-full border border-border/40 bg-background/80 px-2 py-0.5 text-xs text-muted-foreground">
+                      </h2>
+                      <div className="h-px flex-1 bg-border/70" />
+                      <span className="text-xs text-muted-foreground">
                         {section.items.length}
                       </span>
                     </div>

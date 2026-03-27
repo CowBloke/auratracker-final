@@ -719,8 +719,8 @@ export default function BallArena() {
     return (
       <PageShell>
         <PageHeader
-          title="Ball Arena"
-          description={selectedMode === 'multiplayer' ? "Arène libre en party, 2 joueurs ou plus." : "Propulse ton adversaire hors de l'arène."}
+          title="Arène des balles"
+          description={selectedMode === 'multiplayer' ? "Arène libre en groupe, 2 joueurs ou plus." : "Propulse ton adversaire hors de l'arène."}
           actions={(
             <Button asChild variant="outline" size="sm">
               <Link to="/games" className="inline-flex items-center gap-2">
@@ -736,8 +736,8 @@ export default function BallArena() {
           <CardContent className="space-y-4 px-6 py-10 text-center">
             <p className="text-sm text-muted-foreground">
               {selectedMode === 'duo'
-                ? 'Duel 1v1 avec invitation directe ou via une party.'
-                : 'Mode libre à 2 joueurs ou plus. Lance-le depuis une party pour embarquer tout le groupe.'}
+                ? 'Duel 1v1 avec invitation directe ou via un groupe.'
+                : 'Mode libre à 2 joueurs ou plus. Lance-le depuis un groupe pour embarquer toute l’équipe.'}
             </p>
             <div className="mx-auto flex max-w-xs flex-col gap-2">
               {selectedMode === 'duo' ? (
@@ -747,12 +747,12 @@ export default function BallArena() {
               ) : (
                 <Button asChild>
                   <Link to="/party" className="inline-flex items-center justify-center gap-2">
-                    <Users className="h-4 w-4" />Ouvrir une party
+                    <Users className="h-4 w-4" />Ouvrir un groupe
                   </Link>
                 </Button>
               )}
               <Button asChild variant="outline">
-                <Link to="/party">Via une party</Link>
+                <Link to="/party">Via un groupe</Link>
               </Button>
             </div>
           </CardContent>
@@ -762,7 +762,7 @@ export default function BallArena() {
           <DialogContent className="sm:max-w-sm">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 font-normal">
-                <Swords className="h-4 w-4" />Défier en Ball Arena
+                <Swords className="h-4 w-4" />Défier dans l'arène des balles
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
@@ -813,7 +813,7 @@ export default function BallArena() {
     return (
       <PageShell>
         <PageHeader
-          title="Ball Arena"
+          title="Arène des balles"
           description={`${getModeLabel(selectedMode)} : ${currentParty.name || 'Sans nom'}`}
           actions={(
             <Button asChild variant="outline" size="sm">
@@ -829,7 +829,7 @@ export default function BallArena() {
         <Card>
           <CardContent className="space-y-4 p-6">
             <div className="flex items-center justify-between gap-4">
-              <h2 className="text-sm text-muted-foreground">Joueurs dans la party ({partyMembers.length}/{currentParty.maxSize})</h2>
+              <h2 className="text-sm text-muted-foreground">Joueurs du groupe ({partyMembers.length}/{currentParty.maxSize})</h2>
               <span className="text-xs text-muted-foreground">{selectedMode === 'duo' ? '1v1 strict' : 'FFA 2+'}</span>
             </div>
             <div className="space-y-0">
@@ -848,7 +848,7 @@ export default function BallArena() {
 
         <p className="text-center text-sm text-muted-foreground">
           {selectedMode === 'duo'
-            ? 'Le mode duo demande exactement 2 joueurs dans la party.'
+            ? 'Le mode duo demande exactement 2 joueurs dans le groupe.'
             : 'Le mode multijoueur lance une arène libre avec tous les joueurs qui acceptent.'}
         </p>
 
@@ -880,7 +880,7 @@ export default function BallArena() {
   return (
     <PageShell>
       <PageHeader
-        title="Ball Arena"
+        title="Arène des balles"
         description={`${getModeLabel(currentMode)} : ${currentParty.name || 'Sans nom'}`}
         actions={(
           <>
@@ -1175,7 +1175,7 @@ function ReplayModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-sm font-normal">
             <RotateCcw className="h-4 w-4" />
-            Replay
+            Rejouer
             <span className="ml-auto text-xs text-muted-foreground">
               {players.map((player, index) => (
                 <span key={player.userId}>
@@ -1208,7 +1208,7 @@ function ReplayModal({
           <div className="flex items-center gap-2">
             <Button size="sm" variant="ghost" onClick={() => setPlaying((value) => !value)} className="gap-1.5 px-3">
               {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-              {playing ? 'Pause' : 'Play'}
+              {playing ? 'Pause' : 'Jouer'}
             </Button>
             <Button size="sm" variant="ghost" onClick={handleRestart} className="gap-1.5 px-3">
               <RotateCcw className="h-3.5 w-3.5" />
