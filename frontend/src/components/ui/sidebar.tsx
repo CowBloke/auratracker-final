@@ -32,13 +32,6 @@ const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
-function getCookieValue(name: string) {
-  if (typeof document === "undefined") {
-    return null
-  }
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))
-  return match ? decodeURIComponent(match[1]) : null
-}
 
 type SidebarContextProps = {
   state: "expanded" | "collapsed"
