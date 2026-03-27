@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { PageShell } from '@/components/layout/page-shell';
 import { useTheme } from '@/contexts/ThemeContext';
 import { resolveThemeImageUrl } from '@/lib/images';
+import { getCasinoGameImage } from '@/lib/game-images';
 
 type GameTab = 'roulette' | 'slots' | 'blackjack';
 
@@ -519,19 +520,19 @@ export default function Casino() {
       id: 'roulette',
       title: 'Roulette',
       subtitle: 'Tirage instantane',
-      image: '/images/games/casino.png',
+      image: getCasinoGameImage('roulette'),
     },
     {
       id: 'slots',
       title: 'Machine a sous',
       subtitle: 'Partie rapide',
-      image: '/images/games/cashmachine.png',
+      image: getCasinoGameImage('slots'),
     },
     {
       id: 'blackjack',
       title: 'Blackjack',
       subtitle: 'Jeu de cartes',
-      image: '/images/games/blackjack.png',
+      image: getCasinoGameImage('blackjack'),
     },
   ];
 

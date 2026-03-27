@@ -19,6 +19,7 @@ import { PageShell } from '@/components/layout/page-shell';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { useTheme } from '@/contexts/ThemeContext';
 import { resolveThemeImageUrl } from '@/lib/images';
+import { getGameImage } from '@/lib/game-images';
 
 interface User {
   id: string;
@@ -32,28 +33,28 @@ const multiplayerGames = [
     name: 'Bombe de mots',
     description: 'Trouve des mots contenant les lettres avant que la bombe explose.',
     type: 'Groupe',
-    image: '/images/games/bombparty.png',
+    image: getGameImage('bomb-party'),
   },
   {
     id: 'petit-bac',
     name: 'Petit Bac',
     description: 'Remplis les categories avec la bonne lettre avant la fin du temps.',
     type: 'Groupe',
-    image: '/images/games/petitbac.png',
+    image: getGameImage('petit-bac'),
   },
   {
     id: 'poker',
     name: 'Poker',
     description: 'Joue une table entre amis, blindes et stack personnalisables.',
     type: 'Groupe',
-    image: '/images/games/poker.png',
+    image: getGameImage('poker'),
   },
   {
     id: 'levier-infernal',
     name: 'Levier Infernal',
     description: 'Choisis un levier, prie pour survivre et laisse le classement se jouer aux victoires.',
     type: 'Groupe',
-    image: '/images/games/rouletterusse.png',
+    image: getGameImage('levier-infernal'),
   },
 ];
 
@@ -63,28 +64,28 @@ const duelGames = [
     name: 'Bataille Navale',
     description: 'Place tes bateaux et coule ceux de ton adversaire.',
     type: 'Duel',
-    image: '/images/games/bataillenavale.png',
+    image: getGameImage('bataille-navale'),
   },
   {
     id: 'puissance-quatre',
     name: 'Puissance 4',
     description: 'Aligne 4 jetons avant ton adversaire.',
     type: 'Duel',
-    image: '/images/games/puissance4.png',
+    image: getGameImage('puissance-quatre'),
   },
   {
     id: 'echecs',
     name: 'Échecs',
     description: 'Joue une partie complète avec toutes les règles standard.',
     type: 'Duel',
-    image: '/images/games/chess.png',
+    image: getGameImage('echecs'),
   },
   {
     id: 'morpion',
     name: 'Morpion',
     description: 'Un duel rapide: aligne 3 symboles avant ton adversaire.',
     type: 'Duel',
-    image: '/images/games/puissance4.png',
+    image: getGameImage('morpion'),
   },
 ];
 

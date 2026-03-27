@@ -32,6 +32,7 @@ import { AreaChart, Area, XAxis, YAxis } from 'recharts';
 import { useTheme } from '@/contexts/ThemeContext';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { resolveThemeImageUrl } from '@/lib/images';
+import { getGameImage } from '@/lib/game-images';
 import { cn } from '@/lib/utils';
 
 interface GameShortcut {
@@ -81,21 +82,21 @@ const pickWelcomeMessage = (username?: string) => {
 };
 
 const gameShortcuts: GameShortcut[] = [
-  { id: 'levier-infernal', label: 'Levier Infernal', path: '/games/levier-infernal', description: 'Leviers, bluff et explosion.', image: '/images/games/rouletterusse.png' },
-  { id: 'bomb-party', label: 'Bombe de mots', path: '/games/bomb-party', description: 'Mots explosifs en équipe.', image: '/images/games/bombparty.png' },
-  { id: 'poker', label: 'Poker', path: '/games/poker', description: 'Table rapide, mise prudente.', image: '/images/games/poker.png' },
-  { id: 'petit-bac', label: 'Petit Bac', path: '/games/petit-bac', description: 'Catégories, lettres, vitesse.', image: '/images/games/petitbac.png' },
-  { id: 'casino', label: 'Casino', path: '/games/casino', description: 'Mini-jeux et mises rapides.', image: '/images/games/casino.png' },
-  { id: 'aura-coin', label: 'Aura Coin', path: '/games/aura-coin', description: 'Suivi des pièces aura.', image: '/images/games/auracoin.png' },
+  { id: 'levier-infernal', label: 'Levier Infernal', path: '/games/levier-infernal', description: 'Leviers, bluff et explosion.', image: getGameImage('levier-infernal') },
+  { id: 'bomb-party', label: 'Bombe de mots', path: '/games/bomb-party', description: 'Mots explosifs en équipe.', image: getGameImage('bomb-party') },
+  { id: 'poker', label: 'Poker', path: '/games/poker', description: 'Table rapide, mise prudente.', image: getGameImage('poker') },
+  { id: 'petit-bac', label: 'Petit Bac', path: '/games/petit-bac', description: 'Catégories, lettres, vitesse.', image: getGameImage('petit-bac') },
+  { id: 'casino', label: 'Casino', path: '/games/casino', description: 'Mini-jeux et mises rapides.', image: getGameImage('casino') },
+  { id: 'aura-coin', label: 'Aura Coin', path: '/games/aura-coin', description: 'Suivi des pièces aura.', image: getGameImage('aura-coin') },
   { id: 'polymarket', label: 'Polymarket', path: '/polymarket', description: 'Paris en temps réel.' },
-  { id: 'doodle-jump', label: 'Doodle Jump', path: '/games/doodle-jump', description: 'Grimpe sans fin.', image: '/images/games/doodlejump.png' },
-  { id: '2048', label: '2048', path: '/games/2048', description: "Fusionne jusqu'à 2048.", image: '/images/games/2048.png' },
-  { id: 'flappy-bird', label: 'Flappy Bird', path: '/games/flappy-bird', description: 'Timing parfait.', image: '/images/games/flappybird.png' },
-  { id: 'bataille-navale', label: 'Bataille Navale', path: '/games/bataille-navale', description: 'Touches, coulés, gagne.', image: '/images/games/bataillenavale.png' },
-  { id: 'solitaire', label: 'Solitaire', path: '/games/solitaire', description: 'Classique et relax.', image: '/images/games/solitaire.png' },
-  { id: 'racer', label: 'Racer', path: '/games/racer', description: 'Course pseudo-3D style Outrun.', image: '/images/games/racer.png' },
-  { id: 'tetris', label: 'Tetris', path: '/games/tetris', description: 'Puzzle classique et addictif.', image: '/images/games/tetris.png' },
-  { id: 'knife-hit', label: 'Knife Hit', path: '/games/knife-hit', description: 'Timing sec et précision.', image: '/images/games/knifehit.png' },
+  { id: 'doodle-jump', label: 'Doodle Jump', path: '/games/doodle-jump', description: 'Grimpe sans fin.', image: getGameImage('doodle-jump') },
+  { id: '2048', label: '2048', path: '/games/2048', description: "Fusionne jusqu'à 2048.", image: getGameImage('game-2048') },
+  { id: 'flappy-bird', label: 'Flappy Bird', path: '/games/flappy-bird', description: 'Timing parfait.', image: getGameImage('flappy-bird') },
+  { id: 'bataille-navale', label: 'Bataille Navale', path: '/games/bataille-navale', description: 'Touches, coulés, gagne.', image: getGameImage('bataille-navale') },
+  { id: 'solitaire', label: 'Solitaire', path: '/games/solitaire', description: 'Classique et relax.', image: getGameImage('solitaire') },
+  { id: 'racer', label: 'Racer', path: '/games/racer', description: 'Course pseudo-3D style Outrun.', image: getGameImage('racer') },
+  { id: 'tetris', label: 'Tetris', path: '/games/tetris', description: 'Puzzle classique et addictif.', image: getGameImage('tetris') },
+  { id: 'knife-hit', label: 'Knife Hit', path: '/games/knife-hit', description: 'Timing sec et précision.', image: getGameImage('knife-hit') },
 ];
 
 const legacyDefaultShortcuts = [

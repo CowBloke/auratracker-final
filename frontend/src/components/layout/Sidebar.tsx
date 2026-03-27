@@ -46,6 +46,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { resolveImageUrl } from '@/lib/images';
+import { getGameImage } from '@/lib/game-images';
 import BugReportPanel from '@/components/layout/BugReportPanel';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { useFeatures } from '@/contexts/FeaturesContext';
@@ -76,37 +77,37 @@ const adminItems = [
 ];
 
 const gameItems = [
-  { to: '/games/levier-infernal', label: 'Levier Infernal', image: '/images/games/leviers.png' },
-  { to: '/games/russian-roulette', label: 'Roulette russe', image: '/images/games/rouletterusse.png' },
-  { to: '/games/bomb-party', label: 'Bombe de mots', image: '/images/games/bombparty.png' },
-  { to: '/games/poker', label: 'Poker', image: '/images/games/poker.png' },
-  { to: '/games/petit-bac', label: 'Petit Bac', image: '/images/games/petitbac.png' },
-  { to: '/games/uno', label: 'UNO', image: '/images/games/uno.png' },
-  { to: '/games/bataille-navale', label: 'Bataille Navale', image: '/images/games/bataillenavale.png' },
-  { to: '/games/doodle-jump', label: 'Doodle Jump', image: '/images/games/doodlejump.png' },
-  { to: '/games/logic-lab', label: 'Sudoku', image: '/images/games/sudoku.png' },
-  { to: '/games/minesweeper', label: 'Démineur', image: '/images/games/minesweeper.png' },
-  { to: '/games/2048', label: '2048', image: '/images/games/2048.png' },
-  { to: '/games/flappy-bird', label: 'Flappy Bird', image: '/images/games/flappybird.png' },
-  { to: '/games/chrome-dino', label: 'Chrome Dino', image: '/images/games/dino.png' },
-  { to: '/games/fruit-ninja', label: 'Fruit Ninja', image: '/images/games/fruitninja.png' },
-  { to: '/games/qs-watermelon', label: 'QS Watermelon', image: '/images/games/suika.png' },
-  { to: '/games/stack-tower', label: 'Tour empilée', image: '/images/games/stack.png' },
-  { to: '/games/geometry-dash', label: 'Geometry Dash', image: '/images/games/geometrydash.png' },
-  { to: '/games/casino', label: 'Casino', image: '/images/games/casino.png' },
-  { to: '/games/aura-coin', label: 'Aura Coin', image: '/images/games/auracoin.png' },
-  { to: '/games/solitaire', label: 'Solitaire', image: '/images/games/solitaire.png' },
-  { to: '/games/racer', label: 'Racer', image: '/images/games/racer.png' },
-  { to: '/games/tetris', label: 'Tetris', image: '/images/games/tetris.png' },
-  { to: '/games/knife-hit', label: 'Knife Hit', image: '/images/games/knifehit.png' },
-  { to: '/games/clash-village', label: 'Clash Village', image: '/images/games/clash.png' },
-  { to: '/games/goyave-empire', label: 'Goyave Empire', image: '/images/games/goyaveempire.png' },
-  { to: '/games/polytrack', label: 'PolyTrack', image: '/images/games/polytrack.png' },
-  { to: '/games/eaglercraft', label: 'Eaglercraft', image: '/images/games/minecraft.png' },
-  { to: '/games/puissance-quatre', label: 'Puissance 4', image: '/images/games/puissance4.png' },
-  { to: '/games/echecs', label: 'Échecs', image: '/images/games/chess.png' },
-  { to: '/games/ball-arena', label: 'Arène des balles', image: '/images/games/ballarena.png' },
-  { to: '/games/morpion', label: 'Morpion', image: '/images/games/morpion.png' },
+  { to: '/games/levier-infernal', label: 'Levier Infernal', image: getGameImage('levier-infernal') },
+  { to: '/games/russian-roulette', label: 'Roulette russe', image: getGameImage('russian-roulette') },
+  { to: '/games/bomb-party', label: 'Bombe de mots', image: getGameImage('bomb-party') },
+  { to: '/games/poker', label: 'Poker', image: getGameImage('poker') },
+  { to: '/games/petit-bac', label: 'Petit Bac', image: getGameImage('petit-bac') },
+  { to: '/games/uno', label: 'UNO', image: getGameImage('uno') },
+  { to: '/games/bataille-navale', label: 'Bataille Navale', image: getGameImage('bataille-navale') },
+  { to: '/games/doodle-jump', label: 'Doodle Jump', image: getGameImage('doodle-jump') },
+  { to: '/games/logic-lab', label: 'Sudoku', image: getGameImage('logic-lab') },
+  { to: '/games/minesweeper', label: 'Démineur', image: getGameImage('minesweeper') },
+  { to: '/games/2048', label: '2048', image: getGameImage('game-2048') },
+  { to: '/games/flappy-bird', label: 'Flappy Bird', image: getGameImage('flappy-bird') },
+  { to: '/games/chrome-dino', label: 'Chrome Dino', image: getGameImage('chrome-dino') },
+  { to: '/games/fruit-ninja', label: 'Fruit Ninja', image: getGameImage('fruit-ninja') },
+  { to: '/games/qs-watermelon', label: 'QS Watermelon', image: getGameImage('qs-watermelon') },
+  { to: '/games/stack-tower', label: 'Tour empilée', image: getGameImage('stack-tower') },
+  { to: '/games/geometry-dash', label: 'Geometry Dash', image: getGameImage('geometry-dash') },
+  { to: '/games/casino', label: 'Casino', image: getGameImage('casino') },
+  { to: '/games/aura-coin', label: 'Aura Coin', image: getGameImage('aura-coin') },
+  { to: '/games/solitaire', label: 'Solitaire', image: getGameImage('solitaire') },
+  { to: '/games/racer', label: 'Racer', image: getGameImage('racer') },
+  { to: '/games/tetris', label: 'Tetris', image: getGameImage('tetris') },
+  { to: '/games/knife-hit', label: 'Knife Hit', image: getGameImage('knife-hit') },
+  { to: '/games/clash-village', label: 'Clash Village', image: getGameImage('clash-village') },
+  { to: '/games/goyave-empire', label: 'Goyave Empire', image: getGameImage('goyave-empire') },
+  { to: '/games/polytrack', label: 'PolyTrack', image: getGameImage('polytrack') },
+  { to: '/games/eaglercraft', label: 'Eaglercraft', image: getGameImage('eaglercraft') },
+  { to: '/games/puissance-quatre', label: 'Puissance 4', image: getGameImage('puissance-quatre') },
+  { to: '/games/echecs', label: 'Échecs', image: getGameImage('echecs') },
+  { to: '/games/ball-arena', label: 'Arène des balles', image: getGameImage('ball-arena') },
+  { to: '/games/morpion', label: 'Morpion', image: getGameImage('morpion') },
 ];
 
 function GameSidebarIcon({ src, alt }: { src: string; alt: string }) {
