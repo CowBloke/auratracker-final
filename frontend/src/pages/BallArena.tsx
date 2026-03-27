@@ -456,6 +456,7 @@ export default function BallArena() {
 
   const isLeader = partyMembers.find((member) => member.userId === user?.id)?.isLeader;
   const myPlayer = gameState?.players.find((player) => player.userId === user?.id);
+  const alivePlayers = useMemo(() => gameState?.players.filter((player) => !player.isOut) ?? [], [gameState?.players]);
   const winnerPlayer = gameState?.players.find((player) => player.userId === gameState.winnerId);
   const currentMode = gameState?.mode ?? selectedMode;
   const requiredPlayerText = selectedMode === 'duo' ? 'exactement 2 joueurs' : 'au moins 2 joueurs';
@@ -649,7 +650,7 @@ export default function BallArena() {
   }
 
   const onPointerDown = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    if (!canvasRef.current || !gameState || gameState.phase !== 'prep' || !myPlayer) return;
+    if (!canvasRef.current || !gameState || gameState.phase !== 'prep' || !myPlayer || myPlayer.isOut) return;
     const { x, y } = getGameCoords(e, canvasRef.current);
     const dx = x - myPlayer.x;
     const dy = y - myPlayer.y;
@@ -669,7 +670,7 @@ export default function BallArena() {
   }, []);
 
   const onPointerUp = useCallback(() => {
-    if (!dragRef.current?.active || !socket || !currentParty || !gameState || !myPlayer || gameState.phase !== 'prep') {
+    if (!dragRef.current?.active || !socket || !currentParty || !gameState || !myPlayer || myPlayer.isOut || gameState.phase !== 'prep') {
       dragRef.current = null;
       return;
     }
@@ -924,13 +925,14 @@ export default function BallArena() {
               {prepSecsLeft}s
               {gameState.round > 1 && <span className="ml-3 text-base font-normal text-muted-foreground">Manche {gameState.round}</span>}
             </p>
-            {myPlayer && !myPlayer.hasSetDirection && <p>Glisse depuis ta balle pour choisir direction et vitesse.</p>}
-            {myPlayer?.hasSetDirection && (
+            {myPlayer?.isOut && <p className="text-red-400">Tu es éliminé pour le reste de la partie.</p>}
+            {myPlayer && !myPlayer.isOut && !myPlayer.hasSetDirection && <p>Glisse depuis ta balle pour choisir direction et vitesse.</p>}
+            {myPlayer && !myPlayer.isOut && myPlayer.hasSetDirection && (
               <p className="text-green-500">
                 Direction confirmée
-                {gameState.players.every((player) => player.hasSetDirection)
+                {alivePlayers.every((player) => player.hasSetDirection)
                   ? ' — lancement imminent !'
-                  : ` — attente des ${gameState.players.filter((player) => !player.hasSetDirection).length - (myPlayer.hasSetDirection ? 0 : 1)} autre(s) joueur(s)`}
+                  : ` — attente des ${alivePlayers.filter((player) => !player.hasSetDirection && player.userId !== myPlayer.userId).length} autre(s) joueur(s)`}
               </p>
             )}
           </>
@@ -959,8 +961,8 @@ export default function BallArena() {
           height={600}
           className={cn(
             'w-full max-w-[520px] aspect-square rounded-full border border-border/20 touch-none select-none',
-            gameState.phase === 'prep' && !myPlayer?.hasSetDirection && 'cursor-crosshair',
-            gameState.phase === 'prep' && myPlayer?.hasSetDirection && 'cursor-pointer',
+            gameState.phase === 'prep' && !myPlayer?.isOut && !myPlayer?.hasSetDirection && 'cursor-crosshair',
+            gameState.phase === 'prep' && !myPlayer?.isOut && myPlayer?.hasSetDirection && 'cursor-pointer',
           )}
           style={{ imageRendering: 'pixelated' }}
           onMouseDown={onPointerDown}

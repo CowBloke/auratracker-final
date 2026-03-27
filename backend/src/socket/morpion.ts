@@ -2,6 +2,7 @@ import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
 import { checkQuestProgress } from '../routes/quests.js';
 import { logGame } from '../utils/logger.js';
+import { getActiveClanMoneyBoostPercentsForUsers } from '../utils/clanEffects.js';
 import { duelPartyIds, deleteDuelParty } from './duelParties.js';
 
 type Cell = 0 | 1 | 2;
@@ -144,19 +145,24 @@ async function endGame(game: MorpionGame, io: Server, winnerId: string | null) {
   const drawReward = { aura: 5, money: 24 };
 
   try {
+    const boostPercents = await getActiveClanMoneyBoostPercentsForUsers(game.players.map((player) => player.userId));
+    const winnerMoneyReward = (userId: string, base: number) => base + Math.floor(base * ((boostPercents.get(userId) ?? 0) / 100));
+
     if (winnerId) {
       const winner = game.players.find((player) => player.userId === winnerId)!;
       const loser = game.players.find((player) => player.userId !== winnerId)!;
+      const resolvedWinnerReward = { ...winnerReward, money: winnerMoneyReward(winner.userId, winnerReward.money) };
+      const resolvedLoserReward = { ...loserReward, money: winnerMoneyReward(loser.userId, loserReward.money) };
 
       const [updatedWinner, updatedLoser] = await Promise.all([
         prisma.user.update({
           where: { id: winnerId },
-          data: { aura: { increment: winnerReward.aura }, money: { increment: winnerReward.money } },
+          data: { aura: { increment: resolvedWinnerReward.aura }, money: { increment: resolvedWinnerReward.money } },
           select: { id: true, aura: true, money: true },
         }),
         prisma.user.update({
           where: { id: loser.userId },
-          data: { money: { increment: loserReward.money } },
+          data: { money: { increment: resolvedLoserReward.money } },
           select: { id: true, aura: true, money: true },
         }),
       ]);
@@ -185,15 +191,15 @@ async function endGame(game: MorpionGame, io: Server, winnerId: string | null) {
         winnerId,
         winnerUsername: winner.username,
         isDraw: false,
-        rewards: { winner: winnerReward, loser: loserReward },
+        rewards: { winner: resolvedWinnerReward, loser: resolvedLoserReward },
       });
 
       logGame('game_complete', winner.userId, winner.username, {
         gameType: 'morpion',
         score: 1,
         won: true,
-        auraReward: winnerReward.aura,
-        moneyReward: winnerReward.money,
+        auraReward: resolvedWinnerReward.aura,
+        moneyReward: resolvedWinnerReward.money,
         isMultiplayer: true,
         partyId: game.partyId,
       });
@@ -202,8 +208,8 @@ async function endGame(game: MorpionGame, io: Server, winnerId: string | null) {
         gameType: 'morpion',
         score: 0,
         won: false,
-        auraReward: loserReward.aura,
-        moneyReward: loserReward.money,
+        auraReward: resolvedLoserReward.aura,
+        moneyReward: resolvedLoserReward.money,
         isMultiplayer: true,
         partyId: game.partyId,
       });
@@ -212,7 +218,10 @@ async function endGame(game: MorpionGame, io: Server, winnerId: string | null) {
         game.players.map((player) =>
           prisma.user.update({
             where: { id: player.userId },
-            data: { aura: { increment: drawReward.aura }, money: { increment: drawReward.money } },
+            data: {
+              aura: { increment: drawReward.aura },
+              money: { increment: winnerMoneyReward(player.userId, drawReward.money) },
+            },
             select: { id: true, aura: true, money: true },
           })
         )

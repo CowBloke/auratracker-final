@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 
 const HIDE_GAME_LEADERBOARDS_STORAGE_KEY = 'hideGameLeaderboards';
+const HIDE_GAME_LEFT_INFO_STORAGE_KEY = 'hideGameLeftInfo';
 const GAME_PREFERENCES_EVENT = 'game-preferences:change';
 
 function readHideGameLeaderboardsPreference() {
@@ -9,6 +10,14 @@ function readHideGameLeaderboardsPreference() {
   }
 
   return localStorage.getItem(HIDE_GAME_LEADERBOARDS_STORAGE_KEY) === '1';
+}
+
+function readHideGameLeftInfoPreference() {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  return localStorage.getItem(HIDE_GAME_LEFT_INFO_STORAGE_KEY) === '1';
 }
 
 function emitGamePreferencesChange() {
@@ -33,13 +42,30 @@ export function setHideGameLeaderboardsPreference(value: boolean) {
   emitGamePreferencesChange();
 }
 
+export function setHideGameLeftInfoPreference(value: boolean) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  if (value) {
+    localStorage.setItem(HIDE_GAME_LEFT_INFO_STORAGE_KEY, '1');
+  } else {
+    localStorage.removeItem(HIDE_GAME_LEFT_INFO_STORAGE_KEY);
+  }
+
+  emitGamePreferencesChange();
+}
+
 function subscribe(callback: () => void) {
   if (typeof window === 'undefined') {
     return () => {};
   }
 
   const handleStorage = (event: StorageEvent) => {
-    if (event.key === HIDE_GAME_LEADERBOARDS_STORAGE_KEY) {
+    if (
+      event.key === HIDE_GAME_LEADERBOARDS_STORAGE_KEY ||
+      event.key === HIDE_GAME_LEFT_INFO_STORAGE_KEY
+    ) {
       callback();
     }
   };
@@ -57,6 +83,14 @@ export function useHideGameLeaderboards() {
   return useSyncExternalStore(
     subscribe,
     readHideGameLeaderboardsPreference,
+    () => false
+  );
+}
+
+export function useHideGameLeftInfo() {
+  return useSyncExternalStore(
+    subscribe,
+    readHideGameLeftInfoPreference,
     () => false
   );
 }

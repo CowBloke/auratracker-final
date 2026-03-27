@@ -3,6 +3,7 @@ import { prisma } from '../server.js';
 import { checkQuestProgress } from '../routes/quests.js';
 import { logGame } from '../utils/logger.js';
 import { recheckBadgeForCondition } from '../utils/badgeAwards.js';
+import { getActiveClanMoneyBoostPercentsForUsers } from '../utils/clanEffects.js';
 import { readBombPartyDictionaryWords, resolveBombPartyLanguageFile } from '../utils/bombpartyDictionary.js';
 import { getBombPartyLanguageSetting, getBombPartyThreeLetterStartRound, getBombPartyWppSettings } from '../utils/bombpartySettings.js';
 
@@ -849,6 +850,8 @@ async function endGame(game: BombPartyGame, io: Server) {
   
   // Combined multiplier
   const totalMultiplier = livesMultiplier * playerCountMultiplier;
+  const boostPercents = await getActiveClanMoneyBoostPercentsForUsers(game.players.map((player) => player.userId));
+  const resolveMoneyReward = (userId: string, base: number) => base + Math.floor(base * ((boostPercents.get(userId) ?? 0) / 100));
 
   // Calculate rewards
   const rewards: { [userId: string]: { aura: number; money: number } } = {};
@@ -862,7 +865,7 @@ async function endGame(game: BombPartyGame, io: Server) {
       
       rewards[player.userId] = {
         aura: Math.floor(baseAura * totalMultiplier),
-        money: Math.floor(player.wordsTypedCount * baseMoneyPerWord * totalMultiplier),
+        money: resolveMoneyReward(player.userId, Math.floor(player.wordsTypedCount * baseMoneyPerWord * totalMultiplier)),
       };
     } else {
       // Others: base rewards scaled by multipliers
@@ -871,7 +874,7 @@ async function endGame(game: BombPartyGame, io: Server) {
       
       rewards[player.userId] = {
         aura: 0,
-        money: Math.floor(player.wordsTypedCount * baseMoneyPerWord * totalMultiplier),
+        money: resolveMoneyReward(player.userId, Math.floor(player.wordsTypedCount * baseMoneyPerWord * totalMultiplier)),
       };
     }
 

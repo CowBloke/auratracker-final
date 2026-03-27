@@ -46,14 +46,15 @@ import {
   Crosshair,
   Sparkles,
   CircleDollarSign,
+  Zap,
 } from 'lucide-react';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { InboxDropdown } from '@/components/inbox/InboxDropdown';
 import { PlayerHoverCard } from '@/components/ui/player-hover-card';
 
 export function SiteHeader() {
-  const { user } = useAuth();
-  const { connected } = useSocketBase();
+  const { user, refreshUser } = useAuth();
+  const { connected, socket } = useSocketBase();
   const { onlineUsers, onlineCount, requestOnlineUsers, doodleSpectateSessions, requestDoodleSpectateSessions, chessSpectateSessions, requestChessSpectateSessions, sendMessage } = useChatSocket();
   const { currentParty, partyMembers, publicParties, createParty, leaveParty, deleteParty, joinParty, fetchPublicParties } = usePartySocket();
   const { bombPartyGame, petitBacGame } = useGameSocket();
@@ -66,7 +67,24 @@ export function SiteHeader() {
   const [showParty, setShowParty] = useState(false);
   const [announcement, setAnnouncement] = useState('');
   const [scrolled, setScrolled] = useState(false);
+  const [now, setNow] = useState(Date.now());
   const canViewConnectedStatus = Boolean(user?.isAdmin || user?.isSuperAdmin);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!socket || !user) return;
+    const handleClanEffectsUpdated = () => {
+      void refreshUser();
+    };
+    socket.on('clan:effects-updated', handleClanEffectsUpdated);
+    return () => {
+      socket.off('clan:effects-updated', handleClanEffectsUpdated);
+    };
+  }, [socket, user?.id, refreshUser]);
 
   useEffect(() => {
     const mainEl = document.querySelector('main');
@@ -170,11 +188,25 @@ export function SiteHeader() {
     return items;
   }, [location.pathname]);
 
+  const clanEffects = user?.clanEffects ?? [];
+  const formatRemaining = (target: string | null) => {
+    if (!target) return '0m';
+    const diff = new Date(target).getTime() - now;
+    if (diff <= 0) return '0m';
+    const totalSeconds = Math.floor(diff / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    if (hours > 0) return `${hours}h ${minutes.toString().padStart(2, '0')}m`;
+    if (minutes > 0) return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
+    return `${seconds}s`;
+  };
+
   return (
     <header className={cn(
       "sticky top-0 z-10 flex h-14 items-center justify-between border-b px-6 transition-all duration-300",
       scrolled
-        ? "border-border/20 bg-background/60 backdrop-blur-md"
+        ? "border-border/20 bg-background"
         : "border-border/40 bg-background"
     )}>
       <div className="flex min-w-0 items-center gap-3">
@@ -605,6 +637,40 @@ export function SiteHeader() {
           </div>
 
           <InboxDropdown />
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="ghost" className="h-auto gap-2 px-0 py-0 text-sm text-muted-foreground hover:text-foreground">
+                <Zap className="h-4 w-4" />
+                <span>Effets</span>
+                <span className="text-xs text-foreground">{clanEffects.length}</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80">
+              <DropdownMenuLabel>Effets du clan</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {clanEffects.length === 0 ? (
+                <DropdownMenuItem disabled>Aucun effet actif ou en cooldown</DropdownMenuItem>
+              ) : (
+                clanEffects.map((effect) => (
+                  <DropdownMenuItem key={effect.id} onSelect={(event) => event.preventDefault()} className="flex flex-col items-start gap-1 py-3">
+                    <div className="flex w-full items-center justify-between gap-3">
+                      <span className="font-medium text-foreground">{effect.name}</span>
+                      <span className={cn('text-[10px] uppercase tracking-[0.18em]', effect.isActive ? 'text-emerald-400' : 'text-amber-400')}>
+                        {effect.isActive ? 'Actif' : 'Cooldown'}
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      +{effect.value}% d&apos;argent sur les récompenses de jeux
+                    </div>
+                    <div className="text-[11px] text-muted-foreground/80">
+                      {effect.isActive ? `Fin: ${formatRemaining(effect.activeUntil)}` : `Prêt dans: ${formatRemaining(effect.cooldownUntil)}`}
+                    </div>
+                  </DropdownMenuItem>
+                ))
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <div className="flex items-center gap-6 tabular-nums">
             <span className="inline-flex items-center gap-1.5 text-foreground">

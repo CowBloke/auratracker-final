@@ -6,6 +6,12 @@ import { logMarketplace } from '../utils/logger.js';
 import { isAllowedImageUrl } from '../utils/uploads.js';
 import { createNotification } from '../utils/notifications.js';
 import { awardBadge } from '../utils/badgeAwards.js';
+import {
+  buildClanEffectActivation,
+  CLAN_EFFECT_GAME_MONEY_BOOST,
+  isClanGameMoneyBoostEffect,
+  parseClanEffectPayload,
+} from '../utils/clanEffects.js';
 
 const router = Router();
 
@@ -18,14 +24,7 @@ const DEFAULT_SHOP_CATEGORIES = [
 
 const CLAN_BASE_MAX_MEMBERS = 5;
 
-const parseItemEffect = (effect: string | null) => {
-  if (!effect) return null;
-  try {
-    return JSON.parse(effect) as { type?: string };
-  } catch {
-    return null;
-  }
-};
+const parseItemEffect = parseClanEffectPayload;
 
 const isDoodleJumpSkinItem = (item: { effect: string | null }) =>
   parseItemEffect(item.effect)?.type === 'DOODLE_JUMP_SKIN';
@@ -130,7 +129,8 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
 
     const isClanTagUnlock = effect?.type === 'CLAN_TAG_UNLOCK';
     const isClanSlotUpgrade = effect?.type === 'CLAN_SLOT_UPGRADE';
-    const isClanUpgrade = isClanTagUnlock || isClanSlotUpgrade;
+    const isClanGameMoneyBoost = effect?.type === CLAN_EFFECT_GAME_MONEY_BOOST;
+    const isClanUpgrade = isClanTagUnlock || isClanSlotUpgrade || isClanGameMoneyBoost;
     const totalPrice = item.price * quantity;
     let clanUpgradeMembership: { clanId: string; isLeader: boolean } | null = null;
 
@@ -141,9 +141,9 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
 
       const membership = await prisma.clanMember.findUnique({
         where: { userId: req.user.id },
-        select: { clanId: true },
+        select: { clanId: true, isLeader: true },
       });
-      clanUpgradeMembership = membership ? { ...membership, isLeader: false } : null;
+      clanUpgradeMembership = membership ?? null;
 
       if (!membership) {
         return res.status(400).json({ error: 'Tu dois etre dans un clan pour acheter cette amélioration.' });
@@ -152,7 +152,20 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
 
       const clan = await prisma.clan.findUnique({
         where: { id: membership.clanId },
-        select: { tagUnlocked: true, maxMembers: true, clanBankMoney: true },
+        select: {
+          tagUnlocked: true,
+          maxMembers: true,
+          clanBankMoney: true,
+          activeEffects: isClanGameMoneyBoost
+            ? {
+                where: {
+                  type: CLAN_EFFECT_GAME_MONEY_BOOST,
+                  cooldownUntil: { gt: new Date() },
+                },
+                take: 1,
+              }
+            : false,
+        },
       });
 
       if (isClanTagUnlock && clan?.tagUnlocked) {
@@ -161,6 +174,10 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
 
       if (isClanSlotUpgrade && typeof clan?.maxMembers === 'number' && clan.maxMembers > CLAN_BASE_MAX_MEMBERS) {
         return res.status(400).json({ error: 'Le slot supplémentaire est déjà débloqué pour ce clan.' });
+      }
+
+      if (isClanGameMoneyBoost && clan?.activeEffects && clan.activeEffects.length > 0) {
+        return res.status(400).json({ error: 'Le boost de gains du clan est déjà actif ou en cooldown.' });
       }
 
       if (!clan || clan.clanBankMoney < totalPrice) {
@@ -189,7 +206,20 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
       const txResult = await prisma.$transaction(async (tx) => {
         const clan = await tx.clan.findUnique({
           where: { id: clanUpgradeMembership.clanId },
-          select: { tagUnlocked: true, maxMembers: true, clanBankMoney: true },
+          select: {
+            tagUnlocked: true,
+            maxMembers: true,
+            clanBankMoney: true,
+            activeEffects: isClanGameMoneyBoost
+              ? {
+                  where: {
+                    type: CLAN_EFFECT_GAME_MONEY_BOOST,
+                    cooldownUntil: { gt: new Date() },
+                  },
+                  take: 1,
+                }
+              : false,
+          },
         });
 
         if (!clan) {
@@ -202,6 +232,10 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
 
         if (isClanSlotUpgrade && clan.maxMembers > CLAN_BASE_MAX_MEMBERS) {
           throw new Error('CLAN_SLOT_ALREADY_UPGRADED');
+        }
+
+        if (isClanGameMoneyBoost && clan.activeEffects.length > 0) {
+          throw new Error('CLAN_EFFECT_ALREADY_ACTIVE_OR_COOLDOWN');
         }
 
         if (clan.clanBankMoney < totalPrice) {
@@ -232,6 +266,32 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
           newMaxMembers = updatedClan.maxMembers;
         }
 
+        if (isClanGameMoneyBoost) {
+          await tx.clan.update({
+            where: { id: clanUpgradeMembership.clanId },
+            data: {
+              clanBankMoney: { decrement: totalPrice },
+            },
+          });
+
+          await tx.clanOwnedItem.upsert({
+            where: {
+              clanId_itemId: {
+                clanId: clanUpgradeMembership.clanId,
+                itemId,
+              },
+            },
+            create: {
+              clanId: clanUpgradeMembership.clanId,
+              itemId,
+              quantity: 1,
+            },
+            update: {
+              quantity: { increment: 1 },
+            },
+          });
+        }
+
         const nextUser = await tx.user.findUnique({
           where: { id: user.id },
           select: {
@@ -259,6 +319,18 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
           io.to(`user:${member.userId}`).emit('clan:slot_upgraded', {
             clanId: clanUpgradeMembership.clanId,
             maxMembers: txResult.newMaxMembers,
+          });
+        }
+      }
+
+      if (isClanGameMoneyBoost) {
+        const clanMembers = await prisma.clanMember.findMany({
+          where: { clanId: clanUpgradeMembership.clanId },
+          select: { userId: true },
+        });
+        for (const member of clanMembers) {
+          io.to(`user:${member.userId}`).emit('clan:effects-updated', {
+            clanId: clanUpgradeMembership.clanId,
           });
         }
       }
@@ -330,6 +402,8 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
         ? { type: 'CLAN_TAG_UNLOCK' }
         : isClanSlotUpgrade
           ? { type: 'CLAN_SLOT_UPGRADE' }
+          : isClanGameMoneyBoost
+            ? { type: CLAN_EFFECT_GAME_MONEY_BOOST }
           : null,
       newBalance: {
         aura: updatedUser.aura,
@@ -346,6 +420,9 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
       }
       if (error.message === 'CLAN_SLOT_ALREADY_UPGRADED') {
         return res.status(400).json({ error: 'Le slot supplémentaire est déjà débloqué pour ce clan.' });
+      }
+      if (error.message === 'CLAN_EFFECT_ALREADY_ACTIVE_OR_COOLDOWN') {
+        return res.status(400).json({ error: 'Le boost de gains du clan est déjà actif ou en cooldown.' });
       }
     }
     console.error('Purchase error:', error);

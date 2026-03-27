@@ -3,6 +3,7 @@ import { prisma } from '../server.js';
 import { checkQuestProgress } from '../routes/quests.js';
 import { logGame } from '../utils/logger.js';
 import { recheckBadgeForCondition } from '../utils/badgeAwards.js';
+import { getActiveClanMoneyBoostPercentsForUsers } from '../utils/clanEffects.js';
 import { duelPartyIds, deleteDuelParty } from './duelParties.js';
 
 const ROWS = 6;
@@ -206,19 +207,24 @@ async function endGame(game: P4Game, io: Server, winnerId: string | null) {
   const drawReward = { aura: 5, money: 25 };
 
   try {
+    const boostPercents = await getActiveClanMoneyBoostPercentsForUsers(game.players.map((player) => player.userId));
+    const resolveMoneyReward = (userId: string, base: number) => base + Math.floor(base * ((boostPercents.get(userId) ?? 0) / 100));
+
     if (winnerId) {
       const winner = game.players.find((p) => p.userId === winnerId)!;
       const loser = game.players.find((p) => p.userId !== winnerId)!;
+      const resolvedWinnerReward = { ...winnerReward, money: resolveMoneyReward(winner.userId, winnerReward.money) };
+      const resolvedLoserReward = { ...loserReward, money: resolveMoneyReward(loser.userId, loserReward.money) };
 
       const [updatedWinner, updatedLoser] = await Promise.all([
         prisma.user.update({
           where: { id: winnerId },
-          data: { aura: { increment: winnerReward.aura }, money: { increment: winnerReward.money } },
+          data: { aura: { increment: resolvedWinnerReward.aura }, money: { increment: resolvedWinnerReward.money } },
           select: { id: true, aura: true, money: true },
         }),
         prisma.user.update({
           where: { id: loser.userId },
-          data: { money: { increment: loserReward.money } },
+          data: { money: { increment: resolvedLoserReward.money } },
           select: { id: true, aura: true, money: true },
         }),
       ]);
@@ -249,17 +255,17 @@ async function endGame(game: P4Game, io: Server, winnerId: string | null) {
         winnerId,
         winnerUsername: winner.username,
         isDraw: false,
-        rewards: { winner: winnerReward, loser: loserReward },
+        rewards: { winner: resolvedWinnerReward, loser: resolvedLoserReward },
       });
 
       logGame('game_complete', winner.userId, winner.username, {
         gameType: 'puissance_4', score: 1, won: true,
-        auraReward: winnerReward.aura, moneyReward: winnerReward.money,
+        auraReward: resolvedWinnerReward.aura, moneyReward: resolvedWinnerReward.money,
         isMultiplayer: true, partyId: game.partyId,
       });
       logGame('game_complete', loser.userId, loser.username, {
         gameType: 'puissance_4', score: 0, won: false,
-        auraReward: loserReward.aura, moneyReward: loserReward.money,
+        auraReward: resolvedLoserReward.aura, moneyReward: resolvedLoserReward.money,
         isMultiplayer: true, partyId: game.partyId,
       });
     } else {
@@ -267,7 +273,7 @@ async function endGame(game: P4Game, io: Server, winnerId: string | null) {
         game.players.map((p) =>
           prisma.user.update({
             where: { id: p.userId },
-            data: { aura: { increment: drawReward.aura }, money: { increment: drawReward.money } },
+            data: { aura: { increment: drawReward.aura }, money: { increment: resolveMoneyReward(p.userId, drawReward.money) } },
             select: { id: true, aura: true, money: true },
           })
         )

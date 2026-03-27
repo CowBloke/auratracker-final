@@ -83,7 +83,7 @@ export const usersApi = {
   getPendingUpdatePopups: () => api.get<{ popups: UserUpdatePopup[] }>('/users/update-popups/pending'),
   markUpdatePopupViewed: (id: string) => api.post<{ success: boolean }>(`/users/update-popups/${id}/viewed`),
   getById: (id: string) => api.get(`/users/${id}`),
-  update: (id: string, data: { username?: string; bio?: string; profileBanner?: string | null }) => api.put(`/users/${id}`, data),
+  update: (id: string, data: { username?: string; bio?: string }) => api.put(`/users/${id}`, data),
   requestNameChange: (data: { requestedUsername: string; reason?: string }) =>
     api.post<{ request: NameChangeRequest }>('/users/name-change-request', data),
   // Admin warnings (user-facing)
@@ -604,7 +604,31 @@ export interface ClanDetail extends ClanSummary {
     isLeader: boolean;
     hasPendingRequest: boolean;
   };
+  ownedItems: ClanOwnedItem[];
+  activeEffects: ClanActiveEffect[];
   warHub: ClanWarHub;
+}
+
+export interface ClanOwnedItem {
+  id: string;
+  quantity: number;
+  acquiredAt: string;
+  item: ShopItem;
+}
+
+export interface ClanActiveEffect {
+  id: string;
+  type: string;
+  name: string;
+  description: string | null;
+  value: number;
+  durationHours: number;
+  cooldownHours: number;
+  activatedAt: string | null;
+  activeUntil: string | null;
+  cooldownUntil: string | null;
+  isActive: boolean;
+  isOnCooldown: boolean;
 }
 
 export interface ClanChatMessage {
@@ -832,6 +856,8 @@ export const clansApi = {
     api.put<{ success: boolean; imageUrl: string | null }>(`/clans/${id}/image`, { imageUrl }),
   updateTag: (id: string, data: { tagText?: string; tagStyle?: object }) =>
     api.put<{ success: boolean; tagText: string | null; tagStyle: string | null }>(`/clans/${id}/tag`, data),
+  useOwnedItem: (clanId: string, clanItemId: string) =>
+    api.post<{ success: boolean; effect: ClanActiveEffect }>(`/clans/${clanId}/items/${clanItemId}/use`),
   // War mini-games
   getWarGamesStatus: (clanId: string) =>
     api.get<ClanWarGamesStatus>(`/clans/${clanId}/war/games/status`),
@@ -1164,6 +1190,25 @@ export interface AdminActivityBreakdown {
   }>;
 }
 
+export interface OnlineHistoryInsightPeakHour {
+  hour: number;
+  label: string;
+  averageOnline: number;
+  peakOnline: number;
+  sampleCount: number;
+}
+
+export interface OnlineHistoryInsights {
+  uniqueConnectedUsers: number;
+  busiestWeekday: {
+    day: number;
+    label: string;
+    totalGames: number;
+    uniquePlayers: number;
+  } | null;
+  peakHours: OnlineHistoryInsightPeakHour[];
+}
+
 type AdminRareAction =
   | { action: 'chat_clear' }
   | { action: 'deploy' }
@@ -1324,6 +1369,7 @@ export const adminApi = {
     data: { timestamp: string; count: number; max: number; usernames: { userId: string; username: string }[] }[];
     peak: number;
     peakAt: string | null;
+    insights: OnlineHistoryInsights;
     period: string;
     start: string;
     end: string;

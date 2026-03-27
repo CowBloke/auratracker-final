@@ -1,9 +1,16 @@
 import { Prisma } from '@prisma/client';
 import { Router, Response } from 'express';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
-import { prisma } from '../server.js';
+import { io, prisma } from '../server.js';
 import { createNotification } from '../utils/notifications.js';
 import { recheckBadgeForCondition } from '../utils/badgeAwards.js';
+import {
+  buildClanEffectActivation,
+  CLAN_EFFECT_GAME_MONEY_BOOST,
+  isClanGameMoneyBoostEffect,
+  parseClanEffectPayload,
+  serializeClanEffect,
+} from '../utils/clanEffects.js';
 
 const router = Router();
 
@@ -298,6 +305,26 @@ const mapClanSummary = (clan: ClanWithMembers | ClanDetailPayload) => ({
   slotUpgraded: clan.slotUpgraded,
   clanBankMoney: clan.clanBankMoney,
   level: clan.level,
+});
+
+const mapClanOwnedItem = (entry: {
+  id: string;
+  quantity: number;
+  acquiredAt: Date;
+  item: {
+    id: string;
+    name: string;
+    description: string;
+    type: string;
+    price: number;
+    imageUrl: string | null;
+    effect: string | null;
+  };
+}) => ({
+  id: entry.id,
+  quantity: entry.quantity,
+  acquiredAt: entry.acquiredAt,
+  item: entry.item,
 });
 
 const getClanDefenseLevel = (defenses: ClanWarCurrentPayload['defenses'] | ClanWarHistoryPayload['defenses'], clanId: string, type: DefenseType) => {
@@ -930,7 +957,7 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
     const isMember = clan.members.some((member) => member.userId === userId);
     const isLeader = clan.members.some((member) => member.userId === userId && member.isLeader);
 
-    const [pendingRequest, currentWar, warHistory, cooldownEndsAt, eligibleOpponents] = await Promise.all([
+    const [pendingRequest, currentWar, warHistory, cooldownEndsAt, eligibleOpponents, clanOwnedItems, clanEffects] = await Promise.all([
       userId
         ? prisma.clanJoinRequest.findUnique({
             where: {
@@ -956,6 +983,21 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
       }),
       getClanCooldownEndsAt(clan.id),
       isLeader ? getEligibleOpponents(clan.id) : Promise.resolve([]),
+      prisma.clanOwnedItem.findMany({
+        where: { clanId: clan.id, quantity: { gt: 0 } },
+        include: { item: true },
+        orderBy: { acquiredAt: 'desc' },
+      }),
+      prisma.clanEffect.findMany({
+        where: {
+          clanId: clan.id,
+          OR: [
+            { activeUntil: { gt: new Date() } },
+            { cooldownUntil: { gt: new Date() } },
+          ],
+        },
+        orderBy: [{ activeUntil: 'desc' }, { cooldownUntil: 'desc' }],
+      }),
     ]);
 
     res.json({
@@ -987,6 +1029,8 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
           isLeader,
           hasPendingRequest: Boolean(pendingRequest),
         },
+        ownedItems: isMember ? clanOwnedItems.map(mapClanOwnedItem) : [],
+        activeEffects: isMember ? clanEffects.map(serializeClanEffect) : [],
         warHub: {
           currentWar: currentWar ? await mapWar(currentWar, isMember ? clan.id : null, userId) : null,
           history: await Promise.all(warHistory.map((war) => mapWar(war, isMember ? clan.id : null, userId))),
@@ -1009,6 +1053,121 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Get clan error:', error);
     res.status(500).json({ error: 'Failed to get clan' });
+  }
+});
+
+router.post('/:id/items/:clanItemId/use', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id: clanId, clanItemId } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const membership = await prisma.clanMember.findUnique({
+      where: { userId },
+      select: { clanId: true, isLeader: true },
+    });
+
+    if (!membership || membership.clanId !== clanId) {
+      return res.status(403).json({ error: 'Tu dois appartenir à ce clan.' });
+    }
+
+    if (!membership.isLeader) {
+      return res.status(403).json({ error: 'Seul le chef du clan peut utiliser cette amélioration.' });
+    }
+
+    const clanItem = await prisma.clanOwnedItem.findUnique({
+      where: { id: clanItemId },
+      include: { item: true },
+    });
+
+    if (!clanItem || clanItem.clanId !== clanId || clanItem.quantity <= 0) {
+      return res.status(404).json({ error: 'Objet de clan introuvable.' });
+    }
+
+    if (!isClanGameMoneyBoostEffect(clanItem.item.effect)) {
+      return res.status(400).json({ error: 'Cet objet ne peut pas être activé depuis le clan.' });
+    }
+
+    const now = new Date();
+    const payload = parseClanEffectPayload(clanItem.item.effect);
+    const existingEffect = await prisma.clanEffect.findUnique({
+      where: {
+        clanId_type: {
+          clanId,
+          type: CLAN_EFFECT_GAME_MONEY_BOOST,
+        },
+      },
+    });
+
+    if (existingEffect?.cooldownUntil && existingEffect.cooldownUntil > now) {
+      return res.status(400).json({ error: 'Le boost de gains du clan est déjà actif ou en cooldown.' });
+    }
+
+    const activation = buildClanEffectActivation(payload, now);
+
+    const activatedEffect = await prisma.$transaction(async (tx) => {
+      if (clanItem.quantity > 1) {
+        await tx.clanOwnedItem.update({
+          where: { id: clanItem.id },
+          data: { quantity: { decrement: 1 } },
+        });
+      } else {
+        await tx.clanOwnedItem.delete({
+          where: { id: clanItem.id },
+        });
+      }
+
+      return tx.clanEffect.upsert({
+        where: {
+          clanId_type: {
+            clanId,
+            type: CLAN_EFFECT_GAME_MONEY_BOOST,
+          },
+        },
+        create: {
+          clanId,
+          type: CLAN_EFFECT_GAME_MONEY_BOOST,
+          name: clanItem.item.name,
+          description: clanItem.item.description,
+          value: activation.value,
+          durationHours: activation.durationHours,
+          cooldownHours: activation.cooldownHours,
+          activatedAt: activation.activatedAt,
+          activeUntil: activation.activeUntil,
+          cooldownUntil: activation.cooldownUntil,
+        },
+        update: {
+          name: clanItem.item.name,
+          description: clanItem.item.description,
+          value: activation.value,
+          durationHours: activation.durationHours,
+          cooldownHours: activation.cooldownHours,
+          activatedAt: activation.activatedAt,
+          activeUntil: activation.activeUntil,
+          cooldownUntil: activation.cooldownUntil,
+        },
+      });
+    });
+
+    const clanMembers = await prisma.clanMember.findMany({
+      where: { clanId },
+      select: { userId: true },
+    });
+
+    for (const member of clanMembers) {
+      io.to(`user:${member.userId}`).emit('clan:effects-updated', { clanId });
+    }
+
+    res.json({
+      success: true,
+      effect: serializeClanEffect(activatedEffect),
+    });
+  } catch (error) {
+    console.error('Use clan item error:', error);
+    res.status(500).json({ error: 'Impossible d\'utiliser cet objet de clan.' });
   }
 });
 

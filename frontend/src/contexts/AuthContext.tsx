@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authApi } from '../services/api';
 import { clearBanInfo } from '../services/ban';
+import type { ClanActiveEffect } from '../services/api';
 
 interface User {
   id: string;
@@ -19,6 +20,7 @@ interface User {
   referralCode?: string | null;
   referredById?: string | null;
   createdAt: string;
+  clanEffects: ClanActiveEffect[];
 }
 
 interface AuthContextType {

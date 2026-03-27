@@ -88,13 +88,15 @@ const parseEffectType = (effect: string | null): string | null => {
 const getEffectLabel = (effect: string | null) => {
   if (!effect) return null;
   try {
-    const p = JSON.parse(effect) as { type?: string; bonusAura?: number; bonusMoney?: number };
+    const p = JSON.parse(effect) as { type?: string; bonusAura?: number; bonusMoney?: number; percentage?: number };
     if (typeof p.bonusAura === 'number') return `+${p.bonusAura} aura`;
     if (typeof p.bonusMoney === 'number') return `+$${p.bonusMoney}`;
     if (p.type === 'USERNAME_COLOR') return 'Couleur de pseudo';
     if (p.type === 'PROFILE_PICTURE') return 'Photo de profil';
+    if (p.type === 'PROFILE_BANNER') return 'Banniere de profil';
     if (p.type === 'DOODLE_JUMP_SKIN') return 'Skin Doodle Jump';
     if (p.type === 'GIFT') return 'Cadeau à envoyer';
+    if (p.type === 'CLAN_GAME_MONEY_BOOST') return `Boost clan +${p.percentage ?? 0}%`;
   } catch { /**/ }
   return null;
 };
@@ -276,7 +278,8 @@ function ShopCard({
   const effectType = parseEffectType(item.effect);
   const isClanTagUnlock = effectType === 'CLAN_TAG_UNLOCK';
   const isClanSlotUpgrade = effectType === 'CLAN_SLOT_UPGRADE';
-  const isClanUpgrade = isClanTagUnlock || isClanSlotUpgrade;
+  const isClanMoneyBoost = effectType === 'CLAN_GAME_MONEY_BOOST';
+  const isClanUpgrade = isClanTagUnlock || isClanSlotUpgrade || isClanMoneyBoost;
   const isAlreadyPurchased =
     (isClanTagUnlock && !!clanStatus?.tagUnlocked) ||
     (isClanSlotUpgrade && !!clanStatus?.slotUpgraded);
@@ -719,6 +722,7 @@ export default function Shop() {
 
       const isClanTagUnlock = response.data.effect?.type === 'CLAN_TAG_UNLOCK';
       const isClanSlotUpgrade = response.data.effect?.type === 'CLAN_SLOT_UPGRADE';
+      const isClanMoneyBoost = response.data.effect?.type === 'CLAN_GAME_MONEY_BOOST';
       const isDj = parseEffectType(item.effect) === 'DOODLE_JUMP_SKIN';
       if (isClanTagUnlock) {
         setClanStatus(prev => prev ? { ...prev, tagUnlocked: true, clanBankMoney: prev.clanBankMoney - item.price } : prev);
@@ -726,11 +730,16 @@ export default function Shop() {
       if (isClanSlotUpgrade) {
         setClanStatus(prev => prev ? { ...prev, slotUpgraded: true, clanBankMoney: prev.clanBankMoney - item.price } : prev);
       }
+      if (isClanMoneyBoost) {
+        setClanStatus(prev => prev ? { ...prev, clanBankMoney: prev.clanBankMoney - item.price } : prev);
+      }
       toast.success(
         isClanTagUnlock
           ? 'Tag de clan debloque !'
           : isClanSlotUpgrade
           ? 'Slot de clan debloque !'
+          : isClanMoneyBoost
+          ? 'Objet de clan acheté'
           : isDj
           ? `Skin "${item.name}" débloqué !`
           : 'Achat confirme',
@@ -739,6 +748,8 @@ export default function Shop() {
             ? 'Le tag est maintenant actif pour ton clan. Va dans Clans pour le personnaliser.'
             : isClanSlotUpgrade
             ? 'Ton clan gagne un membre maximum supplémentaire.'
+            : isClanMoneyBoost
+            ? `${item.name} a ete ajoute aux objets du clan. Active-le depuis la page Clan.`
             : isDj
             ? 'Disponible dans Doodle Jump.'
             : `${item.name} a ete ajoute a ton inventaire.`,

@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
-import { adminApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, supportApi, SupportThread, SupportMessage, customBadgesApi, CustomBadgeRequest } from '../services/api';
+import { adminApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, customBadgesApi, CustomBadgeRequest } from '../services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
@@ -48,15 +48,27 @@ import { getPageMetaForPath } from '@/lib/page-meta';
 const EFFECT_TYPES = [
   { value: 'USERNAME_COLOR', label: 'Couleur de pseudo', description: 'Permet de choisir une couleur pour le pseudo dans le chat' },
   { value: 'PROFILE_PICTURE', label: 'Photo de profil', description: 'Permet de téléverser une photo affichée dans le chat' },
+  { value: 'PROFILE_BANNER', label: 'Bannière de profil', description: 'Permet de téléverser une bannière affichée en haut du profil' },
   { value: 'BONUS_AURA', label: 'Bonus Aura', description: 'Donne un bonus d\'aura à l\'utilisation' },
   { value: 'BONUS_MONEY', label: 'Bonus Argent', description: 'Donne un bonus d\'argent à l\'utilisation' },
   { value: 'DOODLE_JUMP_SKIN', label: 'Skin Doodle Jump', description: 'Débloque un skin personnalisé dans Doodle Jump (sélectionner une image pour le skin)' },
   { value: 'GIFT', label: 'Cadeau', description: 'L\'objet est un cadeau : l\'acheteur choisit un destinataire et le lui envoie directement.' },
   { value: 'CLAN_TAG_UNLOCK', label: 'Tag de clan', description: 'Débloque le tag de clan pour le clan du membre acheteur. Un clan ne peut l\'acheter qu\'une fois.' },
   { value: 'CLAN_SLOT_UPGRADE', label: '+1 Slot clan', description: 'Ajoute un slot membre supplémentaire au clan. Un clan ne peut l\'acheter qu\'une fois. S\'applique automatiquement à l\'achat.' },
+  { value: 'CLAN_GAME_MONEY_BOOST', label: 'Boost gains clan', description: 'Objet de clan consommable: active un boost en % sur l\'argent gagné en jeu pour tous les membres du clan.' },
   { value: 'AWARD_BADGE', label: 'Badge', description: 'Donne un badge spécifique au joueur lors de l\'utilisation. L\'image boutique est générée automatiquement.' },
   { value: 'CUSTOM_BADGE', label: 'Badge personnalisé', description: 'Permet au joueur de concevoir son propre badge. La demande est envoyée aux admins pour validation. Remboursement automatique si refusée.' },
 ];
+
+const EFFECT_TYPES_WITHOUT_VALUE = new Set([
+  'USERNAME_COLOR',
+  'PROFILE_PICTURE',
+  'PROFILE_BANNER',
+  'CLAN_TAG_UNLOCK',
+  'CLAN_SLOT_UPGRADE',
+  'AWARD_BADGE',
+  'CUSTOM_BADGE',
+]);
 
 const generateBadgeSvgDataUrl = (badge: Badge): string => {
   let fill = badge.backgroundColor ?? '#374151';
@@ -870,7 +882,7 @@ export default function Admin() {
   const [activityCustomStart, setActivityCustomStart] = useState('');
   const [activityCustomEnd, setActivityCustomEnd] = useState('');
   const [activitySpecificDay, setActivitySpecificDay] = useState('');
-  const [activityHistory, setActivityHistory] = useState<{ data: OnlineHistoryPoint[]; peak: number; peakAt: string | null } | null>(null);
+  const [activityHistory, setActivityHistory] = useState<{ data: OnlineHistoryPoint[]; peak: number; peakAt: string | null; insights: OnlineHistoryInsights } | null>(null);
   const [onlineStats, setOnlineStats] = useState<OnlineStats | null>(null);
   const [activityBreakdownDay, setActivityBreakdownDay] = useState(() => new Date().toISOString().slice(0, 10));
   const [activityBreakdown, setActivityBreakdown] = useState<AdminActivityBreakdown | null>(null);
@@ -1779,7 +1791,12 @@ export default function Admin() {
         }),
         adminApi.getOnlineStats(),
       ]);
-      setActivityHistory({ data: histRes.data.data, peak: histRes.data.peak, peakAt: histRes.data.peakAt });
+      setActivityHistory({
+        data: histRes.data.data,
+        peak: histRes.data.peak,
+        peakAt: histRes.data.peakAt,
+        insights: histRes.data.insights,
+      });
       setOnlineStats(statsRes.data);
       setHoveredActivity(null);
       setActivityZoomDomain(null);
@@ -2454,7 +2471,7 @@ export default function Admin() {
 
       return {
         type: effectType,
-        value: effect.value || '',
+        value: String(effect.percentage ?? effect.value ?? ''),
         bonusAura: effect.bonusAura,
         bonusMoney: effect.bonusMoney,
         skinImageUrl: effect.skinImageUrl || '',
@@ -2516,8 +2533,14 @@ export default function Admin() {
         effect = JSON.stringify({ type: 'DOODLE_JUMP_SKIN', skinImageUrl: itemForm.skinImageUrl || '', ...(shopType ? { shopType } : {}) });
       } else if (itemForm.effectType === 'AWARD_BADGE') {
         effect = JSON.stringify({ type: 'AWARD_BADGE', badgeId: itemForm.badgeId || '' });
-      } else if (itemForm.effectType === 'CLAN_TAG_UNLOCK' || itemForm.effectType === 'CLAN_SLOT_UPGRADE') {
+      } else if (
+        itemForm.effectType === 'CLAN_TAG_UNLOCK' ||
+        itemForm.effectType === 'CLAN_SLOT_UPGRADE' ||
+        EFFECT_TYPES_WITHOUT_VALUE.has(itemForm.effectType)
+      ) {
         effect = JSON.stringify({ type: itemForm.effectType });
+      } else if (itemForm.effectType === 'CLAN_GAME_MONEY_BOOST') {
+        effect = JSON.stringify({ type: 'CLAN_GAME_MONEY_BOOST', percentage: Math.max(0, parseInt(itemForm.effectValue || '0', 10) || 0) });
       } else {
         effect = JSON.stringify({ type: itemForm.effectType, value: itemForm.effectValue });
       }
@@ -6313,13 +6336,15 @@ export default function Admin() {
                   </div>
                 )}
 
-                {itemForm.effectType !== 'BONUS_AURA' && itemForm.effectType !== 'BONUS_MONEY' && itemForm.effectType !== 'DOODLE_JUMP_SKIN' && itemForm.effectType !== 'CLAN_TAG_UNLOCK' && itemForm.effectType !== 'CLAN_SLOT_UPGRADE' && itemForm.effectType !== 'AWARD_BADGE' && (
+                {itemForm.effectType !== 'BONUS_AURA' && itemForm.effectType !== 'BONUS_MONEY' && itemForm.effectType !== 'DOODLE_JUMP_SKIN' && !EFFECT_TYPES_WITHOUT_VALUE.has(itemForm.effectType) && (
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Valeur de l'effet</label>
+                    <label className="text-xs font-medium text-muted-foreground">
+                      {itemForm.effectType === 'CLAN_GAME_MONEY_BOOST' ? 'Pourcentage de boost' : 'Valeur de l\'effet'}
+                    </label>
                     <Input
                       value={itemForm.effectValue}
                       onChange={(e) => setItemForm(prev => ({ ...prev, effectValue: e.target.value }))}
-                      placeholder="Valeur de l'effet"
+                      placeholder={itemForm.effectType === 'CLAN_GAME_MONEY_BOOST' ? 'Ex: 10' : 'Valeur de l\'effet'}
                       className="bg-transparent"
                     />
                   </div>
@@ -6536,6 +6561,52 @@ export default function Admin() {
                       </div>
                     </div>
                   )}
+
+                  <div className="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
+                    <Card className="border-border/40">
+                      <CardContent className="space-y-1 p-4">
+                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Connectés au moins une fois</p>
+                        <p className="text-2xl font-semibold tabular-nums">{activityHistory.insights.uniqueConnectedUsers.toLocaleString('fr-FR')}</p>
+                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/70')}>
+                          Utilisateurs vus en snapshot ou en connexion sur la période
+                        </p>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="border-border/40">
+                      <CardContent className="space-y-1 p-4">
+                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Jour le plus joué</p>
+                        {activityHistory.insights.busiestWeekday ? (
+                          <>
+                            <p className="text-2xl font-semibold capitalize">{activityHistory.insights.busiestWeekday.label}</p>
+                            <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/70')}>
+                              {activityHistory.insights.busiestWeekday.totalGames.toLocaleString('fr-FR')} parties loggées, {activityHistory.insights.busiestWeekday.uniquePlayers.toLocaleString('fr-FR')} joueur{activityHistory.insights.busiestWeekday.uniquePlayers > 1 ? 's' : ''} actifs
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Pas encore assez de logs de jeu</p>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    <Card className="border-border/40">
+                      <CardContent className="space-y-1 p-4">
+                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Heures de pointe</p>
+                        {activityHistory.insights.peakHours.length > 0 ? (
+                          <>
+                            <p className="text-lg font-semibold">
+                              {activityHistory.insights.peakHours.map((entry) => entry.label).join(' • ')}
+                            </p>
+                            <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/70')}>
+                              Moyenne de {activityHistory.insights.peakHours[0]?.averageOnline.toLocaleString('fr-FR')} joueurs en ligne sur le créneau n°1
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Pas encore assez de snapshots</p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
 
                   {/* Chart + side panel */}
                   <div className="flex gap-4 items-start">

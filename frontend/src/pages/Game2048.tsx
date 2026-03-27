@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
+import { useHideGameLeaderboards, useHideGameLeftInfo } from '@/lib/game-preferences';
 
 // ============================================
 // GAME CONSTANTS
@@ -237,6 +238,8 @@ const getTextColor = (value: number, theme: 'light' | 'dark'): string => {
 export default function Game2048() {
   const { theme } = useTheme();
   const { user, refreshUser } = useAuth();
+  const hideGameLeaderboards = useHideGameLeaderboards();
+  const hideGameLeftInfo = useHideGameLeftInfo();
   const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
 
   const [tiles, setTiles] = useState<Tile[]>(createEmptyTiles());
@@ -475,10 +478,17 @@ export default function Game2048() {
       'grid items-start gap-4 px-4 pb-6 lg:px-6 lg:pb-8',
       isFullscreen
         ? 'grid-cols-1 justify-items-center'
-        : 'grid-cols-1 justify-items-center xl:grid-cols-[minmax(220px,1fr)_auto_minmax(220px,1fr)] xl:justify-items-stretch'
+        : hideGameLeftInfo
+          ? hideGameLeaderboards
+            ? 'grid-cols-1 justify-items-center'
+            : 'grid-cols-1 justify-items-center xl:grid-cols-[auto_minmax(220px,1fr)] xl:justify-items-stretch'
+          : hideGameLeaderboards
+            ? 'grid-cols-1 justify-items-center xl:grid-cols-[minmax(220px,1fr)_auto] xl:justify-items-stretch'
+            : 'grid-cols-1 justify-items-center xl:grid-cols-[minmax(220px,1fr)_auto_minmax(220px,1fr)] xl:justify-items-stretch'
     )}>
 
       {/* ── Left column ── */}
+      {!hideGameLeftInfo && (
       <div
         className={cn(
           'order-2 flex w-full max-w-[390px] flex-col gap-3 xl:order-1 xl:max-w-none',
@@ -535,6 +545,7 @@ export default function Game2048() {
           </CardContent>
         </Card>
       </div>
+      )}
 
       {/* ── Center column — board ── */}
       <div
@@ -661,6 +672,7 @@ export default function Game2048() {
       </div>
 
       {/* ── Right column — leaderboard ── */}
+      {!hideGameLeaderboards && (
       <div className={cn('order-3 w-full max-w-[390px] xl:max-w-none', isFullscreen && 'hidden')}>
         <GameLeaderboard
           entries={leaderboard}
@@ -672,6 +684,7 @@ export default function Game2048() {
           hidden={isFullscreen}
         />
       </div>
+      )}
 
     </div>
   );
