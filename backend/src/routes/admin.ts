@@ -1635,9 +1635,13 @@ router.post('/rare', authMiddleware, requireAdmin, validate(adminRareActionSchem
           timestamp: new Date().toISOString(),
         });
 
-        const { stdout, stderr } = await execAsync('/var/scripts/deploy.sh', {
-          timeout: 120000,
+        const { stdout, stderr } = await execAsync('bash -l /var/scripts/deploy.sh', {
+          timeout: 300000,
           cwd: '/',
+          env: {
+            ...process.env,
+            HOME: process.env.HOME || '/root',
+          },
         });
 
         return res.json({

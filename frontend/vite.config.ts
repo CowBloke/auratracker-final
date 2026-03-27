@@ -17,19 +17,18 @@ const MIME: Record<string, string> = {
   '.woff2': 'font/woff2',
 };
 
-function servePolytrack(): Plugin {
-  const gameDir = path.resolve(__dirname, 'public/polytrack');
+function serveStaticGame(mountPath: string, dirName: string): Plugin {
+  const gameDir = path.resolve(__dirname, `public/${dirName}`);
   return {
-    name: 'serve-polytrack',
+    name: `serve-${dirName}`,
     configureServer(server) {
-      // Runs BEFORE Vite's own transform middleware — JS files won't be mangled
-      server.middlewares.use('/polytrack', (req, res, next) => {
+      // Runs BEFORE Vite's own transform middleware — JS/HTML files won't be mangled
+      server.middlewares.use(`/${mountPath}`, (req, res, next) => {
         const url = req.url ?? '/';
         const filePath = path.join(gameDir, url === '/' ? 'index.html' : url);
         // Path traversal guard
         if (!filePath.startsWith(gameDir)) return next();
         if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
-          // Try index.html for directory requests
           const idx = path.join(filePath, 'index.html');
           if (!fs.existsSync(idx)) return next();
           res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -44,7 +43,7 @@ function servePolytrack(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), servePolytrack()],
+  plugins: [react(), serveStaticGame('polytrack', 'polytrack'), serveStaticGame('eaglercraft', 'eaglercraft')],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

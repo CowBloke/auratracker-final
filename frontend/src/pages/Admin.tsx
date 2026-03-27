@@ -15,7 +15,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { Loader2, Trash2, Save, AlertTriangle, Plus, Minus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, Inbox, Archive, UserCog, Crown, Swords, Send, Upload, Award } from 'lucide-react';
+import { Loader2, Trash2, Save, AlertTriangle, Plus, Minus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, Inbox, Archive, UserCog, Crown, Swords, Send, Upload, Award, Terminal } from 'lucide-react';
 import { BadgeIcon } from '@/components/badges/BadgeIcon';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, ReferenceDot, LineChart, Line, Tooltip as RechartsTooltip, Legend, BarChart, Bar } from 'recharts';
 import {
@@ -1018,6 +1018,8 @@ export default function Admin() {
   // Score history backfill
   const [backfillLoading, setBackfillLoading] = useState(false);
   const [backfillResult, setBackfillResult] = useState<{ inserted: number; skipped: number } | null>(null);
+  const [deploying, setDeploying] = useState(false);
+  const [deployOutput, setDeployOutput] = useState<{ success: boolean; stdout: string; stderr: string; message: string } | null>(null);
 
   // Settings state
   const [loadingSettings, setLoadingSettings] = useState(false);
@@ -4733,6 +4735,54 @@ export default function Admin() {
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Déploiement ────────────────────────────────────── */}
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Déploiement</p>
+            <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
+              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium">Déployer la dernière version</div>
+                  <div className="text-xs text-muted-foreground">Exécute <code className="font-mono bg-muted/40 px-1 rounded">/var/scripts/deploy.sh</code> sur le serveur pour mettre en ligne les derniers changements Git.</div>
+                  {deployOutput && (
+                    <div className="mt-2 space-y-1">
+                      {deployOutput.success
+                        ? <p className="text-xs text-green-500 font-medium">✓ {deployOutput.message}</p>
+                        : <p className="text-xs text-destructive font-medium">✗ {deployOutput.message}</p>
+                      }
+                      {(deployOutput.stdout || deployOutput.stderr) && (
+                        <pre className="text-[10px] font-mono bg-muted/30 border border-border/40 rounded p-2 max-h-48 overflow-auto whitespace-pre-wrap break-all text-muted-foreground">
+                          {[deployOutput.stdout, deployOutput.stderr].filter(Boolean).join('\n---\n')}
+                        </pre>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={deploying}
+                  className="shrink-0"
+                  onClick={async () => {
+                    if (!confirm('Lancer le déploiement ? Le serveur va pull les changements Git et redémarrer.')) return;
+                    setDeploying(true);
+                    setDeployOutput(null);
+                    try {
+                      const res = await adminApi.deploy();
+                      setDeployOutput({ success: true, stdout: res.data.stdout || '', stderr: res.data.stderr || '', message: res.data.message });
+                    } catch (err: unknown) {
+                      const data = (err as { response?: { data?: { message?: string; stderr?: string } } })?.response?.data;
+                      setDeployOutput({ success: false, stdout: '', stderr: data?.stderr || '', message: data?.message || 'Erreur inconnue' });
+                    } finally {
+                      setDeploying(false);
+                    }
+                  }}
+                >
+                  {deploying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Terminal className="h-3.5 w-3.5" />}
+                </Button>
               </div>
             </div>
           </div>
