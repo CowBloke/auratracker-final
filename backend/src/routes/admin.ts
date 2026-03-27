@@ -27,6 +27,19 @@ const ANNOUNCEMENT_MAX_LENGTH = 120;
 const AURACOIN_BUY_FEE_PERCENTAGE_KEY = 'auracoin_buy_fee_percentage';
 const DUEL_MATCHMAKING_ENABLED_SETTING_KEY = 'duel_matchmaking_enabled';
 const CLASH_ATTACK_COOLDOWN_MINUTES_KEY = 'clash_attack_cooldown_minutes';
+const DEFAULT_LANDING_PAGE_SETTING_KEY = 'default_landing_page';
+const ALLOWED_DEFAULT_LANDING_PAGES = new Set([
+  '/dashboard',
+  '/games',
+  '/market',
+  '/party',
+  '/clans',
+  '/polymarket',
+  '/leaderboards',
+  '/inbox',
+  '/quests',
+  '/support',
+]);
 const UPDATE_POPUP_UPLOAD_DIR = path.resolve('uploads', 'update-popups');
 const ITEM_UPLOAD_DIR = path.resolve('uploads', 'items');
 const MAX_UPDATE_POPUP_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
@@ -820,7 +833,6 @@ const DEFAULT_SHOP_CATEGORIES = [
   { id: 'COSMETIC', label: 'Cosmétiques' },
   { id: 'CONSUMABLE', label: 'Consommables' },
   { id: 'UPGRADE', label: 'Améliorations' },
-  { id: 'GIFT', label: 'Cadeaux' },
 ];
 
 router.get('/shop-categories', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response) => {
@@ -2360,6 +2372,10 @@ router.put('/settings/:key', authMiddleware, requireAdmin, async (req: AuthReque
       }
     }
 
+    if (key === DEFAULT_LANDING_PAGE_SETTING_KEY && !ALLOWED_DEFAULT_LANDING_PAGES.has(normalizedValue)) {
+      return res.status(400).json({ error: 'Invalid default landing page selection' });
+    }
+
     const setting = await prisma.gameSettings.upsert({
       where: { key },
       create: { key, value: normalizedValue },
@@ -2477,6 +2493,11 @@ router.put('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, r
           errors.push(`${key}: Clash attack cooldown must be an integer between 0 and 1440 minutes`);
           continue;
         }
+      }
+
+      if (key === DEFAULT_LANDING_PAGE_SETTING_KEY && !ALLOWED_DEFAULT_LANDING_PAGES.has(normalizedValue)) {
+        errors.push(`${key}: Invalid default landing page selection`);
+        continue;
       }
 
       updates.push({ key, value: normalizedValue });
@@ -3019,84 +3040,6 @@ router.get('/update-popups/suggest-summary', authMiddleware, requireAdmin, async
   } catch (error) {
     console.error('Admin suggest update popup summary error:', error);
     res.status(500).json({ error: 'Failed to generate suggestion' });
-  }
-});
-
-// ========== GIFT TEMPLATE MANAGEMENT ==========
-
-// Get all gift templates
-router.get('/gift-templates', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
-  try {
-    const templates = await prisma.giftTemplate.findMany({
-      orderBy: { createdAt: 'desc' },
-    });
-    res.json({ templates });
-  } catch (error) {
-    console.error('Admin get gift templates error:', error);
-    res.status(500).json({ error: 'Failed to get gift templates' });
-  }
-});
-
-// Create a gift template
-router.post('/gift-templates', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
-  try {
-    const { name, description, imageUrl, price } = req.body;
-
-    if (!name || typeof price !== 'number' || price < 0) {
-      return res.status(400).json({ error: 'Name and valid price are required' });
-    }
-
-    const template = await prisma.giftTemplate.create({
-      data: { name, description: description || null, imageUrl: imageUrl || null, price },
-    });
-
-    logAdmin('gift_template_create', req.user?.id, req.user?.username, template.id, name, { price });
-
-    res.json({ template });
-  } catch (error) {
-    console.error('Admin create gift template error:', error);
-    res.status(500).json({ error: 'Failed to create gift template' });
-  }
-});
-
-// Update a gift template
-router.put('/gift-templates/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { name, description, imageUrl, price } = req.body;
-
-    const template = await prisma.giftTemplate.update({
-      where: { id },
-      data: {
-        ...(name !== undefined && { name }),
-        ...(description !== undefined && { description: description || null }),
-        ...(imageUrl !== undefined && { imageUrl: imageUrl || null }),
-        ...(price !== undefined && { price }),
-      },
-    });
-
-    logAdmin('gift_template_update', req.user?.id, req.user?.username, id, template.name, { price: template.price });
-
-    res.json({ template });
-  } catch (error) {
-    console.error('Admin update gift template error:', error);
-    res.status(500).json({ error: 'Failed to update gift template' });
-  }
-});
-
-// Delete a gift template
-router.delete('/gift-templates/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
-  try {
-    const { id } = req.params;
-
-    await prisma.giftTemplate.delete({ where: { id } });
-
-    logAdmin('gift_template_delete', req.user?.id, req.user?.username, id, null);
-
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Admin delete gift template error:', error);
-    res.status(500).json({ error: 'Failed to delete gift template' });
   }
 });
 

@@ -44,24 +44,17 @@ export const loginSchema = z.object({
 // Economy schemas
 export const transferSchema = z.object({
   receiverId: z.string().uuid(),
-  auraAmount: z.number().int().min(0).optional(),
   moneyAmount: z.number().int().min(0).optional(),
 }).refine(
-  (data) => (data.auraAmount || 0) + (data.moneyAmount || 0) > 0,
-  { message: 'At least one currency must be transferred' }
+  (data) => (data.moneyAmount || 0) > 0,
+  { message: 'Money amount is required' }
 );
-
-export const giftAuraSchema = z.object({
-  receiverId: z.string().uuid(),
-  amount: z.number().int().min(1).max(50),
-  message: z.string().max(50).optional(),
-});
 
 // Marketplace schemas
 export const createItemSchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().min(1).max(500),
-  type: z.enum(['CONSUMABLE', 'COSMETIC', 'UPGRADE', 'GIFT']),
+  type: z.enum(['CONSUMABLE', 'COSMETIC', 'UPGRADE']),
   price: z.number().int().min(0),
   imageUrl: z.string().min(1).optional(),
   effect: z.string().optional(),

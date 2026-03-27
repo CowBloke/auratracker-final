@@ -7,7 +7,6 @@ import {
   Inbox,
   Crown,
   Star,
-  Gift,
   Package,
   Users,
   Zap,
@@ -44,7 +43,6 @@ import { fr } from 'date-fns/locale';
 const TYPE_ICON: Record<string, React.FC<{ className?: string }>> = {
   AURA_RECEIVED: ({ className }) => <Star className={className} />,
   MONEY_RECEIVED: ({ className }) => <DollarSign className={className} />,
-  GIFT_RECEIVED: ({ className }) => <Gift className={className} />,
   ITEM_RECEIVED: ({ className }) => <Package className={className} />,
   CLAN_JOIN_REQUEST: ({ className }) => <Users className={className} />,
   CLAN_JOIN_ACCEPTED: ({ className }) => <Users className={className} />,
@@ -63,7 +61,6 @@ const TYPE_ICON: Record<string, React.FC<{ className?: string }>> = {
 
 const ICON_NAME_MAP: Record<string, React.FC<{ className?: string }>> = {
   star: ({ className }) => <Star className={className} />,
-  gift: ({ className }) => <Gift className={className} />,
   package: ({ className }) => <Package className={className} />,
   users: ({ className }) => <Users className={className} />,
   check: ({ className }) => <Zap className={className} />,

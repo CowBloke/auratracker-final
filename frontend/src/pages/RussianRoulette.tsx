@@ -614,7 +614,7 @@ export default function RussianRoulette() {
                 <div key={m.userId} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'hsl(var(--muted))', borderRadius: 8, padding: '5px 10px', border: '1px solid hsl(var(--border))', fontSize: 12 }}>
                   <div style={{ width: 6, height: 6, borderRadius: '50%', background: m.isLeader ? 'hsl(var(--primary))' : 'rgba(100,100,100,0.6)' }} />
                   <UsernameDisplay username={m.username} usernameColor={m.usernameColor} usernameClassName="text-xs" />
-                  {m.isLeader && <span style={{ fontSize: 9, color: 'rgba(140,140,140,0.7)', fontWeight: 600 }}>LEADER</span>}
+                  {m.isLeader && <span style={{ fontSize: 9, color: 'rgba(140,140,140,0.7)', fontWeight: 600 }}>Leader</span>}
                 </div>
               ))}
             </div>

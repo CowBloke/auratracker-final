@@ -20,8 +20,8 @@ import { CSS } from '@dnd-kit/utilities';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocketBase } from '../contexts/SocketContext';
 import { usePartySocket } from '../contexts/PartySocketContext';
-import { ClanChatMessage, ClanPumpUpMessage, ClanSummary, ClanWarState, Gift, GiftStatus, auraCoinApi, clansApi, giftsApi, marketplaceApi } from '../services/api';
-import { GripVertical, Zap, Trophy, Users, Gift as GiftIcon, Package, TrendingUp, TrendingDown, CheckCircle2, Star, Gamepad2, BarChart3, Coins, Shield, User as UserIcon, MessageSquare, Swords, Crown } from 'lucide-react';
+import { ClanChatMessage, ClanPumpUpMessage, ClanSummary, ClanWarState, auraCoinApi, clansApi } from '../services/api';
+import { GripVertical, Users, TrendingUp, TrendingDown, Star, Gamepad2, MessageSquare, Swords, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -29,7 +29,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 import { AreaChart, Area, XAxis, YAxis } from 'recharts';
-import GiftDialog from '@/components/gifts/GiftDialog';
 import { useTheme } from '@/contexts/ThemeContext';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { resolveThemeImageUrl } from '@/lib/images';
@@ -43,42 +42,18 @@ interface GameShortcut {
   image?: string;
 }
 
-interface QuickAction {
-  id: string;
-  label: string;
-  path: string;
-  icon: React.FC<{ className?: string }>;
-  color: string;
-  bg: string;
-}
-
 type DashboardWidgetId =
   | 'shortcuts'
   | 'live'
-  | 'gifts'
   | 'auracoin'
-  | 'quick-actions'
-  | 'inventory'
   | 'clan-wars'
   | 'clan-message'
   | 'clan-ranking';
 
-interface DashboardInventoryItem {
-  id: string;
-  quantity: number;
-  item: {
-    id: string;
-    name: string;
-    type: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE' | 'GIFT';
-  };
-}
-
 const shortcutStorageKey = 'auratracker:dashboard-shortcuts';
-const quickActionStorageKey = 'auratracker:dashboard-quick-actions';
 const dashboardLayoutStorageKey = 'auratracker:dashboard-layout';
 const dashboardVisibleWidgetsStorageKey = 'auratracker:dashboard-visible-widgets';
 const maxShortcutWidgets = 4;
-const maxQuickActions = 4;
 
 const welcomeTemplates = [
   'Bienvenue, {username}',
@@ -139,46 +114,26 @@ const legacyDefaultShortcuts = [
 ];
 const defaultShortcuts = legacyDefaultShortcuts.slice(0, maxShortcutWidgets);
 const defaultShortcutSet = new Set(defaultShortcuts);
-const quickActions: QuickAction[] = [
-  { id: 'create-party', label: 'Créer party', path: '/party', icon: Users, color: 'text-violet-500', bg: 'bg-violet-500/15' },
-  { id: 'quests', label: 'Voir quêtes', path: '/quests', icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/15' },
-  { id: 'shop', label: 'Ouvrir shop', path: '/market', icon: Package, color: 'text-blue-500', bg: 'bg-blue-500/15' },
-  { id: 'leaderboards', label: 'Classements', path: '/leaderboards', icon: Trophy, color: 'text-amber-500', bg: 'bg-amber-500/15' },
-  { id: 'clans', label: 'Clans', path: '/clans', icon: Shield, color: 'text-teal-500', bg: 'bg-teal-500/15' },
-  { id: 'profile', label: 'Mon profil', path: '/profile', icon: UserIcon, color: 'text-rose-500', bg: 'bg-rose-500/15' },
-  { id: 'polymarket', label: 'Polymarket', path: '/polymarket', icon: BarChart3, color: 'text-indigo-500', bg: 'bg-indigo-500/15' },
-  { id: 'games', label: 'Tous les jeux', path: '/games', icon: Gamepad2, color: 'text-orange-500', bg: 'bg-orange-500/15' },
-  { id: 'inventory', label: 'Inventaire', path: '/inventory', icon: Package, color: 'text-cyan-500', bg: 'bg-cyan-500/15' },
-  { id: 'inbox', label: 'Inbox', path: '/inbox', icon: GiftIcon, color: 'text-pink-500', bg: 'bg-pink-500/15' },
-  { id: 'settings', label: 'Réglages', path: '/settings', icon: Coins, color: 'text-zinc-500', bg: 'bg-zinc-500/15' },
-];
-const defaultQuickActionIds = ['create-party', 'quests', 'games', 'inbox'];
 
 const defaultDashboardLayout: DashboardWidgetId[] = [
   'shortcuts',
   'live',
-  'quick-actions',
   'clan-wars',
   'clan-message',
   'clan-ranking',
   'auracoin',
-  'inventory',
-  'gifts',
 ];
 const dashboardWidgetLabels: Record<DashboardWidgetId, { title: string; description: string }> = {
-  'quick-actions': { title: 'Actions rapides', description: 'Liens utiles du dashboard.' },
   shortcuts: { title: 'Raccourcis jeux', description: 'Accès rapide à tes jeux favoris.' },
   'clan-wars': { title: 'Guerres de clan', description: 'Suivi rapide des affrontements en cours.' },
   'clan-message': { title: 'Message du clan', description: 'Dernier message posté dans ton clan.' },
   'clan-ranking': { title: 'Classement des clans', description: 'Top clans par aura totale.' },
   auracoin: { title: 'Aura Coin', description: 'Prix et variation du marché.' },
-  inventory: { title: 'Inventaire', description: 'Résumé de tes objets.' },
   live: { title: 'Activité des parties', description: 'Parties ouvertes en direct.' },
-  gifts: { title: 'Cadeaux', description: 'Boîte, envois et historique.' },
 };
 
 const isDashboardWidgetId = (value: string): value is DashboardWidgetId =>
-  ['shortcuts', 'live', 'gifts', 'auracoin', 'quick-actions', 'inventory', 'clan-wars', 'clan-message', 'clan-ranking'].includes(value);
+  ['shortcuts', 'live', 'auracoin', 'clan-wars', 'clan-message', 'clan-ranking'].includes(value);
 
 const dashboardWidgetCardClass = "flex h-full flex-col overflow-hidden rounded-2xl border border-border/50 bg-background shadow-none";
 const dashboardWidgetHeaderClass = "px-4 pb-3 pt-4 sm:px-5";
@@ -352,29 +307,18 @@ export default function Dashboard() {
   const { socket } = useSocketBase();
   const { fetchPublicParties, publicParties, currentParty, joinParty, requestJoinParty, pendingJoinRequests } = usePartySocket();
   const [loading, setLoading] = useState(true);
-  const [giftsLoading, setGiftsLoading] = useState(true);
-  const [inboxGifts, setInboxGifts] = useState<Gift[]>([]);
-  const [receivedGifts, setReceivedGifts] = useState<Gift[]>([]);
-  const [giftStatus, setGiftStatus] = useState<GiftStatus | null>(null);
-  const [giftDialogOpen, setGiftDialogOpen] = useState(false);
-  const [giftDialogInitialTab, setGiftDialogInitialTab] = useState<'inbox' | 'send' | 'received'>('inbox');
   const [welcomeMessage, setWelcomeMessage] = useState(() => pickWelcomeMessage(user?.username));
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [shortcutsLoaded, setShortcutsLoaded] = useState(false);
   const [shortcutWidgets, setShortcutWidgets] = useState<string[]>(defaultShortcuts);
-  const [quickActionsOpen, setQuickActionsOpen] = useState(false);
-  const [quickActionsLoaded, setQuickActionsLoaded] = useState(false);
-  const [selectedQuickActions, setSelectedQuickActions] = useState<string[]>(defaultQuickActionIds);
   const [dashboardLayout, setDashboardLayout] = useState<DashboardWidgetId[]>(defaultDashboardLayout);
   const [dashboardLayoutLoaded, setDashboardLayoutLoaded] = useState(false);
   const [visibleWidgets, setVisibleWidgets] = useState<DashboardWidgetId[]>(defaultDashboardLayout);
   const [visibleWidgetsLoaded, setVisibleWidgetsLoaded] = useState(false);
   const [widgetsDialogOpen, setWidgetsDialogOpen] = useState(false);
-  const [now, setNow] = useState(Date.now());
   const [auraCoinPrice, setAuraCoinPrice] = useState<number | null>(null);
   const [auraCoinPreviousPrice, setAuraCoinPreviousPrice] = useState<number | null>(null);
   const [auraCoinHistory, setAuraCoinHistory] = useState<{ price: number; time: string }[]>([]);
-  const [inventoryItems, setInventoryItems] = useState<DashboardInventoryItem[]>([]);
   const [clans, setClans] = useState<ClanSummary[]>([]);
   const [activeWars, setActiveWars] = useState<ClanWarState[]>([]);
   const [viewerClanId, setViewerClanId] = useState<string | null>(null);
@@ -383,14 +327,9 @@ export default function Dashboard() {
   const [clanPumpUpMessage, setClanPumpUpMessage] = useState<ClanPumpUpMessage | null>(null);
 
   const shortcutMap = useMemo(() => new Map(gameShortcuts.map((item) => [item.id, item])), []);
-  const quickActionMap = useMemo(() => new Map(quickActions.map((item) => [item.id, item])), []);
   const orderedShortcuts = useMemo(
     () => shortcutWidgets.slice(0, maxShortcutWidgets).map((id) => shortcutMap.get(id)).filter(Boolean) as GameShortcut[],
     [shortcutMap, shortcutWidgets]
-  );
-  const orderedQuickActions = useMemo(
-    () => selectedQuickActions.slice(0, maxQuickActions).map((id) => quickActionMap.get(id)).filter(Boolean) as QuickAction[],
-    [quickActionMap, selectedQuickActions]
   );
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -430,52 +369,6 @@ export default function Dashboard() {
     setWelcomeMessage(pickWelcomeMessage(user.username));
   }, [user?.username]);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setNow(Date.now());
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const getNextLocalMidnightTimestamp = () => {
-    const nextMidnight = new Date();
-    nextMidnight.setHours(24, 0, 0, 0);
-    return nextMidnight.getTime();
-  };
-
-  const getNextRefillTimestamp = (value: string | null | undefined) => {
-    if (!value) return getNextLocalMidnightTimestamp();
-    const timestamp = new Date(value).getTime();
-    return Number.isNaN(timestamp) ? getNextLocalMidnightTimestamp() : timestamp;
-  };
-
-  const fetchGiftOverview = async () => {
-    setGiftsLoading(true);
-    try {
-      const [inboxRes, receivedRes, statusRes] = await Promise.allSettled([
-        giftsApi.getInbox(),
-        giftsApi.getReceived(),
-        giftsApi.getStatus(),
-      ]);
-
-      if (inboxRes.status === 'fulfilled') {
-        setInboxGifts(inboxRes.value.data.gifts);
-      }
-
-      if (receivedRes.status === 'fulfilled') {
-        setReceivedGifts(receivedRes.value.data.gifts);
-      }
-
-      if (statusRes.status === 'fulfilled') {
-        setGiftStatus(statusRes.value.data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch gifts overview:', error);
-    } finally {
-      setGiftsLoading(false);
-    }
-  };
-
   const fetchLatestClanMessage = async (clanId: string) => {
     setClanMessageLoading(true);
     try {
@@ -504,26 +397,10 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [inboxRes, receivedRes, statusRes, auraCoinRes, inventoryRes, clansRes] = await Promise.allSettled([
-          giftsApi.getInbox(),
-          giftsApi.getReceived(),
-          giftsApi.getStatus(),
+        const [auraCoinRes, clansRes] = await Promise.allSettled([
           auraCoinApi.getPrice(4),
-          user?.id ? marketplaceApi.getInventory(user.id) : Promise.resolve({ data: { items: [] as DashboardInventoryItem[] } }),
           clansApi.list(),
         ]);
-
-        if (inboxRes.status === 'fulfilled') {
-          setInboxGifts(inboxRes.value.data.gifts);
-        }
-
-        if (receivedRes.status === 'fulfilled') {
-          setReceivedGifts(receivedRes.value.data.gifts);
-        }
-
-        if (statusRes.status === 'fulfilled') {
-          setGiftStatus(statusRes.value.data);
-        }
 
         if (auraCoinRes.status === 'fulfilled') {
           const { currentPrice, history } = auraCoinRes.value.data;
@@ -535,10 +412,6 @@ export default function Dashboard() {
               time: new Date(h.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
             }))
           );
-        }
-
-        if (inventoryRes.status === 'fulfilled') {
-          setInventoryItems((inventoryRes.value.data.items || []) as DashboardInventoryItem[]);
         }
 
         if (clansRes.status === 'fulfilled') {
@@ -557,7 +430,6 @@ export default function Dashboard() {
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
       } finally {
-        setGiftsLoading(false);
         setLoading(false);
       }
     };
@@ -573,17 +445,6 @@ export default function Dashboard() {
 
     return () => clearInterval(interval);
   }, [fetchPublicParties]);
-
-  useEffect(() => {
-    if (!socket) return;
-    const handleGiftReceived = () => {
-      fetchGiftOverview();
-    };
-    socket.on('gift:received', handleGiftReceived);
-    return () => {
-      socket.off('gift:received', handleGiftReceived);
-    };
-  }, [socket]);
 
   useEffect(() => {
     if (!socket) return;
@@ -627,22 +488,11 @@ export default function Dashboard() {
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(quickActionStorageKey);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          const filtered = parsed.filter((id: string) => quickActionMap.has(id)).slice(0, maxQuickActions);
-          if (filtered.length > 0) {
-            setSelectedQuickActions(filtered);
-          }
-        }
-      }
+      localStorage.removeItem('auratracker:dashboard-quick-actions');
     } catch {
-      // Ignore localStorage parse failures.
-    } finally {
-      setQuickActionsLoaded(true);
+      // Ignore localStorage write failures.
     }
-  }, [quickActionMap]);
+  }, []);
 
   useEffect(() => {
     try {
@@ -686,15 +536,6 @@ export default function Dashboard() {
   }, [shortcutsLoaded, shortcutWidgets]);
 
   useEffect(() => {
-    if (!quickActionsLoaded) return;
-    try {
-      localStorage.setItem(quickActionStorageKey, JSON.stringify(selectedQuickActions));
-    } catch {
-      // Ignore localStorage write failures.
-    }
-  }, [quickActionsLoaded, selectedQuickActions]);
-
-  useEffect(() => {
     if (!dashboardLayoutLoaded) return;
     try {
       localStorage.setItem(dashboardLayoutStorageKey, JSON.stringify(dashboardLayout));
@@ -726,11 +567,6 @@ export default function Dashboard() {
     return 'maint.';
   };
 
-  const openGiftDialog = (tab: 'inbox' | 'send' | 'received') => {
-    setGiftDialogInitialTab(tab);
-    setGiftDialogOpen(true);
-  };
-
   const handleDashboardDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -744,39 +580,10 @@ export default function Dashboard() {
     });
   };
 
-  const nextRefillCountdown = useMemo(() => {
-    const nextRefillTimestamp = getNextRefillTimestamp(giftStatus?.nextRefillAt);
-    if (!nextRefillTimestamp) return null;
-
-    const diff = nextRefillTimestamp - now;
-    if (diff <= 0) return '00:00:00';
-
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-  }, [giftStatus?.nextRefillAt, now]);
-
   const auraCoinDelta = useMemo(() => {
     if (auraCoinPrice === null || auraCoinPreviousPrice === null || auraCoinPreviousPrice === 0) return null;
     return ((auraCoinPrice - auraCoinPreviousPrice) / auraCoinPreviousPrice) * 100;
   }, [auraCoinPrice, auraCoinPreviousPrice]);
-
-  const totalInventoryCount = useMemo(
-    () => inventoryItems.reduce((sum, item) => sum + item.quantity, 0),
-    [inventoryItems]
-  );
-  const giftInventoryCount = useMemo(
-    () => inventoryItems.filter((item) => item.item.type === 'GIFT').reduce((sum, item) => sum + item.quantity, 0),
-    [inventoryItems]
-  );
-  useEffect(() => {
-    const nextRefillTimestamp = getNextRefillTimestamp(giftStatus?.nextRefillAt);
-    if (!nextRefillTimestamp) return;
-    if (nextRefillTimestamp > now) return;
-    fetchGiftOverview();
-  }, [giftStatus?.nextRefillAt, now]);
 
   if (loading) {
     return (
@@ -899,102 +706,6 @@ export default function Dashboard() {
                   key={widgetId}
                   widgetId={widgetId}
                 >
-                  {widgetId === 'quick-actions' && (
-                    <Card className={dashboardWidgetCardClass}>
-                      <CardHeader className={dashboardWidgetHeaderClass}>
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <DashboardWidgetTitle
-                            title="Actions rapides"
-                            icon={Zap}
-                            iconClassName="text-amber-500"
-                            iconWrapperClassName="bg-amber-500/15"
-                          />
-                          <Dialog open={quickActionsOpen} onOpenChange={setQuickActionsOpen}>
-                            <Button variant="outline" size="sm" className={dashboardGhostButtonClass} onClick={() => setQuickActionsOpen(true)}>
-                              Modifier
-                            </Button>
-                            <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
-                              <DialogHeader>
-                                <DialogTitle className={TYPOGRAPHY.H5}>Actions rapides</DialogTitle>
-                                <DialogDescription>
-                                  Active les liens à afficher dans le widget. Maximum {maxQuickActions} actions.
-                                </DialogDescription>
-                              </DialogHeader>
-                              <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>
-                                {selectedQuickActions.length}/{maxQuickActions} selectionnees
-                              </p>
-                              <div className="space-y-3">
-                                {quickActions.map((action) => {
-                                  const checked = selectedQuickActions.includes(action.id);
-                                  const limitReached = !checked && selectedQuickActions.length >= maxQuickActions;
-                                  return (
-                                    <label
-                                      key={action.id}
-                                      className={cn(
-                                        "flex items-start gap-3 rounded-xl border px-3 py-3 transition",
-                                        checked ? "border-foreground/30 bg-muted/40" : "border-border/50",
-                                        limitReached && "opacity-50"
-                                      )}
-                                    >
-                                      <Checkbox
-                                        checked={checked}
-                                        disabled={limitReached}
-                                        onCheckedChange={() => {
-                                          setSelectedQuickActions((prev) =>
-                                            prev.includes(action.id)
-                                              ? prev.filter((id) => id !== action.id)
-                                              : prev.length >= maxQuickActions
-                                                ? prev
-                                                : [...prev, action.id]
-                                          );
-                                        }}
-                                        className="mt-1"
-                                      />
-                                      <div className="min-w-0">
-                                        <p className="font-medium">{action.label}</p>
-                                      </div>
-                                    </label>
-                                  );
-                                })}
-                              </div>
-                              <DialogFooter className="gap-2 sm:gap-0">
-                                <Button
-                                  variant="ghost"
-                                  onClick={() => setSelectedQuickActions(defaultQuickActionIds)}
-                                >
-                                  Réinitialiser
-                                </Button>
-                                <Button onClick={() => setQuickActionsOpen(false)}>Terminer</Button>
-                              </DialogFooter>
-                            </DialogContent>
-                          </Dialog>
-                        </div>
-                      </CardHeader>
-                      <CardContent className={dashboardWidgetContentClass}>
-                        <div className="grid h-full grid-cols-2 grid-rows-2 gap-3">
-                          {orderedQuickActions.map((action) => {
-                            const Icon = action.icon;
-                            return (
-                              <Button
-                                key={action.id}
-                                asChild
-                                variant="outline"
-                                className="h-full min-h-[96px] w-full flex-col items-start justify-between rounded-2xl border-border/50 bg-muted/20 p-4 text-left shadow-none hover:bg-muted/40"
-                              >
-                                <Link to={action.path}>
-                                  <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border/50">
-                                    <Icon className="h-5 w-5 text-foreground" />
-                                  </div>
-                                  <span className="text-sm font-medium leading-tight">{action.label}</span>
-                                </Link>
-                              </Button>
-                            );
-                          })}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
                   {widgetId === 'shortcuts' && (
                     <Card className={dashboardWidgetCardClass}>
                       <CardHeader className={dashboardWidgetHeaderClass}>
@@ -1395,158 +1106,12 @@ export default function Dashboard() {
                     );
                   })()}
 
-                  {widgetId === 'inventory' && (
-                    <Card className={dashboardWidgetCardClass}>
-                      <CardHeader className={dashboardWidgetHeaderClass}>
-                        <div className="flex items-center justify-between gap-3">
-                          <DashboardWidgetTitle
-                            title="Inventaire"
-                            icon={Package}
-                            iconClassName="text-blue-500"
-                            iconWrapperClassName="bg-blue-500/15"
-                          />
-                          {totalInventoryCount > 0 && (
-                            <Badge variant="secondary" className="tabular-nums border border-border/50 bg-muted/30">{totalInventoryCount}</Badge>
-                          )}
-                        </div>
-                      </CardHeader>
-                      <CardContent className={cn(dashboardWidgetContentClass, "flex flex-col")}>
-                        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
-                          <div className={cn(dashboardRowClass, "text-sm")}>
-                            <span>Cadeaux stockés</span>
-                            <span className="tabular-nums text-muted-foreground">{giftInventoryCount}</span>
-                          </div>
-
-                          {inventoryItems.length > 0 ? (
-                            <div className="space-y-2">
-                              {inventoryItems.slice(0, 4).map((item) => (
-                                <div
-                                  key={item.id}
-                                  className={dashboardRowClass}
-                                >
-                                  <div className="flex min-w-0 items-center gap-2">
-                                    <p className="min-w-0 text-sm font-medium truncate">{item.item.name}</p>
-                                    <Badge variant="outline" className={cn(
-                                      "shrink-0 border-border/50 bg-background text-xs capitalize text-muted-foreground"
-                                    )}>
-                                      {item.item.type.toLowerCase()}
-                                    </Badge>
-                                  </div>
-                                  <span className="shrink-0 text-sm font-medium tabular-nums">x{item.quantity}</span>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground")}>Aucun objet dans l&apos;inventaire.</p>
-                          )}
-                        </div>
-
-                        <Button asChild variant="outline" className={cn("mt-3 w-full", dashboardGhostButtonClass)}>
-                          <Link to="/inventory">Ouvrir l&apos;inventaire</Link>
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {widgetId === 'gifts' && (
-                    <Card className={dashboardWidgetCardClass}>
-                      <CardHeader className={dashboardWidgetHeaderClass}>
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="flex items-center gap-2">
-                            <DashboardWidgetTitle
-                            title="Cadeaux"
-                            icon={GiftIcon}
-                            iconClassName="text-foreground"
-                            iconWrapperClassName="bg-muted/40"
-                          />
-                            {inboxGifts.length > 0 && (
-                              <Badge variant="secondary" className="border border-border/50 bg-muted/30 tabular-nums text-foreground hover:bg-muted/30">
-                                {inboxGifts.length}
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button size="sm" variant="outline" className={dashboardGhostButtonClass} onClick={() => openGiftDialog('send')}>
-                              Envoyer
-                            </Button>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent className={cn(dashboardWidgetContentClass, "flex flex-col")}>
-                        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            <div className={cn(
-                              "rounded-xl border px-3 py-3",
-                              inboxGifts.length > 0 ? "border-border/50 bg-muted/20" : "border-border/50 bg-muted/10"
-                            )}>
-                              <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>{inboxGifts.length}</p>
-                              <p className={TYPOGRAPHY.SMALL}>en attente</p>
-                            </div>
-                            <div className="rounded-xl border border-border/50 bg-muted/10 px-3 py-3">
-                              <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>{receivedGifts.length}</p>
-                              <p className={TYPOGRAPHY.SMALL}>ouverts</p>
-                            </div>
-                          </div>
-
-                          <div className={dashboardRowClass}>
-                            <div>
-                              <p className={TYPOGRAPHY.SMALL}>Aura disponible</p>
-                              <p className={cn(TYPOGRAPHY.H5, "tabular-nums")}>
-                                {giftStatus?.remainingAura ?? 0}/{giftStatus?.limit ?? 50}
-                              </p>
-                            </div>
-                            <p className={cn(TYPOGRAPHY.SMALL, "tabular-nums text-muted-foreground")}>
-                              {nextRefillCountdown ?? '--:--:--'}
-                            </p>
-                          </div>
-
-                          {giftsLoading ? (
-                            <p className={cn(TYPOGRAPHY.MUTED)}>Chargement des cadeaux...</p>
-                          ) : (
-                            <div className="space-y-2">
-                              {inboxGifts.length === 0 ? (
-                                <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground")}>Aucun cadeau en attente.</p>
-                              ) : (
-                                inboxGifts.slice(0, 4).map((gift) => (
-                                  <button
-                                    key={gift.id}
-                                    type="button"
-                                    onClick={() => openGiftDialog('inbox')}
-                                    className="block w-full rounded-xl border border-border/50 bg-muted/20 px-3 py-3 text-left transition hover:bg-muted/40"
-                                  >
-                                    <p className="text-sm font-medium truncate">Cadeau de {gift.sender.username}</p>
-                                    <p className="text-xs text-muted-foreground">{formatTimeAgo(gift.createdAt)}</p>
-                                  </button>
-                                ))
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        <Button variant="outline" className={cn("mt-3 w-full", dashboardGhostButtonClass)} onClick={() => openGiftDialog('inbox')}>
-                          Ouvrir la boîte
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  )}
                 </SortableDashboardWidget>
               ))}
             </div>
           </SortableContext>
         </DndContext>
       </div>
-
-      <GiftDialog
-        open={giftDialogOpen}
-        onOpenChange={(open) => {
-          setGiftDialogOpen(open);
-          if (!open) {
-            fetchGiftOverview();
-          }
-        }}
-        onGiftOpened={fetchGiftOverview}
-        initialTab={giftDialogInitialTab}
-      />
     </>
   );
 }

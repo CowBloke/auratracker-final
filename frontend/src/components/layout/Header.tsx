@@ -84,7 +84,7 @@ export default function Header() {
     <header className="fixed top-0 left-0 right-0 h-16 bg-card border-b z-50">
       <div className="flex items-center justify-between h-full px-6">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-3">
+        <Link to="/dashboard" className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-aura to-aura-glow flex items-center justify-center">
             <Sparkles className="w-6 h-6 text-white" />
           </div>

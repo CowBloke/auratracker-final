@@ -1,5 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Axe, Check, Coins, Crown, Info, Loader2, LogOut, MessageSquare, Pencil, Plus, Send, Sparkles, Swords, Tag, Target, Trash2, UserX, X } from 'lucide-react';
+import { AlertTriangle, Axe, Check, Coins, Crown, Loader2, LogOut, Pencil, Plus, Send, Sparkles, Swords, Target, Trash2, UserX, X } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ClanActiveEffect,
@@ -1093,29 +1093,24 @@ export default function Clans() {
                   <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'info' | 'chat' | 'guerre' | 'tag' | 'messages')}>
                     <TabsList className="w-full">
                       <TabsTrigger value="info" className="flex-1">
-                        <Info className="mr-1.5 h-3.5 w-3.5" />
                         Infos
                       </TabsTrigger>
                       {selectedClan.viewer.isMember ? (
                         <TabsTrigger value="chat" className="flex-1">
-                          <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
                           Chat
                         </TabsTrigger>
                       ) : null}
                       {selectedClan.viewer.isLeader && selectedClan.tagUnlocked ? (
                         <TabsTrigger value="tag" className="flex-1">
-                          <Tag className="mr-1.5 h-3.5 w-3.5" />
                           Tag
                         </TabsTrigger>
                       ) : null}
                       {selectedClan.viewer.isMember ? (
                         <TabsTrigger value="messages" className="flex-1">
-                          <Sparkles className="mr-1.5 h-3.5 w-3.5" />
                           Messages
                         </TabsTrigger>
                       ) : null}
                       <TabsTrigger value="guerre" className="flex-1">
-                        <Swords className="mr-1.5 h-3.5 w-3.5" />
                         Guerre
                         {selectedWar && selectedWar.status !== 'COMPLETED' ? (
                           <Badge variant={getStatusVariant(selectedWar.status)} className="ml-2 h-4 px-1 text-[10px]">

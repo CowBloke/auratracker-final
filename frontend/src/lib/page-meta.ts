@@ -6,6 +6,7 @@ export interface PageMeta {
 
 const STATIC_PAGE_META: Record<string, PageMeta> = {
   '/': { title: 'Dashboard', description: "Vue d'ensemble de ton activité et des parties en direct." },
+  '/dashboard': { title: 'Dashboard', description: "Vue d'ensemble de ton activité et des parties en direct." },
   '/games': { title: 'Jeux', description: 'Catalogue des jeux solo, multi et quotidiens.' },
   '/games/doodle-jump': { title: 'Doodle Jump', description: 'Mode score et classement en direct.' },
   '/games/logic-lab': { title: 'Sudoku', description: 'Sudoku 9x9 avec grilles générées et plusieurs niveaux.' },

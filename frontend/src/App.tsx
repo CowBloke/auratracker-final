@@ -78,6 +78,22 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+function DefaultLandingRedirect() {
+  const { maintenanceStatus, maintenanceLoading } = useFeatures();
+
+  if (maintenanceLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse text-primary text-xl">
+          Chargement...
+        </div>
+      </div>
+    );
+  }
+
+  return <Navigate to={maintenanceStatus.defaultLandingPage} replace />;
+}
+
 function App() {
   const location = useLocation();
   const { maintenanceStatus, maintenanceLoading } = useFeatures();
@@ -126,7 +142,7 @@ function App() {
       }
 
       if (page.path === '/') {
-        return location.pathname === '/';
+        return location.pathname === '/' || location.pathname === '/dashboard';
       }
 
       return (
@@ -157,7 +173,8 @@ function App() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Dashboard />} />
+        <Route index element={<DefaultLandingRedirect />} />
+        <Route path="dashboard" element={<Dashboard />} />
         <Route path="games" element={<Games />} />
         <Route path="games/doodle-jump" element={<DoodleJump />} />
         <Route path="games/2048" element={<Game2048 />} />

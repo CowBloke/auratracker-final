@@ -287,7 +287,7 @@ const games = [
     description: 'Course low-poly time trial sur 14 circuits. Soumets tes meilleurs temps et grimpe au classement.',
     type: 'Score',
     emoji: '🏎️',
-    image: '/images/games/racer.png',
+    image: '/images/games/polytrack.png',
     statsKeys: [],
     releaseRank: 31,
   },

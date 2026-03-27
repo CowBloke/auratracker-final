@@ -19,6 +19,7 @@ import { TYPOGRAPHY } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { CenteredShell } from '@/components/layout/centered-shell';
 import { maintenanceApi } from '@/services/api';
+import { normalizeDefaultLandingPage } from '@/lib/default-landing-page';
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Pseudo requis'),
@@ -34,11 +35,13 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [loginMessage, setLoginMessage] = useState('');
   const [showRegisterCta, setShowRegisterCta] = useState(true);
+  const [defaultLandingPage, setDefaultLandingPage] = useState('/dashboard');
 
   useEffect(() => {
     maintenanceApi.getStatus().then((res) => {
       setLoginMessage(res.data.loginMessage ?? '');
       setShowRegisterCta(res.data.loginRegisterCtaEnabled !== false);
+      setDefaultLandingPage(normalizeDefaultLandingPage(res.data.defaultLandingPage));
     }).catch(() => {});
   }, []);
   
@@ -55,7 +58,8 @@ export default function Login() {
       setError('');
       setLoading(true);
       await login(data.username, data.password);
-      navigate('/');
+      const statusRes = await maintenanceApi.getStatus().catch(() => null);
+      navigate(normalizeDefaultLandingPage(statusRes?.data.defaultLandingPage ?? defaultLandingPage));
     } catch (err: any) {
       setError(err.response?.data?.error || 'Échec de connexion');
     } finally {

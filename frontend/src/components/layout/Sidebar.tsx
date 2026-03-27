@@ -101,7 +101,7 @@ const gameItems = [
   { to: '/games/knife-hit', label: 'Knife Hit', image: '/images/games/knifehit.png' },
   { to: '/games/clash-village', label: 'Clash Village', image: '/images/games/clash.png' },
   { to: '/games/goyave-empire', label: 'Goyave Empire', image: '/images/games/goyaveempire.png' },
-  { to: '/games/polytrack', label: 'PolyTrack', image: '/images/games/racer.png' },
+  { to: '/games/polytrack', label: 'PolyTrack', image: '/images/games/polytrack.png' },
   { to: '/games/eaglercraft', label: 'Eaglercraft', image: '/images/games/minecraft.png' },
   { to: '/games/puissance-quatre', label: 'Puissance 4', image: '/images/games/puissance4.png' },
   { to: '/games/echecs', label: 'Échecs', image: '/images/games/chess.png' },
@@ -288,16 +288,16 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
             {!isDisabled('/') && <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                isActive={location.pathname === '/'}
+                isActive={location.pathname === '/' || location.pathname === '/dashboard'}
                 tooltip="Tableau de bord"
                 className={cn(
                   "h-9 px-3 text-sm font-normal",
-                  location.pathname === '/'
+                  location.pathname === '/' || location.pathname === '/dashboard'
                     ? "text-foreground bg-muted/50"
                     : "text-muted-foreground hover:text-foreground hover:bg-transparent"
                 )}
               >
-                <NavLink to="/" end>
+                <NavLink to="/dashboard" end>
                   <LayoutDashboard className="h-4 w-4" />
                   <span className="group-data-[collapsible=icon]:hidden">Tableau de bord</span>
                 </NavLink>

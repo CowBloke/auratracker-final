@@ -43,6 +43,12 @@ import { ImagePicker } from '@/components/ui/image-picker';
 import { BLOCKABLE_PAGES } from '@/config/blockedPages';
 import { PageShell } from '@/components/layout/page-shell';
 import { getPageMetaForPath } from '@/lib/page-meta';
+import {
+  DEFAULT_LANDING_PAGE,
+  DEFAULT_LANDING_PAGE_KEY,
+  DEFAULT_LANDING_PAGE_OPTIONS,
+  normalizeDefaultLandingPage,
+} from '@/lib/default-landing-page';
 
 // Effect types for items
 const EFFECT_TYPES = [
@@ -52,7 +58,6 @@ const EFFECT_TYPES = [
   { value: 'BONUS_AURA', label: 'Bonus Aura', description: 'Donne un bonus d\'aura à l\'utilisation' },
   { value: 'BONUS_MONEY', label: 'Bonus Argent', description: 'Donne un bonus d\'argent à l\'utilisation' },
   { value: 'DOODLE_JUMP_SKIN', label: 'Skin Doodle Jump', description: 'Débloque un skin personnalisé dans Doodle Jump (sélectionner une image pour le skin)' },
-  { value: 'GIFT', label: 'Cadeau', description: 'L\'objet est un cadeau : l\'acheteur choisit un destinataire et le lui envoie directement.' },
   { value: 'CLAN_TAG_UNLOCK', label: 'Tag de clan', description: 'Débloque le tag de clan pour le clan du membre acheteur. Un clan ne peut l\'acheter qu\'une fois.' },
   { value: 'CLAN_SLOT_UPGRADE', label: '+1 Slot clan', description: 'Ajoute un slot membre supplémentaire au clan. Un clan ne peut l\'acheter qu\'une fois. S\'applique automatiquement à l\'achat.' },
   { value: 'CLAN_GAME_MONEY_BOOST', label: 'Boost gains clan', description: 'Objet de clan consommable: active un boost en % sur l\'argent gagné en jeu pour tous les membres du clan.' },
@@ -181,7 +186,6 @@ const ACTION_LABELS: Record<string, string> = {
   highscore: 'Nouveau record',
   // Economy
   transfer: 'Transfert',
-  gift_aura: 'Don d\'aura',
   balance_change: 'Modification solde',
   // Party
   party_create: 'Groupe créé',
@@ -495,10 +499,6 @@ const renderLogSummary = (log: ActivityLog): React.ReactNode => {
       if (aura !== null && aura !== 0) parts.push(`${aura} aura`);
       if (money !== null && money !== 0) parts.push(`${money} 💰`);
       return <>Transfert{parts.length > 0 && <> : {parts.join(' + ')}</>} de {actor}{log.targetName && <> → {log.targetName}</>}</>;
-    }
-    if (log.action === 'gift_aura') {
-      const amount = toNumber(metadata.amount);
-      return <>Don d'aura{amount !== null && <> : <span className="text-amber-400">+{amount}</span></>} de {actor}{log.targetName && <> → {log.targetName}</>}</>;
     }
   }
 
@@ -944,7 +944,6 @@ export default function Admin() {
     { id: 'COSMETIC', label: 'Cosmétiques' },
     { id: 'CONSUMABLE', label: 'Consommables' },
     { id: 'UPGRADE', label: 'Améliorations' },
-    { id: 'GIFT', label: 'Cadeaux' },
   ]);
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [savingCategories, setSavingCategories] = useState(false);
@@ -1060,8 +1059,10 @@ export default function Admin() {
   const [savingClashAttackCooldown, setSavingClashAttackCooldown] = useState(false);
   const [loginMessage, setLoginMessage] = useState('');
   const [loginRegisterCtaEnabled, setLoginRegisterCtaEnabled] = useState(true);
+  const [defaultLandingPage, setDefaultLandingPage] = useState(DEFAULT_LANDING_PAGE);
   const [savingLoginMessage, setSavingLoginMessage] = useState(false);
   const [savingLoginRegisterCta, setSavingLoginRegisterCta] = useState(false);
+  const [savingDefaultLandingPage, setSavingDefaultLandingPage] = useState(false);
   const [updatePopups, setUpdatePopups] = useState<AdminUpdatePopup[]>([]);
   const [loadingUpdatePopups, setLoadingUpdatePopups] = useState(false);
   const [savingUpdatePopup, setSavingUpdatePopup] = useState(false);
@@ -1925,6 +1926,7 @@ export default function Admin() {
       setBlockedMessage(res.data.settings.blocked_message || '');
       setLoginMessage(res.data.settings.login_message || '');
       setLoginRegisterCtaEnabled(res.data.settings.login_register_cta_enabled !== 'false');
+      setDefaultLandingPage(normalizeDefaultLandingPage(res.data.settings[DEFAULT_LANDING_PAGE_KEY]));
 
       if (res.data.settings.blocked_pages) {
         try {
@@ -2201,6 +2203,22 @@ export default function Admin() {
       showMessage('error', 'Erreur lors de la sauvegarde du bouton');
     } finally {
       setSavingLoginRegisterCta(false);
+    }
+  };
+
+  const saveDefaultLandingPage = async () => {
+    try {
+      setSavingDefaultLandingPage(true);
+      const normalizedValue = normalizeDefaultLandingPage(defaultLandingPage);
+      await adminApi.updateSetting(DEFAULT_LANDING_PAGE_KEY, normalizedValue);
+      setDefaultLandingPage(normalizedValue);
+      refreshFeatures();
+      showMessage('success', 'Page principale sauvegardee');
+    } catch (error) {
+      console.error('Failed to save default landing page setting:', error);
+      showMessage('error', 'Erreur lors de la sauvegarde de la page principale');
+    } finally {
+      setSavingDefaultLandingPage(false);
     }
   };
 
@@ -2923,8 +2941,7 @@ export default function Admin() {
           className={SPACING.SECTION_SPACING}
         >
           <TabsList className="flex flex-wrap h-auto p-1">
-          <TabsTrigger value="inbox" className="flex items-center gap-2">
-            <Inbox className="h-4 w-4" />
+          <TabsTrigger value="inbox">
             Inbox
             {(pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length + banAppeals.filter(a => a.status === 'PENDING').length + nameChangeRequests.filter(n => n.status === 'PENDING').length) > 0 && (
               <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[11px] font-semibold leading-none">
@@ -2932,16 +2949,13 @@ export default function Admin() {
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="users" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
+          <TabsTrigger value="users">
             Utilisateurs
           </TabsTrigger>
-          <TabsTrigger value="clubs" className="flex items-center gap-2">
-            <Crown className="h-4 w-4" />
+          <TabsTrigger value="clubs">
             Clubs
           </TabsTrigger>
-          <TabsTrigger value="logs" className="flex items-center gap-2">
-            <ScrollText className="h-4 w-4" />
+          <TabsTrigger value="logs">
             Logs
             {logStats && (
               <span className={TYPOGRAPHY.XS}>
@@ -2949,8 +2963,7 @@ export default function Admin() {
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="bans" className="flex items-center gap-2">
-            <Gavel className="h-4 w-4" />
+          <TabsTrigger value="bans">
             Sanctions
             {bans.filter(b => b.isActive).length > 0 && (
               <span className={TYPOGRAPHY.XS}>
@@ -2958,30 +2971,25 @@ export default function Admin() {
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="content" className="flex items-center gap-2">
-            <Package className="h-4 w-4" />
+          <TabsTrigger value="content">
             Objets
           </TabsTrigger>
-          <TabsTrigger value="settings" className="flex items-center gap-2">
-            <Shield className="h-4 w-4" />
+          <TabsTrigger value="settings">
             Paramètres
           </TabsTrigger>
-          <TabsTrigger value="activity" className="flex items-center gap-2" onClick={() => { fetchActivity(activityPeriod); fetchActivityBreakdown(activityBreakdownDay); }}>
-            <Activity className="h-4 w-4" />
+          <TabsTrigger value="activity" onClick={() => { fetchActivity(activityPeriod); fetchActivityBreakdown(activityBreakdownDay); }}>
             Activité
             {onlineStats && (
               <span className={TYPOGRAPHY.XS}>{onlineStats.current} en ligne</span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="badges" className="flex items-center gap-2" onClick={() => { fetchBadges(); fetchCustomBadgeRequests(); }}>
-            <Award className="h-4 w-4" />
+          <TabsTrigger value="badges" onClick={() => { fetchBadges(); fetchCustomBadgeRequests(); }}>
             Badges
             {customBadgeRequests.length > 0 && (
               <span className="ml-1 bg-yellow-500 text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full">{customBadgeRequests.length}</span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="support" className="flex items-center gap-2" onClick={fetchSupportThreads}>
-            <MessageCircle className="h-4 w-4" />
+          <TabsTrigger value="support" onClick={fetchSupportThreads}>
             Support
             {supportUnread > 0 && (
               <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[11px] font-semibold leading-none">
@@ -3561,10 +3569,6 @@ export default function Admin() {
                             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-500/15 text-green-400 text-xs tabular-nums font-medium">
                               <Coins className="h-3 w-3" />
                               {u.money.toLocaleString()}
-                            </span>
-                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted/60 text-muted-foreground text-xs tabular-nums">
-                              <CalendarRange className="h-3 w-3" />
-                              {u.dailyAuraGiven}/{u.dailyAuraLimit}
                             </span>
                           </div>
 
@@ -4275,6 +4279,33 @@ export default function Admin() {
                   <LogIn className="h-3.5 w-3.5 mr-1.5" />
                   Configurer
                 </Button>
+              </div>
+
+              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                <div>
+                  <div className="text-sm font-medium">Page principale du site</div>
+                  <div className="text-xs text-muted-foreground">
+                    {DEFAULT_LANDING_PAGE_OPTIONS.find((option) => option.value === defaultLandingPage)?.label ?? 'Dashboard'}
+                    {' '}ouvre quand un utilisateur connecte arrive sur `auratracker.xyz`.
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Select value={defaultLandingPage} onValueChange={setDefaultLandingPage}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Choisir une page" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DEFAULT_LANDING_PAGE_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button size="sm" onClick={saveDefaultLandingPage} disabled={savingDefaultLandingPage}>
+                    {savingDefaultLandingPage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
               </div>
 
               <div className="flex items-center justify-between gap-4 px-4 py-3.5">
@@ -5887,13 +5918,6 @@ export default function Admin() {
                 <div className="relative">
                   <Coins className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-yellow-400/60 pointer-events-none" />
                   <Input type="number" step="0.01" value={editValues.auraCoinBalance} onChange={(e) => setEditValues(prev => ({ ...prev, auraCoinBalance: parseFloat(e.target.value) || 0 }))} className="h-9 bg-transparent border-yellow-500/30 focus-visible:ring-yellow-500/30 pl-8" />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-400 flex items-center gap-1"><CalendarRange className="h-3 w-3" />Limite/jour</label>
-                <div className="relative">
-                  <CalendarRange className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400/60 pointer-events-none" />
-                  <Input type="number" value={editValues.dailyAuraLimit} onChange={(e) => setEditValues(prev => ({ ...prev, dailyAuraLimit: parseInt(e.target.value) || 0 }))} className="h-9 bg-transparent border-slate-500/30 focus-visible:ring-slate-500/30 pl-8" min={0} />
                 </div>
               </div>
             </div>

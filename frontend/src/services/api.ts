@@ -139,15 +139,11 @@ export interface SocialUser {
 
 // Economy API
 export const economyApi = {
-  transfer: (data: { receiverId: string; auraAmount?: number; moneyAmount?: number }) =>
+  transfer: (data: { receiverId: string; moneyAmount?: number }) =>
     api.post('/economy/transfer', data),
   getTransfers: (params?: { userId?: string; limit?: number; offset?: number; all?: boolean }) =>
     api.get('/economy/transfers', { params }),
   getBalance: (userId: string) => api.get(`/economy/balance/${userId}`),
-  // Daily aura gift system
-  getDailyAllowance: () => api.get('/economy/daily-allowance'),
-  giftAura: (data: { receiverId: string; amount: number; message?: string }) =>
-    api.post('/economy/gift-aura', data),
 };
 
 export interface ShopCategory {
@@ -165,17 +161,13 @@ export const marketplaceApi = {
   getInventory: (userId: string) => api.get(`/marketplace/inventory/${userId}`),
   useItem: (userItemId: string, effectData?: { color?: string; imageUrl?: string; name?: string; description?: string; icon?: string; backgroundColor?: string; borderColor?: string; rarity?: string }) =>
     api.post('/marketplace/use-item', { userItemId, effectData }),
-  sellGiftItem: (userItemId: string) =>
-    api.post<{ success: boolean; moneyEarned: number }>('/marketplace/sell-gift-item', { userItemId }),
-  chuckGiftItem: (userItemId: string) =>
-    api.post<{ success: boolean }>('/marketplace/chuck-gift-item', { userItemId }),
   getDoodleSkins: () =>
     api.get<{ static: ShopItem[]; rotating: ShopItem[]; nextRefresh: string }>('/marketplace/doodle-skins'),
   // Admin
   createItem: (data: {
     name: string;
     description: string;
-    type: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE' | 'GIFT';
+    type: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE';
     price: number;
     imageUrl?: string;
     effect?: string;
@@ -999,7 +991,7 @@ export interface ShopItem {
   id: string;
   name: string;
   description: string;
-  type: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE' | 'GIFT';
+  type: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE';
   price: number;
   imageUrl: string | null;
   effect: string | null;
@@ -1323,13 +1315,6 @@ export const adminApi = {
   // Reset extreme aura values
   resetExtremeAura: (threshold?: number) =>
     runRareAction({ action: 'reset_extreme_aura', threshold }) as Promise<{ data: { success: boolean; message: string; usersReset: number; users: { id: string; username: string; oldAura: string }[] } }>,
-  // Gift templates
-  getGiftTemplates: () => api.get<{ templates: GiftTemplate[] }>('/admin/gift-templates'),
-  createGiftTemplate: (data: { name: string; description?: string; imageUrl?: string; price: number }) =>
-    api.post<{ template: GiftTemplate }>('/admin/gift-templates', data),
-  updateGiftTemplate: (id: string, data: { name?: string; description?: string; imageUrl?: string; price?: number }) =>
-    api.put<{ template: GiftTemplate }>(`/admin/gift-templates/${id}`, data),
-  deleteGiftTemplate: (id: string) => api.delete<{ success: boolean }>(`/admin/gift-templates/${id}`),
   // Update popups
   getUpdatePopups: () => api.get<{ popups: AdminUpdatePopup[] }>('/admin/update-popups'),
   createUpdatePopup: (data: {
@@ -1414,6 +1399,7 @@ export const maintenanceApi = {
     loginRegisterCtaEnabled?: boolean;
     referralEnabled?: boolean;
     duelMatchmakingEnabled?: boolean;
+    defaultLandingPage?: string;
   }>('/maintenance'),
 };
 
@@ -1648,63 +1634,6 @@ export const questsApi = {
       rewards: { money: number; aura: number };
       claimedQuests: number;
     }>('/quests/claim', { questIds }),
-};
-
-// Gift types
-export interface GiftTemplate {
-  id: string;
-  name: string;
-  description: string | null;
-  imageUrl: string | null;
-  price: number;
-  createdAt: string;
-}
-
-export interface GiftItem {
-  id: string;
-  giftId: string;
-  giftTemplateId: string;
-  giftTemplate: GiftTemplate;
-}
-
-export interface Gift {
-  id: string;
-  senderId: string;
-  receiverId: string;
-  message: string | null;
-  moneyAmount: number;
-  auraAmount: number;
-  giftedItemId: string | null;
-  giftedItem: { id: string; name: string; imageUrl: string | null; price: number } | null;
-  isOpened: boolean;
-  openedAt: string | null;
-  createdAt: string;
-  sender: { id: string; username: string; profilePicture: string | null };
-  items: GiftItem[];
-}
-
-export interface GiftStatus {
-  limit: number;
-  sentLast24h: number;
-  remainingAura: number;
-  nextRefillAt: string | null;
-}
-
-export const giftsApi = {
-  getTemplates: () => api.get<{ templates: GiftTemplate[] }>('/gifts/templates'),
-  getInbox: () => api.get<{ gifts: Gift[] }>('/gifts/inbox'),
-  getInboxCount: () => api.get<{ count: number }>('/gifts/inbox/count'),
-  getReceived: () => api.get<{ gifts: Gift[] }>('/gifts/received'),
-  getStatus: () => api.get<GiftStatus>('/gifts/status'),
-  send: (data: {
-    receiverId: string;
-    auraAmount: number;
-    message?: string;
-  }) =>
-    api.post<{ gift: Gift }>('/gifts/send', data),
-  open: (id: string) => api.post<{ gift: Gift }>(`/gifts/${id}/open`),
-  sendShopItem: (data: { itemId: string; receiverId: string; message?: string }) =>
-    api.post<{ gift: Gift; newBalance: { money: number; aura: number } }>('/gifts/send-item', data),
 };
 
 // ─── Notifications API ────────────────────────────────────────────────────────

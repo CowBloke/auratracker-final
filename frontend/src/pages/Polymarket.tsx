@@ -15,7 +15,7 @@ import { ImagePicker } from '@/components/ui/image-picker';
 import {
   Loader2, Plus, Calendar,
   CheckCircle2, XCircle, DollarSign, Users,
-  Check, X, ChevronDown, Shield,
+  Check, X, ChevronDown,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -651,19 +651,10 @@ export default function Polymarket() {
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
           <div className="flex items-center justify-between gap-3">
             <TabsList className="h-auto flex-wrap">
-              <TabsTrigger value="events" className="gap-2">
-                <Calendar className="h-4 w-4" />
-                Événements
-              </TabsTrigger>
-              <TabsTrigger value="history" className="gap-2">
-                <DollarSign className="h-4 w-4" />
-                Mes paris
-              </TabsTrigger>
+              <TabsTrigger value="events">Événements</TabsTrigger>
+              <TabsTrigger value="history">Mes paris</TabsTrigger>
               {user?.isAdmin && (
-                <TabsTrigger value="admin" className="gap-2">
-                  <Shield className="h-4 w-4" />
-                  Paris admin
-                </TabsTrigger>
+                <TabsTrigger value="admin">Paris admin</TabsTrigger>
               )}
             </TabsList>
             <div className="flex items-center gap-2">
@@ -1010,11 +1001,6 @@ export default function Polymarket() {
           {/* ── Admin tab ── */}
           {user?.isAdmin && (
             <TabsContent value="admin" className={SPACING.SECTION_SPACING}>
-              <h2 className={cn(TYPOGRAPHY.H2, 'flex items-center gap-2')}>
-                <Shield className="h-5 w-5" />
-                Administration
-              </h2>
-
               <div className={SPACING.SECTION_SPACING}>
                 {/* Events list */}
                 <div>

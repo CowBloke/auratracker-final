@@ -21,3 +21,7 @@
 - pass
 - pb image alors que taille mo moins
 - par défaut fermé navbar
+- icones aura et argent reconnaisable à travers tout le site
+- clavier minecraft
+- accrochae voitures polytrack
+- personnalisation theme

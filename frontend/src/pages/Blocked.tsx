@@ -16,7 +16,7 @@ export default function Blocked({ message }: BlockedProps) {
     if (window.history.length > 1) {
       navigate(-1);
     } else {
-      navigate('/');
+      navigate('/dashboard');
     }
   };
 

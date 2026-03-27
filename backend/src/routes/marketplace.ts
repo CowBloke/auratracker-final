@@ -19,7 +19,6 @@ const DEFAULT_SHOP_CATEGORIES = [
   { id: 'COSMETIC', label: 'Cosmétiques' },
   { id: 'CONSUMABLE', label: 'Consommables' },
   { id: 'UPGRADE', label: 'Améliorations' },
-  { id: 'GIFT', label: 'Cadeaux' },
 ];
 
 const CLAN_BASE_MAX_MEMBERS = 5;
@@ -46,7 +45,9 @@ router.get('/items', authMiddleware, async (req: AuthRequest, res: Response) => 
   try {
     const { type, page = '1', limit = '20' } = req.query;
     
-    const where = type ? { type: type as string } : {};
+    const where = type
+      ? { type: type as string }
+      : { type: { not: 'GIFT' } };
     
     const [items, total] = await Promise.all([
       prisma.item.findMany({
@@ -81,6 +82,10 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
     
     if (!item) {
       return res.status(404).json({ error: 'Item not found' });
+    }
+
+    if (item.type === 'GIFT') {
+      return res.status(410).json({ error: 'This item is no longer available' });
     }
     
     // Check if expired
@@ -775,71 +780,6 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
   } catch (error) {
     console.error('Use item error:', error);
     res.status(500).json({ error: 'Failed to use item' });
-  }
-});
-
-// Sell a gifted item — removes 1 from inventory and credits half its listed price in money
-router.post('/sell-gift-item', authMiddleware, async (req: AuthRequest, res: Response) => {
-  try {
-    if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
-
-    const { userItemId } = req.body;
-    if (!userItemId) return res.status(400).json({ error: 'userItemId is required' });
-
-    const userItem = await prisma.userItem.findUnique({
-      where: { id: userItemId },
-      include: { item: true },
-    });
-
-    if (!userItem) return res.status(404).json({ error: 'Item not found in inventory' });
-    if (userItem.userId !== req.user.id) return res.status(403).json({ error: 'Not your item' });
-    if (userItem.item.type !== 'GIFT') return res.status(400).json({ error: 'Only gift items can be sold this way' });
-
-    const moneyEarned = Math.floor(userItem.item.price / 2);
-
-    await prisma.$transaction(async (tx) => {
-      if (userItem.quantity > 1) {
-        await tx.userItem.update({ where: { id: userItemId }, data: { quantity: { decrement: 1 } } });
-      } else {
-        await tx.userItem.delete({ where: { id: userItemId } });
-      }
-      await tx.user.update({ where: { id: req.user!.id }, data: { money: { increment: moneyEarned } } });
-    });
-
-    res.json({ success: true, moneyEarned });
-  } catch (error) {
-    console.error('Sell gift item error:', error);
-    res.status(500).json({ error: 'Failed to sell item' });
-  }
-});
-
-// Chuck (discard) a gifted item — removes 1 from inventory with no reward
-router.post('/chuck-gift-item', authMiddleware, async (req: AuthRequest, res: Response) => {
-  try {
-    if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
-
-    const { userItemId } = req.body;
-    if (!userItemId) return res.status(400).json({ error: 'userItemId is required' });
-
-    const userItem = await prisma.userItem.findUnique({
-      where: { id: userItemId },
-      include: { item: true },
-    });
-
-    if (!userItem) return res.status(404).json({ error: 'Item not found in inventory' });
-    if (userItem.userId !== req.user.id) return res.status(403).json({ error: 'Not your item' });
-    if (userItem.item.type !== 'GIFT') return res.status(400).json({ error: 'Only gift items can be chucked' });
-
-    if (userItem.quantity > 1) {
-      await prisma.userItem.update({ where: { id: userItemId }, data: { quantity: { decrement: 1 } } });
-    } else {
-      await prisma.userItem.delete({ where: { id: userItemId } });
-    }
-
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Chuck gift item error:', error);
-    res.status(500).json({ error: 'Failed to chuck item' });
   }
 });
 

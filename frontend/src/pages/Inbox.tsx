@@ -5,7 +5,6 @@ import {
   CheckCheck,
   Crown,
   Star,
-  Gift,
   Package,
   Users,
   Zap,
@@ -41,13 +40,11 @@ import { useNotifications } from '@/contexts/NotificationContext';
 import { type Notification } from '@/services/api';
 import { formatDistanceToNow, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import GiftDialog from '@/components/gifts/GiftDialog';
 
 // ── Icon / colour maps ──────────────────────────────────────────────────────
 const TYPE_ICON: Record<string, React.FC<{ className?: string }>> = {
   AURA_RECEIVED:      ({ className }) => <Star className={className} />,
   MONEY_RECEIVED:     ({ className }) => <DollarSign className={className} />,
-  GIFT_RECEIVED:      ({ className }) => <Gift className={className} />,
   ITEM_RECEIVED:      ({ className }) => <Package className={className} />,
   CLAN_MESSAGE:       ({ className }) => <MessageSquare className={className} />,
   CLAN_JOIN_REQUEST:  ({ className }) => <Users className={className} />,
@@ -69,7 +66,6 @@ const TYPE_ICON: Record<string, React.FC<{ className?: string }>> = {
 
 const ICON_NAME_MAP: Record<string, React.FC<{ className?: string }>> = {
   star: ({ className }) => <Star className={className} />,
-  gift: ({ className }) => <Gift className={className} />,
   package: ({ className }) => <Package className={className} />,
   users: ({ className }) => <Users className={className} />,
   check: ({ className }) => <Zap className={className} />,
@@ -108,7 +104,6 @@ const CATEGORIES = [
   { id: 'all',        label: 'Tout',       Icon: Inbox,      types: null },
   { id: 'unread',     label: 'Non lus',    Icon: Eye,        types: null },
   { id: 'aura',       label: 'Aura',       Icon: Star,       types: ['AURA_RECEIVED'] },
-  { id: 'cadeaux',    label: 'Cadeaux',    Icon: Gift,       types: ['GIFT_RECEIVED'] },
   { id: 'clans',      label: 'Clans',      Icon: Users,      types: CLAN_TYPES },
   { id: 'social',     label: 'Social',     Icon: MessageSquare, types: ['SOCIAL_FOLLOW', 'SOCIAL_CONNECTION'] },
   { id: 'quetes',     label: 'Quêtes',     Icon: Zap,        types: ['QUEST_COMPLETED'] },
@@ -141,14 +136,12 @@ function NotificationRow({
   onRead,
   onArchive,
   onUnarchive,
-  onGiftClick,
   isArchiveView,
 }: {
   n: Notification;
   onRead: (id: string) => void;
   onArchive: (id: string) => void;
   onUnarchive: (id: string) => void;
-  onGiftClick: () => void;
   isArchiveView: boolean;
 }) {
   const navigate = useNavigate();
@@ -164,11 +157,8 @@ function NotificationRow({
     ? formatDistanceToNow(date, { addSuffix: false, locale: fr })
     : format(date, 'dd MMM', { locale: fr });
 
-  const isGift = n.type === 'GIFT_RECEIVED';
-
   const handleClick = () => {
     if (!n.isRead) onRead(n.id);
-    if (isGift) { onGiftClick(); return; }
     if (n.link) navigate(n.link);
   };
 
@@ -178,7 +168,7 @@ function NotificationRow({
       className={cn(
         'group flex items-center gap-3 border-b border-border/30 px-3 py-2.5 transition-colors last:border-b-0',
         !n.isRead && !isArchiveView && 'bg-primary/[0.04]',
-        (n.link || isGift) && 'cursor-pointer hover:bg-muted/50'
+        n.link && 'cursor-pointer hover:bg-muted/50'
       )}
     >
       {/* Unread dot */}
@@ -240,7 +230,6 @@ function NotificationRow({
 // ── Page ────────────────────────────────────────────────────────────────────
 export default function InboxPage() {
   const [activeCategory, setActiveCategory] = useState<CategoryId>('all');
-  const [giftDialogOpen, setGiftDialogOpen] = useState(false);
 
   const {
     notifications,
@@ -279,7 +268,6 @@ export default function InboxPage() {
       all:        unread.length,
       unread:     unread.length,
       aura:       unread.filter((n) => n.type === 'AURA_RECEIVED').length,
-      cadeaux:    unread.filter((n) => n.type === 'GIFT_RECEIVED').length,
       clans:      unread.filter((n) => CLAN_TYPES.includes(n.type)).length,
       quetes:     unread.filter((n) => n.type === 'QUEST_COMPLETED').length,
       polymarket: unread.filter((n) => POLY_TYPES.includes(n.type)).length,
@@ -370,7 +358,6 @@ export default function InboxPage() {
                     onRead={markRead}
                     onArchive={archiveNotification}
                     onUnarchive={unarchiveNotification}
-                    onGiftClick={() => setGiftDialogOpen(true)}
                     isArchiveView={isArchiveView}
                   />
                 ))}
@@ -392,12 +379,6 @@ export default function InboxPage() {
         </div>
       </Card>
 
-      <GiftDialog
-        open={giftDialogOpen}
-        onOpenChange={setGiftDialogOpen}
-        onGiftOpened={() => {}}
-        initialTab="inbox"
-      />
     </div>
   );
 }

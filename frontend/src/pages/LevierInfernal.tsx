@@ -254,7 +254,7 @@ export default function LevierInfernal() {
                         <p className="text-sm font-medium">#{index + 1} <UsernameDisplay username={player.username} usernameColor={player.usernameColor} usernameClassName="font-medium" /></p>
                         <p className="mt-1 text-xs text-muted-foreground">{player.safePulls} leviers sûrs · {player.pulls} tirages</p>
                       </div>
-                      {player.isWinner && <div className="rounded-full bg-emerald-500/15 px-2 py-1 text-[11px] font-semibold text-emerald-600">WIN</div>}
+                      {player.isWinner && <div className="rounded-full bg-emerald-500/15 px-2 py-1 text-[11px] font-semibold text-emerald-600">Gagnant</div>}
                     </div>
                   ))}
                   <Button variant="outline" onClick={clearLeverBlastGameOver}>Fermer le classement</Button>

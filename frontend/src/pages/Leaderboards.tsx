@@ -331,11 +331,10 @@ export default function Leaderboards() {
                 type="button"
                 onClick={() => setActiveView('nombres')}
                 className={cn(
-                  "w-full flex items-center gap-2.5 rounded-md px-3 py-2 text-left transition-colors hover:bg-muted/40",
+                  "w-full rounded-md px-3 py-2 text-left transition-colors hover:bg-muted/40",
                   activeView === 'nombres' && "bg-muted"
                 )}
               >
-                <Hash className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <span className={cn(TYPOGRAPHY.SMALL, activeView === 'nombres' ? "text-foreground" : "text-muted-foreground")}>
                   Nombres
                 </span>
@@ -348,18 +347,16 @@ export default function Leaderboards() {
                 </p>
                 <div className="space-y-0.5">
                   {categories.filter(c => economyCategories.includes(c.id)).map(cat => {
-                    const Icon = cat.icon;
                     return (
                       <button
                         key={cat.id}
                         type="button"
                         onClick={() => setActiveView(cat.id)}
                         className={cn(
-                          "w-full flex items-center gap-2.5 rounded-md px-3 py-2 text-left transition-colors hover:bg-muted/40",
+                          "w-full rounded-md px-3 py-2 text-left transition-colors hover:bg-muted/40",
                           activeView === cat.id && "bg-muted"
                         )}
                       >
-                        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
                         <span className={cn(TYPOGRAPHY.SMALL, activeView === cat.id ? "text-foreground" : "text-muted-foreground")}>
                           {cat.name}
                         </span>
@@ -376,18 +373,16 @@ export default function Leaderboards() {
                 </p>
                 <div className="space-y-0.5">
                   {categories.filter(c => gameCategories.includes(c.id)).map(cat => {
-                    const Icon = cat.icon;
                     return (
                       <button
                         key={cat.id}
                         type="button"
                         onClick={() => setActiveView(cat.id)}
                         className={cn(
-                          "w-full flex items-center gap-2.5 rounded-md px-3 py-2 text-left transition-colors hover:bg-muted/40",
+                          "w-full rounded-md px-3 py-2 text-left transition-colors hover:bg-muted/40",
                           activeView === cat.id && "bg-muted"
                         )}
                       >
-                        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
                         <span className={cn(TYPOGRAPHY.SMALL, activeView === cat.id ? "text-foreground" : "text-muted-foreground")}>
                           {cat.name}
                         </span>

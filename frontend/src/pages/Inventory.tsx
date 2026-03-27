@@ -31,7 +31,7 @@ interface UserItem {
     id: string;
     name: string;
     description: string;
-    type: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE' | 'GIFT';
+    type: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE';
     price: number;
     effect?: string;
     imageUrl?: string;
@@ -50,7 +50,6 @@ const typeLabels: Record<string, string> = {
   CONSUMABLE: 'Consommable',
   COSMETIC: 'Cosmétique',
   UPGRADE: 'Amélioration',
-  GIFT: 'Cadeau',
 };
 
 const PRESET_COLORS = [
@@ -83,9 +82,6 @@ export default function Inventory() {
   const [items, setItems] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [using, setUsing] = useState<string | null>(null);
-  const [selling, setSelling] = useState<string | null>(null);
-  const [chucking, setChucking] = useState<string | null>(null);
-
   // Clan tag unlock state
   const [clanTagDialogOpen, setClanTagDialogOpen] = useState(false);
   const [clanTagItem, setClanTagItem] = useState<UserItem | null>(null);
@@ -123,7 +119,7 @@ export default function Inventory() {
     try {
       setLoading(true);
       const response = await marketplaceApi.getInventory(user!.id);
-      setItems((response.data.items || []) as UserItem[]);
+      setItems(((response.data.items || []) as Array<UserItem | { item: { type: string } }>).filter((entry) => entry.item.type !== 'GIFT') as UserItem[]);
     } catch (error) {
       console.error('Failed to fetch inventory:', error);
     } finally {
@@ -215,39 +211,6 @@ export default function Inventory() {
       toast.error(error.response?.data?.error || 'Echec');
     } finally {
       setUsing(null);
-    }
-  };
-
-  const handleSellGiftItem = async (userItem: UserItem) => {
-    if (selling) return;
-    setSelling(userItem.id);
-    try {
-      const res = await marketplaceApi.sellGiftItem(userItem.id);
-      await fetchInventory();
-      await refreshUser();
-      toast.success('Objet vendu', {
-        description: `Tu as recupere $${res.data.moneyEarned}.`,
-      });
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Echec');
-    } finally {
-      setSelling(null);
-    }
-  };
-
-  const handleChuckGiftItem = async (userItem: UserItem) => {
-    if (chucking) return;
-    setChucking(userItem.id);
-    try {
-      await marketplaceApi.chuckGiftItem(userItem.id);
-      await fetchInventory();
-      toast.success('Objet jete', {
-        description: `${userItem.item.name} a ete retire de ton inventaire.`,
-      });
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Echec');
-    } finally {
-      setChucking(null);
     }
   };
 
@@ -490,35 +453,7 @@ export default function Inventory() {
                         </div>
                       </div>
                       
-                      {userItem.item.type === 'GIFT' ? (
-                        <div className="flex gap-2 ml-4 shrink-0">
-                          <Button
-                            onClick={() => handleSellGiftItem(userItem)}
-                            disabled={selling === userItem.id || chucking === userItem.id}
-                            variant="outline"
-                            size="sm"
-                          >
-                            {selling === userItem.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              `Vendre ($${Math.floor(userItem.item.price / 2)})`
-                            )}
-                          </Button>
-                          <Button
-                            onClick={() => handleChuckGiftItem(userItem)}
-                            disabled={selling === userItem.id || chucking === userItem.id}
-                            variant="ghost"
-                            size="sm"
-                            className="text-muted-foreground hover:text-destructive"
-                          >
-                            {chucking === userItem.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              'Jeter'
-                            )}
-                          </Button>
-                        </div>
-                      ) : (userItem.item.type === 'CONSUMABLE' || (userItem.item.type === 'COSMETIC' && !isDoodleJumpSkin) || userItem.item.type === 'UPGRADE' || effect?.type === 'CLAN_TAG_UNLOCK') ? (
+                      {(userItem.item.type === 'CONSUMABLE' || (userItem.item.type === 'COSMETIC' && !isDoodleJumpSkin) || userItem.item.type === 'UPGRADE' || effect?.type === 'CLAN_TAG_UNLOCK') ? (
                         <Button
                           onClick={() => handleUseItem(userItem)}
                           disabled={using === userItem.id}

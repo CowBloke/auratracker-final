@@ -903,7 +903,7 @@ export default function ChromeDino() {
             {!started && (
               <div className="absolute inset-0 flex items-center justify-center bg-[#efefef]/92">
                 <div className="space-y-4 p-6 text-center">
-                  <p className="font-mono text-3xl font-bold tracking-wide text-neutral-700">CHROME DINO RUN</p>
+                  <p className="font-mono text-3xl font-bold tracking-wide text-neutral-700">Chrome Dino Run</p>
                   <p className="text-sm text-neutral-600">
                     Version Aura Tracker du runner hors ligne en style Chrome classique.
                   </p>
@@ -918,7 +918,7 @@ export default function ChromeDino() {
             {gameOver && (
               <div className="absolute inset-0 flex items-center justify-center bg-[#efefef]/92">
                 <div className="space-y-4 p-6 text-center">
-                  <p className="font-mono text-2xl font-bold tracking-wide text-neutral-700">GAME OVER</p>
+                  <p className="font-mono text-2xl font-bold tracking-wide text-neutral-700">Game over</p>
                   <p className="font-mono text-4xl tabular-nums text-neutral-700">{score}</p>
                   {isNewHighScore && <p className="text-sm text-neutral-700">Nouveau record.</p>}
                   {rewards && (rewards.aura > 0 || rewards.money > 0) && (

@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { maintenanceApi } from '@/services/api';
+import { normalizeDefaultLandingPage } from '@/lib/default-landing-page';
 
 interface MaintenanceStatus {
   enabled: boolean;
@@ -10,6 +11,7 @@ interface MaintenanceStatus {
   blockedMessage: string;
   referralEnabled: boolean;
   duelMatchmakingEnabled: boolean;
+  defaultLandingPage: string;
 }
 
 const DEFAULT_STATUS: MaintenanceStatus = {
@@ -21,6 +23,7 @@ const DEFAULT_STATUS: MaintenanceStatus = {
   blockedMessage: '',
   referralEnabled: true,
   duelMatchmakingEnabled: true,
+  defaultLandingPage: '/dashboard',
 };
 
 interface FeaturesContextValue {
@@ -51,6 +54,7 @@ export function FeaturesProvider({ children }: { children: React.ReactNode }) {
         blockedMessage: res.data.blockedMessage || '',
         referralEnabled: res.data.referralEnabled !== false,
         duelMatchmakingEnabled: res.data.duelMatchmakingEnabled !== false,
+        defaultLandingPage: normalizeDefaultLandingPage(res.data.defaultLandingPage),
       });
     } catch {
       setMaintenanceStatus(DEFAULT_STATUS);

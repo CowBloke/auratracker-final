@@ -1,17 +1,15 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { marketplaceApi, giftsApi, usersApi, clansApi, ShopItem, ShopCategory, AdminInventoryItem } from '../services/api';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { marketplaceApi, clansApi, ShopItem, ShopCategory, AdminInventoryItem } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { PageShell, PageHeader } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/page-shell';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { toast } from 'sonner';
 import {
-  Coins, Loader2, Package, Gift, Send, Sparkles, Zap, TrendingUp,
+  Coins, Loader2, Package, Sparkles, Zap, TrendingUp,
   Timer, Flame, Star, Gamepad2, RotateCcw, ShoppingCart,
 } from 'lucide-react';
 
@@ -57,16 +55,6 @@ const CATEGORY_CFG: Record<string, {
     buyBtn: 'bg-foreground text-background hover:bg-foreground/90',
     pillActive: 'bg-sky-500/10 text-foreground border-sky-500/30',
   },
-  GIFT: {
-    Icon: Gift,
-    color: 'text-pink-500',
-    strip: 'from-pink-500/80 to-pink-300/40',
-    headerBg: 'border-pink-500/25 bg-pink-500/5',
-    headerText: 'text-foreground',
-    priceBadge: 'bg-pink-500/10 text-pink-700 dark:text-pink-300 border-pink-500/30',
-    buyBtn: 'bg-foreground text-background hover:bg-foreground/90',
-    pillActive: 'bg-pink-500/10 text-foreground border-pink-500/30',
-  },
 };
 
 const FALLBACK_CFG = CATEGORY_CFG.COSMETIC;
@@ -95,7 +83,6 @@ const getEffectLabel = (effect: string | null) => {
     if (p.type === 'PROFILE_PICTURE') return 'Photo de profil';
     if (p.type === 'PROFILE_BANNER') return 'Banniere de profil';
     if (p.type === 'DOODLE_JUMP_SKIN') return 'Skin Doodle Jump';
-    if (p.type === 'GIFT') return 'Cadeau à envoyer';
     if (p.type === 'CLAN_GAME_MONEY_BOOST') return `Boost clan +${p.percentage ?? 0}%`;
     if (p.type === 'CLAN_BANNER') return 'Bannière de clan';
   } catch { /**/ }
@@ -266,7 +253,6 @@ function ShopCard({
   ownedSkinItemIds,
   clanStatus,
   onPurchase,
-  onSend,
 }: {
   item: ShopItem;
   user: ReturnType<typeof useAuth>['user'];
@@ -274,7 +260,6 @@ function ShopCard({
   ownedSkinItemIds: Set<string>;
   clanStatus: { inClan: boolean; tagUnlocked: boolean; slotUpgraded: boolean; clanBankMoney: number } | null;
   onPurchase: (item: ShopItem) => void;
-  onSend: (item: ShopItem) => void;
 }) {
   const effectType = parseEffectType(item.effect);
   const isClanTagUnlock = effectType === 'CLAN_TAG_UNLOCK';
@@ -285,8 +270,7 @@ function ShopCard({
   const isAlreadyPurchased =
     (isClanTagUnlock && !!clanStatus?.tagUnlocked) ||
     (isClanSlotUpgrade && !!clanStatus?.slotUpgraded);
-  const isGift = item.type === 'GIFT' || effectType === 'GIFT';
-  const effectLabel = isGift ? null : getEffectLabel(item.effect);
+  const effectLabel = getEffectLabel(item.effect);
   const canAfford = isClanUpgrade
     ? (clanStatus?.clanBankMoney ?? 0) >= item.price
     : (user?.money ?? 0) >= item.price;
@@ -311,10 +295,7 @@ function ShopCard({
     }
     return (
       <div className={cn('flex h-36 w-full items-center justify-center', cfg.headerBg.split(' ')[0])}>
-        {isGift
-          ? <Gift className={cn('h-12 w-12 opacity-40', cfg.color)} />
-          : <Package className={cn('h-12 w-12 opacity-40', cfg.color)} />
-        }
+        <Package className={cn('h-12 w-12 opacity-40', cfg.color)} />
       </div>
     );
   };
@@ -352,48 +333,30 @@ function ShopCard({
 
           <p className="text-xs leading-relaxed text-muted-foreground line-clamp-2">{item.description}</p>
 
-          {isGift ? (
-            <Button
-              onClick={() => onSend(item)}
-              disabled={!canAfford}
-              className={cn(
-                'w-full rounded-lg text-sm font-semibold transition-all duration-150',
-                canAfford
-                  ? 'bg-foreground text-background hover:bg-foreground/90'
-                  : 'bg-muted/20 text-muted-foreground/50 border border-border/20',
+          <Button
+            onClick={() => onPurchase(item)}
+            disabled={!canAfford || isBuying || isOwnedSkin || isAlreadyPurchased}
+            className={cn(
+              'w-full rounded-lg text-sm font-semibold transition-all duration-150',
+              canAfford && !isBuying && !isOwnedSkin && !isAlreadyPurchased
+                ? cn(cfg.buyBtn)
+                : 'bg-muted/20 text-muted-foreground/50 border border-border/20',
+            )}
+          >
+            <span className="flex items-center justify-center gap-2">
+              {isBuying ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Achat...</>
+              ) : isAlreadyPurchased ? (
+                'Déjà acheté'
+              ) : isOwnedSkin ? (
+                'Deja possede'
+              ) : canAfford ? (
+                <><ShoppingCart className="h-4 w-4" /> Acheter</>
+              ) : (
+                'Solde insuffisant'
               )}
-            >
-              <span className="flex items-center justify-center gap-2">
-                <Gift className="h-4 w-4" />
-                {canAfford ? 'Envoyer en cadeau' : 'Solde insuffisant'}
-              </span>
-            </Button>
-          ) : (
-            <Button
-              onClick={() => onPurchase(item)}
-              disabled={!canAfford || isBuying || isOwnedSkin || isAlreadyPurchased}
-              className={cn(
-                'w-full rounded-lg text-sm font-semibold transition-all duration-150',
-                canAfford && !isBuying && !isOwnedSkin && !isAlreadyPurchased
-                  ? cn(cfg.buyBtn)
-                  : 'bg-muted/20 text-muted-foreground/50 border border-border/20',
-              )}
-            >
-              <span className="flex items-center justify-center gap-2">
-                {isBuying ? (
-                  <><Loader2 className="h-4 w-4 animate-spin" /> Achat...</>
-                ) : isAlreadyPurchased ? (
-                  'Déjà acheté'
-                ) : isOwnedSkin ? (
-                  'Deja possede'
-                ) : canAfford ? (
-                  <><ShoppingCart className="h-4 w-4" /> Acheter</>
-                ) : (
-                  'Solde insuffisant'
-                )}
-              </span>
-            </Button>
-          )}
+            </span>
+          </Button>
         </div>
       </CardContent>
     </Card>
@@ -587,7 +550,6 @@ const DEFAULT_CATEGORIES: ShopCategory[] = [
   { id: 'COSMETIC', label: 'Cosmétiques' },
   { id: 'CONSUMABLE', label: 'Consommables' },
   { id: 'UPGRADE', label: 'Améliorations' },
-  { id: 'GIFT', label: 'Cadeaux' },
 ];
 
 export default function Shop() {
@@ -599,14 +561,6 @@ export default function Shop() {
   const [loading, setLoading] = useState(true);
   const [buyingItemId, setBuyingItemId] = useState<string | null>(null);
   const [clanStatus, setClanStatus] = useState<{ inClan: boolean; tagUnlocked: boolean; slotUpgraded: boolean; clanBankMoney: number } | null>(null);
-
-  // Gift dialog
-  const [sendDialogItem, setSendDialogItem] = useState<ShopItem | null>(null);
-  const [giftUsers, setGiftUsers] = useState<{ id: string; username: string }[]>([]);
-  const [selectedReceiver, setSelectedReceiver] = useState('');
-  const [giftMessage, setGiftMessage] = useState('');
-  const [sendingGift, setSendingGift] = useState(false);
-  const [loadingUsers, setLoadingUsers] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -627,7 +581,7 @@ export default function Shop() {
         setItems(itemsRes.data.items || []);
         setInventoryItems(inventoryRes.data.items || []);
         if (categoriesRes.data.categories?.length) {
-          setCategories(categoriesRes.data.categories);
+          setCategories(categoriesRes.data.categories.filter((category) => category.id !== 'GIFT'));
         }
         setClanStatus({
           inClan: clanStatusRes.data.inClan,
@@ -650,17 +604,6 @@ export default function Shop() {
       .map(entry => entry.item.id),
   ), [inventoryItems]);
 
-  const fetchUsers = useCallback(async () => {
-    setLoadingUsers(true);
-    try {
-      const res = await usersApi.getAll();
-      const allUsers = (res.data as { users?: { id: string; username: string }[] }).users || res.data as unknown as { id: string; username: string }[];
-      const list = Array.isArray(allUsers) ? allUsers : [];
-      setGiftUsers(list.filter((u: { id: string }) => u.id !== user?.id));
-    } catch { /**/ }
-    setLoadingUsers(false);
-  }, [user?.id]);
-
   // Exclude DJ skins from the main grid (they get their own section)
   const nonDjItems = useMemo(() =>
     items.filter(item => {
@@ -675,13 +618,8 @@ export default function Shop() {
   const VIRTUAL_FILTERS = useMemo(() => [
     { value: 'ALL', label: 'Tous' },
     ...categories.map(c => ({ value: c.id, label: c.label })),
-    { value: 'DOODLE_JUMP', label: '🎮 Doodle Jump' },
+    { value: 'DOODLE_JUMP', label: 'Doodle Jump' },
   ], [categories]);
-
-  const filteredItems = useMemo(() => {
-    if (filter === 'ALL' || filter === 'DOODLE_JUMP') return nonDjItems;
-    return nonDjItems.filter(item => item.type === filter);
-  }, [nonDjItems, filter]);
 
   const sections = useMemo(() =>
     categories
@@ -693,9 +631,6 @@ export default function Shop() {
       .filter(s => s.items.length > 0),
     [nonDjItems, categories],
   );
-
-  const showDjSection = filter === 'ALL' || filter === 'DOODLE_JUMP';
-  const showRegularGrid = filter !== 'DOODLE_JUMP';
 
   const handlePurchase = async (item: ShopItem) => {
     if (!user || buyingItemId) return;
@@ -770,236 +705,121 @@ export default function Shop() {
     }
   };
 
-  const openSendDialog = (item: ShopItem) => {
-    setSendDialogItem(item);
-    setSelectedReceiver('');
-    setGiftMessage('');
-    fetchUsers();
-  };
-
-  const handleSendGift = async () => {
-    if (!sendDialogItem || !selectedReceiver) return;
-    setSendingGift(true);
-    try {
-      const res = await giftsApi.sendShopItem({
-        itemId: sendDialogItem.id,
-        receiverId: selectedReceiver,
-        message: giftMessage.trim() || undefined,
-      });
-      updateBalance(res.data.newBalance.aura, res.data.newBalance.money);
-      setSendDialogItem(null);
-      toast.success('Cadeau envoye', {
-        description: `"${sendDialogItem.name}" a bien ete envoye.`,
-      });
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { error?: string } } };
-      toast.error(err.response?.data?.error || 'Envoi impossible.');
-    } finally {
-      setSendingGift(false);
-    }
-  };
-
   return (
     <PageShell>
-      <div className="space-y-6">
-        <PageHeader
-          title="Shop"
-          description="Achète des améliorations, cosmétiques et cadeaux pour ton profil et tes jeux."
-          actions={(
-            <div className="inline-flex items-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-sm">
-              <Coins className="h-4 w-4 text-amber-500" />
-              <span className="text-muted-foreground">Solde</span>
-              <span className="font-semibold tabular-nums text-foreground">${user?.money ?? 0}</span>
-            </div>
-          )}
-        />
-
-        {/* ── Category filter tabs + balance ── */}
-        <Card className="border-border/60 shadow-sm">
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex flex-wrap items-center gap-2">
-              {VIRTUAL_FILTERS.map(entry => {
-                const cfg = entry.value === 'ALL'
+      <Tabs value={filter} onValueChange={setFilter} className="space-y-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <TabsList className="h-auto flex-wrap">
+            {VIRTUAL_FILTERS.map(entry => {
+              const cfg = entry.value === 'ALL'
+                ? null
+                : entry.value === 'DOODLE_JUMP'
                   ? null
-                  : entry.value === 'DOODLE_JUMP'
-                    ? null
-                    : CATEGORY_CFG[entry.value];
-                const isActive = filter === entry.value;
+                  : CATEGORY_CFG[entry.value];
 
-                return (
-                  <button
-                    key={entry.value}
-                    onClick={() => setFilter(entry.value)}
-                    className={cn(
-                      'inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
-                      isActive
-                        ? entry.value === 'DOODLE_JUMP'
-                          ? 'border-violet-500/30 bg-violet-500/10 text-foreground'
-                          : entry.value === 'ALL'
-                            ? 'border-border bg-muted text-foreground'
-                            : cfg?.pillActive ?? 'border-border bg-muted text-foreground'
-                        : 'border-border/60 bg-background text-muted-foreground hover:bg-muted/40 hover:text-foreground',
-                    )}
-                  >
-                    {cfg && <cfg.Icon className={cn('h-3.5 w-3.5', isActive ? cfg.color : 'text-muted-foreground')} />}
-                    {entry.value === 'DOODLE_JUMP' && <Gamepad2 className={cn('h-3.5 w-3.5', isActive ? 'text-violet-500' : 'text-muted-foreground')} />}
-                    {entry.label}
-                  </button>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+              return (
+                <TabsTrigger key={entry.value} value={entry.value}>
+                  {cfg && <cfg.Icon className="h-3.5 w-3.5" />}
+                  {entry.value === 'DOODLE_JUMP' && <Gamepad2 className="h-3.5 w-3.5" />}
+                  {entry.label}
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
 
-        {/* ── Content ── */}
+          <div className="inline-flex items-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-sm">
+            <Coins className="h-4 w-4 text-amber-500" />
+            <span className="text-muted-foreground">Solde</span>
+            <span className="font-semibold tabular-nums text-foreground">${user?.money ?? 0}</span>
+          </div>
+        </div>
+
         {loading ? (
           <div className="flex justify-center py-20">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="space-y-8">
-
-            {/* Doodle Jump skins section */}
-            {showDjSection && (
+          <>
+            <TabsContent value="ALL" className="space-y-8">
               <DoodleJumpShopSection
                 user={user}
                 buyingItemId={buyingItemId}
                 ownedSkinItemIds={ownedSkinItemIds}
                 onPurchase={handlePurchase}
               />
-            )}
 
-            {/* Regular items */}
-            {showRegularGrid && filteredItems.length === 0 && !showDjSection && (
-              <p className="py-12 text-center text-sm text-muted-foreground">
-                Aucun objet disponible pour le moment.
-              </p>
-            )}
-
-            {showRegularGrid && filter === 'ALL' && sections.map(section => {
-              const cfg = CATEGORY_CFG[section.id];
-              return (
-                <div key={section.id} className="space-y-4">
-                  {/* Section header */}
-                  <div className={cn(
-                    'flex items-center gap-3 rounded-lg border px-4 py-3 shadow-sm',
-                    cfg?.headerBg ?? 'border-border/60 bg-muted/20',
-                  )}>
-                    {cfg && <cfg.Icon className={cn('h-4 w-4', cfg.color)} />}
-                    <span className={cn('font-semibold text-sm', cfg?.headerText ?? 'text-foreground')}>
-                      {section.label}
-                    </span>
-                    <span className="ml-auto rounded-full border border-border/40 bg-background/80 px-2 py-0.5 text-xs text-muted-foreground">
-                      {section.items.length}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {section.items.map(item => (
-                      <ShopCard
-                        key={item.id}
-                        item={item}
-                        user={user}
-                        buyingItemId={buyingItemId}
+              {sections.map(section => {
+                const cfg = CATEGORY_CFG[section.id];
+                return (
+                  <div key={section.id} className="space-y-4">
+                    <div className={cn(
+                      'flex items-center gap-3 rounded-lg border px-4 py-3 shadow-sm',
+                      cfg?.headerBg ?? 'border-border/60 bg-muted/20',
+                    )}>
+                      {cfg && <cfg.Icon className={cn('h-4 w-4', cfg.color)} />}
+                      <span className={cn('font-semibold text-sm', cfg?.headerText ?? 'text-foreground')}>
+                        {section.label}
+                      </span>
+                      <span className="ml-auto rounded-full border border-border/40 bg-background/80 px-2 py-0.5 text-xs text-muted-foreground">
+                        {section.items.length}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                      {section.items.map(item => (
+                        <ShopCard
+                          key={item.id}
+                          item={item}
+                          user={user}
+                          buyingItemId={buyingItemId}
                         ownedSkinItemIds={ownedSkinItemIds}
                         clanStatus={clanStatus}
                         onPurchase={handlePurchase}
-                        onSend={openSendDialog}
-                      />
-                    ))}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
+                );
+              })}
+            </TabsContent>
+
+            <TabsContent value="DOODLE_JUMP" className="space-y-8">
+              <DoodleJumpShopSection
+                user={user}
+                buyingItemId={buyingItemId}
+                ownedSkinItemIds={ownedSkinItemIds}
+                onPurchase={handlePurchase}
+              />
+            </TabsContent>
+
+            {categories.map(category => {
+              const categoryItems = nonDjItems.filter(item => item.type === category.id);
+
+              return (
+                <TabsContent key={category.id} value={category.id} className="space-y-8">
+                  {categoryItems.length === 0 ? (
+                    <p className="py-12 text-center text-sm text-muted-foreground">Aucun objet dans cette catégorie.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                      {categoryItems.map(item => (
+                        <ShopCard
+                          key={item.id}
+                          item={item}
+                          user={user}
+                          buyingItemId={buyingItemId}
+                          ownedSkinItemIds={ownedSkinItemIds}
+                          clanStatus={clanStatus}
+                          onPurchase={handlePurchase}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
               );
             })}
-
-            {showRegularGrid && filter !== 'ALL' && filter !== 'DOODLE_JUMP' && (
-              filteredItems.length === 0
-                ? <p className="py-12 text-center text-sm text-muted-foreground">Aucun objet dans cette catégorie.</p>
-                : <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {filteredItems.map(item => (
-                      <ShopCard
-                        key={item.id}
-                        item={item}
-                        user={user}
-                        buyingItemId={buyingItemId}
-                        ownedSkinItemIds={ownedSkinItemIds}
-                        clanStatus={clanStatus}
-                        onPurchase={handlePurchase}
-                        onSend={openSendDialog}
-                      />
-                    ))}
-                  </div>
-            )}
-          </div>
+          </>
         )}
-      </div>
+      </Tabs>
 
-      {/* ── Send gift dialog ── */}
-      <Dialog open={!!sendDialogItem} onOpenChange={open => { if (!open) setSendDialogItem(null); }}>
-        <DialogContent className="sm:max-w-[420px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Gift className="h-5 w-5 text-pink-400" />
-              Envoyer {sendDialogItem?.name}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            <div className="flex items-center justify-between rounded-xl border border-pink-500/20 bg-pink-500/5 px-3 py-2 text-sm">
-              <span className="text-muted-foreground">Prix</span>
-              <span className="font-semibold tabular-nums text-foreground">${sendDialogItem?.price}</span>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Destinataire</label>
-              {loadingUsers ? (
-                <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Chargement...
-                </div>
-              ) : (
-                <Select value={selectedReceiver} onValueChange={setSelectedReceiver}>
-                  <SelectTrigger><SelectValue placeholder="Choisir un utilisateur..." /></SelectTrigger>
-                  <SelectContent>
-                    {giftUsers.map(u => (
-                      <SelectItem key={u.id} value={u.id}>{u.username}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Message (optionnel)</label>
-              <Textarea
-                value={giftMessage}
-                onChange={e => setGiftMessage(e.target.value.slice(0, 200))}
-                placeholder="Ajouter un message..."
-                rows={2}
-                maxLength={200}
-              />
-              <p className="text-xs text-muted-foreground">{giftMessage.length}/200</p>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSendDialogItem(null)}>Annuler</Button>
-            <Button
-              onClick={handleSendGift}
-              disabled={!selectedReceiver || sendingGift}
-              className={cn(
-                'inline-flex items-center gap-2 rounded-lg text-sm font-semibold transition-all',
-                selectedReceiver && !sendingGift
-                  ? 'bg-foreground text-background hover:bg-foreground/90'
-                  : 'bg-muted/20 text-muted-foreground border border-border/20',
-              )}
-            >
-              {sendingGift
-                ? <><Loader2 className="h-4 w-4 animate-spin" /> Envoi...</>
-                : <><Send className="h-4 w-4" /> Envoyer</>
-              }
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </PageShell>
   );
 }

@@ -103,7 +103,7 @@ export default function Layout() {
 
       switch (matchedShortcut.id) {
         case 'open_dashboard':
-          navigate('/');
+          navigate('/dashboard');
           break;
         case 'open_games':
           navigate('/games');
