@@ -12,6 +12,12 @@
 - améliorer UI simple interfaces jeux
 - tous les jeux navabr
 - racer/polytrack image jeux
-- spec relancer
+- spec relancer ddj
 - aligner tabs et menu deroualant
 - mdp oublié
+- limiter à un
+- casino bloqué
+- inviter bouton rechercher
+- pass
+- pb image alors que taille mo moins
+- par défaut fermé navbar
