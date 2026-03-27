@@ -24,7 +24,7 @@ const games = [
     description: 'Mini-jeu party inspiré de Mario: chacun tire un levier, l’un explose, le dernier survivant gagne.',
     type: 'Party',
     requiresParty: true,
-    image: '/images/games/rouletterusse.png',
+    image: '/images/games/leviers.png',
     statsKeys: ['levier_infernal'],
     releaseRank: 4,
   },
@@ -185,7 +185,7 @@ const games = [
     name: 'QS Watermelon',
     description: 'Lâche les fruits dans la cuve, fusionne les doublons et vise la pastèque sans dépasser la ligne.',
     type: 'Arcade',
-    image: '/images/games/qswatermelon.svg',
+    image: '/images/games/suika.png',
     statsKeys: ['qs_watermelon'],
     releaseRank: 17,
   },
@@ -265,7 +265,7 @@ const games = [
     name: 'Clash Village',
     description: 'Bâtis ton village, renforce tes défenses et pille les réserves ennemies dans des raids asynchrones.',
     type: 'Strategy',
-    image: '/images/games/clashvillage.svg',
+    image: '/images/games/clash.png',
     statsKeys: ['clash_village'],
     releaseRank: 29,
   },
@@ -297,7 +297,7 @@ const games = [
     description: 'Version navigateur façon Minecraft 1.8, jouable directement depuis le site en plein écran.',
     type: 'Sandbox',
     emoji: '⛏️',
-    image: '/images/games/geometrydash.png',
+    image: '/images/games/minecraft.png',
     statsKeys: [],
     releaseRank: 32,
   },
@@ -342,7 +342,7 @@ const games = [
     description: 'Duel minimaliste en 3x3: bloque, anticipe et aligne 3 symboles.',
     type: 'Duel',
     requiresParty: true,
-    image: '/images/games/puissance4.png',
+    image: '/images/games/morpion.png',
     statsKeys: ['morpion'],
     releaseRank: 14,
   },
@@ -366,7 +366,7 @@ const tabConfig: Array<{ id: GamesTab; label: string }> = [
 export default function Games() {
   const [activeTab, setActiveTab] = useState<GamesTab>('all');
   const [activeMultiplayerTab, setActiveMultiplayerTab] = useState<MultiplayerTab>('all');
-  const [sortBy, setSortBy] = useState<SortOption>('default');
+  const [sortBy, setSortBy] = useState<SortOption>('popular');
   const [catalogStats, setCatalogStats] = useState<{ global: Record<string, number>; personal: Record<string, number> }>({
     global: {},
     personal: {},
@@ -533,45 +533,43 @@ export default function Games() {
   return (
     <PageShell>
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as GamesTab)} className={SPACING.SECTION_SPACING}>
-        <TabsList className="h-auto flex-wrap">
-          {tabConfig.map((tab) => (
-            <TabsTrigger key={tab.id} value={tab.id}>
-              {tab.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <TabsList className="h-auto flex-wrap">
+            {tabConfig.map((tab) => (
+              <TabsTrigger key={tab.id} value={tab.id}>
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          <div className="w-[220px]">
+            <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Trier les jeux" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">Ordre par défaut</SelectItem>
+                <SelectItem value="popular">Populaire</SelectItem>
+                <SelectItem value="newest">Nouveaux</SelectItem>
+                <SelectItem value="most-played">Plus joués</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
         <TabsContent value={activeTab} className={SPACING.CARD_SPACING}>
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            {activeTab === 'multiplayer' ? (
-              <Tabs
-                value={activeMultiplayerTab}
-                onValueChange={(value) => setActiveMultiplayerTab(value as MultiplayerTab)}
-              >
-                <TabsList className="h-auto flex-wrap">
-                  <TabsTrigger value="all">Tous</TabsTrigger>
-                  <TabsTrigger value="party">Party</TabsTrigger>
-                  <TabsTrigger value="duel">Duel</TabsTrigger>
-                </TabsList>
-              </Tabs>
-            ) : (
-              <div />
-            )}
-
-            <div className="w-full md:w-[220px]">
-              <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Trier les jeux" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="default">Ordre par défaut</SelectItem>
-                  <SelectItem value="popular">Populaire</SelectItem>
-                  <SelectItem value="newest">Nouveaux</SelectItem>
-                  <SelectItem value="most-played">Plus joués</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          {activeTab === 'multiplayer' && (
+            <Tabs
+              value={activeMultiplayerTab}
+              onValueChange={(value) => setActiveMultiplayerTab(value as MultiplayerTab)}
+            >
+              <TabsList className="h-auto flex-wrap">
+                <TabsTrigger value="all">Tous</TabsTrigger>
+                <TabsTrigger value="party">Party</TabsTrigger>
+                <TabsTrigger value="duel">Duel</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
 
           {activeTab === 'all' ? (
             <div className="space-y-8">
