@@ -44,6 +44,9 @@ import {
   Eye,
   Monitor,
   Crosshair,
+  Zap,
+  Sparkles,
+  CircleDollarSign,
 } from 'lucide-react';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { InboxDropdown } from '@/components/inbox/InboxDropdown';
