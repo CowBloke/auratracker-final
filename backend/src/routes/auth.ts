@@ -13,6 +13,7 @@ import {
   isReferralEnabled,
   normalizeReferralCode,
 } from '../utils/referrals.js';
+import { serializeClanEffect } from '../utils/clanEffects.js';
 
 const getIpAddress = (req: Request | AuthRequest): string | null => {
   const forwarded = req.headers['x-forwarded-for'];
@@ -23,6 +24,29 @@ const getIpAddress = (req: Request | AuthRequest): string | null => {
 };
 
 const router = Router();
+
+const getUserClanEffects = async (userId: string) => {
+  const membership = await prisma.clanMember.findUnique({
+    where: { userId },
+    select: {
+      clan: {
+        select: {
+          activeEffects: {
+            where: {
+              OR: [
+                { activeUntil: { gt: new Date() } },
+                { cooldownUntil: { gt: new Date() } },
+              ],
+            },
+            orderBy: [{ activeUntil: 'desc' }, { cooldownUntil: 'desc' }],
+          },
+        },
+      },
+    },
+  });
+
+  return membership?.clan?.activeEffects.map(serializeClanEffect) ?? [];
+};
 
 const generateToken = (userId: string, email: string): string => {
   const options: SignOptions = { expiresIn: '7d' };
@@ -169,6 +193,8 @@ router.post('/login', validate(loginSchema), async (req, res) => {
 
     logAuth('login', user.id, user.username, { isAdmin: user.isAdmin, isSuperAdmin: user.isSuperAdmin }, getIpAddress(req));
 
+    const clanEffects = await getUserClanEffects(user.id);
+
     res.json({
       user: {
         id: user.id,
@@ -187,6 +213,7 @@ router.post('/login', validate(loginSchema), async (req, res) => {
         referralCode: ensuredReferralCode,
         referredById: user.referredById,
         createdAt: user.createdAt,
+        clanEffects,
       },
       token,
     });
@@ -242,7 +269,8 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
       user.referralCode = await ensureUserReferralCode(user.id, user.referralCode);
     }
 
-    res.json({ user });
+    const clanEffects = user ? await getUserClanEffects(user.id) : [];
+    res.json({ user: user ? { ...user, clanEffects } : null });
   } catch (error) {
     console.error('Get me error:', error);
     res.status(500).json({ error: 'Failed to get user' });

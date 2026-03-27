@@ -2,6 +2,7 @@ import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
 import { checkQuestProgress } from '../routes/quests.js';
 import { logGame } from '../utils/logger.js';
+import { getActiveClanMoneyBoostPercentsForUsers } from '../utils/clanEffects.js';
 import { duelPartyIds, deleteDuelParty } from './duelParties.js';
 
 interface BattleshipPlayer {
@@ -170,6 +171,10 @@ async function endGame(game: BattleshipGame, io: Server, winnerId: string) {
     aura: 0,
     money: 20,
   };
+  const boostPercents = await getActiveClanMoneyBoostPercentsForUsers([winner.userId, loser.userId]);
+  const resolveMoneyReward = (userId: string, base: number) => base + Math.floor(base * ((boostPercents.get(userId) ?? 0) / 100));
+  const resolvedWinnerReward = { ...winnerReward, money: resolveMoneyReward(winner.userId, winnerReward.money) };
+  const resolvedLoserReward = { ...loserReward, money: resolveMoneyReward(loser.userId, loserReward.money) };
 
   // Update user balances and stats
   try {
@@ -177,15 +182,15 @@ async function endGame(game: BattleshipGame, io: Server, winnerId: string) {
       prisma.user.update({
         where: { id: winnerId },
         data: {
-          aura: { increment: winnerReward.aura },
-          money: { increment: winnerReward.money },
+          aura: { increment: resolvedWinnerReward.aura },
+          money: { increment: resolvedWinnerReward.money },
         },
         select: { aura: true, money: true },
       }),
       prisma.user.update({
         where: { id: loser.userId },
         data: {
-          money: { increment: loserReward.money },
+          money: { increment: resolvedLoserReward.money },
         },
         select: { aura: true, money: true },
       }),
@@ -221,8 +226,8 @@ async function endGame(game: BattleshipGame, io: Server, winnerId: string) {
     winnerId,
     winnerUsername: winner.username,
     rewards: {
-      winner: winnerReward,
-      loser: loserReward,
+      winner: resolvedWinnerReward,
+      loser: resolvedLoserReward,
     },
   });
 
@@ -230,8 +235,8 @@ async function endGame(game: BattleshipGame, io: Server, winnerId: string) {
     gameType: 'battleship',
     score: 1,
     won: true,
-    auraReward: winnerReward.aura,
-    moneyReward: winnerReward.money,
+    auraReward: resolvedWinnerReward.aura,
+    moneyReward: resolvedWinnerReward.money,
     isMultiplayer: true,
     partyId: game.partyId,
     totalPlayers: game.players.length,
@@ -243,8 +248,8 @@ async function endGame(game: BattleshipGame, io: Server, winnerId: string) {
     gameType: 'battleship',
     score: 0,
     won: false,
-    auraReward: loserReward.aura,
-    moneyReward: loserReward.money,
+    auraReward: resolvedLoserReward.aura,
+    moneyReward: resolvedLoserReward.money,
     isMultiplayer: true,
     partyId: game.partyId,
     totalPlayers: game.players.length,

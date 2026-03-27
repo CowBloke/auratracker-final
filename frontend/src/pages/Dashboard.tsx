@@ -791,7 +791,7 @@ export default function Dashboard() {
   return (
     <>
       <div className="w-full space-y-6 px-4 pb-6 lg:px-6 lg:pb-8">
-        <div className="px-1 py-1">
+        <div className="flex flex-col gap-3 px-1 py-1 lg:flex-row lg:items-start lg:justify-between">
           <div className={cn("space-y-2", SPACING.TIGHT_SPACING)}>
             {clanPumpUpMessage ? (
               <p
@@ -806,9 +806,7 @@ export default function Dashboard() {
               </p>
             )}
           </div>
-        </div>
 
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-end">
           <div className="flex flex-wrap justify-end gap-2">
             <Dialog open={widgetsDialogOpen} onOpenChange={setWidgetsDialogOpen}>
               <Button variant="outline" className={dashboardGhostButtonClass} onClick={() => setWidgetsDialogOpen(true)}>

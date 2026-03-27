@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Sun, Moon, Loader2, Check, User, Copy, Sparkles, Ticket } from 'lucide-react';
+import { Sun, Moon, Loader2, Check, User, Copy, Sparkles, Ticket, Keyboard, RotateCcw } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
@@ -8,12 +8,27 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { PageShell } from '@/components/layout/page-shell';
 import { ReferralSummary, authApi, usersApi } from '@/services/api';
 import ReferralClaimAnimation from '@/components/referrals/ReferralClaimAnimation';
 import { toast } from 'sonner';
-import { setHideGameLeaderboardsPreference, useHideGameLeaderboards } from '@/lib/game-preferences';
+import {
+  setHideGameLeaderboardsPreference,
+  setHideGameLeftInfoPreference,
+  useHideGameLeaderboards,
+  useHideGameLeftInfo,
+} from '@/lib/game-preferences';
+import {
+  DEFAULT_KEYBOARD_SHORTCUTS,
+  formatShortcutCombo,
+  getShortcutComboFromEvent,
+  resetKeyboardShortcuts,
+  updateKeyboardShortcut,
+  useKeyboardShortcuts,
+  type KeyboardShortcutActionId,
+} from '@/lib/keyboard-shortcuts';
 
 interface ColorSchemeEntry {
   id: string;
@@ -55,6 +70,9 @@ export default function Settings() {
   const [referralClaimOpen, setReferralClaimOpen] = useState(false);
   const [referralLoading, setReferralLoading] = useState(false);
   const hideGameLeaderboards = useHideGameLeaderboards();
+  const hideGameLeftInfo = useHideGameLeftInfo();
+  const keyboardShortcuts = useKeyboardShortcuts();
+  const [capturingShortcutId, setCapturingShortcutId] = useState<KeyboardShortcutActionId | null>(null);
 
   // Name change state
   const [requestedUsername, setRequestedUsername] = useState('');
@@ -154,6 +172,55 @@ export default function Settings() {
     }
   };
 
+  const getDefaultShortcut = (shortcutId: KeyboardShortcutActionId) =>
+    DEFAULT_KEYBOARD_SHORTCUTS.find((shortcut) => shortcut.id === shortcutId);
+
+  const handleShortcutCapture = (shortcutId: KeyboardShortcutActionId) => {
+    setCapturingShortcutId(shortcutId);
+  };
+
+  const handleShortcutKeyDown = (
+    shortcutId: KeyboardShortcutActionId,
+    event: React.KeyboardEvent<HTMLButtonElement>
+  ) => {
+    event.preventDefault();
+
+    if (event.key === 'Escape') {
+      setCapturingShortcutId(null);
+      return;
+    }
+
+    const combo = getShortcutComboFromEvent(event);
+
+    if (!combo) {
+      toast('Raccourci invalide', {
+        description: 'Utilise au moins une touche modificatrice comme Alt, Ctrl, Cmd ou Shift.',
+        duration: 3000,
+      });
+      return;
+    }
+
+    updateKeyboardShortcut(shortcutId, { combo, enabled: true });
+    setCapturingShortcutId(null);
+
+    toast('Raccourci mis a jour', {
+      description: `Nouveau raccourci: ${formatShortcutCombo(combo)}.`,
+      duration: 3000,
+    });
+  };
+
+  const handleShortcutReset = (shortcutId: KeyboardShortcutActionId) => {
+    const defaultShortcut = getDefaultShortcut(shortcutId);
+    if (!defaultShortcut) {
+      return;
+    }
+
+    updateKeyboardShortcut(shortcutId, {
+      combo: defaultShortcut.combo,
+      enabled: defaultShortcut.enabled,
+    });
+  };
+
   return (
     <PageShell>
       <Tabs
@@ -179,6 +246,12 @@ export default function Settings() {
             className="justify-start px-3 py-2 text-sm"
           >
             Parrainage
+          </TabsTrigger>
+          <TabsTrigger
+            value="raccourcis"
+            className="justify-start px-3 py-2 text-sm"
+          >
+            Raccourcis
           </TabsTrigger>
         </TabsList>
 
@@ -296,28 +369,51 @@ export default function Settings() {
           <section className="space-y-3">
             <div>
               <p className="text-xs text-muted-foreground">Jeux</p>
-              <h3 className="text-sm font-medium">Masque le classement sur toutes les pages de jeux.</h3>
+              <h3 className="text-sm font-medium">Personnalise l'affichage de toutes les pages de jeux.</h3>
             </div>
-            <button
-              type="button"
-              onClick={() => setHideGameLeaderboardsPreference(!hideGameLeaderboards)}
-              className={cn(
-                'flex w-full max-w-sm items-center justify-between rounded-lg border px-4 py-3 text-left text-sm transition-colors',
-                hideGameLeaderboards
-                  ? 'border-foreground bg-foreground/5 text-foreground'
-                  : 'border-border/40 text-muted-foreground hover:border-border hover:text-foreground'
-              )}
-            >
-              <div>
-                <p className="font-medium">Sans classement</p>
-                <p className="text-xs text-muted-foreground">
-                  {hideGameLeaderboards ? 'Les classements des jeux sont masqués.' : 'Les classements des jeux restent visibles.'}
-                </p>
-              </div>
-              <span className="text-xs font-semibold uppercase tracking-wide">
-                {hideGameLeaderboards ? 'Actif' : 'Inactif'}
-              </span>
-            </button>
+            <div className="grid max-w-2xl gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setHideGameLeaderboardsPreference(!hideGameLeaderboards)}
+                className={cn(
+                  'flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left text-sm transition-colors',
+                  hideGameLeaderboards
+                    ? 'border-foreground bg-foreground/5 text-foreground'
+                    : 'border-border/40 text-muted-foreground hover:border-border hover:text-foreground'
+                )}
+              >
+                <div>
+                  <p className="font-medium">Sans classement</p>
+                  <p className="text-xs text-muted-foreground">
+                    {hideGameLeaderboards ? 'Les classements des jeux sont masqués.' : 'Les classements des jeux restent visibles.'}
+                  </p>
+                </div>
+                <span className="text-xs font-semibold uppercase tracking-wide">
+                  {hideGameLeaderboards ? 'Actif' : 'Inactif'}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setHideGameLeftInfoPreference(!hideGameLeftInfo)}
+                className={cn(
+                  'flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left text-sm transition-colors',
+                  hideGameLeftInfo
+                    ? 'border-foreground bg-foreground/5 text-foreground'
+                    : 'border-border/40 text-muted-foreground hover:border-border hover:text-foreground'
+                )}
+              >
+                <div>
+                  <p className="font-medium">Sans infos à gauche</p>
+                  <p className="text-xs text-muted-foreground">
+                    {hideGameLeftInfo ? 'Les panneaux d’infos à gauche sont masqués.' : 'Les panneaux d’infos à gauche restent visibles.'}
+                  </p>
+                </div>
+                <span className="text-xs font-semibold uppercase tracking-wide">
+                  {hideGameLeftInfo ? 'Actif' : 'Inactif'}
+                </span>
+              </button>
+            </div>
           </section>
         </TabsContent>
 
@@ -464,6 +560,123 @@ export default function Settings() {
               <p className="text-sm text-muted-foreground">Impossible de charger le parrainage pour le moment.</p>
             </section>
           )}
+        </TabsContent>
+
+        <TabsContent value="raccourcis" className="mt-0 flex-1 space-y-6">
+          <section className="max-w-4xl space-y-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs text-muted-foreground">Raccourcis clavier</p>
+                <h3 className="text-sm font-medium">Personnalise les actions de base de l'application.</h3>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  resetKeyboardShortcuts();
+                  setCapturingShortcutId(null);
+                }}
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Reinitialiser
+              </Button>
+            </div>
+
+            <div className="rounded-xl border border-border/50 bg-muted/20 px-4 py-4 text-sm text-muted-foreground">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg border border-border/50 bg-background/70">
+                  <Keyboard className="h-4 w-4" />
+                </div>
+                <div className="space-y-1">
+                  <p className="font-medium text-foreground">Raccourcis de base inclus</p>
+                  <p>
+                    Cette premiere version permet de naviguer rapidement vers les pages principales. Clique sur
+                    “Modifier”, puis presse la combinaison souhaitee.
+                  </p>
+                  <p className="text-xs">
+                    Conseil: utilise au moins une touche modificatrice pour eviter les conflits en jeu.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {keyboardShortcuts.map((shortcut) => {
+                const defaultShortcut = getDefaultShortcut(shortcut.id);
+                const isCapturing = capturingShortcutId === shortcut.id;
+                const isCustomized =
+                  shortcut.combo !== defaultShortcut?.combo || shortcut.enabled !== defaultShortcut?.enabled;
+
+                return (
+                  <div
+                    key={shortcut.id}
+                    className="rounded-xl border border-border/50 bg-background/60 px-4 py-4"
+                  >
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-medium text-foreground">{shortcut.label}</p>
+                          <Badge variant={isCustomized ? 'default' : 'secondary'}>
+                            {isCustomized ? 'Personnalise' : 'Par defaut'}
+                          </Badge>
+                          {!shortcut.enabled && (
+                            <Badge variant="outline">Desactive</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">{shortcut.description}</p>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          <span>Actuel:</span>
+                          <code className="rounded-md border border-border/50 bg-muted/30 px-2 py-1 font-mono text-foreground">
+                            {formatShortcutCombo(shortcut.combo)}
+                          </code>
+                          {defaultShortcut && (
+                            <>
+                              <span>Par defaut:</span>
+                              <code className="rounded-md border border-border/50 bg-muted/30 px-2 py-1 font-mono">
+                                {formatShortcutCombo(defaultShortcut.combo)}
+                              </code>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                        <div className="flex items-center gap-2 rounded-lg border border-border/50 px-3 py-2">
+                          <span className="text-xs text-muted-foreground">Actif</span>
+                          <Switch
+                            checked={shortcut.enabled}
+                            onCheckedChange={(enabled) => updateKeyboardShortcut(shortcut.id, { enabled })}
+                          />
+                        </div>
+
+                        <Button
+                          type="button"
+                          variant={isCapturing ? 'default' : 'outline'}
+                          onClick={() => handleShortcutCapture(shortcut.id)}
+                          onKeyDown={(event) => {
+                            if (isCapturing) {
+                              handleShortcutKeyDown(shortcut.id, event);
+                            }
+                          }}
+                        >
+                          {isCapturing ? 'Appuie sur les touches...' : 'Modifier'}
+                        </Button>
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => handleShortcutReset(shortcut.id)}
+                        >
+                          Defaut
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
         </TabsContent>
       </Tabs>
 

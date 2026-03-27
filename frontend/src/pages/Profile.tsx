@@ -65,6 +65,7 @@ interface ProfileUser {
   auraCoinBalance: number;
   usernameColor?: string | null;
   profilePicture?: string | null;
+  profileBanner?: string | null;
   bio?: string | null;
   createdAt: string;
   clanTag?: { text: string; style: string | null } | null;
@@ -304,6 +305,7 @@ export default function Profile() {
     month: 'long',
     year: 'numeric',
   });
+  const profileBannerUrl = profileUser.profileBanner ? resolveImageUrl(profileUser.profileBanner) : null;
   const statsByGameType = new Map(profileUser.gameStats.map((stat) => [stat.gameType, stat]));
   const knownGameTypes = new Set(PROFILE_GAME_CATALOG.map((entry) => entry.gameType));
   const excludedUnknownGameTypes = new Set([...knownGameTypes, 'bombparty']);
@@ -404,6 +406,16 @@ export default function Profile() {
     <div className="w-full px-0 pb-8">
       <div className="mx-auto w-full max-w-6xl overflow-hidden rounded-[28px] border border-border/60 bg-card shadow-sm">
         <div className="relative h-36 overflow-hidden border-b border-border/60 bg-gradient-to-br from-muted via-background to-muted/70 md:h-48">
+          {profileBannerUrl ? (
+            <>
+              <img
+                src={profileBannerUrl}
+                alt={`Banniere de ${profileUser.username}`}
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-black/20" />
+            </>
+          ) : null}
           <div className="absolute -left-20 top-0 h-48 w-48 rounded-full bg-foreground/[0.05] blur-3xl" />
           <div className="absolute right-0 top-0 h-56 w-56 rounded-full bg-foreground/[0.04] blur-3xl" />
           <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-card via-card/45 to-transparent" />
@@ -476,6 +488,11 @@ export default function Profile() {
                   <CalendarDays className="h-4 w-4" />
                   Membre depuis {memberSinceLabel}
                 </span>
+                {isOwnProfile ? (
+                  <span className="rounded-full border border-border/70 px-3 py-1 text-xs text-muted-foreground">
+                    La banniere se change depuis l'inventaire
+                  </span>
+                ) : null}
               </div>
 
               <p className={cn('max-w-2xl text-sm leading-6 text-foreground/88', !profileUser.bio && 'text-muted-foreground')}>

@@ -10,6 +10,8 @@ import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/Ga
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { useAuth } from '@/contexts/AuthContext';
 import { gamesApi } from '@/services/api';
+import { cn } from '@/lib/utils';
+import { useHideGameLeaderboards, useHideGameLeftInfo } from '@/lib/game-preferences';
 
 const GAME_TYPE = 'qs_watermelon';
 const CANVAS_WIDTH = 420;
@@ -109,6 +111,8 @@ function drawRoundedRect(
 
 export default function QSWatermelon() {
   const { user, refreshUser } = useAuth();
+  const hideGameLeaderboards = useHideGameLeaderboards();
+  const hideGameLeftInfo = useHideGameLeftInfo();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
   const lastFrameRef = useRef(0);
@@ -645,7 +649,17 @@ export default function QSWatermelon() {
         description="Fusionne les fruits, fais grimper ton score et garde la pile sous la ligne rouge le plus longtemps possible."
       />
 
-      <div className="grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)_280px]">
+      <div className={cn(
+        'grid gap-4',
+        hideGameLeftInfo
+          ? hideGameLeaderboards
+            ? 'xl:grid-cols-1'
+            : 'xl:grid-cols-[minmax(0,1fr)_280px]'
+          : hideGameLeaderboards
+            ? 'xl:grid-cols-[280px_minmax(0,1fr)]'
+            : 'xl:grid-cols-[280px_minmax(0,1fr)_280px]'
+      )}>
+        {!hideGameLeftInfo && (
         <div className="flex flex-col gap-4">
           <Card>
             <CardHeader className="px-4 py-3">
@@ -693,6 +707,7 @@ export default function QSWatermelon() {
             </CardContent>
           </Card>
         </div>
+        )}
 
         <div
           ref={gameContainerRef}
@@ -756,6 +771,7 @@ export default function QSWatermelon() {
           </GameFullscreenStage>
         </div>
 
+        {!hideGameLeaderboards && (
         <div className="flex flex-col gap-4">
           <Card>
             <CardHeader className="px-4 py-3">
@@ -781,6 +797,7 @@ export default function QSWatermelon() {
             maxHeight={420}
           />
         </div>
+        )}
       </div>
     </PageShell>
   );

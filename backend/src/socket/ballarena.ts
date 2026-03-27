@@ -3,6 +3,7 @@ import { prisma } from '../server.js';
 import { checkQuestProgress } from '../routes/quests.js';
 import { logGame } from '../utils/logger.js';
 import { recheckBadgeForCondition } from '../utils/badgeAwards.js';
+import { getActiveClanMoneyBoostPercentsForUsers } from '../utils/clanEffects.js';
 import { duelPartyIds, deleteDuelParty } from './duelParties.js';
 
 // ─── Arena constants ──────────────────────────────────────────────────────────
@@ -201,13 +202,12 @@ function resetForNewRound(game: BallArenaGame, io: Server) {
   game.playStartTime = null;
 
   for (let i = 0; i < game.balls.length; i++) {
-    // Keep current position — balls stay where they stopped
     game.balls[i].vx = 0;
     game.balls[i].vy = 0;
     game.balls[i].plannedVx = 0;
     game.balls[i].plannedVy = 0;
-    game.balls[i].hasSetDirection = false;
-    game.balls[i].isOut = false;
+    // Eliminated players stay eliminated for the rest of the multiplayer game.
+    game.balls[i].hasSetDirection = game.balls[i].isOut;
   }
 
   emitState(game, io);
@@ -324,19 +324,24 @@ async function endGame(
   const drawReward = { aura: 5, money: 25 };
 
   try {
+    const boostPercents = await getActiveClanMoneyBoostPercentsForUsers(game.players.map((player) => player.userId));
+    const resolveMoneyReward = (userId: string, base: number) => base + Math.floor(base * ((boostPercents.get(userId) ?? 0) / 100));
+
     if (!isDraw && winnerId) {
       const winner = game.players.find((p) => p.userId === winnerId)!;
       const losers = game.players.filter((p) => p.userId !== winnerId);
+      const resolvedWinnerReward = { ...winnerReward, money: resolveMoneyReward(winner.userId, winnerReward.money) };
+      const resolvedLoserRewards = new Map(losers.map((loser) => [loser.userId, { ...loserReward, money: resolveMoneyReward(loser.userId, loserReward.money) }]));
 
       const updatedWinner = await prisma.user.update({
         where: { id: winnerId },
-        data: { aura: { increment: winnerReward.aura }, money: { increment: winnerReward.money } },
+        data: { aura: { increment: resolvedWinnerReward.aura }, money: { increment: resolvedWinnerReward.money } },
         select: { id: true, aura: true, money: true },
       });
       const updatedLosers = await Promise.all(losers.map((loser) => (
         prisma.user.update({
           where: { id: loser.userId },
-          data: { money: { increment: loserReward.money } },
+          data: { money: { increment: resolvedLoserRewards.get(loser.userId)?.money ?? loserReward.money } },
           select: { id: true, aura: true, money: true },
         })
       )));
@@ -369,7 +374,7 @@ async function endGame(
         winnerId,
         winnerUsername: winner.username,
         isDraw: false,
-        rewards: { winner: winnerReward, loser: loserReward },
+        rewards: { winner: resolvedWinnerReward, loser: loserReward },
         replayFrames: game.replayFrames,
         players: game.players.map((p) => ({ userId: p.userId, username: p.username, usernameColor: p.usernameColor, playerIndex: p.playerIndex })),
         results: game.players.map((player) => ({
@@ -377,19 +382,20 @@ async function endGame(
           username: player.username,
           usernameColor: player.usernameColor,
           isWinner: player.userId === winnerId,
-          rewards: player.userId === winnerId ? winnerReward : loserReward,
+          rewards: player.userId === winnerId ? resolvedWinnerReward : (resolvedLoserRewards.get(player.userId) ?? loserReward),
         })),
       });
 
       logGame('game_complete', winner.userId, winner.username, {
         gameType: 'ball_arena', score: 1, won: true,
-        auraReward: winnerReward.aura, moneyReward: winnerReward.money,
+        auraReward: resolvedWinnerReward.aura, moneyReward: resolvedWinnerReward.money,
         isMultiplayer: true, partyId: game.partyId,
       });
       for (const loser of losers) {
+        const resolvedLoserReward = resolvedLoserRewards.get(loser.userId) ?? loserReward;
         logGame('game_complete', loser.userId, loser.username, {
           gameType: 'ball_arena', score: 0, won: false,
-          auraReward: loserReward.aura, moneyReward: loserReward.money,
+          auraReward: resolvedLoserReward.aura, moneyReward: resolvedLoserReward.money,
           isMultiplayer: true, partyId: game.partyId,
         });
       }
@@ -398,7 +404,7 @@ async function endGame(
         game.players.map((p) =>
           prisma.user.update({
             where: { id: p.userId },
-            data: { aura: { increment: drawReward.aura }, money: { increment: drawReward.money } },
+            data: { aura: { increment: drawReward.aura }, money: { increment: resolveMoneyReward(p.userId, drawReward.money) } },
             select: { id: true, aura: true, money: true },
           })
         )
@@ -422,7 +428,7 @@ async function endGame(
           username: player.username,
           usernameColor: player.usernameColor,
           isWinner: false,
-          rewards: drawReward,
+          rewards: { ...drawReward, money: resolveMoneyReward(player.userId, drawReward.money) },
         })),
       });
     }
@@ -728,6 +734,7 @@ export const setupBallArenaHandlers = (socket: Socket, io: Server) => {
 
     const playerIdx = game.players.findIndex((p) => p.userId === userId);
     if (playerIdx === -1) return;
+    if (game.balls[playerIdx].isOut) return;
 
     // Clamp to MAX_SPEED
     const speed = Math.sqrt(vx * vx + vy * vy);
@@ -744,7 +751,7 @@ export const setupBallArenaHandlers = (socket: Socket, io: Server) => {
     emitState(game, io);
 
     // Early start when both players have chosen
-    const allSet = game.balls.every((b) => b.hasSetDirection);
+    const allSet = game.balls.every((b) => b.isOut || b.hasSetDirection);
     if (allSet) {
       if (game.prepTimeout) {
         clearTimeout(game.prepTimeout);

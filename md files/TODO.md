@@ -1,18 +1,9 @@
 - revoir system envoi/retrait aura et cadeaux
 - classement actif goyave
 - table casino
-- plus d"objets
-- pouvoir dm joueurs de admin
-- raccorucis claviers
-- bug ball arena multijouer
-- rechercher jeux
-- populaire de base
-- enlever partie gauche jeux
+- plus d'objets
 - classements clash
-- badge demande
 - lootboxes
-- objet bannière
-- limite 1 badge perso
 - boost permanent clan
 - redirection page
 - widgets visuels comme auracoin
@@ -23,5 +14,4 @@
 - racer/polytrack image jeux
 - spec relancer
 - aligner tabs et menu deroualant
-- analyse jours heures
-- top bar transarente
+- mdp oublié

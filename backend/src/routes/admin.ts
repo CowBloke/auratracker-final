@@ -118,6 +118,7 @@ const buildLogWhereClause = (query: Record<string, unknown>) => {
 
 const PAGE_BREAKDOWN_LIMIT = 6;
 const GAME_BREAKDOWN_LIMIT = 6;
+const WEEKDAY_LABELS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
 
 const UPDATE_POPUP_TYPES = new Set(['UPDATE', 'CLAN_PROMPT']);
 const UPDATE_POPUP_AUDIENCES = new Set(['ALL', 'NO_CLAN', 'SELECTED_USERS']);
@@ -222,6 +223,23 @@ const extractDurationSecondsFromMetadata = (metadata: string | null): number | n
     return rawDuration;
   } catch {
     return null;
+  }
+};
+
+type SnapshotUser = {
+  userId?: string | null;
+  username?: string | null;
+  currentPage?: string | null;
+};
+
+const parseSnapshotUsers = (raw: string): SnapshotUser[] => {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed)
+      ? parsed.filter((entry): entry is SnapshotUser => typeof entry === 'object' && entry !== null)
+      : [];
+  } catch {
+    return [];
   }
 };
 
@@ -3302,18 +3320,39 @@ router.get('/online-history', authMiddleware, requireAdmin, async (req: AuthRequ
       }
     }
 
-    const snapshots = await prisma.onlineSnapshot.findMany({
-      where: { createdAt: { gte: start, lte: end } },
-      orderBy: { createdAt: 'asc' },
-      select: { count: true, createdAt: true, usernames: true },
-    });
+    const [snapshots, loginLogs, gameLogs] = await Promise.all([
+      prisma.onlineSnapshot.findMany({
+        where: { createdAt: { gte: start, lte: end } },
+        orderBy: { createdAt: 'asc' },
+        select: { count: true, createdAt: true, usernames: true },
+      }),
+      prisma.log.findMany({
+        where: {
+          type: 'AUTH',
+          action: 'login',
+          createdAt: { gte: start, lte: end },
+          userId: { not: null },
+        },
+        select: { userId: true },
+      }),
+      prisma.log.findMany({
+        where: {
+          type: 'GAME',
+          action: { in: ['game_complete', 'casino_bet'] },
+          createdAt: { gte: start, lte: end },
+        },
+        select: { createdAt: true, userId: true },
+      }),
+    ]);
 
     type SnapUser = { userId: string; username: string };
     const MAX_POINTS = 300;
-
-    const parseUsernames = (raw: string): SnapUser[] => {
-      try { return JSON.parse(raw) as SnapUser[]; } catch { return []; }
-    };
+    const parseUsernames = (raw: string): SnapUser[] =>
+      parseSnapshotUsers(raw).flatMap((entry) => (
+        typeof entry.userId === 'string' && typeof entry.username === 'string'
+          ? [{ userId: entry.userId, username: entry.username }]
+          : []
+      ));
 
     let data: { timestamp: string; count: number; max: number; usernames: SnapUser[] }[];
 
@@ -3349,11 +3388,87 @@ router.get('/online-history', authMiddleware, requireAdmin, async (req: AuthRequ
     // Peak for the queried period
     const peak = snapshots.reduce((m, s) => (s.count > m ? s.count : m), 0);
     const peakSnapshot = snapshots.find(s => s.count === peak);
+    const uniqueConnectedUserIds = new Set<string>();
+    const hourStats = Array.from({ length: 24 }, (_, hour) => ({
+      hour,
+      totalOnline: 0,
+      peakOnline: 0,
+      sampleCount: 0,
+    }));
+    const weekdayStats = Array.from({ length: 7 }, (_, day) => ({
+      day,
+      totalGames: 0,
+      uniquePlayers: new Set<string>(),
+    }));
+
+    for (const log of loginLogs) {
+      if (typeof log.userId === 'string' && log.userId) {
+        uniqueConnectedUserIds.add(log.userId);
+      }
+    }
+
+    for (const snapshot of snapshots) {
+      const hourStat = hourStats[snapshot.createdAt.getHours()];
+      hourStat.totalOnline += snapshot.count;
+      hourStat.peakOnline = Math.max(hourStat.peakOnline, snapshot.count);
+      hourStat.sampleCount += 1;
+
+      for (const user of parseSnapshotUsers(snapshot.usernames)) {
+        if (typeof user.userId === 'string' && user.userId) {
+          uniqueConnectedUserIds.add(user.userId);
+        }
+      }
+    }
+
+    for (const log of gameLogs) {
+      const weekdayStat = weekdayStats[log.createdAt.getDay()];
+      weekdayStat.totalGames += 1;
+      if (typeof log.userId === 'string' && log.userId) {
+        weekdayStat.uniquePlayers.add(log.userId);
+      }
+    }
+
+    const peakHours = hourStats
+      .filter((entry) => entry.sampleCount > 0)
+      .map((entry) => ({
+        hour: entry.hour,
+        label: `${String(entry.hour).padStart(2, '0')}h-${String((entry.hour + 1) % 24).padStart(2, '0')}h`,
+        averageOnline: roundToSingleDecimal(entry.totalOnline / entry.sampleCount),
+        peakOnline: entry.peakOnline,
+        sampleCount: entry.sampleCount,
+      }))
+      .sort((a, b) => (
+        b.averageOnline - a.averageOnline ||
+        b.peakOnline - a.peakOnline ||
+        b.sampleCount - a.sampleCount ||
+        a.hour - b.hour
+      ))
+      .slice(0, 3);
+
+    const busiestWeekdayEntry = [...weekdayStats]
+      .sort((a, b) => (
+        b.totalGames - a.totalGames ||
+        b.uniquePlayers.size - a.uniquePlayers.size ||
+        a.day - b.day
+      ))
+      .find((entry) => entry.totalGames > 0);
 
     res.json({
       data,
       peak,
       peakAt: peakSnapshot?.createdAt ?? null,
+      insights: {
+        uniqueConnectedUsers: uniqueConnectedUserIds.size,
+        busiestWeekday: busiestWeekdayEntry
+          ? {
+              day: busiestWeekdayEntry.day,
+              label: WEEKDAY_LABELS[busiestWeekdayEntry.day],
+              totalGames: busiestWeekdayEntry.totalGames,
+              uniquePlayers: busiestWeekdayEntry.uniquePlayers.size,
+            }
+          : null,
+        peakHours,
+      },
       period,
       start: start.toISOString(),
       end: end.toISOString(),

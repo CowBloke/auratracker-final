@@ -9,6 +9,7 @@ import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
+import { useHideGameLeaderboards, useHideGameLeftInfo } from '@/lib/game-preferences';
 import { cn } from '@/lib/utils';
 import { Box, Trophy } from 'lucide-react';
 
@@ -546,6 +547,8 @@ class Game {
 
 export default function StackTower() {
   const { user, refreshUser } = useAuth();
+  const hideGameLeaderboards = useHideGameLeaderboards();
+  const hideGameLeftInfo = useHideGameLeftInfo();
   const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
   const gameRef = useRef<Game | null>(null);
 
@@ -659,7 +662,19 @@ export default function StackTower() {
 
   return (
     <PageShell size="wide">
-      <div className={cn('grid gap-6 2xl:grid-cols-[280px_minmax(0,1fr)_280px]', isFullscreen && '2xl:grid-cols-1')}>
+      <div className={cn(
+        'grid gap-6',
+        isFullscreen
+          ? '2xl:grid-cols-1'
+          : hideGameLeftInfo
+            ? hideGameLeaderboards
+              ? '2xl:grid-cols-1'
+              : '2xl:grid-cols-[minmax(0,1fr)_280px]'
+            : hideGameLeaderboards
+              ? '2xl:grid-cols-[280px_minmax(0,1fr)]'
+              : '2xl:grid-cols-[280px_minmax(0,1fr)_280px]'
+      )}>
+        {!hideGameLeftInfo && (
         <div className={cn('space-y-4', isFullscreen && 'hidden')}>
           <Card>
             <CardHeader className="px-4 py-3">
@@ -697,6 +712,7 @@ export default function StackTower() {
             </CardContent>
           </Card>
         </div>
+        )}
 
         <div
           ref={gameContainerRef}
@@ -761,6 +777,7 @@ export default function StackTower() {
           </GameFullscreenStage>
         </div>
 
+        {!hideGameLeaderboards && (
         <div className={cn('w-full', !isFullscreen && '2xl:max-w-[280px]')}>
           <GameLeaderboard
             entries={leaderboard}
@@ -772,6 +789,7 @@ export default function StackTower() {
             hidden={isFullscreen}
           />
         </div>
+        )}
       </div>
     </PageShell>
   );

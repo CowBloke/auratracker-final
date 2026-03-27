@@ -2,6 +2,7 @@ import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
 import { checkQuestProgress } from '../routes/quests.js';
 import { logGame } from '../utils/logger.js';
+import { getActiveClanMoneyBoostPercentsForUsers } from '../utils/clanEffects.js';
 import { duelPartyIds, deleteDuelParty } from './duelParties.js';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -348,18 +349,22 @@ async function endGame(game: UnoGame, io: Server, winnerId: string) {
   try {
     const winner = game.players.find(p => p.userId === winnerId)!;
     const others = game.players.filter(p => p.userId !== winnerId);
+    const boostPercents = await getActiveClanMoneyBoostPercentsForUsers(game.players.map((player) => player.userId));
+    const resolveMoneyReward = (userId: string, base: number) => base + Math.floor(base * ((boostPercents.get(userId) ?? 0) / 100));
+    const resolvedWinReward = { ...winReward, money: resolveMoneyReward(winner.userId, winReward.money) };
 
     const updatedWinner = await prisma.user.update({
       where: { id: winnerId },
-      data: { aura: { increment: winReward.aura }, money: { increment: winReward.money } },
+      data: { aura: { increment: resolvedWinReward.aura }, money: { increment: resolvedWinReward.money } },
       select: { id: true, aura: true, money: true },
     });
     io.emit('economy:balance-update', { userId: updatedWinner.id, aura: updatedWinner.aura, money: updatedWinner.money });
 
     for (const other of others) {
+      const resolvedLossReward = { ...lossReward, money: resolveMoneyReward(other.userId, lossReward.money) };
       const u = await prisma.user.update({
         where: { id: other.userId },
-        data: { money: { increment: lossReward.money } },
+        data: { money: { increment: resolvedLossReward.money } },
         select: { id: true, aura: true, money: true },
       });
       io.emit('economy:balance-update', { userId: u.id, aura: u.aura, money: u.money });
@@ -387,12 +392,12 @@ async function endGame(game: UnoGame, io: Server, winnerId: string) {
     io.to(`party:${game.partyId}`).emit('uno:game-over', {
       winnerId,
       winnerUsername: winner.username,
-      rewards: { winner: winReward, other: lossReward },
+      rewards: { winner: resolvedWinReward, other: lossReward },
     });
 
     logGame('game_complete', winner.userId, winner.username, {
       gameType: 'uno', score: 1, won: true,
-      auraReward: winReward.aura, moneyReward: winReward.money,
+      auraReward: resolvedWinReward.aura, moneyReward: resolvedWinReward.money,
       isMultiplayer: true, partyId: game.partyId,
     });
   } catch (err) {

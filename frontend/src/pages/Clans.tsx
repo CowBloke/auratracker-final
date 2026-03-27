@@ -2,8 +2,10 @@ import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react
 import { AlertTriangle, Axe, Check, Coins, Crown, Info, Loader2, LogOut, MessageSquare, Pencil, Plus, Send, Sparkles, Swords, Tag, Target, Trash2, UserX, X } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
+  ClanActiveEffect,
   ClanChatMessage,
   ClanDetail,
+  ClanOwnedItem,
   ClanPumpUpMessage,
   ClanSummary,
   ClanWarDefenseState,
@@ -70,6 +72,13 @@ const formatCountdown = (value: string | null | undefined) => {
   const minutes = totalMinutes % 60;
   if (hours <= 0) return `${minutes} min`;
   return `${hours}h ${minutes.toString().padStart(2, '0')}m`;
+};
+
+const formatEffectCooldown = (effect: ClanActiveEffect) => {
+  if (effect.isActive) {
+    return `Actif encore ${formatCountdown(effect.activeUntil)}`;
+  }
+  return `Disponible dans ${formatCountdown(effect.cooldownUntil)}`;
 };
 
 const getStatusLabel = (status: ClanWarState['status']) => {
@@ -167,7 +176,7 @@ const TAG_PRESET_COLORS = [
 ];
 
 export default function Clans() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [clans, setClans] = useState<ClanSummary[]>([]);
   const [activeWars, setActiveWars] = useState<ClanWarState[]>([]);
   const [globalWarHistory, setGlobalWarHistory] = useState<ClanWarState[]>([]);
@@ -192,6 +201,7 @@ export default function Clans() {
   const [formError, setFormError] = useState<string | null>(null);
   const [bankDepositAmount, setBankDepositAmount] = useState('100');
   const [depositingBank, setDepositingBank] = useState(false);
+  const [usingClanItemId, setUsingClanItemId] = useState<string | null>(null);
 
   // Image editor state
   const [imageEditOpen, setImageEditOpen] = useState(false);
@@ -766,6 +776,27 @@ export default function Clans() {
     }
   };
 
+  const handleUseClanItem = async (clanItem: ClanOwnedItem) => {
+    if (!selectedClan || usingClanItemId) return;
+    try {
+      setUsingClanItemId(clanItem.id);
+      await clansApi.useOwnedItem(selectedClan.id, clanItem.id);
+      await Promise.all([fetchClanDetail(selectedClan.id), refreshUser()]);
+      toast({
+        title: 'Effet activé',
+        description: `${clanItem.item.name} booste maintenant les gains d'argent du clan.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Activation impossible',
+        description: error.response?.data?.error || 'Impossible d’activer cet objet.',
+        variant: 'destructive',
+      });
+    } finally {
+      setUsingClanItemId(null);
+    }
+  };
+
   const handleSaveImage = async () => {
     if (!selectedClan || !selectedClan.viewer.isLeader) return;
     try {
@@ -1077,6 +1108,75 @@ export default function Clans() {
                               </Button>
                             </div>
                           ) : null}
+                        </CardContent>
+                      </Card>
+
+                      <Card className={panelClassName}>
+                        <CardContent className="space-y-3 p-4">
+                          <SectionTitle
+                            title="Effets du clan"
+                            description="Les effets actifs et leurs cooldowns apparaissent aussi dans la top bar."
+                          />
+                          {selectedClan.activeEffects.length > 0 ? (
+                            <div className="space-y-2">
+                              {selectedClan.activeEffects.map((effect) => (
+                                <div key={effect.id} className="rounded-xl border border-border/50 bg-muted/15 px-3 py-3">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                      <div className="text-sm font-medium">{effect.name}</div>
+                                      <div className="text-xs text-muted-foreground">+{effect.value}% sur l&apos;argent gagné en jeu</div>
+                                    </div>
+                                    <Badge variant={effect.isActive ? 'secondary' : 'outline'}>
+                                      {effect.isActive ? 'Actif' : 'Cooldown'}
+                                    </Badge>
+                                  </div>
+                                  <div className="mt-2 text-xs text-muted-foreground">{formatEffectCooldown(effect)}</div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="rounded-xl border border-dashed border-border/50 px-3 py-4 text-sm text-muted-foreground">
+                              Aucun effet actif ou en cooldown pour le moment.
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+
+                      <Card className={panelClassName}>
+                        <CardContent className="space-y-3 p-4">
+                          <SectionTitle
+                            title="Objets de clan"
+                            description="Achetés avec la banque du clan. Le chef peut les activer."
+                          />
+                          {selectedClan.ownedItems.length > 0 ? (
+                            <div className="space-y-2">
+                              {selectedClan.ownedItems.map((clanItem) => (
+                                <div key={clanItem.id} className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-muted/15 px-3 py-3">
+                                  <div className="min-w-0">
+                                    <div className="text-sm font-medium">{clanItem.item.name} ×{clanItem.quantity}</div>
+                                    <div className="text-xs text-muted-foreground">{clanItem.item.description}</div>
+                                  </div>
+                                  {selectedClan.viewer.isLeader ? (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => handleUseClanItem(clanItem)}
+                                      disabled={usingClanItemId === clanItem.id}
+                                    >
+                                      {usingClanItemId === clanItem.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                                      Activer
+                                    </Button>
+                                  ) : (
+                                    <Badge variant="outline">Chef requis</Badge>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="rounded-xl border border-dashed border-border/50 px-3 py-4 text-sm text-muted-foreground">
+                              Aucun objet de clan en stock. Les achats apparaîtront ici.
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
 

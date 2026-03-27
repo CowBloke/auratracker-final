@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
+import { useHideGameLeaderboards, useHideGameLeftInfo } from '@/lib/game-preferences';
 
 type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades';
 
@@ -179,6 +180,8 @@ function SolitaireCard({
 export default function Solitaire() {
   const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
   const { user, refreshUser } = useAuth();
+  const hideGameLeaderboards = useHideGameLeaderboards();
+  const hideGameLeftInfo = useHideGameLeftInfo();
   const boardRef = useRef<HTMLDivElement | null>(null);
 
   const [game, setGame] = useState<GameState>(() => createInitialGame());
@@ -514,8 +517,17 @@ export default function Solitaire() {
   return (
     <div className={cn(
       'grid grid-cols-1 gap-4 items-start px-4 pb-6 lg:px-6 lg:pb-8',
-      isFullscreen ? 'justify-items-center' : 'xl:grid-cols-[280px_1fr_320px]'
+      isFullscreen
+        ? 'justify-items-center'
+        : hideGameLeftInfo
+          ? hideGameLeaderboards
+            ? 'justify-items-center'
+            : 'xl:grid-cols-[1fr_320px]'
+          : hideGameLeaderboards
+            ? 'xl:grid-cols-[280px_1fr]'
+            : 'xl:grid-cols-[280px_1fr_320px]'
     )}>
+      {!hideGameLeftInfo && (
       <div className={cn('flex flex-col gap-3', isFullscreen && 'hidden')}>
         <Card>
           <CardHeader className="px-4 py-3">
@@ -565,6 +577,7 @@ export default function Solitaire() {
         </Button>
         <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} disabled={isWon} className="w-full" />
       </div>
+      )}
 
       <Card
         ref={gameContainerRef}
@@ -784,13 +797,15 @@ export default function Solitaire() {
         </CardContent>
       </Card>
 
-      <GameLeaderboard
-        entries={leaderboard}
-        currentUserId={user?.id}
-        personalHighScore={highScore}
-        maxHeight={720}
-        hidden={isFullscreen}
-      />
+      {!hideGameLeaderboards && (
+        <GameLeaderboard
+          entries={leaderboard}
+          currentUserId={user?.id}
+          personalHighScore={highScore}
+          maxHeight={720}
+          hidden={isFullscreen}
+        />
+      )}
 
     </div>
   );

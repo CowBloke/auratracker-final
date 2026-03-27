@@ -4,6 +4,7 @@ import { prisma } from '../server.js';
 import { checkQuestProgress } from '../routes/quests.js';
 import { logGame } from '../utils/logger.js';
 import { recheckBadgeForCondition } from '../utils/badgeAwards.js';
+import { getActiveClanMoneyBoostPercentsForUsers } from '../utils/clanEffects.js';
 import { duelPartyIds, deleteDuelParty } from './duelParties.js';
 
 type ChessColor = 'w' | 'b';
@@ -237,24 +238,29 @@ async function endGame(game: ChessGame, io: Server, winnerId: string | null, res
   const drawReward = { aura: 5, money: 25 };
 
   try {
+    const boostPercents = await getActiveClanMoneyBoostPercentsForUsers(game.players.map((player) => player.userId));
+    const resolveMoneyReward = (userId: string, base: number) => base + Math.floor(base * ((boostPercents.get(userId) ?? 0) / 100));
+
     if (winnerId) {
       const winner = game.players.find((player) => player.userId === winnerId);
       const loser = game.players.find((player) => player.userId !== winnerId);
       if (!winner || !loser) return;
+      const resolvedWinnerReward = { ...winnerReward, money: resolveMoneyReward(winner.userId, winnerReward.money) };
+      const resolvedLoserReward = { ...loserReward, money: resolveMoneyReward(loser.userId, loserReward.money) };
 
       const [updatedWinner, updatedLoser] = await Promise.all([
         prisma.user.update({
           where: { id: winner.userId },
           data: {
-            aura: { increment: winnerReward.aura },
-            money: { increment: winnerReward.money },
+            aura: { increment: resolvedWinnerReward.aura },
+            money: { increment: resolvedWinnerReward.money },
           },
           select: { id: true, aura: true, money: true },
         }),
         prisma.user.update({
           where: { id: loser.userId },
           data: {
-            money: { increment: loserReward.money },
+            money: { increment: resolvedLoserReward.money },
           },
           select: { id: true, aura: true, money: true },
         }),
@@ -296,8 +302,8 @@ async function endGame(game: ChessGame, io: Server, winnerId: string | null, res
         isDraw: false,
         result,
         rewards: {
-          winner: winnerReward,
-          loser: loserReward,
+          winner: resolvedWinnerReward,
+          loser: resolvedLoserReward,
         },
       });
 
@@ -305,8 +311,8 @@ async function endGame(game: ChessGame, io: Server, winnerId: string | null, res
         gameType: 'chess',
         score: 1,
         won: true,
-        auraReward: winnerReward.aura,
-        moneyReward: winnerReward.money,
+        auraReward: resolvedWinnerReward.aura,
+        moneyReward: resolvedWinnerReward.money,
         isMultiplayer: true,
         partyId: game.partyId,
       });
@@ -314,8 +320,8 @@ async function endGame(game: ChessGame, io: Server, winnerId: string | null, res
         gameType: 'chess',
         score: 0,
         won: false,
-        auraReward: loserReward.aura,
-        moneyReward: loserReward.money,
+        auraReward: resolvedLoserReward.aura,
+        moneyReward: resolvedLoserReward.money,
         isMultiplayer: true,
         partyId: game.partyId,
       });
@@ -326,7 +332,7 @@ async function endGame(game: ChessGame, io: Server, winnerId: string | null, res
             where: { id: player.userId },
             data: {
               aura: { increment: drawReward.aura },
-              money: { increment: drawReward.money },
+              money: { increment: resolveMoneyReward(player.userId, drawReward.money) },
             },
             select: { id: true, aura: true, money: true },
           })

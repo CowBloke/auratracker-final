@@ -13,6 +13,7 @@ import { GamePauseButton } from '@/components/game/GamePauseButton';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
+import { useHideGameLeaderboards, useHideGameLeftInfo } from '@/lib/game-preferences';
 import { Play, RotateCcw, Zap, Gauge, Mountain } from 'lucide-react';
 
 const CANVAS_WIDTH = 960;
@@ -210,6 +211,8 @@ const createPattern = (choice: number, startX: number): Obstacle[] => {
 
 export default function GeometryDash() {
   const { user, refreshUser } = useAuth();
+  const hideGameLeaderboards = useHideGameLeaderboards();
+  const hideGameLeftInfo = useHideGameLeftInfo();
   const { theme } = useTheme();
   const palette = useMemo(() => palettes[theme], [theme]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -723,7 +726,19 @@ export default function GeometryDash() {
 
   return (
     <PageShell size="wide">
-      <div className={cn('grid gap-6 2xl:grid-cols-[280px_minmax(0,1fr)_280px]', isFullscreen && '2xl:grid-cols-1')}>
+      <div className={cn(
+        'grid gap-6',
+        isFullscreen
+          ? '2xl:grid-cols-1'
+          : hideGameLeftInfo
+            ? hideGameLeaderboards
+              ? '2xl:grid-cols-1'
+              : '2xl:grid-cols-[minmax(0,1fr)_280px]'
+            : hideGameLeaderboards
+              ? '2xl:grid-cols-[280px_minmax(0,1fr)]'
+              : '2xl:grid-cols-[280px_minmax(0,1fr)_280px]'
+      )}>
+        {!hideGameLeftInfo && (
         <div className={cn('space-y-4', isFullscreen && 'hidden')}>
           <Card>
             <CardHeader className="px-4 py-3">
@@ -777,6 +792,7 @@ export default function GeometryDash() {
             </CardContent>
           </Card>
         </div>
+        )}
 
         <div
           ref={gameContainerRef}
@@ -855,6 +871,7 @@ export default function GeometryDash() {
           </GameFullscreenStage>
         </div>
 
+        {!hideGameLeaderboards && (
         <div className={cn('w-full', !isFullscreen && '2xl:max-w-[280px]')}>
           <GameLeaderboard
             entries={leaderboard}
@@ -866,6 +883,7 @@ export default function GeometryDash() {
             hidden={isFullscreen}
           />
         </div>
+        )}
       </div>
     </PageShell>
   );

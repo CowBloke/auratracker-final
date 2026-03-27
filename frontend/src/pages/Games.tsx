@@ -5,6 +5,7 @@ import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageShell } from '@/components/layout/page-shell';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -367,6 +368,7 @@ export default function Games() {
   const [activeTab, setActiveTab] = useState<GamesTab>('all');
   const [activeMultiplayerTab, setActiveMultiplayerTab] = useState<MultiplayerTab>('all');
   const [sortBy, setSortBy] = useState<SortOption>('popular');
+  const [searchQuery, setSearchQuery] = useState('');
   const [catalogStats, setCatalogStats] = useState<{ global: Record<string, number>; personal: Record<string, number> }>({
     global: {},
     personal: {},
@@ -400,6 +402,13 @@ export default function Games() {
   }, [user]);
 
   const visibleGames = useMemo(() => games.filter((game) => !disabledPages.includes(game.pageKey)), [disabledPages]);
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const filterGames = (list: Game[]) => list.filter((game) => {
+    if (!normalizedSearchQuery) return true;
+
+    const searchableText = `${game.name} ${game.description} ${game.type}`.toLowerCase();
+    return searchableText.includes(normalizedSearchQuery);
+  });
   const getGlobalPlayCount = (game: Game) =>
     game.statsKeys.reduce((total, key) => total + (catalogStats.global[key] ?? 0), 0);
   const getPersonalPlayCount = (game: Game) =>
@@ -417,10 +426,10 @@ export default function Games() {
     return games.findIndex((game) => game.id === a.id) - games.findIndex((game) => game.id === b.id);
   });
 
-  const multiplayerGames = useMemo(() => sortGames(visibleGames.filter((game) => game.requiresParty)), [visibleGames, sortBy, catalogStats]);
-  const soloGames = useMemo(() => sortGames(visibleGames.filter((game) => !game.requiresParty)), [visibleGames, sortBy, catalogStats]);
-  const duelGames = useMemo(() => sortGames(multiplayerGames.filter((game) => game.type === 'Duel')), [multiplayerGames, sortBy, catalogStats]);
-  const partyGames = useMemo(() => sortGames(multiplayerGames.filter((game) => game.type === 'Party')), [multiplayerGames, sortBy, catalogStats]);
+  const multiplayerGames = useMemo(() => filterGames(sortGames(visibleGames.filter((game) => game.requiresParty))), [visibleGames, sortBy, catalogStats, normalizedSearchQuery]);
+  const soloGames = useMemo(() => filterGames(sortGames(visibleGames.filter((game) => !game.requiresParty))), [visibleGames, sortBy, catalogStats, normalizedSearchQuery]);
+  const duelGames = useMemo(() => filterGames(sortGames(visibleGames.filter((game) => game.requiresParty && game.type === 'Duel'))), [visibleGames, sortBy, catalogStats, normalizedSearchQuery]);
+  const partyGames = useMemo(() => filterGames(sortGames(visibleGames.filter((game) => game.requiresParty && game.type === 'Party'))), [visibleGames, sortBy, catalogStats, normalizedSearchQuery]);
 
   const getGameLink = (gameId: string) => {
     if (gameId === 'russian-roulette') {
@@ -499,6 +508,12 @@ export default function Games() {
       ? soloGames
       : multiplayerGamesToRender;
 
+  const renderEmptyState = () => (
+    <div className="rounded-xl border border-dashed border-border/80 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
+      Aucun jeu ne correspond à ta recherche.
+    </div>
+  );
+
   const renderGameCard = (game: Game) => (
     <Link
       key={game.id}
@@ -542,18 +557,27 @@ export default function Games() {
             ))}
           </TabsList>
 
-          <div className="w-[220px]">
-            <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Trier les jeux" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="default">Ordre par défaut</SelectItem>
-                <SelectItem value="popular">Populaire</SelectItem>
-                <SelectItem value="newest">Nouveaux</SelectItem>
-                <SelectItem value="most-played">Plus joués</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+            <Input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Rechercher un jeu"
+              className="sm:w-[240px]"
+            />
+
+            <div className="sm:w-[220px]">
+              <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Trier les jeux" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">Ordre par défaut</SelectItem>
+                  <SelectItem value="popular">Populaire</SelectItem>
+                  <SelectItem value="newest">Nouveaux</SelectItem>
+                  <SelectItem value="most-played">Plus joués</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 
@@ -578,9 +602,13 @@ export default function Games() {
                   <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/90">Singleplayer</h2>
                   <div className="h-px flex-1 bg-border/70" />
                 </div>
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-                  {soloGames.map(renderGameCard)}
-                </div>
+                {soloGames.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+                    {soloGames.map(renderGameCard)}
+                  </div>
+                ) : (
+                  renderEmptyState()
+                )}
               </section>
 
               <section className="space-y-4">
@@ -588,15 +616,23 @@ export default function Games() {
                   <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/90">Multiplayer</h2>
                   <div className="h-px flex-1 bg-border/70" />
                 </div>
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-                  {multiplayerGames.map(renderGameCard)}
-                </div>
+                {multiplayerGames.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+                    {multiplayerGames.map(renderGameCard)}
+                  </div>
+                ) : (
+                  renderEmptyState()
+                )}
               </section>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-              {gamesToRender.map(renderGameCard)}
-            </div>
+            gamesToRender.length > 0 ? (
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+                {gamesToRender.map(renderGameCard)}
+              </div>
+            ) : (
+              renderEmptyState()
+            )
           )}
         </TabsContent>
       </Tabs>

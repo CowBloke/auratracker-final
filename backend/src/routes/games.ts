@@ -6,6 +6,7 @@ import { logGame, logAdmin } from '../utils/logger.js';
 import { checkQuestProgress } from './quests.js';
 import { recheckBadgeForCondition, awardBadgeByKey } from '../utils/badgeAwards.js';
 import { announceGameRecordBroken } from '../socket/chat.js';
+import { getActiveClanMoneyBoostForUser } from '../utils/clanEffects.js';
 
 const router = Router();
 const isDoodleJumpType = (gameType: string) => gameType === 'doodle_jump' || gameType === 'doodle_jump_mort_subite';
@@ -1057,6 +1058,14 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       });
     }
     
+    const clanMoneyBoost = moneyReward > 0 ? await getActiveClanMoneyBoostForUser(req.user.id) : null;
+    const clanMoneyBoostPercent = clanMoneyBoost?.value ?? 0;
+    const clanMoneyBoostBonus = clanMoneyBoostPercent > 0
+      ? Math.floor(moneyReward * (clanMoneyBoostPercent / 100))
+      : 0;
+
+    moneyReward += clanMoneyBoostBonus;
+
     // Update stats and user balance in transaction
     const [stats, user] = await prisma.$transaction([
       prisma.gameStats.upsert({
@@ -1116,6 +1125,8 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       netGain: netGain || undefined,
       auraReward,
       moneyReward,
+      clanMoneyBoostBonus,
+      clanMoneyBoostPercent,
       isNewHighScore,
     });
 
@@ -1343,6 +1354,8 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
     res.json({
       auraReward,
       moneyReward,
+      clanMoneyBoostBonus,
+      clanMoneyBoostPercent,
       newStats: stats,
       isNewHighScore,
     });
@@ -1416,6 +1429,8 @@ function extractActiveGoyaveCount(saveData: string): number {
   return parsed.guavas;
 }
 
+const GOYAVE_ACTIVE_WINDOW_MS = 15 * 60 * 1000;
+
 function parseGoyaveSaveSnapshot(saveData: string): { guavas: number; lastTick: number } | null {
   try {
     const parsed = JSON.parse(saveData) as { guavas?: unknown; lastTick?: unknown };
@@ -1463,16 +1478,16 @@ router.get('/goyave_empire/active-leaderboard', authMiddleware, async (req: Auth
   try {
     const { limit = '20' } = req.query;
     const parsedLimit = Math.min(Math.max(parseInt(limit as string, 10) || 20, 1), 100);
-    const activeSince = new Date(Date.now() - 3 * 60 * 1000);
+    const activeSince = Date.now() - GOYAVE_ACTIVE_WINDOW_MS;
 
     const saves = await prisma.goyaveSave.findMany({
       where: {
-        updatedAt: { gte: activeSince },
         user: { isSuperAdmin: false },
       },
       select: {
         id: true,
         saveData: true,
+        updatedAt: true,
         user: {
           select: {
             id: true,
@@ -1484,17 +1499,27 @@ router.get('/goyave_empire/active-leaderboard', authMiddleware, async (req: Auth
     });
 
     const ranked = saves
-      .map((save) => ({
-        id: save.id,
-        highScore: extractActiveGoyaveCount(save.saveData),
-        user: save.user,
-      }))
+      .map((save) => {
+        const snapshot = parseGoyaveSaveSnapshot(save.saveData);
+        const dbUpdatedAt = save.updatedAt instanceof Date
+          ? save.updatedAt.getTime()
+          : new Date(save.updatedAt).getTime();
+        const lastActivityAt = Math.max(snapshot?.lastTick ?? 0, Number.isFinite(dbUpdatedAt) ? dbUpdatedAt : 0);
+
+        return {
+          id: save.id,
+          highScore: snapshot?.guavas ?? 0,
+          lastActivityAt,
+          user: save.user,
+        };
+      })
+      .filter((entry) => entry.lastActivityAt >= activeSince)
       .filter((entry) => entry.highScore > 0)
       .sort((a, b) => b.highScore - a.highScore)
       .slice(0, parsedLimit);
 
     const rankings = await attachUserDecorations(ranked);
-    res.json({ rankings, windowSeconds: 180 });
+    res.json({ rankings, windowSeconds: GOYAVE_ACTIVE_WINDOW_MS / 1000 });
   } catch (error) {
     console.error('Get active goyave leaderboard error:', error);
     res.status(500).json({ error: 'Failed to get active leaderboard' });

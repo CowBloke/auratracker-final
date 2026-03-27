@@ -13,19 +13,11 @@ import {
   Lightbulb,
   BookOpen,
   Shield,
-  Coins,
   Store,
-  Swords,
-  ArrowUp,
-  Dices,
   Search,
   BarChart3,
   Target,
-  Layers,
   Bug,
-  Crown,
-  Brain,
-  Bomb,
   MessageCircle,
 } from 'lucide-react';
 import {
@@ -84,27 +76,49 @@ const adminItems = [
 ];
 
 const gameItems = [
-  { to: '/games/bomb-party', label: 'Bomb Party', icon: Gamepad2 },
-  { to: '/games/poker', label: 'Poker', icon: Dices },
-  { to: '/games/petit-bac', label: 'Petit Bac', icon: BookOpen },
-  { to: '/games/bataille-navale', label: 'Bataille Navale', icon: Swords },
-  { to: '/games/puissance-quatre', label: 'Puissance 4', icon: Gamepad2 },
-  { to: '/games/doodle-jump', label: 'Doodle Jump', icon: ArrowUp },
-  { to: '/games/logic-lab', label: 'Sudoku', icon: Brain },
-  { to: '/games/minesweeper', label: 'Démineur', icon: Bomb },
-  { to: '/games/2048', label: '2048', icon: Gamepad2 },
-  { to: '/games/flappy-bird', label: 'Flappy Bird', icon: Gamepad2 },
-  { to: '/games/chrome-dino', label: 'Chrome Dino', icon: Gamepad2 },
-  { to: '/games/geometry-dash', label: 'Geometry Dash', icon: Gamepad2 },
-  { to: '/games/casino', label: 'Casino', icon: Dices },
-  { to: '/games/aura-coin', label: 'Aura Coin', icon: Coins },
-  { to: '/games/solitaire', label: 'Solitaire', icon: Layers },
-  { to: '/games/racer', label: 'Racer', icon: Gamepad2 },
-  { to: '/games/tetris', label: 'Tetris', icon: Gamepad2 },
-  { to: '/games/knife-hit', label: 'Knife Hit', icon: Target },
-  { to: '/games/goyave-empire', label: 'Goyave Empire', icon: Gamepad2 },
-  { to: '/games/echecs', label: 'Échecs', icon: Crown },
+  { to: '/games/levier-infernal', label: 'Levier Infernal', image: '/images/games/leviers.png' },
+  { to: '/games/russian-roulette', label: 'Russian Roulette', image: '/images/games/rouletterusse.png' },
+  { to: '/games/bomb-party', label: 'Bomb Party', image: '/images/games/bombparty.png' },
+  { to: '/games/poker', label: 'Poker', image: '/images/games/poker.png' },
+  { to: '/games/petit-bac', label: 'Petit Bac', image: '/images/games/petitbac.png' },
+  { to: '/games/uno', label: 'UNO', image: '/images/games/uno.png' },
+  { to: '/games/bataille-navale', label: 'Bataille Navale', image: '/images/games/bataillenavale.png' },
+  { to: '/games/doodle-jump', label: 'Doodle Jump', image: '/images/games/doodlejump.png' },
+  { to: '/games/logic-lab', label: 'Sudoku', image: '/images/games/sudoku.png' },
+  { to: '/games/minesweeper', label: 'Démineur', image: '/images/games/minesweeper.png' },
+  { to: '/games/2048', label: '2048', image: '/images/games/2048.png' },
+  { to: '/games/flappy-bird', label: 'Flappy Bird', image: '/images/games/flappybird.png' },
+  { to: '/games/chrome-dino', label: 'Chrome Dino', image: '/images/games/dino.png' },
+  { to: '/games/fruit-ninja', label: 'Fruit Ninja', image: '/images/games/fruitninja.png' },
+  { to: '/games/qs-watermelon', label: 'QS Watermelon', image: '/images/games/suika.png' },
+  { to: '/games/stack-tower', label: 'Stack Tower', image: '/images/games/stack.png' },
+  { to: '/games/geometry-dash', label: 'Geometry Dash', image: '/images/games/geometrydash.png' },
+  { to: '/games/casino', label: 'Casino', image: '/images/games/casino.png' },
+  { to: '/games/aura-coin', label: 'Aura Coin', image: '/images/games/auracoin.png' },
+  { to: '/games/solitaire', label: 'Solitaire', image: '/images/games/solitaire.png' },
+  { to: '/games/racer', label: 'Racer', image: '/images/games/racer.png' },
+  { to: '/games/tetris', label: 'Tetris', image: '/images/games/tetris.png' },
+  { to: '/games/knife-hit', label: 'Knife Hit', image: '/images/games/knifehit.png' },
+  { to: '/games/clash-village', label: 'Clash Village', image: '/images/games/clash.png' },
+  { to: '/games/goyave-empire', label: 'Goyave Empire', image: '/images/games/goyaveempire.png' },
+  { to: '/games/polytrack', label: 'PolyTrack', image: '/images/games/racer.png' },
+  { to: '/games/eaglercraft', label: 'Eaglercraft', image: '/images/games/minecraft.png' },
+  { to: '/games/puissance-quatre', label: 'Puissance 4', image: '/images/games/puissance4.png' },
+  { to: '/games/echecs', label: 'Échecs', image: '/images/games/chess.png' },
+  { to: '/games/ball-arena', label: 'Ball Arena', image: '/images/games/ballarena.png' },
+  { to: '/games/morpion', label: 'Morpion', image: '/images/games/morpion.png' },
 ];
+
+function GameSidebarIcon({ src, alt }: { src: string; alt: string }) {
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="h-4 w-4 rounded-[4px] object-cover shrink-0"
+      loading="lazy"
+    />
+  );
+}
 
 export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
@@ -321,7 +335,6 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                   <SidebarMenuSub>
                     {gameItems.filter((game) => !isDisabled(game.to)).map((game) => {
                       const isGameActive = location.pathname === game.to;
-                      const GameIcon = game.icon;
                       return (
                         <SidebarMenuSubItem key={game.to}>
                           <SidebarMenuSubButton
@@ -335,7 +348,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                             )}
                           >
                             <NavLink to={game.to}>
-                              <GameIcon className="h-4 w-4" />
+                              <GameSidebarIcon src={game.image} alt={game.label} />
                               <span>{game.label}</span>
                             </NavLink>
                           </SidebarMenuSubButton>

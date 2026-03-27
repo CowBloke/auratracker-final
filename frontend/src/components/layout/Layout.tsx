@@ -1,4 +1,4 @@
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { ChatSidebarProvider, ChatSidebarWrapper, useChatSidebar } from '../chat/ChatSidebarWrapper';
 import ChatBubble from '../chat/ChatBubble';
@@ -18,6 +18,7 @@ import PartyChatFloating from '@/components/party/PartyChatFloating';
 import SupportChat from '@/components/support/SupportChat';
 import { CONTAINER } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { matchesShortcut, useKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
 
 function ChatBubbleContainer() {
   const { open } = useChatSidebar();
@@ -57,7 +58,9 @@ export default function Layout() {
   const { incomingDuelChallenge, acceptDuelChallenge, declineDuelChallenge } = useDuelSocket();
   const { user } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const mainRef = useRef<HTMLElement>(null);
+  const keyboardShortcuts = useKeyboardShortcuts();
 
   useEffect(() => {
     if (connected) {
@@ -68,6 +71,65 @@ export default function Layout() {
   useEffect(() => {
     mainRef.current?.scrollTo(0, 0);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const isEditableTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) {
+        return false;
+      }
+
+      if (target.isContentEditable) {
+        return true;
+      }
+
+      const tagName = target.tagName.toLowerCase();
+      return tagName === 'input' || tagName === 'textarea' || tagName === 'select';
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.repeat || isEditableTarget(event.target)) {
+        return;
+      }
+
+      const matchedShortcut = keyboardShortcuts.find(
+        (shortcut) => shortcut.enabled && matchesShortcut(event, shortcut.combo)
+      );
+
+      if (!matchedShortcut) {
+        return;
+      }
+
+      event.preventDefault();
+
+      switch (matchedShortcut.id) {
+        case 'open_dashboard':
+          navigate('/');
+          break;
+        case 'open_games':
+          navigate('/games');
+          break;
+        case 'open_profile':
+          if (user?.id) {
+            navigate(`/profile/${user.id}`);
+          }
+          break;
+        case 'open_inbox':
+          navigate('/inbox');
+          break;
+        case 'open_shop':
+          navigate('/market');
+          break;
+        case 'open_settings':
+          navigate('/settings');
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [keyboardShortcuts, navigate, user?.id]);
 
   return (
     <ChatSidebarProvider>
