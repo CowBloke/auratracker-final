@@ -293,9 +293,7 @@ export const setupPetitBacHandlers = (socket: Socket, io: Server) => {
       submittedCount: game.players.filter((p) => p.submitted).length,
     });
 
-    if (game.players.every((p) => p.submitted)) {
-      beginReviewPhase(game, io);
-    }
+    beginReviewPhase(game, io);
   });
 
   socket.on('petitbac:submit-review', (data: {
@@ -498,6 +496,14 @@ function startRoundTimer(game: PetitBacGame, io: Server) {
     clearTimeout(game.roundTimer);
   }
   game.roundTimer = setTimeout(() => {
+    for (const player of game.players) {
+      if (!player.submitted) {
+        if (!game.answers.has(player.userId)) {
+          game.answers.set(player.userId, {});
+        }
+        player.submitted = true;
+      }
+    }
     beginReviewPhase(game, io);
   }, game.roundDuration);
 }

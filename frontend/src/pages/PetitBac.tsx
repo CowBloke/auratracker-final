@@ -58,12 +58,17 @@ export default function PetitBac() {
   }, [petitBacGame?.roundStartTime, petitBacGame?.categories, petitBacGame?.phase]);
 
   useEffect(() => {
+    if (timeLeft !== 0 || !petitBacGame || petitBacGame.phase !== 'playing' || myPlayer?.submitted) return;
+    submitPetitBac(answers);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeLeft]);
+
+  useEffect(() => {
     if (!petitBacReviewState || !user) return;
     const myAssignments = petitBacReviewState.reviewAssignments.find((entry) => entry.reviewerId === user.id)?.targets || [];
     const nextVotes: Record<string, Record<string, boolean>> = {};
     for (const assignment of myAssignments) {
       nextVotes[assignment.playerId] = nextVotes[assignment.playerId] || {};
-      nextVotes[assignment.playerId][assignment.category] = true;
     }
     setReviewVotes(nextVotes);
   }, [petitBacReviewState, user?.id]);
