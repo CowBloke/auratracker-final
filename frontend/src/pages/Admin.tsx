@@ -6640,7 +6640,7 @@ export default function Admin() {
                     <Card className="border-border/40">
                       <CardContent className="space-y-1 p-4">
                         <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Connectés au moins une fois</p>
-                        <p className="text-2xl font-semibold tabular-nums">{activityHistory.insights.uniqueConnectedUsers.toLocaleString('fr-FR')}</p>
+                        <p className="text-2xl font-semibold tabular-nums">{(activityHistory.insights?.uniqueConnectedUsers ?? 0).toLocaleString('fr-FR')}</p>
                         <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/70')}>
                           Utilisateurs vus en snapshot ou en connexion sur la période
                         </p>
@@ -6650,7 +6650,7 @@ export default function Admin() {
                     <Card className="border-border/40">
                       <CardContent className="space-y-1 p-4">
                         <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Jour le plus joué</p>
-                        {activityHistory.insights.busiestWeekday ? (
+                        {activityHistory.insights?.busiestWeekday ? (
                           <>
                             <p className="text-2xl font-semibold capitalize">{activityHistory.insights.busiestWeekday.label}</p>
                             <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/70')}>
@@ -6666,13 +6666,13 @@ export default function Admin() {
                     <Card className="border-border/40">
                       <CardContent className="space-y-1 p-4">
                         <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Heures de pointe</p>
-                        {activityHistory.insights.peakHours.length > 0 ? (
+                        {(activityHistory.insights?.peakHours?.length ?? 0) > 0 ? (
                           <>
                             <p className="text-lg font-semibold">
-                              {activityHistory.insights.peakHours.map((entry) => entry.label).join(' • ')}
+                              {activityHistory.insights!.peakHours.map((entry) => entry.label).join(' • ')}
                             </p>
                             <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/70')}>
-                              Moyenne de {activityHistory.insights.peakHours[0]?.averageOnline.toLocaleString('fr-FR')} joueurs en ligne sur le créneau n°1
+                              Moyenne de {activityHistory.insights!.peakHours[0]?.averageOnline.toLocaleString('fr-FR')} joueurs en ligne sur le créneau n°1
                             </p>
                           </>
                         ) : (
