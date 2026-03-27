@@ -97,6 +97,7 @@ const getEffectLabel = (effect: string | null) => {
     if (p.type === 'DOODLE_JUMP_SKIN') return 'Skin Doodle Jump';
     if (p.type === 'GIFT') return 'Cadeau à envoyer';
     if (p.type === 'CLAN_GAME_MONEY_BOOST') return `Boost clan +${p.percentage ?? 0}%`;
+    if (p.type === 'CLAN_BANNER') return 'Bannière de clan';
   } catch { /**/ }
   return null;
 };
@@ -279,7 +280,8 @@ function ShopCard({
   const isClanTagUnlock = effectType === 'CLAN_TAG_UNLOCK';
   const isClanSlotUpgrade = effectType === 'CLAN_SLOT_UPGRADE';
   const isClanMoneyBoost = effectType === 'CLAN_GAME_MONEY_BOOST';
-  const isClanUpgrade = isClanTagUnlock || isClanSlotUpgrade || isClanMoneyBoost;
+  const isClanBanner = effectType === 'CLAN_BANNER';
+  const isClanUpgrade = isClanTagUnlock || isClanSlotUpgrade || isClanMoneyBoost || isClanBanner;
   const isAlreadyPurchased =
     (isClanTagUnlock && !!clanStatus?.tagUnlocked) ||
     (isClanSlotUpgrade && !!clanStatus?.slotUpgraded);
@@ -723,6 +725,7 @@ export default function Shop() {
       const isClanTagUnlock = response.data.effect?.type === 'CLAN_TAG_UNLOCK';
       const isClanSlotUpgrade = response.data.effect?.type === 'CLAN_SLOT_UPGRADE';
       const isClanMoneyBoost = response.data.effect?.type === 'CLAN_GAME_MONEY_BOOST';
+      const isClanBannerPurchase = response.data.effect?.type === 'CLAN_BANNER';
       const isDj = parseEffectType(item.effect) === 'DOODLE_JUMP_SKIN';
       if (isClanTagUnlock) {
         setClanStatus(prev => prev ? { ...prev, tagUnlocked: true, clanBankMoney: prev.clanBankMoney - item.price } : prev);
@@ -730,7 +733,7 @@ export default function Shop() {
       if (isClanSlotUpgrade) {
         setClanStatus(prev => prev ? { ...prev, slotUpgraded: true, clanBankMoney: prev.clanBankMoney - item.price } : prev);
       }
-      if (isClanMoneyBoost) {
+      if (isClanMoneyBoost || isClanBannerPurchase) {
         setClanStatus(prev => prev ? { ...prev, clanBankMoney: prev.clanBankMoney - item.price } : prev);
       }
       toast.success(
@@ -740,6 +743,8 @@ export default function Shop() {
           ? 'Slot de clan debloque !'
           : isClanMoneyBoost
           ? 'Objet de clan acheté'
+          : isClanBannerPurchase
+          ? 'Bannière de clan achetée'
           : isDj
           ? `Skin "${item.name}" débloqué !`
           : 'Achat confirme',
@@ -750,6 +755,8 @@ export default function Shop() {
             ? 'Ton clan gagne un membre maximum supplémentaire.'
             : isClanMoneyBoost
             ? `${item.name} a ete ajoute aux objets du clan. Active-le depuis la page Clan.`
+            : isClanBannerPurchase
+            ? `${item.name} a ete ajoute aux objets du clan. Active-le depuis la page Clan pour choisir l'image.`
             : isDj
             ? 'Disponible dans Doodle Jump.'
             : `${item.name} a ete ajoute a ton inventaire.`,

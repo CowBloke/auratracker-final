@@ -358,6 +358,7 @@ model Clan {
   name        String
   description String?
   imageUrl    String?
+  banner      String?
   isPublic    Boolean  @default(true)
   maxMembers  Int      @default(5)
   clanBankMoney Int    @default(0)

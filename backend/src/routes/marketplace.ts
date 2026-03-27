@@ -130,7 +130,8 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
     const isClanTagUnlock = effect?.type === 'CLAN_TAG_UNLOCK';
     const isClanSlotUpgrade = effect?.type === 'CLAN_SLOT_UPGRADE';
     const isClanGameMoneyBoost = effect?.type === CLAN_EFFECT_GAME_MONEY_BOOST;
-    const isClanUpgrade = isClanTagUnlock || isClanSlotUpgrade || isClanGameMoneyBoost;
+    const isClanBanner = effect?.type === 'CLAN_BANNER';
+    const isClanUpgrade = isClanTagUnlock || isClanSlotUpgrade || isClanGameMoneyBoost || isClanBanner;
     const totalPrice = item.price * quantity;
     let clanUpgradeMembership: { clanId: string; isLeader: boolean } | null = null;
 
@@ -266,7 +267,7 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
           newMaxMembers = updatedClan.maxMembers;
         }
 
-        if (isClanGameMoneyBoost) {
+        if (isClanGameMoneyBoost || isClanBanner) {
           await tx.clan.update({
             where: { id: clanUpgradeMembership.clanId },
             data: {
@@ -404,7 +405,9 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
           ? { type: 'CLAN_SLOT_UPGRADE' }
           : isClanGameMoneyBoost
             ? { type: CLAN_EFFECT_GAME_MONEY_BOOST }
-          : null,
+            : isClanBanner
+              ? { type: 'CLAN_BANNER' }
+              : null,
       newBalance: {
         aura: updatedUser.aura,
         money: updatedUser.money,

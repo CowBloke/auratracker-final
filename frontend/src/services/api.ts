@@ -556,6 +556,7 @@ export interface ClanSummary {
   name: string;
   description: string | null;
   imageUrl: string | null;
+  banner: string | null;
   isPublic: boolean;
   createdAt: string;
   maxMembers: number;
@@ -856,8 +857,8 @@ export const clansApi = {
     api.put<{ success: boolean; imageUrl: string | null }>(`/clans/${id}/image`, { imageUrl }),
   updateTag: (id: string, data: { tagText?: string; tagStyle?: object }) =>
     api.put<{ success: boolean; tagText: string | null; tagStyle: string | null }>(`/clans/${id}/tag`, data),
-  useOwnedItem: (clanId: string, clanItemId: string) =>
-    api.post<{ success: boolean; effect: ClanActiveEffect }>(`/clans/${clanId}/items/${clanItemId}/use`),
+  useOwnedItem: (clanId: string, clanItemId: string, effectData?: { imageUrl?: string }) =>
+    api.post<{ success: boolean; effect: ClanActiveEffect }>(`/clans/${clanId}/items/${clanItemId}/use`, effectData ?? {}),
   // War mini-games
   getWarGamesStatus: (clanId: string) =>
     api.get<ClanWarGamesStatus>(`/clans/${clanId}/war/games/status`),

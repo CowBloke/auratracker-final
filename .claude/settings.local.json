@@ -86,7 +86,11 @@
       "Bash(git -C c:/Users/cowbl/source/repos/CRust/auratracker-final show --stat da93aec)",
       "Bash(git -C c:/Users/cowbl/source/repos/CRust/auratracker-final show --stat a9a209b)",
       "Bash(git -C:*)",
-      "Bash(grep -l \"polymarket\\\\|Polymarket\" c:/Users/cowbl/source/repos/CRust/auratracker-final/frontend/src/components/**/*)"
+      "Bash(grep -l \"polymarket\\\\|Polymarket\" c:/Users/cowbl/source/repos/CRust/auratracker-final/frontend/src/components/**/*)",
+      "Bash(find /c/Users/cowbl/source/repos/CRust/auratracker-final/frontend/src -type f \\\\\\(-name *.tsx -o -name *.ts \\\\\\))",
+      "Bash(find /c/Users/cowbl/source/repos/CRust/auratracker-final -type f \\\\\\(-name *schema* -o -name *model* \\\\\\))",
+      "Bash(/tmp/codebase_exploration_summary.md:*)",
+      "Read(//tmp/**)"
     ]
   },
   "outputStyle": "default"
