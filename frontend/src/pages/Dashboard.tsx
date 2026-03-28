@@ -957,80 +957,86 @@ export default function Dashboard() {
                           </Badge>
                         </div>
                       </CardHeader>
-                      <CardContent className={cn(dashboardWidgetContentClass, "flex flex-col gap-3")}>
-                        <div className="rounded-xl border border-border/50 bg-muted/20 px-3 py-3">
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-medium">Aura restante aujourd hui</p>
-                              <p className="text-xs text-muted-foreground">
-                                Reset dans {resetCountdown}
-                              </p>
+                      <CardContent className={cn(dashboardWidgetContentClass, "flex min-h-0 flex-col")}>
+                        <div className="min-h-0 flex-1 overflow-y-auto pr-2">
+                          <div className="space-y-3">
+                            <div className="rounded-xl border border-border/50 bg-muted/20 px-3 py-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <div>
+                                  <p className="text-sm font-medium">Aura restante aujourd hui</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Reset dans {resetCountdown}
+                                  </p>
+                                </div>
+                                <span className="text-2xl font-semibold tabular-nums">{remainingAura}</span>
+                              </div>
                             </div>
-                            <span className="text-2xl font-semibold tabular-nums">{remainingAura}</span>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <Button
+                                type="button"
+                                variant={auraAction === 'give' ? 'default' : 'outline'}
+                                className={auraAction === 'give' ? '' : dashboardGhostButtonClass}
+                                onClick={() => setAuraAction('give')}
+                              >
+                                <Send className="mr-2 h-4 w-4" />
+                                Envoyer
+                              </Button>
+                              <Button
+                                type="button"
+                                variant={auraAction === 'take' ? 'default' : 'outline'}
+                                className={auraAction === 'take' ? '' : dashboardGhostButtonClass}
+                                onClick={() => setAuraAction('take')}
+                              >
+                                <ShieldMinus className="mr-2 h-4 w-4" />
+                                Retirer
+                              </Button>
+                            </div>
+
+                            <div className="grid grid-cols-[minmax(0,1fr)_92px] gap-2">
+                              <select
+                                value={selectedAuraUserId}
+                                onChange={(event) => setSelectedAuraUserId(event.target.value)}
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                              >
+                                <option value="">Choisir un joueur</option>
+                                {auraUsers.map((candidate) => (
+                                  <option key={candidate.id} value={candidate.id}>
+                                    {candidate.username} · {candidate.aura.toLocaleString('fr-FR')} aura
+                                  </option>
+                                ))}
+                              </select>
+                              <Input
+                                type="number"
+                                min={1}
+                                step={1}
+                                value={auraAmountInput}
+                                onChange={(event) => setAuraAmountInput(event.target.value)}
+                                placeholder="Aura"
+                              />
+                            </div>
+
+                            {selectedAuraUser ? (
+                              <p className="text-xs text-muted-foreground">
+                                Cible actuelle: <span className="font-medium text-foreground">{selectedAuraUser.username}</span> · {selectedAuraUser.aura.toLocaleString('fr-FR')} aura
+                              </p>
+                            ) : null}
+
+                            <Textarea
+                              value={auraMessage}
+                              onChange={(event) => setAuraMessage(event.target.value)}
+                              placeholder="Justification visible dans l historique et la notification"
+                              className="min-h-[72px] resize-none"
+                            />
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2">
-                          <Button
-                            type="button"
-                            variant={auraAction === 'give' ? 'default' : 'outline'}
-                            className={auraAction === 'give' ? '' : dashboardGhostButtonClass}
-                            onClick={() => setAuraAction('give')}
-                          >
-                            <Send className="mr-2 h-4 w-4" />
-                            Envoyer
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={auraAction === 'take' ? 'default' : 'outline'}
-                            className={auraAction === 'take' ? '' : dashboardGhostButtonClass}
-                            onClick={() => setAuraAction('take')}
-                          >
-                            <ShieldMinus className="mr-2 h-4 w-4" />
-                            Retirer
+                        <div className="pt-3">
+                          <Button className="w-full" onClick={submitAuraTransfer} disabled={submittingAuraTransfer || auraWidgetLoading}>
+                            {submittingAuraTransfer ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            {auraAction === 'give' ? 'Confirmer l envoi' : 'Confirmer le retrait'}
                           </Button>
                         </div>
-
-                        <div className="grid grid-cols-[minmax(0,1fr)_92px] gap-2">
-                          <select
-                            value={selectedAuraUserId}
-                            onChange={(event) => setSelectedAuraUserId(event.target.value)}
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                          >
-                            <option value="">Choisir un joueur</option>
-                            {auraUsers.map((candidate) => (
-                              <option key={candidate.id} value={candidate.id}>
-                                {candidate.username} · {candidate.aura.toLocaleString('fr-FR')} aura
-                              </option>
-                            ))}
-                          </select>
-                          <Input
-                            type="number"
-                            min={1}
-                            step={1}
-                            value={auraAmountInput}
-                            onChange={(event) => setAuraAmountInput(event.target.value)}
-                            placeholder="Aura"
-                          />
-                        </div>
-
-                        {selectedAuraUser ? (
-                          <p className="text-xs text-muted-foreground">
-                            Cible actuelle: <span className="font-medium text-foreground">{selectedAuraUser.username}</span> · {selectedAuraUser.aura.toLocaleString('fr-FR')} aura
-                          </p>
-                        ) : null}
-
-                        <Textarea
-                          value={auraMessage}
-                          onChange={(event) => setAuraMessage(event.target.value)}
-                          placeholder="Justification visible dans l historique et la notification"
-                          className="min-h-[72px] resize-none"
-                        />
-
-                        <Button onClick={submitAuraTransfer} disabled={submittingAuraTransfer || auraWidgetLoading}>
-                          {submittingAuraTransfer ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                          {auraAction === 'give' ? 'Confirmer l envoi' : 'Confirmer le retrait'}
-                        </Button>
                       </CardContent>
                     </Card>
                   )}
@@ -1050,8 +1056,8 @@ export default function Dashboard() {
                           </Badge>
                         </div>
                       </CardHeader>
-                      <CardContent className={cn(dashboardWidgetContentClass, "flex flex-col")}>
-                        <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+                      <CardContent className={cn(dashboardWidgetContentClass, "flex min-h-0 flex-col")}>
+                        <div className="min-h-0 flex-1 overflow-y-scroll pr-2">
                           <div className="space-y-2">
                             {auraWidgetLoading ? (
                               <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
