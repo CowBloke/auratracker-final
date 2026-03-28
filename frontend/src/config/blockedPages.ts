@@ -10,6 +10,7 @@ export const BLOCKABLE_PAGES: BlockablePage[] = [
   { key: 'dashboard', path: '/', label: 'Tableau de bord', category: 'Général', description: 'Page d\'accueil principale, affichée à l\'arrivée sur le site.' },
   { key: 'game-market', path: '/market', label: 'Boutique', category: 'Général', description: 'Boutique d\'objets, cosmétiques et améliorations.' },
   { key: 'game-polymarket', path: '/polymarket', label: 'Polymarket', category: 'Général', description: 'Marché de prédiction — pariez sur des événements réels.' },
+  { key: 'pass', path: '/pass', label: 'Pass', category: 'Général', description: 'Lootbox quotidienne avec série de connexion et récompenses aléatoires.' },
   { key: 'quests', path: '/quests', label: 'Quêtes', category: 'Général', description: 'Quêtes journalières et hebdomadaires pour gagner de l\'aura.' },
   { key: 'rules', path: '/rules', label: 'Règlement', category: 'Général', description: 'Règlement du site et conditions d\'utilisation.' },
   { key: 'inbox', path: '/inbox', label: 'Messagerie', category: 'Général', description: 'Centre de notifications et messages reçus.' },

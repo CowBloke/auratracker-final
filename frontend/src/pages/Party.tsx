@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePartySocket } from '../contexts/PartySocketContext';
 import { useGameSocket } from '../contexts/GameSocketContext';
 import { usersApi } from '../services/api';
-import { Plus, LogOut, UserPlus, X, RefreshCw, Trash2, User, Play } from 'lucide-react';
+import { Plus, LogOut, UserPlus, X, RefreshCw, Trash2, User, Play, Search } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -139,6 +139,8 @@ export default function Party() {
   const [maxSize, setMaxSize] = useState<number>(8);
   const [partyType, setPartyType] = useState<'party' | 'duel' | ''>('');
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [inviteSearch, setInviteSearch] = useState('');
+  const [appliedInviteSearch, setAppliedInviteSearch] = useState('');
 
   // Start game dialogs
   const [showBpDialog, setShowBpDialog] = useState(false);
@@ -185,6 +187,20 @@ export default function Party() {
   const handleInvite = (userId: string) => {
     inviteToParty(userId);
     setShowInviteModal(false);
+    setInviteSearch('');
+    setAppliedInviteSearch('');
+  };
+
+  const handleInviteModalChange = (open: boolean) => {
+    setShowInviteModal(open);
+    if (!open) {
+      setInviteSearch('');
+      setAppliedInviteSearch('');
+    }
+  };
+
+  const handleInviteSearch = () => {
+    setAppliedInviteSearch(inviteSearch.trim().toLowerCase());
   };
 
   const handleLaunchSelected = (gameId: string) => {
@@ -228,6 +244,9 @@ export default function Party() {
     (u) =>
       u.id !== user?.id &&
       !partyMembers.find((m) => m.userId === u.id)
+  );
+  const filteredUsersToInvite = availableUsersToInvite.filter((u) =>
+    appliedInviteSearch ? u.username.toLowerCase().includes(appliedInviteSearch) : true
   );
   const selectedGameId = partySelectedGame?.gameId;
 
@@ -745,18 +764,44 @@ export default function Party() {
       </Dialog>
 
       {/* Invite Modal */}
-      <Dialog open={showInviteModal} onOpenChange={setShowInviteModal}>
+      <Dialog open={showInviteModal} onOpenChange={handleInviteModalChange}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Inviter</DialogTitle>
           </DialogHeader>
+          <div className="flex gap-2">
+            <Input
+              value={inviteSearch}
+              onChange={(e) => setInviteSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleInviteSearch();
+                }
+              }}
+              placeholder="Rechercher un joueur"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleInviteSearch}
+              className="shrink-0"
+            >
+              <Search className="h-4 w-4 mr-2" />
+              Rechercher
+            </Button>
+          </div>
           <div className="max-h-64 overflow-y-auto space-y-0">
             {availableUsersToInvite.length === 0 ? (
               <p className="text-muted-foreground text-center py-4">
                 Personne à inviter
               </p>
+            ) : filteredUsersToInvite.length === 0 ? (
+              <p className="text-muted-foreground text-center py-4">
+                Aucun joueur trouvé
+              </p>
             ) : (
-              availableUsersToInvite.map((u) => (
+              filteredUsersToInvite.map((u) => (
                 <Button variant="ghost"
                   key={u.id}
                   onClick={() => handleInvite(u.id)}

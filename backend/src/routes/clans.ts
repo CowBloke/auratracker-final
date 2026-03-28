@@ -993,12 +993,9 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
       prisma.clanEffect.findMany({
         where: {
           clanId: clan.id,
-          OR: [
-            { activeUntil: { gt: new Date() } },
-            { cooldownUntil: { gt: new Date() } },
-          ],
+          activeUntil: { gt: new Date() },
         },
-        orderBy: [{ activeUntil: 'desc' }, { cooldownUntil: 'desc' }],
+        orderBy: [{ activeUntil: 'desc' }],
       }),
     ]);
 
@@ -1127,8 +1124,8 @@ router.post('/:id/items/:clanItemId/use', authMiddleware, async (req: AuthReques
       },
     });
 
-    if (existingEffect?.cooldownUntil && existingEffect.cooldownUntil > now) {
-      return res.status(400).json({ error: 'Le boost de gains du clan est déjà actif ou en cooldown.' });
+    if (existingEffect?.activeUntil && existingEffect.activeUntil > now) {
+      return res.status(400).json({ error: 'Le boost de gains du clan est déjà actif.' });
     }
 
     const activation = buildClanEffectActivation(payload, now);

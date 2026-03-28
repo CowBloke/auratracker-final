@@ -652,21 +652,21 @@ export function SiteHeader() {
               <DropdownMenuLabel>Effets du clan</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {clanEffects.length === 0 ? (
-                <DropdownMenuItem disabled>Aucun effet actif ou en cooldown</DropdownMenuItem>
+                <DropdownMenuItem disabled>Aucun effet actif</DropdownMenuItem>
               ) : (
                 clanEffects.map((effect) => (
                   <DropdownMenuItem key={effect.id} onSelect={(event) => event.preventDefault()} className="flex flex-col items-start gap-1 py-3">
                     <div className="flex w-full items-center justify-between gap-3">
                       <span className="font-medium text-foreground">{effect.name}</span>
-                      <span className={cn('text-[10px] uppercase tracking-[0.18em]', effect.isActive ? 'text-emerald-400' : 'text-amber-400')}>
-                        {effect.isActive ? 'Actif' : 'Temps de recharge'}
+                      <span className={cn('text-[10px] uppercase tracking-[0.18em]', 'text-emerald-400')}>
+                        Actif
                       </span>
                     </div>
                     <div className="text-xs text-muted-foreground">
                       +{effect.value}% d&apos;argent sur les récompenses de jeux
                     </div>
                     <div className="text-[11px] text-muted-foreground/80">
-                      {effect.isActive ? `Fin: ${formatRemaining(effect.activeUntil)}` : `Prêt dans: ${formatRemaining(effect.cooldownUntil)}`}
+                      {`Fin: ${formatRemaining(effect.activeUntil)}`}
                     </div>
                   </DropdownMenuItem>
                 ))

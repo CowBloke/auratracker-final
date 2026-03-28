@@ -1,17 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
 import { cn } from '@/lib/utils';
-import { RotateCcw, Trash2 } from 'lucide-react';
+import { CircleDollarSign, Disc3, RotateCcw, Sparkles, Spade, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { PageShell } from '@/components/layout/page-shell';
-import { useTheme } from '@/contexts/ThemeContext';
-import { resolveThemeImageUrl } from '@/lib/images';
-import { getCasinoGameImage } from '@/lib/game-images';
 
 type GameTab = 'roulette' | 'slots' | 'blackjack';
 
@@ -253,6 +251,74 @@ const CASINO_GAME_LABELS: Record<CasinoCelebrationGame, string> = {
   blackjack: 'Blackjack',
 };
 
+const isGameTab = (value: string | null): value is GameTab =>
+  value === 'roulette' || value === 'slots' || value === 'blackjack';
+
+const CASINO_TABLES: Array<{
+  id: GameTab;
+  title: string;
+  subtitle: string;
+  caption: string;
+  seatLabel: string;
+  icon: typeof Disc3;
+  accentClass: string;
+  glowClass: string;
+  feltClass: string;
+  chips: Array<{ top: string; left: string; color: string }>;
+}> = [
+  {
+    id: 'roulette',
+    title: 'Roulette',
+    subtitle: 'Roue centrale et tapis premium',
+    caption: 'Table circulaire pour ceux qui aiment lire la chance depuis le balcon.',
+    seatLabel: "S'asseoir a la roulette",
+    icon: Disc3,
+    accentClass: 'from-rose-400 via-red-500 to-amber-300',
+    glowClass: 'shadow-[0_24px_70px_rgba(239,68,68,0.28)]',
+    feltClass: 'from-emerald-950 via-emerald-900 to-emerald-950',
+    chips: [
+      { top: '16%', left: '19%', color: '#ef4444' },
+      { top: '73%', left: '22%', color: '#f59e0b' },
+      { top: '25%', left: '75%', color: '#facc15' },
+      { top: '74%', left: '73%', color: '#fb7185' },
+    ],
+  },
+  {
+    id: 'slots',
+    title: 'Machine a sous',
+    subtitle: 'Batterie de leviers et pluie de jackpots',
+    caption: 'Une alcove lumineuse, plus rapide, plus nerveuse, plus arcade.',
+    seatLabel: "S'asseoir aux machines",
+    icon: Sparkles,
+    accentClass: 'from-cyan-300 via-sky-400 to-indigo-400',
+    glowClass: 'shadow-[0_24px_70px_rgba(56,189,248,0.25)]',
+    feltClass: 'from-slate-900 via-slate-800 to-slate-950',
+    chips: [
+      { top: '18%', left: '24%', color: '#38bdf8' },
+      { top: '28%', left: '73%', color: '#f97316' },
+      { top: '69%', left: '20%', color: '#e879f9' },
+      { top: '78%', left: '68%', color: '#22c55e' },
+    ],
+  },
+  {
+    id: 'blackjack',
+    title: 'Blackjack',
+    subtitle: 'Grand tapis cartes et duel contre le croupier',
+    caption: 'Le coin strategique, calme en apparence, dangereux pour le banquier.',
+    seatLabel: "S'asseoir au blackjack",
+    icon: Spade,
+    accentClass: 'from-amber-300 via-yellow-400 to-lime-300',
+    glowClass: 'shadow-[0_24px_70px_rgba(250,204,21,0.24)]',
+    feltClass: 'from-emerald-900 via-teal-900 to-emerald-950',
+    chips: [
+      { top: '18%', left: '17%', color: '#facc15' },
+      { top: '74%', left: '18%', color: '#14b8a6' },
+      { top: '23%', left: '77%', color: '#ffffff' },
+      { top: '76%', left: '77%', color: '#fb7185' },
+    ],
+  },
+];
+
 const getCelebrationTier = (netGain: number, grossWin: number, bet: number): CasinoCelebrationTier => {
   if (netGain >= 3000 || grossWin >= 6000 || netGain >= Math.max(1, bet) * 20) return 'jackpot';
   if (netGain >= 1200 || grossWin >= 2500 || netGain >= Math.max(1, bet) * 8) return 'mega';
@@ -476,13 +542,223 @@ function CasinoCelebrationLayer({
     </>
   );
 }
+
+function CasinoFloor({ onChooseTable }: { onChooseTable: (game: GameTab) => void }) {
+  return (
+    <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#120b08] px-4 py-5 text-white shadow-[0_30px_120px_rgba(0,0,0,0.45)] sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,215,140,0.15),transparent_36%),linear-gradient(180deg,rgba(24,11,8,0.55),rgba(8,4,4,0.92)),repeating-linear-gradient(90deg,rgba(255,255,255,0.03)_0,rgba(255,255,255,0.03)_1px,transparent_1px,transparent_54px),repeating-linear-gradient(0deg,rgba(255,255,255,0.02)_0,rgba(255,255,255,0.02)_1px,transparent_1px,transparent_54px)]" />
+      <div className="absolute inset-x-[10%] top-[14%] h-px bg-gradient-to-r from-transparent via-amber-200/40 to-transparent" />
+      <div className="absolute inset-x-[14%] bottom-[17%] h-px bg-gradient-to-r from-transparent via-amber-100/20 to-transparent" />
+      <div className="absolute left-[50%] top-[10%] h-[80%] w-px -translate-x-1/2 bg-gradient-to-b from-transparent via-amber-100/15 to-transparent" />
+
+      <div className="relative mb-6 flex flex-col gap-3 lg:mb-8 lg:flex-row lg:items-end lg:justify-between">
+        <div className="max-w-2xl">
+          <p className="inline-flex items-center gap-2 rounded-full border border-amber-200/20 bg-amber-100/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-100/80">
+            <CircleDollarSign className="h-3.5 w-3.5" />
+            Etage casino
+          </p>
+          <h1 className="mt-3 text-3xl font-black tracking-[0.04em] text-amber-50 sm:text-4xl">
+            Choisis une table vue du dessus
+          </h1>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-amber-50/72 sm:text-base">
+            Plus de boutons plats. Tu entres dans la salle, tu repères l'ambiance, puis tu t'assois a la table qui te tente.
+          </p>
+        </div>
+
+        <div className="rounded-[1.4rem] border border-white/10 bg-black/30 px-4 py-3 backdrop-blur-sm">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-white/45">Mode d'emploi</p>
+          <p className="mt-2 text-sm text-white/75">Clique directement sur une table pour rejoindre le jeu correspondant.</p>
+        </div>
+      </div>
+
+      <div className="relative grid gap-5 lg:grid-cols-3">
+        {CASINO_TABLES.map((table) => (
+          <TopDownTableCard
+            key={table.id}
+            table={table}
+            onChooseTable={onChooseTable}
+            compact
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function TopDownTableCard({
+  table,
+  onChooseTable,
+  compact = false,
+}: {
+  table: (typeof CASINO_TABLES)[number];
+  onChooseTable: (game: GameTab) => void;
+  compact?: boolean;
+}) {
+  const Icon = table.icon;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onChooseTable(table.id)}
+      className={cn(
+        'group relative overflow-hidden rounded-[2rem] border border-white/10 bg-black/25 text-left transition duration-300 hover:-translate-y-1 hover:border-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/70',
+        table.glowClass,
+        compact ? 'min-h-[20rem] p-4 sm:p-5' : 'min-h-[29rem] p-5 sm:p-6',
+      )}
+    >
+      <div className={cn('absolute inset-0 bg-gradient-to-br opacity-90', table.feltClass)} />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_28%,rgba(0,0,0,0.2)_64%,rgba(0,0,0,0.52)_100%)]" />
+      <div className="absolute inset-x-[9%] top-[14%] h-[72%] rounded-[2.3rem] border border-white/8 bg-white/4" />
+
+      <div className="relative z-10 flex h-full flex-col justify-between">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.32em] text-white/52">Table ouverte</p>
+            <h2 className="mt-2 text-2xl font-black tracking-[0.04em] text-white sm:text-3xl">{table.title}</h2>
+            <p className="mt-2 text-sm text-white/72">{table.subtitle}</p>
+          </div>
+          <div className={cn('rounded-full bg-gradient-to-br p-3 text-slate-950 shadow-lg', table.accentClass)}>
+            <Icon className="h-5 w-5" />
+          </div>
+        </div>
+
+        <div className={cn('relative mx-auto w-full max-w-[30rem]', compact ? 'mt-4 aspect-[1.45/1]' : 'mt-6 aspect-[1.15/1]')}>
+          {table.id === 'roulette' ? <RouletteTableIllustration table={table} /> : null}
+          {table.id === 'slots' ? <SlotsTableIllustration table={table} /> : null}
+          {table.id === 'blackjack' ? <BlackjackTableIllustration table={table} /> : null}
+        </div>
+
+        <div className="mt-6 flex items-end justify-between gap-4">
+          <p className="max-w-md text-sm leading-6 text-white/70">{table.caption}</p>
+          <div className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-white/80 transition group-hover:bg-white/16 group-hover:text-white">
+            {table.seatLabel}
+          </div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function RouletteTableIllustration({ table }: { table: (typeof CASINO_TABLES)[number] }) {
+  return (
+    <>
+      <div className="absolute left-1/2 top-1/2 h-[76%] w-[76%] -translate-x-1/2 -translate-y-1/2 rounded-full border-[16px] border-[#4d2418] bg-[#5c2f21] shadow-[0_0_0_2px_rgba(255,255,255,0.08),0_30px_60px_rgba(0,0,0,0.35)]">
+        <div className="absolute inset-[10%] rounded-full border border-amber-200/15 bg-[radial-gradient(circle_at_center,#1f7a45_0%,#14532d_55%,#0b1f14_100%)]" />
+        <div className="absolute inset-[18%] rounded-full border border-white/10" />
+        <div className="absolute inset-[26%] rounded-full bg-[conic-gradient(from_-90deg,#15803d_0deg_12deg,#111827_12deg_24deg,#b91c1c_24deg_36deg,#111827_36deg_48deg,#b91c1c_48deg_60deg,#111827_60deg_72deg,#b91c1c_72deg_84deg,#111827_84deg_96deg,#b91c1c_96deg_108deg,#111827_108deg_120deg,#b91c1c_120deg_132deg,#111827_132deg_144deg,#b91c1c_144deg_156deg,#111827_156deg_168deg,#b91c1c_168deg_180deg,#111827_180deg_192deg,#b91c1c_192deg_204deg,#111827_204deg_216deg,#b91c1c_216deg_228deg,#111827_228deg_240deg,#b91c1c_240deg_252deg,#111827_252deg_264deg,#b91c1c_264deg_276deg,#111827_276deg_288deg,#b91c1c_288deg_300deg,#111827_300deg_312deg,#b91c1c_312deg_324deg,#111827_324deg_336deg,#b91c1c_336deg_348deg,#111827_348deg_360deg)] shadow-inner" />
+        <div className="absolute inset-[39%] rounded-full border border-amber-200/20 bg-[#3f271d]" />
+        <div className="absolute inset-[45%] rounded-full bg-[radial-gradient(circle_at_35%_30%,#fde68a,#f59e0b_62%,#78350f)]" />
+      </div>
+
+      {table.chips.map((chip) => (
+        <div
+          key={`${chip.left}-${chip.top}`}
+          className="absolute h-8 w-8 rounded-full border-[3px] border-white/70 shadow-[0_10px_18px_rgba(0,0,0,0.28)]"
+          style={{ top: chip.top, left: chip.left, background: chip.color }}
+        />
+      ))}
+
+      {[
+        { top: '50%', left: '4%', rotate: '-90deg' },
+        { top: '50%', right: '4%', rotate: '90deg' },
+        { top: '4%', left: '50%', rotate: '0deg' },
+        { bottom: '4%', left: '50%', rotate: '180deg' },
+      ].map((seat, index) => (
+        <div
+          key={index}
+          className="absolute h-14 w-14 rounded-full border border-white/10 bg-[#2a1511] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_10px_24px_rgba(0,0,0,0.35)]"
+          style={{ ...seat, transform: `translate(-50%, -50%) rotate(${seat.rotate})` }}
+        />
+      ))}
+    </>
+  );
+}
+
+function SlotsTableIllustration({ table }: { table: (typeof CASINO_TABLES)[number] }) {
+  return (
+    <>
+      <div className="absolute inset-x-[10%] top-[18%] h-[64%] rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(8,15,40,0.88),rgba(22,28,62,0.95))] shadow-[0_24px_44px_rgba(0,0,0,0.34)]">
+        <div className="absolute inset-x-[7%] top-[14%] h-[44%] rounded-[1.4rem] border border-cyan-200/15 bg-[#0a1028] p-3">
+          <div className="grid h-full grid-cols-3 gap-2">
+            {['7', '★', '♦'].map((symbol, index) => (
+              <div
+                key={symbol}
+                className="flex items-center justify-center rounded-[1rem] border border-white/10 bg-white/6 text-3xl font-black text-white shadow-inner"
+                style={{ color: index === 0 ? '#facc15' : index === 1 ? '#ffffff' : '#fb7185' }}
+              >
+                {symbol}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="absolute left-[11%] top-[67%] text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-100/65">
+          Jackpot Lane
+        </div>
+        <div className="absolute right-[11%] top-[60%] h-[22%] w-[10%] rounded-full border border-amber-200/25 bg-[linear-gradient(180deg,#f59e0b,#b45309)] shadow-[0_10px_20px_rgba(0,0,0,0.3)]" />
+        <div className="absolute right-[4%] top-[47%] h-[8%] w-[14%] rounded-full bg-[#ef4444] shadow-[0_0_26px_rgba(239,68,68,0.45)]" />
+      </div>
+
+      {table.chips.map((chip) => (
+        <div
+          key={`${chip.left}-${chip.top}`}
+          className="absolute h-7 w-7 rounded-full border-[3px] border-white/70 shadow-[0_10px_18px_rgba(0,0,0,0.28)]"
+          style={{ top: chip.top, left: chip.left, background: chip.color }}
+        />
+      ))}
+
+      <div className="absolute inset-x-[12%] bottom-[10%] h-[14%] rounded-full border border-white/8 bg-black/25" />
+    </>
+  );
+}
+
+function BlackjackTableIllustration({ table }: { table: (typeof CASINO_TABLES)[number] }) {
+  return (
+    <>
+      <div className="absolute inset-x-[8%] bottom-[9%] top-[16%] rounded-[2.4rem] border-[14px] border-[#4d2418] bg-[#0f5132] shadow-[0_28px_54px_rgba(0,0,0,0.35)]">
+        <div className="absolute inset-[4%] rounded-[1.7rem] border border-amber-100/14" />
+        <div className="absolute inset-x-[14%] top-[14%] h-[18%] rounded-full border border-white/10 bg-black/12" />
+        <div className="absolute inset-x-[10%] bottom-[12%] h-[46%] rounded-t-[999px] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_58%)]" />
+
+        {[
+          { left: '18%', top: '24%', rotate: '-8deg', label: 'A', suit: '♠' },
+          { left: '66%', top: '26%', rotate: '9deg', label: '10', suit: '♦' },
+          { left: '31%', top: '58%', rotate: '-10deg', label: 'K', suit: '♣' },
+          { left: '57%', top: '60%', rotate: '10deg', label: '7', suit: '♥' },
+        ].map((card) => (
+          <div
+            key={`${card.label}-${card.suit}`}
+            className="absolute h-[24%] w-[18%] rounded-[1rem] border border-slate-300/50 bg-[linear-gradient(180deg,#ffffff,#f6f1ea)] p-2 shadow-[0_14px_22px_rgba(0,0,0,0.22)]"
+            style={{ left: card.left, top: card.top, transform: `rotate(${card.rotate})` }}
+          >
+            <div className={cn('text-xs font-black leading-none', card.suit === '♥' || card.suit === '♦' ? 'text-red-600' : 'text-slate-900')}>
+              {card.label}
+            </div>
+            <div className={cn('mt-1 text-base', card.suit === '♥' || card.suit === '♦' ? 'text-red-600' : 'text-slate-900')}>
+              {card.suit}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {table.chips.map((chip) => (
+        <div
+          key={`${chip.left}-${chip.top}`}
+          className="absolute h-7 w-7 rounded-full border-[3px] border-white/70 shadow-[0_10px_18px_rgba(0,0,0,0.28)]"
+          style={{ top: chip.top, left: chip.left, background: chip.color }}
+        />
+      ))}
+    </>
+  );
+}
+
 // -----------------------------
 // Main Casino page
 // -----------------------------
 export default function Casino() {
-  const [activeGame, setActiveGame] = useState<GameTab | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [celebration, setCelebration] = useState<CasinoCelebration | null>(null);
-  const { theme } = useTheme();
+  const tableParam = searchParams.get('table');
+  const activeGame: GameTab | null = isGameTab(tableParam) ? tableParam : null;
 
   useEffect(() => {
     if (!celebration) return undefined;
@@ -510,39 +786,34 @@ export default function Casino() {
     }
   }, []);
 
-  const gameCards: Array<{
-    id: GameTab;
-    title: string;
-    subtitle: string;
-    image: string;
-  }> = [
-    {
-      id: 'roulette',
-      title: 'Roulette',
-      subtitle: 'Tirage instantane',
-      image: getCasinoGameImage('roulette'),
-    },
-    {
-      id: 'slots',
-      title: 'Machine a sous',
-      subtitle: 'Partie rapide',
-      image: getCasinoGameImage('slots'),
-    },
-    {
-      id: 'blackjack',
-      title: 'Blackjack',
-      subtitle: 'Jeu de cartes',
-      image: getCasinoGameImage('blackjack'),
-    },
-  ];
+  const openTable = useCallback((game: GameTab) => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('table', game);
+    setSearchParams(nextParams);
+  }, [searchParams, setSearchParams]);
+
+  const leaveTable = useCallback(() => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('table');
+    setSearchParams(nextParams);
+  }, [searchParams, setSearchParams]);
 
   return (
     <PageShell size="wide">
       <CasinoCelebrationLayer celebration={celebration} onDismiss={() => setCelebration(null)} />
       {activeGame ? (
         <section className="space-y-4">
+          <div className="flex items-center justify-between rounded-[1.4rem] border border-border/70 bg-card/70 px-4 py-3 backdrop-blur-sm">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.28em] text-muted-foreground">Table active</p>
+              <p className="mt-1 text-lg font-semibold">{CASINO_GAME_LABELS[activeGame]}</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={leaveTable}>
+              Revenir au plan du casino
+            </Button>
+          </div>
           {activeGame === 'roulette' ? (
-            <RouletteGame onExit={() => setActiveGame(null)} onCelebrate={triggerCelebration} />
+            <RouletteGame onExit={leaveTable} onCelebrate={triggerCelebration} />
           ) : activeGame === 'slots' ? (
             <SlotMachineGame onBetChange={() => {}} onCelebrate={triggerCelebration} />
           ) : (
@@ -550,29 +821,7 @@ export default function Casino() {
           )}
         </section>
       ) : (
-        <section className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-          {gameCards.map((game) => (
-            <button
-              key={game.id}
-              type="button"
-              onClick={() => setActiveGame(game.id)}
-              className="group block text-left"
-            >
-              <Card className="relative aspect-square overflow-hidden transition hover:border-foreground/40 hover:shadow-md">
-                <img
-                  src={resolveThemeImageUrl(game.image, theme)}
-                  alt={game.title}
-                  className="absolute inset-0 h-full w-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-                <CardContent className="relative z-10 flex h-full flex-col justify-end p-5 text-white">
-                  <h2 className="text-lg font-semibold tracking-tight">{game.title}</h2>
-                  <p className="mt-1 text-xs text-white/85">{game.subtitle}</p>
-                </CardContent>
-              </Card>
-            </button>
-          ))}
-        </section>
+        <CasinoFloor onChooseTable={openTable} />
       )}
     </PageShell>
   );

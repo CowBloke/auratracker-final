@@ -55,6 +55,8 @@ export type AutoConditionKey =
   | 'GENEROUS_10_GIFTS'       // gifted 10+ times
   | 'POLYMARKET_20_WINS'      // won 20+ polymarket bets
   | 'SOCIAL_50_MESSAGES'      // sent 50+ chat messages
+  | 'STREAK_7'                // daily pass streak >= 7
+  | 'STREAK_30'               // daily pass streak >= 30
   | 'MENTOR_3_REFERRALS'      // referred 3+ approved users
   | 'CLAN_WARS_10'            // participated in 10+ completed clan wars
   | 'CLAN_MVP_3'              // top attacker in their clan in 3+ completed wars
@@ -601,6 +603,16 @@ const getQualifyingUserIds = async (key: string): Promise<Set<string>> => {
         .filter((r) => r.userId !== null && r._count.id >= 50)
         .map((r) => r.userId as string),
     );
+  }
+
+  // STREAK_7 / STREAK_30 – daily pass streak threshold
+  if (key === 'STREAK_7' || key === 'STREAK_30') {
+    const threshold = key === 'STREAK_30' ? 30 : 7;
+    const users = await prisma.user.findMany({
+      where: { isApproved: true, dailyPassStreak: { gte: threshold } },
+      select: { id: true },
+    });
+    return new Set(users.map((u) => u.id));
   }
 
   // MENTOR_3_REFERRALS – referred 3+ approved users

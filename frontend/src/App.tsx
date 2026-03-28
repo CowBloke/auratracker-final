@@ -26,6 +26,7 @@ import Polymarket from './pages/Polymarket';
 import Admin from './pages/Admin';
 import Rules from './pages/Rules';
 import Suggestions from './pages/Suggestions';
+import Pass from './pages/Pass';
 import Maintenance from './pages/Maintenance';
 import Settings from './pages/Settings';
 import Banned from './pages/Banned';
@@ -218,6 +219,7 @@ function App() {
         <Route path="profile/:userId?" element={<Profile />} />
         <Route path="admin" element={<Admin />} />
         <Route path="rules" element={<Rules />} />
+        <Route path="pass" element={<Pass />} />
         <Route path="quests" element={<Quests />} />
         <Route path="suggestions" element={<Suggestions />} />
         <Route path="settings" element={<Settings />} />

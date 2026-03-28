@@ -68,6 +68,7 @@ const pageMatchers: Array<{ test: (path: string) => boolean; label: string; icon
   { test: (path) => path.startsWith('/inbox'), label: 'Boîte de réception', icon: ScrollText },
   { test: (path) => path.startsWith('/support'), label: 'Support', icon: Lightbulb },
   { test: (path) => path.startsWith('/admin'), label: 'Admin', icon: Shield },
+  { test: (path) => path.startsWith('/pass'), label: 'Pass', icon: Coins },
   { test: (path) => path.startsWith('/quests'), label: 'Quêtes', icon: Trophy },
   { test: (path) => path.startsWith('/rules'), label: 'Règlement', icon: ScrollText },
   { test: (path) => path.startsWith('/suggestions'), label: 'Suggestions', icon: Lightbulb },

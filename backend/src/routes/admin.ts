@@ -20,6 +20,9 @@ import {
   REFERRAL_ENABLED_SETTING_KEY,
   REFERRAL_REWARD_SETTING_KEY,
 } from '../utils/referrals.js';
+import {
+  DAILY_AURA_LIMIT_SETTING_KEY,
+} from '../utils/dailyAura.js';
 
 const router = Router();
 const ANNOUNCEMENT_KEY = 'topbar_announcement';
@@ -27,6 +30,7 @@ const ANNOUNCEMENT_MAX_LENGTH = 120;
 const AURACOIN_BUY_FEE_PERCENTAGE_KEY = 'auracoin_buy_fee_percentage';
 const DUEL_MATCHMAKING_ENABLED_SETTING_KEY = 'duel_matchmaking_enabled';
 const CLASH_ATTACK_COOLDOWN_MINUTES_KEY = 'clash_attack_cooldown_minutes';
+const DAILY_AURA_DISTRIBUTION_LIMIT_KEY = DAILY_AURA_LIMIT_SETTING_KEY;
 const DEFAULT_LANDING_PAGE_SETTING_KEY = 'default_landing_page';
 const ALLOWED_DEFAULT_LANDING_PAGES = new Set([
   '/dashboard',
@@ -2372,6 +2376,13 @@ router.put('/settings/:key', authMiddleware, requireAdmin, async (req: AuthReque
       }
     }
 
+    if (key === DAILY_AURA_DISTRIBUTION_LIMIT_KEY) {
+      const numValue = Number.parseInt(normalizedValue, 10);
+      if (!Number.isInteger(numValue) || numValue < 0 || numValue > 10000) {
+        return res.status(400).json({ error: 'Daily aura distribution limit must be an integer between 0 and 10000' });
+      }
+    }
+
     if (key === DEFAULT_LANDING_PAGE_SETTING_KEY && !ALLOWED_DEFAULT_LANDING_PAGES.has(normalizedValue)) {
       return res.status(400).json({ error: 'Invalid default landing page selection' });
     }
@@ -2491,6 +2502,14 @@ router.put('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, r
         const numValue = Number.parseInt(normalizedValue, 10);
         if (!Number.isInteger(numValue) || numValue < 0 || numValue > 1440) {
           errors.push(`${key}: Clash attack cooldown must be an integer between 0 and 1440 minutes`);
+          continue;
+        }
+      }
+
+      if (key === DAILY_AURA_DISTRIBUTION_LIMIT_KEY) {
+        const numValue = Number.parseInt(normalizedValue, 10);
+        if (!Number.isInteger(numValue) || numValue < 0 || numValue > 10000) {
+          errors.push(`${key}: Daily aura distribution limit must be an integer between 0 and 10000`);
           continue;
         }
       }

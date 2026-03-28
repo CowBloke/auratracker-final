@@ -166,7 +166,7 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
             ? {
                 where: {
                   type: CLAN_EFFECT_GAME_MONEY_BOOST,
-                  cooldownUntil: { gt: new Date() },
+                  activeUntil: { gt: new Date() },
                 },
                 take: 1,
               }
@@ -183,7 +183,7 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
       }
 
       if (isClanGameMoneyBoost && clan?.activeEffects && clan.activeEffects.length > 0) {
-        return res.status(400).json({ error: 'Le boost de gains du clan est déjà actif ou en cooldown.' });
+        return res.status(400).json({ error: 'Le boost de gains du clan est déjà actif.' });
       }
 
       if (!clan || clan.clanBankMoney < totalPrice) {
@@ -220,7 +220,7 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
               ? {
                   where: {
                     type: CLAN_EFFECT_GAME_MONEY_BOOST,
-                    cooldownUntil: { gt: new Date() },
+                    activeUntil: { gt: new Date() },
                   },
                   take: 1,
                 }
@@ -241,7 +241,7 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
         }
 
         if (isClanGameMoneyBoost && clan.activeEffects.length > 0) {
-          throw new Error('CLAN_EFFECT_ALREADY_ACTIVE_OR_COOLDOWN');
+          throw new Error('CLAN_EFFECT_ALREADY_ACTIVE');
         }
 
         if (clan.clanBankMoney < totalPrice) {
@@ -429,8 +429,8 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
       if (error.message === 'CLAN_SLOT_ALREADY_UPGRADED') {
         return res.status(400).json({ error: 'Le slot supplémentaire est déjà débloqué pour ce clan.' });
       }
-      if (error.message === 'CLAN_EFFECT_ALREADY_ACTIVE_OR_COOLDOWN') {
-        return res.status(400).json({ error: 'Le boost de gains du clan est déjà actif ou en cooldown.' });
+      if (error.message === 'CLAN_EFFECT_ALREADY_ACTIVE') {
+        return res.status(400).json({ error: 'Le boost de gains du clan est déjà actif.' });
       }
     }
     console.error('Purchase error:', error);

@@ -44,10 +44,11 @@ export const loginSchema = z.object({
 // Economy schemas
 export const transferSchema = z.object({
   receiverId: z.string().uuid(),
-  moneyAmount: z.number().int().min(0).optional(),
+  auraAmount: z.number().int(),
+  message: z.string().trim().min(3).max(240),
 }).refine(
-  (data) => (data.moneyAmount || 0) > 0,
-  { message: 'Money amount is required' }
+  (data) => data.auraAmount !== 0,
+  { message: 'Aura amount must be non-zero' }
 );
 
 // Marketplace schemas

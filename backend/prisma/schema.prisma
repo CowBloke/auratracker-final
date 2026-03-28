@@ -24,8 +24,10 @@ model User {
   isChatMuted        Boolean   @default(false)
   isApproved         Boolean   @default(false) // Account must be approved by admin before login
   dailyAuraGiven     Int       @default(0) // Aura given today
-  dailyAuraLimit     Int       @default(50) // Personal daily aura limit (default 50)
+  dailyAuraLimit     Int       @default(100) // Personal daily aura limit (default 100)
   lastDailyReset     DateTime  @default(now()) // When daily allowance was last reset
+  dailyPassStreak    Int       @default(0) // Current daily pass streak
+  lastDailyPassClaim DateTime? // Last date when daily pass reward was claimed
   usernameColor           String? // Custom username color for chat (hex)
   profilePicture          String? // Custom profile picture URL for chat
   profileBanner           String? // Custom profile banner URL for player profile

@@ -75,10 +75,7 @@ const formatCountdown = (value: string | null | undefined) => {
 };
 
 const formatEffectCooldown = (effect: ClanActiveEffect) => {
-  if (effect.isActive) {
-    return `Actif encore ${formatCountdown(effect.activeUntil)}`;
-  }
-  return `Disponible dans ${formatCountdown(effect.cooldownUntil)}`;
+  return `Actif encore ${formatCountdown(effect.activeUntil)}`;
 };
 
 const getStatusLabel = (status: ClanWarState['status']) => {
@@ -1176,7 +1173,7 @@ export default function Clans() {
                                       <div className="text-xs text-muted-foreground">+{effect.value}% sur l&apos;argent gagné en jeu</div>
                                     </div>
                                     <Badge variant={effect.isActive ? 'secondary' : 'outline'}>
-                                      {effect.isActive ? 'Actif' : 'Temps de recharge'}
+                                      Actif
                                     </Badge>
                                   </div>
                                   <div className="mt-2 text-xs text-muted-foreground">{formatEffectCooldown(effect)}</div>
@@ -1185,7 +1182,7 @@ export default function Clans() {
                             </div>
                           ) : (
                             <div className="rounded-xl border border-dashed border-border/50 px-3 py-4 text-sm text-muted-foreground">
-                              Aucun effet actif ou en cooldown pour le moment.
+                              Aucun effet actif pour le moment.
                             </div>
                           )}
                         </CardContent>

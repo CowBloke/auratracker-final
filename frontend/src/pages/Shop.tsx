@@ -402,17 +402,6 @@ function DoodleJumpShopSection({
 
   return (
     <div className="space-y-6 rounded-xl border border-border/60 bg-card p-5 shadow-none md:p-6">
-      {/* Section header */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border/60 bg-muted/20">
-          <Gamepad2 className="h-5 w-5 text-muted-foreground" />
-        </div>
-        <div>
-          <h2 className="text-base font-semibold tracking-tight">Apparences Doodle Jump</h2>
-          <p className="text-xs text-muted-foreground">Personnalise ton personnage dans Doodle Jump</p>
-        </div>
-      </div>
-
       {loading ? (
         <div className="flex justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

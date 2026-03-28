@@ -138,12 +138,89 @@ export interface SocialUser {
 }
 
 // Economy API
+export interface AuraTransferEntry {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  auraAmount: number;
+  moneyAmount: number;
+  isGift: boolean;
+  message: string | null;
+  createdAt: string;
+  direction: 'GIVE' | 'TAKE';
+  sender: {
+    id: string;
+    username: string;
+    usernameColor?: string | null;
+  } | null;
+  receiver: {
+    id: string;
+    username: string;
+    usernameColor?: string | null;
+  } | null;
+}
+
+export interface DailyAuraState {
+  dailyAuraGiven: number;
+  dailyAuraLimit: number;
+  remainingAura: number;
+  lastDailyReset: string;
+  nextResetAt: string;
+}
+
 export const economyApi = {
-  transfer: (data: { receiverId: string; moneyAmount?: number }) =>
-    api.post('/economy/transfer', data),
+  transfer: (data: { receiverId: string; auraAmount: number; message: string }) =>
+    api.post<{ success: boolean; transfer: AuraTransferEntry; state: Omit<DailyAuraState, 'nextResetAt'> }>('/economy/transfer', data),
   getTransfers: (params?: { userId?: string; limit?: number; offset?: number; all?: boolean }) =>
-    api.get('/economy/transfers', { params }),
+    api.get<{ transfers: AuraTransferEntry[] }>('/economy/transfers', { params }),
+  getState: () =>
+    api.get<{ state: DailyAuraState }>('/economy/state'),
   getBalance: (userId: string) => api.get(`/economy/balance/${userId}`),
+};
+
+export interface PassLootItem {
+  id: string;
+  name: string;
+  description: string;
+  type: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE';
+  price: number;
+  imageUrl: string | null;
+}
+
+export interface PassRewardEntry {
+  type: 'money' | 'aura' | 'item';
+  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+  label: string;
+  amount?: number;
+  quantity?: number;
+  item?: PassLootItem;
+}
+
+export interface PassStatus {
+  streak: number;
+  status: 'available' | 'claimed';
+  resetNotice: boolean;
+  nextReset: string;
+  itemDropChance: number;
+  moneyRange: { min: number; max: number };
+  auraRange: { min: number; max: number };
+  featuredItems: PassLootItem[];
+}
+
+export interface PassClaimResponse {
+  success: boolean;
+  streak: number;
+  boxName: string;
+  rewards: PassRewardEntry[];
+  newBalance: {
+    money: number;
+    aura: number;
+  };
+}
+
+export const passApi = {
+  getStatus: () => api.get<PassStatus>('/pass/status'),
+  claim: () => api.post<PassClaimResponse>('/pass/claim'),
 };
 
 export interface ShopCategory {

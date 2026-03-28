@@ -34,6 +34,7 @@ interface DoodleSpectateFrame {
   gameRunning: boolean;
   gameOver: boolean;
   selectedSkin: SkinId;
+  selectedSkinImageUrl?: string | null;
   facingLeft: boolean;
   player: {
     x: number;

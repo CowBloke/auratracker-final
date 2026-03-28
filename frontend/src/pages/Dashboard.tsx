@@ -20,20 +20,34 @@ import { CSS } from '@dnd-kit/utilities';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocketBase } from '../contexts/SocketContext';
 import { usePartySocket } from '../contexts/PartySocketContext';
-import { ClanChatMessage, ClanPumpUpMessage, ClanSummary, ClanWarState, auraCoinApi, clansApi } from '../services/api';
-import { GripVertical, Users, TrendingUp, TrendingDown, Star, Gamepad2, MessageSquare, Swords, Crown } from 'lucide-react';
+import {
+  AuraTransferEntry,
+  ClanChatMessage,
+  ClanPumpUpMessage,
+  ClanSummary,
+  ClanWarState,
+  DailyAuraState,
+  auraCoinApi,
+  clansApi,
+  economyApi,
+  usersApi,
+} from '../services/api';
+import { GripVertical, Users, TrendingUp, TrendingDown, Star, Gamepad2, MessageSquare, Swords, Crown, Send, ShieldMinus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { AreaChart, Area, XAxis, YAxis } from 'recharts';
 import { useTheme } from '@/contexts/ThemeContext';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { resolveThemeImageUrl } from '@/lib/images';
 import { getGameImage } from '@/lib/game-images';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface GameShortcut {
   id: string;
@@ -43,8 +57,17 @@ interface GameShortcut {
   image?: string;
 }
 
+interface AuraTargetUser {
+  id: string;
+  username: string;
+  usernameColor?: string | null;
+  aura: number;
+}
+
 type DashboardWidgetId =
   | 'shortcuts'
+  | 'aura-flow'
+  | 'aura-history'
   | 'live'
   | 'auracoin'
   | 'clan-wars'
@@ -118,6 +141,8 @@ const defaultShortcutSet = new Set(defaultShortcuts);
 
 const defaultDashboardLayout: DashboardWidgetId[] = [
   'shortcuts',
+  'aura-flow',
+  'aura-history',
   'live',
   'clan-wars',
   'clan-message',
@@ -126,6 +151,8 @@ const defaultDashboardLayout: DashboardWidgetId[] = [
 ];
 const dashboardWidgetLabels: Record<DashboardWidgetId, { title: string; description: string }> = {
   shortcuts: { title: 'Raccourcis jeux', description: 'Accès rapide à tes jeux favoris.' },
+  'aura-flow': { title: 'Distribution d aura', description: 'Envoie ou retire ton quota d aura journalier.' },
+  'aura-history': { title: 'Historique aura', description: 'Tous les envois et retraits d aura du site.' },
   'clan-wars': { title: 'Guerres de clan', description: 'Suivi rapide des affrontements en cours.' },
   'clan-message': { title: 'Message du clan', description: 'Dernier message posté dans ton clan.' },
   'clan-ranking': { title: 'Classement des clans', description: 'Top clans par aura totale.' },
@@ -134,7 +161,7 @@ const dashboardWidgetLabels: Record<DashboardWidgetId, { title: string; descript
 };
 
 const isDashboardWidgetId = (value: string): value is DashboardWidgetId =>
-  ['shortcuts', 'live', 'auracoin', 'clan-wars', 'clan-message', 'clan-ranking'].includes(value);
+  ['shortcuts', 'aura-flow', 'aura-history', 'live', 'auracoin', 'clan-wars', 'clan-message', 'clan-ranking'].includes(value);
 
 const dashboardWidgetCardClass = "flex h-full flex-col overflow-hidden rounded-2xl border border-border/50 bg-background shadow-none";
 const dashboardWidgetHeaderClass = "px-4 pb-3 pt-4 sm:px-5";
@@ -303,7 +330,7 @@ function coerceVisibleDashboardWidgets(value: unknown): DashboardWidgetId[] | nu
 }
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { theme } = useTheme();
   const { socket } = useSocketBase();
   const { fetchPublicParties, publicParties, currentParty, joinParty, requestJoinParty, pendingJoinRequests } = usePartySocket();
@@ -326,6 +353,16 @@ export default function Dashboard() {
   const [latestClanMessage, setLatestClanMessage] = useState<ClanChatMessage | null>(null);
   const [clanMessageLoading, setClanMessageLoading] = useState(false);
   const [clanPumpUpMessage, setClanPumpUpMessage] = useState<ClanPumpUpMessage | null>(null);
+  const [dailyAuraState, setDailyAuraState] = useState<DailyAuraState | null>(null);
+  const [dailyAuraHistory, setDailyAuraHistory] = useState<AuraTransferEntry[]>([]);
+  const [auraUsers, setAuraUsers] = useState<AuraTargetUser[]>([]);
+  const [selectedAuraUserId, setSelectedAuraUserId] = useState('');
+  const [auraAction, setAuraAction] = useState<'give' | 'take'>('give');
+  const [auraAmountInput, setAuraAmountInput] = useState('10');
+  const [auraMessage, setAuraMessage] = useState('');
+  const [auraWidgetLoading, setAuraWidgetLoading] = useState(false);
+  const [submittingAuraTransfer, setSubmittingAuraTransfer] = useState(false);
+  const [resetCountdown, setResetCountdown] = useState('--:--:--');
 
   const shortcutMap = useMemo(() => new Map(gameShortcuts.map((item) => [item.id, item])), []);
   const orderedShortcuts = useMemo(
@@ -364,6 +401,11 @@ export default function Dashboard() {
     () => clans.find((clan) => clan.id === viewerClanId) ?? null,
     [clans, viewerClanId]
   );
+  const selectedAuraUser = useMemo(
+    () => auraUsers.find((candidate) => candidate.id === selectedAuraUserId) ?? null,
+    [auraUsers, selectedAuraUserId]
+  );
+  const remainingAura = dailyAuraState?.remainingAura ?? 0;
 
   useEffect(() => {
     if (!user?.username) return;
@@ -395,12 +437,77 @@ export default function Dashboard() {
     }
   };
 
+  const fetchAuraWidgetData = async () => {
+    try {
+      setAuraWidgetLoading(true);
+      const [stateRes, transfersRes, usersRes] = await Promise.all([
+        economyApi.getState(),
+        economyApi.getTransfers({ all: true, limit: 100 }),
+        usersApi.getAll(),
+      ]);
+
+      setDailyAuraState(stateRes.data.state);
+      setDailyAuraHistory(transfersRes.data.transfers);
+      setAuraUsers(
+        (usersRes.data.users as Array<{ id: string; username: string; usernameColor?: string | null; aura: number }>)
+          .filter((candidate) => candidate.id !== user?.id)
+          .map((candidate) => ({
+            id: candidate.id,
+            username: candidate.username,
+            usernameColor: candidate.usernameColor ?? null,
+            aura: Number(candidate.aura ?? 0),
+          }))
+      );
+    } catch (error) {
+      console.error('Failed to fetch aura widget data:', error);
+    } finally {
+      setAuraWidgetLoading(false);
+    }
+  };
+
+  const submitAuraTransfer = async () => {
+    const parsedAmount = Number.parseInt(auraAmountInput, 10);
+    if (!selectedAuraUserId) {
+      toast.error('Choisis un joueur.');
+      return;
+    }
+
+    if (!Number.isInteger(parsedAmount) || parsedAmount <= 0) {
+      toast.error('Entre un nombre d aura positif.');
+      return;
+    }
+
+    if (!auraMessage.trim()) {
+      toast.error('Ajoute une justification.');
+      return;
+    }
+
+    try {
+      setSubmittingAuraTransfer(true);
+      await economyApi.transfer({
+        receiverId: selectedAuraUserId,
+        auraAmount: auraAction === 'give' ? parsedAmount : -parsedAmount,
+        message: auraMessage.trim(),
+      });
+      await fetchAuraWidgetData();
+      setAuraMessage('');
+      await refreshUser();
+      toast.success(auraAction === 'give' ? 'Aura envoyee.' : 'Aura retiree.');
+    } catch (error: any) {
+      console.error('Failed to submit aura transfer:', error);
+      toast.error(error?.response?.data?.error || 'Impossible de distribuer cette aura.');
+    } finally {
+      setSubmittingAuraTransfer(false);
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [auraCoinRes, clansRes] = await Promise.allSettled([
+        const [auraCoinRes, clansRes, auraWidgetRes] = await Promise.allSettled([
           auraCoinApi.getPrice(4),
           clansApi.list(),
+          fetchAuraWidgetData(),
         ]);
 
         if (auraCoinRes.status === 'fulfilled') {
@@ -426,6 +533,10 @@ export default function Dashboard() {
           } else {
             setLatestClanMessage(null);
           }
+        }
+
+        if (auraWidgetRes.status === 'rejected') {
+          console.error('Failed to fetch aura widget data:', auraWidgetRes.reason);
         }
 
       } catch (error) {
@@ -460,6 +571,33 @@ export default function Dashboard() {
       socket.off('auracoin:price-update', handleAuraCoinPriceUpdate);
     };
   }, [socket, auraCoinPrice]);
+
+  useEffect(() => {
+    if (!dailyAuraState?.nextResetAt) {
+      setResetCountdown('--:--:--');
+      return;
+    }
+
+    const updateCountdown = () => {
+      const diffMs = new Date(dailyAuraState.nextResetAt).getTime() - Date.now();
+      if (diffMs <= 0) {
+        setResetCountdown('00:00:00');
+        return;
+      }
+
+      const totalSeconds = Math.floor(diffMs / 1000);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      setResetCountdown(
+        `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+      );
+    };
+
+    updateCountdown();
+    const interval = window.setInterval(updateCountdown, 1000);
+    return () => window.clearInterval(interval);
+  }, [dailyAuraState?.nextResetAt]);
 
   useEffect(() => {
     try {
@@ -567,6 +705,14 @@ export default function Dashboard() {
     if (minutes > 0) return `${minutes}m`;
     return 'maint.';
   };
+
+  const formatDateTime = (dateString: string) =>
+    new Date(dateString).toLocaleString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
 
   const handleDashboardDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -791,6 +937,155 @@ export default function Dashboard() {
                                 </CardContent>
                             </Card>
                           )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {widgetId === 'aura-flow' && (
+                    <Card className={dashboardWidgetCardClass}>
+                      <CardHeader className={dashboardWidgetHeaderClass}>
+                        <div className="flex items-center justify-between gap-3">
+                          <DashboardWidgetTitle
+                            title="Distribution d aura"
+                            icon={Star}
+                            iconClassName="text-amber-500"
+                            iconWrapperClassName="bg-amber-500/15"
+                          />
+                          <Badge variant="secondary" className="border border-border/50 bg-muted/30 tabular-nums">
+                            {remainingAura}/{dailyAuraState?.dailyAuraLimit ?? 0}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className={cn(dashboardWidgetContentClass, "flex flex-col gap-3")}>
+                        <div className="rounded-xl border border-border/50 bg-muted/20 px-3 py-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-medium">Aura restante aujourd hui</p>
+                              <p className="text-xs text-muted-foreground">
+                                Reset dans {resetCountdown}
+                              </p>
+                            </div>
+                            <span className="text-2xl font-semibold tabular-nums">{remainingAura}</span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button
+                            type="button"
+                            variant={auraAction === 'give' ? 'default' : 'outline'}
+                            className={auraAction === 'give' ? '' : dashboardGhostButtonClass}
+                            onClick={() => setAuraAction('give')}
+                          >
+                            <Send className="mr-2 h-4 w-4" />
+                            Envoyer
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={auraAction === 'take' ? 'default' : 'outline'}
+                            className={auraAction === 'take' ? '' : dashboardGhostButtonClass}
+                            onClick={() => setAuraAction('take')}
+                          >
+                            <ShieldMinus className="mr-2 h-4 w-4" />
+                            Retirer
+                          </Button>
+                        </div>
+
+                        <div className="grid grid-cols-[minmax(0,1fr)_92px] gap-2">
+                          <select
+                            value={selectedAuraUserId}
+                            onChange={(event) => setSelectedAuraUserId(event.target.value)}
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                          >
+                            <option value="">Choisir un joueur</option>
+                            {auraUsers.map((candidate) => (
+                              <option key={candidate.id} value={candidate.id}>
+                                {candidate.username} · {candidate.aura.toLocaleString('fr-FR')} aura
+                              </option>
+                            ))}
+                          </select>
+                          <Input
+                            type="number"
+                            min={1}
+                            step={1}
+                            value={auraAmountInput}
+                            onChange={(event) => setAuraAmountInput(event.target.value)}
+                            placeholder="Aura"
+                          />
+                        </div>
+
+                        {selectedAuraUser ? (
+                          <p className="text-xs text-muted-foreground">
+                            Cible actuelle: <span className="font-medium text-foreground">{selectedAuraUser.username}</span> · {selectedAuraUser.aura.toLocaleString('fr-FR')} aura
+                          </p>
+                        ) : null}
+
+                        <Textarea
+                          value={auraMessage}
+                          onChange={(event) => setAuraMessage(event.target.value)}
+                          placeholder="Justification visible dans l historique et la notification"
+                          className="min-h-[72px] resize-none"
+                        />
+
+                        <Button onClick={submitAuraTransfer} disabled={submittingAuraTransfer || auraWidgetLoading}>
+                          {submittingAuraTransfer ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                          {auraAction === 'give' ? 'Confirmer l envoi' : 'Confirmer le retrait'}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {widgetId === 'aura-history' && (
+                    <Card className={dashboardWidgetCardClass}>
+                      <CardHeader className={dashboardWidgetHeaderClass}>
+                        <div className="flex items-center justify-between gap-3">
+                          <DashboardWidgetTitle
+                            title="Historique aura"
+                            icon={Star}
+                            iconClassName="text-emerald-500"
+                            iconWrapperClassName="bg-emerald-500/15"
+                          />
+                          <Badge variant="secondary" className="border border-border/50 bg-muted/30 tabular-nums">
+                            {dailyAuraHistory.length}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className={cn(dashboardWidgetContentClass, "flex flex-col")}>
+                        <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+                          <div className="space-y-2">
+                            {auraWidgetLoading ? (
+                              <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Chargement...
+                              </div>
+                            ) : dailyAuraHistory.length === 0 ? (
+                              <div className="rounded-xl border border-border/40 bg-muted/10 px-3 py-6 text-sm text-muted-foreground">
+                                Aucun envoi d aura pour le moment.
+                              </div>
+                            ) : (
+                              dailyAuraHistory.map((entry) => (
+                                <div key={entry.id} className="rounded-lg border border-border/40 bg-background/80 px-3 py-2">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                      <p className="truncate text-sm font-medium">
+                                        {entry.sender?.username ?? 'Inconnu'} {'>'} {entry.receiver?.username ?? 'Inconnu'}
+                                      </p>
+                                      <p className="mt-1 text-xs text-muted-foreground">
+                                        {entry.message || 'Sans justification'}
+                                      </p>
+                                    </div>
+                                    <div className="shrink-0 text-right">
+                                      <p className={cn("text-sm font-semibold tabular-nums", entry.auraAmount >= 0 ? "text-emerald-500" : "text-rose-500")}>
+                                        {entry.auraAmount >= 0 ? '+' : ''}
+                                        {entry.auraAmount}
+                                      </p>
+                                      <p className="text-[11px] text-muted-foreground">{formatDateTime(entry.createdAt)}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
                         </div>
                       </CardContent>
                     </Card>

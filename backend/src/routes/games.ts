@@ -1058,7 +1058,8 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       });
     }
     
-    const clanMoneyBoost = moneyReward > 0 ? await getActiveClanMoneyBoostForUser(req.user.id) : null;
+    const canApplyClanMoneyBoost = gameType !== 'casino' && moneyReward > 0;
+    const clanMoneyBoost = canApplyClanMoneyBoost ? await getActiveClanMoneyBoostForUser(req.user.id) : null;
     const clanMoneyBoostPercent = clanMoneyBoost?.value ?? 0;
     const clanMoneyBoostBonus = clanMoneyBoostPercent > 0
       ? Math.floor(moneyReward * (clanMoneyBoostPercent / 100))
@@ -1429,19 +1430,122 @@ function extractActiveGoyaveCount(saveData: string): number {
   return parsed.guavas;
 }
 
-const GOYAVE_ACTIVE_WINDOW_MS = 15 * 60 * 1000;
+const GOYAVE_BUILDING_BASE_GPS: Record<string, number> = {
+  tree: 0.1,
+  picker: 1,
+  garden: 8,
+  orchard: 47,
+  factory: 260,
+  plantation: 1400,
+  lab: 7800,
+  rocket: 44000,
+  dimension: 260000,
+};
 
-function parseGoyaveSaveSnapshot(saveData: string): { guavas: number; lastTick: number } | null {
+const GOYAVE_UPGRADE_MULTIPLIERS = [
+  { id: 'ripe_trees', target: 'tree', multiplier: 2 },
+  { id: 'grafting', target: 'tree', multiplier: 2 },
+  { id: 'hybrid_goyavier', target: 'tree', multiplier: 2 },
+  { id: 'expert_pickers', target: 'picker', multiplier: 2 },
+  { id: 'professional_tools', target: 'picker', multiplier: 2 },
+  { id: 'mechanized_picking', target: 'picker', multiplier: 2 },
+  { id: 'rich_soil', target: 'garden', multiplier: 2 },
+  { id: 'botanical_study', target: 'garden', multiplier: 2 },
+  { id: 'micro_climate', target: 'garden', multiplier: 2 },
+  { id: 'drip_irrigation', target: 'orchard', multiplier: 2 },
+  { id: 'smart_orchard', target: 'orchard', multiplier: 2 },
+  { id: 'mega_orchard', target: 'orchard', multiplier: 2 },
+  { id: 'automation', target: 'factory', multiplier: 2 },
+  { id: 'nano_processing', target: 'factory', multiplier: 2 },
+  { id: 'tropical_genetics', target: 'plantation', multiplier: 2 },
+  { id: 'climate_dome', target: 'plantation', multiplier: 2 },
+  { id: 'gmo_goyave', target: 'lab', multiplier: 2 },
+  { id: 'super_goyave', target: 'lab', multiplier: 2 },
+  { id: 'space_farming', target: 'rocket', multiplier: 2 },
+  { id: 'quantum_goyave', target: 'dimension', multiplier: 2 },
+] as const;
+
+type ParsedGoyaveSaveSnapshot = {
+  guavas: number;
+  totalGuavas: number;
+  lastTick: number;
+  buildings: Record<string, number>;
+  upgrades: string[];
+};
+
+function parseGoyaveSaveSnapshot(saveData: string): ParsedGoyaveSaveSnapshot | null {
   try {
-    const parsed = JSON.parse(saveData) as { guavas?: unknown; lastTick?: unknown };
+    const parsed = JSON.parse(saveData) as {
+      guavas?: unknown;
+      totalGuavas?: unknown;
+      lastTick?: unknown;
+      buildings?: unknown;
+      upgrades?: unknown;
+    };
     const rawGuavas = typeof parsed.guavas === 'number' ? parsed.guavas : Number(parsed.guavas);
     const guavas = Number.isFinite(rawGuavas) && rawGuavas >= 0 ? Math.floor(rawGuavas) : 0;
+    const rawTotalGuavas = typeof parsed.totalGuavas === 'number' ? parsed.totalGuavas : Number(parsed.totalGuavas);
+    const totalGuavas = Number.isFinite(rawTotalGuavas) && rawTotalGuavas >= 0 ? Math.floor(rawTotalGuavas) : guavas;
     const rawLastTick = typeof parsed.lastTick === 'number' ? parsed.lastTick : Number(parsed.lastTick);
     const lastTick = Number.isFinite(rawLastTick) && rawLastTick > 0 ? Math.floor(rawLastTick) : 0;
-    return { guavas, lastTick };
+
+    const buildings = Object.fromEntries(
+      Object.keys(GOYAVE_BUILDING_BASE_GPS).map((buildingId) => {
+        const rawOwned = typeof parsed.buildings === 'object' && parsed.buildings !== null
+          ? (parsed.buildings as Record<string, unknown>)[buildingId]
+          : 0;
+        const owned = typeof rawOwned === 'number' ? rawOwned : Number(rawOwned);
+        return [buildingId, Number.isFinite(owned) && owned > 0 ? Math.floor(owned) : 0];
+      })
+    );
+
+    const upgrades = Array.isArray(parsed.upgrades)
+      ? parsed.upgrades.filter((upgrade): upgrade is string => typeof upgrade === 'string')
+      : [];
+
+    return { guavas, totalGuavas, lastTick, buildings, upgrades };
   } catch {
     return null;
   }
+}
+
+function calculateGoyaveGps(buildings: Record<string, number>, upgrades: string[]): number {
+  const ownedUpgrades = new Set(upgrades);
+
+  return Object.entries(GOYAVE_BUILDING_BASE_GPS).reduce((sum, [buildingId, baseGps]) => {
+    const owned = buildings[buildingId] ?? 0;
+    if (owned <= 0) return sum;
+
+    let multiplier = 1;
+    for (const upgrade of GOYAVE_UPGRADE_MULTIPLIERS) {
+      if (upgrade.target === buildingId && ownedUpgrades.has(upgrade.id)) {
+        multiplier *= upgrade.multiplier;
+      }
+    }
+
+    return sum + (baseGps * owned * multiplier);
+  }, 0);
+}
+
+function getProjectedGoyaveLeaderboardState(saveData: string, now = Date.now()): {
+  currentGuavas: number;
+  hasStartedRun: boolean;
+} {
+  const snapshot = parseGoyaveSaveSnapshot(saveData);
+  if (!snapshot) {
+    return { currentGuavas: 0, hasStartedRun: false };
+  }
+
+  const hasBuildings = Object.values(snapshot.buildings).some((owned) => owned > 0);
+  const hasStartedRun = snapshot.guavas > 0 || snapshot.totalGuavas > 0 || hasBuildings || snapshot.upgrades.length > 0;
+
+  const elapsedMs = snapshot.lastTick > 0 ? Math.max(0, now - snapshot.lastTick) : 0;
+  const projectedGuavas = snapshot.guavas + (calculateGoyaveGps(snapshot.buildings, snapshot.upgrades) * (elapsedMs / 1000));
+
+  return {
+    currentGuavas: Math.max(0, Math.floor(projectedGuavas)),
+    hasStartedRun,
+  };
 }
 
 // Get game leaderboard
@@ -1473,12 +1577,12 @@ router.get('/:gameType/leaderboard', authMiddleware, async (req: AuthRequest, re
   }
 });
 
-// Goyave Empire: active leaderboard (recently synced players ranked by current guavas)
+// Goyave Empire: active leaderboard for every started run that has not been cashed out yet.
 router.get('/goyave_empire/active-leaderboard', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { limit = '20' } = req.query;
     const parsedLimit = Math.min(Math.max(parseInt(limit as string, 10) || 20, 1), 100);
-    const activeSince = Date.now() - GOYAVE_ACTIVE_WINDOW_MS;
+    const now = Date.now();
 
     const saves = await prisma.goyaveSave.findMany({
       where: {
@@ -1500,26 +1604,21 @@ router.get('/goyave_empire/active-leaderboard', authMiddleware, async (req: Auth
 
     const ranked = saves
       .map((save) => {
-        const snapshot = parseGoyaveSaveSnapshot(save.saveData);
-        const dbUpdatedAt = save.updatedAt instanceof Date
-          ? save.updatedAt.getTime()
-          : new Date(save.updatedAt).getTime();
-        const lastActivityAt = Math.max(snapshot?.lastTick ?? 0, Number.isFinite(dbUpdatedAt) ? dbUpdatedAt : 0);
+        const snapshot = getProjectedGoyaveLeaderboardState(save.saveData, now);
 
         return {
           id: save.id,
-          highScore: snapshot?.guavas ?? 0,
-          lastActivityAt,
+          highScore: snapshot.currentGuavas,
+          hasStartedRun: snapshot.hasStartedRun,
           user: save.user,
         };
       })
-      .filter((entry) => entry.lastActivityAt >= activeSince)
-      .filter((entry) => entry.highScore > 0)
+      .filter((entry) => entry.hasStartedRun)
       .sort((a, b) => b.highScore - a.highScore)
       .slice(0, parsedLimit);
 
     const rankings = await attachUserDecorations(ranked);
-    res.json({ rankings, windowSeconds: GOYAVE_ACTIVE_WINDOW_MS / 1000 });
+    res.json({ rankings });
   } catch (error) {
     console.error('Get active goyave leaderboard error:', error);
     res.status(500).json({ error: 'Failed to get active leaderboard' });

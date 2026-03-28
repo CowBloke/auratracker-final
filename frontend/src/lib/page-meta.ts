@@ -39,6 +39,7 @@ const STATIC_PAGE_META: Record<string, PageMeta> = {
   '/inventory': { title: 'Inventaire', description: 'Objets, consommables et cosmétiques.' },
   '/admin': { title: 'Admin', description: 'Outils de modération et d’administration.' },
   '/rules': { title: 'Règlement', description: 'Règles de la communauté et modération.' },
+  '/pass': { title: 'Pass', description: 'Lootbox quotidienne, streak et récompenses aléatoires.' },
   '/quests': { title: 'Quêtes', description: 'Objectifs actifs et récompenses.' },
   '/suggestions': { title: 'Suggestions', description: "Idées en cours, votes et suivi d'avancement." },
   '/settings': { title: 'Paramètres', description: 'Thème et personnalisation de l’interface.' },

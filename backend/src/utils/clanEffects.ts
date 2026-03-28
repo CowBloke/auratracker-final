@@ -3,7 +3,7 @@ import { prisma } from '../server.js';
 
 export const CLAN_EFFECT_GAME_MONEY_BOOST = 'CLAN_GAME_MONEY_BOOST';
 export const DEFAULT_CLAN_EFFECT_DURATION_HOURS = 1;
-export const DEFAULT_CLAN_EFFECT_COOLDOWN_HOURS = 24;
+export const DEFAULT_CLAN_EFFECT_COOLDOWN_HOURS = 0;
 
 type ClanEffectPayload = {
   type?: string;
@@ -108,7 +108,7 @@ export const getActiveClanMoneyBoostPercentsForUsers = async (userIds: string[])
 export const buildClanEffectActivation = (payload: ClanEffectPayload | null, now = new Date()) => {
   const value = Math.max(0, Math.floor(payload?.percentage ?? 0));
   const durationHours = Math.max(1, Math.floor(payload?.durationHours ?? DEFAULT_CLAN_EFFECT_DURATION_HOURS));
-  const cooldownHours = Math.max(durationHours, Math.floor(payload?.cooldownHours ?? DEFAULT_CLAN_EFFECT_COOLDOWN_HOURS));
+  const cooldownHours = Math.max(0, Math.floor(payload?.cooldownHours ?? DEFAULT_CLAN_EFFECT_COOLDOWN_HOURS));
 
   return {
     value,
@@ -116,6 +116,6 @@ export const buildClanEffectActivation = (payload: ClanEffectPayload | null, now
     cooldownHours,
     activatedAt: now,
     activeUntil: addHours(now, durationHours),
-    cooldownUntil: addHours(now, cooldownHours),
+    cooldownUntil: cooldownHours > 0 ? addHours(now, cooldownHours) : null,
   };
 };

@@ -1,24 +1,9 @@
-- revoir system envoi/retrait aura et cadeaux
-- classement actif goyave
-- table casino
-- plus d'objets
-- classements clash
-- lootboxes
-- boost permanent clan
-- redirection page
 - widgets visuels comme auracoin
-- spectate doodle skin
-- navbar plié toujours
 - améliorer UI simple interfaces jeux
-- tous les jeux navabr
 - racer/polytrack image jeux
 - spec relancer ddj
 - aligner tabs et menu deroualant
-- mdp oublié
 - limiter à un
-- casino bloqué
-- inviter bouton rechercher
-- pass
 - pb image alors que taille mo moins
 - par défaut fermé navbar
 - icones aura et argent reconnaisable à travers tout le site
@@ -27,3 +12,4 @@
 - personnalisation theme
 - il ma,que des jeux dans activité
 - classement mive goyave empire ne marche pas
+- bienvenue

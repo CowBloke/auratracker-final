@@ -14,6 +14,7 @@ import {
   normalizeReferralCode,
 } from '../utils/referrals.js';
 import { serializeClanEffect } from '../utils/clanEffects.js';
+import { DEFAULT_DAILY_AURA_LIMIT } from '../utils/dailyAura.js';
 
 const getIpAddress = (req: Request | AuthRequest): string | null => {
   const forwarded = req.headers['x-forwarded-for'];
@@ -33,12 +34,9 @@ const getUserClanEffects = async (userId: string) => {
         select: {
           activeEffects: {
             where: {
-              OR: [
-                { activeUntil: { gt: new Date() } },
-                { cooldownUntil: { gt: new Date() } },
-              ],
+              activeUntil: { gt: new Date() },
             },
-            orderBy: [{ activeUntil: 'desc' }, { cooldownUntil: 'desc' }],
+            orderBy: [{ activeUntil: 'desc' }],
           },
         },
       },
@@ -109,6 +107,7 @@ router.post('/register', validate(registerSchema), async (req, res) => {
         isSuperAdmin,
         isApproved: isAdmin,
         money: 1000,
+        dailyAuraLimit: DEFAULT_DAILY_AURA_LIMIT,
         referralCode: generatedReferralCode,
         referredById: referrerId,
         referredAt: referrerId ? new Date() : null,

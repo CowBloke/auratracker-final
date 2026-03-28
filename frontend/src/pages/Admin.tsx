@@ -187,6 +187,7 @@ const ACTION_LABELS: Record<string, string> = {
   // Economy
   transfer: 'Transfert',
   balance_change: 'Modification solde',
+  pass_reward: 'Récompense pass',
   // Party
   party_create: 'Groupe créé',
   party_join: 'Rejoint groupe',
@@ -1053,6 +1054,8 @@ export default function Admin() {
   const [savingReferralEnabled, setSavingReferralEnabled] = useState(false);
   const [referralRewardAmount, setReferralRewardAmount] = useState('250');
   const [savingReferralReward, setSavingReferralReward] = useState(false);
+  const [dailyAuraDistributionLimit, setDailyAuraDistributionLimit] = useState('100');
+  const [savingDailyAuraDistributionLimit, setSavingDailyAuraDistributionLimit] = useState(false);
   const [auraCoinBuyFeePercentage, setAuraCoinBuyFeePercentage] = useState('0.02');
   const [savingAuraCoinBuyFee, setSavingAuraCoinBuyFee] = useState(false);
   const [clashAttackCooldownMinutes, setClashAttackCooldownMinutes] = useState('10');
@@ -1920,6 +1923,7 @@ export default function Admin() {
       setDuelMatchmakingEnabled(res.data.settings.duel_matchmaking_enabled !== 'false');
       setReferralEnabled(res.data.settings.referral_enabled !== 'false');
       setReferralRewardAmount(res.data.settings.referral_reward_amount || '250');
+      setDailyAuraDistributionLimit(res.data.settings.daily_aura_distribution_limit || '100');
       setAuraCoinBuyFeePercentage(res.data.settings.auracoin_buy_fee_percentage || '0.02');
       setClashAttackCooldownMinutes(res.data.settings.clash_attack_cooldown_minutes || '10');
       setMaintenanceMessage(res.data.settings.maintenance_message || '');
@@ -2132,6 +2136,26 @@ export default function Admin() {
       showMessage('error', 'Erreur lors de la sauvegarde du parrainage');
     } finally {
       setSavingReferralEnabled(false);
+    }
+  };
+
+  const saveDailyAuraDistributionLimit = async () => {
+    try {
+      const parsed = Number.parseInt(dailyAuraDistributionLimit, 10);
+      if (!Number.isInteger(parsed) || parsed < 0 || parsed > 10000) {
+        showMessage('error', "Le quota d'aura journalier doit etre un entier entre 0 et 10000");
+        return;
+      }
+
+      setSavingDailyAuraDistributionLimit(true);
+      await adminApi.updateSetting('daily_aura_distribution_limit', parsed);
+      setDailyAuraDistributionLimit(String(parsed));
+      showMessage('success', "Quota d'aura journalier sauvegarde");
+    } catch (error) {
+      console.error('Failed to save daily aura distribution limit:', error);
+      showMessage('error', "Erreur lors de la sauvegarde du quota d'aura");
+    } finally {
+      setSavingDailyAuraDistributionLimit(false);
     }
   };
 
@@ -4184,6 +4208,27 @@ export default function Admin() {
                   />
                   <Button size="sm" onClick={saveReferralReward} disabled={savingReferralReward || !referralEnabled}>
                     {savingReferralReward ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                <div>
+                  <div className="text-sm font-medium">Aura distribuable par jour</div>
+                  <div className="text-xs text-muted-foreground">Quota global disponible pour chaque joueur à chaque reset de minuit. Valeur par défaut: 100.</div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Input
+                    id="daily-aura-distribution-limit"
+                    type="number"
+                    min={0}
+                    max={10000}
+                    step={1}
+                    value={dailyAuraDistributionLimit}
+                    onChange={(event) => setDailyAuraDistributionLimit(event.target.value)}
+                    className="w-24 h-8 text-sm"
+                  />
+                  <Button size="sm" onClick={saveDailyAuraDistributionLimit} disabled={savingDailyAuraDistributionLimit}>
+                    {savingDailyAuraDistributionLimit ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                   </Button>
                 </div>
               </div>

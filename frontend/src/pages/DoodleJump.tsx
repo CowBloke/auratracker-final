@@ -99,6 +99,7 @@ interface DoodleSpectateFrame {
   gameRunning: boolean;
   gameOver: boolean;
   selectedSkin: SkinId;
+  selectedSkinImageUrl?: string | null;
   facingLeft: boolean;
   player: {
     x: number;
@@ -664,6 +665,7 @@ export default function DoodleJump() {
       gameRunning: gameRunningRef.current && !ended,
       gameOver: ended,
       selectedSkin,
+      selectedSkinImageUrl,
       facingLeft: facingLeftRef.current,
       player: {
         x: positionRef.current.x,
@@ -672,7 +674,7 @@ export default function DoodleJump() {
       },
       platforms: platformsRef.current.map((platform) => ({ ...platform })),
     };
-  }, [selectedSkin]);
+  }, [selectedSkin, selectedSkinImageUrl]);
 
   const emitMultiplayerState = useCallback((isDead: boolean) => {
     if (!socket || !user || !multiplayerRoomIdRef.current || spectatingRef.current) return;
@@ -1143,6 +1145,14 @@ export default function DoodleJump() {
     activeModeRef.current = frame.mode;
     facingLeftRef.current = frame.facingLeft;
     spectateSkinRef.current = frame.selectedSkin;
+
+    if (!skinImagesRef.current.has(frame.selectedSkin)) {
+      const resolvedUrl = resolveImageUrl(frame.selectedSkinImageUrl || DEFAULT_SKIN.imageUrl);
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = resolvedUrl;
+      skinImagesRef.current.set(frame.selectedSkin, img);
+    }
 
     if (!smooth) {
       platformsRef.current = frame.platforms.map((platform) => ({ ...platform }));
