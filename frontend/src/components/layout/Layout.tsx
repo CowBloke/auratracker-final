@@ -133,7 +133,7 @@ export default function Layout() {
 
   return (
     <ChatSidebarProvider>
-      <div className="min-h-screen bg-background flex w-full">
+      <div className="min-h-screen bg-background flex w-full overflow-x-hidden">
         <SidebarProvider
           defaultOpen={false}
           className="!w-auto flex-1"
