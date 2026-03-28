@@ -1,0 +1,122 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 10.1961%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10.1961%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10.1961%;
+    --primary: 0 0% 10.9804%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 100%;
+    --secondary-foreground: 0 0% 10.9804%;
+    --muted: 0 0% 100%;
+    --muted-foreground: 0 0% 54.1176%;
+    --accent: 0 0% 100%;
+    --accent-foreground: 0 0% 10.9804%;
+    --destructive: 351.9070 84.9802% 49.6078%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 100%;
+    --input: 0 0% 100%;
+    --ring: 0 0% 75.6863%;
+    --chart-1: 211.7647 89.4737% 96.2745%;
+    --chart-2: 217.4359 85.4015% 73.1373%;
+    --chart-3: 221.5068 84.8837% 66.2745%;
+    --chart-4: 223.4356 77.2512% 58.6275%;
+    --chart-5: 226.5882 68% 49.0196%;
+    --sidebar: 0 0% 100%;
+    --sidebar-foreground: 0 0% 10.1961%;
+    --sidebar-primary: 0 0% 10.9804%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 100%;
+    --sidebar-accent-foreground: 0 0% 10.9804%;
+    --sidebar-border: 0 0% 100%;
+    --sidebar-ring: 0 0% 75.6863%;
+    --font-sans: Chakra Petch, ui-sans-serif, sans-serif, system-ui;
+    --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+    --font-mono: IBM Plex Mono, ui-monospace, monospace;
+    --radius: 0rem;
+    --shadow-x: 0;
+    --shadow-y: 1px;
+    --shadow-blur: 3px;
+    --shadow-spread: 0px;
+    --shadow-opacity: 0.1;
+    --shadow-color: oklch(0 0 0);
+    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10);
+    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10);
+    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 2px 4px -1px hsl(0 0% 0% / 0.10);
+    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 4px 6px -1px hsl(0 0% 0% / 0.10);
+    --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 8px 10px -1px hsl(0 0% 0% / 0.10);
+    --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
+    --tracking-normal: 0em;
+    --spacing: 0.25rem;
+  }
+
+  .dark {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 0%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 0%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 3.8849 62.8959% 56.6667%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 3.8849 62.8959% 56.6667%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 60 9.8039% 10%;
+    --muted-foreground: 0 0% 100%;
+    --accent: 3.8849 62.8959% 56.6667%;
+    --accent-foreground: 0 0% 0%;
+    --destructive: 3.8849 62.8959% 56.6667%;
+    --destructive-foreground: 0 0% 0%;
+    --border: 0 0% 13.3333%;
+    --input: 0 0% 0%;
+    --ring: 3.8849 62.8959% 56.6667%;
+    --chart-1: 28.8268 78.1659% 55.0980%;
+    --chart-2: 57.9888 73.0612% 48.0392%;
+    --chart-3: 216.7956 77.0213% 53.9216%;
+    --chart-4: 257.6048 69.8745% 53.1373%;
+    --chart-5: 3.8849 62.8959% 56.6667%;
+    --sidebar: 0 0% 0%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 3.8849 62.8959% 56.6667%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 3.8849 62.8959% 56.6667%;
+    --sidebar-accent-foreground: 0 0% 0%;
+    --sidebar-border: 0 0% 0%;
+    --sidebar-ring: 3.8849 62.8959% 56.6667%;
+    --font-sans: Chakra Petch, ui-sans-serif, sans-serif, system-ui;
+    --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+    --font-mono: IBM Plex Mono, ui-monospace, monospace;
+    --radius: 0rem;
+    --shadow-x: 0;
+    --shadow-y: 1px;
+    --shadow-blur: 3px;
+    --shadow-spread: 0px;
+    --shadow-opacity: 0.1;
+    --shadow-color: oklch(0 0 0);
+    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10);
+    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10);
+    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 2px 4px -1px hsl(0 0% 0% / 0.10);
+    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 4px 6px -1px hsl(0 0% 0% / 0.10);
+    --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 8px 10px -1px hsl(0 0% 0% / 0.10);
+    --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
