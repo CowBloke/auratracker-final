@@ -135,117 +135,8 @@ function SettingsRow({
   );
 }
 
-/* ─── Theme Carousel ─────────────────────────────────────────────────────── */
-
-const THEME_OPTIONS = [
-  { id: 'light' as const, label: 'Clair', icon: Sun, bg: 'bg-zinc-100', iconColor: 'text-zinc-500' },
-  { id: 'dark' as const, label: 'Sombre', icon: Moon, bg: 'bg-zinc-800', iconColor: 'text-zinc-300' },
-];
-
-function ThemeCarousel({
-  theme,
-  setTheme,
-}: {
-  theme: string;
-  setTheme: (t: 'light' | 'dark') => void;
-}) {
-  const currentIndex = THEME_OPTIONS.findIndex((o) => o.id === theme);
-  const prev = THEME_OPTIONS[(currentIndex - 1 + THEME_OPTIONS.length) % THEME_OPTIONS.length];
-  const current = THEME_OPTIONS[currentIndex];
-  const next = THEME_OPTIONS[(currentIndex + 1) % THEME_OPTIONS.length];
-
-  return (
-    <div className="flex items-center gap-1">
-      <button
-        type="button"
-        onClick={() => setTheme(prev.id)}
-        className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors"
-        aria-label={`Passer à ${prev.label}`}
-      >
-        <ChevronLeft className="h-4 w-4" />
-      </button>
-
-      <div className="flex items-center gap-2 rounded-lg border border-border/40 bg-muted/20 px-3 py-1.5 min-w-[96px] justify-center">
-        <div className={cn('flex h-5 w-5 items-center justify-center rounded', current.bg)}>
-          <current.icon className={cn('h-3 w-3', current.iconColor)} />
-        </div>
-        <span className="text-xs font-medium">{current.label}</span>
-      </div>
-
-      <button
-        type="button"
-        onClick={() => setTheme(next.id)}
-        className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors"
-        aria-label={`Passer à ${next.label}`}
-      >
-        <ChevronRight className="h-4 w-4" />
-      </button>
-    </div>
-  );
-}
 
 /* ─── Color Scheme Carousel ──────────────────────────────────────────────── */
-
-function SchemePreview({
-  vars,
-  label,
-  isActive,
-  dimmed,
-  onClick,
-}: {
-  vars: Record<string, string> | undefined;
-  label: string;
-  isActive: boolean;
-  dimmed?: boolean;
-  onClick: () => void;
-}) {
-  const loaded = vars !== undefined || label === 'Default';
-  const style: React.CSSProperties = vars
-    ? ({
-        ...vars,
-        backgroundColor: 'hsl(var(--card))',
-        color: 'hsl(var(--card-foreground))',
-        fontFamily: 'var(--font-sans)',
-        opacity: loaded ? undefined : 0,
-      } as React.CSSProperties)
-    : {
-        backgroundColor: 'hsl(var(--card))',
-        color: 'hsl(var(--card-foreground))',
-        fontFamily: 'var(--font-sans)',
-      };
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={style}
-      className={cn(
-        'relative flex flex-1 flex-col overflow-hidden rounded-xl border transition-all duration-200',
-        isActive
-          ? 'scale-[1.06] border-primary shadow-md'
-          : dimmed
-            ? 'border-border/20 opacity-30 hover:opacity-60'
-            : 'border-border/40 opacity-60 hover:opacity-90'
-      )}
-    >
-      <div style={{ height: '4px', backgroundColor: 'hsl(var(--primary))' }} />
-      <div style={{ padding: '7px 9px 9px' }}>
-        <div style={{ display: 'flex', gap: '3px', marginBottom: '5px', alignItems: 'center' }}>
-          <div style={{ height: '5px', width: '20px', borderRadius: '9999px', backgroundColor: 'hsl(var(--primary))' }} />
-          <div style={{ height: '5px', flex: 1, borderRadius: '9999px', backgroundColor: 'hsl(var(--muted))' }} />
-        </div>
-        <span style={{ fontSize: '9px', fontWeight: 600, display: 'block', color: 'hsl(var(--card-foreground))', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {label}
-        </span>
-      </div>
-      {isActive && (
-        <span className="absolute right-1 top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary">
-          <Check className="h-2 w-2 text-primary-foreground" />
-        </span>
-      )}
-    </button>
-  );
-}
 
 function ColorSchemeCarousel({
   colorScheme,
@@ -258,43 +149,71 @@ function ColorSchemeCarousel({
   colorSchemes: ColorSchemeEntry[];
   themeVars: Record<string, Record<string, string>>;
 }) {
-  const currentIndex = colorSchemes.findIndex((s) => s.id === colorScheme);
-  const safeIndex = currentIndex === -1 ? 0 : currentIndex;
+  const n = colorSchemes.length;
+  const activeIdx = Math.max(0, colorSchemes.findIndex((s) => s.id === colorScheme));
 
   const go = (dir: -1 | 1) => {
-    const next = (safeIndex + dir + colorSchemes.length) % colorSchemes.length;
-    setColorScheme(colorSchemes[next].id);
+    setColorScheme(colorSchemes[(activeIdx + dir + n) % n].id);
   };
 
-  // Show up to 5 slots: -2, -1, 0 (active), +1, +2
-  const slots = colorSchemes.length >= 5 ? [-2, -1, 0, 1, 2] : [-1, 0, 1];
+  const slots = n >= 5 ? [-2, -1, 0, 1, 2] : n === 1 ? [0] : [-1, 0, 1];
 
   return (
     <div className="flex items-center gap-2">
       <button
         type="button"
         onClick={() => go(-1)}
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors"
-        aria-label="Précédent"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/40 text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors"
       >
         <ChevronLeft className="h-4 w-4" />
       </button>
 
-      <div className="flex flex-1 justify-center gap-2 overflow-hidden">
+      <div className="flex items-center gap-1.5">
         {slots.map((offset) => {
-          const idx = (safeIndex + offset + colorSchemes.length) % colorSchemes.length;
+          const idx = (activeIdx + offset + n) % n;
           const scheme = colorSchemes[idx];
           const vars = scheme.id !== 'default' ? themeVars[scheme.id] : undefined;
+          const isActive = offset === 0;
           const dist = Math.abs(offset);
+
+          const cardStyle: React.CSSProperties = vars
+            ? ({ ...vars, backgroundColor: 'hsl(var(--card))', fontFamily: 'var(--font-sans)' } as React.CSSProperties)
+            : { backgroundColor: 'hsl(var(--card))', fontFamily: 'var(--font-sans)' };
+
           return (
-            <SchemePreview
-              key={`${offset}-${scheme.id}`}
-              vars={vars}
-              label={scheme.label}
-              isActive={offset === 0}
+            <button
+              key={scheme.id + offset}
+              type="button"
               onClick={() => setColorScheme(scheme.id)}
-              dimmed={dist >= 2}
-            />
+              style={cardStyle}
+              className={cn(
+                'relative flex flex-col overflow-hidden rounded-xl border transition-all duration-150',
+                isActive
+                  ? 'w-[76px] border-primary shadow-sm scale-[1.05]'
+                  : dist === 1
+                    ? 'w-[60px] border-border/40 opacity-60 hover:opacity-90'
+                    : 'w-[48px] border-border/25 opacity-35 hover:opacity-60'
+              )}
+            >
+              <div style={{ height: '3px', backgroundColor: 'hsl(var(--primary))' }} />
+              <div style={{ padding: '5px 7px 7px' }}>
+                <div style={{ display: 'flex', gap: '3px', marginBottom: '4px', alignItems: 'center' }}>
+                  <div style={{ height: '4px', width: '16px', borderRadius: '9999px', backgroundColor: 'hsl(var(--primary))' }} />
+                  <div style={{ height: '4px', flex: 1, borderRadius: '9999px', backgroundColor: 'hsl(var(--muted))' }} />
+                </div>
+                <div style={{ height: '3px', width: '60%', borderRadius: '9999px', backgroundColor: 'hsl(var(--muted))' }} />
+                {isActive && (
+                  <p style={{ marginTop: '5px', fontSize: '9px', fontWeight: 600, color: 'hsl(var(--foreground))', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {scheme.label}
+                  </p>
+                )}
+              </div>
+              {isActive && (
+                <span className="absolute right-1 top-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary">
+                  <Check className="h-2 w-2 text-primary-foreground" />
+                </span>
+              )}
+            </button>
           );
         })}
       </div>
@@ -302,8 +221,7 @@ function ColorSchemeCarousel({
       <button
         type="button"
         onClick={() => go(1)}
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors"
-        aria-label="Suivant"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/40 text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors"
       >
         <ChevronRight className="h-4 w-4" />
       </button>
@@ -339,7 +257,17 @@ function PersonnalisationSection({
         <SettingsGroupLabel>Apparence</SettingsGroupLabel>
         <SettingsCard>
           <SettingsRow label="Thème" description="Apparence de l'interface" last>
-            <ThemeCarousel theme={theme} setTheme={setTheme} />
+            <div className="flex items-center gap-2">
+              {theme === 'dark' ? (
+                <Moon className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <Sun className="h-4 w-4 text-muted-foreground" />
+              )}
+              <Switch
+                checked={theme === 'dark'}
+                onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
+              />
+            </div>
           </SettingsRow>
         </SettingsCard>
       </div>

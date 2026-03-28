@@ -8,6 +8,7 @@ import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Clock3, Gem, Gift, Loader2, Shield, Sparkles, Star, Wallet } from 'lucide-react';
+import { useRewardQueue, type RewardItem } from '@/contexts/RewardQueueContext';
 
 const rarityStyles: Record<PassRewardEntry['rarity'], string> = {
   common: 'border-white/10 bg-white/5 text-foreground',
@@ -48,6 +49,7 @@ export default function Pass() {
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState(false);
   const [lastClaim, setLastClaim] = useState<PassClaimResponse | null>(null);
+  const { enqueue } = useRewardQueue();
 
   const countdown = useCountdown(status?.nextReset ?? null);
 
@@ -74,10 +76,19 @@ export default function Pass() {
       const response = await passApi.claim();
       setLastClaim(response.data);
       await loadStatus();
-      toast.success('La boite du jour a été ouverte.');
+      const rewardItems: RewardItem[] = response.data.rewards.map(
+        (r: PassRewardEntry, i: number) => ({
+          id: String(i),
+          type: r.type,
+          amount: r.amount ?? r.quantity ?? 0,
+          label: r.label,
+          rarity: r.rarity,
+        }),
+      );
+      if (rewardItems.length > 0) enqueue(rewardItems);
     } catch (error) {
-      console.error('Failed to claim pass reward:', error);
-      toast.error('Impossible d’ouvrir la boite du jour.');
+      console.error("Failed to claim pass reward:", error);
+      toast.error("Impossible d’ouvrir la boite du jour.");
     } finally {
       setClaiming(false);
     }
@@ -283,6 +294,7 @@ export default function Pass() {
           </Card>
         </div>
       </div>
+
     </PageShell>
   );
 }
