@@ -839,7 +839,6 @@ export default function GeometryDash() {
               <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/80">
                 <div className="space-y-4 text-center p-6">
                   <p className="text-3xl font-light">Geometry Dash</p>
-                  <p className="text-sm text-muted-foreground">Un runner arcade intégré au hub, avec score, leaderboard et plein écran.</p>
                   <Button onClick={initGame} variant="outline" className="border-foreground">
                     <Play className="h-4 w-4 mr-2" />
                     Lancer le run

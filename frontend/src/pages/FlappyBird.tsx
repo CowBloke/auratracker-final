@@ -542,7 +542,6 @@ export default function FlappyBird() {
           {!started && (
             <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/80">
               <div className="text-center space-y-4">
-                <p className="text-sm text-muted-foreground">Appuie sur Espace ou clique pour sauter</p>
                 <Button onClick={initGame} variant="outline" className="border-foreground">
                   <Play className="h-4 w-4 mr-2" />
                   Commencer

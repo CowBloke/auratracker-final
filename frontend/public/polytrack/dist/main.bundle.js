@@ -17333,7 +17333,7 @@
 					}
 					const i = "WheelFL" == e || "WheelFR" == e,
 						n = m.addWheel(t, g, v, .12, .331, f, i);
-					Ammo.destroy(t), n.set_m_maxSuspensionTravelCm(1e3), n.set_m_maxSuspensionForce(1e6), n.set_m_suspensionStiffness(50), n.set_m_wheelsDampingRelaxation(5), n.set_m_wheelsDampingCompression(200), n.set_m_frictionSlip(3), n.set_m_rollInfluence(2)
+					Ammo.destroy(t), n.set_m_maxSuspensionTravelCm(1e3), n.set_m_maxSuspensionForce(1e6), n.set_m_suspensionStiffness(50), n.set_m_wheelsDampingRelaxation(5), n.set_m_wheelsDampingCompression(200), n.set_m_frictionSlip(8), n.set_m_rollInfluence(2)
 				})), Ammo.destroy(g), Ammo.destroy(v);
 				const w = new Ammo.btTransform;
 				w.setIdentity();

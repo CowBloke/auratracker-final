@@ -17,7 +17,7 @@ const router = Router();
 
 const DEFAULT_SHOP_CATEGORIES = [
   { id: 'COSMETIC', label: 'Cosmétiques' },
-  { id: 'CONSUMABLE', label: 'Consommables' },
+  { id: 'CONSUMABLE', label: 'Objets' },
   { id: 'UPGRADE', label: 'Améliorations' },
 ];
 

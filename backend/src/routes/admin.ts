@@ -134,7 +134,6 @@ const buildLogWhereClause = (query: Record<string, unknown>) => {
 };
 
 const PAGE_BREAKDOWN_LIMIT = 6;
-const GAME_BREAKDOWN_LIMIT = 6;
 const WEEKDAY_LABELS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
 
 const UPDATE_POPUP_TYPES = new Set(['UPDATE', 'CLAN_PROMPT']);
@@ -835,7 +834,7 @@ router.delete('/items/:id', authMiddleware, requireAdmin, async (req: AuthReques
 
 const DEFAULT_SHOP_CATEGORIES = [
   { id: 'COSMETIC', label: 'Cosmétiques' },
-  { id: 'CONSUMABLE', label: 'Consommables' },
+  { id: 'CONSUMABLE', label: 'Objets' },
   { id: 'UPGRADE', label: 'Améliorations' },
 ];
 
@@ -3196,7 +3195,6 @@ router.get('/activity-breakdown', authMiddleware, requireAdmin, async (req: Auth
 
     const topGames = Array.from(gameTotals.entries())
       .sort((a, b) => b[1] - a[1])
-      .slice(0, GAME_BREAKDOWN_LIMIT)
       .map(([gameType, total]) => ({ gameType, total }));
     const topGameSet = new Set(topGames.map((entry) => entry.gameType));
 
@@ -3215,7 +3213,6 @@ router.get('/activity-breakdown', authMiddleware, requireAdmin, async (req: Auth
 
     const topGameDurations = Array.from(gameDurationTotals.entries())
       .sort((a, b) => b[1] - a[1])
-      .slice(0, GAME_BREAKDOWN_LIMIT)
       .map(([gameType, totalSeconds]) => ({
         gameType,
         totalSeconds: Math.round(totalSeconds),

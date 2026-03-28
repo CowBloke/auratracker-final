@@ -15,7 +15,6 @@ import {
   Pencil,
   ChevronLeft,
   Lock,
-  Trash2,
   Eye,
   EyeOff,
 } from 'lucide-react';
@@ -27,6 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
 import {
   Dialog,
   DialogContent,
@@ -34,6 +34,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import {
+  CustomThemeConfig,
+  DEFAULT_CUSTOM_THEME,
+  getCustomThemePreviewVars,
+  sanitizeCustomTheme,
+} from '@/lib/custom-theme';
 import { PageShell } from '@/components/layout/page-shell';
 import { ReferralSummary, authApi, usersApi } from '@/services/api';
 import ReferralClaimAnimation from '@/components/referrals/ReferralClaimAnimation';
@@ -58,6 +64,8 @@ interface ColorSchemeEntry {
   id: string;
   label: string;
 }
+
+const CUSTOM_SCHEME_ENTRY: ColorSchemeEntry = { id: 'custom', label: 'Personnalisé' };
 
 function parseRootVars(css: string): Record<string, string> {
   const vars: Record<string, string> = {};
@@ -311,6 +319,201 @@ function ColorSchemeCarousel({
   );
 }
 
+function ColorSchemeList({
+  colorScheme,
+  setColorScheme,
+  colorSchemes,
+}: {
+  colorScheme: string;
+  setColorScheme: (id: string) => void;
+  colorSchemes: ColorSchemeEntry[];
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {colorSchemes.map((scheme) => {
+        const active = scheme.id === colorScheme;
+        return (
+          <button
+            key={scheme.id}
+            type="button"
+            onClick={() => setColorScheme(scheme.id)}
+            className={cn(
+              'rounded-full border px-3 py-1.5 text-xs transition-colors',
+              active
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-border/40 bg-background hover:border-border hover:bg-muted/60'
+            )}
+          >
+            {scheme.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ColorInputField({
+  label,
+  value,
+  onChange,
+  description,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  description?: string;
+}) {
+  return (
+    <label className="space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium">{label}</p>
+          {description && <p className="text-xs text-muted-foreground">{description}</p>}
+        </div>
+        <span className="font-mono text-[11px] text-muted-foreground uppercase">{value}</span>
+      </div>
+      <div className="flex items-center gap-3 rounded-xl border border-border/40 bg-background/70 px-3 py-2">
+        <input
+          type="color"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-10 w-10 cursor-pointer rounded-lg border border-border/50 bg-transparent p-0"
+        />
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-9 border-border/40 bg-transparent font-mono text-xs uppercase"
+        />
+      </div>
+    </label>
+  );
+}
+
+function CustomThemeEditor({
+  colorScheme,
+  setColorScheme,
+  customTheme,
+  setCustomTheme,
+}: {
+  colorScheme: string;
+  setColorScheme: (id: string) => void;
+  customTheme: CustomThemeConfig;
+  setCustomTheme: (value: CustomThemeConfig) => void;
+}) {
+  const updateTheme = (patch: Partial<CustomThemeConfig>) => {
+    setCustomTheme(sanitizeCustomTheme({ ...customTheme, ...patch }));
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium">Ton thème</p>
+          <p className="text-xs text-muted-foreground">
+            Crée une palette perso avec tes couleurs, tes coins et l’intensité des ombres.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          {colorScheme !== 'custom' && (
+            <Button size="sm" variant="outline" onClick={() => setColorScheme('custom')}>
+              Utiliser
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              setCustomTheme(DEFAULT_CUSTOM_THEME);
+              setColorScheme('custom');
+            }}
+          >
+            Réinitialiser
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <ColorInputField
+          label="Couleur principale"
+          description="Boutons, accents forts, focus."
+          value={customTheme.primary}
+          onChange={(primary) => updateTheme({ primary })}
+        />
+        <ColorInputField
+          label="Couleur d'accent"
+          description="États secondaires et zones mises en avant."
+          value={customTheme.accent}
+          onChange={(accent) => updateTheme({ accent })}
+        />
+        <ColorInputField
+          label="Fond clair"
+          description="Arrière-plan utilisé en mode clair."
+          value={customTheme.backgroundLight}
+          onChange={(backgroundLight) => updateTheme({ backgroundLight })}
+        />
+        <ColorInputField
+          label="Cartes claires"
+          description="Surface des panneaux en mode clair."
+          value={customTheme.surfaceLight}
+          onChange={(surfaceLight) => updateTheme({ surfaceLight })}
+        />
+        <ColorInputField
+          label="Fond sombre"
+          description="Arrière-plan utilisé en mode sombre."
+          value={customTheme.backgroundDark}
+          onChange={(backgroundDark) => updateTheme({ backgroundDark })}
+        />
+        <ColorInputField
+          label="Cartes sombres"
+          description="Surface des panneaux en mode sombre."
+          value={customTheme.surfaceDark}
+          onChange={(surfaceDark) => updateTheme({ surfaceDark })}
+        />
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="rounded-xl border border-border/40 bg-background/70 p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium">Radius</p>
+              <p className="text-xs text-muted-foreground">Coins plus nets ou plus arrondis.</p>
+            </div>
+            <span className="font-mono text-xs text-muted-foreground">
+              {Math.round(customTheme.radius)} px
+            </span>
+          </div>
+          <Slider
+            value={[customTheme.radius]}
+            min={4}
+            max={32}
+            step={1}
+            onValueChange={([radius]) => updateTheme({ radius })}
+          />
+        </div>
+
+        <div className="rounded-xl border border-border/40 bg-background/70 p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium">Ombres</p>
+              <p className="text-xs text-muted-foreground">Donne plus ou moins de relief.</p>
+            </div>
+            <span className="font-mono text-xs text-muted-foreground">
+              {Math.round(customTheme.shadowOpacity * 100)}%
+            </span>
+          </div>
+          <Slider
+            value={[customTheme.shadowOpacity]}
+            min={0.04}
+            max={0.6}
+            step={0.01}
+            onValueChange={([shadowOpacity]) => updateTheme({ shadowOpacity })}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Sections ────────────────────────────────────────────────────────────── */
 
 function PersonnalisationSection({
@@ -320,6 +523,8 @@ function PersonnalisationSection({
   setColorScheme,
   colorSchemes,
   themeVars,
+  customTheme,
+  setCustomTheme,
   hideGameLeaderboards,
   hideGameLeftInfo,
 }: {
@@ -329,6 +534,8 @@ function PersonnalisationSection({
   setColorScheme: (id: string) => void;
   colorSchemes: ColorSchemeEntry[];
   themeVars: Record<string, Record<string, string>>;
+  customTheme: CustomThemeConfig;
+  setCustomTheme: (value: CustomThemeConfig) => void;
   hideGameLeaderboards: boolean;
   hideGameLeftInfo: boolean;
 }) {
@@ -348,13 +555,26 @@ function PersonnalisationSection({
       <div>
         <SettingsGroupLabel>Palette de couleurs</SettingsGroupLabel>
         <SettingsCard>
-          <div className="px-4 py-3">
+          <div className="space-y-4 px-4 py-3">
             <ColorSchemeCarousel
               colorScheme={colorScheme}
               setColorScheme={setColorScheme}
               colorSchemes={colorSchemes}
               themeVars={themeVars}
             />
+            <ColorSchemeList
+              colorScheme={colorScheme}
+              setColorScheme={setColorScheme}
+              colorSchemes={colorSchemes}
+            />
+            <div className="border-t border-border/30 pt-4">
+              <CustomThemeEditor
+                colorScheme={colorScheme}
+                setColorScheme={setColorScheme}
+                customTheme={customTheme}
+                setCustomTheme={setCustomTheme}
+              />
+            </div>
           </div>
         </SettingsCard>
       </div>
@@ -398,7 +618,6 @@ function CompteSection({
   nameChangeSuccess,
   nameChangeError,
   handleNameChangeSubmit,
-  onDeleteAccount,
 }: {
   user: { username?: string } | null;
   requestedUsername: string;
@@ -409,11 +628,9 @@ function CompteSection({
   nameChangeSuccess: boolean;
   nameChangeError: string | null;
   handleNameChangeSubmit: () => Promise<boolean>;
-  onDeleteAccount: (password: string) => Promise<boolean>;
 }) {
   const [nameChangeOpen, setNameChangeOpen] = useState(false);
   const [passwordChangeOpen, setPasswordChangeOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
 
   // Password change state
   const [currentPassword, setCurrentPassword] = useState('');
@@ -423,12 +640,6 @@ function CompteSection({
   const [showNewPw, setShowNewPw] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSubmitting, setPasswordSubmitting] = useState(false);
-
-  // Delete account state
-  const [deletePassword, setDeletePassword] = useState('');
-  const [showDeletePw, setShowDeletePw] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
   const handlePasswordChange = async () => {
     setPasswordError(null);
@@ -452,19 +663,6 @@ function CompteSection({
       setPasswordError(err.response?.data?.error || 'Erreur lors du changement');
     } finally {
       setPasswordSubmitting(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    setDeleteError(null);
-    setDeleteSubmitting(true);
-    try {
-      const ok = await onDeleteAccount(deletePassword);
-      if (!ok) setDeleteError('Mot de passe incorrect.');
-    } catch (err: any) {
-      setDeleteError(err.response?.data?.error || 'Erreur lors de la suppression');
-    } finally {
-      setDeleteSubmitting(false);
     }
   };
 
@@ -501,17 +699,6 @@ function CompteSection({
             <Button size="sm" variant="outline" onClick={() => setPasswordChangeOpen(true)}>
               <Lock className="mr-1.5 h-3.5 w-3.5" />
               Modifier
-            </Button>
-          </SettingsRow>
-          <SettingsRow label="Supprimer le compte" description="Action irréversible" last>
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
-              onClick={() => setDeleteOpen(true)}
-            >
-              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-              Supprimer
             </Button>
           </SettingsRow>
         </SettingsCard>
@@ -641,59 +828,6 @@ function CompteSection({
                 disabled={passwordSubmitting || !currentPassword || !newPassword || !confirmPassword}
               >
                 {passwordSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Enregistrer'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Modal: suppression du compte */}
-      <Dialog open={deleteOpen} onOpenChange={(open) => {
-        setDeleteOpen(open);
-        if (!open) { setDeletePassword(''); setDeleteError(null); }
-      }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-destructive">Supprimer le compte</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 pt-2">
-            <div className="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">
-              <p className="text-sm font-medium text-destructive">Cette action est irréversible.</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Ton compte, tes auras, tes objets et toutes tes données seront supprimés définitivement.
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground">Confirme ton mot de passe</label>
-              <div className="relative">
-                <Input
-                  type={showDeletePw ? 'text' : 'password'}
-                  value={deletePassword}
-                  onChange={(e) => setDeletePassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="h-9 bg-transparent border-border/40 pr-9"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowDeletePw((v) => !v)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showDeletePw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-            {deleteError && <p className="text-xs text-destructive">{deleteError}</p>}
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setDeleteOpen(false)}>
-                Annuler
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={deleteSubmitting || !deletePassword}
-              >
-                {deleteSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Supprimer définitivement'}
               </Button>
             </div>
           </div>
@@ -946,8 +1080,9 @@ function RaccourcisSection({
 /* ─── Main ────────────────────────────────────────────────────────────────── */
 
 export default function Settings() {
-  const { theme, setTheme, colorScheme, setColorScheme } = useTheme();
-  const { user, logout } = useAuth();
+  const { theme, setTheme, colorScheme, setColorScheme, customTheme, setCustomTheme } =
+    useTheme();
+  const { user } = useAuth();
   const { maintenanceStatus } = useFeatures();
   const [activeSection, setActiveSection] = useState<SectionId>('personnalisation');
   const [colorSchemes, setColorSchemes] = useState<ColorSchemeEntry[]>([
@@ -975,9 +1110,13 @@ export default function Settings() {
     fetch('/themes/manifest.json')
       .then((r) => r.json())
       .then((data: ColorSchemeEntry[]) => {
-        setColorSchemes(data);
-        data.forEach(async (scheme) => {
+        const schemes = data.some((scheme) => scheme.id === CUSTOM_SCHEME_ENTRY.id)
+          ? data
+          : [...data, CUSTOM_SCHEME_ENTRY];
+        setColorSchemes(schemes);
+        schemes.forEach(async (scheme) => {
           if (scheme.id === 'default') return;
+          if (scheme.id === CUSTOM_SCHEME_ENTRY.id) return;
           try {
             const css = await fetch(`/themes/${scheme.id}.css`).then((r) => r.text());
             const vars = parseRootVars(css);
@@ -991,6 +1130,13 @@ export default function Settings() {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    setThemeVars((prev) => ({
+      ...prev,
+      [CUSTOM_SCHEME_ENTRY.id]: getCustomThemePreviewVars(customTheme),
+    }));
+  }, [customTheme]);
 
   useEffect(() => {
     if (!referralEnabled) {
@@ -1087,16 +1233,6 @@ export default function Settings() {
     updateKeyboardShortcut(shortcutId, { combo: def.combo, enabled: def.enabled });
   };
 
-  const handleDeleteAccount = async (password: string): Promise<boolean> => {
-    try {
-      await authApi.deleteAccount({ password });
-      logout();
-      return true;
-    } catch {
-      return false;
-    }
-  };
-
   const activeLabel = SECTIONS.find((s) => s.id === activeSection)?.label ?? '';
 
   return (
@@ -1161,6 +1297,8 @@ export default function Settings() {
               setColorScheme={setColorScheme}
               colorSchemes={colorSchemes}
               themeVars={themeVars}
+              customTheme={customTheme}
+              setCustomTheme={setCustomTheme}
               hideGameLeaderboards={hideGameLeaderboards}
               hideGameLeftInfo={hideGameLeftInfo}
             />
@@ -1177,7 +1315,6 @@ export default function Settings() {
               nameChangeSuccess={nameChangeSuccess}
               nameChangeError={nameChangeError}
               handleNameChangeSubmit={handleNameChangeSubmit}
-              onDeleteAccount={handleDeleteAccount}
             />
           )}
 

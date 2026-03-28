@@ -1,5 +1,5 @@
 import { RotateCcw, Swords } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { PageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,13 +16,30 @@ const GAME_SRC = '/eaglercraft/index.html';
 
 export default function Eaglercraft() {
   const { containerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [sessionKey, setSessionKey] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+
+  const focusGame = useCallback(() => {
+    window.requestAnimationFrame(() => {
+      const frame = iframeRef.current;
+      if (!frame) return;
+
+      frame.focus();
+      frame.contentWindow?.focus();
+    });
+  }, []);
 
   const restartSession = () => {
     setIsPaused(false);
     setSessionKey((prev) => prev + 1);
   };
+
+  useEffect(() => {
+    if (!isPaused) {
+      focusGame();
+    }
+  }, [focusGame, isFullscreen, isPaused, sessionKey]);
 
   return (
     <PageShell>
@@ -41,15 +58,22 @@ export default function Eaglercraft() {
 
           <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={GAME_WIDTH} baseHeight={GAME_HEIGHT}>
             <iframe
+              ref={iframeRef}
               key={sessionKey}
               src={`${GAME_SRC}?k=${sessionKey}`}
               title="Eaglercraft"
               className="block h-full w-full rounded-lg border border-border/30 bg-black"
               allow="fullscreen; autoplay; clipboard-read; clipboard-write; pointer-lock; keyboard-map"
+              tabIndex={0}
+              onLoad={focusGame}
+              onMouseDown={focusGame}
             />
             <GamePauseOverlay
               visible={isPaused}
-              onResume={() => setIsPaused(false)}
+              onResume={() => {
+                setIsPaused(false);
+                focusGame();
+              }}
               description="La session reste affichée mais les interactions sont gelées par-dessus."
             />
           </GameFullscreenStage>

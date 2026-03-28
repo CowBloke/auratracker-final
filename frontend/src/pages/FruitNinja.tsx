@@ -926,7 +926,6 @@ export default function FruitNinja() {
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 rounded-lg bg-background/90">
               <div className="text-5xl tracking-widest select-none">🍉🍊🍋🍇🍓</div>
               <h2 className="text-2xl font-light">Fruit Ninja</h2>
-              <p className="text-sm text-muted-foreground">Tranche les fruits, évite les bombes.</p>
               <Button
                 variant="ghost"
                 onClick={initGame}

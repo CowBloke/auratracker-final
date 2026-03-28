@@ -310,36 +310,6 @@ router.post('/change-password', authMiddleware, async (req: AuthRequest, res: Re
   }
 });
 
-router.delete('/account', authMiddleware, async (req: AuthRequest, res: Response) => {
-  try {
-    if (!req.user) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-
-    const { password } = req.body;
-    if (!password) {
-      return res.status(400).json({ error: 'Mot de passe requis pour confirmer la suppression' });
-    }
-
-    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
-    if (!user) {
-      return res.status(404).json({ error: 'Utilisateur introuvable' });
-    }
-
-    const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid) {
-      return res.status(400).json({ error: 'Mot de passe incorrect' });
-    }
-
-    await prisma.user.delete({ where: { id: req.user.id } });
-
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Delete account error:', error);
-    res.status(500).json({ error: 'Erreur lors de la suppression du compte' });
-  }
-});
-
 router.get('/referral-summary', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {

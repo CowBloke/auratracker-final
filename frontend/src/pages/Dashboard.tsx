@@ -22,9 +22,7 @@ import { useSocketBase } from '../contexts/SocketContext';
 import { usePartySocket } from '../contexts/PartySocketContext';
 import {
   AuraTransferEntry,
-  ClanChatMessage,
   ClanPumpUpMessage,
-  ClanSummary,
   ClanWarState,
   DailyAuraState,
   auraCoinApi,
@@ -32,7 +30,8 @@ import {
   economyApi,
   usersApi,
 } from '../services/api';
-import { GripVertical, Users, TrendingUp, TrendingDown, Star, Gamepad2, MessageSquare, Swords, Crown, Send, ShieldMinus, Loader2 } from 'lucide-react';
+import { GripVertical, Users, TrendingUp, TrendingDown, Star, Gamepad2, Swords, Send, ShieldMinus, Loader2 } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -44,7 +43,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { AreaChart, Area, XAxis, YAxis } from 'recharts';
 import { useTheme } from '@/contexts/ThemeContext';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { resolveThemeImageUrl } from '@/lib/images';
+import { resolveImageUrl, resolveThemeImageUrl } from '@/lib/images';
 import { getGameImage } from '@/lib/game-images';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -70,9 +69,7 @@ type DashboardWidgetId =
   | 'aura-history'
   | 'live'
   | 'auracoin'
-  | 'clan-wars'
-  | 'clan-message'
-  | 'clan-ranking';
+  | 'clan-wars';
 
 const shortcutStorageKey = 'auratracker:dashboard-shortcuts';
 const dashboardLayoutStorageKey = 'auratracker:dashboard-layout';
@@ -145,8 +142,6 @@ const defaultDashboardLayout: DashboardWidgetId[] = [
   'aura-history',
   'live',
   'clan-wars',
-  'clan-message',
-  'clan-ranking',
   'auracoin',
 ];
 const dashboardWidgetLabels: Record<DashboardWidgetId, { title: string; description: string }> = {
@@ -154,14 +149,12 @@ const dashboardWidgetLabels: Record<DashboardWidgetId, { title: string; descript
   'aura-flow': { title: 'Distribution d aura', description: 'Envoie ou retire ton quota d aura journalier.' },
   'aura-history': { title: 'Historique aura', description: 'Tous les envois et retraits d aura du site.' },
   'clan-wars': { title: 'Guerres de clan', description: 'Suivi rapide des affrontements en cours.' },
-  'clan-message': { title: 'Message du clan', description: 'Dernier message posté dans ton clan.' },
-  'clan-ranking': { title: 'Classement des clans', description: 'Top clans par aura totale.' },
   auracoin: { title: 'Aura Coin', description: 'Prix et variation du marché.' },
   live: { title: 'Activité des parties', description: 'Parties ouvertes en direct.' },
 };
 
 const isDashboardWidgetId = (value: string): value is DashboardWidgetId =>
-  ['shortcuts', 'aura-flow', 'aura-history', 'live', 'auracoin', 'clan-wars', 'clan-message', 'clan-ranking'].includes(value);
+  ['shortcuts', 'aura-flow', 'aura-history', 'live', 'auracoin', 'clan-wars'].includes(value);
 
 const dashboardWidgetCardClass = "flex h-full flex-col overflow-hidden rounded-2xl border border-border/50 bg-background shadow-none";
 const dashboardWidgetHeaderClass = "px-4 pb-3 pt-4 sm:px-5";
@@ -169,12 +162,6 @@ const dashboardWidgetContentClass = "min-h-0 flex-1 px-4 pb-4 pt-0 sm:px-5 sm:pb
 const dashboardRowClass = "flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-muted/20 px-3 py-3";
 const dashboardGhostButtonClass = "border-border/50 bg-transparent shadow-none hover:bg-muted/30";
 const dashboardCompactListClass = "space-y-2.5";
-
-const formatNumber = (value: number | string | null | undefined) => {
-  const numericValue = typeof value === 'string' ? Number(value) : value ?? 0;
-  if (Number.isNaN(numericValue)) return '0';
-  return numericValue.toLocaleString('fr-FR');
-};
 
 const formatCountdown = (value: string | null | undefined) => {
   if (!value) return null;
@@ -205,6 +192,8 @@ const getWarOpponent = (war: ClanWarState, clanId: string | null) => {
   if (!clanId) return null;
   return war.attackerClan.id === clanId ? war.defenderClan : war.attackerClan;
 };
+
+const getAvatarFallback = (value: string) => value.trim().slice(0, 2).toUpperCase();
 
 function DashboardWidgetTitle({
   title,
@@ -347,11 +336,8 @@ export default function Dashboard() {
   const [auraCoinPrice, setAuraCoinPrice] = useState<number | null>(null);
   const [auraCoinPreviousPrice, setAuraCoinPreviousPrice] = useState<number | null>(null);
   const [auraCoinHistory, setAuraCoinHistory] = useState<{ price: number; time: string }[]>([]);
-  const [clans, setClans] = useState<ClanSummary[]>([]);
   const [activeWars, setActiveWars] = useState<ClanWarState[]>([]);
   const [viewerClanId, setViewerClanId] = useState<string | null>(null);
-  const [latestClanMessage, setLatestClanMessage] = useState<ClanChatMessage | null>(null);
-  const [clanMessageLoading, setClanMessageLoading] = useState(false);
   const [clanPumpUpMessage, setClanPumpUpMessage] = useState<ClanPumpUpMessage | null>(null);
   const [dailyAuraState, setDailyAuraState] = useState<DailyAuraState | null>(null);
   const [dailyAuraHistory, setDailyAuraHistory] = useState<AuraTransferEntry[]>([]);
@@ -383,10 +369,6 @@ export default function Dashboard() {
     () => dashboardLayout.filter((widgetId) => visibleWidgets.includes(widgetId)),
     [dashboardLayout, visibleWidgets]
   );
-  const rankedClans = useMemo(
-    () => [...clans].sort((a, b) => Number(b.totalAura) - Number(a.totalAura)).slice(0, 5),
-    [clans]
-  );
   const featuredWars = useMemo(() => {
     const prioritized = [...activeWars].sort((a, b) => {
       const aHasViewerClan = viewerClanId && (a.attackerClan.id === viewerClanId || a.defenderClan.id === viewerClanId) ? 1 : 0;
@@ -397,10 +379,6 @@ export default function Dashboard() {
 
     return prioritized.slice(0, 3);
   }, [activeWars, viewerClanId]);
-  const viewerClan = useMemo(
-    () => clans.find((clan) => clan.id === viewerClanId) ?? null,
-    [clans, viewerClanId]
-  );
   const selectedAuraUser = useMemo(
     () => auraUsers.find((candidate) => candidate.id === selectedAuraUserId) ?? null,
     [auraUsers, selectedAuraUserId]
@@ -412,28 +390,17 @@ export default function Dashboard() {
     setWelcomeMessage(pickWelcomeMessage(user.username));
   }, [user?.username]);
 
-  const fetchLatestClanMessage = async (clanId: string) => {
-    setClanMessageLoading(true);
-    try {
-      const response = await clansApi.getChat(clanId, 1);
-      setLatestClanMessage(response.data.messages[0] ?? null);
-    } catch (error) {
-      console.error('Failed to fetch latest clan message:', error);
-      setLatestClanMessage(null);
-    } finally {
-      setClanMessageLoading(false);
-    }
-  };
-
   const fetchClanPumpUpMessage = async (clanId: string) => {
     try {
       const response = await clansApi.getPumpUpMessages(clanId);
       const messages = response.data.messages;
       if (messages.length > 0) {
         setClanPumpUpMessage(messages[Math.floor(Math.random() * messages.length)]);
+      } else {
+        setClanPumpUpMessage(null);
       }
     } catch {
-      // silently ignore
+      setClanPumpUpMessage(null);
     }
   };
 
@@ -523,15 +490,13 @@ export default function Dashboard() {
         }
 
         if (clansRes.status === 'fulfilled') {
-          setClans(clansRes.value.data.clans);
           setActiveWars(clansRes.value.data.meta.activeWars);
           setViewerClanId(clansRes.value.data.meta.viewerClanId);
 
           if (clansRes.value.data.meta.viewerClanId) {
-            await fetchLatestClanMessage(clansRes.value.data.meta.viewerClanId);
             await fetchClanPumpUpMessage(clansRes.value.data.meta.viewerClanId);
           } else {
-            setLatestClanMessage(null);
+            setClanPumpUpMessage(null);
           }
         }
 
@@ -691,20 +656,6 @@ export default function Dashboard() {
       // Ignore localStorage write failures.
     }
   }, [visibleWidgetsLoaded, visibleWidgets]);
-
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-
-    if (days > 0) return `${days}j`;
-    if (hours > 0) return `${hours}h`;
-    if (minutes > 0) return `${minutes}m`;
-    return 'maint.';
-  };
 
   const formatDateTime = (dateString: string) =>
     new Date(dateString).toLocaleString('fr-FR', {
@@ -952,44 +903,46 @@ export default function Dashboard() {
                             iconClassName="text-amber-500"
                             iconWrapperClassName="bg-amber-500/15"
                           />
-                          <Badge variant="secondary" className="border border-border/50 bg-muted/30 tabular-nums">
-                            {remainingAura}/{dailyAuraState?.dailyAuraLimit ?? 0}
-                          </Badge>
+                          <div className="flex items-center gap-2 text-sm tabular-nums">
+                            <Badge variant="secondary" className="border border-border/50 bg-muted/30">
+                              {remainingAura}/{dailyAuraState?.dailyAuraLimit ?? 0}
+                            </Badge>
+                            <span className="text-muted-foreground">/</span>
+                            <span className="whitespace-nowrap text-muted-foreground">
+                              {resetCountdown}
+                            </span>
+                          </div>
                         </div>
                       </CardHeader>
                       <CardContent className={cn(dashboardWidgetContentClass, "flex min-h-0 flex-col")}>
                         <div className="min-h-0 flex-1 overflow-y-auto pr-2">
                           <div className="space-y-3">
-                            <div className="rounded-xl border border-border/50 bg-muted/20 px-3 py-3">
-                              <div className="flex items-center justify-between gap-3">
-                                <div>
-                                  <p className="text-sm font-medium">Aura restante aujourd hui</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    Reset dans {resetCountdown}
-                                  </p>
-                                </div>
-                                <span className="text-2xl font-semibold tabular-nums">{remainingAura}</span>
-                              </div>
-                            </div>
-
                             <div className="grid grid-cols-2 gap-2">
                               <Button
                                 type="button"
                                 variant={auraAction === 'give' ? 'default' : 'outline'}
-                                className={auraAction === 'give' ? '' : dashboardGhostButtonClass}
+                                className={cn(
+                                  "px-0",
+                                  auraAction === 'give' ? '' : dashboardGhostButtonClass,
+                                )}
                                 onClick={() => setAuraAction('give')}
+                                aria-label="Envoyer de l aura"
+                                title="Envoyer de l aura"
                               >
-                                <Send className="mr-2 h-4 w-4" />
-                                Envoyer
+                                <Send className="h-4 w-4" />
                               </Button>
                               <Button
                                 type="button"
                                 variant={auraAction === 'take' ? 'default' : 'outline'}
-                                className={auraAction === 'take' ? '' : dashboardGhostButtonClass}
+                                className={cn(
+                                  "px-0",
+                                  auraAction === 'take' ? '' : dashboardGhostButtonClass,
+                                )}
                                 onClick={() => setAuraAction('take')}
+                                aria-label="Retirer de l aura"
+                                title="Retirer de l aura"
                               >
-                                <ShieldMinus className="mr-2 h-4 w-4" />
-                                Retirer
+                                <ShieldMinus className="h-4 w-4" />
                               </Button>
                             </div>
 
@@ -1192,17 +1145,25 @@ export default function Dashboard() {
                                 const isViewerWar = !!viewerClanId && (war.attackerClan.id === viewerClanId || war.defenderClan.id === viewerClanId);
                                 const opponent = getWarOpponent(war, viewerClanId);
                                 const countdownLabel = war.status === 'PREPARING' ? formatCountdown(war.startsAt) : formatCountdown(war.endsAt);
+                                const attackerHasLead = war.attackerScore > war.defenderScore;
+                                const defenderHasLead = war.defenderScore > war.attackerScore;
 
                                 return (
-                                  <div key={war.id} className="rounded-xl border border-border/50 bg-muted/20 px-3 py-3">
+                                  <div
+                                    key={war.id}
+                                    className={cn(
+                                      "rounded-2xl border border-border/50 bg-gradient-to-br from-muted/40 via-background to-muted/10 px-3 py-3.5 shadow-sm",
+                                      isViewerWar && "border-rose-500/30 from-rose-500/10 via-background to-orange-500/10"
+                                    )}
+                                  >
                                     <div className="flex items-start justify-between gap-3">
                                       <div className="min-w-0">
                                         <div className="flex items-center gap-2">
-                                          <p className="truncate text-sm font-medium">
-                                            {isViewerWar && opponent ? `Contre ${opponent.name}` : `${war.attackerClan.name} contre ${war.defenderClan.name}`}
+                                          <p className="truncate text-sm font-semibold">
+                                            {isViewerWar && opponent ? `Contre ${opponent.name}` : 'Affrontement en cours'}
                                           </p>
                                           {isViewerWar && (
-                                            <Badge variant="outline" className="border-border/50 bg-background text-[10px] uppercase tracking-[0.18em]">
+                                            <Badge variant="outline" className="border-rose-500/30 bg-rose-500/10 text-[10px] uppercase tracking-[0.18em] text-rose-600 dark:text-rose-300">
                                               Ton clan
                                             </Badge>
                                           )}
@@ -1212,8 +1173,79 @@ export default function Dashboard() {
                                           {countdownLabel ? ` · ${war.status === 'PREPARING' ? 'départ' : 'fin'} ${countdownLabel}` : ''}
                                         </p>
                                       </div>
-                                      <span className="shrink-0 text-sm font-medium tabular-nums">
-                                        {war.attackerScore} - {war.defenderScore}
+                                      <Badge variant="secondary" className="border border-border/50 bg-background/70 text-[11px] uppercase tracking-[0.16em]">
+                                        {war.targetScore} pts
+                                      </Badge>
+                                    </div>
+
+                                    <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
+                                      <div className="min-w-0 text-center">
+                                        <Avatar className={cn(
+                                          "mx-auto h-14 w-14 border-2 border-background shadow-md ring-1 ring-black/5",
+                                          attackerHasLead && "ring-2 ring-emerald-500/40"
+                                        )}>
+                                          <AvatarImage
+                                            src={resolveImageUrl(war.attackerClan.imageUrl)}
+                                            alt={war.attackerClan.name}
+                                            className="object-cover"
+                                          />
+                                          <AvatarFallback className="bg-foreground/5 text-sm font-semibold text-foreground">
+                                            {getAvatarFallback(war.attackerClan.name)}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                        <p className="mt-2 truncate text-sm font-medium">{war.attackerClan.name}</p>
+                                        <p className={cn(
+                                          "mt-1 text-lg font-semibold tabular-nums",
+                                          attackerHasLead && "text-emerald-600 dark:text-emerald-400"
+                                        )}>
+                                          {war.attackerScore}
+                                        </p>
+                                      </div>
+
+                                      <div className="flex flex-col items-center gap-2">
+                                        <div className="rounded-full border border-border/50 bg-background/80 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                                          VS
+                                        </div>
+                                        <div className="rounded-2xl border border-border/50 bg-muted/30 px-3 py-2 text-center shadow-inner">
+                                          <div className="text-lg font-semibold tabular-nums">
+                                            {war.attackerScore} <span className="text-muted-foreground">-</span> {war.defenderScore}
+                                          </div>
+                                          <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                                            score
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <div className="min-w-0 text-center">
+                                        <Avatar className={cn(
+                                          "mx-auto h-14 w-14 border-2 border-background shadow-md ring-1 ring-black/5",
+                                          defenderHasLead && "ring-2 ring-emerald-500/40"
+                                        )}>
+                                          <AvatarImage
+                                            src={resolveImageUrl(war.defenderClan.imageUrl)}
+                                            alt={war.defenderClan.name}
+                                            className="object-cover"
+                                          />
+                                          <AvatarFallback className="bg-foreground/5 text-sm font-semibold text-foreground">
+                                            {getAvatarFallback(war.defenderClan.name)}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                        <p className="mt-2 truncate text-sm font-medium">{war.defenderClan.name}</p>
+                                        <p className={cn(
+                                          "mt-1 text-lg font-semibold tabular-nums",
+                                          defenderHasLead && "text-emerald-600 dark:text-emerald-400"
+                                        )}>
+                                          {war.defenderScore}
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/40 pt-3">
+                                      <p className="min-w-0 truncate text-xs text-muted-foreground">
+                                        {war.attackerClan.name} contre {war.defenderClan.name}
+                                      </p>
+                                      <span className="shrink-0 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                                        écart {Math.abs(war.scoreGap)}
                                       </span>
                                     </div>
                                   </div>
@@ -1225,107 +1257,6 @@ export default function Dashboard() {
 
                         <Button asChild variant="outline" className={cn("mt-3 w-full", dashboardGhostButtonClass)}>
                           <Link to="/clans">Voir les guerres</Link>
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {widgetId === 'clan-message' && (
-                    <Card className={dashboardWidgetCardClass}>
-                      <CardHeader className={dashboardWidgetHeaderClass}>
-                        <div className="flex items-center justify-between gap-3">
-                          <DashboardWidgetTitle
-                            title="Message du clan"
-                            icon={MessageSquare}
-                            iconClassName="text-emerald-500"
-                            iconWrapperClassName="bg-emerald-500/15"
-                          />
-                          {viewerClan && (
-                            <Badge variant="outline" className="border-border/50 bg-background">
-                              {viewerClan.name}
-                            </Badge>
-                          )}
-                        </div>
-                      </CardHeader>
-                      <CardContent className={cn(dashboardWidgetContentClass, "flex flex-col")}>
-                        <div className="min-h-0 flex-1 overflow-y-auto">
-                          {!viewerClanId ? (
-                            <div className="rounded-xl border border-dashed border-border/50 bg-muted/10 px-4 py-4">
-                              <p className="text-sm font-medium">Tu n&apos;as pas encore de clan.</p>
-                              <p className="mt-1 text-xs text-muted-foreground">Rejoins-en un pour voir ses messages ici.</p>
-                            </div>
-                          ) : clanMessageLoading ? (
-                            <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground")}>Chargement du salon de clan...</p>
-                          ) : latestClanMessage ? (
-                            <div className="space-y-3 rounded-xl border border-border/50 bg-muted/20 px-4 py-4">
-                              <div className="flex items-center justify-between gap-3">
-                                <p className="text-sm font-medium">{latestClanMessage.user.username}</p>
-                                <p className="shrink-0 text-xs text-muted-foreground">{formatTimeAgo(latestClanMessage.createdAt)}</p>
-                              </div>
-                              <p className="text-sm leading-6 text-foreground/90">{latestClanMessage.message}</p>
-                            </div>
-                          ) : (
-                            <div className="rounded-xl border border-border/50 bg-muted/10 px-4 py-4">
-                              <p className="text-sm font-medium">Aucun message récent.</p>
-                              <p className="mt-1 text-xs text-muted-foreground">Le chat de clan est prêt quand quelqu&apos;un écrit.</p>
-                            </div>
-                          )}
-                        </div>
-
-                        <Button asChild variant="outline" className={cn("mt-3 w-full", dashboardGhostButtonClass)}>
-                          <Link to="/clans">Ouvrir le clan</Link>
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {widgetId === 'clan-ranking' && (
-                    <Card className={dashboardWidgetCardClass}>
-                      <CardHeader className={dashboardWidgetHeaderClass}>
-                        <div className="flex items-center justify-between gap-3">
-                          <DashboardWidgetTitle
-                            title="Classement des clans"
-                            icon={Crown}
-                            iconClassName="text-amber-500"
-                            iconWrapperClassName="bg-amber-500/15"
-                          />
-                          {clans.length > 0 && (
-                            <Badge variant="secondary" className="border border-border/50 bg-muted/30">
-                              Top {Math.min(rankedClans.length, 5)}
-                            </Badge>
-                          )}
-                        </div>
-                      </CardHeader>
-                      <CardContent className={cn(dashboardWidgetContentClass, "flex flex-col")}>
-                        <div className="min-h-0 flex-1 overflow-y-auto">
-                          {rankedClans.length === 0 ? (
-                            <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground")}>Aucun clan à classer pour le moment.</p>
-                          ) : (
-                            <div className={dashboardCompactListClass}>
-                              {rankedClans.map((clan, index) => (
-                                <div key={clan.id} className={dashboardRowClass}>
-                                  <div className="flex min-w-0 items-center gap-3">
-                                    <span className="w-5 shrink-0 text-sm font-medium tabular-nums text-muted-foreground">
-                                      #{index + 1}
-                                    </span>
-                                    <div className="min-w-0">
-                                      <p className="truncate text-sm font-medium">{clan.name}</p>
-                                      <p className="text-xs text-muted-foreground">
-                                        {clan.memberCount}/{clan.maxMembers} membres
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <span className="shrink-0 text-sm font-medium tabular-nums">
-                                    {formatNumber(clan.totalAura)}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        <Button asChild variant="outline" className={cn("mt-3 w-full", dashboardGhostButtonClass)}>
-                          <Link to="/clans">Voir les clans</Link>
                         </Button>
                       </CardContent>
                     </Card>

@@ -1,12 +1,21 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import {
+  buildCustomThemeCss,
+  CUSTOM_THEME_STORAGE_KEY,
+  CustomThemeConfig,
+  readStoredCustomTheme,
+  sanitizeCustomTheme,
+} from '@/lib/custom-theme';
 
 type Theme = 'light' | 'dark';
 
 interface ThemeContextType {
   theme: Theme;
   colorScheme: string;
+  customTheme: CustomThemeConfig;
   setTheme: (theme: Theme) => void;
   setColorScheme: (id: string) => void;
+  setCustomTheme: (theme: CustomThemeConfig) => void;
   toggleTheme: () => void;
 }
 
@@ -61,6 +70,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
     return 'default';
   });
+  const [customTheme, setCustomTheme] = useState<CustomThemeConfig>(() => readStoredCustomTheme());
 
   useEffect(() => {
     const root = document.documentElement;
@@ -74,16 +84,33 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const STYLE_ID = 'tweakcn-theme-style';
+    let cancelled = false;
     document.getElementById(STYLE_ID)?.remove();
 
     if (colorScheme === 'default') {
       localStorage.setItem('colorScheme', 'default');
-      return;
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (colorScheme === 'custom') {
+      const style = document.createElement('style');
+      style.id = STYLE_ID;
+      if (!cancelled) {
+        style.textContent = buildCustomThemeCss(customTheme);
+        document.head.appendChild(style);
+      }
+      localStorage.setItem('colorScheme', 'custom');
+      return () => {
+        cancelled = true;
+      };
     }
 
     fetch(`/themes/${colorScheme}.css`)
       .then((r) => r.text())
       .then((css) => {
+        if (cancelled) return;
         const style = document.createElement('style');
         style.id = STYLE_ID;
         style.textContent = unwrapLayers(css);
@@ -91,14 +118,32 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('colorScheme', colorScheme);
       })
       .catch(() => {});
-  }, [colorScheme]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [colorScheme, customTheme]);
+
+  useEffect(() => {
+    localStorage.setItem(CUSTOM_THEME_STORAGE_KEY, JSON.stringify(sanitizeCustomTheme(customTheme)));
+  }, [customTheme]);
 
   const toggleTheme = () => {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, colorScheme, setTheme, setColorScheme, toggleTheme }}>
+    <ThemeContext.Provider
+      value={{
+        theme,
+        colorScheme,
+        customTheme,
+        setTheme,
+        setColorScheme,
+        setCustomTheme,
+        toggleTheme,
+      }}
+    >
       {children}
     </ThemeContext.Provider>
   );

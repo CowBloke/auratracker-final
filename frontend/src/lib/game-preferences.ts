@@ -6,18 +6,20 @@ const GAME_PREFERENCES_EVENT = 'game-preferences:change';
 
 function readHideGameLeaderboardsPreference() {
   if (typeof window === 'undefined') {
-    return false;
+    return true;
   }
 
-  return localStorage.getItem(HIDE_GAME_LEADERBOARDS_STORAGE_KEY) === '1';
+  const storedValue = localStorage.getItem(HIDE_GAME_LEADERBOARDS_STORAGE_KEY);
+  return storedValue === null ? true : storedValue === '1';
 }
 
 function readHideGameLeftInfoPreference() {
   if (typeof window === 'undefined') {
-    return false;
+    return true;
   }
 
-  return localStorage.getItem(HIDE_GAME_LEFT_INFO_STORAGE_KEY) === '1';
+  const storedValue = localStorage.getItem(HIDE_GAME_LEFT_INFO_STORAGE_KEY);
+  return storedValue === null ? true : storedValue === '1';
 }
 
 function emitGamePreferencesChange() {
@@ -33,11 +35,7 @@ export function setHideGameLeaderboardsPreference(value: boolean) {
     return;
   }
 
-  if (value) {
-    localStorage.setItem(HIDE_GAME_LEADERBOARDS_STORAGE_KEY, '1');
-  } else {
-    localStorage.removeItem(HIDE_GAME_LEADERBOARDS_STORAGE_KEY);
-  }
+  localStorage.setItem(HIDE_GAME_LEADERBOARDS_STORAGE_KEY, value ? '1' : '0');
 
   emitGamePreferencesChange();
 }
@@ -47,11 +45,7 @@ export function setHideGameLeftInfoPreference(value: boolean) {
     return;
   }
 
-  if (value) {
-    localStorage.setItem(HIDE_GAME_LEFT_INFO_STORAGE_KEY, '1');
-  } else {
-    localStorage.removeItem(HIDE_GAME_LEFT_INFO_STORAGE_KEY);
-  }
+  localStorage.setItem(HIDE_GAME_LEFT_INFO_STORAGE_KEY, value ? '1' : '0');
 
   emitGamePreferencesChange();
 }
@@ -83,7 +77,7 @@ export function useHideGameLeaderboards() {
   return useSyncExternalStore(
     subscribe,
     readHideGameLeaderboardsPreference,
-    () => false
+    () => true
   );
 }
 
@@ -91,6 +85,6 @@ export function useHideGameLeftInfo() {
   return useSyncExternalStore(
     subscribe,
     readHideGameLeftInfoPreference,
-    () => false
+    () => true
   );
 }

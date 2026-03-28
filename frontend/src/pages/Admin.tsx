@@ -60,7 +60,7 @@ const EFFECT_TYPES = [
   { value: 'DOODLE_JUMP_SKIN', label: 'Apparence Doodle Jump', description: 'Débloque une apparence personnalisée dans Doodle Jump (sélectionner une image pour l’apparence)' },
   { value: 'CLAN_TAG_UNLOCK', label: 'Tag de clan', description: 'Débloque le tag de clan pour le clan du membre acheteur. Un clan ne peut l\'acheter qu\'une fois.' },
   { value: 'CLAN_SLOT_UPGRADE', label: '+1 Slot clan', description: 'Ajoute un slot membre supplémentaire au clan. Un clan ne peut l\'acheter qu\'une fois. S\'applique automatiquement à l\'achat.' },
-  { value: 'CLAN_GAME_MONEY_BOOST', label: 'Boost gains clan', description: 'Objet de clan consommable: active un boost en % sur l\'argent gagné en jeu pour tous les membres du clan.' },
+  { value: 'CLAN_GAME_MONEY_BOOST', label: 'Boost gains clan', description: 'Objet de clan: active un boost en % sur l\'argent gagné en jeu pour tous les membres du clan.' },
   { value: 'AWARD_BADGE', label: 'Badge', description: 'Donne un badge spécifique au joueur lors de l\'utilisation. L\'image boutique est générée automatiquement.' },
   { value: 'CUSTOM_BADGE', label: 'Badge personnalisé', description: 'Permet au joueur de concevoir son propre badge. La demande est envoyée aux admins pour validation. Remboursement automatique si refusée.' },
 ];
@@ -91,7 +91,7 @@ const generateBadgeSvgDataUrl = (badge: Badge): string => {
 };
 
 const ITEM_TYPE_LABELS: Record<string, string> = {
-  CONSUMABLE: 'Consommable',
+  CONSUMABLE: 'Objet',
   COSMETIC: 'Cosmétique',
   UPGRADE: 'Amélioration',
 };
@@ -303,6 +303,7 @@ const GAME_TYPE_LABELS: Record<string, string> = {
   doodle_jump: 'Doodle Jump',
   doodle_jump_mort_subite: 'Doodle Jump (Mort Subite)',
   game_2048: '2048',
+  game_2048_tile: '2048 (Tuile max)',
   flappy_bird: 'Flappy Bird',
   chrome_dino: 'Chrome Dino',
   stack_tower: 'Tour empilée',
@@ -328,6 +329,9 @@ const GAME_TYPE_LABELS: Record<string, string> = {
   uno: 'Uno',
   morpion: 'Morpion',
   russian_roulette: 'Roulette russe',
+  levier_infernal: 'Levier Infernal',
+  clash_village: 'Clash Village',
+  nuit_blanche: 'Nuit Blanche',
 };
 
 const MULTIPLAYER_GAME_TYPES = new Set([
@@ -342,7 +346,7 @@ const MULTIPLAYER_GAME_TYPES = new Set([
   'morpion',
   'russian_roulette',
 ]);
-const ACTIVITY_BREAKDOWN_COLORS = ['#2563eb', '#f97316', '#10b981', '#eab308', '#8b5cf6', '#ef4444'];
+const ACTIVITY_BREAKDOWN_COLORS = ['#2563eb', '#f97316', '#10b981', '#eab308', '#8b5cf6', '#ef4444', '#06b6d4', '#84cc16', '#f43f5e', '#14b8a6', '#f59e0b', '#6366f1'];
 
 const toNumber = (value: unknown): number | null => {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -417,7 +421,7 @@ const renderMetadataValue = (key: string, value: unknown): React.ReactNode => {
   if (key === 'banType') return value === 'TEMPORARY' ? 'Temporaire' : value === 'PERMANENT' ? 'Permanent' : String(value);
   if (key === 'gameType' && typeof value === 'string') return formatGameTypeLabel(value);
   if (key === 'effectType') {
-    const map: Record<string, string> = { USERNAME_COLOR: 'Couleur pseudo', PROFILE_PICTURE: 'Photo de profil', PROFILE_BANNER: 'Bannière', CONSUMABLE: 'Consommable', CUSTOM_BADGE: 'Badge custom' };
+    const map: Record<string, string> = { USERNAME_COLOR: 'Couleur pseudo', PROFILE_PICTURE: 'Photo de profil', PROFILE_BANNER: 'Bannière', CONSUMABLE: 'Objet', CUSTOM_BADGE: 'Badge custom' };
     return typeof value === 'string' ? (map[value] || value) : String(value);
   }
   if (key === 'expiresAt' && typeof value === 'string') {
@@ -562,6 +566,9 @@ const GAME_TYPES = [
   { value: 'uno', label: 'Uno' },
   { value: 'morpion', label: 'Morpion' },
   { value: 'russian_roulette', label: 'Roulette russe' },
+  { value: 'levier_infernal', label: 'Levier Infernal' },
+  { value: 'clash_village', label: 'Clash Village' },
+  { value: 'nuit_blanche', label: 'Nuit Blanche' },
 ];
 
 interface ItemFormData {
@@ -943,7 +950,7 @@ export default function Admin() {
   // Shop categories state
   const [shopCategories, setShopCategories] = useState<ShopCategory[]>([
     { id: 'COSMETIC', label: 'Cosmétiques' },
-    { id: 'CONSUMABLE', label: 'Consommables' },
+    { id: 'CONSUMABLE', label: 'Objets' },
     { id: 'UPGRADE', label: 'Améliorations' },
   ]);
   const [loadingCategories, setLoadingCategories] = useState(false);

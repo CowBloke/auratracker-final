@@ -749,9 +749,6 @@ export default function QSWatermelon() {
                   <div className="space-y-2">
                     <h2 className="text-2xl font-semibold tracking-tight">Fin de partie</h2>
                     <p className="font-mono text-4xl tabular-nums">{score.toLocaleString()}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {FRUITS[bestFruitReached].emoji} Plus gros fruit atteint: {highestFruitLabel}
-                    </p>
                   </div>
                   {isNewHighScore && <p className="text-sm font-medium text-emerald-600">Nouveau record personnel</p>}
                   {rewards && (rewards.money > 0 || rewards.aura > 0) && (

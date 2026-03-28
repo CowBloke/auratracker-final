@@ -44,9 +44,6 @@ import {
   Eye,
   Monitor,
   Crosshair,
-  Zap,
-  Sparkles,
-  CircleDollarSign,
 } from 'lucide-react';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { InboxDropdown } from '@/components/inbox/InboxDropdown';
@@ -65,6 +62,7 @@ export function SiteHeader() {
 
   const [showUsers, setShowUsers] = useState(false);
   const [showParty, setShowParty] = useState(false);
+  const [showEffects, setShowEffects] = useState(false);
   const [announcement, setAnnouncement] = useState('');
   const [scrolled, setScrolled] = useState(false);
   const [now, setNow] = useState(Date.now());
@@ -640,12 +638,12 @@ export function SiteHeader() {
 
           <InboxDropdown />
 
-          <DropdownMenu>
+          <DropdownMenu open={showEffects} onOpenChange={setShowEffects}>
             <DropdownMenuTrigger asChild>
               <Button type="button" variant="ghost" className="hidden sm:inline-flex h-auto gap-2 px-0 py-0 text-sm text-muted-foreground hover:text-foreground">
-                <Zap className="h-4 w-4" />
                 <span>Effets</span>
                 <span className="text-xs text-foreground">{clanEffects.length}</span>
+                {showEffects ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80">
@@ -676,11 +674,9 @@ export function SiteHeader() {
 
           <div className="flex items-center gap-6 tabular-nums">
             <span className="inline-flex items-center gap-1.5 text-foreground">
-              <Sparkles className="h-3.5 w-3.5 text-violet-400" aria-hidden="true" />
               {user?.aura.toLocaleString()} <span className="text-muted-foreground">aura</span>
             </span>
             <span className="inline-flex items-center gap-1.5 text-foreground">
-              <CircleDollarSign className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
               ${user?.money.toLocaleString()} <span className="text-muted-foreground">argent</span>
             </span>
           </div>

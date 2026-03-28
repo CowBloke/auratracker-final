@@ -1,6 +1,5 @@
 import { cn } from '@/lib/utils';
-import { Trophy, X } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UserBadges } from '@/components/badges/UserBadges';
 import type { BadgeData } from '@/components/badges/BadgeIcon';
@@ -142,23 +141,6 @@ export function GameLeaderboard({
     : null;
   const recordPersonnel = personalHighScore ?? recordPersonnelFromEntries ?? null;
 
-  const recordsSummary = (
-    <div className="grid grid-cols-2 gap-2 border-b border-border/20 px-4 py-3">
-      <div className="rounded-md bg-muted/40 px-3 py-2">
-        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Record perso</p>
-        <p className="text-sm font-medium tabular-nums">
-          {recordPersonnel !== null ? recordPersonnel.toLocaleString() : '--'}
-        </p>
-      </div>
-      <div className="rounded-md bg-muted/40 px-3 py-2">
-        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Record du jeu</p>
-        <p className="text-sm font-medium tabular-nums">
-          {recordDuJeu !== null ? recordDuJeu.toLocaleString() : '--'}
-        </p>
-      </div>
-    </div>
-  );
-
   const list = (
     <LeaderboardList
       entries={entries}
@@ -172,24 +154,32 @@ export function GameLeaderboard({
   if (noCard) {
     return (
       <>
-        {recordsSummary}
         {list}
       </>
     );
   }
 
   return (
-    <Card className={cn(hidden && 'hidden')}>
-      <CardHeader className="px-4 py-3">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <Trophy className="h-4 w-4 text-muted-foreground" />
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-0">
-        {recordsSummary}
+    <section
+      className={cn(
+        'overflow-hidden rounded-xl border border-border/50 bg-background/60 backdrop-blur-sm',
+        hidden && 'hidden'
+      )}
+    >
+      <div className="flex items-center justify-between border-b border-border/20 px-4 py-3">
+        <p className="text-sm font-medium">{title}</p>
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <span>
+            Perso <span className="font-mono text-foreground">{recordPersonnel !== null ? recordPersonnel.toLocaleString() : '--'}</span>
+          </span>
+          <span>
+            Top <span className="font-mono text-foreground">{recordDuJeu !== null ? recordDuJeu.toLocaleString() : '--'}</span>
+          </span>
+        </div>
+      </div>
+      <div className="p-0">
         {list}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

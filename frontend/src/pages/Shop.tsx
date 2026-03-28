@@ -474,7 +474,7 @@ function DoodleJumpShopSection({
 
 const DEFAULT_CATEGORIES: ShopCategory[] = [
   { id: 'COSMETIC', label: 'Cosmétiques' },
-  { id: 'CONSUMABLE', label: 'Consommables' },
+  { id: 'CONSUMABLE', label: 'Objets' },
   { id: 'UPGRADE', label: 'Améliorations' },
 ];
 
@@ -541,21 +541,28 @@ export default function Shop() {
     [items],
   );
 
+  const visibleCategories = useMemo(() =>
+    categories.filter(category =>
+      nonDjItems.some(item => item.type === category.id),
+    ),
+    [categories, nonDjItems],
+  );
+
   const VIRTUAL_FILTERS = useMemo(() => [
     { value: 'ALL', label: 'Tous' },
-    ...categories.map(c => ({ value: c.id, label: c.label })),
+    ...visibleCategories.map(c => ({ value: c.id, label: c.label })),
     { value: 'DOODLE_JUMP', label: 'Doodle Jump' },
-  ], [categories]);
+  ], [visibleCategories]);
 
   const sections = useMemo(() =>
-    categories
+    visibleCategories
       .map(cat => ({
         id: cat.id,
         label: cat.label,
         items: nonDjItems.filter(item => item.type === cat.id),
       }))
       .filter(s => s.items.length > 0),
-    [nonDjItems, categories],
+    [nonDjItems, visibleCategories],
   );
 
   const handlePurchase = async (item: ShopItem) => {
@@ -699,7 +706,7 @@ export default function Shop() {
               />
             </TabsContent>
 
-            {categories.map(category => {
+            {visibleCategories.map(category => {
               const categoryItems = nonDjItems.filter(item => item.type === category.id);
 
               return (

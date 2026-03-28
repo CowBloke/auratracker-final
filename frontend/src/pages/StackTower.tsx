@@ -751,7 +751,6 @@ export default function StackTower() {
                 <div className="absolute inset-0 flex items-center justify-center bg-background/65">
                   <div className="text-center">
                     <p className="text-3xl font-light">Tour empilée</p>
-                    <p className="mt-2 text-sm text-muted-foreground">Clique ou appuie sur Espace pour démarrer</p>
                   </div>
                 </div>
               )}
@@ -769,7 +768,6 @@ export default function StackTower() {
                         {reward.aura > 0 && `+${reward.aura} aura`}
                       </p>
                     )}
-                    <p className="text-xs text-muted-foreground">Clique pour relancer</p>
                   </div>
                 </div>
               )}

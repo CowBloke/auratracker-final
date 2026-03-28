@@ -902,14 +902,11 @@ export default function ChromeDino() {
 
             {!started && (
               <div className="absolute inset-0 flex items-center justify-center bg-[#efefef]/92">
-                <div className="space-y-4 p-6 text-center">
-                  <p className="font-mono text-3xl font-bold tracking-wide text-neutral-700">Chrome Dino Run</p>
-                  <p className="text-sm text-neutral-600">
-                    Version Aura Tracker du runner hors ligne en style Chrome classique.
-                  </p>
-                  <Button onClick={initGame} variant="outline" className="border-neutral-700 text-neutral-700">
-                    <Play className="mr-2 h-4 w-4" />
-                    Lancer le run
+              <div className="space-y-4 p-6 text-center">
+                <p className="font-mono text-3xl font-bold tracking-wide text-neutral-700">Chrome Dino Run</p>
+                <Button onClick={initGame} variant="outline" className="border-neutral-700 text-neutral-700">
+                  <Play className="mr-2 h-4 w-4" />
+                  Lancer le run
                   </Button>
                 </div>
               </div>

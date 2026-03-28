@@ -47,7 +47,7 @@ interface ItemEffect {
 type ImageEffectType = 'PROFILE_PICTURE' | 'PROFILE_BANNER';
 
 const typeLabels: Record<string, string> = {
-  CONSUMABLE: 'Consommable',
+  CONSUMABLE: 'Objet',
   COSMETIC: 'Cosmétique',
   UPGRADE: 'Amélioration',
 };

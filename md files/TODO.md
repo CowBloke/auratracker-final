@@ -1,15 +1,3 @@
-- widgets visuels comme auracoin
-- améliorer UI simple interfaces jeux
-- racer/polytrack image jeux
-- spec relancer ddj
-- aligner tabs et menu deroualant
-- limiter à un
 - pb image alors que taille mo moins
-- par défaut fermé navbar
-- icones aura et argent reconnaisable à travers tout le site
-- clavier minecraft
-- accrochae voitures polytrack
-- personnalisation theme
-- il ma,que des jeux dans activité
-- classement mive goyave empire ne marche pas
 - bienvenue
+- UI clan

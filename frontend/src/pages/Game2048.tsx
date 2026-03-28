@@ -628,7 +628,6 @@ export default function Game2048() {
             <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg">
               <div className="text-center space-y-4 bg-card border border-border/50 rounded-lg p-6">
                 <h2 className="text-2xl font-light">Tu as atteint 2048 !</h2>
-                <p className="text-sm text-muted-foreground">Continue pour un meilleur score</p>
                 <Button
                   variant="ghost"
                   onClick={() => setShowWinMessage(false)}
