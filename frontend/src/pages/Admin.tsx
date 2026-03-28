@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
-import { adminApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, customBadgesApi, CustomBadgeRequest } from '../services/api';
+import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, customBadgesApi, CustomBadgeRequest } from '../services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,7 @@ import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { Loader2, Trash2, Save, AlertTriangle, Plus, Minus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, Inbox, Archive, UserCog, Crown, Swords, Send, Upload, Award, Terminal } from 'lucide-react';
 import { BadgeIcon } from '@/components/badges/BadgeIcon';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, ReferenceDot, LineChart, Line, Tooltip as RechartsTooltip, Legend, BarChart, Bar } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, ReferenceDot, LineChart, Line, Tooltip as RechartsTooltip, Legend, BarChart, Bar, Cell } from 'recharts';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -360,6 +360,14 @@ const toNumber = (value: unknown): number | null => {
 const formatGameTypeLabel = (gameType: unknown): string => {
   const normalized = typeof gameType === 'string' ? gameType : '';
   return GAME_TYPE_LABELS[normalized] || (normalized ? normalized.replace(/_/g, ' ') : 'Jeu');
+};
+
+const formatBigNumber = (n: number): string => {
+  if (!Number.isFinite(n)) return '0';
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}G`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toLocaleString('fr-FR');
 };
 
 const formatDurationShort = (totalSeconds: number): string => {
@@ -901,6 +909,10 @@ export default function Admin() {
   const [playtimePeriod, setPlaytimePeriod] = useState<'day' | 'week' | 'month' | 'custom'>('day');
   const [playtimeCustomStart, setPlaytimeCustomStart] = useState('');
   const [playtimeCustomEnd, setPlaytimeCustomEnd] = useState('');
+  const [platformStats, setPlatformStats] = useState<null | { overview: { totalUsers: number; approvedUsers: number; totalAura: string; totalMoney: number; totalGamesPlayed: number; totalWins: number; totalTransfers: number; totalAuraTransferred: number; totalMoneyTransferred: number; totalWordsTyped: number }; topGames: Array<{ gameType: string; totalPlayed: number; wins: number }>; activityChart: Array<{ date: string; count: number }> }>(null);
+  const [loadingPlatformStats, setLoadingPlatformStats] = useState(false);
+  const [gamesLeaderboard, setGamesLeaderboard] = useState<any[]>([]);
+  const [loadingGamesLeaderboard, setLoadingGamesLeaderboard] = useState(false);
   const [snapshotting, setSnapshotting] = useState(false);
   const [hoveredActivity, setHoveredActivity] = useState<ActivityHoverState | null>(null);
   const [activityZoomDomain, setActivityZoomDomain] = useState<[number, number] | null>(null);
@@ -1319,6 +1331,8 @@ export default function Admin() {
     fetchUpdatePopups();
     fetchActivity('day');
     fetchActivityBreakdown(new Date().toISOString().slice(0, 10));
+    fetchPlatformStats();
+    fetchGamesLeaderboard();
     fetchSupportThreads();
   }, []);
 
@@ -1406,6 +1420,30 @@ export default function Admin() {
       console.error('Failed to fetch playtime leaderboard:', error);
     } finally {
       setLoadingPlaytimeLeaderboard(false);
+    }
+  };
+
+  const fetchPlatformStats = async () => {
+    try {
+      setLoadingPlatformStats(true);
+      const res = await adminApi.getPlatformStats();
+      setPlatformStats(res.data);
+    } catch (error) {
+      console.error('Failed to fetch platform stats:', error);
+    } finally {
+      setLoadingPlatformStats(false);
+    }
+  };
+
+  const fetchGamesLeaderboard = async () => {
+    try {
+      setLoadingGamesLeaderboard(true);
+      const res = await leaderboardsApi.get('games_played', { limit: 20 });
+      setGamesLeaderboard((res.data as any).rankings ?? []);
+    } catch (error) {
+      console.error('Failed to fetch games leaderboard:', error);
+    } finally {
+      setLoadingGamesLeaderboard(false);
     }
   };
 
@@ -3031,8 +3069,8 @@ export default function Admin() {
           <TabsTrigger value="settings">
             Paramètres
           </TabsTrigger>
-          <TabsTrigger value="activity" onClick={() => { fetchActivity(activityPeriod); fetchActivityBreakdown(activityBreakdownDay); fetchPlaytimeLeaderboard(playtimePeriod); }}>
-            Activité
+          <TabsTrigger value="activity" onClick={() => { fetchActivity(activityPeriod); fetchActivityBreakdown(activityBreakdownDay); fetchPlaytimeLeaderboard(playtimePeriod); fetchPlatformStats(); fetchGamesLeaderboard(); }}>
+            Statistiques
             {onlineStats && (
               <span className={TYPOGRAPHY.XS}>{onlineStats.current} en ligne</span>
             )}
@@ -6544,6 +6582,303 @@ export default function Admin() {
 
         {/* ===== ACTIVITY TAB ===== */}
         <TabsContent value="activity" className={SPACING.SECTION_SPACING}>
+
+          {/* ── PLATFORM OVERVIEW ── */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-muted-foreground" />
+                <span className="font-semibold text-sm">Vue d'ensemble de la plateforme</span>
+                {loadingPlatformStats && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+              </div>
+              <Button variant="ghost" size="sm" onClick={fetchPlatformStats} className="h-7 w-7 p-0" title="Rafraîchir">
+                <RefreshCw className={cn('h-3.5 w-3.5', loadingPlatformStats && 'animate-spin')} />
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
+              <Card className="border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-blue-600/5">
+                <CardContent className="p-4 space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <Users className="h-3.5 w-3.5 text-blue-400" />
+                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Membres actifs</p>
+                  </div>
+                  <p className="text-2xl font-bold tabular-nums text-blue-400">{platformStats?.overview.approvedUsers ?? '—'}</p>
+                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>{platformStats?.overview.totalUsers ?? '—'} inscrits</p>
+                </CardContent>
+              </Card>
+              <Card className="border-purple-500/20 bg-gradient-to-br from-purple-500/10 to-purple-600/5">
+                <CardContent className="p-4 space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <Gamepad2 className="h-3.5 w-3.5 text-purple-400" />
+                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Parties jouées</p>
+                  </div>
+                  <p className="text-2xl font-bold tabular-nums text-purple-400">
+                    {platformStats ? formatBigNumber(platformStats.overview.totalGamesPlayed) : '—'}
+                  </p>
+                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>tous les temps</p>
+                </CardContent>
+              </Card>
+              <Card className="border-green-500/20 bg-gradient-to-br from-green-500/10 to-green-600/5">
+                <CardContent className="p-4 space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <Trophy className="h-3.5 w-3.5 text-green-400" />
+                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Victoires</p>
+                  </div>
+                  <p className="text-2xl font-bold tabular-nums text-green-400">
+                    {platformStats ? formatBigNumber(platformStats.overview.totalWins) : '—'}
+                  </p>
+                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>
+                    {platformStats && platformStats.overview.totalGamesPlayed > 0
+                      ? `${Math.round(platformStats.overview.totalWins / platformStats.overview.totalGamesPlayed * 100)}% win rate`
+                      : 'win rate'}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="border-yellow-500/20 bg-gradient-to-br from-yellow-500/10 to-yellow-600/5">
+                <CardContent className="p-4 space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5 text-yellow-400" />
+                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Aura totale</p>
+                  </div>
+                  <p className="text-2xl font-bold tabular-nums text-yellow-400">
+                    {platformStats ? formatBigNumber(parseInt(platformStats.overview.totalAura)) : '—'}
+                  </p>
+                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>en circulation</p>
+                </CardContent>
+              </Card>
+              <Card className="border-orange-500/20 bg-gradient-to-br from-orange-500/10 to-orange-600/5">
+                <CardContent className="p-4 space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <Coins className="h-3.5 w-3.5 text-orange-400" />
+                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Argent total</p>
+                  </div>
+                  <p className="text-2xl font-bold tabular-nums text-orange-400">
+                    {platformStats ? formatBigNumber(platformStats.overview.totalMoney) : '—'}
+                  </p>
+                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>en circulation</p>
+                </CardContent>
+              </Card>
+              <Card className="border-pink-500/20 bg-gradient-to-br from-pink-500/10 to-pink-600/5">
+                <CardContent className="p-4 space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <TrendingUp className="h-3.5 w-3.5 text-pink-400" />
+                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Transferts</p>
+                  </div>
+                  <p className="text-2xl font-bold tabular-nums text-pink-400">
+                    {platformStats ? formatBigNumber(platformStats.overview.totalTransfers) : '—'}
+                  </p>
+                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>
+                    {platformStats ? `${formatBigNumber(platformStats.overview.totalAuraTransferred)} aura` : 'échangée'}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* ── EXTRA STATS ROW ── */}
+          {platformStats && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <Card className="border-border/40">
+                <CardContent className="p-4 space-y-1">
+                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Argent échangé</p>
+                  <p className="text-xl font-semibold tabular-nums">{formatBigNumber(platformStats.overview.totalMoneyTransferred)}</p>
+                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>via transferts</p>
+                </CardContent>
+              </Card>
+              <Card className="border-border/40">
+                <CardContent className="p-4 space-y-1">
+                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Mots tapés (Bombe)</p>
+                  <p className="text-xl font-semibold tabular-nums">{formatBigNumber(platformStats.overview.totalWordsTyped)}</p>
+                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>tous les temps</p>
+                </CardContent>
+              </Card>
+              <Card className="border-border/40">
+                <CardContent className="p-4 space-y-1">
+                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Parties (30j)</p>
+                  <p className="text-xl font-semibold tabular-nums">
+                    {formatBigNumber(platformStats.activityChart.reduce((s, d) => s + d.count, 0))}
+                  </p>
+                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>sur les 30 derniers jours</p>
+                </CardContent>
+              </Card>
+              <Card className="border-border/40">
+                <CardContent className="p-4 space-y-1">
+                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Moy. / jour (30j)</p>
+                  <p className="text-xl font-semibold tabular-nums">
+                    {(platformStats.activityChart.reduce((s, d) => s + d.count, 0) / 30).toFixed(1)}
+                  </p>
+                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>parties par jour</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* ── GAME ACTIVITY CHART (30 days) ── */}
+          <Card className="border-border/40">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CalendarRange className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-semibold text-sm">Parties jouées (30 derniers jours)</span>
+                  {loadingPlatformStats && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                </div>
+                {platformStats && (
+                  <span className="text-sm font-semibold tabular-nums text-muted-foreground">
+                    {platformStats.activityChart.reduce((s, d) => s + d.count, 0).toLocaleString('fr-FR')} parties
+                  </span>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingPlatformStats && !platformStats ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : platformStats && platformStats.activityChart.length > 0 ? (
+                <ResponsiveContainer width="100%" height={160}>
+                  <BarChart data={platformStats.activityChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(v: string) => {
+                        const d = new Date(v + 'T12:00:00');
+                        return `${d.getDate()}/${d.getMonth() + 1}`;
+                      }}
+                      interval={4}
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={24}
+                    />
+                    <RechartsTooltip
+                      contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem' }}
+                      formatter={(value: number) => [`${value} partie${value !== 1 ? 's' : ''}`, 'Jeux']}
+                      labelFormatter={(label: string) => new Date(label + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}
+                    />
+                    <Bar dataKey="count" fill="#8b5cf6" radius={[3, 3, 0, 0]} isAnimationActive={false} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <p className="py-8 text-center text-sm text-muted-foreground">Aucune donnée disponible</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* ── TOP GAMES + ALL-TIME LEADERBOARD ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Top games by plays */}
+            <Card className="border-border/40">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <Gamepad2 className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-semibold text-sm">Jeux les plus joués (tous les temps)</span>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loadingPlatformStats && !platformStats ? (
+                  <div className="flex justify-center py-12">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : platformStats && platformStats.topGames.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={340}>
+                    <BarChart
+                      data={platformStats.topGames.slice(0, 12).map((g) => ({
+                        ...g,
+                        label: GAME_TYPE_LABELS[g.gameType] ?? g.gameType.replace(/_/g, ' '),
+                      }))}
+                      layout="vertical"
+                      margin={{ top: 4, right: 50, left: 0, bottom: 0 }}
+                    >
+                      <XAxis
+                        type="number"
+                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                        axisLine={false}
+                        tickLine={false}
+                        tickFormatter={(v: number) => formatBigNumber(v)}
+                      />
+                      <YAxis
+                        type="category"
+                        dataKey="label"
+                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                        axisLine={false}
+                        tickLine={false}
+                        width={96}
+                      />
+                      <RechartsTooltip
+                        contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem' }}
+                        formatter={(value: number, _name: string, props: any) => [
+                          `${value.toLocaleString('fr-FR')} parties · ${(props.payload.wins ?? 0).toLocaleString('fr-FR')} victoires`,
+                          'Stats',
+                        ]}
+                      />
+                      <Bar dataKey="totalPlayed" radius={[0, 3, 3, 0]} isAnimationActive={false}>
+                        {platformStats.topGames.slice(0, 12).map((_g, index) => (
+                          <Cell key={index} fill={ACTIVITY_BREAKDOWN_COLORS[index % ACTIVITY_BREAKDOWN_COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="py-12 text-center text-sm text-muted-foreground">Aucune donnée disponible</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* All-time games played leaderboard */}
+            <Card className="border-border/40">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Trophy className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-semibold text-sm">Classement parties jouées (tous les temps)</span>
+                  {loadingGamesLeaderboard && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                </div>
+                <CardDescription>
+                  Basé sur les stats de jeu — toutes les parties comptées pour tous les jeux, sans estimation de durée.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingGamesLeaderboard && gamesLeaderboard.length === 0 ? (
+                  <div className="flex justify-center py-12">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : gamesLeaderboard.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-border/40">
+                          <th className="text-left py-2 px-3 font-medium text-muted-foreground w-10">#</th>
+                          <th className="text-left py-2 px-3 font-medium text-muted-foreground">Joueur</th>
+                          <th className="text-right py-2 px-3 font-medium text-muted-foreground">Parties</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {gamesLeaderboard.map((entry: any, i: number) => (
+                          <tr key={entry.userId} className="border-b border-border/40 hover:bg-muted/30 transition-colors">
+                            <td className="py-2 px-3 font-semibold text-foreground">{entry.rank ?? i + 1}</td>
+                            <td className="py-2 px-3">
+                              <span style={{ color: entry.usernameColor || 'inherit' }} className="font-medium">
+                                {entry.username}
+                              </span>
+                            </td>
+                            <td className="py-2 px-3 text-right tabular-nums font-semibold">
+                              {(entry.value ?? 0).toLocaleString('fr-FR')}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="py-12 text-center text-sm text-muted-foreground">Aucune donnée disponible</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <Card className="border-border/40">

@@ -4013,4 +4013,97 @@ router.get('/playtime-leaderboard', authMiddleware, requireAdmin, async (req: Au
   }
 });
 
+// ========== PLATFORM STATS ==========
+
+// GET /api/admin/platform-stats
+// Returns aggregated platform-wide stats for the admin statistics dashboard
+router.get('/platform-stats', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const [
+      totalUsers,
+      approvedUsers,
+      userAuraMoney,
+      gameStatsTotals,
+      topGamesByPlays,
+      bombPartyTotals,
+      transferTotals,
+      recentGameLogs,
+    ] = await Promise.all([
+      prisma.user.count({ where: { isSuperAdmin: false } }),
+      prisma.user.count({ where: { isSuperAdmin: false, isApproved: true } }),
+      prisma.user.aggregate({
+        where: { isSuperAdmin: false },
+        _sum: { aura: true, money: true },
+      }),
+      prisma.gameStats.aggregate({
+        _sum: { totalPlayed: true, wins: true },
+      }),
+      prisma.gameStats.groupBy({
+        by: ['gameType'],
+        _sum: { totalPlayed: true, wins: true },
+        orderBy: { _sum: { totalPlayed: 'desc' } },
+        take: 15,
+      }),
+      prisma.bombPartyStats.aggregate({
+        _sum: { totalPlayed: true, wins: true, wordsTyped: true },
+      }),
+      prisma.transfer.aggregate({
+        _count: { _all: true },
+        _sum: { auraAmount: true, moneyAmount: true },
+      }),
+      prisma.log.findMany({
+        where: {
+          type: 'GAME',
+          action: 'game_complete',
+          createdAt: { gte: thirtyDaysAgo },
+          userId: { not: null },
+        },
+        select: { createdAt: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+    ]);
+
+    // Build activity chart (last 30 days, per day)
+    const activityByDay: Record<string, number> = {};
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000);
+      activityByDay[d.toISOString().slice(0, 10)] = 0;
+    }
+    for (const log of recentGameLogs) {
+      const key = log.createdAt.toISOString().slice(0, 10);
+      if (key in activityByDay) activityByDay[key]++;
+    }
+    const activityChart = Object.entries(activityByDay).map(([date, count]) => ({ date, count }));
+
+    const totalGamesPlayed = (gameStatsTotals._sum.totalPlayed ?? 0) + (bombPartyTotals._sum.totalPlayed ?? 0);
+    const totalWins = (gameStatsTotals._sum.wins ?? 0) + (bombPartyTotals._sum.wins ?? 0);
+
+    return res.json({
+      overview: {
+        totalUsers,
+        approvedUsers,
+        totalAura: (userAuraMoney._sum.aura ?? BigInt(0)).toString(),
+        totalMoney: userAuraMoney._sum.money ?? 0,
+        totalGamesPlayed,
+        totalWins,
+        totalTransfers: transferTotals._count._all,
+        totalAuraTransferred: transferTotals._sum.auraAmount ?? 0,
+        totalMoneyTransferred: transferTotals._sum.moneyAmount ?? 0,
+        totalWordsTyped: bombPartyTotals._sum.wordsTyped ?? 0,
+      },
+      topGames: topGamesByPlays.map((g) => ({
+        gameType: g.gameType,
+        totalPlayed: g._sum.totalPlayed ?? 0,
+        wins: g._sum.wins ?? 0,
+      })),
+      activityChart,
+    });
+  } catch (error) {
+    console.error('Admin platform stats error:', error);
+    return res.status(500).json({ error: 'Failed to fetch platform stats' });
+  }
+});
+
 export default router;

@@ -1475,6 +1475,23 @@ export const adminApi = {
     api.post<{ warning: AdminWarning; message: string }>('/admin/warnings', data),
   deleteWarning: (id: string) => api.delete<{ success: boolean; message: string }>(`/admin/warnings/${id}`),
   backfillScoreHistory: () => api.post<{ success: boolean; inserted: number; skipped: number }>('/admin/backfill-score-history'),
+  // Platform stats (aggregated platform-wide data)
+  getPlatformStats: () => api.get<{
+    overview: {
+      totalUsers: number;
+      approvedUsers: number;
+      totalAura: string;
+      totalMoney: number;
+      totalGamesPlayed: number;
+      totalWins: number;
+      totalTransfers: number;
+      totalAuraTransferred: number;
+      totalMoneyTransferred: number;
+      totalWordsTyped: number;
+    };
+    topGames: Array<{ gameType: string; totalPlayed: number; wins: number }>;
+    activityChart: Array<{ date: string; count: number }>;
+  }>('/admin/platform-stats'),
   // Playtime leaderboard
   getPlaytimeLeaderboard: (params?: {
     period?: 'day' | 'week' | 'month' | 'custom';
