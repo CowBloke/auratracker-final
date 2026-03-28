@@ -5,6 +5,7 @@ import { Progress } from '../components/ui/progress';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { questsApi, DailyQuest, UserDailyQuest } from '../services/api';
 import { toast } from 'sonner';
+import { useRewardQueue, type RewardItem } from '../contexts/RewardQueueContext';
 import { CheckCircle2, Circle, Coins, Sparkles, Users, Gamepad2, Bomb, ScrollText, Ship, Trophy, Target, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -15,6 +16,7 @@ export default function Quests() {
   const [loading, setLoading] = useState(true);
   const [selecting, setSelecting] = useState(false);
   const [claiming, setClaiming] = useState(false);
+  const { enqueue } = useRewardQueue();
 
   const fetchQuests = async () => {
     try {
@@ -76,7 +78,11 @@ export default function Quests() {
     try {
       setClaiming(true);
       const res = await questsApi.claim(questIds);
-      toast.success(`Récompenses réclamées: +${res.data.rewards.money}$ et +${res.data.rewards.aura} aura`);
+      const { money, aura } = res.data.rewards;
+      const rewardItems: RewardItem[] = [];
+      if (money > 0) rewardItems.push({ id: 'money', type: 'money', amount: money, label: 'Coins' });
+      if (aura > 0) rewardItems.push({ id: 'aura', type: 'aura', amount: aura, label: 'Aura' });
+      if (rewardItems.length > 0) enqueue(rewardItems);
       await fetchQuests();
     } catch (error: any) {
       console.error('Error claiming quests:', error);
