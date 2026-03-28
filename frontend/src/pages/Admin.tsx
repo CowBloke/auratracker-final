@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
-import { adminApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, customBadgesApi, CustomBadgeRequest } from '../services/api';
+import { adminApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, PlaytimeLeaderboardEntry, supportApi, SupportThread, SupportMessage, customBadgesApi, CustomBadgeRequest } from '../services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
@@ -896,6 +896,11 @@ export default function Admin() {
   const [activityBreakdown, setActivityBreakdown] = useState<AdminActivityBreakdown | null>(null);
   const [loadingActivityBreakdown, setLoadingActivityBreakdown] = useState(false);
   const [loadingActivity, setLoadingActivity] = useState(false);
+  const [playtimeLeaderboard, setPlaytimeLeaderboard] = useState<{ leaderboard: any[]; period: string; start: string; end: string; totalEntries: number; limit: number } | null>(null);
+  const [loadingPlaytimeLeaderboard, setLoadingPlaytimeLeaderboard] = useState(false);
+  const [playtimePeriod, setPlaytimePeriod] = useState<'day' | 'week' | 'month' | 'custom'>('day');
+  const [playtimeCustomStart, setPlaytimeCustomStart] = useState('');
+  const [playtimeCustomEnd, setPlaytimeCustomEnd] = useState('');
   const [snapshotting, setSnapshotting] = useState(false);
   const [hoveredActivity, setHoveredActivity] = useState<ActivityHoverState | null>(null);
   const [activityZoomDomain, setActivityZoomDomain] = useState<[number, number] | null>(null);
@@ -1383,6 +1388,24 @@ export default function Admin() {
       console.error('Failed to fetch activity breakdown:', error);
     } finally {
       setLoadingActivityBreakdown(false);
+    }
+  };
+
+  const fetchPlaytimeLeaderboard = async (period?: 'day' | 'week' | 'month' | 'custom', customStart?: string, customEnd?: string) => {
+    try {
+      setLoadingPlaytimeLeaderboard(true);
+      const p = period ?? playtimePeriod;
+      const params: Record<string, any> = { period: p, limit: 50 };
+      if (p === 'custom') {
+        params.startDate = customStart ?? playtimeCustomStart;
+        params.endDate = customEnd ?? playtimeCustomEnd;
+      }
+      const res = await adminApi.getPlaytimeLeaderboard(params);
+      setPlaytimeLeaderboard(res.data);
+    } catch (error) {
+      console.error('Failed to fetch playtime leaderboard:', error);
+    } finally {
+      setLoadingPlaytimeLeaderboard(false);
     }
   };
 
@@ -3008,7 +3031,7 @@ export default function Admin() {
           <TabsTrigger value="settings">
             Paramètres
           </TabsTrigger>
-          <TabsTrigger value="activity" onClick={() => { fetchActivity(activityPeriod); fetchActivityBreakdown(activityBreakdownDay); }}>
+          <TabsTrigger value="activity" onClick={() => { fetchActivity(activityPeriod); fetchActivityBreakdown(activityBreakdownDay); fetchPlaytimeLeaderboard(playtimePeriod); }}>
             Activité
             {onlineStats && (
               <span className={TYPOGRAPHY.XS}>{onlineStats.current} en ligne</span>
@@ -7344,6 +7367,135 @@ export default function Admin() {
               </CardContent>
             </Card>
           </div>
+
+          {/* ── PLAYTIME LEADERBOARD ── */}
+          <Card className="border-border/40">
+            <CardHeader className="space-y-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-semibold text-sm">Classement temps de jeu</span>
+                  </div>
+                  <CardDescription>
+                    Joueurs qui jouent le plus (en temps de jeu).
+                  </CardDescription>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {(['day', 'week', 'month', 'custom'] as const).map(p => (
+                    <Button
+                      key={p}
+                      variant={playtimePeriod === p ? 'default' : 'outline'}
+                      onClick={() => {
+                        setPlaytimePeriod(p);
+                        if (p !== 'custom') fetchPlaytimeLeaderboard(p);
+                      }}
+                      className="h-8 px-3 text-xs"
+                    >
+                      {p === 'day' ? "Aujourd'hui" : p === 'week' ? '7j' : p === 'month' ? '30j' : 'Plage'}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {playtimePeriod === 'custom' && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input
+                    type="date"
+                    value={playtimeCustomStart}
+                    onChange={(e) => setPlaytimeCustomStart(e.target.value)}
+                    className="h-8 text-xs flex-1 min-w-max"
+                    placeholder="Début"
+                  />
+                  <span className="text-xs text-muted-foreground">à</span>
+                  <Input
+                    type="date"
+                    value={playtimeCustomEnd}
+                    onChange={(e) => setPlaytimeCustomEnd(e.target.value)}
+                    className="h-8 text-xs flex-1 min-w-max"
+                    placeholder="Fin"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-3 text-xs"
+                    onClick={() => fetchPlaytimeLeaderboard('custom', playtimeCustomStart, playtimeCustomEnd)}
+                    disabled={!playtimeCustomStart || !playtimeCustomEnd || loadingPlaytimeLeaderboard}
+                  >
+                    {loadingPlaytimeLeaderboard ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Appliquer'}
+                  </Button>
+                </div>
+              )}
+            </CardHeader>
+
+            <CardContent>
+              {loadingPlaytimeLeaderboard && !playtimeLeaderboard ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : playtimeLeaderboard && playtimeLeaderboard.leaderboard.length > 0 ? (
+                <div className="space-y-2">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-border/40">
+                          <th className="text-left py-2 px-3 font-medium text-muted-foreground">Rang</th>
+                          <th className="text-left py-2 px-3 font-medium text-muted-foreground">Joueur</th>
+                          <th className="text-right py-2 px-3 font-medium text-muted-foreground">Temps total</th>
+                          <th className="text-right py-2 px-3 font-medium text-muted-foreground">Parties</th>
+                          <th className="text-right py-2 px-3 font-medium text-muted-foreground">Moyenne/partie</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {playtimeLeaderboard.leaderboard.map((entry, idx) => {
+                          const totalHours = Math.floor(entry.totalSeconds / 3600);
+                          const totalMinutes = Math.floor((entry.totalSeconds % 3600) / 60);
+                          const avgSeconds = Math.floor(entry.averageGameDuration);
+                          const avgMinutes = Math.floor(avgSeconds / 60);
+                          const avgSecs = avgSeconds % 60;
+                          return (
+                            <tr key={entry.userId} className="border-b border-border/40 hover:bg-muted/30 transition-colors">
+                              <td className="py-2 px-3 font-semibold text-foreground">{entry.rank}</td>
+                              <td className="py-2 px-3">
+                                <div className="flex items-center gap-2">
+                                  {entry.profilePicture ? (
+                                    <img src={entry.profilePicture} alt="" className="h-5 w-5 rounded" />
+                                  ) : (
+                                    <div className="h-5 w-5 rounded bg-muted" />
+                                  )}
+                                  <span style={{ color: entry.usernameColor || 'inherit' }} className="truncate font-medium">
+                                    {entry.username}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="py-2 px-3 text-right tabular-nums">
+                                {totalHours > 0 ? `${totalHours}h ${totalMinutes}min` : `${totalMinutes}min`}
+                              </td>
+                              <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
+                                {entry.gamesPlayed}
+                              </td>
+                              <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
+                                {avgMinutes}m {String(avgSecs).padStart(2, '0')}s
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  {playtimeLeaderboard.totalEntries > playtimeLeaderboard.limit && (
+                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60 text-center mt-3')}>
+                      Affichage des {playtimeLeaderboard.limit} premiers sur {playtimeLeaderboard.totalEntries} joueurs
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="py-12 text-center text-sm text-muted-foreground">
+                  Aucune donnée de temps de jeu pour cette période
+                </p>
+              )}
+            </CardContent>
+          </Card>
 
         </TabsContent>
 

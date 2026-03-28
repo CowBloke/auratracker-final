@@ -3888,4 +3888,129 @@ router.post('/backfill-score-history', authMiddleware, async (req: AuthRequest, 
   }
 });
 
+// ========== PLAYTIME LEADERBOARD ==========
+
+// GET /api/admin/playtime-leaderboard
+// Returns top players ranked by total playtime over a period
+// Query params:
+//   period: 'day' | 'week' | 'month' | 'custom' (default: 'day')
+//   startDate, endDate: ISO strings (for 'custom')
+//   limit: max results (default: 50, max: 200)
+router.get('/playtime-leaderboard', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { period = 'day', startDate, endDate, limit = '50' } = req.query as Record<string, string>;
+
+    let start: Date;
+    let end: Date = new Date();
+
+    switch (period) {
+      case 'week':
+        start = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'month':
+        start = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case 'custom':
+        if (!startDate || !endDate) {
+          return res.status(400).json({ error: 'startDate and endDate required for custom period' });
+        }
+        start = new Date(startDate);
+        end = new Date(endDate);
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+          return res.status(400).json({ error: 'Invalid date format' });
+        }
+        break;
+      default: { // 'day'
+        const d = new Date();
+        start = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      }
+    }
+
+    const maxLimit = Math.min(parseInt(limit) || 50, 200);
+
+    // Get all game_complete logs within the period with duration metadata
+    const gameLogs = await prisma.log.findMany({
+      where: {
+        type: 'GAME',
+        action: 'game_complete',
+        createdAt: { gte: start, lte: end },
+        userId: { not: null },
+        metadata: { not: null },
+      },
+      select: {
+        userId: true,
+        metadata: true,
+      },
+    });
+
+    // Aggregate playtime by user
+    const playtimeByUser = new Map<string, { totalSeconds: number; gamesPlayed: number }>();
+
+    for (const log of gameLogs) {
+      try {
+        const meta = JSON.parse(log.metadata!) as Record<string, unknown>;
+        const durationSeconds = meta.duration;
+
+        if (typeof durationSeconds === 'number' && Number.isFinite(durationSeconds) && durationSeconds > 0 && log.userId) {
+          const current = playtimeByUser.get(log.userId) ?? { totalSeconds: 0, gamesPlayed: 0 };
+          current.totalSeconds += durationSeconds;
+          current.gamesPlayed += 1;
+          playtimeByUser.set(log.userId, current);
+        }
+      } catch {
+        // Skip logs with invalid metadata
+      }
+    }
+
+    // Get user info for all users with playtime
+    const userIds = Array.from(playtimeByUser.keys());
+    const users = await prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: {
+        id: true,
+        username: true,
+        profilePicture: true,
+        usernameColor: true,
+      },
+    });
+
+    const userMap = new Map(users.map(u => [u.id, u]));
+
+    // Build leaderboard
+    const leaderboard = Array.from(playtimeByUser.entries())
+      .map(([userId, { totalSeconds, gamesPlayed }]) => {
+        const user = userMap.get(userId);
+        return {
+          userId,
+          username: user?.username ?? 'Unknown',
+          profilePicture: user?.profilePicture ?? null,
+          usernameColor: user?.usernameColor ?? null,
+          totalSeconds: Math.round(totalSeconds),
+          gamesPlayed,
+          averageGameDuration: Math.round((totalSeconds / gamesPlayed) * 100) / 100,
+        };
+      })
+      .sort((a, b) => b.totalSeconds - a.totalSeconds)
+      .slice(0, maxLimit);
+
+    // Add rank
+    const rankedLeaderboard = leaderboard.map((entry, index) => ({
+      rank: index + 1,
+      ...entry,
+    }));
+
+    res.json({
+      period,
+      start: start.toISOString(),
+      end: end.toISOString(),
+      leaderboard: rankedLeaderboard,
+      totalEntries: playtimeByUser.size,
+      limit: maxLimit,
+    });
+  } catch (error) {
+    console.error('Admin playtime leaderboard error:', error);
+    res.status(500).json({ error: 'Failed to fetch playtime leaderboard' });
+  }
+});
+
 export default router;

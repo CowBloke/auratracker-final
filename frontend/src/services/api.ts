@@ -1141,6 +1141,17 @@ export interface AdminWarning {
   };
 }
 
+export interface PlaytimeLeaderboardEntry {
+  rank: number;
+  userId: string;
+  username: string;
+  profilePicture: string | null;
+  usernameColor: string | null;
+  totalSeconds: number;
+  gamesPlayed: number;
+  averageGameDuration: number;
+}
+
 // Suggestions API
 export interface SuggestionComment {
   id: string;
@@ -1464,6 +1475,20 @@ export const adminApi = {
     api.post<{ warning: AdminWarning; message: string }>('/admin/warnings', data),
   deleteWarning: (id: string) => api.delete<{ success: boolean; message: string }>(`/admin/warnings/${id}`),
   backfillScoreHistory: () => api.post<{ success: boolean; inserted: number; skipped: number }>('/admin/backfill-score-history'),
+  // Playtime leaderboard
+  getPlaytimeLeaderboard: (params?: {
+    period?: 'day' | 'week' | 'month' | 'custom';
+    startDate?: string;
+    endDate?: string;
+    limit?: number;
+  }) => api.get<{
+    period: string;
+    start: string;
+    end: string;
+    leaderboard: PlaytimeLeaderboardEntry[];
+    totalEntries: number;
+    limit: number;
+  }>('/admin/playtime-leaderboard', { params }),
 };
 
 export const maintenanceApi = {
