@@ -90,7 +90,11 @@
       "Bash(find /c/Users/cowbl/source/repos/CRust/auratracker-final/frontend/src -type f \\\\\\(-name *.tsx -o -name *.ts \\\\\\))",
       "Bash(find /c/Users/cowbl/source/repos/CRust/auratracker-final -type f \\\\\\(-name *schema* -o -name *model* \\\\\\))",
       "Bash(/tmp/codebase_exploration_summary.md:*)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(echo $DATABASE_URL)",
+      "Bash(node --input-type=module -e \"import { PrismaClient } from ''''@prisma/client''''; console.log\\(''''client loaded ok''''\\);\")",
+      "Bash(grep -v \"^.*//.*usersApi\\\\|^.*//.*authApi\")",
+      "Bash(grep -v \"^.*//.*\")"
     ]
   },
   "outputStyle": "default"

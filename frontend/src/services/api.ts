@@ -59,6 +59,10 @@ export const authApi = {
   refresh: () => api.post('/auth/refresh'),
   me: () => api.get('/auth/me'),
   getReferralSummary: () => api.get<ReferralSummary>('/auth/referral-summary'),
+  changePassword: (data: { currentPassword: string; newPassword: string }) =>
+    api.post('/auth/change-password', data),
+  deleteAccount: (data: { password: string }) =>
+    api.delete('/auth/account', { data }),
 };
 
 export interface ReferralSummary {
