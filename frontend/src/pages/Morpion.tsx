@@ -286,7 +286,7 @@ export default function Morpion() {
       <PageShell>
         <PageHeader
           title="Morpion"
-          description={`Duel : ${currentParty.name || 'Sans nom'}`}
+          description={`Duel : ${currentParty?.name || 'Sans nom'}`}
           actions={
             <Button asChild variant="outline" size="sm">
               <Link to="/games" className="inline-flex items-center gap-2">
@@ -350,7 +350,7 @@ export default function Morpion() {
     <PageShell>
       <PageHeader
         title="Morpion"
-        description={`Duel : ${currentParty.name || 'Sans nom'}`}
+        description={`Duel : ${currentParty?.name || 'Sans nom'}`}
         actions={
           <>
             <Button asChild variant="outline" size="sm">
