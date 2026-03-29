@@ -27,18 +27,25 @@ const SEED_ENTRIES = [
 
 async function ensureSeeded() {
   for (const entry of SEED_ENTRIES) {
-    const existing = await prisma.updateEntry.findUnique({ where: { id: entry.id } });
-    if (!existing) {
-      await prisma.updateEntry.create({
-        data: {
-          id: entry.id,
-          date: entry.date,
-          title: entry.title,
-          summary: entry.summary,
-          items: { create: entry.items },
+    await prisma.updateEntry.upsert({
+      where: { id: entry.id },
+      create: {
+        id: entry.id,
+        date: entry.date,
+        title: entry.title,
+        summary: entry.summary,
+        items: { create: entry.items },
+      },
+      update: {
+        date: entry.date,
+        title: entry.title,
+        summary: entry.summary,
+        items: {
+          deleteMany: {},
+          create: entry.items,
         },
-      });
-    }
+      },
+    });
   }
 }
 
