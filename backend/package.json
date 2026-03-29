@@ -6,8 +6,10 @@
   "main": "dist/server.js",
   "scripts": {
     "prebuild": "prisma generate",
+    "predev": "prisma generate && prisma db push --skip-generate",
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
+    "prestart": "prisma generate && prisma db push --skip-generate",
     "start": "node dist/server.js",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",

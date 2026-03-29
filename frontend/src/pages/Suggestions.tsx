@@ -57,6 +57,29 @@ export default function Suggestions() {
     return 0;
   };
 
+  const sortPendingSuggestions = (items: Suggestion[]) =>
+    [...items].sort((a, b) => {
+      const aBoosted = a.boostedScore ?? a.score + (a.boost ?? calculateBoost(a.createdAt, a.status));
+      const bBoosted = b.boostedScore ?? b.score + (b.boost ?? calculateBoost(b.createdAt, b.status));
+      if (bBoosted !== aBoosted) {
+        return bBoosted - aBoosted;
+      }
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
+  const sortDoneSuggestions = (items: Suggestion[]) =>
+    [...items].sort((a, b) => {
+      const aResolvedAt = a.resolvedAt ? new Date(a.resolvedAt).getTime() : 0;
+      const bResolvedAt = b.resolvedAt ? new Date(b.resolvedAt).getTime() : 0;
+      if (bResolvedAt !== aResolvedAt) {
+        return bResolvedAt - aResolvedAt;
+      }
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
   useEffect(() => {
     fetchSuggestions();
   }, []);
@@ -64,18 +87,10 @@ export default function Suggestions() {
   const fetchSuggestions = async () => {
     try {
       const res = await suggestionsApi.getAll();
-      // Ensure suggestions are sorted by boosted score
-      const sorted = [...res.data.suggestions].sort((a, b) => {
-        const aBoosted = a.boostedScore ?? a.score + (a.boost ?? calculateBoost(a.createdAt, a.status));
-        const bBoosted = b.boostedScore ?? b.score + (b.boost ?? calculateBoost(b.createdAt, b.status));
-        if (bBoosted !== aBoosted) {
-          return bBoosted - aBoosted;
-        }
-        if (b.score !== a.score) {
-          return b.score - a.score;
-        }
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      });
+      const sorted = [
+        ...sortPendingSuggestions(res.data.suggestions.filter((suggestion) => suggestion.status === 'PENDING')),
+        ...sortDoneSuggestions(res.data.suggestions.filter((suggestion) => suggestion.status === 'DONE')),
+      ];
       setSuggestions(sorted);
     } catch (error) {
       console.error('Failed to fetch suggestions:', error);
@@ -121,18 +136,10 @@ export default function Suggestions() {
       };
       setSuggestions((prev) => {
         const updated = [newSuggestion, ...prev];
-        // Re-sort by boosted score
-        return updated.sort((a, b) => {
-          const aBoosted = a.boostedScore ?? a.score + (a.boost ?? calculateBoost(a.createdAt, a.status));
-          const bBoosted = b.boostedScore ?? b.score + (b.boost ?? calculateBoost(b.createdAt, b.status));
-          if (bBoosted !== aBoosted) {
-            return bBoosted - aBoosted;
-          }
-          if (b.score !== a.score) {
-            return b.score - a.score;
-          }
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        });
+        return [
+          ...sortPendingSuggestions(updated.filter((suggestion) => suggestion.status === 'PENDING')),
+          ...sortDoneSuggestions(updated.filter((suggestion) => suggestion.status === 'DONE')),
+        ];
       });
       setTitle('');
       setDescription('');
@@ -183,18 +190,10 @@ export default function Suggestions() {
         };
       });
 
-      // Re-sort by boosted score
-      return updated.sort((a, b) => {
-        const aBoosted = a.boostedScore ?? a.score + (a.boost ?? 0);
-        const bBoosted = b.boostedScore ?? b.score + (b.boost ?? 0);
-        if (bBoosted !== aBoosted) {
-          return bBoosted - aBoosted;
-        }
-        if (b.score !== a.score) {
-          return b.score - a.score;
-        }
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      });
+      return [
+        ...sortPendingSuggestions(updated.filter((suggestion) => suggestion.status === 'PENDING')),
+        ...sortDoneSuggestions(updated.filter((suggestion) => suggestion.status === 'DONE')),
+      ];
     });
 
     try {
@@ -329,8 +328,12 @@ export default function Suggestions() {
     });
   };
 
-  const pendingSuggestions = suggestions.filter((suggestion) => suggestion.status === 'PENDING');
-  const doneSuggestions = suggestions.filter((suggestion) => suggestion.status === 'DONE');
+  const pendingSuggestions = sortPendingSuggestions(
+    suggestions.filter((suggestion) => suggestion.status === 'PENDING')
+  );
+  const doneSuggestions = sortDoneSuggestions(
+    suggestions.filter((suggestion) => suggestion.status === 'DONE')
+  );
 
   const renderSuggestions = (items: Suggestion[], showRatings: boolean) => {
     if (items.length === 0) {
