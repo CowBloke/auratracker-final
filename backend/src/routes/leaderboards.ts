@@ -182,7 +182,8 @@ type LeaderboardCategory =
   | 'morpion'
   | 'polymarket_ratio'
   | 'games_played'
-  | 'bombparty';
+  | 'bombparty'
+  | 'overall';
 
 // Get leaderboard by category
 router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response) => {
@@ -257,6 +258,70 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
       }
 
       return res.json({ rankings, userRank });
+    }
+
+    // Overall global ranking (sum of all category ranks, lower = better)
+    if (category === 'overall') {
+      const take = parseInt(limit as string);
+      const skip = parseInt(offset as string);
+
+      const [users, totalPlayers] = await Promise.all([
+        prisma.user.findMany({
+          where: { isSuperAdmin: false, overallRank: { gt: 0 } },
+          select: {
+            id: true,
+            username: true,
+            usernameColor: true,
+            totalScore: true,
+            overallRank: true,
+            equippedBadge1: { select: BADGE_SELECT },
+            equippedBadge2: { select: BADGE_SELECT },
+          },
+          orderBy: { overallRank: 'asc' },
+          take,
+          skip,
+        }),
+        prisma.user.count({ where: { isSuperAdmin: false, overallRank: { gt: 0 } } }),
+      ]);
+
+      const userIds = users.map((u) => u.id);
+      const clanMemberships = await prisma.clanMember.findMany({
+        where: { userId: { in: userIds } },
+        select: {
+          userId: true,
+          clan: { select: { tagUnlocked: true, tagText: true, tagStyle: true } },
+        },
+      });
+      const clanTagMap = new Map<string, { text: string; style: string | null }>();
+      for (const m of clanMemberships) {
+        if (m.clan?.tagUnlocked && m.clan?.tagText) {
+          clanTagMap.set(m.userId, { text: m.clan.tagText, style: m.clan.tagStyle });
+        }
+      }
+
+      rankings = users.map((u, i) => ({
+        rank: skip + i + 1,
+        userId: u.id,
+        username: u.username,
+        usernameColor: u.usernameColor,
+        value: u.totalScore,
+        badges: [
+          ...(u.equippedBadge1 ? [u.equippedBadge1] : []),
+          ...(u.equippedBadge2 ? [u.equippedBadge2] : []),
+        ],
+        clanTag: clanTagMap.get(u.id) ?? null,
+      }));
+
+      let userRank = null;
+      if (req.user) {
+        const currentUser = await prisma.user.findUnique({
+          where: { id: req.user.id },
+          select: { overallRank: true },
+        });
+        userRank = currentUser?.overallRank || null;
+      }
+
+      return res.json({ rankings, userRank, totalPlayers });
     }
 
     if (winGameType) {

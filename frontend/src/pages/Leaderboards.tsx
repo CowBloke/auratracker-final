@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { auraCoinApi, AuraCoinLeaderboardEntry, gamesApi, leaderboardsApi, clansApi, usersApi } from '../services/api';
-import { X, Zap, DollarSign, TrendingUp, Gem, ArrowUp, Skull, Layers, Wind, Diamond, Timer, LayoutGrid, Sparkles, TrendingDown, Flame, Gamepad2, Hash, Target, Bomb, BarChart2 } from 'lucide-react';
+import { X, Zap, DollarSign, TrendingUp, Gem, ArrowUp, Skull, Layers, Wind, Diamond, Timer, LayoutGrid, Sparkles, TrendingDown, Flame, Gamepad2, Hash, Target, Bomb, BarChart2, Trophy, Info, ChevronDown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TYPOGRAPHY } from '@/lib/design-system';
@@ -30,7 +30,7 @@ interface Ranking {
 type StatItem = { label: string; value: string; hint?: string };
 type StatSection = { title: string; items: StatItem[] };
 
-type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'doodle_jump_mort_subite' | 'game_2048' | 'flappy_bird' | 'chrome_dino' | 'stack_tower' | 'geometry_dash' | 'qs_watermelon' | 'solitaire' | 'racer' | 'tetris' | 'knife_hit' | 'minesweeper' | 'fruit_ninja' | 'goyave_empire' | 'logic_lab' | 'casino' | 'casino_losses' | 'chess' | 'petit_bac' | 'puissance_4' | 'ball_arena' | 'poker' | 'battleship' | 'russian_roulette' | 'uno' | 'morpion' | 'polymarket_ratio' | 'games_played' | 'bombparty';
+type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'doodle_jump_mort_subite' | 'game_2048' | 'flappy_bird' | 'chrome_dino' | 'stack_tower' | 'geometry_dash' | 'qs_watermelon' | 'solitaire' | 'racer' | 'tetris' | 'knife_hit' | 'minesweeper' | 'fruit_ninja' | 'goyave_empire' | 'logic_lab' | 'casino' | 'casino_losses' | 'chess' | 'petit_bac' | 'puissance_4' | 'ball_arena' | 'poker' | 'battleship' | 'russian_roulette' | 'uno' | 'morpion' | 'polymarket_ratio' | 'games_played' | 'bombparty' | 'overall';
 type View = Category | 'nombres';
 type Period = 'all' | 'monthly' | 'weekly' | 'daily';
 
@@ -47,6 +47,7 @@ const PERIOD_OPTIONS: { id: Period; label: string }[] = [
 ];
 
 const categories: { id: Category; name: string; valueLabel: string; icon: typeof Zap }[] = [
+  { id: 'overall', name: 'Classement global', valueLabel: 'score', icon: Trophy },
   { id: 'aura', name: 'Aura', valueLabel: 'aura', icon: Zap },
   { id: 'money', name: 'Argent', valueLabel: '$', icon: DollarSign },
   { id: 'total_money', name: 'Argent total', valueLabel: '$', icon: TrendingUp },
@@ -135,6 +136,9 @@ export default function Leaderboards() {
   // Nombres state
   const [nombresSections, setNombresSections] = useState<StatSection[]>([]);
   const [nombresLoading, setNombresLoading] = useState(false);
+
+  // Breakdown panel for overall ranking
+  const [showBreakdown, setShowBreakdown] = useState(false);
 
   // Reset period when switching to a category that doesn't support it
   useEffect(() => {
@@ -288,6 +292,8 @@ export default function Leaderboards() {
         return `$${numericValue.toLocaleString()}`;
       case 'casino_losses':
         return `-$${numericValue.toLocaleString()}`;
+      case 'overall':
+        return `${Math.round(numericValue).toLocaleString('fr-FR')} pts`;
       case 'racer':
         return formatTime(numericValue);
       case 'polymarket_ratio': {
@@ -324,6 +330,21 @@ export default function Leaderboards() {
           <Card className="h-full overflow-hidden">
             <ScrollArea className="h-full">
             <CardContent className="p-2">
+              {/* Classement global — special entry */}
+              <button
+                type="button"
+                onClick={() => setActiveView('overall')}
+                className={cn(
+                  "w-full rounded-md px-3 py-2 text-left transition-colors hover:bg-muted/40",
+                  activeView === 'overall' && "bg-muted"
+                )}
+              >
+                <span className={cn("flex items-center gap-2", TYPOGRAPHY.SMALL, activeView === 'overall' ? "text-foreground" : "text-muted-foreground")}>
+                  <Trophy className="w-3.5 h-3.5 shrink-0" />
+                  Classement global
+                </span>
+              </button>
+
               {/* Nombres — special entry */}
               <button
                 type="button"
@@ -400,6 +421,68 @@ export default function Leaderboards() {
           <ScrollArea className="h-full">
           <div className="space-y-4">
             <h2 className={TYPOGRAPHY.H3}>{activeTitle}</h2>
+
+            {activeView === 'overall' && (
+              <div className="rounded-lg border border-border/40 bg-muted/20">
+                <button
+                  type="button"
+                  onClick={() => setShowBreakdown(v => !v)}
+                  className="flex w-full items-center justify-between px-4 py-3 text-left"
+                >
+                  <span className={cn("flex items-center gap-1.5", TYPOGRAPHY.SMALL, "text-muted-foreground")}>
+                    <Info className="w-3.5 h-3.5 shrink-0" />
+                    Comment est calculé ce classement ?
+                  </span>
+                  <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground/60 transition-transform duration-200", showBreakdown && "rotate-180")} />
+                </button>
+                {showBreakdown && (
+                  <div className="px-4 pb-4 space-y-3 text-[11px] text-muted-foreground border-t border-border/30 pt-3">
+                    <p>
+                      Chaque joueur reçoit un rang dans chacune des catégories ci-dessous.
+                      Le <span className="text-foreground/80 font-medium">score global est la somme de ces rangs</span> — un score plus bas signifie un meilleur classement.
+                      Les catégories non jouées ajoutent une pénalité de <span className="text-foreground/80 font-medium">(N+1) points</span> où N est le nombre de participants dans cette catégorie.
+                    </p>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div>
+                        <p className="text-foreground/70 font-medium mb-1.5">Économie</p>
+                        <ul className="space-y-0.5 text-muted-foreground/80">
+                          <li>Aura</li>
+                          <li>Argent</li>
+                          <li>Valeur totale (argent + AuraCoin)</li>
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="text-foreground/70 font-medium mb-1.5">Jeux — score</p>
+                        <ul className="space-y-0.5 text-muted-foreground/80">
+                          <li>Doodle Jump, 2048, Flappy Bird</li>
+                          <li>Chrome Dino, Stack Tower, Geometry Dash</li>
+                          <li>QS Watermelon, Solitaire, Racer</li>
+                          <li>Tetris, Knife Hit, Démineur</li>
+                          <li>Fruit Ninja, Goyave Empire, Sudoku</li>
+                          <li>Casino (gain max)</li>
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="text-foreground/70 font-medium mb-1.5">Jeux — victoires</p>
+                        <ul className="space-y-0.5 text-muted-foreground/80">
+                          <li>Échecs, Petit Bac, Puissance 4</li>
+                          <li>Arène des balles, Poker, Bataille Navale</li>
+                          <li>Roulette Russe, Uno, Morpion</li>
+                          <li>Bombe de mots</li>
+                        </ul>
+                        <p className="text-foreground/70 font-medium mb-1.5 mt-3">Divers</p>
+                        <ul className="space-y-0.5 text-muted-foreground/80">
+                          <li>Parties jouées (tous jeux)</li>
+                          <li>Polymarket (ratio V/D)</li>
+                          <li>Pertes Casino (totales)</li>
+                        </ul>
+                      </div>
+                    </div>
+                    <p className="text-muted-foreground/50 text-[10px]">Mis à jour automatiquement toutes les 15 minutes.</p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {activeView !== 'nombres' && PERIOD_CATEGORIES.has(category) && (
               <div className="flex gap-1">
