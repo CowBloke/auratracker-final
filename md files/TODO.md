@@ -11,3 +11,5 @@
 - activité admin : ajouter temps passé : jeux
 - fruit ninja expo
 - revoir UI changelog
+- notif changelog bleu et non rouge
+- doube toast, consistence toast : croix fermer toasts
