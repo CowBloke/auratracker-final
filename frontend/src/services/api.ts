@@ -1937,4 +1937,35 @@ export const customBadgesApi = {
     api.post<{ success: boolean }>(`/custom-badges/${id}/reject`, { adminNote }),
 };
 
+export interface UpdateItem {
+  id: string;
+  text: string;
+  category: string;
+}
+
+export interface UpdateSection {
+  category: string;
+  items: { id: string; text: string }[];
+}
+
+export interface UpdateEntry {
+  id: string;
+  date: string;
+  title: string;
+  summary: string;
+  sections: UpdateSection[];
+}
+
+export const updatesApi = {
+  getAll: () => api.get<UpdateEntry[]>('/updates'),
+  getIds: () => api.get<{ ids: string[] }>('/updates/ids'),
+  createEntry: (data: { date: string; title: string; summary: string }) =>
+    api.post<UpdateEntry>('/updates', data),
+  deleteEntry: (id: string) => api.delete(`/updates/${id}`),
+  addItem: (entryId: string, data: { category: string; text: string }) =>
+    api.post<UpdateItem>(`/updates/${entryId}/items`, data),
+  deleteItem: (entryId: string, itemId: string) =>
+    api.delete(`/updates/${entryId}/items/${itemId}`),
+};
+
 export default api;

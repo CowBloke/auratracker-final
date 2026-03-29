@@ -40,7 +40,7 @@ import {
 } from '@/components/ui/collapsible';
 import { NavUser } from '@/components/nav-user';
 import { cn } from '@/lib/utils';
-import { usersApi, supportApi } from '@/services/api';
+import { usersApi, supportApi, updatesApi } from '@/services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -53,7 +53,7 @@ import BugReportPanel from '@/components/layout/BugReportPanel';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { BLOCKABLE_PAGES } from '@/config/blockedPages';
-import { getNewUpdatesCount, markUpdatesSeen } from '@/lib/updates';
+import { computeNewUpdatesCount, markUpdatesSeen } from '@/lib/updates';
 
 interface SearchUser {
   id: string;
@@ -139,7 +139,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
 
   const isOnGames = location.pathname.startsWith('/games');
   const [supportUnread, setSupportUnread] = useState(0);
-  const [updatesUnread, setUpdatesUnread] = useState(() => getNewUpdatesCount());
+  const [updatesUnread, setUpdatesUnread] = useState(0);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [users, setUsers] = useState<SearchUser[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
@@ -175,12 +175,18 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
 
   useEffect(() => {
     const syncUnread = () => {
-      setUpdatesUnread(getNewUpdatesCount());
+      updatesApi.getIds()
+        .then(({ data }) => setUpdatesUnread(computeNewUpdatesCount(data.ids)))
+        .catch(() => {});
     };
 
     if (location.pathname === '/updates') {
-      markUpdatesSeen();
-      setUpdatesUnread(0);
+      updatesApi.getIds()
+        .then(({ data }) => {
+          if (data.ids[0]) markUpdatesSeen(data.ids[0]);
+          setUpdatesUnread(0);
+        })
+        .catch(() => {});
     } else {
       syncUnread();
     }

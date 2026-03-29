@@ -48,6 +48,7 @@ import {
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { InboxDropdown } from '@/components/inbox/InboxDropdown';
 import { PlayerHoverCard } from '@/components/ui/player-hover-card';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export function SiteHeader() {
   const { user, refreshUser } = useAuth();
@@ -62,7 +63,6 @@ export function SiteHeader() {
 
   const [showUsers, setShowUsers] = useState(false);
   const [showParty, setShowParty] = useState(false);
-  const [showEffects, setShowEffects] = useState(false);
   const [announcement, setAnnouncement] = useState('');
   const [scrolled, setScrolled] = useState(false);
   const [now, setNow] = useState(Date.now());
@@ -638,39 +638,26 @@ export function SiteHeader() {
 
           <InboxDropdown />
 
-          <DropdownMenu open={showEffects} onOpenChange={setShowEffects}>
-            <DropdownMenuTrigger asChild>
-              <Button type="button" variant="ghost" className="hidden sm:inline-flex h-auto gap-2 px-0 py-0 text-sm text-muted-foreground hover:text-foreground">
-                <span>Effets</span>
-                <span className="text-xs text-foreground">{clanEffects.length}</span>
-                {showEffects ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80">
-              <DropdownMenuLabel>Effets du clan</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {clanEffects.length === 0 ? (
-                <DropdownMenuItem disabled>Aucun effet actif</DropdownMenuItem>
-              ) : (
-                clanEffects.map((effect) => (
-                  <DropdownMenuItem key={effect.id} onSelect={(event) => event.preventDefault()} className="flex flex-col items-start gap-1 py-3">
-                    <div className="flex w-full items-center justify-between gap-3">
-                      <span className="font-medium text-foreground">{effect.name}</span>
-                      <span className={cn('text-[10px] uppercase tracking-[0.18em]', 'text-emerald-400')}>
-                        Actif
-                      </span>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      +{effect.value}% d&apos;argent sur les récompenses de jeux
-                    </div>
-                    <div className="text-[11px] text-muted-foreground/80">
-                      {`Fin: ${formatRemaining(effect.activeUntil)}`}
-                    </div>
-                  </DropdownMenuItem>
-                ))
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {clanEffects.length > 0 && (
+            <TooltipProvider delayDuration={100}>
+              <div className="hidden sm:flex items-center gap-1">
+                {clanEffects.map((effect) => (
+                  <Tooltip key={effect.id}>
+                    <TooltipTrigger asChild>
+                      <div className="flex h-6 w-6 cursor-default items-center justify-center rounded-full bg-emerald-500/20 ring-1 ring-emerald-500/50 text-emerald-400 text-[10px] font-bold select-none">
+                        +{effect.value}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-48 text-center">
+                      <p className="font-medium">{effect.name}</p>
+                      <p className="text-muted-foreground text-xs">+{effect.value}% d&apos;argent sur les récompenses de jeux</p>
+                      <p className="text-muted-foreground/70 text-xs mt-0.5">Fin : {formatRemaining(effect.activeUntil)}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                ))}
+              </div>
+            </TooltipProvider>
+          )}
 
           <div className="flex items-center gap-6 tabular-nums">
             <span className="inline-flex items-center gap-1.5 text-foreground">

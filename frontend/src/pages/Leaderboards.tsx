@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { auraCoinApi, AuraCoinLeaderboardEntry, gamesApi, leaderboardsApi, clansApi, usersApi } from '../services/api';
-import { X, Zap, DollarSign, TrendingUp, Gem, ArrowUp, Skull, Layers, Wind, Diamond, Timer, LayoutGrid, Sparkles, TrendingDown, Flame, Gamepad2, Hash, Target, Bomb } from 'lucide-react';
+import { X, Zap, DollarSign, TrendingUp, Gem, ArrowUp, Skull, Layers, Wind, Diamond, Timer, LayoutGrid, Sparkles, TrendingDown, Flame, Gamepad2, Hash, Target, Bomb, BarChart2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TYPOGRAPHY } from '@/lib/design-system';
@@ -333,7 +333,8 @@ export default function Leaderboards() {
                   activeView === 'nombres' && "bg-muted"
                 )}
               >
-                <span className={cn(TYPOGRAPHY.SMALL, activeView === 'nombres' ? "text-foreground" : "text-muted-foreground")}>
+                <span className={cn("flex items-center gap-2", TYPOGRAPHY.SMALL, activeView === 'nombres' ? "text-foreground" : "text-muted-foreground")}>
+                  <BarChart2 className="w-3.5 h-3.5 shrink-0" />
                   Nombres
                 </span>
               </button>
@@ -355,7 +356,8 @@ export default function Leaderboards() {
                           activeView === cat.id && "bg-muted"
                         )}
                       >
-                        <span className={cn(TYPOGRAPHY.SMALL, activeView === cat.id ? "text-foreground" : "text-muted-foreground")}>
+                        <span className={cn("flex items-center gap-2", TYPOGRAPHY.SMALL, activeView === cat.id ? "text-foreground" : "text-muted-foreground")}>
+                          <cat.icon className="w-3.5 h-3.5 shrink-0" />
                           {cat.name}
                         </span>
                       </button>
@@ -381,7 +383,8 @@ export default function Leaderboards() {
                           activeView === cat.id && "bg-muted"
                         )}
                       >
-                        <span className={cn(TYPOGRAPHY.SMALL, activeView === cat.id ? "text-foreground" : "text-muted-foreground")}>
+                        <span className={cn("flex items-center gap-2", TYPOGRAPHY.SMALL, activeView === cat.id ? "text-foreground" : "text-muted-foreground")}>
+                          <cat.icon className="w-3.5 h-3.5 shrink-0" />
                           {cat.name}
                         </span>
                       </button>

@@ -37,6 +37,7 @@ import customBadgesRoutes from './routes/customBadges.js';
 import supportRoutes from './routes/support.js';
 import clashRoutes from './routes/clash.js';
 import polytrackRoutes from './routes/polytrack.js';
+import updatesRoutes from './routes/updates.js';
 
 // Socket handlers
 import { setupChatHandlers, startOnlineCountBroadcast, startOnlineSnapshotRecording } from './socket/chat.js';
@@ -115,6 +116,7 @@ app.use('/api/custom-badges', customBadgesRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/clash', clashRoutes);
 app.use('/api/polytrack', polytrackRoutes);
+app.use('/api/updates', updatesRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

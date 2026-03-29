@@ -1344,3 +1344,29 @@ model PolytrackRecord {
   @@index([trackNumber, timeMs])
   @@index([userId])
 }
+
+// ============================================
+// UPDATES / CHANGELOG
+// ============================================
+model UpdateEntry {
+  id        String       @id @default(uuid())
+  date      String       // ISO date string e.g. "2026-03-29"
+  title     String
+  summary   String
+  createdAt DateTime     @default(now())
+  items     UpdateItem[]
+
+  @@index([date])
+}
+
+model UpdateItem {
+  id        String      @id @default(uuid())
+  entryId   String
+  entry     UpdateEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  category  String      // BIG_FEATURE | SMALL_FEATURE | BUG_FIX
+  text      String
+  order     Int         @default(0)
+  createdAt DateTime    @default(now())
+
+  @@index([entryId])
+}
