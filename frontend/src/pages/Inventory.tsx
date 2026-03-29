@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { marketplaceApi, uploadUserImage } from '../services/api';
 import { ImagePicker } from '@/components/ui/image-picker';
-import { Loader2, Palette, Camera, Package, Tag, Award } from 'lucide-react';
+import { Loader2, Palette, Camera, Package, Tag, Award, LayoutGrid, List } from 'lucide-react';
 import { cn, humanizeUiLabel } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,6 +45,8 @@ interface ItemEffect {
 }
 
 type ImageEffectType = 'PROFILE_PICTURE' | 'PROFILE_BANNER';
+type InventoryViewMode = 'list' | 'grid';
+type InventorySortMode = 'recent' | 'name' | 'quantity-desc' | 'quantity-asc';
 
 const typeLabels: Record<string, string> = {
   CONSUMABLE: 'Objet',
@@ -75,6 +77,13 @@ const RARITY_OPTIONS = [
   { value: 'rare', label: 'Rare' },
   { value: 'epic', label: 'Épique' },
   { value: 'legendary', label: 'Légendaire' },
+];
+
+const INVENTORY_SORT_OPTIONS: Array<{ value: InventorySortMode; label: string }> = [
+  { value: 'recent', label: 'Plus récents' },
+  { value: 'name', label: 'Nom (A-Z)' },
+  { value: 'quantity-desc', label: 'Quantité (max-min)' },
+  { value: 'quantity-asc', label: 'Quantité (min-max)' },
 ];
 
 export default function Inventory() {
@@ -108,6 +117,9 @@ export default function Inventory() {
   const [customBadgeBg, setCustomBadgeBg] = useState('#374151');
   const [customBadgeBorder, setCustomBadgeBorder] = useState('#6b7280');
   const [customBadgeRarity, setCustomBadgeRarity] = useState('common');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortMode, setSortMode] = useState<InventorySortMode>('recent');
+  const [viewMode, setViewMode] = useState<InventoryViewMode>('list');
 
   useEffect(() => {
     if (user) {
@@ -376,6 +388,37 @@ export default function Inventory() {
     }
   };
 
+  const displayedItems = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const filtered = items.filter((userItem) => {
+      if (!query) return true;
+      const searchable = [
+        userItem.item.name,
+        userItem.item.description,
+        typeLabels[userItem.item.type] ?? userItem.item.type,
+      ]
+        .join(' ')
+        .toLowerCase();
+      return searchable.includes(query);
+    });
+
+    const sorted = [...filtered].sort((a, b) => {
+      switch (sortMode) {
+        case 'name':
+          return a.item.name.localeCompare(b.item.name, 'fr', { sensitivity: 'base' });
+        case 'quantity-desc':
+          return b.quantity - a.quantity;
+        case 'quantity-asc':
+          return a.quantity - b.quantity;
+        case 'recent':
+        default:
+          return new Date(b.acquiredAt).getTime() - new Date(a.acquiredAt).getTime();
+      }
+    });
+
+    return sorted;
+  }, [items, searchQuery, sortMode]);
+
   if (loading) {
     return (
       <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
@@ -391,16 +434,70 @@ export default function Inventory() {
       <div className={SPACING.PAGE_CONTENT}>
       <div className={SPACING.SECTION_SPACING}>
 
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="w-full md:max-w-sm">
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Rechercher un objet..."
+              className="bg-transparent"
+            />
+          </div>
+
+          <div className="flex w-full items-center justify-end gap-2 md:w-auto">
+            <Select value={sortMode} onValueChange={(value) => setSortMode(value as InventorySortMode)}>
+              <SelectTrigger className="w-full md:w-[210px]">
+                <SelectValue placeholder="Trier" />
+              </SelectTrigger>
+              <SelectContent>
+                {INVENTORY_SORT_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <div className="inline-flex rounded-md border border-border/60 p-0.5">
+              <Button
+                type="button"
+                variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                size="icon"
+                onClick={() => setViewMode('list')}
+                className="h-8 w-8"
+                aria-label="Vue liste"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                size="icon"
+                onClick={() => setViewMode('grid')}
+                className="h-8 w-8"
+                aria-label="Vue grille"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
         {/* Items */}
         {items.length === 0 ? (
           <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
             Inventaire vide
           </p>
+        ) : displayedItems.length === 0 ? (
+          <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
+            Aucun objet ne correspond à votre recherche
+          </p>
         ) : (
           <Card>
             <CardContent className="p-0">
-              <div className="divide-y divide-border/30">
-                {items.map((userItem) => {
+              <div className={viewMode === 'list' ? 'divide-y divide-border/30' : 'p-4'}>
+                <div className={viewMode === 'grid' ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : ''}>
+                {displayedItems.map((userItem) => {
                   const effect = parseEffect(userItem.item.effect);
                   const effectIcon = getEffectIcon(effect);
                   const effectLabel = getEffectLabel(effect);
@@ -412,27 +509,31 @@ export default function Inventory() {
                   return (
                     <div
                       key={userItem.id}
-                      className="flex items-center justify-between py-6 px-6"
+                      className={cn(
+                        viewMode === 'list'
+                          ? 'flex items-center justify-between py-6 px-6'
+                          : 'flex h-full flex-col justify-between gap-3 rounded-lg border border-border/40 p-4'
+                      )}
                     >
-                      <div className="flex items-center gap-4 flex-1">
+                      <div className={cn('flex gap-4 flex-1', viewMode === 'list' ? 'items-center' : 'items-start')}>
                         {/* Item Image */}
                         {previewImageUrl ? (
                           <img 
                             src={resolveImageUrl(previewImageUrl)} 
                             alt={userItem.item.name}
-                            className="w-14 h-14 object-cover rounded shrink-0"
+                            className={cn('object-cover rounded shrink-0', viewMode === 'list' ? 'w-14 h-14' : 'w-16 h-16')}
                             onError={(e) => {
                               (e.target as HTMLImageElement).style.display = 'none';
                             }}
                           />
                         ) : (
-                          <div className="w-14 h-14 bg-muted/30 flex items-center justify-center rounded shrink-0">
+                          <div className={cn('bg-muted/30 flex items-center justify-center rounded shrink-0', viewMode === 'list' ? 'w-14 h-14' : 'w-16 h-16')}>
                             <Package className="w-6 h-6 text-muted-foreground" />
                           </div>
                         )}
                         
                         <div className="space-y-1 flex-1 min-w-0">
-                          <div className="flex items-center gap-4">
+                          <div className={cn('flex items-center gap-4', viewMode === 'grid' && 'flex-wrap gap-2')}>
                             <h2 className={cn(TYPOGRAPHY.H5, "truncate")}>{userItem.item.name}</h2>
                             <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground   shrink-0")}>
                               {typeLabels[userItem.item.type]}
@@ -441,7 +542,7 @@ export default function Inventory() {
                               ×{userItem.quantity}
                             </span>
                           </div>
-                          <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground max-w-md truncate")}>
+                          <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground", viewMode === 'list' ? 'max-w-md truncate' : 'line-clamp-3')}>
                             {userItem.item.description}
                           </p>
                           {effectLabel && (
@@ -459,7 +560,7 @@ export default function Inventory() {
                           disabled={using === userItem.id}
                           variant="outline"
                           size="sm"
-                          className="ml-4 shrink-0"
+                          className={cn('shrink-0', viewMode === 'list' ? 'ml-4' : 'w-full')}
                         >
                           {using === userItem.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -468,13 +569,14 @@ export default function Inventory() {
                           )}
                         </Button>
                       ) : isDoodleJumpSkin ? (
-                        <span className={cn(TYPOGRAPHY.XS, "ml-4 shrink-0 text-muted-foreground")}>
+                        <span className={cn(TYPOGRAPHY.XS, "shrink-0 text-muted-foreground", viewMode === 'list' ? 'ml-4' : '')}>
                           Sélectionnable dans Doodle Jump
                         </span>
                       ) : null}
                     </div>
                   );
                 })}
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -20,24 +20,32 @@ const SEED_ENTRIES = [
       { category: 'BUG_FIX', text: "**Polymarket multi-choix** — Les événements créés avec des options personnalisées (3-4 choix) s'affichaient incorrectement en Oui/Non. Les options personnalisées sont désormais correctement transmises et affichées.", order: 0 },
       { category: 'BIG_FEATURE', text: '**Classement global dans les classements** — Le classement global combiné est maintenant accessible directement depuis la page Classements, avec un panneau explicatif sur le mode de calcul.', order: 2 },
       { category: 'SMALL_FEATURE', text: "**Badge classement global amélioré** — L'infobulle du badge sur les profils affiche désormais le tier, le rang, le top %, et une explication du score combiné.", order: 1 },
+      { category: 'SMALL_FEATURE', text: "**Inventaire amélioré** — Ajout d'une barre de recherche, d'un tri via menu déroulant, et d'un basculement entre affichage liste et grille.", order: 2 },
     ],
   },
 ];
 
 async function ensureSeeded() {
   for (const entry of SEED_ENTRIES) {
-    const existing = await prisma.updateEntry.findUnique({ where: { id: entry.id } });
-    if (!existing) {
-      await prisma.updateEntry.create({
-        data: {
-          id: entry.id,
-          date: entry.date,
-          title: entry.title,
-          summary: entry.summary,
-          items: { create: entry.items },
+    await prisma.updateEntry.upsert({
+      where: { id: entry.id },
+      create: {
+        id: entry.id,
+        date: entry.date,
+        title: entry.title,
+        summary: entry.summary,
+        items: { create: entry.items },
+      },
+      update: {
+        date: entry.date,
+        title: entry.title,
+        summary: entry.summary,
+        items: {
+          deleteMany: {},
+          create: entry.items,
         },
-      });
-    }
+      },
+    });
   }
 }
 
