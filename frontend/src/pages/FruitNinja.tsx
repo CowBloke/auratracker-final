@@ -24,6 +24,7 @@ const MIN_SLICE_SPEED = 3;
 const COMBO_TIMEOUT_MS = 1400;
 const TRAIL_DURATION_MS = 110;
 const MAX_ACTIVE_FRUITS = 12;
+const MAX_PARTICLES = 160;
 const WOOD_PLANK_MIN_WIDTH = 60;
 const WOOD_PLANK_MAX_WIDTH = 96;
 
@@ -209,7 +210,7 @@ export default function FruitNinja() {
 
   // ---- Particle effects ----
   const createJuiceParticles = useCallback((x: number, y: number, color: string, juice: string, count: number) => {
-    if (fpsModeRef.current) return;
+    if (fpsModeRef.current || particlesRef.current.length >= MAX_PARTICLES) return;
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
       const spd = 1.5 + Math.random() * 5.5;
@@ -279,7 +280,7 @@ export default function FruitNinja() {
       setCombo(0);
       lastSliceTimeRef.current = 0;
       // Dark smoke + fire
-      if (!fpsModeRef.current) for (let i = 0; i < 28; i++) {
+      if (!fpsModeRef.current && particlesRef.current.length < MAX_PARTICLES) for (let i = 0; i < 28; i++) {
         const angle = Math.random() * Math.PI * 2;
         const spd = 2 + Math.random() * 7;
         particlesRef.current.push({
@@ -643,12 +644,12 @@ export default function FruitNinja() {
     if (shakeAmtRef.current > 0) shakeAmtRef.current = Math.max(0, shakeAmtRef.current - dt);
 
     // Spawn
-    const spawnInt = Math.max(320, 1350 - scoreRef.current * 0.9);
+    const spawnInt = Math.max(500, 1900 - scoreRef.current * 0.75);
     if (timestamp - lastSpawnRef.current > spawnInt) {
-      const multiSpawnChance = scoreRef.current > 40
-        ? Math.min(0.72, 0.18 + scoreRef.current / 900)
+      const multiSpawnChance = scoreRef.current > 80
+        ? Math.min(0.65, 0.12 + scoreRef.current / 1100)
         : 0;
-      const batch = scoreRef.current > 220 && Math.random() < 0.28
+      const batch = scoreRef.current > 400 && Math.random() < 0.22
         ? 3
         : Math.random() < multiSpawnChance
           ? 2
@@ -684,35 +685,47 @@ export default function FruitNinja() {
     }
     for (let i = deadIdx.length - 1; i >= 0; i--) fruitsRef.current.splice(deadIdx[i], 1);
 
-    // Update particles
+    // Update particles (swap-remove: O(1) per deletion vs O(n) splice)
     for (let i = particlesRef.current.length - 1; i >= 0; i--) {
       const p = particlesRef.current[i];
       p.x += p.vx; p.y += p.vy; p.vy += 0.18;
       p.life++;
       p.alpha = Math.max(0, 1 - p.life / p.maxLife);
-      if (p.alpha <= 0) particlesRef.current.splice(i, 1);
+      if (p.alpha <= 0) {
+        particlesRef.current[i] = particlesRef.current[particlesRef.current.length - 1];
+        particlesRef.current.pop();
+      }
     }
 
-    // Update halves
+    // Update halves (swap-remove)
     for (let i = halvesRef.current.length - 1; i >= 0; i--) {
       const h = halvesRef.current[i];
       h.x += h.vx; h.y += h.vy; h.vy += GRAVITY * 0.9;
       h.rotation += h.rotSpeed;
       h.alpha -= 0.011;
-      if (h.alpha <= 0 || h.y > CANVAS_HEIGHT + 100) halvesRef.current.splice(i, 1);
+      if (h.alpha <= 0 || h.y > CANVAS_HEIGHT + 100) {
+        halvesRef.current[i] = halvesRef.current[halvesRef.current.length - 1];
+        halvesRef.current.pop();
+      }
     }
 
-    // Update popups
+    // Update popups (swap-remove)
     for (let i = popupsRef.current.length - 1; i >= 0; i--) {
       const p = popupsRef.current[i];
       p.y += p.vy; p.alpha -= 0.022;
-      if (p.alpha <= 0) popupsRef.current.splice(i, 1);
+      if (p.alpha <= 0) {
+        popupsRef.current[i] = popupsRef.current[popupsRef.current.length - 1];
+        popupsRef.current.pop();
+      }
     }
 
-    // Fade splatters
+    // Fade splatters (swap-remove)
     for (let i = splattersRef.current.length - 1; i >= 0; i--) {
       splattersRef.current[i].alpha -= 0.0009;
-      if (splattersRef.current[i].alpha <= 0) splattersRef.current.splice(i, 1);
+      if (splattersRef.current[i].alpha <= 0) {
+        splattersRef.current[i] = splattersRef.current[splattersRef.current.length - 1];
+        splattersRef.current.pop();
+      }
     }
 
     // Slice detection
@@ -729,7 +742,8 @@ export default function FruitNinja() {
         }
       }
     }
-    prevMouseRef.current = { ...curr };
+    prevMouseRef.current.x = curr.x;
+    prevMouseRef.current.y = curr.y;
 
     drawScene(ctx, timestamp);
     animRef.current = requestAnimationFrame(gameLoop);
@@ -770,8 +784,7 @@ export default function FruitNinja() {
     const onMove = (e: MouseEvent) => {
       mouseRef.current = toGame(e);
       trailRef.current.push({ ...mouseRef.current, time: performance.now() });
-      const cut = performance.now() - TRAIL_DURATION_MS * 2;
-      if (trailRef.current.length > 32) trailRef.current = trailRef.current.filter(p => p.time > cut);
+      if (trailRef.current.length > 40) trailRef.current = trailRef.current.slice(-32);
     };
     const onEnter = () => { onCanvasRef.current = true; };
     const onLeave = () => { onCanvasRef.current = false; };
