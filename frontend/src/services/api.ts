@@ -1704,7 +1704,16 @@ export const polymarketApi = {
     suggestionId?: string;
     optionsConfig?: Array<{ key: string; label: string; color: string; odds: number }> | null;
   }) => api.post<{ event: PolymarketEvent }>('/polymarket/events', data),
-  updateEvent: (id: string, data: Partial<PolymarketEvent>) =>
+  updateEvent: (id: string, data: {
+    title?: string;
+    description?: string;
+    imageUrl?: string | null;
+    eventDate?: string;
+    yesOdds?: number;
+    noOdds?: number;
+    status?: 'OPEN' | 'CLOSED' | 'RESOLVED';
+    optionsConfig?: Array<{ key: string; label: string; color: string; odds: number }> | null;
+  }) =>
     api.patch<{ event: PolymarketEvent }>(`/polymarket/events/${id}`, data),
   resolveEvent: (id: string, resolution: 'YES' | 'NO') =>
     api.post<{ success: boolean; resolution: string }>(`/polymarket/events/${id}/resolve`, { resolution }),
