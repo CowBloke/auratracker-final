@@ -20,17 +20,6 @@ type Game = (typeof games)[number];
 
 const games = [
   {
-    id: 'levier-infernal',
-    pageKey: 'game-levier-infernal',
-    name: 'Levier Infernal',
-    description: 'Mini-jeu en groupe inspiré de Mario : chacun tire un levier, l’un explose, le dernier survivant gagne.',
-    type: 'Groupe',
-    requiresParty: true,
-    image: getGameImage('levier-infernal'),
-    statsKeys: ['levier_infernal'],
-    releaseRank: 4,
-  },
-  {
     id: 'russian-roulette',
     pageKey: 'game-russian-roulette',
     name: 'Roulette russe',

@@ -79,7 +79,6 @@ const adminItems = [
 ];
 
 const gameItems = [
-  { to: '/games/levier-infernal', label: 'Levier Infernal', image: getGameImage('levier-infernal') },
   { to: '/games/russian-roulette', label: 'Roulette russe', image: getGameImage('russian-roulette') },
   { to: '/games/bomb-party', label: 'Bombe de mots', image: getGameImage('bomb-party') },
   { to: '/games/poker', label: 'Poker', image: getGameImage('poker') },

@@ -5,7 +5,6 @@ import { sendActivePokerState, sendPendingPokerPlayAgainPrompt } from './poker.j
 import { sendPendingPetitBacPlayAgainPrompt, sendActivePetitBacGameState } from './petitbac.js';
 import { sendActiveBattleshipState, sendPendingBattleshipPlayAgainPrompt } from './battleship.js';
 import { sendActiveChessState, sendPendingChessPlayAgainPrompt } from './chess.js';
-import { sendActiveLeverBlastState, sendPendingLeverBlastPlayAgainPrompt } from './leverblast.js';
 import { logParty } from '../utils/logger.js';
 import { checkQuestProgress } from '../routes/quests.js';
 import { createNotification } from '../utils/notifications.js';
@@ -250,9 +249,6 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
         sendPendingBattleshipPlayAgainPrompt(socket, membership.partyId, userId);
         sendActiveChessState(socket, membership.partyId, userId);
         sendPendingChessPlayAgainPrompt(socket, membership.partyId, userId);
-        sendActiveLeverBlastState(socket, membership.partyId, userId);
-        sendPendingLeverBlastPlayAgainPrompt(socket, membership.partyId, userId);
-
         // Update party activity
         await prisma.party.update({
           where: { id: membership.partyId },

@@ -46,7 +46,6 @@ import Blocked from './pages/Blocked';
 import Minesweeper from './pages/Minesweeper';
 import GeometryDash from './pages/GeometryDash';
 import RussianRoulette from './pages/RussianRoulette';
-import LevierInfernal from './pages/LevierInfernal';
 import Uno from './pages/Uno';
 import Morpion from './pages/Morpion';
 import ChromeDino from './pages/ChromeDino';
@@ -205,7 +204,6 @@ function App() {
         <Route path="games/ball-arena" element={<BallArena />} />
         <Route path="games/logic-lab" element={<Sudoku />} />
         <Route path="games/russian-roulette" element={<RussianRoulette />} />
-        <Route path="games/levier-infernal" element={<LevierInfernal />} />
         <Route path="games/uno" element={<Uno />} />
         <Route path="games/morpion" element={<Morpion />} />
         <Route path="games/polytrack" element={<Polytrack />} />

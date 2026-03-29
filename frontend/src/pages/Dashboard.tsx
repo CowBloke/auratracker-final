@@ -102,7 +102,6 @@ const pickWelcomeMessage = (username?: string) => {
 };
 
 const gameShortcuts: GameShortcut[] = [
-  { id: 'levier-infernal', label: 'Levier Infernal', path: '/games/levier-infernal', description: 'Leviers, bluff et explosion.', image: getGameImage('levier-infernal') },
   { id: 'bomb-party', label: 'Bombe de mots', path: '/games/bomb-party', description: 'Mots explosifs en équipe.', image: getGameImage('bomb-party') },
   { id: 'poker', label: 'Poker', path: '/games/poker', description: 'Table rapide, mise prudente.', image: getGameImage('poker') },
   { id: 'petit-bac', label: 'Petit Bac', path: '/games/petit-bac', description: 'Catégories, lettres, vitesse.', image: getGameImage('petit-bac') },

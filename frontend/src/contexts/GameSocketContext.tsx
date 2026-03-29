@@ -185,34 +185,6 @@ interface RRPlayAgainPrompt {
   responses: Array<{ userId: string; playAgain: boolean }>;
   playAgainCount?: number;
 }
-export interface LeverBlastGameState {
-  partyId: string;
-  players: Array<{ userId: string; username: string; usernameColor?: string | null; isAlive: boolean; pulls: number; safePulls: number; explodedAtRound: number | null }>;
-  currentPlayerId: string | null;
-  levers: Array<{ id: number; color: string; isPulled: boolean }>;
-  round: number;
-  isActive: boolean;
-  lastEvent: { type: 'safe' | 'boom' | 'auto-safe' | 'auto-boom'; playerId: string; username: string; leverId: number; leverColor: string } | null;
-  turnEndsAt: number;
-  alivePlayers: number;
-  totalPlayers: number;
-}
-export interface LeverBlastGameOver {
-  winnerId: string | null;
-  winnerUsername: string | null;
-  standings: Array<{ userId: string; username: string; usernameColor?: string | null; isAlive: boolean; pulls: number; safePulls: number; explodedAtRound: number | null; isWinner: boolean }>;
-}
-interface LeverBlastJoinPrompt {
-  partyId: string; leaderId: string; timeLimit: number; startTime: number;
-  members: Array<{ userId: string; username: string; usernameColor?: string | null }>;
-  responses: Array<{ userId: string; accepted: boolean }>;
-}
-interface LeverBlastPlayAgainPrompt {
-  partyId: string; timeLimit: number; startTime: number;
-  players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
-  responses: Array<{ userId: string; playAgain: boolean }>;
-  playAgainCount?: number;
-}
 
 // ─── Unified prompts ──────────────────────────────────────────────────────────
 export interface ActiveJoinPrompt {
@@ -294,14 +266,6 @@ interface GameSocketContextValue {
   passRoulette: () => void;
   respondToRoulettePlayAgainPrompt: (playAgain: boolean) => void;
   clearRouletteGameOver: () => void;
-  leverBlastGame: LeverBlastGameState | null;
-  leverBlastGameOver: LeverBlastGameOver | null;
-  leverBlastJoinPrompt: LeverBlastJoinPrompt | null;
-  leverBlastPlayAgainPrompt: LeverBlastPlayAgainPrompt | null;
-  startLeverBlast: () => void;
-  pullLeverBlastLever: (leverId: number) => void;
-  respondToLeverBlastPlayAgainPrompt: (playAgain: boolean) => void;
-  clearLeverBlastGameOver: () => void;
   activeJoinPrompt: ActiveJoinPrompt | null;
   activeReplayPrompt: ActiveReplayPrompt | null;
   respondToGameJoinPrompt: (accepted: boolean) => void;
@@ -352,10 +316,6 @@ export function GameSocketProvider({ children }: { children: React.ReactNode }) 
   const [rouletteGameOver, setRouletteGameOver] = useState<RRGameOver | null>(null);
   const [rouletteJoinPrompt, setRouletteJoinPrompt] = useState<RRJoinPrompt | null>(null);
   const [roulettePlayAgainPrompt, setRoulettePlayAgainPrompt] = useState<RRPlayAgainPrompt | null>(null);
-  const [leverBlastGame, setLeverBlastGame] = useState<LeverBlastGameState | null>(null);
-  const [leverBlastGameOver, setLeverBlastGameOver] = useState<LeverBlastGameOver | null>(null);
-  const [leverBlastJoinPrompt, setLeverBlastJoinPrompt] = useState<LeverBlastJoinPrompt | null>(null);
-  const [leverBlastPlayAgainPrompt, setLeverBlastPlayAgainPrompt] = useState<LeverBlastPlayAgainPrompt | null>(null);
 
   // ── Clear all game state when party changes ────────────────────────────────
   const clearAllGameState = useCallback(() => {
@@ -364,7 +324,6 @@ export function GameSocketProvider({ children }: { children: React.ReactNode }) 
     setPetitBacGame(null); setPetitBacReviewState(null); setPetitBacRoundResult(null); setPetitBacGameOver(null); setPetitBacJoinPrompt(null); setPetitBacPlayAgainPrompt(null);
     setBallArenaJoinPrompt(null); setBallArenaPlayAgainPrompt(null);
     setRouletteGame(null); setRouletteGameOver(null); setRouletteJoinPrompt(null); setRoulettePlayAgainPrompt(null);
-    setLeverBlastGame(null); setLeverBlastGameOver(null); setLeverBlastJoinPrompt(null); setLeverBlastPlayAgainPrompt(null);
   }, []);
 
   // ── Socket listeners ───────────────────────────────────────────────────────
@@ -693,38 +652,6 @@ export function GameSocketProvider({ children }: { children: React.ReactNode }) 
     });
     s.on('roulette:play-again-cancelled', () => setRoulettePlayAgainPrompt(null));
 
-    // ── Levier Infernal ────────────────────────────────────────────────────
-    s.on('leverblast:state', (game: LeverBlastGameState) => {
-      setLeverBlastGame(game);
-      setLeverBlastGameOver(null);
-      setLeverBlastJoinPrompt(null);
-      setLeverBlastPlayAgainPrompt(null);
-    });
-    s.on('leverblast:join-prompt', (data: LeverBlastJoinPrompt) => {
-      setLeverBlastJoinPrompt({ ...data, startTime: Date.now(), responses: data.responses || [] });
-    });
-    s.on('leverblast:join-response-update', (data: { responses: Array<{ userId: string; accepted: boolean }> }) => {
-      setLeverBlastJoinPrompt((prev) => prev ? { ...prev, responses: data.responses } : null);
-    });
-    s.on('leverblast:join-cancelled', () => setLeverBlastJoinPrompt(null));
-    s.on('leverblast:game-over', (data: LeverBlastGameOver) => {
-      setLeverBlastGame(null);
-      setLeverBlastGameOver(data);
-    });
-    s.on('leverblast:play-again-prompt', (data: LeverBlastPlayAgainPrompt) => {
-      const responses = data.responses || [];
-      setLeverBlastPlayAgainPrompt({
-        ...data,
-        startTime: data.startTime ?? Date.now(),
-        responses,
-        playAgainCount: data.playAgainCount ?? responses.filter((entry) => entry.playAgain).length,
-      });
-    });
-    s.on('leverblast:play-again-response-update', (data: { responses: Array<{ userId: string; playAgain: boolean }>; playAgainCount: number }) => {
-      setLeverBlastPlayAgainPrompt((prev) => prev ? { ...prev, ...data } : null);
-    });
-    s.on('leverblast:play-again-cancelled', () => setLeverBlastPlayAgainPrompt(null));
-
     return () => {
       s.off('connect', handleConnect);
       s.off('party:created', clearAllGameState);
@@ -752,8 +679,6 @@ export function GameSocketProvider({ children }: { children: React.ReactNode }) 
        'chess:play-again-prompt','chess:play-again-response-update','chess:play-again-cancelled',
        'roulette:state','roulette:join-prompt','roulette:join-response-update','roulette:join-cancelled',
        'roulette:game-over','roulette:play-again-prompt','roulette:play-again-response-update','roulette:play-again-cancelled',
-       'leverblast:state','leverblast:join-prompt','leverblast:join-response-update','leverblast:join-cancelled',
-       'leverblast:game-over','leverblast:play-again-prompt','leverblast:play-again-response-update','leverblast:play-again-cancelled',
       ].forEach((ev) => s.off(ev));
     };
   }, [user?.id, clearAllGameState]);
@@ -914,25 +839,6 @@ export function GameSocketProvider({ children }: { children: React.ReactNode }) 
 
   const clearRouletteGameOver = useCallback(() => { setRouletteGameOver(null); setRouletteGame(null); }, []);
 
-  const startLeverBlast = useCallback(() => {
-    if (currentPartyRef.current) getSocket()?.emit('leverblast:start', { partyId: currentPartyRef.current.id });
-  }, []);
-
-  const pullLeverBlastLever = useCallback((leverId: number) => {
-    if (currentPartyRef.current) getSocket()?.emit('leverblast:pull', { partyId: currentPartyRef.current.id, leverId });
-  }, []);
-
-  const respondToLeverBlastPlayAgainPrompt = useCallback((playAgain: boolean) => {
-    if (leverBlastPlayAgainPrompt) {
-      getSocket()?.emit('leverblast:play-again-response', { partyId: leverBlastPlayAgainPrompt.partyId, playAgain });
-    }
-  }, [leverBlastPlayAgainPrompt]);
-
-  const clearLeverBlastGameOver = useCallback(() => {
-    setLeverBlastGameOver(null);
-    setLeverBlastGame(null);
-  }, []);
-
   // ── Unified prompts (derived) ──────────────────────────────────────────────
   const activeJoinPrompt = useMemo((): ActiveJoinPrompt | null => {
     if (bombPartyJoinPrompt) {
@@ -946,9 +852,8 @@ export function GameSocketProvider({ children }: { children: React.ReactNode }) 
     if (ballArenaJoinPrompt) return { gameType: 'ballarena', title: 'Rejoindre Arène des balles ?', settingsText: ballArenaJoinPrompt.mode === 'multiplayer' ? 'Mode multijoueur' : 'Mode duo', navigateTo: '/games/ball-arena', partyId: ballArenaJoinPrompt.partyId, leaderId: ballArenaJoinPrompt.leaderId, members: ballArenaJoinPrompt.members, responses: ballArenaJoinPrompt.responses, timeLimit: ballArenaJoinPrompt.timeLimit, startTime: ballArenaJoinPrompt.startTime };
     if (chessJoinPrompt) return { gameType: 'chess', title: 'Rejoindre Échecs ?', navigateTo: '/games/echecs', partyId: chessJoinPrompt.partyId, leaderId: chessJoinPrompt.leaderId, members: chessJoinPrompt.members, responses: chessJoinPrompt.responses, timeLimit: chessJoinPrompt.timeLimit, startTime: chessJoinPrompt.startTime };
     if (rouletteJoinPrompt) return { gameType: 'roulette', title: 'Rejoindre Roulette russe ?', navigateTo: '/games/russian-roulette', partyId: rouletteJoinPrompt.partyId, leaderId: rouletteJoinPrompt.leaderId, members: rouletteJoinPrompt.members, responses: rouletteJoinPrompt.responses, timeLimit: rouletteJoinPrompt.timeLimit, startTime: rouletteJoinPrompt.startTime };
-    if (leverBlastJoinPrompt) return { gameType: 'leverblast', title: 'Rejoindre Levier Infernal ?', navigateTo: '/games/levier-infernal', partyId: leverBlastJoinPrompt.partyId, leaderId: leverBlastJoinPrompt.leaderId, members: leverBlastJoinPrompt.members, responses: leverBlastJoinPrompt.responses, timeLimit: leverBlastJoinPrompt.timeLimit, startTime: leverBlastJoinPrompt.startTime };
     return null;
-  }, [bombPartyJoinPrompt, pokerJoinPrompt, petitBacJoinPrompt, p4JoinPrompt, morpionJoinPrompt, ballArenaJoinPrompt, chessJoinPrompt, rouletteJoinPrompt, leverBlastJoinPrompt]);
+  }, [bombPartyJoinPrompt, pokerJoinPrompt, petitBacJoinPrompt, p4JoinPrompt, morpionJoinPrompt, ballArenaJoinPrompt, chessJoinPrompt, rouletteJoinPrompt]);
 
   const activeReplayPrompt = useMemo((): ActiveReplayPrompt | null => {
     if (bombPartyPlayAgainPrompt) { const diff = bombPartyPlayAgainPrompt.difficulty === 'easy' ? 'Facile' : bombPartyPlayAgainPrompt.difficulty === 'medium' ? 'Moyen' : 'Difficile'; return { gameType: 'bombparty', settingsText: `${bombPartyPlayAgainPrompt.lives} vies · Difficulté ${diff}`, partyId: bombPartyPlayAgainPrompt.partyId, players: bombPartyPlayAgainPrompt.players, responses: bombPartyPlayAgainPrompt.responses, timeLimit: bombPartyPlayAgainPrompt.timeLimit, startTime: bombPartyPlayAgainPrompt.startTime }; }
@@ -959,10 +864,9 @@ export function GameSocketProvider({ children }: { children: React.ReactNode }) 
     if (battleshipPlayAgainPrompt) return { gameType: 'battleship', settingsText: 'Bataille Navale', partyId: battleshipPlayAgainPrompt.partyId, players: battleshipPlayAgainPrompt.players, responses: battleshipPlayAgainPrompt.responses, timeLimit: battleshipPlayAgainPrompt.timeLimit, startTime: battleshipPlayAgainPrompt.startTime };
     if (chessPlayAgainPrompt) return { gameType: 'chess', settingsText: 'Échecs', partyId: chessPlayAgainPrompt.partyId, players: chessPlayAgainPrompt.players, responses: chessPlayAgainPrompt.responses, timeLimit: chessPlayAgainPrompt.timeLimit, startTime: chessPlayAgainPrompt.startTime };
     if (roulettePlayAgainPrompt) return { gameType: 'roulette', settingsText: 'Roulette russe', partyId: roulettePlayAgainPrompt.partyId, players: roulettePlayAgainPrompt.players, responses: roulettePlayAgainPrompt.responses, timeLimit: roulettePlayAgainPrompt.timeLimit, startTime: roulettePlayAgainPrompt.startTime };
-    if (leverBlastPlayAgainPrompt) return { gameType: 'leverblast', settingsText: 'Levier Infernal', partyId: leverBlastPlayAgainPrompt.partyId, players: leverBlastPlayAgainPrompt.players, responses: leverBlastPlayAgainPrompt.responses, timeLimit: leverBlastPlayAgainPrompt.timeLimit, startTime: leverBlastPlayAgainPrompt.startTime };
     if (ballArenaPlayAgainPrompt) return { gameType: 'ballarena', settingsText: 'Arène des balles', partyId: ballArenaPlayAgainPrompt.partyId, players: ballArenaPlayAgainPrompt.players, responses: ballArenaPlayAgainPrompt.responses, timeLimit: ballArenaPlayAgainPrompt.timeLimit, startTime: ballArenaPlayAgainPrompt.startTime };
     return null;
-  }, [bombPartyPlayAgainPrompt, pokerPlayAgainPrompt, petitBacPlayAgainPrompt, p4PlayAgainPrompt, morpionPlayAgainPrompt, battleshipPlayAgainPrompt, chessPlayAgainPrompt, roulettePlayAgainPrompt, leverBlastPlayAgainPrompt, ballArenaPlayAgainPrompt]);
+  }, [bombPartyPlayAgainPrompt, pokerPlayAgainPrompt, petitBacPlayAgainPrompt, p4PlayAgainPrompt, morpionPlayAgainPrompt, battleshipPlayAgainPrompt, chessPlayAgainPrompt, roulettePlayAgainPrompt, ballArenaPlayAgainPrompt]);
 
   const respondToGameJoinPrompt = useCallback((accepted: boolean) => {
     if (!user) return;
@@ -974,8 +878,7 @@ export function GameSocketProvider({ children }: { children: React.ReactNode }) 
     else if (ballArenaJoinPrompt) { getSocket()?.emit('ballarena:join-response', { partyId: ballArenaJoinPrompt.partyId, accepted }); if (!accepted) setBallArenaJoinPrompt(null); }
     else if (chessJoinPrompt) { getSocket()?.emit('chess:join-response', { partyId: chessJoinPrompt.partyId, accepted }); if (!accepted) setChessJoinPrompt(null); }
     else if (rouletteJoinPrompt) { getSocket()?.emit('roulette:join-response', { partyId: rouletteJoinPrompt.partyId, accepted }); if (!accepted) setRouletteJoinPrompt(null); }
-    else if (leverBlastJoinPrompt) { getSocket()?.emit('leverblast:join-response', { partyId: leverBlastJoinPrompt.partyId, accepted }); if (!accepted) setLeverBlastJoinPrompt(null); }
-  }, [user?.id, bombPartyJoinPrompt, pokerJoinPrompt, petitBacJoinPrompt, p4JoinPrompt, morpionJoinPrompt, ballArenaJoinPrompt, chessJoinPrompt, rouletteJoinPrompt, leverBlastJoinPrompt]);
+  }, [user?.id, bombPartyJoinPrompt, pokerJoinPrompt, petitBacJoinPrompt, p4JoinPrompt, morpionJoinPrompt, ballArenaJoinPrompt, chessJoinPrompt, rouletteJoinPrompt]);
 
   const respondToGameReplayPrompt = useCallback((playAgain: boolean) => {
     if (!user) return;
@@ -987,9 +890,8 @@ export function GameSocketProvider({ children }: { children: React.ReactNode }) 
     else if (battleshipPlayAgainPrompt) getSocket()?.emit('battleship:play-again-response', { userId: user.id, partyId: battleshipPlayAgainPrompt.partyId, playAgain });
     else if (chessPlayAgainPrompt) getSocket()?.emit('chess:play-again-response', { partyId: chessPlayAgainPrompt.partyId, playAgain });
     else if (roulettePlayAgainPrompt) getSocket()?.emit('roulette:play-again-response', { partyId: roulettePlayAgainPrompt.partyId, playAgain });
-    else if (leverBlastPlayAgainPrompt) getSocket()?.emit('leverblast:play-again-response', { partyId: leverBlastPlayAgainPrompt.partyId, playAgain });
     else if (ballArenaPlayAgainPrompt) getSocket()?.emit('ballarena:play-again-response', { partyId: ballArenaPlayAgainPrompt.partyId, playAgain });
-  }, [user?.id, bombPartyPlayAgainPrompt, pokerPlayAgainPrompt, petitBacPlayAgainPrompt, p4PlayAgainPrompt, morpionPlayAgainPrompt, battleshipPlayAgainPrompt, chessPlayAgainPrompt, roulettePlayAgainPrompt, leverBlastPlayAgainPrompt, ballArenaPlayAgainPrompt]);
+  }, [user?.id, bombPartyPlayAgainPrompt, pokerPlayAgainPrompt, petitBacPlayAgainPrompt, p4PlayAgainPrompt, morpionPlayAgainPrompt, battleshipPlayAgainPrompt, chessPlayAgainPrompt, roulettePlayAgainPrompt, ballArenaPlayAgainPrompt]);
 
   const value = useMemo(() => ({
     bombPartyGame, bombPartyGameOver, bombPartyRejection, bombPartyJoinPrompt, bombPartyPlayAgainPrompt,
@@ -1005,8 +907,6 @@ export function GameSocketProvider({ children }: { children: React.ReactNode }) 
     chessJoinPrompt, respondToChessJoinPrompt, chessPlayAgainPrompt, respondToChessPlayAgainPrompt,
     rouletteGame, rouletteGameOver, rouletteJoinPrompt, roulettePlayAgainPrompt,
     startRoulette, pullRouletteTrigger, passRoulette, respondToRoulettePlayAgainPrompt, clearRouletteGameOver,
-    leverBlastGame, leverBlastGameOver, leverBlastJoinPrompt, leverBlastPlayAgainPrompt,
-    startLeverBlast, pullLeverBlastLever, respondToLeverBlastPlayAgainPrompt, clearLeverBlastGameOver,
     activeJoinPrompt, activeReplayPrompt, respondToGameJoinPrompt, respondToGameReplayPrompt,
   }), [
     bombPartyGame, bombPartyGameOver, bombPartyRejection, bombPartyJoinPrompt, bombPartyPlayAgainPrompt,
@@ -1022,8 +922,6 @@ export function GameSocketProvider({ children }: { children: React.ReactNode }) 
     chessJoinPrompt, respondToChessJoinPrompt, chessPlayAgainPrompt, respondToChessPlayAgainPrompt,
     rouletteGame, rouletteGameOver, rouletteJoinPrompt, roulettePlayAgainPrompt,
     startRoulette, pullRouletteTrigger, passRoulette, respondToRoulettePlayAgainPrompt, clearRouletteGameOver,
-    leverBlastGame, leverBlastGameOver, leverBlastJoinPrompt, leverBlastPlayAgainPrompt,
-    startLeverBlast, pullLeverBlastLever, respondToLeverBlastPlayAgainPrompt, clearLeverBlastGameOver,
     activeJoinPrompt, activeReplayPrompt, respondToGameJoinPrompt, respondToGameReplayPrompt,
   ]);
 

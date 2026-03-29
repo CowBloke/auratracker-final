@@ -53,7 +53,6 @@ import { setupRussianRouletteHandlers } from './socket/russianroulette.js';
 import { setupBallArenaHandlers } from './socket/ballarena.js';
 import { setupUnoHandlers } from './socket/uno.js';
 import { setupMorpionHandlers } from './socket/morpion.js';
-import { setupLeverBlastHandlers } from './socket/leverblast.js';
 
 // Logger
 import { initLogger } from './utils/logger.js';
@@ -273,8 +272,6 @@ io.on('connection', (socket) => {
   setupBallArenaHandlers(socket, io);
   setupUnoHandlers(socket, io);
   setupMorpionHandlers(socket, io);
-  setupLeverBlastHandlers(socket, io);
-
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.id}`);
   });

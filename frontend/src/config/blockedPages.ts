@@ -43,7 +43,6 @@ export const BLOCKABLE_PAGES: BlockablePage[] = [
   { key: 'game-puissance-quatre', path: '/games/puissance-quatre', label: 'Puissance 4', category: 'Jeux', description: 'Puissance 4 en 1v1 — alignez 4 jetons.' },
   { key: 'game-fruit-ninja', path: '/games/fruit-ninja', label: 'Fruit Ninja', category: 'Jeux', description: 'Tranchez les fruits qui volent avant qu\'ils tombent.' },
   { key: 'game-ball-arena', path: '/games/ball-arena', label: 'Arène des balles', category: 'Jeux', description: 'Jeu d\'arène — faites tomber les adversaires hors du plateau.' },
-  { key: 'game-levier-infernal', path: '/games/levier-infernal', label: 'Levier Infernal', category: 'Jeux', description: 'Jeu de réflexes — actionnez les leviers au bon moment.' },
   { key: 'game-uno', path: '/games/uno', label: 'Uno', category: 'Jeux', description: 'Jeu de cartes Uno multijoueur.' },
   { key: 'game-polytrack', path: '/games/polytrack', label: 'Polytrack', category: 'Jeux', description: 'Jeu de course sur piste — battez votre meilleur temps.' },
   { key: 'game-eaglercraft', path: '/games/eaglercraft', label: 'Eaglercraft', category: 'Jeux', description: 'Version navigateur de Minecraft jouable directement depuis le site.' },

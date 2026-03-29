@@ -1,3 +1,7 @@
 - pb image alors que taille mo moins
 - bienvenue
 - UI clan
+- changelog
+- boites on peut aussi ne rien avoir
+- banniere guilde
+- quand pas jouer temps imparti, jouer au hasard

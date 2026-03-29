@@ -50,7 +50,6 @@ const WIN_GAME_CATEGORIES = {
   poker: 'poker',
   battleship: 'battleship',
   russian_roulette: 'russian_roulette',
-  levier_infernal: 'levier_infernal',
   uno: 'uno',
   morpion: 'morpion',
 } as const;
@@ -179,7 +178,6 @@ type LeaderboardCategory =
   | 'poker'
   | 'battleship'
   | 'russian_roulette'
-  | 'levier_infernal'
   | 'uno'
   | 'morpion'
   | 'polymarket_ratio'

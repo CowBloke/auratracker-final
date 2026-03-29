@@ -329,7 +329,6 @@ const GAME_TYPE_LABELS: Record<string, string> = {
   uno: 'Uno',
   morpion: 'Morpion',
   russian_roulette: 'Roulette russe',
-  levier_infernal: 'Levier Infernal',
   clash_village: 'Clash Village',
   nuit_blanche: 'Nuit Blanche',
 };
@@ -566,7 +565,6 @@ const GAME_TYPES = [
   { value: 'uno', label: 'Uno' },
   { value: 'morpion', label: 'Morpion' },
   { value: 'russian_roulette', label: 'Roulette russe' },
-  { value: 'levier_infernal', label: 'Levier Infernal' },
   { value: 'clash_village', label: 'Clash Village' },
   { value: 'nuit_blanche', label: 'Nuit Blanche' },
 ];
