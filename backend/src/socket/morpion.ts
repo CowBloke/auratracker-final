@@ -4,6 +4,7 @@ import { checkQuestProgress } from '../routes/quests.js';
 import { logGame } from '../utils/logger.js';
 import { getActiveClanMoneyBoostPercentsForUsers } from '../utils/clanEffects.js';
 import { duelPartyIds, deleteDuelParty } from './duelParties.js';
+import { AI_PLAYER_ID, AI_PLAYER_NAMES, AI_MOVE_DELAY_MS, aiPartyInfos, getAIMorpionMove, type AIDifficulty } from './aiGameState.js';
 
 type Cell = 0 | 1 | 2;
 
@@ -118,10 +119,55 @@ function clearTurnTimer(game: MorpionGame) {
 
 function scheduleTurnTimer(game: MorpionGame, io: Server) {
   clearTurnTimer(game);
+  if (game.players[game.currentPlayerIndex].userId === AI_PLAYER_ID) return; // AI manages its own moves
   game.turnStartTime = Date.now();
   game.turnTimer = setTimeout(() => {
     void handleTurnTimeout(game.partyId, io);
   }, game.turnDuration);
+}
+
+function scheduleAIMorpionMove(game: MorpionGame, io: Server) {
+  const info = aiPartyInfos.get(game.partyId);
+  if (!info) return;
+  const delay = AI_MOVE_DELAY_MS[info.difficulty];
+  setTimeout(() => { makeAIMorpionMove(game.partyId, io); }, delay);
+}
+
+function makeAIMorpionMove(partyId: string, io: Server) {
+  const game = activeGames.get(partyId);
+  if (!game || !game.isActive || game.phase !== 'playing') return;
+  const currentPlayer = game.players[game.currentPlayerIndex];
+  if (currentPlayer.userId !== AI_PLAYER_ID) return;
+
+  const info = aiPartyInfos.get(partyId);
+  if (!info) return;
+
+  const aiVal = (game.currentPlayerIndex + 1) as 1 | 2;
+  const humanVal = (aiVal === 1 ? 2 : 1) as 1 | 2;
+  const boardCopy = [...game.board] as Cell[];
+  const moveIdx = getAIMorpionMove(boardCopy, aiVal, humanVal, info.difficulty);
+  if (moveIdx < 0 || moveIdx > 8 || game.board[moveIdx] !== 0) return;
+
+  clearTurnTimer(game);
+  game.board[moveIdx] = aiVal;
+  game.lastMove = { index: moveIdx, playerId: AI_PLAYER_ID };
+
+  const winCells = checkWin(game.board, aiVal);
+  if (winCells) {
+    game.winCells = winCells;
+    emitState(game, io);
+    void endGame(game, io, AI_PLAYER_ID);
+    return;
+  }
+  if (isBoardFull(game.board)) {
+    emitState(game, io);
+    void endGame(game, io, null);
+    return;
+  }
+
+  game.currentPlayerIndex = ((game.currentPlayerIndex + 1) % 2) as MorpionPlayerIndex;
+  scheduleTurnTimer(game, io);
+  emitState(game, io);
 }
 
 async function handleTurnTimeout(partyId: string, io: Server) {
@@ -145,47 +191,61 @@ async function endGame(game: MorpionGame, io: Server, winnerId: string | null) {
   const drawReward = { aura: 5, money: 24 };
 
   try {
-    const boostPercents = await getActiveClanMoneyBoostPercentsForUsers(game.players.map((player) => player.userId));
+    const humanPlayers = game.players.filter(p => p.userId !== AI_PLAYER_ID);
+    const boostPercents = await getActiveClanMoneyBoostPercentsForUsers(humanPlayers.map(p => p.userId));
     const winnerMoneyReward = (userId: string, base: number) => base + Math.floor(base * ((boostPercents.get(userId) ?? 0) / 100));
 
     if (winnerId) {
       const winner = game.players.find((player) => player.userId === winnerId)!;
       const loser = game.players.find((player) => player.userId !== winnerId)!;
-      const resolvedWinnerReward = { ...winnerReward, money: winnerMoneyReward(winner.userId, winnerReward.money) };
-      const resolvedLoserReward = { ...loserReward, money: winnerMoneyReward(loser.userId, loserReward.money) };
+      const winnerIsHuman = winner.userId !== AI_PLAYER_ID;
+      const loserIsHuman = loser.userId !== AI_PLAYER_ID;
+      const resolvedWinnerReward = { ...winnerReward, money: winnerIsHuman ? winnerMoneyReward(winner.userId, winnerReward.money) : winnerReward.money };
+      const resolvedLoserReward = { ...loserReward, money: loserIsHuman ? winnerMoneyReward(loser.userId, loserReward.money) : loserReward.money };
 
       const [updatedWinner, updatedLoser] = await Promise.all([
-        prisma.user.update({
+        winnerIsHuman ? prisma.user.update({
           where: { id: winnerId },
           data: { aura: { increment: resolvedWinnerReward.aura }, money: { increment: resolvedWinnerReward.money } },
           select: { id: true, aura: true, money: true },
-        }),
-        prisma.user.update({
+        }) : null,
+        loserIsHuman ? prisma.user.update({
           where: { id: loser.userId },
           data: { money: { increment: resolvedLoserReward.money } },
           select: { id: true, aura: true, money: true },
-        }),
+        }) : null,
       ]);
 
-      io.emit('economy:balance-update', { userId: updatedWinner.id, aura: updatedWinner.aura, money: updatedWinner.money });
-      io.emit('economy:balance-update', { userId: updatedLoser.id, aura: updatedLoser.aura, money: updatedLoser.money });
+      if (updatedWinner) io.emit('economy:balance-update', { userId: updatedWinner.id, aura: updatedWinner.aura, money: updatedWinner.money });
+      if (updatedLoser) io.emit('economy:balance-update', { userId: updatedLoser.id, aura: updatedLoser.aura, money: updatedLoser.money });
 
-      await checkQuestProgress(winnerId, 'PLAY_GAMES', 1);
-      await checkQuestProgress(winnerId, 'WIN_GAMES', 1);
-      await checkQuestProgress(loser.userId, 'PLAY_GAMES', 1);
-
-      await Promise.all([
-        prisma.gameStats.upsert({
+      if (winnerIsHuman) {
+        await checkQuestProgress(winnerId, 'PLAY_GAMES', 1);
+        await checkQuestProgress(winnerId, 'WIN_GAMES', 1);
+        await prisma.gameStats.upsert({
           where: { userId_gameType: { userId: winnerId, gameType: 'morpion' } },
           create: { userId: winnerId, gameType: 'morpion', wins: 1, losses: 0, highScore: 1, totalPlayed: 1 },
           update: { wins: { increment: 1 }, totalPlayed: { increment: 1 } },
-        }),
-        prisma.gameStats.upsert({
+        });
+        logGame('game_complete', winner.userId, winner.username, {
+          gameType: 'morpion', score: 1, won: true,
+          auraReward: resolvedWinnerReward.aura, moneyReward: resolvedWinnerReward.money,
+          isMultiplayer: true, partyId: game.partyId,
+        });
+      }
+      if (loserIsHuman) {
+        await checkQuestProgress(loser.userId, 'PLAY_GAMES', 1);
+        await prisma.gameStats.upsert({
           where: { userId_gameType: { userId: loser.userId, gameType: 'morpion' } },
           create: { userId: loser.userId, gameType: 'morpion', wins: 0, losses: 1, highScore: 0, totalPlayed: 1 },
           update: { losses: { increment: 1 }, totalPlayed: { increment: 1 } },
-        }),
-      ]);
+        });
+        logGame('game_complete', loser.userId, loser.username, {
+          gameType: 'morpion', score: 0, won: false,
+          auraReward: resolvedLoserReward.aura, moneyReward: resolvedLoserReward.money,
+          isMultiplayer: true, partyId: game.partyId,
+        });
+      }
 
       io.to(`party:${game.partyId}`).emit('morpion:game-over', {
         winnerId,
@@ -193,29 +253,9 @@ async function endGame(game: MorpionGame, io: Server, winnerId: string | null) {
         isDraw: false,
         rewards: { winner: resolvedWinnerReward, loser: resolvedLoserReward },
       });
-
-      logGame('game_complete', winner.userId, winner.username, {
-        gameType: 'morpion',
-        score: 1,
-        won: true,
-        auraReward: resolvedWinnerReward.aura,
-        moneyReward: resolvedWinnerReward.money,
-        isMultiplayer: true,
-        partyId: game.partyId,
-      });
-
-      logGame('game_complete', loser.userId, loser.username, {
-        gameType: 'morpion',
-        score: 0,
-        won: false,
-        auraReward: resolvedLoserReward.aura,
-        moneyReward: resolvedLoserReward.money,
-        isMultiplayer: true,
-        partyId: game.partyId,
-      });
     } else {
       const updatedUsers = await Promise.all(
-        game.players.map((player) =>
+        humanPlayers.map((player) =>
           prisma.user.update({
             where: { id: player.userId },
             data: {
@@ -228,14 +268,10 @@ async function endGame(game: MorpionGame, io: Server, winnerId: string | null) {
       );
 
       for (const updatedUser of updatedUsers) {
-        io.emit('economy:balance-update', {
-          userId: updatedUser.id,
-          aura: updatedUser.aura,
-          money: updatedUser.money,
-        });
+        io.emit('economy:balance-update', { userId: updatedUser.id, aura: updatedUser.aura, money: updatedUser.money });
       }
 
-      for (const player of game.players) {
+      for (const player of humanPlayers) {
         await checkQuestProgress(player.userId, 'PLAY_GAMES', 1);
       }
 
@@ -253,11 +289,13 @@ async function endGame(game: MorpionGame, io: Server, winnerId: string | null) {
   const prompt: PendingPlayAgainPrompt = {
     partyId: game.partyId,
     responses: new Map(),
-    players: game.players.map((player) => ({
-      userId: player.userId,
-      username: player.username,
-      usernameColor: player.usernameColor,
-    })),
+    players: game.players
+      .filter(p => p.userId !== AI_PLAYER_ID)
+      .map((player) => ({
+        userId: player.userId,
+        username: player.username,
+        usernameColor: player.usernameColor,
+      })),
     timer: null,
     startTime: Date.now(),
   };
@@ -283,13 +321,24 @@ async function resolvePlayAgainPrompt(partyId: string, io: Server) {
   if (prompt.timer) clearTimeout(prompt.timer);
   pendingPlayAgainPrompts.delete(partyId);
 
+  const isAIGame = aiPartyInfos.has(partyId);
+  const minRequired = isAIGame ? 1 : 2;
+
   const playAgainUserIds = Array.from(prompt.responses.entries())
     .filter(([, playAgain]) => playAgain)
     .map(([userId]) => userId);
 
-  if (playAgainUserIds.length < 2) {
+  if (playAgainUserIds.length < minRequired) {
     io.to(`party:${partyId}`).emit('morpion:play-again-cancelled', {});
+    aiPartyInfos.delete(partyId);
     if (duelPartyIds.has(partyId)) await deleteDuelParty(partyId, io);
+    return;
+  }
+
+  if (isAIGame) {
+    const info = aiPartyInfos.get(partyId)!;
+    const humanPlayer = prompt.players[0];
+    startAIMorpionGame(partyId, humanPlayer, info.difficulty, io);
     return;
   }
 
@@ -380,6 +429,53 @@ async function resolveJoinPrompt(partyId: string, io: Server) {
   activeGames.set(partyId, game);
   scheduleTurnTimer(game, io);
   emitState(game, io);
+}
+
+export function startAIMorpionGame(
+  partyId: string,
+  humanPlayer: { userId: string; username: string; usernameColor?: string | null },
+  difficulty: AIDifficulty,
+  io: Server
+) {
+  // Register as AI game
+  aiPartyInfos.set(partyId, { difficulty, humanUserId: humanPlayer.userId });
+
+  const humanFirst = Math.random() < 0.5;
+  const aiName = AI_PLAYER_NAMES[difficulty];
+
+  const players: MorpionPlayer[] = humanFirst
+    ? [
+        { userId: humanPlayer.userId, username: humanPlayer.username, usernameColor: humanPlayer.usernameColor ?? null, playerIndex: 0 },
+        { userId: AI_PLAYER_ID, username: aiName, usernameColor: null, playerIndex: 1 },
+      ]
+    : [
+        { userId: AI_PLAYER_ID, username: aiName, usernameColor: null, playerIndex: 0 },
+        { userId: humanPlayer.userId, username: humanPlayer.username, usernameColor: humanPlayer.usernameColor ?? null, playerIndex: 1 },
+      ];
+
+  const game: MorpionGame = {
+    partyId,
+    players,
+    board: createBoard(),
+    currentPlayerIndex: 0,
+    turnDuration: TURN_TIMEOUT,
+    turnStartTime: Date.now(),
+    turnTimer: null,
+    phase: 'playing',
+    winnerId: null,
+    winCells: null,
+    lastMove: null,
+    isActive: true,
+  };
+
+  activeGames.set(partyId, game);
+  emitState(game, io);
+
+  if (game.players[0].userId === AI_PLAYER_ID) {
+    scheduleAIMorpionMove(game, io);
+  } else {
+    scheduleTurnTimer(game, io);
+  }
 }
 
 export function startDirectMorpionGame(
@@ -635,8 +731,13 @@ export const setupMorpionHandlers = (socket: Socket, io: Server) => {
     }
 
     game.currentPlayerIndex = ((game.currentPlayerIndex + 1) % 2) as MorpionPlayerIndex;
-    scheduleTurnTimer(game, io);
     emitState(game, io);
+
+    if (game.players[game.currentPlayerIndex].userId === AI_PLAYER_ID) {
+      scheduleAIMorpionMove(game, io);
+    } else {
+      scheduleTurnTimer(game, io);
+    }
   });
 
   socket.on('morpion:leave', (data: { partyId: string }) => {
@@ -648,6 +749,7 @@ export const setupMorpionHandlers = (socket: Socket, io: Server) => {
     if (game) {
       clearTurnTimer(game);
       activeGames.delete(partyId);
+      aiPartyInfos.delete(partyId);
       io.to(`party:${partyId}`).emit('morpion:left', { userId });
     }
   });

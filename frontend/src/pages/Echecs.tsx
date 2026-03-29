@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Eye, EyeOff, LogOut, Play, Search, Swords, Trophy } from 'lucide-react';
+import { ArrowLeft, Bot, Eye, EyeOff, LogOut, Play, Search, Swords, Trophy } from 'lucide-react';
 import { Chess } from 'chess.js';
 import type { Square } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
@@ -123,9 +123,10 @@ export default function Echecs() {
   const { socket } = useSocketBase();
   const { onlineUsers, requestOnlineUsers } = useChatSocket();
   const { currentParty, partyMembers } = usePartySocket();
-  const { challengeUserToDuel, outgoingDuelChallenge } = useDuelSocket();
+  const { challengeUserToDuel, outgoingDuelChallenge, startVsAiDuel } = useDuelSocket();
 
   const [showChallengePicker, setShowChallengePicker] = useState(false);
+  const [showAIPicker, setShowAIPicker] = useState(false);
   const [challengeSearch, setChallengeSearch] = useState('');
 
   const boardContainerRef = useRef<HTMLDivElement>(null);
@@ -155,7 +156,7 @@ export default function Echecs() {
 
   const routeSpectatePartyId = ((location.state as { spectatePartyId?: string } | null)?.spectatePartyId) ?? null;
   const isSpectating = spectatingPartyId !== null;
-  const activePartyId = isSpectating ? spectatingPartyId : (currentParty?.id ?? null);
+  const activePartyId = isSpectating ? spectatingPartyId : (currentParty?.id ?? gameState?.partyId ?? null);
 
   useEffect(() => {
     spectatingPartyIdRef.current = spectatingPartyId;
@@ -559,7 +560,7 @@ export default function Echecs() {
   })();
 
   // ── No party ──────────────────────────────────────────────────────────────
-  if (!currentParty && !isSpectating && !routeSpectatePartyId) {
+  if (!currentParty && !isSpectating && !routeSpectatePartyId && !gameState) {
     const challengeableUsers = onlineUsers.filter(
       (u) => u.userId !== user?.id && u.username.toLowerCase().includes(challengeSearch.toLowerCase())
     );
@@ -577,7 +578,11 @@ export default function Echecs() {
           <CardContent className="space-y-4 py-10 px-6 text-center">
             <p className="text-sm text-muted-foreground">Joue aux échecs en 1v1 contre un autre joueur</p>
             <div className="flex flex-col gap-2 max-w-xs mx-auto">
-              <Button onClick={() => { setChallengeSearch(''); requestOnlineUsers(); setShowChallengePicker(true); }}>
+              <Button onClick={() => setShowAIPicker(true)}>
+                <Bot className="h-4 w-4 mr-2" />
+                Jouer contre l'IA
+              </Button>
+              <Button onClick={() => { setChallengeSearch(''); requestOnlineUsers(); setShowChallengePicker(true); }} variant="outline">
                 <Swords className="h-4 w-4 mr-2" />
                 Défier un joueur
               </Button>
@@ -587,6 +592,27 @@ export default function Echecs() {
             </div>
           </CardContent>
         </Card>
+
+        <Dialog open={showAIPicker} onOpenChange={setShowAIPicker}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="font-normal flex items-center gap-2">
+                <Bot className="h-4 w-4" />
+                Jouer contre l'IA
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <p className="text-sm text-muted-foreground">Choisir la difficulté :</p>
+              <div className="flex flex-col gap-2">
+                {([['easy', 'Facile'], ['medium', 'Normal'], ['hard', 'Expert']] as const).map(([diff, label]) => (
+                  <Button key={diff} variant="outline" onClick={() => { startVsAiDuel('chess', diff); setShowAIPicker(false); }}>
+                    {label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={showChallengePicker} onOpenChange={setShowChallengePicker}>
           <DialogContent className="sm:max-w-sm">

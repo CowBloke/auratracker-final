@@ -34,6 +34,7 @@ interface DuelSocketContextValue {
   cancelDuelChallenge: () => void;
   joinDuelMatchmaking: () => void;
   leaveDuelMatchmaking: () => void;
+  startVsAiDuel: (gameType: 'chess' | 'p4' | 'morpion', difficulty: 'easy' | 'medium' | 'hard') => void;
 }
 
 const DuelSocketContext = createContext<DuelSocketContextValue | null>(null);
@@ -170,6 +171,13 @@ export function DuelSocketProvider({ children }: { children: React.ReactNode }) 
 
   const joinDuelMatchmaking = useCallback(() => duelEvents.joinMatchmaking(), []);
   const leaveDuelMatchmaking = useCallback(() => duelEvents.leaveMatchmaking(), []);
+  const startVsAiDuel = useCallback(
+    (gameType: 'chess' | 'p4' | 'morpion', difficulty: 'easy' | 'medium' | 'hard') => {
+      if (!user) return;
+      duelEvents.vsAi(gameType, difficulty);
+    },
+    [user?.id]
+  );
 
   const value = useMemo(
     () => ({
@@ -183,6 +191,7 @@ export function DuelSocketProvider({ children }: { children: React.ReactNode }) 
       cancelDuelChallenge,
       joinDuelMatchmaking,
       leaveDuelMatchmaking,
+      startVsAiDuel,
     }),
     [
       incomingDuelChallenge,
@@ -195,6 +204,7 @@ export function DuelSocketProvider({ children }: { children: React.ReactNode }) 
       cancelDuelChallenge,
       joinDuelMatchmaking,
       leaveDuelMatchmaking,
+      startVsAiDuel,
     ]
   );
 

@@ -6,6 +6,7 @@ import { logGame } from '../utils/logger.js';
 import { recheckBadgeForCondition } from '../utils/badgeAwards.js';
 import { getActiveClanMoneyBoostPercentsForUsers } from '../utils/clanEffects.js';
 import { duelPartyIds, deleteDuelParty } from './duelParties.js';
+import { AI_PLAYER_ID, AI_PLAYER_NAMES, AI_MOVE_DELAY_MS, aiPartyInfos, getAIChessMove, type AIDifficulty } from './aiGameState.js';
 
 type ChessColor = 'w' | 'b';
 type ChessResult =
@@ -225,6 +226,59 @@ function emitState(game: ChessGame, io: Server) {
   });
 }
 
+function scheduleAIChessMove(game: ChessGame, io: Server) {
+  const info = aiPartyInfos.get(game.partyId);
+  if (!info) return;
+  const delay = AI_MOVE_DELAY_MS[info.difficulty];
+  setTimeout(() => { makeAIChessMove(game.partyId, io); }, delay);
+}
+
+function makeAIChessMove(partyId: string, io: Server) {
+  const game = activeGames.get(partyId);
+  if (!game || !game.isActive || game.phase !== 'playing') return;
+  const currentPlayer = getCurrentPlayer(game);
+  if (!currentPlayer || currentPlayer.userId !== AI_PLAYER_ID) return;
+
+  const info = aiPartyInfos.get(partyId);
+  if (!info) return;
+
+  const aiMove = getAIChessMove(game.engine.fen(), currentPlayer.color, info.difficulty);
+  if (!aiMove) {
+    // No legal moves (shouldn't happen if game is still playing)
+    void endGame(game, io, null, 'stalemate');
+    return;
+  }
+
+  try {
+    const now = Date.now();
+    const elapsed = now - game.lastMoveTimestamp;
+    if (currentPlayer.color === 'w') {
+      game.timeWhite = Math.max(0, game.timeWhite - elapsed - AI_MOVE_DELAY_MS[info.difficulty]);
+    } else {
+      game.timeBlack = Math.max(0, game.timeBlack - elapsed - AI_MOVE_DELAY_MS[info.difficulty]);
+    }
+    game.lastMoveTimestamp = now;
+
+    const move = game.engine.move({ from: aiMove.from as Square, to: aiMove.to as Square, promotion: (aiMove.promotion as PieceSymbol) ?? 'q' });
+    if (!move) return;
+
+    game.lastMove = {
+      from: move.from, to: move.to, san: move.san, piece: move.piece,
+      color: move.color, promotion: move.promotion, captured: move.captured,
+    };
+
+    if (game.engine.isCheckmate()) { void endGame(game, io, AI_PLAYER_ID, 'checkmate'); return; }
+    if (game.engine.isStalemate()) { void endGame(game, io, null, 'stalemate'); return; }
+    if (game.engine.isInsufficientMaterial()) { void endGame(game, io, null, 'insufficient_material'); return; }
+    if (game.engine.isThreefoldRepetition()) { void endGame(game, io, null, 'threefold_repetition'); return; }
+    if (game.engine.isDraw()) { void endGame(game, io, null, 'draw'); return; }
+
+    emitState(game, io);
+  } catch {
+    // Invalid move from AI (should not happen)
+  }
+}
+
 async function endGame(game: ChessGame, io: Server, winnerId: string | null, result: ChessResult) {
   game.isActive = false;
   game.phase = 'finished';
@@ -238,63 +292,53 @@ async function endGame(game: ChessGame, io: Server, winnerId: string | null, res
   const drawReward = { aura: 5, money: 25 };
 
   try {
-    const boostPercents = await getActiveClanMoneyBoostPercentsForUsers(game.players.map((player) => player.userId));
+    const humanPlayers = game.players.filter(p => p.userId !== AI_PLAYER_ID);
+    const boostPercents = await getActiveClanMoneyBoostPercentsForUsers(humanPlayers.map(p => p.userId));
     const resolveMoneyReward = (userId: string, base: number) => base + Math.floor(base * ((boostPercents.get(userId) ?? 0) / 100));
 
     if (winnerId) {
       const winner = game.players.find((player) => player.userId === winnerId);
       const loser = game.players.find((player) => player.userId !== winnerId);
       if (!winner || !loser) return;
-      const resolvedWinnerReward = { ...winnerReward, money: resolveMoneyReward(winner.userId, winnerReward.money) };
-      const resolvedLoserReward = { ...loserReward, money: resolveMoneyReward(loser.userId, loserReward.money) };
+      const winnerIsHuman = winner.userId !== AI_PLAYER_ID;
+      const loserIsHuman = loser.userId !== AI_PLAYER_ID;
+      const resolvedWinnerReward = { ...winnerReward, money: winnerIsHuman ? resolveMoneyReward(winner.userId, winnerReward.money) : winnerReward.money };
+      const resolvedLoserReward = { ...loserReward, money: loserIsHuman ? resolveMoneyReward(loser.userId, loserReward.money) : loserReward.money };
 
       const [updatedWinner, updatedLoser] = await Promise.all([
-        prisma.user.update({
+        winnerIsHuman ? prisma.user.update({
           where: { id: winner.userId },
-          data: {
-            aura: { increment: resolvedWinnerReward.aura },
-            money: { increment: resolvedWinnerReward.money },
-          },
+          data: { aura: { increment: resolvedWinnerReward.aura }, money: { increment: resolvedWinnerReward.money } },
           select: { id: true, aura: true, money: true },
-        }),
-        prisma.user.update({
+        }) : null,
+        loserIsHuman ? prisma.user.update({
           where: { id: loser.userId },
-          data: {
-            money: { increment: resolvedLoserReward.money },
-          },
+          data: { money: { increment: resolvedLoserReward.money } },
           select: { id: true, aura: true, money: true },
-        }),
+        }) : null,
       ]);
 
-      io.emit('economy:balance-update', {
-        userId: updatedWinner.id,
-        aura: updatedWinner.aura,
-        money: updatedWinner.money,
-      });
-      io.emit('economy:balance-update', {
-        userId: updatedLoser.id,
-        aura: updatedLoser.aura,
-        money: updatedLoser.money,
-      });
+      if (updatedWinner) io.emit('economy:balance-update', { userId: updatedWinner.id, aura: updatedWinner.aura, money: updatedWinner.money });
+      if (updatedLoser) io.emit('economy:balance-update', { userId: updatedLoser.id, aura: updatedLoser.aura, money: updatedLoser.money });
 
-      await checkQuestProgress(winner.userId, 'PLAY_GAMES', 1);
-      await checkQuestProgress(winner.userId, 'WIN_GAMES', 1);
-      await checkQuestProgress(loser.userId, 'PLAY_GAMES', 1);
-
-      // Track chess stats for badge
-      await Promise.all([
-        prisma.gameStats.upsert({
+      if (winnerIsHuman) {
+        await checkQuestProgress(winner.userId, 'PLAY_GAMES', 1);
+        await checkQuestProgress(winner.userId, 'WIN_GAMES', 1);
+        await prisma.gameStats.upsert({
           where: { userId_gameType: { userId: winner.userId, gameType: 'chess' } },
           create: { userId: winner.userId, gameType: 'chess', wins: 1, losses: 0, highScore: 1, totalPlayed: 1 },
           update: { wins: { increment: 1 }, totalPlayed: { increment: 1 } },
-        }),
-        prisma.gameStats.upsert({
+        });
+        void recheckBadgeForCondition('CHESS_WIN');
+      }
+      if (loserIsHuman) {
+        await checkQuestProgress(loser.userId, 'PLAY_GAMES', 1);
+        await prisma.gameStats.upsert({
           where: { userId_gameType: { userId: loser.userId, gameType: 'chess' } },
           create: { userId: loser.userId, gameType: 'chess', wins: 0, losses: 1, highScore: 0, totalPlayed: 1 },
           update: { losses: { increment: 1 }, totalPlayed: { increment: 1 } },
-        }),
-      ]);
-      void recheckBadgeForCondition('CHESS_WIN');
+        });
+      }
 
       io.to(`party:${game.partyId}`).emit('chess:game-over', {
         winnerId: winner.userId,
@@ -307,27 +351,19 @@ async function endGame(game: ChessGame, io: Server, winnerId: string | null, res
         },
       });
 
-      logGame('game_complete', winner.userId, winner.username, {
-        gameType: 'chess',
-        score: 1,
-        won: true,
-        auraReward: resolvedWinnerReward.aura,
-        moneyReward: resolvedWinnerReward.money,
-        isMultiplayer: true,
-        partyId: game.partyId,
+      if (winnerIsHuman) logGame('game_complete', winner.userId, winner.username, {
+        gameType: 'chess', score: 1, won: true,
+        auraReward: resolvedWinnerReward.aura, moneyReward: resolvedWinnerReward.money,
+        isMultiplayer: true, partyId: game.partyId,
       });
-      logGame('game_complete', loser.userId, loser.username, {
-        gameType: 'chess',
-        score: 0,
-        won: false,
-        auraReward: resolvedLoserReward.aura,
-        moneyReward: resolvedLoserReward.money,
-        isMultiplayer: true,
-        partyId: game.partyId,
+      if (loserIsHuman) logGame('game_complete', loser.userId, loser.username, {
+        gameType: 'chess', score: 0, won: false,
+        auraReward: resolvedLoserReward.aura, moneyReward: resolvedLoserReward.money,
+        isMultiplayer: true, partyId: game.partyId,
       });
     } else {
       const updatedPlayers = await Promise.all(
-        game.players.map((player) =>
+        humanPlayers.map((player) =>
           prisma.user.update({
             where: { id: player.userId },
             data: {
@@ -340,14 +376,10 @@ async function endGame(game: ChessGame, io: Server, winnerId: string | null, res
       );
 
       for (const updatedPlayer of updatedPlayers) {
-        io.emit('economy:balance-update', {
-          userId: updatedPlayer.id,
-          aura: updatedPlayer.aura,
-          money: updatedPlayer.money,
-        });
+        io.emit('economy:balance-update', { userId: updatedPlayer.id, aura: updatedPlayer.aura, money: updatedPlayer.money });
       }
 
-      for (const player of game.players) {
+      for (const player of humanPlayers) {
         await checkQuestProgress(player.userId, 'PLAY_GAMES', 1);
         await prisma.gameStats.upsert({
           where: { userId_gameType: { userId: player.userId, gameType: 'chess' } },
@@ -373,11 +405,13 @@ async function endGame(game: ChessGame, io: Server, winnerId: string | null, res
   const prompt: PendingPlayAgainPrompt = {
     partyId: game.partyId,
     responses: new Map(),
-    players: game.players.map((player) => ({
-      userId: player.userId,
-      username: player.username,
-      usernameColor: player.usernameColor,
-    })),
+    players: game.players
+      .filter(p => p.userId !== AI_PLAYER_ID)
+      .map((player) => ({
+        userId: player.userId,
+        username: player.username,
+        usernameColor: player.usernameColor,
+      })),
     timer: null,
     startTime: Date.now(),
   };
@@ -469,13 +503,24 @@ async function resolvePlayAgainPrompt(partyId: string, io: Server) {
   if (prompt.timer) clearTimeout(prompt.timer);
   pendingPlayAgainPrompts.delete(partyId);
 
+  const isAIGame = aiPartyInfos.has(partyId);
+  const minRequired = isAIGame ? 1 : 2;
+
   const acceptedIds = Array.from(prompt.responses.entries())
     .filter(([, playAgain]) => playAgain)
     .map(([userId]) => userId);
 
-  if (acceptedIds.length < 2) {
+  if (acceptedIds.length < minRequired) {
     io.to(`party:${partyId}`).emit('chess:play-again-cancelled', {});
+    aiPartyInfos.delete(partyId);
     if (duelPartyIds.has(partyId)) await deleteDuelParty(partyId, io);
+    return;
+  }
+
+  if (isAIGame) {
+    const info = aiPartyInfos.get(partyId)!;
+    const humanPlayer = prompt.players[0];
+    startAIChessGame(partyId, humanPlayer, info.difficulty, io);
     return;
   }
 
@@ -497,6 +542,50 @@ async function resolvePlayAgainPrompt(partyId: string, io: Server) {
   emitChessSpectateSessions(io);
 }
 
+export function startAIChessGame(
+  partyId: string,
+  humanPlayer: { userId: string; username: string; usernameColor?: string | null },
+  difficulty: AIDifficulty,
+  io: Server
+) {
+  aiPartyInfos.set(partyId, { difficulty, humanUserId: humanPlayer.userId });
+
+  const humanIsWhite = Math.random() < 0.5;
+  const aiName = AI_PLAYER_NAMES[difficulty];
+
+  const game: ChessGame = {
+    partyId,
+    players: humanIsWhite
+      ? [
+          { userId: humanPlayer.userId, username: humanPlayer.username, usernameColor: humanPlayer.usernameColor ?? null, color: 'w' },
+          { userId: AI_PLAYER_ID, username: aiName, usernameColor: null, color: 'b' },
+        ]
+      : [
+          { userId: AI_PLAYER_ID, username: aiName, usernameColor: null, color: 'w' },
+          { userId: humanPlayer.userId, username: humanPlayer.username, usernameColor: humanPlayer.usernameColor ?? null, color: 'b' },
+        ],
+    spectators: new Set(),
+    engine: new Chess(),
+    phase: 'playing',
+    winnerId: null,
+    result: null,
+    isActive: true,
+    lastMove: null,
+    timeWhite: GAME_TIME_MS,
+    timeBlack: GAME_TIME_MS,
+    lastMoveTimestamp: Date.now(),
+  };
+
+  activeGames.set(partyId, game);
+  emitState(game, io);
+  emitChessSpectateSessions(io);
+
+  // If AI is white (goes first), schedule its first move
+  if (!humanIsWhite) {
+    scheduleAIChessMove(game, io);
+  }
+}
+
 export function startDirectChessGame(
   partyId: string,
   players: Array<{ user: { id: string; username: string; usernameColor?: string | null } }>,
@@ -515,19 +604,23 @@ export const setupChessHandlers = (socket: Socket, io: Server) => {
     if (!userId) return;
     playerSockets.set(userId, socket.id);
 
-    const membership = await prisma.partyMember.findUnique({
-      where: { userId },
-      select: { partyId: true },
-    });
+    let partyId = socket.data.partyId as string | undefined;
+    if (!partyId) {
+      const membership = await prisma.partyMember.findUnique({
+        where: { userId },
+        select: { partyId: true },
+      });
+      partyId = membership?.partyId;
+    }
 
-    if (!membership) return;
+    if (!partyId) return;
 
-    const game = activeGames.get(membership.partyId);
+    const game = activeGames.get(partyId);
     if (game && game.players.some((player) => player.userId === userId)) {
       socket.emit('chess:state', serializeState(game, userId));
     }
 
-    const joinPrompt = pendingJoinPrompts.get(membership.partyId);
+    const joinPrompt = pendingJoinPrompts.get(partyId);
     if (joinPrompt && joinPrompt.memberIds.includes(userId)) {
       const responses = Array.from(joinPrompt.responses.entries()).map(([playerId, accepted]) => ({
         userId: playerId,
@@ -544,7 +637,7 @@ export const setupChessHandlers = (socket: Socket, io: Server) => {
       });
     }
 
-    const playAgainPrompt = pendingPlayAgainPrompts.get(membership.partyId);
+    const playAgainPrompt = pendingPlayAgainPrompts.get(partyId);
     if (playAgainPrompt && playAgainPrompt.players.some((player) => player.userId === userId)) {
       const responses = Array.from(playAgainPrompt.responses.entries()).map(([playerId, playAgain]) => ({
         userId: playerId,
@@ -832,6 +925,12 @@ export const setupChessHandlers = (socket: Socket, io: Server) => {
       }
 
       emitState(game, io);
+
+      // Schedule AI move if it's now the AI's turn
+      const nextPlayer = getCurrentPlayer(game);
+      if (nextPlayer?.userId === AI_PLAYER_ID) {
+        scheduleAIChessMove(game, io);
+      }
     } catch (error) {
       socket.emit('chess:error', { message: 'Coup invalide.' });
     }
@@ -877,6 +976,7 @@ export const setupChessHandlers = (socket: Socket, io: Server) => {
 
     stopChessSpectateForGame(io, data.partyId);
     activeGames.delete(data.partyId);
+    aiPartyInfos.delete(data.partyId);
     io.to(`party:${data.partyId}`).emit('chess:left', { userId });
     emitChessSpectateSessions(io);
   });

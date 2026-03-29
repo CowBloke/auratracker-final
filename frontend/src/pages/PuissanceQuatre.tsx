@@ -5,7 +5,7 @@ import { useSocketBase } from '../contexts/SocketContext';
 import { useChatSocket } from '../contexts/ChatSocketContext';
 import { usePartySocket } from '../contexts/PartySocketContext';
 import { useDuelSocket } from '../contexts/DuelSocketContext';
-import { ArrowLeft, Play, LogOut, Search, Swords, Trophy } from 'lucide-react';
+import { ArrowLeft, Bot, Play, LogOut, Search, Swords, Trophy } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -62,9 +62,10 @@ export default function PuissanceQuatre() {
   const { socket } = useSocketBase();
   const { onlineUsers, requestOnlineUsers } = useChatSocket();
   const { currentParty, partyMembers } = usePartySocket();
-  const { challengeUserToDuel, outgoingDuelChallenge } = useDuelSocket();
+  const { challengeUserToDuel, outgoingDuelChallenge, startVsAiDuel } = useDuelSocket();
 
   const [showChallengePicker, setShowChallengePicker] = useState(false);
+  const [showAIPicker, setShowAIPicker] = useState(false);
   const [challengeSearch, setChallengeSearch] = useState('');
   const [gameState, setGameState] = useState<P4State | null>(null);
   const [gameOver, setGameOver] = useState<GameOverData | null>(null);
@@ -158,14 +159,16 @@ export default function PuissanceQuatre() {
   };
 
   const handleDrop = (col: number) => {
-    if (!socket || !currentParty || !isMyTurn || droppingCell !== null) return;
-    socket.emit('p4:drop', { partyId: currentParty.id, col });
+    const partyId = gameState?.partyId ?? currentParty?.id;
+    if (!socket || !partyId || !isMyTurn || droppingCell !== null) return;
+    socket.emit('p4:drop', { partyId, col });
     setHoverCol(null);
   };
 
   const handleLeave = () => {
-    if (!socket || !currentParty) return;
-    socket.emit('p4:leave', { partyId: currentParty.id });
+    const partyId = gameState?.partyId ?? currentParty?.id;
+    if (!socket || !partyId) return;
+    socket.emit('p4:leave', { partyId });
     setGameState(null);
   };
 
@@ -197,7 +200,7 @@ export default function PuissanceQuatre() {
       : 'bg-yellow-400 shadow-[inset_0_-3px_0_rgba(0,0,0,0.2)]';
 
   // ── Not in a party ──────────────────────────────────────────────────────
-  if (!currentParty) {
+  if (!currentParty && !gameState) {
     const challengeableUsers = onlineUsers.filter(
       (u) => u.userId !== user?.id && u.username.toLowerCase().includes(challengeSearch.toLowerCase())
     );
@@ -222,7 +225,11 @@ export default function PuissanceQuatre() {
               Joue en 1v1 contre un autre joueur
             </p>
             <div className="flex flex-col gap-2 max-w-xs mx-auto">
-              <Button onClick={() => { setChallengeSearch(''); requestOnlineUsers(); setShowChallengePicker(true); }}>
+              <Button onClick={() => setShowAIPicker(true)}>
+                <Bot className="h-4 w-4 mr-2" />
+                Jouer contre l'IA
+              </Button>
+              <Button onClick={() => { setChallengeSearch(''); requestOnlineUsers(); setShowChallengePicker(true); }} variant="outline">
                 <Swords className="h-4 w-4 mr-2" />
                 Défier un joueur
               </Button>
@@ -232,6 +239,27 @@ export default function PuissanceQuatre() {
             </div>
           </CardContent>
         </Card>
+
+        <Dialog open={showAIPicker} onOpenChange={setShowAIPicker}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="font-normal flex items-center gap-2">
+                <Bot className="h-4 w-4" />
+                Jouer contre l'IA
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <p className="text-sm text-muted-foreground">Choisir la difficulté :</p>
+              <div className="flex flex-col gap-2">
+                {([['easy', 'Facile'], ['medium', 'Normal'], ['hard', 'Expert']] as const).map(([diff, label]) => (
+                  <Button key={diff} variant="outline" onClick={() => { startVsAiDuel('p4', diff); setShowAIPicker(false); }}>
+                    {label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={showChallengePicker} onOpenChange={setShowChallengePicker}>
           <DialogContent className="sm:max-w-sm">

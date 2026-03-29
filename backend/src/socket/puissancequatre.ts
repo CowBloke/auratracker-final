@@ -5,6 +5,7 @@ import { logGame } from '../utils/logger.js';
 import { recheckBadgeForCondition } from '../utils/badgeAwards.js';
 import { getActiveClanMoneyBoostPercentsForUsers } from '../utils/clanEffects.js';
 import { duelPartyIds, deleteDuelParty } from './duelParties.js';
+import { AI_PLAYER_ID, AI_PLAYER_NAMES, AI_MOVE_DELAY_MS, aiPartyInfos, getAIP4Move, type AIDifficulty } from './aiGameState.js';
 
 const ROWS = 6;
 const COLS = 7;
@@ -140,10 +141,61 @@ function clearTurnTimer(game: P4Game) {
 
 function scheduleTurnTimer(game: P4Game, io: Server) {
   clearTurnTimer(game);
+  if (game.players[game.currentPlayerIndex].userId === AI_PLAYER_ID) return;
   game.turnStartTime = Date.now();
   game.turnTimer = setTimeout(() => {
     void handleTurnTimeout(game.partyId, io);
   }, game.turnDuration);
+}
+
+function scheduleAIP4Move(game: P4Game, io: Server) {
+  const info = aiPartyInfos.get(game.partyId);
+  if (!info) return;
+  const delay = AI_MOVE_DELAY_MS[info.difficulty];
+  setTimeout(() => { makeAIP4Move(game.partyId, io); }, delay);
+}
+
+function makeAIP4Move(partyId: string, io: Server) {
+  const game = activeGames.get(partyId);
+  if (!game || !game.isActive || game.phase !== 'playing') return;
+  const currentPlayer = game.players[game.currentPlayerIndex];
+  if (currentPlayer.userId !== AI_PLAYER_ID) return;
+
+  const info = aiPartyInfos.get(partyId);
+  if (!info) return;
+
+  const aiVal = (game.currentPlayerIndex + 1) as 1 | 2;
+  const col = getAIP4Move(game.board, game.currentPlayerIndex as 0 | 1, info.difficulty);
+  if (col < 0) return;
+
+  const result = dropPiece(game.board, col, aiVal);
+  if (!result) return;
+
+  clearTurnTimer(game);
+  game.board = result.board;
+  game.lastMove = { col, row: result.row, playerId: AI_PLAYER_ID };
+
+  const win = checkWin(game.board, aiVal);
+  if (win) {
+    game.winCells = win;
+    emitState(game, io);
+    void endGame(game, io, AI_PLAYER_ID);
+    return;
+  }
+  if (isBoardFull(game.board)) {
+    emitState(game, io);
+    void endGame(game, io, null);
+    return;
+  }
+
+  game.currentPlayerIndex = game.currentPlayerIndex === 0 ? 1 : 0;
+  emitState(game, io);
+
+  if (game.players[game.currentPlayerIndex].userId === AI_PLAYER_ID) {
+    scheduleAIP4Move(game, io);
+  } else {
+    scheduleTurnTimer(game, io);
+  }
 }
 
 async function handleTurnTimeout(partyId: string, io: Server) {
@@ -207,49 +259,62 @@ async function endGame(game: P4Game, io: Server, winnerId: string | null) {
   const drawReward = { aura: 5, money: 25 };
 
   try {
-    const boostPercents = await getActiveClanMoneyBoostPercentsForUsers(game.players.map((player) => player.userId));
+    const humanPlayers = game.players.filter(p => p.userId !== AI_PLAYER_ID);
+    const boostPercents = await getActiveClanMoneyBoostPercentsForUsers(humanPlayers.map(p => p.userId));
     const resolveMoneyReward = (userId: string, base: number) => base + Math.floor(base * ((boostPercents.get(userId) ?? 0) / 100));
 
     if (winnerId) {
       const winner = game.players.find((p) => p.userId === winnerId)!;
       const loser = game.players.find((p) => p.userId !== winnerId)!;
-      const resolvedWinnerReward = { ...winnerReward, money: resolveMoneyReward(winner.userId, winnerReward.money) };
-      const resolvedLoserReward = { ...loserReward, money: resolveMoneyReward(loser.userId, loserReward.money) };
+      const winnerIsHuman = winner.userId !== AI_PLAYER_ID;
+      const loserIsHuman = loser.userId !== AI_PLAYER_ID;
+      const resolvedWinnerReward = { ...winnerReward, money: winnerIsHuman ? resolveMoneyReward(winner.userId, winnerReward.money) : winnerReward.money };
+      const resolvedLoserReward = { ...loserReward, money: loserIsHuman ? resolveMoneyReward(loser.userId, loserReward.money) : loserReward.money };
 
       const [updatedWinner, updatedLoser] = await Promise.all([
-        prisma.user.update({
+        winnerIsHuman ? prisma.user.update({
           where: { id: winnerId },
           data: { aura: { increment: resolvedWinnerReward.aura }, money: { increment: resolvedWinnerReward.money } },
           select: { id: true, aura: true, money: true },
-        }),
-        prisma.user.update({
+        }) : null,
+        loserIsHuman ? prisma.user.update({
           where: { id: loser.userId },
           data: { money: { increment: resolvedLoserReward.money } },
           select: { id: true, aura: true, money: true },
-        }),
+        }) : null,
       ]);
 
-      io.emit('economy:balance-update', { userId: updatedWinner.id, aura: updatedWinner.aura, money: updatedWinner.money });
-      io.emit('economy:balance-update', { userId: updatedLoser.id, aura: updatedLoser.aura, money: updatedLoser.money });
+      if (updatedWinner) io.emit('economy:balance-update', { userId: updatedWinner.id, aura: updatedWinner.aura, money: updatedWinner.money });
+      if (updatedLoser) io.emit('economy:balance-update', { userId: updatedLoser.id, aura: updatedLoser.aura, money: updatedLoser.money });
 
-      await checkQuestProgress(winnerId, 'PLAY_GAMES', 1);
-      await checkQuestProgress(winnerId, 'WIN_GAMES', 1);
-      await checkQuestProgress(loser.userId, 'PLAY_GAMES', 1);
-
-      // Track puissance 4 stats for badge
-      await Promise.all([
-        prisma.gameStats.upsert({
+      if (winnerIsHuman) {
+        await checkQuestProgress(winnerId, 'PLAY_GAMES', 1);
+        await checkQuestProgress(winnerId, 'WIN_GAMES', 1);
+        await prisma.gameStats.upsert({
           where: { userId_gameType: { userId: winnerId, gameType: 'puissance_4' } },
           create: { userId: winnerId, gameType: 'puissance_4', wins: 1, losses: 0, highScore: 1, totalPlayed: 1 },
           update: { wins: { increment: 1 }, totalPlayed: { increment: 1 } },
-        }),
-        prisma.gameStats.upsert({
+        });
+        void recheckBadgeForCondition('PUISSANCE_4_WIN');
+        logGame('game_complete', winner.userId, winner.username, {
+          gameType: 'puissance_4', score: 1, won: true,
+          auraReward: resolvedWinnerReward.aura, moneyReward: resolvedWinnerReward.money,
+          isMultiplayer: true, partyId: game.partyId,
+        });
+      }
+      if (loserIsHuman) {
+        await checkQuestProgress(loser.userId, 'PLAY_GAMES', 1);
+        await prisma.gameStats.upsert({
           where: { userId_gameType: { userId: loser.userId, gameType: 'puissance_4' } },
           create: { userId: loser.userId, gameType: 'puissance_4', wins: 0, losses: 1, highScore: 0, totalPlayed: 1 },
           update: { losses: { increment: 1 }, totalPlayed: { increment: 1 } },
-        }),
-      ]);
-      void recheckBadgeForCondition('PUISSANCE_4_WIN');
+        });
+        logGame('game_complete', loser.userId, loser.username, {
+          gameType: 'puissance_4', score: 0, won: false,
+          auraReward: resolvedLoserReward.aura, moneyReward: resolvedLoserReward.money,
+          isMultiplayer: true, partyId: game.partyId,
+        });
+      }
 
       io.to(`party:${game.partyId}`).emit('p4:game-over', {
         winnerId,
@@ -257,20 +322,9 @@ async function endGame(game: P4Game, io: Server, winnerId: string | null) {
         isDraw: false,
         rewards: { winner: resolvedWinnerReward, loser: resolvedLoserReward },
       });
-
-      logGame('game_complete', winner.userId, winner.username, {
-        gameType: 'puissance_4', score: 1, won: true,
-        auraReward: resolvedWinnerReward.aura, moneyReward: resolvedWinnerReward.money,
-        isMultiplayer: true, partyId: game.partyId,
-      });
-      logGame('game_complete', loser.userId, loser.username, {
-        gameType: 'puissance_4', score: 0, won: false,
-        auraReward: resolvedLoserReward.aura, moneyReward: resolvedLoserReward.money,
-        isMultiplayer: true, partyId: game.partyId,
-      });
     } else {
       const updated = await Promise.all(
-        game.players.map((p) =>
+        humanPlayers.map((p) =>
           prisma.user.update({
             where: { id: p.userId },
             data: { aura: { increment: drawReward.aura }, money: { increment: resolveMoneyReward(p.userId, drawReward.money) } },
@@ -281,7 +335,7 @@ async function endGame(game: P4Game, io: Server, winnerId: string | null) {
       for (const u of updated) {
         io.emit('economy:balance-update', { userId: u.id, aura: u.aura, money: u.money });
       }
-      for (const p of game.players) {
+      for (const p of humanPlayers) {
         await checkQuestProgress(p.userId, 'PLAY_GAMES', 1);
       }
 
@@ -300,7 +354,9 @@ async function endGame(game: P4Game, io: Server, winnerId: string | null) {
   const prompt: PendingPlayAgainPrompt = {
     partyId: game.partyId,
     responses: new Map(),
-    players: game.players.map((p) => ({ userId: p.userId, username: p.username, usernameColor: p.usernameColor })),
+    players: game.players
+      .filter(p => p.userId !== AI_PLAYER_ID)
+      .map((p) => ({ userId: p.userId, username: p.username, usernameColor: p.usernameColor })),
     timer: null,
     startTime: Date.now(),
   };
@@ -323,13 +379,24 @@ async function resolvePlayAgainPrompt(partyId: string, io: Server) {
   if (prompt.timer) clearTimeout(prompt.timer);
   pendingPlayAgainPrompts.delete(partyId);
 
+  const isAIGame = aiPartyInfos.has(partyId);
+  const minRequired = isAIGame ? 1 : 2;
+
   const playAgainUserIds = Array.from(prompt.responses.entries())
     .filter(([, v]) => v)
     .map(([uid]) => uid);
 
-  if (playAgainUserIds.length < 2) {
+  if (playAgainUserIds.length < minRequired) {
     io.to(`party:${partyId}`).emit('p4:play-again-cancelled', {});
+    aiPartyInfos.delete(partyId);
     if (duelPartyIds.has(partyId)) await deleteDuelParty(partyId, io);
+    return;
+  }
+
+  if (isAIGame) {
+    const info = aiPartyInfos.get(partyId)!;
+    const humanPlayer = prompt.players[0];
+    startAIP4Game(partyId, humanPlayer, info.difficulty, io);
     return;
   }
 
@@ -419,6 +486,52 @@ async function resolveJoinPrompt(partyId: string, io: Server) {
   activeGames.set(partyId, game);
   scheduleTurnTimer(game, io);
   emitState(game, io);
+}
+
+export function startAIP4Game(
+  partyId: string,
+  humanPlayer: { userId: string; username: string; usernameColor?: string | null },
+  difficulty: AIDifficulty,
+  io: Server
+) {
+  aiPartyInfos.set(partyId, { difficulty, humanUserId: humanPlayer.userId });
+
+  const humanFirst = Math.random() < 0.5;
+  const aiName = AI_PLAYER_NAMES[difficulty];
+
+  const players: P4Player[] = humanFirst
+    ? [
+        { userId: humanPlayer.userId, username: humanPlayer.username, usernameColor: humanPlayer.usernameColor ?? null, playerIndex: 0 },
+        { userId: AI_PLAYER_ID, username: aiName, usernameColor: null, playerIndex: 1 },
+      ]
+    : [
+        { userId: AI_PLAYER_ID, username: aiName, usernameColor: null, playerIndex: 0 },
+        { userId: humanPlayer.userId, username: humanPlayer.username, usernameColor: humanPlayer.usernameColor ?? null, playerIndex: 1 },
+      ];
+
+  const game: P4Game = {
+    partyId,
+    players,
+    board: createBoard(),
+    currentPlayerIndex: 0,
+    turnDuration: TURN_TIMEOUT,
+    turnStartTime: Date.now(),
+    turnTimer: null,
+    phase: 'playing',
+    winnerId: null,
+    winCells: null,
+    lastMove: null,
+    isActive: true,
+  };
+
+  activeGames.set(partyId, game);
+  emitState(game, io);
+
+  if (game.players[0].userId === AI_PLAYER_ID) {
+    scheduleAIP4Move(game, io);
+  } else {
+    scheduleTurnTimer(game, io);
+  }
 }
 
 export function startDirectP4Game(
@@ -647,8 +760,13 @@ export const setupPuissanceQuatreHandlers = (socket: Socket, io: Server) => {
     }
 
     game.currentPlayerIndex = ((game.currentPlayerIndex + 1) % 2) as 0 | 1;
-    scheduleTurnTimer(game, io);
     emitState(game, io);
+
+    if (game.players[game.currentPlayerIndex].userId === AI_PLAYER_ID) {
+      scheduleAIP4Move(game, io);
+    } else {
+      scheduleTurnTimer(game, io);
+    }
   });
 
   socket.on('p4:leave', (data: { partyId: string }) => {
@@ -659,6 +777,7 @@ export const setupPuissanceQuatreHandlers = (socket: Socket, io: Server) => {
     if (game) {
       clearTurnTimer(game);
       activeGames.delete(partyId);
+      aiPartyInfos.delete(partyId);
       io.to(`party:${partyId}`).emit('p4:left', { userId });
     }
   });

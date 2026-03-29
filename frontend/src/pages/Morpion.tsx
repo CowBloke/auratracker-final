@@ -5,7 +5,7 @@ import { useSocketBase } from '../contexts/SocketContext';
 import { useChatSocket } from '../contexts/ChatSocketContext';
 import { usePartySocket } from '../contexts/PartySocketContext';
 import { useDuelSocket } from '../contexts/DuelSocketContext';
-import { ArrowLeft, Play, LogOut, Search, Swords, Trophy } from 'lucide-react';
+import { ArrowLeft, Bot, Play, LogOut, Search, Swords, Trophy } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -54,10 +54,11 @@ export default function Morpion() {
   const { socket } = useSocketBase();
   const { onlineUsers, requestOnlineUsers } = useChatSocket();
   const { currentParty, partyMembers } = usePartySocket();
-  const { challengeUserToDuel, outgoingDuelChallenge } = useDuelSocket();
+  const { challengeUserToDuel, outgoingDuelChallenge, startVsAiDuel } = useDuelSocket();
 
   const [showChallengePicker, setShowChallengePicker] = useState(false);
   const [challengeSearch, setChallengeSearch] = useState('');
+  const [showAIPicker, setShowAIPicker] = useState(false);
   const [gameState, setGameState] = useState<MorpionState | null>(null);
   const [gameOver, setGameOver] = useState<GameOverData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -124,14 +125,16 @@ export default function Morpion() {
   };
 
   const handleMove = (index: number) => {
-    if (!socket || !currentParty || !isMyTurn || !gameState) return;
+    const partyId = gameState?.partyId ?? currentParty?.id;
+    if (!socket || !partyId || !isMyTurn || !gameState) return;
     if (gameState.board[index] !== 0) return;
-    socket.emit('morpion:move', { partyId: currentParty.id, index });
+    socket.emit('morpion:move', { partyId, index });
   };
 
   const handleLeave = () => {
-    if (!socket || !currentParty) return;
-    socket.emit('morpion:leave', { partyId: currentParty.id });
+    const partyId = gameState?.partyId ?? currentParty?.id;
+    if (!socket || !partyId) return;
+    socket.emit('morpion:leave', { partyId });
     setGameState(null);
   };
 
@@ -143,7 +146,7 @@ export default function Morpion() {
 
   const isWinCell = (index: number) => gameState?.winCells?.includes(index) ?? false;
 
-  if (!currentParty) {
+  if (!currentParty && !gameState) {
     const challengeableUsers = onlineUsers.filter(
       (onlineUser) =>
         onlineUser.userId !== user?.id &&
@@ -167,9 +170,14 @@ export default function Morpion() {
 
         <Card>
           <CardContent className="py-10 px-6 text-center space-y-4">
-            <p className="text-sm text-muted-foreground">Joue en 1v1 contre un autre joueur.</p>
+            <p className="text-sm text-muted-foreground">Joue en 1v1 contre un autre joueur ou contre l'IA.</p>
             <div className="flex flex-col gap-2 max-w-xs mx-auto">
+              <Button onClick={() => setShowAIPicker(true)}>
+                <Bot className="h-4 w-4 mr-2" />
+                Jouer contre l'IA
+              </Button>
               <Button
+                variant="outline"
                 onClick={() => {
                   setChallengeSearch('');
                   requestOnlineUsers();
@@ -185,6 +193,29 @@ export default function Morpion() {
             </div>
           </CardContent>
         </Card>
+
+        <Dialog open={showAIPicker} onOpenChange={setShowAIPicker}>
+          <DialogContent className="sm:max-w-xs">
+            <DialogHeader>
+              <DialogTitle className="font-normal flex items-center gap-2">
+                <Bot className="h-4 w-4" />
+                Jouer contre l'IA — Morpion
+              </DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">Choisis la difficulte :</p>
+            <div className="flex flex-col gap-2">
+              {(['easy', 'medium', 'hard'] as const).map((diff) => (
+                <Button
+                  key={diff}
+                  variant="outline"
+                  onClick={() => { setShowAIPicker(false); startVsAiDuel('morpion', diff); }}
+                >
+                  {diff === 'easy' ? 'Facile' : diff === 'medium' ? 'Normal' : 'Expert'}
+                </Button>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={showChallengePicker} onOpenChange={setShowChallengePicker}>
           <DialogContent className="sm:max-w-sm">

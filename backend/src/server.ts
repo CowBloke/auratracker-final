@@ -49,6 +49,7 @@ import { setupBattleshipHandlers } from './socket/battleship.js';
 import { setupPuissanceQuatreHandlers } from './socket/puissancequatre.js';
 import { setupChessHandlers } from './socket/chess.js';
 import { setupDuelHandlers } from './socket/duel.js';
+import { setupAIDuelHandlers } from './socket/aiDuel.js';
 import { setupRussianRouletteHandlers } from './socket/russianroulette.js';
 import { setupBallArenaHandlers } from './socket/ballarena.js';
 import { setupUnoHandlers } from './socket/uno.js';
@@ -269,6 +270,7 @@ io.on('connection', (socket) => {
   setupPuissanceQuatreHandlers(socket, io);
   setupChessHandlers(socket, io);
   setupDuelHandlers(socket, io);
+  setupAIDuelHandlers(socket, io);
   setupRussianRouletteHandlers(socket, io);
   setupBallArenaHandlers(socket, io);
   setupUnoHandlers(socket, io);

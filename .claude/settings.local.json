@@ -94,7 +94,8 @@
       "Bash(echo $DATABASE_URL)",
       "Bash(node --input-type=module -e \"import { PrismaClient } from ''''@prisma/client''''; console.log\\(''''client loaded ok''''\\);\")",
       "Bash(grep -v \"^.*//.*usersApi\\\\|^.*//.*authApi\")",
-      "Bash(grep -v \"^.*//.*\")"
+      "Bash(grep -v \"^.*//.*\")",
+      "Bash(grep -n \"bot\\\\|ai\\\\|computer\\\\|AI\\\\|Bot\" /c/Users/cowbl/source/repos/CRust/auratracker-final/backend/src/socket/*.ts -i)"
     ]
   },
   "outputStyle": "default"
