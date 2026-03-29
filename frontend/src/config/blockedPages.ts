@@ -48,6 +48,7 @@ export const BLOCKABLE_PAGES: BlockablePage[] = [
   { key: 'game-eaglercraft', path: '/games/eaglercraft', label: 'Eaglercraft', category: 'Jeux', description: 'Version navigateur de Minecraft jouable directement depuis le site.' },
   { key: 'game-subway-surfers', path: '/games/subway-surfers', label: 'Subway Surfers Clone', category: 'Jeux', description: 'Runner 3D style métro inspiré du clone Unity Subway Surfers.' },
   { key: 'game-hexgl', path: '/games/hexgl', label: 'HexGL', category: 'Jeux', description: 'Course futuriste WebGL antigravité inspirée de Wipeout.' },
+  { key: 'game-opengd', path: '/games/opengd', label: 'OpenGD', category: 'Jeux', description: 'Implémentation open source de Geometry Dash intégrée au hub jeux.' },
   { key: 'leaderboards', path: '/leaderboards', label: 'Classements', category: 'Communauté', description: 'Classements généraux des joueurs par aura et par jeu.' },
   { key: 'leaderboards-numbers', path: '/leaderboards/nombres', label: 'Classement Nombres', category: 'Communauté', description: 'Classement spécial basé sur les scores de la section Nombres.' },
   { key: 'party', path: '/party', label: 'Groupe', category: 'Communauté', description: 'Salons de jeu en groupe — créez ou rejoignez un groupe.' },

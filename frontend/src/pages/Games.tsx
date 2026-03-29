@@ -314,6 +314,17 @@ const games = [
     releaseRank: 34,
   },
   {
+    id: 'opengd',
+    pageKey: 'game-opengd',
+    name: 'OpenGD',
+    description: 'Implémentation open source de Geometry Dash, intégrée au hub avec shell plein écran et détection du build web.',
+    type: 'Arcade',
+    emoji: '🟩',
+    image: getGameImage('opengd'),
+    statsKeys: [],
+    releaseRank: 35,
+  },
+  {
     id: 'puissance-quatre',
     pageKey: 'game-puissance-quatre',
     name: 'Puissance 4',

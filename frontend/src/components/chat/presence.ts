@@ -46,6 +46,7 @@ const pageMatchers: Array<{ test: (path: string) => boolean; label: string; icon
   { test: (path) => path.startsWith('/games/racer'), label: 'Racer', icon: Gamepad2 },
   { test: (path) => path.startsWith('/games/tetris'), label: 'Tetris', icon: Gamepad2 },
   { test: (path) => path.startsWith('/games/knife-hit'), label: 'Knife Hit', icon: Gamepad2 },
+  { test: (path) => path.startsWith('/games/opengd'), label: 'OpenGD', icon: Gamepad2 },
   { test: (path) => path.startsWith('/games/echecs'), label: 'Échecs', icon: Gamepad2 },
   { test: (path) => path.startsWith('/games/goyave-empire'), label: 'Goyave Empire', icon: Gamepad2 },
   { test: (path) => path.startsWith('/games/puissance-quatre'), label: 'Puissance 4', icon: Gamepad2 },

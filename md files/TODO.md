@@ -15,3 +15,7 @@
 - doube toast, consistence toast : croix fermer toasts
 - on oeut pas modifier un événement polymarket
 - fixer partys
+- roue fluide
+- playtime
+- wrapped widget dashboard
+- badge elon (acheter l'article inutile du shop)

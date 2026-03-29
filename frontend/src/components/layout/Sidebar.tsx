@@ -108,6 +108,7 @@ const gameItems = [
   { to: '/games/polytrack', label: 'PolyTrack', image: getGameImage('polytrack') },
   { to: '/games/eaglercraft', label: 'Eaglercraft', image: getGameImage('eaglercraft') },
   { to: '/games/hexgl', label: 'HexGL', image: getGameImage('hexgl') },
+  { to: '/games/opengd', label: 'OpenGD', image: getGameImage('opengd') },
   { to: '/games/puissance-quatre', label: 'Puissance 4', image: getGameImage('puissance-quatre') },
   { to: '/games/echecs', label: 'Échecs', image: getGameImage('echecs') },
   { to: '/games/ball-arena', label: 'Arène des balles', image: getGameImage('ball-arena') },
