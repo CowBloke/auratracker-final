@@ -244,6 +244,20 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
     <Sidebar variant="inset" collapsible="icon" {...props}>
       <SidebarContent>
         <div className="px-3 py-4">
+          <NavLink
+            to="/dashboard"
+            className="mb-4 flex w-full h-10 items-center gap-3 rounded-md px-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent/50 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+            aria-label="AuraTracker"
+          >
+            <img
+              src="/aura-icon.svg"
+              alt="AuraTracker"
+              className="h-7 w-7 shrink-0"
+            />
+            <span className="truncate text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
+              AuraTracker
+            </span>
+          </NavLink>
           <SidebarMenu className="space-y-1">
             <SidebarMenuItem>
               <Sheet open={isSearchOpen} onOpenChange={setIsSearchOpen}>
@@ -459,12 +473,12 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
               />
             </SidebarMenuItem>
 
-            {/* Updates */}
+            {/* Changelog */}
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
                 isActive={location.pathname === '/updates'}
-                tooltip="Mises a jour"
+                tooltip="Changelog"
                 className={cn(
                   'h-9 px-3 text-sm font-normal',
                   location.pathname === '/updates'
@@ -474,7 +488,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
               >
                 <NavLink to="/updates">
                   <Megaphone className="h-4 w-4" />
-                  <span className="group-data-[collapsible=icon]:hidden">Mises a jour</span>
+                  <span className="group-data-[collapsible=icon]:hidden">Changelog</span>
                   {updatesUnread > 0 && (
                     <span className="ml-auto inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-sky-600 text-white text-[10px] font-semibold group-data-[collapsible=icon]:hidden">
                       {updatesUnread > 99 ? '99+' : updatesUnread}

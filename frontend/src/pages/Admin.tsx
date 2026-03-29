@@ -217,9 +217,9 @@ const ACTION_LABELS: Record<string, string> = {
   chat_clear: 'Chat vidé',
   stats_delete: 'Stats supprimées',
 
-  update_popup_create: 'Popup update créée',
-  update_popup_update: 'Popup update modifiée',
-  update_popup_delete: 'Popup update supprimée',
+  update_popup_create: 'Popup changelog créée',
+  update_popup_update: 'Popup changelog modifiée',
+  update_popup_delete: 'Popup changelog supprimée',
   clan_update: 'Clan modifié',
   clan_transfer_leadership: 'Chef de clan modifié',
   clan_delete: 'Clan supprimé',
@@ -1104,7 +1104,7 @@ export default function Admin() {
       const res = await adminApi.getUpdatePopups();
       setUpdatePopups(res.data.popups);
     } catch {
-      showMessage('error', 'Erreur lors du chargement des updates');
+      showMessage('error', 'Erreur lors du chargement du changelog');
     } finally {
       setLoadingUpdatePopups(false);
     }
@@ -4421,9 +4421,9 @@ export default function Admin() {
 
               <div className="flex items-center justify-between gap-4 px-4 py-3.5">
                 <div>
-                  <div className="text-sm font-medium">Updates et popup clan</div>
+                  <div className="text-sm font-medium">Changelog et popup clan</div>
                   <div className="text-xs text-muted-foreground">
-                    Gère les updates classiques et la popup qui force les utilisateurs à rejoindre un clan.
+                    Gère le changelog classique et la popup qui force les utilisateurs à rejoindre un clan.
                   </div>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => setUpdatesOpen(true)} className="shrink-0">
@@ -4519,12 +4519,12 @@ export default function Admin() {
             </DialogContent>
           </Dialog>
 
-          {/* Updates modal */}
+          {/* Changelog modal */}
           <Dialog open={updatesOpen} onOpenChange={setUpdatesOpen}>
             <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden">
               <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/40 shrink-0">
-                <DialogTitle>Updates et popup clan</DialogTitle>
-                <DialogDescription>Gérez les updates classiques et les popups qui redirigent vers la page des clans.</DialogDescription>
+                <DialogTitle>Changelog et popup clan</DialogTitle>
+                <DialogDescription>Gérez le changelog classique et les popups qui redirigent vers la page des clans.</DialogDescription>
               </DialogHeader>
               <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
                 {/* Preview */}
@@ -4535,9 +4535,9 @@ export default function Admin() {
                   </div>
                   <div className="rounded-lg border bg-muted/20 p-4 space-y-4">
                     <div>
-                      <h4 className="text-lg font-semibold">{updatePopupForm.title || 'Titre de la mise à jour'}</h4>
+                      <h4 className="text-lg font-semibold">{updatePopupForm.title || 'Titre du changelog'}</h4>
                       <p className="text-xs text-muted-foreground">
-                        {updatePopupForm.type === 'CLAN_PROMPT' ? 'Popup clan' : 'Popup update'} ·{' '}
+                        {updatePopupForm.type === 'CLAN_PROMPT' ? 'Popup clan' : 'Popup changelog'} ·{' '}
                         {updatePopupForm.publishMode === 'draft'
                           ? 'Brouillon non visible'
                           : updatePopupForm.publishMode === 'scheduled'
@@ -4562,7 +4562,7 @@ export default function Admin() {
                 {/* Form */}
                 <div className="space-y-4 p-4 rounded-lg border bg-muted/20">
                   <div className="flex items-center justify-between">
-                    <h3 className={TYPOGRAPHY.H3}>{editingUpdatePopupId ? 'Modifier une update' : 'Nouvelle update'}</h3>
+                    <h3 className={TYPOGRAPHY.H3}>{editingUpdatePopupId ? 'Modifier un changelog' : 'Nouveau changelog'}</h3>
                     <div className="flex items-center gap-2">
                       <Button variant="outline" size="sm" onClick={handleSuggestUpdateSummary} disabled={suggestingUpdateSummary}>
                         {suggestingUpdateSummary ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Sparkles className="h-4 w-4 mr-1" />}
@@ -4598,7 +4598,7 @@ export default function Admin() {
                     <Input
                       value={updatePopupForm.title}
                       onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, title: e.target.value }))}
-                      placeholder={updatePopupForm.type === 'CLAN_PROMPT' ? 'Ex: Rejoins un clan maintenant' : 'Ex: Mise à jour 1.8.0'}
+                      placeholder={updatePopupForm.type === 'CLAN_PROMPT' ? 'Ex: Rejoins un clan maintenant' : 'Ex: Changelog 1.8.0'}
                     />
                   </div>
                   <div className="space-y-2">
@@ -4777,7 +4777,7 @@ export default function Admin() {
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>Supprimer cette update ?</AlertDialogTitle>
+                                  <AlertDialogTitle>Supprimer ce changelog ?</AlertDialogTitle>
                                   <AlertDialogDescription>Cette action est irréversible. La popup ne sera plus affichée aux joueurs.</AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
