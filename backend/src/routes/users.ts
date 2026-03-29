@@ -352,7 +352,7 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     
-    const [user, auraCoinAggregate, clanMembership, socialStats, relationship, connections] = await Promise.all([
+    const [user, auraCoinAggregate, clanMembership, socialStats, relationship, connections, totalRankedUsers] = await Promise.all([
       prisma.user.findUnique({
         where: { id },
         select: {
@@ -368,6 +368,9 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
           profilePicture: true,
           profileBanner: true,
           bio: true,
+          totalScore: true,
+          overallRank: true,
+          lastScoreUpdate: true,
           createdAt: true,
           gameStats: {
             select: {
@@ -407,6 +410,9 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
         orderBy: { username: 'asc' },
         take: 12,
       }),
+      prisma.user.count({
+        where: { isSuperAdmin: false },
+      }),
     ]);
 
     if (!user) {
@@ -435,6 +441,7 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
           transactionCount: auraCoinAggregate._count._all,
           totalMoney: auraCoinAggregate._sum.moneyAmount ?? 0,
         },
+        overallRankTotalPlayers: totalRankedUsers,
       },
     });
   } catch (error) {

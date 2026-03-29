@@ -24,6 +24,7 @@ import { ClanTag, toClanTagData } from '@/components/clans/ClanTag';
 import { BadgeCatalog } from '@/components/badges/BadgeSelector';
 import { ProfileBadgeSlots } from '@/components/badges/ProfileBadgeSlots';
 import { BadgeData } from '@/components/badges/BadgeIcon';
+import { OverallClassementBadge } from '@/components/profile/OverallClassementBadge';
 
 const PROFILE_GAME_CATALOG = [
   { gameType: 'russian_roulette', label: 'Roulette russe' },
@@ -67,6 +68,10 @@ interface ProfileUser {
   profilePicture?: string | null;
   profileBanner?: string | null;
   bio?: string | null;
+  totalScore?: number;
+  overallRank?: number;
+  lastScoreUpdate?: string;
+  overallRankTotalPlayers?: number;
   createdAt: string;
   clanTag?: { text: string; style: string | null } | null;
   auraCoinStats?: {
@@ -96,6 +101,7 @@ interface ProfileUser {
 interface Rankings {
   aura: { value: number; rank: number };
   money: { value: number; rank: number };
+  overall?: { value: number; rank: number; totalPlayers?: number; updatedAt?: string };
   [key: string]: any;
 }
 
@@ -296,6 +302,9 @@ export default function Profile() {
   const auraCoinTotalMoney = profileUser.auraCoinStats?.totalMoney ?? 0;
   const auraCoinValue = auraCoinPrice !== null ? profileUser.auraCoinBalance * auraCoinPrice : null;
   const totalMoneyValue = auraCoinValue !== null ? profileUser.money + auraCoinValue : null;
+  const overallRank = profileUser.overallRank ?? rankings?.overall?.rank ?? null;
+  const overallTotalPlayers = profileUser.overallRankTotalPlayers ?? rankings?.overall?.totalPlayers;
+  const overallTotalScore = profileUser.totalScore ?? rankings?.overall?.value;
   const equippedBadge1 = userBadges.find((b) => b.id === equippedBadge1Id) ?? null;
   const equippedBadge2 = userBadges.find((b) => b.id === equippedBadge2Id) ?? null;
   const equippedBadges = [equippedBadge1, equippedBadge2].filter(Boolean) as BadgeData[];
@@ -393,6 +402,11 @@ export default function Profile() {
       value: totalGames.toLocaleString(),
       detail: 'tous jeux confondus',
     },
+    {
+      label: 'Classement global',
+      value: overallRank ? `#${overallRank}` : '-',
+      detail: overallTotalPlayers ? `${overallTotalPlayers} joueurs` : 'en calcul',
+    },
   ];
 
   const headerSocialStats = [
@@ -419,6 +433,14 @@ export default function Profile() {
           <div className="absolute -left-20 top-0 h-48 w-48 rounded-full bg-foreground/[0.05] blur-3xl" />
           <div className="absolute right-0 top-0 h-56 w-56 rounded-full bg-foreground/[0.04] blur-3xl" />
           <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-card via-card/45 to-transparent" />
+
+          <div className="absolute right-4 top-4 z-30 md:right-6 md:top-5">
+            <OverallClassementBadge
+              rank={overallRank}
+              totalPlayers={overallTotalPlayers}
+              totalScore={overallTotalScore}
+            />
+          </div>
         </div>
 
         <div className="relative z-10 border-b border-border/60 px-5 pb-6 pt-4 md:px-8">

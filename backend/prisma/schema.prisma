@@ -113,9 +113,16 @@ model User {
   createdBadges       Badge[]                   @relation("BadgeCreator")
   customBadgeRequests CustomBadgeRequest[]
 
+  // Overall Ranking System (combines all classements)
+  totalScore          Float   @default(0) // Lower score = better player (summary of all rankings)
+  overallRank         Int     @default(0) // Their rank in the combined leaderboard (1 = best player)
+  lastScoreUpdate     DateTime @default(now()) // When the total score was last calculated
+
   @@index([aura])
   @@index([money])
   @@index([referredById])
+  @@index([totalScore])
+  @@index([overallRank])
 }
 
 model RegistrationReview {

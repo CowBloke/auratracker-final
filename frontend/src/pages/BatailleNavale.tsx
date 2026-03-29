@@ -5,14 +5,14 @@ import { useSocketBase } from '../contexts/SocketContext';
 import { useChatSocket } from '../contexts/ChatSocketContext';
 import { usePartySocket } from '../contexts/PartySocketContext';
 import { useDuelSocket } from '../contexts/DuelSocketContext';
-import { ArrowLeft, Play, LogOut, Search, Swords, Trophy, RotateCw } from 'lucide-react';
+import { ArrowLeft, Play, LogOut, Swords, Trophy, RotateCw } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { PageHeader, PageShell } from '@/components/layout/page-shell';
 import { cn } from '@/lib/utils';
 import { UsernameDisplay } from '@/components/ui/username-display';
+import { DuelPlayerSelectionModal } from '@/components/game/DuelPlayerSelectionModal';
 
 const BOARD_SIZE = 10;
 const SHIPS = [5, 4, 3, 3, 2]; // Ship lengths
@@ -68,7 +68,6 @@ export default function BatailleNavale() {
   const { challengeUserToDuel, outgoingDuelChallenge } = useDuelSocket();
 
   const [showChallengePicker, setShowChallengePicker] = useState(false);
-  const [challengeSearch, setChallengeSearch] = useState('');
   const [gameState, setGameState] = useState<BattleshipState | null>(null);
   const [selectedShipLength, setSelectedShipLength] = useState<number | null>(null);
   const [selectedHorizontal, setSelectedHorizontal] = useState(true);
@@ -369,10 +368,6 @@ export default function BatailleNavale() {
 
   // Not in a party
   if (!currentParty) {
-    const challengeableUsers = onlineUsers.filter(
-      (u) => u.userId !== user?.id && u.username.toLowerCase().includes(challengeSearch.toLowerCase())
-    );
-
     return (
       <PageShell>
         <PageHeader
@@ -393,7 +388,7 @@ export default function BatailleNavale() {
               Joue en 1v1 contre un autre joueur
             </p>
             <div className="flex flex-col gap-2 max-w-xs mx-auto">
-              <Button onClick={() => { setChallengeSearch(''); requestOnlineUsers(); setShowChallengePicker(true); }}>
+              <Button onClick={() => setShowChallengePicker(true)}>
                 <Swords className="h-4 w-4 mr-2" />
                 Défier un joueur
               </Button>
@@ -404,59 +399,17 @@ export default function BatailleNavale() {
           </CardContent>
         </Card>
 
-        <Dialog open={showChallengePicker} onOpenChange={setShowChallengePicker}>
-          <DialogContent className="sm:max-w-sm">
-            <DialogHeader>
-              <DialogTitle className="font-normal flex items-center gap-2">
-                <Swords className="h-4 w-4" />
-                Défier en Bataille Navale
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Rechercher un joueur..."
-                  value={challengeSearch}
-                  onChange={(e) => setChallengeSearch(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <div className="max-h-64 overflow-y-auto space-y-1">
-                {challengeableUsers.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-6">
-                    {onlineUsers.filter((u) => u.userId !== user?.id).length === 0
-                      ? 'Aucun joueur en ligne'
-                      : 'Aucun résultat'}
-                  </p>
-                ) : (
-                  challengeableUsers.map((u) => {
-                    const isPending = outgoingDuelChallenge?.targetId === u.userId && outgoingDuelChallenge.gameType === 'battleship';
-                    return (
-                      <div
-                        key={u.userId}
-                        className="flex items-center justify-between py-2 px-3 rounded-md border border-border/40 hover:border-border/80 transition-colors"
-                      >
-                        <UsernameDisplay username={u.username} usernameColor={u.usernameColor} className="text-sm" />
-                        <Button
-                          size="sm"
-                          variant={isPending ? 'outline' : 'default'}
-                          disabled={isPending}
-                          onClick={() => {
-                            challengeUserToDuel(u.userId, u.username, 'battleship');
-                            setShowChallengePicker(false);
-                          }}
-                        >
-                          {isPending ? 'Envoyé...' : 'Défier'}
-                        </Button>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <DuelPlayerSelectionModal
+          open={showChallengePicker}
+          onOpenChange={setShowChallengePicker}
+          title="Défier en Bataille Navale"
+          gameType="battleship"
+          onlineUsers={onlineUsers}
+          currentUserId={user?.id}
+          outgoingDuelChallenge={outgoingDuelChallenge}
+          challengeUserToDuel={challengeUserToDuel}
+          requestOnlineUsers={requestOnlineUsers}
+        />
       </PageShell>
     );
   }

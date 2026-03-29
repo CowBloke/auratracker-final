@@ -60,6 +60,7 @@ import { setupLeverBlastHandlers } from './socket/leverblast.js';
 import { initLogger } from './utils/logger.js';
 import { startAutoBadgeScheduler, stopAutoBadgeScheduler, autoEquipDefaultBadges, awardBadgeByKey } from './utils/badgeAwards.js';
 import { ensureDefaultBadges } from './utils/seedBadges.js';
+import { recomputeOverallClassement, startOverallClassementScheduler, stopOverallClassementScheduler } from './utils/overallClassement.js';
 
 // Initialize Prisma
 export const prisma = new PrismaClient();
@@ -312,6 +313,8 @@ const start = async () => {
     startBombPartyCleanup(io);
     await ensureDefaultBadges();
     startAutoBadgeScheduler(); // first run: awards + auto-equip immediately
+    await recomputeOverallClassement(prisma);
+    startOverallClassementScheduler(prisma);
     await advanceClanWarsState(); // activate any PREPARING wars immediately on startup
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'EADDRINUSE') {
@@ -329,6 +332,7 @@ start();
 process.on('SIGINT', async () => {
   stopAuraCoinEngine();
   stopAutoBadgeScheduler();
+  stopOverallClassementScheduler();
   await prisma.$disconnect();
   process.exit(0);
 });
@@ -336,6 +340,7 @@ process.on('SIGINT', async () => {
 process.on('SIGTERM', async () => {
   stopAuraCoinEngine();
   stopAutoBadgeScheduler();
+  stopOverallClassementScheduler();
   await prisma.$disconnect();
   process.exit(0);
 });
