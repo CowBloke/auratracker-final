@@ -13,6 +13,7 @@ import { PageHeader, PageShell } from '@/components/layout/page-shell';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { cn } from '@/lib/utils';
 import { DuelPlayerSelectionModal } from '@/components/game/DuelPlayerSelectionModal';
+import { DuelLobbyPanel } from '@/components/game/DuelLobbyPanel';
 
 type Cell = 0 | 1 | 2;
 
@@ -239,49 +240,15 @@ export default function Morpion() {
           }
         />
 
-        <Card>
-          <CardContent className="p-6 space-y-4">
-            <h2 className="text-sm text-muted-foreground">Joueurs dans le duel ({partyMembers.length}/2)</h2>
-            <div className="space-y-0">
-              {partyMembers.map((member) => (
-                <div
-                  key={member.userId}
-                  className={cn(
-                    'flex items-center justify-between py-4 border-b border-border/30 last:border-0',
-                    member.userId === user?.id && 'bg-muted/30 -mx-4 px-4'
-                  )}
-                >
-                  <span className="font-medium">
-                    <UsernameDisplay username={member.username} usernameColor={member.usernameColor} />
-                    {member.isLeader && <span className="ml-2 text-xs text-muted-foreground">leader</span>}
-                    {member.userId === user?.id && <span className="ml-2 text-xs text-muted-foreground">(toi)</span>}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {partyMembers.length < 2 && (
-          <p className="text-center text-muted-foreground text-sm">Il faut 2 joueurs pour commencer.</p>
-        )}
-
-        {isLeader && partyMembers.length === 2 && (
-          <div className="flex justify-center">
-            <Button
-              variant="ghost"
-              onClick={handleStart}
-              className="flex items-center gap-3 px-8 py-4 text-lg border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-            >
-              <Play className="h-5 w-5" />
-              Lancer la partie
-            </Button>
-          </div>
-        )}
-
-        {!isLeader && partyMembers.length === 2 && (
-          <div className="text-center text-muted-foreground py-8">En attente que le leader lance la partie...</div>
-        )}
+        <DuelLobbyPanel
+          members={partyMembers}
+          currentUserId={user?.id}
+          title={`Joueurs dans le duel (${partyMembers.length}/2)`}
+          minimumPlayers={2}
+          isLeader={isLeader}
+          notEnoughPlayersText="Il faut 2 joueurs pour commencer."
+          onStart={handleStart}
+        />
 
         <PostGameModals gameOver={gameOver} setGameOver={setGameOver} gameState={gameState} />
       </PageShell>

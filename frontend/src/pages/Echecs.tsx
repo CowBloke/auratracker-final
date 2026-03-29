@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Bot, Eye, EyeOff, LogOut, Play, Swords, Trophy } from 'lucide-react';
+import { ArrowLeft, Bot, Eye, EyeOff, LogOut, Swords, Trophy } from 'lucide-react';
 import { Chess } from 'chess.js';
 import type { Square } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { SpectateEffectBar, type SpectateFloatingMessage } from '@/components/spectate/SpectateEffectBar';
 import { DuelPlayerSelectionModal } from '@/components/game/DuelPlayerSelectionModal';
+import { DuelLobbyPanel } from '@/components/game/DuelLobbyPanel';
 
 type ChessColor = 'w' | 'b';
 type PieceType = 'p' | 'n' | 'b' | 'r' | 'q' | 'k';
@@ -657,45 +658,15 @@ export default function Echecs() {
             </Link>
           </Button>
         </div>
-        <Card>
-          <CardContent className="space-y-4 p-6">
-            <h2 className="text-sm text-muted-foreground">
-              Joueurs dans le duel ({partyMembers.length}/2)
-            </h2>
-            <div className="space-y-0">
-              {partyMembers.map((member) => (
-                <div
-                  key={member.userId}
-                  className={cn(
-                    'flex items-center justify-between border-b border-border/30 py-4 last:border-0',
-                    member.userId === user?.id && 'bg-muted/30 -mx-4 px-4'
-                  )}
-                >
-                  <span className="font-medium">
-                    <UsernameDisplay username={member.username} usernameColor={member.usernameColor} />
-                    {member.isLeader && <span className="ml-2 text-xs text-muted-foreground">leader</span>}
-                    {member.userId === user?.id && <span className="ml-2 text-xs text-muted-foreground">(toi)</span>}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-        {partyMembers.length < 2 && (
-          <p className="text-center text-sm text-muted-foreground">Il faut 2 joueurs pour commencer</p>
-        )}
-        {isLeader && partyMembers.length === 2 && (
-          <div className="flex justify-center">
-            <Button
-              variant="ghost"
-              onClick={handleStart}
-              className="flex items-center gap-3 border border-foreground px-8 py-4 text-lg text-foreground transition-colors hover:bg-foreground hover:text-background"
-            >
-              <Play className="h-5 w-5" />
-              Lancer la partie
-            </Button>
-          </div>
-        )}
+        <DuelLobbyPanel
+          members={partyMembers}
+          currentUserId={user?.id}
+          title={`Joueurs dans le duel (${partyMembers.length}/2)`}
+          minimumPlayers={2}
+          isLeader={isLeader}
+          notEnoughPlayersText="Il faut 2 joueurs pour commencer"
+          onStart={handleStart}
+        />
         {error && <p className="text-center text-sm text-red-500">{error}</p>}
       </PageShell>
     );
