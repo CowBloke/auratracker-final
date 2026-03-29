@@ -44,15 +44,21 @@ interface DraftOption {
   odds: string; // string for controlled input
 }
 
-/** Returns the YES/NO options for an event. */
-function getEventOptions(event: Pick<PolymarketEvent, 'yesOdds' | 'noOdds'>): PolymarketOption[] {
+/** Returns the options for an event, using optionsConfig when present, falling back to YES/NO. */
+function getEventOptions(event: Pick<PolymarketEvent, 'yesOdds' | 'noOdds' | 'optionsConfig'>): PolymarketOption[] {
+  if (event.optionsConfig) {
+    try {
+      const parsed = JSON.parse(event.optionsConfig) as PolymarketOption[];
+      if (Array.isArray(parsed) && parsed.length >= 2) return parsed;
+    } catch { /* fall through */ }
+  }
   return [
     { key: 'YES', label: 'Oui', color: '#22c55e', odds: event.yesOdds },
     { key: 'NO',  label: 'Non', color: '#ef4444', odds: event.noOdds  },
   ];
 }
 
-function getOptionByKey(event: Pick<PolymarketEvent, 'yesOdds' | 'noOdds'>, key: string): PolymarketOption | undefined {
+function getOptionByKey(event: Pick<PolymarketEvent, 'yesOdds' | 'noOdds' | 'optionsConfig'>, key: string): PolymarketOption | undefined {
   return getEventOptions(event).find((o) => o.key === key);
 }
 
@@ -450,11 +456,15 @@ export default function Polymarket() {
       };
       if (eventDate.trim()) payload.eventDate = eventDate;
       if (optionsPayload) {
-        const yesOpt = optionsPayload.find(o => o.key === 'YES') ?? optionsPayload[0];
-        const noOpt = optionsPayload.find(o => o.key === 'NO') ?? optionsPayload[1];
-        if (yesOpt && noOpt) {
-          payload.suggestedYesOdds = yesOpt.odds;
-          payload.suggestedNoOdds = noOpt.odds;
+        if (suggestionMode === 'custom') {
+          payload.optionsConfig = optionsPayload;
+        } else {
+          const yesOpt = optionsPayload.find(o => o.key === 'YES') ?? optionsPayload[0];
+          const noOpt = optionsPayload.find(o => o.key === 'NO') ?? optionsPayload[1];
+          if (yesOpt && noOpt) {
+            payload.suggestedYesOdds = yesOpt.odds;
+            payload.suggestedNoOdds = noOpt.odds;
+          }
         }
       }
 
@@ -523,6 +533,7 @@ export default function Polymarket() {
         yesOdds,
         noOdds,
         eventDate: approveEventDate || undefined,
+        ...(approveMode === 'custom' ? { optionsConfig: optionsPayload } : {}),
       });
       toast({ title: 'Suggestion approuvée', description: 'L\'événement a été créé avec succès' });
       setApproveDialogOpen(false);
@@ -618,6 +629,7 @@ export default function Polymarket() {
         yesOdds,
         noOdds,
         status: statusValue,
+        ...(editMode === 'custom' ? { optionsConfig: optionsPayload } : { optionsConfig: null }),
       });
       toast({ title: 'Événement modifié', description: 'Les changements ont été enregistrés.' });
       setEditEventDialogOpen(false);
@@ -1441,6 +1453,7 @@ export default function Polymarket() {
                   eventDate: formData.get('eventDate') as string,
                   yesOdds,
                   noOdds,
+                  ...(createMode === 'custom' ? { optionsConfig: optionsPayload } : {}),
                 });
                 toast({ title: 'Événement créé', description: 'L\'événement a été créé avec succès' });
                 setCreateEventDialogOpen(false);

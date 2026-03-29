@@ -1606,6 +1606,7 @@ export interface PolymarketSuggestion {
   eventDate: string | null;
   suggestedYesOdds?: number | null;
   suggestedNoOdds?: number | null;
+  optionsConfig?: string | null;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   createdAt: string;
   reviewedAt: string | null;
@@ -1630,6 +1631,7 @@ export interface PolymarketEvent {
   eventDate: string;
   yesOdds: number;
   noOdds: number;
+  optionsConfig?: string | null;
   status: 'OPEN' | 'CLOSED' | 'RESOLVED';
   resolution: string | null;
   resolvedAt: string | null;
@@ -1679,9 +1681,10 @@ export const polymarketApi = {
     eventDate?: string;
     suggestedYesOdds?: number;
     suggestedNoOdds?: number;
+    optionsConfig?: Array<{ key: string; label: string; color: string; odds: number }> | null;
   }) =>
     api.post<{ suggestion: PolymarketSuggestion }>('/polymarket/suggestions', data),
-  approveSuggestion: (id: string, data: { yesOdds: number; noOdds: number; eventDate?: string }) =>
+  approveSuggestion: (id: string, data: { yesOdds: number; noOdds: number; eventDate?: string; optionsConfig?: Array<{ key: string; label: string; color: string; odds: number }> | null }) =>
     api.post<{ event: PolymarketEvent }>(`/polymarket/suggestions/${id}/approve`, data),
   rejectSuggestion: (id: string) =>
     api.post<{ success: boolean }>(`/polymarket/suggestions/${id}/reject`),
@@ -1699,6 +1702,7 @@ export const polymarketApi = {
     yesOdds: number;
     noOdds: number;
     suggestionId?: string;
+    optionsConfig?: Array<{ key: string; label: string; color: string; odds: number }> | null;
   }) => api.post<{ event: PolymarketEvent }>('/polymarket/events', data),
   updateEvent: (id: string, data: Partial<PolymarketEvent>) =>
     api.patch<{ event: PolymarketEvent }>(`/polymarket/events/${id}`, data),

@@ -1,7 +1,7 @@
-import { useEffect, type ComponentType } from 'react';
+  import { useEffect, type ComponentType } from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { PageShell } from '@/components/layout/page-shell';
 import { TYPOGRAPHY } from '@/lib/design-system';
 import { UPDATE_ENTRIES, type UpdateCategory, markUpdatesSeen } from '@/lib/updates';
@@ -10,32 +10,41 @@ import { Bug, Sparkles, Rocket } from 'lucide-react';
 const categoryMeta: Record<UpdateCategory, {
   label: string;
   icon: ComponentType<{ className?: string }>;
-  chipClassName: string;
-  blockClassName: string;
-  iconToneClassName: string;
+  iconClass: string;
+  stripClass: string;
+  badgeClass: string;
 }> = {
   BIG_FEATURE: {
-    label: 'Grandes fonctionnalites',
+    label: 'Grandes fonctionnalités',
     icon: Rocket,
-    chipClassName: 'border-border bg-muted/70 text-foreground',
-    blockClassName: 'border-border bg-muted/65',
-    iconToneClassName: 'text-foreground',
+    iconClass: 'text-chart-3',
+    stripClass: 'border-l-2 border-chart-3/60 pl-4',
+    badgeClass: 'border-chart-3/40 text-chart-3 bg-chart-3/10',
   },
   SMALL_FEATURE: {
-    label: 'Petites fonctionnalites',
+    label: 'Petites fonctionnalités',
     icon: Sparkles,
-    chipClassName: 'border-border/80 bg-muted/50 text-foreground/90',
-    blockClassName: 'border-border/80 bg-muted/45',
-    iconToneClassName: 'text-foreground/85',
+    iconClass: 'text-chart-1',
+    stripClass: 'border-l-2 border-chart-1/50 pl-4',
+    badgeClass: 'border-chart-1/40 text-chart-1 bg-chart-1/10',
   },
   BUG_FIX: {
     label: 'Correctifs',
     icon: Bug,
-    chipClassName: 'border-border/70 bg-muted/35 text-foreground/80',
-    blockClassName: 'border-border/70 bg-muted/30',
-    iconToneClassName: 'text-foreground/75',
+    iconClass: 'text-muted-foreground',
+    stripClass: 'border-l-2 border-border/70 pl-4',
+    badgeClass: 'border-border text-muted-foreground',
   },
 };
+
+function renderItem(text: string) {
+  const parts = text.split(/\*\*(.+?)\*\*/g);
+  return parts.map((part, i) =>
+    i % 2 === 1
+      ? <strong key={i} className="font-semibold text-foreground">{part}</strong>
+      : part
+  );
+}
 
 export default function Updates() {
   useEffect(() => {
@@ -72,61 +81,61 @@ export default function Updates() {
                 <AccordionItem key={entry.id} value={entry.id} className="px-5 py-1 sm:px-6">
                   <AccordionTrigger className="py-5 text-left hover:no-underline">
                     <div className="space-y-2">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <CardTitle className="text-xl tracking-tight capitalize">
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <span className="text-xl font-semibold tracking-tight capitalize">
                           {dateLabel}
-                        </CardTitle>
-                        <Badge variant="outline" className={`gap-1.5 ${categoryMeta.BIG_FEATURE.chipClassName}`}>
-                          <Rocket className="h-3.5 w-3.5" />
-                          <span>{counts.BIG_FEATURE}</span>
-                        </Badge>
-                        <Badge variant="outline" className={`gap-1.5 ${categoryMeta.SMALL_FEATURE.chipClassName}`}>
-                          <Sparkles className="h-3.5 w-3.5" />
-                          <span>{counts.SMALL_FEATURE}</span>
-                        </Badge>
-                        <Badge variant="outline" className={`gap-1.5 ${categoryMeta.BUG_FIX.chipClassName}`}>
-                          <Bug className="h-3.5 w-3.5" />
-                          <span>{counts.BUG_FIX}</span>
-                        </Badge>
+                        </span>
+                        {counts.BIG_FEATURE > 0 && (
+                          <Badge variant="outline" className={`gap-1.5 text-xs ${categoryMeta.BIG_FEATURE.badgeClass}`}>
+                            <Rocket className="h-3 w-3" />
+                            {counts.BIG_FEATURE}
+                          </Badge>
+                        )}
+                        {counts.SMALL_FEATURE > 0 && (
+                          <Badge variant="outline" className={`gap-1.5 text-xs ${categoryMeta.SMALL_FEATURE.badgeClass}`}>
+                            <Sparkles className="h-3 w-3" />
+                            {counts.SMALL_FEATURE}
+                          </Badge>
+                        )}
+                        {counts.BUG_FIX > 0 && (
+                          <Badge variant="outline" className={`gap-1.5 text-xs ${categoryMeta.BUG_FIX.badgeClass}`}>
+                            <Bug className="h-3 w-3" />
+                            {counts.BUG_FIX}
+                          </Badge>
+                        )}
                       </div>
                       <p className={TYPOGRAPHY.PAGE_DESCRIPTION}>{entry.summary}</p>
                     </div>
                   </AccordionTrigger>
 
                   <AccordionContent>
-                    <div className="pb-5">
-                      <div className="space-y-3.5">
-                        {entry.sections.map((section) => {
-                          const meta = categoryMeta[section.category];
-                          const CategoryIcon = meta.icon;
+                    <div className="pb-6 space-y-5">
+                      {entry.sections.map((section) => {
+                        const meta = categoryMeta[section.category];
+                        const CategoryIcon = meta.icon;
 
-                          return (
-                            <div
-                              key={`${entry.id}-${section.category}`}
-                              className={`rounded-xl border p-3.5 sm:p-4 ${meta.blockClassName}`}
-                            >
-                              <div className="mb-3 flex items-center gap-2">
-                                <CategoryIcon className={`h-4 w-4 ${meta.iconToneClassName}`} />
-                                <h3 className="text-sm font-semibold tracking-tight text-foreground">
-                                  {meta.label}
-                                </h3>
-                              </div>
-
-                              <ul className="space-y-2 pl-1">
-                                {section.items.map((item, index) => (
-                                  <li
-                                    key={`${entry.id}-${section.category}-${index}`}
-                                    className="list-none rounded-lg border border-border/55 bg-background/80 px-3 py-2.5 text-sm leading-relaxed text-foreground"
-                                  >
-                                    <span className="mr-2 font-semibold text-muted-foreground">•</span>
-                                    <span>{item}</span>
-                                  </li>
-                                ))}
-                              </ul>
+                        return (
+                          <div key={`${entry.id}-${section.category}`} className={meta.stripClass}>
+                            <div className="flex items-center gap-2 mb-2">
+                              <CategoryIcon className={`h-3.5 w-3.5 ${meta.iconClass}`} />
+                              <span className="text-xs font-semibold tracking-wide text-muted-foreground">
+                                {meta.label}
+                              </span>
                             </div>
-                          );
-                        })}
-                      </div>
+                            <ul className="space-y-1">
+                              {section.items.map((item, index) => (
+                                <li
+                                  key={`${entry.id}-${section.category}-${index}`}
+                                  className="flex gap-2 text-sm text-foreground/80 leading-relaxed"
+                                >
+                                  <span className="mt-[3px] shrink-0 text-muted-foreground/40 select-none">–</span>
+                                  <span>{renderItem(item)}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        );
+                      })}
                     </div>
                   </AccordionContent>
                 </AccordionItem>
