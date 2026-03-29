@@ -11,4 +11,3 @@
 - activité admin : ajouter temps passé : jeux
 - fruit ninja expo
 - revoir UI changelog
-- renommer changelog
