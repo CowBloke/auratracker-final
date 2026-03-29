@@ -25,9 +25,9 @@ const SEED_ENTRIES = [
 ];
 
 async function ensureSeeded() {
-  const count = await prisma.updateEntry.count();
-  if (count === 0) {
-    for (const entry of SEED_ENTRIES) {
+  for (const entry of SEED_ENTRIES) {
+    const existing = await prisma.updateEntry.findUnique({ where: { id: entry.id } });
+    if (!existing) {
       await prisma.updateEntry.create({
         data: {
           id: entry.id,
