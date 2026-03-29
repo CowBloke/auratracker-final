@@ -14,3 +14,4 @@
 - notif changelog bleu et non rouge
 - doube toast, consistence toast : croix fermer toasts
 - on oeut pas modifier un événement polymarket
+- fixer partys

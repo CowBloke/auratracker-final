@@ -56,6 +56,8 @@ import Updates from './pages/Updates';
 import QSWatermelon from './pages/QSWatermelon';
 import Polytrack from './pages/Polytrack';
 import Eaglercraft from './pages/Eaglercraft';
+import SubwaySurfers from './pages/SubwaySurfers';
+import HexGL from './pages/HexGL';
 import { BLOCKABLE_PAGES } from './config/blockedPages';
 import { useFeatures } from './contexts/FeaturesContext';
 
@@ -209,6 +211,8 @@ function App() {
         <Route path="games/morpion" element={<Morpion />} />
         <Route path="games/polytrack" element={<Polytrack />} />
         <Route path="games/eaglercraft" element={<Eaglercraft />} />
+        <Route path="games/subway-surfers" element={<SubwaySurfers />} />
+        <Route path="games/hexgl" element={<HexGL />} />
         <Route path="polymarket" element={<Polymarket />} />
         <Route path="leaderboards" element={<Leaderboards />} />
         <Route path="leaderboards/nombres" element={<Numbers />} />
