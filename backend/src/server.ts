@@ -49,6 +49,7 @@ import { setupBattleshipHandlers } from './socket/battleship.js';
 import { setupPuissanceQuatreHandlers } from './socket/puissancequatre.js';
 import { setupChessHandlers } from './socket/chess.js';
 import { setupDuelHandlers } from './socket/duel.js';
+import { setupAIDuelHandlers } from './socket/aiDuel.js';
 import { setupRussianRouletteHandlers } from './socket/russianroulette.js';
 import { setupBallArenaHandlers } from './socket/ballarena.js';
 import { setupUnoHandlers } from './socket/uno.js';
@@ -58,6 +59,7 @@ import { setupMorpionHandlers } from './socket/morpion.js';
 import { initLogger } from './utils/logger.js';
 import { startAutoBadgeScheduler, stopAutoBadgeScheduler, autoEquipDefaultBadges, awardBadgeByKey } from './utils/badgeAwards.js';
 import { ensureDefaultBadges } from './utils/seedBadges.js';
+import { recomputeOverallClassement, startOverallClassementScheduler, stopOverallClassementScheduler } from './utils/overallClassement.js';
 
 // Initialize Prisma
 export const prisma = new PrismaClient();
@@ -268,6 +270,7 @@ io.on('connection', (socket) => {
   setupPuissanceQuatreHandlers(socket, io);
   setupChessHandlers(socket, io);
   setupDuelHandlers(socket, io);
+  setupAIDuelHandlers(socket, io);
   setupRussianRouletteHandlers(socket, io);
   setupBallArenaHandlers(socket, io);
   setupUnoHandlers(socket, io);
@@ -307,6 +310,8 @@ const start = async () => {
     startBombPartyCleanup(io);
     await ensureDefaultBadges();
     startAutoBadgeScheduler(); // first run: awards + auto-equip immediately
+    await recomputeOverallClassement(prisma);
+    startOverallClassementScheduler(prisma);
     await advanceClanWarsState(); // activate any PREPARING wars immediately on startup
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'EADDRINUSE') {
@@ -324,6 +329,7 @@ start();
 process.on('SIGINT', async () => {
   stopAuraCoinEngine();
   stopAutoBadgeScheduler();
+  stopOverallClassementScheduler();
   await prisma.$disconnect();
   process.exit(0);
 });
@@ -331,6 +337,7 @@ process.on('SIGINT', async () => {
 process.on('SIGTERM', async () => {
   stopAuraCoinEngine();
   stopAutoBadgeScheduler();
+  stopOverallClassementScheduler();
   await prisma.$disconnect();
   process.exit(0);
 });

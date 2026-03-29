@@ -33,7 +33,7 @@ export function ImagePicker({
 }: ImagePickerProps) {
   const [uploading, setUploading] = useState(false);
   const [dropzoneActive, setDropzoneActive] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ type: 'error' | 'success'; message: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const isDisabled = disabled || uploading;
@@ -41,20 +41,26 @@ export function ImagePicker({
   const handleFile = async (file: File | null) => {
     if (!file || isDisabled) return;
     if (!file.type.startsWith('image/')) {
-      setErrorMessage('Seules les images sont acceptées.');
+      setFeedback({ type: 'error', message: 'Seules les images sont acceptees.' });
       return;
     }
     if (file.size > maxSizeBytes) {
-      setErrorMessage(`Image trop lourde. Taille max: ${maxSizeLabel}.`);
+      setFeedback({ type: 'error', message: `Image trop lourde. Taille max: ${maxSizeLabel}.` });
       return;
     }
     try {
-      setErrorMessage(null);
+      setFeedback(null);
       setUploading(true);
       const url = await uploadFn(file);
       onChange(url);
-    } catch {
-      // uploadFn is responsible for showing error feedback
+      setFeedback({ type: 'success', message: 'Image televersee avec succes.' });
+    } catch (error: any) {
+      const uploadError =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        'Image refusee. Verifie le format, la taille ou l URL.';
+      setFeedback({ type: 'error', message: uploadError });
     } finally {
       setUploading(false);
     }
@@ -127,8 +133,10 @@ export function ImagePicker({
         )}
       </div>
 
-      {errorMessage && (
-        <p className="text-xs text-destructive">{errorMessage}</p>
+      {feedback && (
+        <p className={cn('text-xs', feedback.type === 'error' ? 'text-destructive' : 'text-emerald-600')}>
+          {feedback.message}
+        </p>
       )}
 
       <Input

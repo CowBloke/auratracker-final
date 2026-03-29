@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Eye, EyeOff, LogOut, Play, Search, Swords, Trophy } from 'lucide-react';
+import { ArrowLeft, Bot, Eye, EyeOff, LogOut, Swords, Trophy } from 'lucide-react';
 import { Chess } from 'chess.js';
 import type { Square } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
@@ -12,11 +12,12 @@ import { useDuelSocket } from '../contexts/DuelSocketContext';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { PageShell } from '@/components/layout/page-shell';
 import { cn } from '@/lib/utils';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { SpectateEffectBar, type SpectateFloatingMessage } from '@/components/spectate/SpectateEffectBar';
+import { DuelPlayerSelectionModal } from '@/components/game/DuelPlayerSelectionModal';
+import { DuelLobbyPanel } from '@/components/game/DuelLobbyPanel';
 
 type ChessColor = 'w' | 'b';
 type PieceType = 'p' | 'n' | 'b' | 'r' | 'q' | 'k';
@@ -123,10 +124,10 @@ export default function Echecs() {
   const { socket } = useSocketBase();
   const { onlineUsers, requestOnlineUsers } = useChatSocket();
   const { currentParty, partyMembers } = usePartySocket();
-  const { challengeUserToDuel, outgoingDuelChallenge } = useDuelSocket();
+  const { challengeUserToDuel, outgoingDuelChallenge, startVsAiDuel } = useDuelSocket();
 
   const [showChallengePicker, setShowChallengePicker] = useState(false);
-  const [challengeSearch, setChallengeSearch] = useState('');
+  const [showAIPicker, setShowAIPicker] = useState(false);
 
   const boardContainerRef = useRef<HTMLDivElement>(null);
   const [boardWidth, setBoardWidth] = useState(480);
@@ -155,7 +156,7 @@ export default function Echecs() {
 
   const routeSpectatePartyId = ((location.state as { spectatePartyId?: string } | null)?.spectatePartyId) ?? null;
   const isSpectating = spectatingPartyId !== null;
-  const activePartyId = isSpectating ? spectatingPartyId : (currentParty?.id ?? null);
+  const activePartyId = isSpectating ? spectatingPartyId : (currentParty?.id ?? gameState?.partyId ?? null);
 
   useEffect(() => {
     spectatingPartyIdRef.current = spectatingPartyId;
@@ -559,11 +560,7 @@ export default function Echecs() {
   })();
 
   // ── No party ──────────────────────────────────────────────────────────────
-  if (!currentParty && !isSpectating && !routeSpectatePartyId) {
-    const challengeableUsers = onlineUsers.filter(
-      (u) => u.userId !== user?.id && u.username.toLowerCase().includes(challengeSearch.toLowerCase())
-    );
-
+  if (!currentParty && !isSpectating && !routeSpectatePartyId && !gameState) {
     return (
       <PageShell>
         <div className="flex items-center gap-2">
@@ -577,7 +574,11 @@ export default function Echecs() {
           <CardContent className="space-y-4 py-10 px-6 text-center">
             <p className="text-sm text-muted-foreground">Joue aux échecs en 1v1 contre un autre joueur</p>
             <div className="flex flex-col gap-2 max-w-xs mx-auto">
-              <Button onClick={() => { setChallengeSearch(''); requestOnlineUsers(); setShowChallengePicker(true); }}>
+              <Button onClick={() => setShowAIPicker(true)}>
+                <Bot className="h-4 w-4 mr-2" />
+                Jouer contre l'IA
+              </Button>
+              <Button onClick={() => setShowChallengePicker(true)} variant="outline">
                 <Swords className="h-4 w-4 mr-2" />
                 Défier un joueur
               </Button>
@@ -588,59 +589,38 @@ export default function Echecs() {
           </CardContent>
         </Card>
 
-        <Dialog open={showChallengePicker} onOpenChange={setShowChallengePicker}>
+        <Dialog open={showAIPicker} onOpenChange={setShowAIPicker}>
           <DialogContent className="sm:max-w-sm">
             <DialogHeader>
               <DialogTitle className="font-normal flex items-center gap-2">
-                <Swords className="h-4 w-4" />
-                Défier en Échecs
+                <Bot className="h-4 w-4" />
+                Jouer contre l'IA
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-3">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Rechercher un joueur..."
-                  value={challengeSearch}
-                  onChange={(e) => setChallengeSearch(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <div className="max-h-64 overflow-y-auto space-y-1">
-                {challengeableUsers.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-6">
-                    {onlineUsers.filter((u) => u.userId !== user?.id).length === 0
-                      ? 'Aucun joueur en ligne'
-                      : 'Aucun résultat'}
-                  </p>
-                ) : (
-                  challengeableUsers.map((u) => {
-                    const isPending = outgoingDuelChallenge?.targetId === u.userId && outgoingDuelChallenge.gameType === 'chess';
-                    return (
-                      <div
-                        key={u.userId}
-                        className="flex items-center justify-between py-2 px-3 rounded-md border border-border/40 hover:border-border/80 transition-colors"
-                      >
-                        <UsernameDisplay username={u.username} usernameColor={u.usernameColor} className="text-sm" />
-                        <Button
-                          size="sm"
-                          variant={isPending ? 'outline' : 'default'}
-                          disabled={isPending}
-                          onClick={() => {
-                            challengeUserToDuel(u.userId, u.username, 'chess');
-                            setShowChallengePicker(false);
-                          }}
-                        >
-                          {isPending ? 'Envoyé...' : 'Défier'}
-                        </Button>
-                      </div>
-                    );
-                  })
-                )}
+            <div className="space-y-3 py-2">
+              <p className="text-sm text-muted-foreground">Choisir la difficulté :</p>
+              <div className="flex flex-col gap-2">
+                {([['easy', 'Facile'], ['medium', 'Normal'], ['hard', 'Expert']] as const).map(([diff, label]) => (
+                  <Button key={diff} variant="outline" onClick={() => { startVsAiDuel('chess', diff); setShowAIPicker(false); }}>
+                    {label}
+                  </Button>
+                ))}
               </div>
             </div>
           </DialogContent>
         </Dialog>
+
+        <DuelPlayerSelectionModal
+          open={showChallengePicker}
+          onOpenChange={setShowChallengePicker}
+          title="Défier en Échecs"
+          gameType="chess"
+          onlineUsers={onlineUsers}
+          currentUserId={user?.id}
+          outgoingDuelChallenge={outgoingDuelChallenge}
+          challengeUserToDuel={challengeUserToDuel}
+          requestOnlineUsers={requestOnlineUsers}
+        />
       </PageShell>
     );
   }
@@ -678,45 +658,15 @@ export default function Echecs() {
             </Link>
           </Button>
         </div>
-        <Card>
-          <CardContent className="space-y-4 p-6">
-            <h2 className="text-sm text-muted-foreground">
-              Joueurs dans le duel ({partyMembers.length}/2)
-            </h2>
-            <div className="space-y-0">
-              {partyMembers.map((member) => (
-                <div
-                  key={member.userId}
-                  className={cn(
-                    'flex items-center justify-between border-b border-border/30 py-4 last:border-0',
-                    member.userId === user?.id && 'bg-muted/30 -mx-4 px-4'
-                  )}
-                >
-                  <span className="font-medium">
-                    <UsernameDisplay username={member.username} usernameColor={member.usernameColor} />
-                    {member.isLeader && <span className="ml-2 text-xs text-muted-foreground">leader</span>}
-                    {member.userId === user?.id && <span className="ml-2 text-xs text-muted-foreground">(toi)</span>}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-        {partyMembers.length < 2 && (
-          <p className="text-center text-sm text-muted-foreground">Il faut 2 joueurs pour commencer</p>
-        )}
-        {isLeader && partyMembers.length === 2 && (
-          <div className="flex justify-center">
-            <Button
-              variant="ghost"
-              onClick={handleStart}
-              className="flex items-center gap-3 border border-foreground px-8 py-4 text-lg text-foreground transition-colors hover:bg-foreground hover:text-background"
-            >
-              <Play className="h-5 w-5" />
-              Lancer la partie
-            </Button>
-          </div>
-        )}
+        <DuelLobbyPanel
+          members={partyMembers}
+          currentUserId={user?.id}
+          title={`Joueurs dans le duel (${partyMembers.length}/2)`}
+          minimumPlayers={2}
+          isLeader={isLeader}
+          notEnoughPlayersText="Il faut 2 joueurs pour commencer"
+          onStart={handleStart}
+        />
         {error && <p className="text-center text-sm text-red-500">{error}</p>}
       </PageShell>
     );

@@ -235,6 +235,9 @@ export const duelEvents = {
   requestMatchmakingStats: () => {
     socket?.emit('duel:matchmaking-stats-request');
   },
+  vsAi: (gameType: 'chess' | 'p4' | 'morpion', difficulty: 'easy' | 'medium' | 'hard') => {
+    socket?.emit('duel:vs-ai', { gameType, difficulty });
+  },
 };
 
 export default socket;

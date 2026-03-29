@@ -6,16 +6,17 @@ import { useChatSocket } from '../contexts/ChatSocketContext';
 import { usePartySocket } from '../contexts/PartySocketContext';
 import { useDuelSocket } from '../contexts/DuelSocketContext';
 import {
-  ArrowLeft, Play, LogOut, Search, Swords, Trophy, RotateCcw,
+  ArrowLeft, LogOut, Swords, Trophy, RotateCcw,
   ChevronDown, ChevronUp, AlertCircle, Zap,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { PageHeader, PageShell } from '@/components/layout/page-shell';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { cn } from '@/lib/utils';
+import { DuelPlayerSelectionModal } from '@/components/game/DuelPlayerSelectionModal';
+import { DuelLobbyPanel } from '@/components/game/DuelLobbyPanel';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -346,7 +347,6 @@ export default function Uno() {
   const { challengeUserToDuel, outgoingDuelChallenge } = useDuelSocket();
 
   const [showChallengePicker, setShowChallengePicker] = useState(false);
-  const [challengeSearch, setChallengeSearch] = useState('');
 
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [gameOver, setGameOver] = useState<GameOverData | null>(null);
@@ -600,10 +600,6 @@ export default function Uno() {
 
   // ── No party ──────────────────────────────────────────────────────────────
   if (!currentParty) {
-    const challengeable = onlineUsers.filter(
-      u => u.userId !== user?.id && u.username.toLowerCase().includes(challengeSearch.toLowerCase())
-    );
-
     return (
       <PageShell>
         <PageHeader
@@ -622,7 +618,7 @@ export default function Uno() {
           <CardContent className="py-10 px-6 text-center space-y-4">
             <p className="text-sm text-muted-foreground">Joue en 2-4 joueurs en créant ou rejoignant un groupe.</p>
             <div className="flex flex-col gap-2 max-w-xs mx-auto">
-              <Button onClick={() => { setChallengeSearch(''); requestOnlineUsers(); setShowChallengePicker(true); }}>
+              <Button onClick={() => setShowChallengePicker(true)}>
                 <Swords className="h-4 w-4 mr-2" />
                 Défier un joueur
               </Button>
@@ -633,52 +629,17 @@ export default function Uno() {
           </CardContent>
         </Card>
 
-        <Dialog open={showChallengePicker} onOpenChange={setShowChallengePicker}>
-          <DialogContent className="sm:max-w-sm">
-            <DialogHeader>
-              <DialogTitle className="font-normal flex items-center gap-2">
-                <Swords className="h-4 w-4" />
-                Défier en UNO
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Rechercher un joueur..."
-                  value={challengeSearch}
-                  onChange={e => setChallengeSearch(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <div className="max-h-64 overflow-y-auto space-y-1">
-                {challengeable.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-6">
-                    {onlineUsers.filter(u => u.userId !== user?.id).length === 0
-                      ? 'Aucun joueur en ligne' : 'Aucun résultat'}
-                  </p>
-                ) : (
-                  challengeable.map(u => {
-                    const isPending = outgoingDuelChallenge?.targetId === u.userId && outgoingDuelChallenge.gameType === 'uno';
-                    return (
-                      <div key={u.userId} className="flex items-center justify-between py-2 px-3 rounded-md border border-border/40">
-                        <UsernameDisplay username={u.username} usernameColor={u.usernameColor} className="text-sm" />
-                        <Button
-                          size="sm"
-                          variant={isPending ? 'outline' : 'default'}
-                          disabled={isPending}
-                          onClick={() => { challengeUserToDuel(u.userId, u.username, 'uno'); setShowChallengePicker(false); }}
-                        >
-                          {isPending ? 'Envoyé...' : 'Défier'}
-                        </Button>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <DuelPlayerSelectionModal
+          open={showChallengePicker}
+          onOpenChange={setShowChallengePicker}
+          title="Défier en UNO"
+          gameType="uno"
+          onlineUsers={onlineUsers}
+          currentUserId={user?.id}
+          outgoingDuelChallenge={outgoingDuelChallenge}
+          challengeUserToDuel={challengeUserToDuel}
+          requestOnlineUsers={requestOnlineUsers}
+        />
       </PageShell>
     );
   }
@@ -699,51 +660,17 @@ export default function Uno() {
             </Button>
           }
         />
-        <Card>
-          <CardContent className="p-6 space-y-4">
-            <h2 className="text-sm text-muted-foreground">
-              Joueurs ({partyMembers.length}/4)
-            </h2>
-            <div className="space-y-0">
-              {partyMembers.map(member => (
-                <div
-                  key={member.userId}
-                  className={cn(
-                    'flex items-center justify-between py-4 border-b border-border/30 last:border-0',
-                    member.userId === user?.id && 'bg-muted/30 -mx-4 px-4',
-                  )}
-                >
-                  <span className="font-medium">
-                    <UsernameDisplay username={member.username} usernameColor={member.usernameColor} />
-                    {member.isLeader && <span className="ml-2 text-xs text-muted-foreground">leader</span>}
-                    {member.userId === user?.id && <span className="ml-2 text-xs text-muted-foreground">(toi)</span>}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {partyMembers.length < 2 && (
-          <p className="text-center text-muted-foreground text-sm">Il faut au moins 2 joueurs.</p>
-        )}
-
-        {isLeader && partyMembers.length >= 2 && (
-          <div className="flex justify-center">
-            <Button
-              variant="ghost"
-              onClick={handleStart}
-              className="flex items-center gap-3 px-8 py-4 text-lg border border-foreground hover:bg-foreground hover:text-background transition-colors"
-            >
-              <Play className="h-5 w-5" />
-              Lancer la partie
-            </Button>
-          </div>
-        )}
-
-        {!isLeader && partyMembers.length >= 2 && (
-          <p className="text-center text-muted-foreground py-8">En attente que le leader lance…</p>
-        )}
+        <DuelLobbyPanel
+          members={partyMembers}
+          currentUserId={user?.id}
+          title={`Joueurs (${partyMembers.length}/4)`}
+          minimumPlayers={2}
+          requireExactPlayers={false}
+          isLeader={isLeader}
+          notEnoughPlayersText="Il faut au moins 2 joueurs."
+          waitingForLeaderText="En attente que le leader lance…"
+          onStart={handleStart}
+        />
 
         {/* Post-game modals even in lobby */}
         <PostGameDialog gameOver={gameOver} setGameOver={setGameOver} myId={user?.id} />

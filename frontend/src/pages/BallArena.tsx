@@ -5,15 +5,15 @@ import { useSocketBase } from '../contexts/SocketContext';
 import { useChatSocket } from '../contexts/ChatSocketContext';
 import { usePartySocket } from '../contexts/PartySocketContext';
 import { useDuelSocket } from '../contexts/DuelSocketContext';
-import { ArrowLeft, LogOut, Pause, Play, RotateCcw, Search, Swords, Trophy, Users } from 'lucide-react';
+import { ArrowLeft, LogOut, Pause, Play, RotateCcw, Swords, Trophy, Users } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { PageHeader, PageShell } from '@/components/layout/page-shell';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { cn } from '@/lib/utils';
+import { DuelPlayerSelectionModal } from '@/components/game/DuelPlayerSelectionModal';
 
 const ARENA_CX = 300;
 const ARENA_CY = 300;
@@ -441,7 +441,6 @@ export default function BallArena() {
 
   const [selectedMode, setSelectedMode] = useState<BallArenaMode>('duo');
   const [showChallengePicker, setShowChallengePicker] = useState(false);
-  const [challengeSearch, setChallengeSearch] = useState('');
   const [gameState, setGameState] = useState<BallArenaState | null>(null);
   const [gameOver, setGameOver] = useState<GameOverData | null>(null);
   const [prepSecsLeft, setPrepSecsLeft] = useState(0);
@@ -708,13 +707,6 @@ export default function BallArena() {
     setGameState(null);
   };
 
-  const challengeableUsers = useMemo(() => (
-    onlineUsers.filter((onlineUser) => (
-      onlineUser.userId !== user?.id &&
-      onlineUser.username.toLowerCase().includes(challengeSearch.toLowerCase())
-    ))
-  ), [onlineUsers, user?.id, challengeSearch]);
-
   if (!currentParty) {
     return (
       <PageShell>
@@ -741,7 +733,7 @@ export default function BallArena() {
             </p>
             <div className="mx-auto flex max-w-xs flex-col gap-2">
               {selectedMode === 'duo' ? (
-                <Button onClick={() => { setChallengeSearch(''); requestOnlineUsers(); setShowChallengePicker(true); }}>
+                <Button onClick={() => setShowChallengePicker(true)}>
                   <Swords className="mr-2 h-4 w-4" />Défier un joueur
                 </Button>
               ) : (
@@ -758,53 +750,17 @@ export default function BallArena() {
           </CardContent>
         </Card>
 
-        <Dialog open={showChallengePicker} onOpenChange={setShowChallengePicker}>
-          <DialogContent className="sm:max-w-sm">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 font-normal">
-                <Swords className="h-4 w-4" />Défier dans l'arène des balles
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Rechercher un joueur..."
-                  value={challengeSearch}
-                  onChange={(e) => setChallengeSearch(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <div className="max-h-64 space-y-1 overflow-y-auto">
-                {challengeableUsers.length === 0 ? (
-                  <p className="py-6 text-center text-sm text-muted-foreground">
-                    {onlineUsers.filter((onlineUser) => onlineUser.userId !== user?.id).length === 0 ? 'Aucun joueur en ligne' : 'Aucun résultat'}
-                  </p>
-                ) : (
-                  challengeableUsers.map((onlineUser) => {
-                    const isPending = outgoingDuelChallenge?.targetId === onlineUser.userId && outgoingDuelChallenge.gameType === 'ballarena';
-                    return (
-                      <div key={onlineUser.userId} className="flex items-center justify-between rounded-md border border-border/40 px-3 py-2 transition-colors hover:border-border/80">
-                        <UsernameDisplay username={onlineUser.username} usernameColor={onlineUser.usernameColor} className="text-sm" />
-                        <Button
-                          size="sm"
-                          variant={isPending ? 'outline' : 'default'}
-                          disabled={isPending}
-                          onClick={() => {
-                            challengeUserToDuel(onlineUser.userId, onlineUser.username, 'ballarena');
-                            setShowChallengePicker(false);
-                          }}
-                        >
-                          {isPending ? 'Envoyé...' : 'Défier'}
-                        </Button>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <DuelPlayerSelectionModal
+          open={showChallengePicker}
+          onOpenChange={setShowChallengePicker}
+          title="Défier dans l'arène des balles"
+          gameType="ballarena"
+          onlineUsers={onlineUsers}
+          currentUserId={user?.id}
+          outgoingDuelChallenge={outgoingDuelChallenge}
+          challengeUserToDuel={challengeUserToDuel}
+          requestOnlineUsers={requestOnlineUsers}
+        />
       </PageShell>
     );
   }

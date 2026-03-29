@@ -20,6 +20,7 @@ import {
   Target,
   Bug,
   MessageCircle,
+  Megaphone,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -52,6 +53,7 @@ import BugReportPanel from '@/components/layout/BugReportPanel';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { BLOCKABLE_PAGES } from '@/config/blockedPages';
+import { getNewUpdatesCount, markUpdatesSeen } from '@/lib/updates';
 
 interface SearchUser {
   id: string;
@@ -137,6 +139,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
 
   const isOnGames = location.pathname.startsWith('/games');
   const [supportUnread, setSupportUnread] = useState(0);
+  const [updatesUnread, setUpdatesUnread] = useState(() => getNewUpdatesCount());
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [users, setUsers] = useState<SearchUser[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
@@ -168,6 +171,27 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
     if (location.pathname === '/support') {
       setSupportUnread(0);
     }
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const syncUnread = () => {
+      setUpdatesUnread(getNewUpdatesCount());
+    };
+
+    if (location.pathname === '/updates') {
+      markUpdatesSeen();
+      setUpdatesUnread(0);
+    } else {
+      syncUnread();
+    }
+
+    window.addEventListener('focus', syncUnread);
+    window.addEventListener('storage', syncUnread);
+
+    return () => {
+      window.removeEventListener('focus', syncUnread);
+      window.removeEventListener('storage', syncUnread);
+    };
   }, [location.pathname]);
 
   useEffect(() => {
@@ -427,6 +451,31 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                   </SidebarMenuButton>
                 )}
               />
+            </SidebarMenuItem>
+
+            {/* Updates */}
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={location.pathname === '/updates'}
+                tooltip="Mises a jour"
+                className={cn(
+                  'h-9 px-3 text-sm font-normal',
+                  location.pathname === '/updates'
+                    ? 'text-foreground bg-muted/50'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
+                )}
+              >
+                <NavLink to="/updates">
+                  <Megaphone className="h-4 w-4" />
+                  <span className="group-data-[collapsible=icon]:hidden">Mises a jour</span>
+                  {updatesUnread > 0 && (
+                    <span className="ml-auto inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-sky-600 text-white text-[10px] font-semibold group-data-[collapsible=icon]:hidden">
+                      {updatesUnread > 99 ? '99+' : updatesUnread}
+                    </span>
+                  )}
+                </NavLink>
+              </SidebarMenuButton>
             </SidebarMenuItem>
 
             {/* Support */}

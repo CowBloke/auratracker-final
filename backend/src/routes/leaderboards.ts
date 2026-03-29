@@ -832,6 +832,9 @@ router.get('/user/:userId', authMiddleware, async (req: AuthRequest, res: Respon
         username: true,
         aura: true,
         money: true,
+        totalScore: true,
+        overallRank: true,
+        lastScoreUpdate: true,
       },
     });
     
@@ -852,9 +855,17 @@ router.get('/user/:userId', authMiddleware, async (req: AuthRequest, res: Respon
       where: { money: { gt: user.money }, isSuperAdmin: false },
     }) + 1;
     
+    const totalRankedUsers = await prisma.user.count({ where: { isSuperAdmin: false } });
+
     const rankings: Record<string, any> = {
       aura: { value: user.aura, rank: auraRank },
       money: { value: user.money, rank: moneyRank },
+      overall: {
+        value: user.totalScore,
+        rank: user.overallRank,
+        totalPlayers: totalRankedUsers,
+        updatedAt: user.lastScoreUpdate,
+      },
     };
     
     for (const stat of gameStats) {
