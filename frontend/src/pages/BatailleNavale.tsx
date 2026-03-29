@@ -5,7 +5,7 @@ import { useSocketBase } from '../contexts/SocketContext';
 import { useChatSocket } from '../contexts/ChatSocketContext';
 import { usePartySocket } from '../contexts/PartySocketContext';
 import { useDuelSocket } from '../contexts/DuelSocketContext';
-import { ArrowLeft, Play, LogOut, Swords, Trophy, RotateCw } from 'lucide-react';
+import { ArrowLeft, LogOut, Swords, Trophy, RotateCw } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';

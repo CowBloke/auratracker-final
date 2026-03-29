@@ -6,7 +6,7 @@ import { useChatSocket } from '../contexts/ChatSocketContext';
 import { usePartySocket } from '../contexts/PartySocketContext';
 import { useDuelSocket } from '../contexts/DuelSocketContext';
 import {
-  ArrowLeft, Play, LogOut, Swords, Trophy, RotateCcw,
+  ArrowLeft, LogOut, Swords, Trophy, RotateCcw,
   ChevronDown, ChevronUp, AlertCircle, Zap,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
