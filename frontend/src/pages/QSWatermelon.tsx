@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Trophy } from 'lucide-react';
 import { PageShell, PageHeader } from '@/components/layout/page-shell';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +9,7 @@ import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { useAuth } from '@/contexts/AuthContext';
 import { gamesApi } from '@/services/api';
 import { cn } from '@/lib/utils';
-import { useHideGameLeaderboards, useHideGameLeftInfo } from '@/lib/game-preferences';
+import { useHideGameLeaderboards } from '@/lib/game-preferences';
 
 const GAME_TYPE = 'qs_watermelon';
 const CANVAS_WIDTH = 480;
@@ -18,7 +18,6 @@ const CANVAS_HEIGHT = 800;
 export default function QSWatermelon() {
   const { user } = useAuth();
   const hideGameLeaderboards = useHideGameLeaderboards();
-  const hideGameLeftInfo = useHideGameLeftInfo();
   const [highScore, setHighScore] = useState(0);
   const [leaderboard, setLeaderboard] = useState<GameLeaderboardEntry[]>([]);
   const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
