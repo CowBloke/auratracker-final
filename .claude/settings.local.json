@@ -96,7 +96,22 @@
       "Bash(grep -v \"^.*//.*usersApi\\\\|^.*//.*authApi\")",
       "Bash(grep -v \"^.*//.*\")",
       "Bash(grep -n \"bot\\\\|ai\\\\|computer\\\\|AI\\\\|Bot\" /c/Users/cowbl/source/repos/CRust/auratracker-final/backend/src/socket/*.ts -i)",
-      "Bash(grep -rn \"isAdmin\\\\|role.*ADMIN\" c:/Users/cowbl/source/repos/CRust/auratracker-final/frontend/src --include=*.tsx -l)"
+      "Bash(grep -rn \"isAdmin\\\\|role.*ADMIN\" c:/Users/cowbl/source/repos/CRust/auratracker-final/frontend/src --include=*.tsx -l)",
+      "Bash(grep -r watermelon /Users/viktorabe/Documents/GitHub/auratracker-final/.claude/worktrees/upbeat-gould --include=*.ts --include=*.tsx --include=*.js --include=*.jsx --include=*.json -l)",
+      "Bash(git clone:*)",
+      "Bash(cp -r /tmp/watermelon-clone/assets /Users/viktorabe/Documents/GitHub/auratracker-final/.claude/worktrees/upbeat-gould/frontend/public/watermelon/)",
+      "Bash(cp /tmp/watermelon-clone/index.html /Users/viktorabe/Documents/GitHub/auratracker-final/.claude/worktrees/upbeat-gould/frontend/public/watermelon/)",
+      "Bash(cp /tmp/watermelon-clone/index.js /Users/viktorabe/Documents/GitHub/auratracker-final/.claude/worktrees/upbeat-gould/frontend/public/watermelon/)",
+      "Bash(cp /tmp/watermelon-clone/index.css /Users/viktorabe/Documents/GitHub/auratracker-final/.claude/worktrees/upbeat-gould/frontend/public/watermelon/)",
+      "Bash(mkdir -p assets)",
+      "Bash(mv img:*)",
+      "Bash(mv pop.wav assets/)",
+      "Bash(cp -r /Users/viktorabe/Documents/GitHub/auratracker-final/.claude/worktrees/upbeat-gould/frontend/public/watermelon /Users/viktorabe/Documents/GitHub/auratracker-final/frontend/public/)",
+      "Bash(cp /Users/viktorabe/Documents/GitHub/auratracker-final/.claude/worktrees/upbeat-gould/frontend/src/pages/QSWatermelon.tsx /Users/viktorabe/Documents/GitHub/auratracker-final/frontend/src/pages/QSWatermelon.tsx)",
+      "Read(//Users/viktorabe/Documents/GitHub/auratracker-final/**)",
+      "Read(//Users/viktorabe/Documents/GitHub/auratracker-final/frontend/**)",
+      "Read(//Users/viktorabe/Documents/GitHub/auratracker-final/backend/**)",
+      "mcp__Claude_Preview__preview_start"
     ]
   },
   "outputStyle": "default"
