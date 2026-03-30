@@ -47,7 +47,6 @@ import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { resolveImageUrl, resolveThemeImageUrl } from '@/lib/images';
 import { getGameImage } from '@/lib/game-images';
 import { cn } from '@/lib/utils';
-import { dashboardMockClanWars, dashboardMockPublicParties } from '@/data/mock';
 import { toast } from 'sonner';
 
 interface GameShortcut {
@@ -428,8 +427,8 @@ export default function Dashboard() {
       },
     }));
   }, [activeWars, viewerClanId]);
-  const livePartiesForWidget = publicParties.length > 0 ? publicParties : dashboardMockPublicParties;
-  const warsForWidget: ClanWarWidgetItem[] = featuredWars.length > 0 ? featuredWars : (dashboardMockClanWars as ClanWarWidgetItem[]);
+  const livePartiesForWidget = publicParties;
+  const warsForWidget: ClanWarWidgetItem[] = featuredWars;
   const selectedAuraUser = useMemo(
     () => auraUsers.find((candidate) => candidate.id === selectedAuraUserId) ?? null,
     [auraUsers, selectedAuraUserId]
@@ -1132,7 +1131,6 @@ export default function Dashboard() {
                               const isFull = party.memberCount >= party.maxSize;
                               const isPending = pendingJoinRequests.includes(party.id);
                               const isCurrentParty = currentParty?.id === party.id;
-                              const isMockParty = party.id.startsWith('mock-party-');
                               return (
                                 <div key={party.id} className={dashboardRowClass}>
                                   <div className="min-w-0">
@@ -1146,18 +1144,15 @@ export default function Dashboard() {
                                     size="sm"
                                     className={cn("shrink-0", dashboardGhostButtonClass)}
                                     onClick={() => {
-                                      if (isMockParty) return;
                                       if (party.isPublic) {
                                         joinParty(party.id);
                                         return;
                                       }
                                       requestJoinParty(party.id);
                                     }}
-                                    disabled={isMockParty || isFull || isPending || isCurrentParty}
+                                    disabled={isFull || isPending || isCurrentParty}
                                   >
-                                    {isMockParty
-                                      ? 'Mock'
-                                      : isCurrentParty
+                                    {isCurrentParty
                                       ? 'Dans ta party'
                                       : isFull
                                         ? 'Pleine'
