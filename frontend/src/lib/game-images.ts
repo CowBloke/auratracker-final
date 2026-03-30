@@ -9,6 +9,7 @@ const GAME_IMAGE_BY_ID: Record<string, string> = {
   casino: '/images/games/casino.png',
   'clash-village': '/images/games/clash.png',
   'chrome-dino': '/images/games/dino.png',
+  'crossy-road': '/images/games/dino.png',
   'doodle-jump': '/images/games/doodlejump.png',
   echecs: '/images/games/echecs.png',
   eaglercraft: '/images/games/minecraft.png',

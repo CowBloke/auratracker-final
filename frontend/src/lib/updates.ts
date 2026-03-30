@@ -48,9 +48,18 @@ export const UPDATE_ENTRIES: UpdateEntry[] = [
   {
     id: '2026-03-30-hexgl-image',
     date: '2026-03-30',
-    title: 'Visuel HexGL mis a jour',
-    summary: 'La vignette HexGL utilise maintenant la nouvelle image ajoutee.',
+    title: 'Nouveautes du hub jeux',
+    summary: 'Crossy Road est maintenant jouable et la vignette HexGL a ete amelioree.',
     sections: [
+      {
+        category: 'BIG_FEATURE',
+        items: [
+          {
+            id: '2026-03-30-crossy-road-1',
+            text: '**Crossy Road** - Le jeu est maintenant jouable avec trafic, trains, rivieres, collisions, score, et controles clavier/mobile dans la meme interface que les autres jeux.',
+          },
+        ],
+      },
       {
         category: 'SMALL_FEATURE',
         items: [

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Crossy Road - AuraTracker</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="hud">
+      <div class="hud__score">Score <span id="scoreValue">0</span></div>
+      <div class="hud__best">Record <span id="bestValue">0</span></div>
+    </div>
+
+    <canvas id="gameCanvas" aria-label="Crossy Road" role="img"></canvas>
+
+    <div class="hint" id="hint">
+      <p>Fleches ou ZQSD pour sauter</p>
+      <p>Mobile: glisse ou utilise les boutons</p>
+      <p>Entrer / Espace pour recommencer</p>
+    </div>
+
+    <div class="game-over hidden" id="gameOverPanel">
+      <div class="game-over__card">
+        <h1>Partie terminee</h1>
+        <p>Score: <span id="finalScore">0</span></p>
+        <button id="restartBtn" type="button">Rejouer</button>
+      </div>
+    </div>
+
+    <div class="mobile-controls" aria-hidden="false">
+      <button class="ctrl ctrl-up" data-dir="up" type="button">▲</button>
+      <button class="ctrl ctrl-left" data-dir="left" type="button">◀</button>
+      <button class="ctrl ctrl-down" data-dir="down" type="button">▼</button>
+      <button class="ctrl ctrl-right" data-dir="right" type="button">▶</button>
+    </div>
+
+    <script src="./game.js"></script>
+  </body>
+</html>

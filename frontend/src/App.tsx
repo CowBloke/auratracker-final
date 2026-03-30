@@ -59,6 +59,7 @@ import Eaglercraft from './pages/Eaglercraft';
 import SubwaySurfers from './pages/SubwaySurfers';
 import HexGL from './pages/HexGL';
 import OpenGD from './pages/OpenGD';
+import CrossyRoad from './pages/CrossyRoad';
 import { BLOCKABLE_PAGES } from './config/blockedPages';
 import { useFeatures } from './contexts/FeaturesContext';
 
@@ -215,6 +216,7 @@ function App() {
         <Route path="games/subway-surfers" element={<SubwaySurfers />} />
         <Route path="games/hexgl" element={<HexGL />} />
         <Route path="games/opengd" element={<OpenGD />} />
+        <Route path="games/crossy-road" element={<CrossyRoad />} />
         <Route path="polymarket" element={<Polymarket />} />
         <Route path="leaderboards" element={<Leaderboards />} />
         <Route path="leaderboards/nombres" element={<Numbers />} />

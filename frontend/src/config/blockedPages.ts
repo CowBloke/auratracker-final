@@ -47,6 +47,7 @@ export const BLOCKABLE_PAGES: BlockablePage[] = [
   { key: 'game-polytrack', path: '/games/polytrack', label: 'Polytrack', category: 'Jeux', description: 'Jeu de course sur piste — battez votre meilleur temps.' },
   { key: 'game-eaglercraft', path: '/games/eaglercraft', label: 'Eaglercraft', category: 'Jeux', description: 'Version navigateur de Minecraft jouable directement depuis le site.' },
   { key: 'game-subway-surfers', path: '/games/subway-surfers', label: 'Subway Surfers Clone', category: 'Jeux', description: 'Runner 3D style métro inspiré du clone Unity Subway Surfers.' },
+  { key: 'game-crossy-road', path: '/games/crossy-road', label: 'Crossy Road', category: 'Jeux', description: 'Arcade réflexe — traversez routes et rails sans vous faire percuter.' },
   { key: 'game-hexgl', path: '/games/hexgl', label: 'HexGL', category: 'Jeux', description: 'Course futuriste WebGL antigravité inspirée de Wipeout.' },
   { key: 'game-opengd', path: '/games/opengd', label: 'OpenGD', category: 'Jeux', description: 'Implémentation open source de Geometry Dash intégrée au hub jeux.' },
   { key: 'leaderboards', path: '/leaderboards', label: 'Classements', category: 'Communauté', description: 'Classements généraux des joueurs par aura et par jeu.' },

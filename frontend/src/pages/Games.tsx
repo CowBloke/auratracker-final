@@ -325,6 +325,17 @@ const games = [
     releaseRank: 35,
   },
   {
+    id: 'crossy-road',
+    pageKey: 'game-crossy-road',
+    name: 'Crossy Road',
+    description: 'Arcade reflexe: traverse routes et rails sans te faire percuter, en visant la plus longue progression.',
+    type: 'Arcade',
+    emoji: '🐔',
+    image: getGameImage('crossy-road'),
+    statsKeys: [],
+    releaseRank: 36,
+  },
+  {
     id: 'puissance-quatre',
     pageKey: 'game-puissance-quatre',
     name: 'Puissance 4',
