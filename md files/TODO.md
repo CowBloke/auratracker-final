@@ -26,7 +26,7 @@
 - message de bienvenur auratracker lors inscription
 - verif minecrafft multi
 - sections nouveau jeu
-- implémenter classement hexgl
+- implémenter classement hexgl, crossy road
 - voir qui fais les gdc et qui manque
 - textes partout qui sert UI minimaliste
 - merch/qr code
@@ -35,3 +35,6 @@
 - TODO/suggestions IA
 - sidebar qui reste
 - marketplace
+- lcuade rule
+- notif inbox quand nouveau polymarket, jeu, changelog, etc. : information
+- agent designer ui voir repo github
