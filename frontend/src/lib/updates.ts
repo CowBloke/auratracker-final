@@ -61,6 +61,15 @@ export const UPDATE_ENTRIES: UpdateEntry[] = [
         ],
       },
       {
+        category: 'BUG_FIX',
+        items: [
+          {
+            id: '2026-03-30-crossy-road-green-screen-1',
+            text: '**Crossy Road** - Le jeu ne reste plus bloque sur un ecran vert et se lance correctement.',
+          },
+        ],
+      },
+      {
         category: 'SMALL_FEATURE',
         items: [
           {

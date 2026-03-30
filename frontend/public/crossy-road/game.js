@@ -1145,7 +1145,6 @@
   function render() {
     // Background - solid grass green (lanes paint over it; sky is above all lanes)
     ctx.fillStyle = PAL.grassDark;
-    ctx.fillStyle = grad;
     ctx.fillRect(0, 0, vw, vh);
 
     const viewMin = Math.floor(camera.y) - 3;
