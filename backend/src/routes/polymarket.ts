@@ -399,11 +399,26 @@ router.patch('/events/:id', authMiddleware, requireAdmin, async (req: AuthReques
       updateData.eventDate = eventDateObj;
     }
 
-    // optionsConfig takes priority over individual yesOdds/noOdds
+    // optionsConfig takes priority over individual yesOdds/noOdds.
+    // When optionsConfig is explicitly null, allow switching back to binary mode
+    // while still applying provided yes/no odds.
     if (optionsConfig !== undefined) {
       if (optionsConfig === null) {
         updateData.optionsConfig = null;
-        // Keep existing yesOdds/noOdds if provided separately
+        if (yesOdds !== undefined) {
+          const parsedYesOdds = Number(yesOdds);
+          if (!Number.isFinite(parsedYesOdds) || parsedYesOdds <= 1) {
+            return res.status(400).json({ error: 'Yes odds must be greater than 1' });
+          }
+          updateData.yesOdds = parsedYesOdds;
+        }
+        if (noOdds !== undefined) {
+          const parsedNoOdds = Number(noOdds);
+          if (!Number.isFinite(parsedNoOdds) || parsedNoOdds <= 1) {
+            return res.status(400).json({ error: 'No odds must be greater than 1' });
+          }
+          updateData.noOdds = parsedNoOdds;
+        }
       } else {
         const validated = validateOptionsConfig(optionsConfig);
         if (!validated) {
@@ -829,6 +844,46 @@ router.post('/events/:id/resolve', authMiddleware, requireAdmin, async (req: Aut
   } catch (error) {
     console.error('Resolve event error:', error);
     res.status(500).json({ error: 'Failed to resolve event' });
+  }
+});
+
+// Delete event (admin only)
+router.delete('/events/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const event = await prisma.polymarketEvent.findUnique({
+      where: { id },
+      include: { bets: true },
+    });
+
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    if (event.status === 'RESOLVED') {
+      return res.status(400).json({ error: 'Cannot delete a resolved event' });
+    }
+
+    // Refund all active bets
+    for (const bet of event.bets) {
+      await prisma.user.update({
+        where: { id: bet.userId },
+        data: { money: { increment: bet.amount } },
+      });
+    }
+
+    await prisma.polymarketEvent.delete({ where: { id } });
+
+    logAdmin('polymarket_event_delete', req.user!.id, undefined, id, event.title, {
+      refundedBets: event.bets.length,
+      refundedAmount: event.bets.reduce((s, b) => s + b.amount, 0),
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete event error:', error);
+    res.status(500).json({ error: 'Failed to delete event' });
   }
 });
 
