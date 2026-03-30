@@ -6,11 +6,11 @@ const GAME_PREFERENCES_EVENT = 'game-preferences:change';
 
 function readHideGameLeaderboardsPreference() {
   if (typeof window === 'undefined') {
-    return true;
+    return false;
   }
 
   const storedValue = localStorage.getItem(HIDE_GAME_LEADERBOARDS_STORAGE_KEY);
-  return storedValue === null ? true : storedValue === '1';
+  return storedValue === null ? false : storedValue === '1';
 }
 
 function readHideGameLeftInfoPreference() {
@@ -77,7 +77,7 @@ export function useHideGameLeaderboards() {
   return useSyncExternalStore(
     subscribe,
     readHideGameLeaderboardsPreference,
-    () => true
+    () => false
   );
 }
 
