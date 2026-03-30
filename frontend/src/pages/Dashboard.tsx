@@ -429,7 +429,7 @@ export default function Dashboard() {
     }));
   }, [activeWars, viewerClanId]);
   const livePartiesForWidget = publicParties.length > 0 ? publicParties : dashboardMockPublicParties;
-  const warsForWidget = featuredWars.length > 0 ? featuredWars : dashboardMockClanWars;
+  const warsForWidget: ClanWarWidgetItem[] = featuredWars.length > 0 ? featuredWars : (dashboardMockClanWars as ClanWarWidgetItem[]);
   const selectedAuraUser = useMemo(
     () => auraUsers.find((candidate) => candidate.id === selectedAuraUserId) ?? null,
     [auraUsers, selectedAuraUserId]
