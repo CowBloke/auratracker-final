@@ -29,3 +29,5 @@
 - implémenter classement hexgl
 - voir qui fais les gdc et qui manque
 - textes partout qui sert UI minimaliste
+- merch/qr code
+- ajoyter/supprimer changelog ne marche pas (resfresh) pas persistant
