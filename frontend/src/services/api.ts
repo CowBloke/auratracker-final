@@ -1641,6 +1641,7 @@ export interface PolymarketEvent {
   totalVolume?: number;
   totalYes?: number;
   totalNo?: number;
+  optionStats?: Record<string, number>;
   betCount?: number;
   suggestion?: PolymarketSuggestion | null;
   bets?: PolymarketBet[];
@@ -1717,6 +1718,8 @@ export const polymarketApi = {
     api.patch<{ event: PolymarketEvent }>(`/polymarket/events/${id}`, data),
   resolveEvent: (id: string, resolution: 'YES' | 'NO') =>
     api.post<{ success: boolean; resolution: string }>(`/polymarket/events/${id}/resolve`, { resolution }),
+  deleteEvent: (id: string) =>
+    api.delete<{ success: boolean }>(`/polymarket/events/${id}`),
   
   // Bets
   getBets: () => api.get<{ bets: PolymarketBet[] }>('/polymarket/bets'),

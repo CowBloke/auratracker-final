@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import {
   polymarketApi, PolymarketEvent, PolymarketSuggestion, PolymarketBet,
@@ -14,8 +17,8 @@ interface PolymarketOption {
 import { ImagePicker } from '@/components/ui/image-picker';
 import {
   Loader2, Plus, Calendar,
-  CheckCircle2, XCircle, DollarSign, Users,
-  Check, X, ChevronDown,
+  CheckCircle2, XCircle, Pencil, Trash2, Eye,
+  Check, X,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -342,27 +345,45 @@ export default function Polymarket() {
   ]);
   const [editSubmitting, setEditSubmitting] = useState(false);
 
-  // Expanded event bets
-  const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
-  const [expandedEventBets, setExpandedEventBets] = useState<Record<string, PolymarketBet[]>>({});
-  const [loadingEventBets, setLoadingEventBets] = useState<Record<string, boolean>>({});
+  // Detail view dialog
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [selectedEventForDetail, setSelectedEventForDetail] = useState<PolymarketEvent | null>(null);
+  const [detailBets, setDetailBets] = useState<PolymarketBet[]>([]);
+  const [loadingDetailBets, setLoadingDetailBets] = useState(false);
 
-  const toggleEventExpand = async (eventId: string) => {
-    if (expandedEventId === eventId) {
-      setExpandedEventId(null);
-      return;
+  // Delete dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedEventForDelete, setSelectedEventForDelete] = useState<PolymarketEvent | null>(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+
+  const openDetailDialog = async (event: PolymarketEvent) => {
+    setSelectedEventForDetail(event);
+    setDetailDialogOpen(true);
+    setDetailBets([]);
+    setLoadingDetailBets(true);
+    try {
+      const res = await polymarketApi.getEvent(event.id);
+      setDetailBets(res.data.event.bets || []);
+    } catch {
+      setDetailBets([]);
+    } finally {
+      setLoadingDetailBets(false);
     }
-    setExpandedEventId(eventId);
-    if (expandedEventBets[eventId] === undefined) {
-      setLoadingEventBets((prev) => ({ ...prev, [eventId]: true }));
-      try {
-        const res = await polymarketApi.getEvent(eventId);
-        setExpandedEventBets((prev) => ({ ...prev, [eventId]: res.data.event.bets || [] }));
-      } catch {
-        setExpandedEventBets((prev) => ({ ...prev, [eventId]: [] }));
-      } finally {
-        setLoadingEventBets((prev) => ({ ...prev, [eventId]: false }));
-      }
+  };
+
+  const handleDeleteEvent = async () => {
+    if (!selectedEventForDelete) return;
+    setDeleteSubmitting(true);
+    try {
+      await polymarketApi.deleteEvent(selectedEventForDelete.id);
+      toast({ title: 'Événement supprimé' });
+      setDeleteDialogOpen(false);
+      setSelectedEventForDelete(null);
+      fetchData();
+    } catch (error: any) {
+      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de supprimer l\'événement', variant: 'destructive' });
+    } finally {
+      setDeleteSubmitting(false);
     }
   };
 
@@ -697,183 +718,134 @@ export default function Polymarket() {
                   const userBet = bets.find((b) => b.eventId === event.id);
                   const canBet = !userBet && event.status === 'OPEN' && new Date(event.eventDate) > new Date();
                   const options = getEventOptions(event);
-                  const optionStats: Record<string, number> = { YES: event.totalYes || 0, NO: event.totalNo || 0 };
                   const totalVolume = event.totalVolume || 0;
 
                   return (
                     <Card key={event.id} className="overflow-hidden">
-                      <div className="flex flex-col md:flex-row">
-                        <div className="md:w-56 md:shrink-0">
+                      <div className="flex min-h-[160px]">
+                        {/* ── Image: full card height, rounded inside with margin ── */}
+                        <div className="w-36 shrink-0 m-3 mr-0 rounded-xl overflow-hidden">
                           {event.imageUrl ? (
                             <img
                               src={resolveImageUrl(event.imageUrl)}
                               alt={event.title}
-                              className="w-full h-48 md:h-full object-cover"
+                              className="w-full h-full object-cover"
                             />
                           ) : (
-                            <div className="w-full h-48 md:h-full bg-muted/40 flex items-center justify-center text-xs text-muted-foreground">
-                              Sans image
-                            </div>
+                            <div className="w-full h-full bg-muted/50" />
                           )}
                         </div>
-                        <div className="flex-1 p-6 flex flex-col gap-4">
-                          {/* Top: title + admin buttons */}
-                          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                            <div className="space-y-2">
-                              <div className="flex items-start gap-3">
-                                <CardTitle className="text-xl">{event.title}</CardTitle>
-                                <Badge variant={event.status === 'OPEN' ? 'default' : 'secondary'} className="mt-1">
+
+                        {/* ── Right side: title + content ── */}
+                        <div className="flex-1 flex flex-col p-4 min-w-0 gap-3">
+                          {/* Title row */}
+                          <div className="flex items-start gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <CardTitle className="text-base font-bold leading-snug">{event.title}</CardTitle>
+                                <Badge variant={event.status === 'OPEN' ? 'default' : 'secondary'} className="text-xs shrink-0">
                                   {event.status === 'OPEN' ? 'Ouvert' : event.status}
                                 </Badge>
                               </div>
-                              <CardDescription className="line-clamp-2">{event.description}</CardDescription>
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Calendar className="h-4 w-4" />
-                                <span>{new Date(event.eventDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-                              </div>
-                              {/* Per-option odds */}
-                              <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                                {options.map((opt) => (
-                                  <div key={opt.key} className="flex items-center gap-1">
-                                    <span className="w-2 h-2 rounded-full inline-block" style={{ background: opt.color }} />
-                                    <span>{opt.label}</span>
-                                    <span className="font-semibold text-foreground">{opt.odds.toFixed(2)}x</span>
-                                  </div>
-                                ))}
-                              </div>
-                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                <button
-                                  className="flex items-center gap-1 hover:text-foreground transition-colors"
-                                  onClick={() => toggleEventExpand(event.id)}
-                                >
-                                  <Users className="h-4 w-4" />
-                                  <span>{event.betCount || 0} paris</span>
-                                  <ChevronDown className={cn('h-3 w-3 transition-transform', expandedEventId === event.id && 'rotate-180')} />
-                                </button>
-                                <div className="flex items-center gap-1">
-                                  <DollarSign className="h-4 w-4" />
-                                  <span>{totalVolume} total</span>
-                                </div>
-                              </div>
                             </div>
-                            {/* Admin buttons only */}
-                            {user?.isAdmin && event.status === 'OPEN' && (
-                              <div className="flex flex-col items-end gap-2 md:min-w-[130px] shrink-0">
-                                <Button variant="outline" className="w-full" onClick={() => openEditEventDialog(event)}>
-                                  Modifier
+                            {user?.isAdmin && (
+                              <div className="flex items-center gap-0.5 shrink-0 -mt-0.5">
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditEventDialog(event)} title="Modifier">
+                                  <Pencil className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button
-                                  variant="outline"
-                                  className="w-full"
-                                  onClick={() => {
-                                    setSelectedEventForResolve(event);
-                                    setResolution(options[0]?.key || 'YES');
-                                    setResolveDialogOpen(true);
-                                  }}
-                                >
-                                  Résoudre
+                                {event.status === 'OPEN' && (
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelectedEventForResolve(event); setResolution(options[0]?.key || 'YES'); setResolveDialogOpen(true); }} title="Résoudre">
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => { setSelectedEventForDelete(event); setDeleteDialogOpen(true); }} title="Supprimer">
+                                  <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
                               </div>
                             )}
                           </div>
 
-                          {/* Bottom: volume bar + bet buttons */}
-                          <div className="mt-auto space-y-2">
-                            {/* Volume labels */}
-                            <div className="flex text-xs text-muted-foreground">
-                              {options.map((opt, i) => (
-                                <div key={opt.key} className={cn('flex-1', i > 0 && 'text-right')}>
-                                  <span className="inline-flex items-center gap-1">
-                                    {i === 0 && <span className="w-2 h-2 rounded-full" style={{ background: opt.color }} />}
-                                    {opt.label} {optionStats[opt.key] || 0}
-                                    {i > 0 && <span className="w-2 h-2 rounded-full ml-1" style={{ background: opt.color }} />}
-                                  </span>
+                          {/* Content: description 30% · options 70% */}
+                          <div className="flex gap-3 flex-1 min-h-0">
+                            {/* Description column */}
+                            <div className="flex flex-col justify-between gap-2 min-w-0" style={{ flex: '0 0 28%' }}>
+                              <div>
+                                <CardDescription className="line-clamp-3 text-xs leading-relaxed">{event.description}</CardDescription>
+                                <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
+                                  <Calendar className="h-3 w-3 shrink-0" />
+                                  <span className="truncate">{new Date(event.eventDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
                                 </div>
-                              ))}
+                              </div>
+                              <div className="flex flex-col gap-1.5">
+                                {userBet && (() => {
+                                  const betOpt = getOptionByKey(event, userBet.prediction);
+                                  return (
+                                    <span className="text-xs text-muted-foreground">
+                                      <span className="font-semibold" style={{ color: betOpt?.color }}>{betOpt?.label}</span>
+                                      {' · '}{userBet.amount} misé
+                                    </span>
+                                  );
+                                })()}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-xs gap-1 w-full"
+                                  onClick={() => openDetailDialog(event)}
+                                >
+                                  <Eye className="h-3 w-3" />
+                                  Voir plus
+                                </Button>
+                              </div>
                             </div>
 
-                            {/* Multi-color progress bar */}
-                            <div className="h-2 w-full rounded-full overflow-hidden bg-muted flex">
+                            {/* Option boxes column */}
+                            <div className="flex gap-2 flex-1 min-w-0">
                               {options.map((opt) => {
-                                const vol = optionStats[opt.key] || 0;
+                                const optVol = (event.optionStats ?? {})[opt.key]
+                                  ?? (opt.key === 'YES' ? (event.totalYes || 0) : opt.key === 'NO' ? (event.totalNo || 0) : 0);
+                                const pct = totalVolume > 0 ? (optVol / totalVolume * 100) : (100 / options.length);
+                                const isMyBet = userBet?.prediction === opt.key;
                                 return (
                                   <div
                                     key={opt.key}
-                                    className="h-full transition-all"
+                                    className="flex-1 rounded-xl border p-3 space-y-2 min-w-0"
                                     style={{
-                                      width: totalVolume === 0 ? `${100 / options.length}%` : `${(vol / totalVolume) * 100}%`,
-                                      background: opt.color + (totalVolume === 0 ? '66' : ''),
+                                      borderColor: isMyBet ? opt.color + '80' : opt.color + '35',
+                                      background: isMyBet ? opt.color + '18' : opt.color + '0c',
                                     }}
-                                  />
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{opt.label}</span>
+                                      <span
+                                        className="text-sm font-bold px-1.5 py-0.5 rounded"
+                                        style={{ background: opt.color + '20', color: opt.color }}
+                                      >
+                                        {opt.odds.toFixed(2)}x
+                                      </span>
+                                    </div>
+                                    <div className="text-4xl font-bold tabular-nums leading-none" style={{ color: opt.color }}>
+                                      {pct.toFixed(1)}%
+                                    </div>
+                                    <div className="text-xs text-muted-foreground tabular-nums">
+                                      {((event.optionStats ?? {})[opt.key] ?? (opt.key === 'YES' ? (event.totalYes || 0) : opt.key === 'NO' ? (event.totalNo || 0) : 0)).toLocaleString('fr-FR')} misés
+                                    </div>
+                                    {canBet ? (
+                                      <button
+                                        className="w-full rounded-lg py-1.5 text-xs font-bold text-white transition-opacity hover:opacity-85 active:scale-95 mt-1"
+                                        style={{ background: opt.color }}
+                                        onClick={() => { setSelectedEvent(event); setBetPrediction(opt.key); setBetAmount(''); setBetDialogOpen(true); }}
+                                      >
+                                        Parier
+                                      </button>
+                                    ) : isMyBet ? (
+                                      <div className="w-full rounded-lg py-1.5 text-xs font-bold text-center text-white mt-1" style={{ background: opt.color + 'cc' }}>
+                                        ✓ Mon pari
+                                      </div>
+                                    ) : null}
+                                  </div>
                                 );
                               })}
                             </div>
-
-                            {/* Per-option bet buttons — one per option, below the bar */}
-                            {canBet && (
-                              <div
-                                className="grid gap-2 mt-1"
-                                style={{ gridTemplateColumns: `repeat(${options.length}, 1fr)` }}
-                              >
-                                {options.map((opt) => (
-                                  <button
-                                    key={opt.key}
-                                    className="rounded-md px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-85 active:scale-95"
-                                    style={{ background: opt.color }}
-                                    onClick={() => {
-                                      setSelectedEvent(event);
-                                      setBetPrediction(opt.key);
-                                      setBetAmount('');
-                                      setBetDialogOpen(true);
-                                    }}
-                                  >
-                                    {opt.label} ({opt.odds.toFixed(2)}x)
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-
-                            {/* User's existing bet */}
-                            {userBet && (() => {
-                              const betOpt = getOptionByKey(event, userBet.prediction);
-                              return (
-                                <div className="p-2 bg-muted rounded-md text-sm">
-                                  <span className="font-medium">Votre pari: </span>
-                                  <span style={{ color: betOpt?.color }}>{betOpt?.label || userBet.prediction}</span>
-                                  <span className="text-muted-foreground"> — {userBet.amount} misé</span>
-                                </div>
-                              );
-                            })()}
-
-                            {/* Expanded bet list */}
-                            {expandedEventId === event.id && (
-                              <div className="pt-1 space-y-1 max-h-36 overflow-y-auto">
-                                {loadingEventBets[event.id] ? (
-                                  <div className="flex justify-center py-1">
-                                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                                  </div>
-                                ) : (expandedEventBets[event.id] || []).length === 0 ? (
-                                  <p className="text-xs text-muted-foreground">Aucun pari</p>
-                                ) : (
-                                  (expandedEventBets[event.id] || []).map((bet) => {
-                                    const betOpt = getOptionByKey(event, bet.prediction);
-                                    return (
-                                      <div key={bet.id} className="flex items-center justify-between text-xs py-0.5">
-                                        <div className="flex items-center gap-2">
-                                          <span className="font-medium" style={{ color: betOpt?.color || '#888' }}>
-                                            {betOpt?.label || bet.prediction}
-                                          </span>
-                                          <span style={{ color: bet.user?.usernameColor || undefined }}>
-                                            {bet.user?.username || '?'}
-                                          </span>
-                                        </div>
-                                        <span className="tabular-nums text-muted-foreground">{bet.amount}</span>
-                                      </div>
-                                    );
-                                  })
-                                )}
-                              </div>
-                            )}
                           </div>
                         </div>
                       </div>
@@ -1186,49 +1158,51 @@ export default function Polymarket() {
 
       {/* ── Bet Dialog ── */}
       <Dialog open={betDialogOpen} onOpenChange={setBetDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Placer un pari</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="max-w-md">
           {selectedEvent && (() => {
             const options = getEventOptions(selectedEvent);
             const selectedOpt = options.find((o) => o.key === betPrediction) || options[0];
             const parsedAmount = parseInt(betAmount);
             const potentialPayout = parsedAmount > 0 ? Math.floor(parsedAmount * (selectedOpt?.odds || 1)) : 0;
             return (
-              <div className="space-y-4">
-                <div>
-                  <div className="font-semibold">{selectedEvent.title}</div>
-                  <div className="text-sm text-muted-foreground">{selectedEvent.description}</div>
+              <div className="space-y-5">
+                {/* Event info */}
+                <div className="space-y-1 pr-6">
+                  <h3 className="font-bold text-base leading-snug">{selectedEvent.title}</h3>
+                  <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">{selectedEvent.description}</p>
                 </div>
-                <div>
-                  <label className="text-sm font-medium">Prédiction</label>
-                  <div
-                    className="grid gap-2 mt-2"
-                    style={{ gridTemplateColumns: `repeat(${options.length}, 1fr)` }}
-                  >
-                    {options.map((opt) => (
+
+                {/* Option selector */}
+                <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${options.length}, 1fr)` }}>
+                  {options.map((opt) => {
+                    const isSelected = betPrediction === opt.key;
+                    return (
                       <button
                         key={opt.key}
                         type="button"
-                        className={cn(
-                          'rounded-md px-3 py-2 text-sm font-medium border-2 transition-all',
-                          betPrediction === opt.key ? 'text-white border-transparent' : 'bg-background border-border',
-                        )}
+                        className="rounded-xl border-2 p-4 flex flex-col items-center gap-2 transition-all focus:outline-none"
                         style={
-                          betPrediction === opt.key
-                            ? { background: opt.color }
-                            : { color: opt.color, borderColor: opt.color + '60' }
+                          isSelected
+                            ? { background: opt.color, borderColor: opt.color }
+                            : { background: 'transparent', borderColor: opt.color, color: opt.color }
                         }
                         onClick={() => setBetPrediction(opt.key)}
                       >
-                        {opt.label} ({opt.odds.toFixed(2)}x)
+                        <span className={cn('text-sm font-bold', isSelected ? 'text-white' : '')}>{opt.label}</span>
+                        <span className={cn('text-2xl font-extrabold tabular-nums leading-none', isSelected ? 'text-white' : '')}>
+                          {opt.odds.toFixed(2)}x
+                        </span>
+                        {isSelected && (
+                          <span className="text-xs text-white/75 font-medium">Sélectionné ✓</span>
+                        )}
                       </button>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
-                <div>
-                  <label className="text-sm font-medium">Montant</label>
+
+                {/* Amount */}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold">Mise</label>
                   <Input
                     type="number"
                     value={betAmount}
@@ -1236,26 +1210,31 @@ export default function Polymarket() {
                     placeholder="Montant à miser"
                     min={1}
                     max={user?.money || 0}
-                    required
                   />
-                  <div className="text-xs text-muted-foreground mt-1">Solde disponible: {user?.money || 0}</div>
-                  {potentialPayout > 0 && (
-                    <div className="text-sm mt-2 font-medium" style={{ color: selectedOpt?.color }}>
-                      Gain potentiel: {potentialPayout} ({potentialPayout - parsedAmount} de profit)
-                    </div>
-                  )}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Solde : {(user?.money || 0).toLocaleString('fr-FR')}</span>
+                    {potentialPayout > 0 && (
+                      <span className="font-bold" style={{ color: selectedOpt?.color }}>
+                        Gain potentiel : {potentialPayout.toLocaleString('fr-FR')}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setBetDialogOpen(false)}>Annuler</Button>
+
+                {/* Actions */}
+                <div className="flex gap-2 pt-1">
+                  <Button type="button" variant="outline" className="flex-1" onClick={() => setBetDialogOpen(false)}>
+                    Annuler
+                  </Button>
                   <Button
+                    className="flex-1 text-white font-bold"
                     onClick={handlePlaceBet}
                     disabled={betSubmitting || !betAmount || parseInt(betAmount) <= 0}
-                    style={selectedOpt ? { background: selectedOpt.color } : undefined}
-                    className="text-white"
+                    style={selectedOpt ? { background: selectedOpt.color, borderColor: selectedOpt.color } : undefined}
                   >
                     {betSubmitting
                       ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Envoi...</>
-                      : `Parier sur ${selectedOpt?.label || betPrediction}`}
+                      : `Parier · ${selectedOpt?.label || betPrediction}`}
                   </Button>
                 </div>
               </div>
@@ -1417,6 +1396,302 @@ export default function Polymarket() {
               </div>
             </form>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Delete Event Dialog ── */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Supprimer l'événement</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Êtes-vous sûr de vouloir supprimer{' '}
+              <span className="font-semibold text-foreground">"{selectedEventForDelete?.title}"</span> ?
+            </p>
+            {(selectedEventForDelete?.betCount || 0) > 0 && (
+              <p className="text-sm text-amber-500">
+                ⚠ {selectedEventForDelete?.betCount} pari{(selectedEventForDelete?.betCount || 0) > 1 ? 's' : ''} seront remboursés.
+              </p>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Annuler</Button>
+              <Button variant="destructive" onClick={handleDeleteEvent} disabled={deleteSubmitting}>
+                {deleteSubmitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Suppression...</> : 'Supprimer'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Detail View Dialog ── */}
+      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
+        <DialogContent className="max-w-3xl w-full max-h-[92vh] overflow-y-auto p-0 gap-0">
+          {selectedEventForDetail && (() => {
+            const options = getEventOptions(selectedEventForDetail);
+            const optStats: Record<string, number> = {};
+            for (const opt of options) {
+              optStats[opt.key] = detailBets.filter(b => b.prediction === opt.key).reduce((s, b) => s + b.amount, 0);
+            }
+            const totalVol = Object.values(optStats).reduce((s, v) => s + v, 0);
+            const sortedBets = [...detailBets].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+            // Running totals for graph + list
+            const running: Record<string, number> = {};
+            for (const opt of options) running[opt.key] = 0;
+            const runningSnapshots: Array<{ bet: PolymarketBet; snapshot: Record<string, number>; total: number }> = [];
+            for (const bet of sortedBets) {
+              running[bet.prediction] = (running[bet.prediction] || 0) + bet.amount;
+              const total = Object.values(running).reduce((s, v) => s + v, 0);
+              runningSnapshots.push({ bet, snapshot: { ...running }, total });
+            }
+
+            // Graph data: cumulative money per option at each bet point
+            const graphData = runningSnapshots.map(({ snapshot, bet }, idx) => {
+              const point: Record<string, number | string> = {
+                name: `#${idx + 1}`,
+                time: new Date(bet.createdAt).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
+              };
+              for (const opt of options) {
+                point[opt.label] = snapshot[opt.key] || 0;
+              }
+              return point;
+            });
+
+            const isClosed = selectedEventForDetail.status !== 'OPEN';
+
+            return (
+              <div className="flex flex-col">
+                {/* ── Header ── */}
+                <div className="flex items-start gap-4 p-5 pb-4 border-b border-border/50">
+                  {selectedEventForDetail.imageUrl ? (
+                    <img
+                      src={resolveImageUrl(selectedEventForDetail.imageUrl)}
+                      alt={selectedEventForDetail.title}
+                      className="w-14 h-14 rounded-lg object-cover shrink-0 mt-0.5"
+                    />
+                  ) : (
+                    <div className="w-14 h-14 rounded-lg bg-muted shrink-0 mt-0.5 flex items-center justify-center">
+                      <Eye className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <h2 className="text-lg font-bold leading-snug">{selectedEventForDetail.title}</h2>
+                      <Badge
+                        variant={isClosed ? 'secondary' : 'default'}
+                        className="shrink-0 text-xs"
+                      >
+                        {selectedEventForDetail.status === 'OPEN' ? 'Ouvert' : selectedEventForDetail.status === 'RESOLVED' ? 'Résolu' : 'Fermé'}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
+                      {selectedEventForDetail.description}
+                    </p>
+                    <div className="flex items-center gap-1.5 mt-2 text-xs text-muted-foreground">
+                      <Calendar className="h-3 w-3 shrink-0" />
+                      <span>Clôture le {new Date(selectedEventForDetail.eventDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-5 space-y-5">
+                  {/* ── Option cards ── */}
+                  <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${options.length}, 1fr)` }}>
+                    {options.map((opt) => {
+                      const vol = optStats[opt.key] || 0;
+                      const pct = totalVol > 0 ? (vol / totalVol * 100) : (100 / options.length);
+                      return (
+                        <div
+                          key={opt.key}
+                          className="rounded-xl border p-4 space-y-1.5"
+                          style={{ borderColor: opt.color + '35', background: opt.color + '0c' }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{opt.label}</span>
+                            <span
+                              className="text-xs font-semibold px-1.5 py-0.5 rounded"
+                              style={{ background: opt.color + '20', color: opt.color }}
+                            >
+                              {opt.odds.toFixed(2)}x
+                            </span>
+                          </div>
+                          <div className="text-3xl font-bold tabular-nums" style={{ color: opt.color }}>
+                            {pct.toFixed(1)}%
+                          </div>
+                          <div className="text-xs text-muted-foreground tabular-nums">
+                            {vol.toLocaleString('fr-FR')} misés
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* ── Thin distribution bar ── */}
+                  <div className="h-1.5 w-full rounded-full overflow-hidden bg-muted flex">
+                    {options.map((opt) => {
+                      const vol = optStats[opt.key] || 0;
+                      return (
+                        <div
+                          key={opt.key}
+                          className="h-full transition-all"
+                          style={{
+                            width: totalVol === 0 ? `${100 / options.length}%` : `${(vol / totalVol) * 100}%`,
+                            background: totalVol === 0 ? opt.color + '66' : opt.color,
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+
+                  {/* ── Stats row ── */}
+                  <div className="grid grid-cols-3 gap-4 py-4 border-y border-border/40">
+                    <div className="text-center space-y-0.5">
+                      <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Volume</div>
+                      <div className="text-base font-bold tabular-nums">{totalVol.toLocaleString('fr-FR')}</div>
+                    </div>
+                    <div className="text-center space-y-0.5">
+                      <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Paris</div>
+                      <div className="text-base font-bold tabular-nums">{detailBets.length}</div>
+                    </div>
+                    <div className="text-center space-y-0.5">
+                      <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Clôture</div>
+                      <div className="text-sm font-bold">
+                        {new Date(selectedEventForDetail.eventDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Loading ── */}
+                  {loadingDetailBets ? (
+                    <div className="flex justify-center py-10">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <>
+                      {/* ── Evolution chart ── */}
+                      {graphData.length >= 2 && (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-semibold">Évolution des mises</h4>
+                            <div className="flex items-center gap-3">
+                              {options.map((opt) => (
+                                <div key={opt.key} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                  <span className="w-3 h-0.5 rounded inline-block" style={{ background: opt.color }} />
+                                  {opt.label}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="h-52 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={graphData} margin={{ top: 4, right: 8, left: -8, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="currentColor" strokeOpacity={0.06} vertical={false} />
+                                <XAxis
+                                  dataKey="name"
+                                  tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.4 }}
+                                  tickLine={false}
+                                  axisLine={false}
+                                  interval="preserveStartEnd"
+                                />
+                                <YAxis
+                                  tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)}
+                                  tick={{ fontSize: 10, fill: 'currentColor', opacity: 0.4 }}
+                                  tickLine={false}
+                                  axisLine={false}
+                                  width={36}
+                                />
+                                <Tooltip
+                                  contentStyle={{
+                                    background: 'hsl(var(--popover))',
+                                    border: '1px solid hsl(var(--border))',
+                                    borderRadius: '8px',
+                                    fontSize: '12px',
+                                    color: 'hsl(var(--popover-foreground))',
+                                    padding: '8px 12px',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                                  }}
+                                  labelStyle={{ opacity: 0.5, marginBottom: '4px' }}
+                                  formatter={(value: number, name: string) => [
+                                    value.toLocaleString('fr-FR'),
+                                    name,
+                                  ]}
+                                  labelFormatter={(label, payload) => {
+                                    const time = payload?.[0]?.payload?.time;
+                                    return time ?? label;
+                                  }}
+                                />
+                                {options.map((opt) => (
+                                  <Line
+                                    key={opt.key}
+                                    type="monotone"
+                                    dataKey={opt.label}
+                                    stroke={opt.color}
+                                    strokeWidth={2.5}
+                                    dot={false}
+                                    activeDot={{ r: 4, strokeWidth: 0 }}
+                                  />
+                                ))}
+                              </LineChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ── Bet list ── */}
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-semibold">
+                          Paris{sortedBets.length > 0 ? ` · ${sortedBets.length}` : ''}
+                        </h4>
+                        {sortedBets.length === 0 ? (
+                          <p className="text-sm text-muted-foreground text-center py-6">Aucun pari pour le moment</p>
+                        ) : (
+                          <div className="rounded-lg border border-border/50 overflow-hidden">
+                            {/* Table header */}
+                            <div className="grid grid-cols-[1fr_80px_60px_48px] gap-3 px-4 py-2 bg-muted/40 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground border-b border-border/50">
+                              <span>Joueur</span>
+                              <span>Option</span>
+                              <span className="text-right">Mise</span>
+                              <span className="text-right">Heure</span>
+                            </div>
+                            {runningSnapshots.map(({ bet }, idx) => {
+                              const betOpt = getOptionByKey(selectedEventForDetail, bet.prediction);
+                              return (
+                                <div
+                                  key={bet.id}
+                                  className={cn(
+                                    'grid grid-cols-[1fr_80px_60px_48px] gap-3 px-4 py-2.5 items-center text-sm',
+                                    idx % 2 === 1 && 'bg-muted/20',
+                                  )}
+                                >
+                                  <span className="font-medium truncate" style={{ color: bet.user?.usernameColor || undefined }}>
+                                    {bet.user?.username || '?'}
+                                  </span>
+                                  <span>
+                                    <span
+                                      className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold text-white"
+                                      style={{ background: betOpt?.color || '#888' }}
+                                    >
+                                      {betOpt?.label || bet.prediction}
+                                    </span>
+                                  </span>
+                                  <span className="text-right tabular-nums font-semibold">{bet.amount}</span>
+                                  <span className="text-right text-xs text-muted-foreground tabular-nums">
+                                    {new Date(bet.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
 

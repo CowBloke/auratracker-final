@@ -67,6 +67,10 @@ export const UPDATE_ENTRIES: UpdateEntry[] = [
             id: '2026-03-30-crossy-road-green-screen-1',
             text: '**Crossy Road** - Le jeu ne reste plus bloque sur un ecran vert et se lance correctement.',
           },
+          {
+            id: '2026-03-30-polymarket-admin-odds-edit-1',
+            text: '**Polymarket** - Les admins peuvent a nouveau modifier correctement les cotes d\'un evenement depuis l\'edition.',
+          },
         ],
       },
       {
@@ -75,10 +79,6 @@ export const UPDATE_ENTRIES: UpdateEntry[] = [
           {
             id: '2026-03-30-hexgl-image-1',
             text: '**HexGL** - La carte du jeu affiche desormais la nouvelle image dans le catalogue et la barre laterale.',
-          },
-          {
-            id: '2026-03-30-game-thumbnails-1',
-            text: '**Vignettes de jeux** - Les cartes Crossy Road et Subway Surfers affichent desormais leurs nouvelles images dans le hub jeux.',
           },
         ],
       },
