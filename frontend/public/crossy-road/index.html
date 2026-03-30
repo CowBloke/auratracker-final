@@ -2,33 +2,39 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
     <title>Crossy Road - AuraTracker</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <div class="hud">
-      <div class="hud__score">Score <span id="scoreValue">0</span></div>
-      <div class="hud__best">Record <span id="bestValue">0</span></div>
+    <canvas id="gameCanvas" aria-label="Crossy Road"></canvas>
+
+    <div class="hud" id="hud">
+      <div class="hud__score" id="scoreDisplay">0</div>
+      <div class="hud__coins" id="coinDisplay">0</div>
     </div>
 
-    <canvas id="gameCanvas" aria-label="Crossy Road" role="img"></canvas>
-
-    <div class="hint" id="hint">
-      <p>Fleches ou ZQSD pour sauter</p>
-      <p>Mobile: glisse ou utilise les boutons</p>
-      <p>Entrer / Espace pour recommencer</p>
+    <div class="start-screen" id="startScreen">
+      <div class="start-screen__title">CROSSY ROAD</div>
+      <div class="start-screen__tap">Appuie pour jouer</div>
     </div>
 
     <div class="game-over hidden" id="gameOverPanel">
       <div class="game-over__card">
-        <h1>Partie terminee</h1>
-        <p>Score: <span id="finalScore">0</span></p>
-        <button id="restartBtn" type="button">Rejouer</button>
+        <div class="game-over__title">GAME OVER</div>
+        <div class="game-over__score-row">
+          <div class="game-over__score-label">SCORE</div>
+          <div class="game-over__score-value" id="finalScore">0</div>
+        </div>
+        <div class="game-over__best-row">
+          <div class="game-over__best-label">RECORD</div>
+          <div class="game-over__best-value" id="finalBest">0</div>
+        </div>
+        <button id="restartBtn" class="game-over__btn" type="button">REJOUER</button>
       </div>
     </div>
 
-    <div class="mobile-controls" aria-hidden="false">
+    <div class="mobile-controls" id="mobileControls">
       <button class="ctrl ctrl-up" data-dir="up" type="button">▲</button>
       <button class="ctrl ctrl-left" data-dir="left" type="button">◀</button>
       <button class="ctrl ctrl-down" data-dir="down" type="button">▼</button>

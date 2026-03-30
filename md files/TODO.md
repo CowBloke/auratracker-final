@@ -31,3 +31,6 @@
 - textes partout qui sert UI minimaliste
 - merch/qr code
 - ajoyter/supprimer changelog ne marche pas (resfresh) pas persistant
+- centraliser communication dans sanctions
+- TODO/suggestions IA
+- sidebar qui reste
