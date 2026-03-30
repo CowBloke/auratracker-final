@@ -299,6 +299,7 @@ const games = [
     description: 'Runner 3D style métro inspiré du projet Unity clone, intégré en mode web quand le build est disponible.',
     type: 'Arcade',
     emoji: '🚇',
+    image: getGameImage('subway-surfers'),
     statsKeys: [],
     releaseRank: 33,
   },

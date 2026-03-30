@@ -76,6 +76,10 @@ export const UPDATE_ENTRIES: UpdateEntry[] = [
             id: '2026-03-30-hexgl-image-1',
             text: '**HexGL** - La carte du jeu affiche desormais la nouvelle image dans le catalogue et la barre laterale.',
           },
+          {
+            id: '2026-03-30-game-thumbnails-1',
+            text: '**Vignettes de jeux** - Les cartes Crossy Road et Subway Surfers affichent desormais leurs nouvelles images dans le hub jeux.',
+          },
         ],
       },
     ],
