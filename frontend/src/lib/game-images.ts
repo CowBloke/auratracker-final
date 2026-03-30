@@ -16,7 +16,7 @@ const GAME_IMAGE_BY_ID: Record<string, string> = {
   'fruit-ninja': '/images/games/fruit.png',
   'geometry-dash': '/images/games/geometry.png',
   'goyave-empire': '/images/games/goyave.png',
-  hexgl: '/hexgl/icon_256.png',
+  hexgl: '/images/games/hexgl.png',
   'knife-hit': '/images/games/knife.png',
   morpion: '/images/games/morpion.png',
   minesweeper: '/images/games/demineur.png',

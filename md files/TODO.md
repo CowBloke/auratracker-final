@@ -19,3 +19,13 @@
 - playtime
 - wrapped widget dashboard
 - badge elon (acheter l'article inutile du shop)
+- trier jeux : sans récompenses
+- promotion echecs
+- import image
+- supprimer mock widget party
+- snake
+- message de bienvenur auratracker lors inscription
+- verif minecrafft multi
+- sections nouveau jeu
+- implémenter classement hexgl
+- voir qui fais les gdc et qui manque

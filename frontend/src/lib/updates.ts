@@ -28,3 +28,38 @@ export function computeNewUpdatesCount(entryIds: string[]): number {
   if (seenIndex < 0) return entryIds.length;
   return seenIndex;
 }
+
+export type UpdateCategory = 'BIG_FEATURE' | 'SMALL_FEATURE' | 'BUG_FIX';
+
+export type UpdateEntrySection = {
+  category: UpdateCategory;
+  items: { id: string; text: string }[];
+};
+
+export type UpdateEntry = {
+  id: string;
+  date: string;
+  title: string;
+  summary: string;
+  sections: UpdateEntrySection[];
+};
+
+export const UPDATE_ENTRIES: UpdateEntry[] = [
+  {
+    id: '2026-03-30-hexgl-image',
+    date: '2026-03-30',
+    title: 'Visuel HexGL mis a jour',
+    summary: 'La vignette HexGL utilise maintenant la nouvelle image ajoutee.',
+    sections: [
+      {
+        category: 'SMALL_FEATURE',
+        items: [
+          {
+            id: '2026-03-30-hexgl-image-1',
+            text: '**HexGL** - La carte du jeu affiche desormais la nouvelle image dans le catalogue et la barre laterale.',
+          },
+        ],
+      },
+    ],
+  },
+];
