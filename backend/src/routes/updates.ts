@@ -9,6 +9,15 @@ const CATEGORIES: UpdateCategory[] = ['BIG_FEATURE', 'SMALL_FEATURE', 'BUG_FIX']
 
 const SEED_ENTRIES = [
   {
+    id: '2026-03-30-chess-promotion',
+    date: '2026-03-30',
+    title: 'Échecs',
+    summary: 'Promotion des pions corrigée.',
+    items: [
+      { category: 'BUG_FIX', text: '**Promotion aux échecs** — La promotion par glisser-déposer fonctionne désormais correctement, et le choix de la pièce (dame, tour, fou, cavalier) est bien pris en compte.', order: 0 },
+    ],
+  },
+  {
     id: '2026-03-29-updates-page',
     date: '2026-03-29',
     title: 'Centre de mises à jour',
