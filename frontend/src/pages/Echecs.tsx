@@ -153,6 +153,7 @@ export default function Echecs() {
   const [displayTimeBlack, setDisplayTimeBlack] = useState(0);
   const serverTimeRef = useRef<{ white: number; black: number; receivedAt: number } | null>(null);
   const timeoutSentRef = useRef(false);
+  const promotionSentRef = useRef(false);
 
   const routeSpectatePartyId = ((location.state as { spectatePartyId?: string } | null)?.spectatePartyId) ?? null;
   const isSpectating = spectatingPartyId !== null;
@@ -366,6 +367,12 @@ export default function Echecs() {
   const onPieceDrop = useCallback((source: string, target: string, piece: string): boolean => {
     if (!gameState || !myPlayer || isSpectating) return false;
 
+    // After promotion dialog, library calls back with promoted piece — move already sent
+    if (promotionSentRef.current) {
+      promotionSentRef.current = false;
+      return true;
+    }
+
     if (!isMyTurn) {
       // Set premove via drag
       if (piece[0].toLowerCase() === myPlayer.color) {
@@ -444,9 +451,13 @@ export default function Echecs() {
   }, [gameState, myPlayer, isMyTurn, selectedSquare, chess, sendMove, premoveSource, isSpectating]);
 
   // Promotion piece selected from built-in dialog
-  const onPromotionPieceSelect = useCallback((piece?: string): boolean => {
-    if (!pendingPromotion || !piece) return false;
-    sendMove(pendingPromotion.from, pendingPromotion.to, PROMO_MAP[piece] ?? 'q');
+  const onPromotionPieceSelect = useCallback((piece?: string, promoteFromSquare?: string, promoteToSquare?: string): boolean => {
+    if (!piece) return false;
+    const from = pendingPromotion?.from ?? promoteFromSquare;
+    const to = pendingPromotion?.to ?? promoteToSquare;
+    if (!from || !to) return false;
+    promotionSentRef.current = true;
+    sendMove(from, to, PROMO_MAP[piece] ?? 'q');
     setPendingPromotion(null);
     return true;
   }, [pendingPromotion, sendMove]);
