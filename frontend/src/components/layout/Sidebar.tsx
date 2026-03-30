@@ -54,6 +54,7 @@ import { UsernameDisplay } from '@/components/ui/username-display';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { BLOCKABLE_PAGES } from '@/config/blockedPages';
 import { computeNewUpdatesCount, markUpdatesSeen } from '@/lib/updates';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface SearchUser {
   id: string;
@@ -132,6 +133,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   const navigate = useNavigate();
   const { maintenanceStatus } = useFeatures();
   const { socket } = useSocketBase();
+  const { theme } = useTheme();
   const disabledPages = maintenanceStatus.disabledPages;
 
   const isDisabled = (path: string) => {
@@ -252,7 +254,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
             aria-label="AuraTracker"
           >
             <img
-              src="/aura-icon.svg"
+              src={theme === 'dark' ? '/aura-icon-white.svg' : '/aura-icon.svg'}
               alt="AuraTracker"
               className="h-7 w-7 shrink-0"
             />
