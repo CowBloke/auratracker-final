@@ -38,3 +38,4 @@
 - lcuade rule
 - notif inbox quand nouveau polymarket, jeu, changelog, etc. : information
 - agent designer ui voir repo github
+- systeme de tr clans pouvoir attaquer que mm niveau sinon les forts farment les moins forts
