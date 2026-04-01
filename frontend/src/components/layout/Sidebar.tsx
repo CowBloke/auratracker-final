@@ -260,13 +260,13 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
           <button
             type="button"
             onClick={() => navigate(isOnYou ? '/dashboard' : '/you')}
-            className="mb-4 flex w-full h-10 items-center gap-3 rounded-md px-3 text-sidebar-foreground transition-all hover:bg-sidebar-accent/50 active:scale-95 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+            className="mb-4 flex h-9 w-full items-center gap-2 rounded-md px-3 text-sidebar-foreground transition-all hover:bg-sidebar-accent/50 active:scale-95 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2"
             aria-label={isOnYou ? 'Retour au tableau de bord' : 'Accéder à Moi'}
           >
             <img
               src={theme === 'dark' ? '/aura-icon-white.svg' : '/aura-icon.svg'}
               alt="AuraTracker"
-              className={cn('h-7 w-7 shrink-0 transition-transform', isOnYou && 'scale-110 drop-shadow-[0_0_6px_rgba(139,92,246,0.6)]')}
+              className={cn('h-5 w-5 shrink-0 transition-transform group-data-[collapsible=icon]:h-4 group-data-[collapsible=icon]:w-4', isOnYou && 'scale-110 drop-shadow-[0_0_6px_rgba(139,92,246,0.6)]')}
             />
             <span className="truncate text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
               {isOnYou ? 'Moi' : 'AuraTracker'}

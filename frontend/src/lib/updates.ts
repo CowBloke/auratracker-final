@@ -66,6 +66,12 @@ export const UPDATE_ENTRIES: UpdateEntry[] = [
           { id: '2026-04-01-you-v2-topbar', text: '**Moi · Interface** — Barre supérieure plus compacte, sans texte sous les icônes de compétences. Onglets Santé et Argent supprimés.' },
         ],
       },
+      {
+        category: 'BUG_FIX',
+        items: [
+          { id: '2026-04-01-sidebar-logo-align-1', text: '**Barre laterale** — Le bouton logo est aligne avec les autres boutons, avec une icone legerement plus grande pour rester lisible.' },
+        ],
+      },
     ],
   },
   {
