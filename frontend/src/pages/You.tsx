@@ -1,8 +1,9 @@
 import { type ElementType, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { ArrowDownCircle, ArrowUpCircle, BarChart3, Building2, Check, ChevronRight, CreditCard, Heart, Landmark, Search, TrendingUp, UserPlus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeatures } from '@/contexts/FeaturesContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -680,6 +681,7 @@ function ExploreTab({ data, players, userId, onReload }: { data: YouState; playe
 export default function You() {
   const [params] = useSearchParams();
   const { user, refreshUser } = useAuth();
+  const { maintenanceStatus } = useFeatures();
   const [data, setData] = useState<YouState | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -702,6 +704,10 @@ export default function You() {
 
   const tab = params.get('tab');
   const currentTab = tab === 'travail' || tab === 'social' || tab === 'explore' ? tab : 'overview';
+
+  if (maintenanceStatus.youLogoAdminOnly && !user?.isAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   if (loading && !data) return <div className="space-y-4"><Card><CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">Chargement du hub YOU...</CardContent></Card></div>;
   if (!data || !user) return <div className="space-y-4"><Card><CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">Impossible de charger les donnees YOU.</CardContent></Card></div>;

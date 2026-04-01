@@ -73,6 +73,7 @@ export const UPDATE_ENTRIES: UpdateEntry[] = [
           { id: '2026-04-01-you-topbar-skills-left-clip-1', text: '**Moi · Barre du haut** — Les icones de competences sont legerement decalees vers la droite pour eviter la coupe visuelle sur le bord gauche.' },
           { id: '2026-04-01-you-topbar-skills-overflow-1', text: '**Moi · Barre du haut** — Les icones de competences restent maintenant dans leur zone sans afficher de barre de defilement parasite.' },
           { id: '2026-04-01-sidebar-logo-align-1', text: '**Barre laterale** — Le bouton logo est aligne avec les autres boutons, avec une icone legerement plus grande pour rester lisible.' },
+          { id: '2026-04-01-you-admin-only-enforced-1', text: '**Moi · Acces admin** — Quand l option admin est activee, l acces a la section Moi est maintenant bien bloque pour les non-admins (clic logo et acces direct).' },
         ],
       },
     ],

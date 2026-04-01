@@ -1,5 +1,6 @@
 import { Router, type Response } from 'express';
 import { authMiddleware, type AuthRequest } from '../middleware/auth.js';
+import { prisma } from '../server.js';
 import {
   createBusiness,
   createRelationship,
@@ -12,6 +13,7 @@ import {
 import type { BusinessActionKey } from '../modules/you/config.js';
 
 const router = Router();
+const YOU_LOGO_ADMIN_ONLY_KEY = 'you_logo_admin_only';
 
 const ERROR_STATUS: Record<string, number> = {
   INVALID_BUSINESS_TYPE: 400,
@@ -49,6 +51,7 @@ const ERROR_STATUS: Record<string, number> = {
   MARRIAGE_PROPOSAL_NOT_FOUND: 404,
   MARRIAGE_PROPOSAL_FORBIDDEN: 403,
   MARRIAGE_PROPOSAL_ALREADY_RESOLVED: 400,
+  YOU_ADMIN_ONLY: 403,
 };
 
 const ERROR_MESSAGE: Record<string, string> = {
@@ -87,7 +90,24 @@ const ERROR_MESSAGE: Record<string, string> = {
   MARRIAGE_PROPOSAL_NOT_FOUND: 'Demande en mariage introuvable.',
   MARRIAGE_PROPOSAL_FORBIDDEN: 'Tu ne peux pas repondre a cette demande.',
   MARRIAGE_PROPOSAL_ALREADY_RESOLVED: 'Cette demande a deja ete traitee.',
+  YOU_ADMIN_ONLY: 'Cette section est reservee aux admins.',
 };
+
+async function requireYouAccess(req: AuthRequest, res: Response, next: () => void) {
+  try {
+    const setting = await prisma.gameSettings.findUnique({ where: { key: YOU_LOGO_ADMIN_ONLY_KEY } });
+    const adminOnlyEnabled = setting?.value === 'true';
+
+    if (adminOnlyEnabled && !req.user?.isAdmin) {
+      return res.status(403).json({ error: ERROR_MESSAGE.YOU_ADMIN_ONLY, code: 'YOU_ADMIN_ONLY' });
+    }
+
+    next();
+  } catch (error) {
+    console.error('YOU access check error:', error);
+    res.status(500).json({ error: 'Erreur interne.', code: 'UNKNOWN' });
+  }
+}
 
 function handleRouteError(error: unknown, res: Response, logLabel: string) {
   const code = error instanceof Error ? error.message : 'UNKNOWN';
@@ -101,7 +121,7 @@ function handleRouteError(error: unknown, res: Response, logLabel: string) {
   res.status(status).json({ error: message, code });
 }
 
-router.get('/state', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.get('/state', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
     const state = await getYouState(req.user!.id);
     res.json(state);
@@ -110,7 +130,7 @@ router.get('/state', authMiddleware, async (req: AuthRequest, res: Response) => 
   }
 });
 
-router.post('/businesses', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.post('/businesses', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
     const business = await createBusiness(req.user!.id, {
       name: String(req.body?.name ?? ''),
@@ -126,7 +146,7 @@ router.post('/businesses', authMiddleware, async (req: AuthRequest, res: Respons
   }
 });
 
-router.post('/businesses/:businessId/actions/:actionKey', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.post('/businesses/:businessId/actions/:actionKey', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
     const actionKey = req.params.actionKey as BusinessActionKey;
     const result = await executeBusinessAction(req.user!.id, req.params.businessId, actionKey, req.body ?? {});
@@ -136,7 +156,7 @@ router.post('/businesses/:businessId/actions/:actionKey', authMiddleware, async 
   }
 });
 
-router.post('/loans/:loanId/respond', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.post('/loans/:loanId/respond', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
     const decision = req.body?.decision === 'accept' ? 'accept' : 'reject';
     const result = await respondToBusinessLoan(req.user!.id, req.params.loanId, decision);
@@ -146,7 +166,7 @@ router.post('/loans/:loanId/respond', authMiddleware, async (req: AuthRequest, r
   }
 });
 
-router.post('/relationships', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.post('/relationships', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
     const relationship = await createRelationship(req.user!.id, String(req.body?.targetUserId ?? ''));
     res.status(201).json({ relationship });
@@ -155,7 +175,7 @@ router.post('/relationships', authMiddleware, async (req: AuthRequest, res: Resp
   }
 });
 
-router.post('/relationships/:relationshipId/actions/propose-marriage', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.post('/relationships/:relationshipId/actions/propose-marriage', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
     const proposal = await proposeMarriage(req.user!.id, req.params.relationshipId, typeof req.body?.message === 'string' ? req.body.message : undefined);
     res.status(201).json({ proposal });
@@ -164,7 +184,7 @@ router.post('/relationships/:relationshipId/actions/propose-marriage', authMiddl
   }
 });
 
-router.post('/marriage-proposals/:proposalId/respond', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.post('/marriage-proposals/:proposalId/respond', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
     const decision = req.body?.decision === 'accept' ? 'accept' : 'reject';
     const result = await respondToMarriageProposal(req.user!.id, req.params.proposalId, decision);
