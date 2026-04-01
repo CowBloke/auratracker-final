@@ -151,6 +151,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
 
   const isOnGames = location.pathname.startsWith('/games');
   const isOnYou = location.pathname.startsWith('/you');
+  const canOpenYouFromLogo = !maintenanceStatus.youLogoAdminOnly || !!user?.isAdmin;
   const [supportUnread, setSupportUnread] = useState(0);
   const [updatesUnread, setUpdatesUnread] = useState(0);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -253,15 +254,23 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
     return `${trimmed.slice(0, maxLength)}...`;
   };
 
+  const handleLogoClick = () => {
+    if (isOnYou) {
+      navigate('/dashboard');
+      return;
+    }
+    navigate(canOpenYouFromLogo ? '/you' : '/dashboard');
+  };
+
   return (
     <Sidebar variant="inset" collapsible="icon" {...props}>
       <SidebarContent>
         <div className="px-3 py-4">
           <button
             type="button"
-            onClick={() => navigate(isOnYou ? '/dashboard' : '/you')}
+            onClick={handleLogoClick}
             className="mb-4 flex h-9 w-full items-center gap-2 rounded-md px-3 text-sidebar-foreground transition-all hover:bg-sidebar-accent/50 active:scale-95 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2"
-            aria-label={isOnYou ? 'Retour au tableau de bord' : 'Accéder à Moi'}
+            aria-label={isOnYou ? 'Retour au tableau de bord' : (canOpenYouFromLogo ? 'Accéder à Moi' : 'Accéder au tableau de bord')}
           >
             <img
               src={theme === 'dark' ? '/aura-icon-white.svg' : '/aura-icon.svg'}

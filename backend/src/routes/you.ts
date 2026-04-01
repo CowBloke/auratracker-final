@@ -6,6 +6,7 @@ import {
   executeBusinessAction,
   getYouState,
   proposeMarriage,
+  respondToBusinessLoan,
   respondToMarriageProposal,
 } from '../modules/you/service.js';
 import type { BusinessActionKey } from '../modules/you/config.js';
@@ -17,6 +18,7 @@ const ERROR_STATUS: Record<string, number> = {
   INVALID_BUSINESS_NAME: 400,
   BUSINESS_CAPITAL_TOO_LOW: 400,
   INSUFFICIENT_MONEY: 400,
+  INSUFFICIENT_SHARED_MONEY: 400,
   USER_NOT_FOUND: 404,
   BUSINESS_NOT_FOUND: 404,
   BUSINESS_ACTION_UNAVAILABLE: 400,
@@ -26,7 +28,14 @@ const ERROR_STATUS: Record<string, number> = {
   BUSINESS_LOAN_SELF_FORBIDDEN: 400,
   INVALID_LOAN_AMOUNT: 400,
   INVALID_LOAN_DURATION: 400,
-  BUSINESS_OWNER_FUNDS_TOO_LOW: 400,
+  BUSINESS_DEPOSIT_FORBIDDEN: 403,
+  INVALID_DEPOSIT_AMOUNT: 400,
+  BUSINESS_WITHDRAW_FORBIDDEN: 403,
+  INVALID_WITHDRAW_AMOUNT: 400,
+  BUSINESS_TREASURY_TOO_LOW: 400,
+  BUSINESS_LOAN_NOT_FOUND: 404,
+  BUSINESS_LOAN_REVIEW_FORBIDDEN: 403,
+  BUSINESS_LOAN_ALREADY_DECIDED: 400,
   BUSINESS_INVEST_SELF_FORBIDDEN: 400,
   INVALID_INVEST_AMOUNT: 400,
   RELATIONSHIP_SELF_FORBIDDEN: 400,
@@ -47,6 +56,7 @@ const ERROR_MESSAGE: Record<string, string> = {
   INVALID_BUSINESS_NAME: 'Le nom du business est trop court.',
   BUSINESS_CAPITAL_TOO_LOW: 'Le capital de depart est trop faible pour ce type de business.',
   INSUFFICIENT_MONEY: 'Tu n as pas assez de money pour cette action.',
+  INSUFFICIENT_SHARED_MONEY: 'Ton foyer n a pas assez de money pour cette action.',
   USER_NOT_FOUND: 'Utilisateur introuvable.',
   BUSINESS_NOT_FOUND: 'Business introuvable.',
   BUSINESS_ACTION_UNAVAILABLE: 'Cette action n est pas disponible pour ce business.',
@@ -56,7 +66,14 @@ const ERROR_MESSAGE: Record<string, string> = {
   BUSINESS_LOAN_SELF_FORBIDDEN: 'Tu ne peux pas emprunter a ton propre business.',
   INVALID_LOAN_AMOUNT: 'Montant d emprunt invalide.',
   INVALID_LOAN_DURATION: 'Duree d emprunt invalide.',
-  BUSINESS_OWNER_FUNDS_TOO_LOW: 'Le proprietaire n a pas assez de liquidites pour ce pret.',
+  BUSINESS_DEPOSIT_FORBIDDEN: 'Seul le proprietaire peut deposer du money dans ce business.',
+  INVALID_DEPOSIT_AMOUNT: 'Montant de depot invalide.',
+  BUSINESS_WITHDRAW_FORBIDDEN: 'Seul le proprietaire peut retirer du money de ce business.',
+  INVALID_WITHDRAW_AMOUNT: 'Montant de retrait invalide.',
+  BUSINESS_TREASURY_TOO_LOW: 'La tresorerie du business est insuffisante.',
+  BUSINESS_LOAN_NOT_FOUND: 'Demande de pret introuvable.',
+  BUSINESS_LOAN_REVIEW_FORBIDDEN: 'Tu ne peux pas traiter cette demande de pret.',
+  BUSINESS_LOAN_ALREADY_DECIDED: 'Cette demande de pret a deja ete traitee.',
   BUSINESS_INVEST_SELF_FORBIDDEN: 'Tu ne peux pas investir dans ton propre business via cette action.',
   INVALID_INVEST_AMOUNT: 'Montant d investissement invalide.',
   RELATIONSHIP_SELF_FORBIDDEN: 'Tu ne peux pas creer une relation avec toi-meme.',
@@ -116,6 +133,16 @@ router.post('/businesses/:businessId/actions/:actionKey', authMiddleware, async 
     res.json({ result });
   } catch (error) {
     handleRouteError(error, res, 'Run business action error');
+  }
+});
+
+router.post('/loans/:loanId/respond', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const decision = req.body?.decision === 'accept' ? 'accept' : 'reject';
+    const result = await respondToBusinessLoan(req.user!.id, req.params.loanId, decision);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Respond business loan error');
   }
 });
 

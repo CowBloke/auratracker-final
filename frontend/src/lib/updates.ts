@@ -64,11 +64,14 @@ export const UPDATE_ENTRIES: UpdateEntry[] = [
         category: 'SMALL_FEATURE',
         items: [
           { id: '2026-04-01-you-v2-topbar', text: '**Moi · Interface** — Barre supérieure plus compacte, sans texte sous les icônes de compétences. Onglets Santé et Argent supprimés.' },
+          { id: '2026-04-01-you-logo-admin-toggle-1', text: '**Barre laterale · Acces Moi** — Un nouveau parametre admin permet de reserver le clic sur le logo (en haut a gauche) a l ouverture de la section Moi uniquement pour les admins.' },
         ],
       },
       {
         category: 'BUG_FIX',
         items: [
+          { id: '2026-04-01-you-topbar-skills-left-clip-1', text: '**Moi · Barre du haut** — Les icones de competences sont legerement decalees vers la droite pour eviter la coupe visuelle sur le bord gauche.' },
+          { id: '2026-04-01-you-topbar-skills-overflow-1', text: '**Moi · Barre du haut** — Les icones de competences restent maintenant dans leur zone sans afficher de barre de defilement parasite.' },
           { id: '2026-04-01-sidebar-logo-align-1', text: '**Barre laterale** — Le bouton logo est aligne avec les autres boutons, avec une icone legerement plus grande pour rester lisible.' },
         ],
       },

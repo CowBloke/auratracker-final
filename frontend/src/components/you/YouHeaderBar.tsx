@@ -126,7 +126,7 @@ export function YouHeaderBar({ rightSlot }: { rightSlot?: React.ReactNode }) {
   return (
     <TooltipProvider delayDuration={80}>
       <div className="flex w-full items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2 overflow-x-auto py-1 sm:gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden py-1 pl-1 sm:gap-3 sm:pl-2">
           {YOU_SKILLS.map((skill) => (
             <SkillBadge key={skill.label} {...skill} />
           ))}

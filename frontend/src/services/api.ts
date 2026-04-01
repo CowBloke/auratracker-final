@@ -159,7 +159,7 @@ export interface YouBusinessType {
   monthlyRevenue: number;
   monthlyExpenses: number;
   satisfaction: number;
-  actions: Array<'invite' | 'loan' | 'invest'>;
+  actions: Array<'invite' | 'loan' | 'invest' | 'deposit' | 'withdraw'>;
 }
 
 export interface YouBusinessMember {
@@ -183,6 +183,7 @@ export interface YouBusinessLoan {
   termMonths: number;
   interestRate: number;
   status: string;
+  decidedAt: string | null;
   createdAt: string;
   borrower: Omit<YouPlayer, 'alreadyInRelationship'>;
 }
@@ -212,11 +213,12 @@ export interface YouBusiness {
   foundedLabel: string;
   hiring: boolean;
   startingCapital: number;
+  treasuryMoney: number;
   monthlyRevenue: number;
   monthlyExpenses: number;
   satisfaction: number;
   memberCount: number;
-  actions: Array<'invite' | 'loan' | 'invest'>;
+  actions: Array<'invite' | 'loan' | 'invest' | 'deposit' | 'withdraw'>;
   members: YouBusinessMember[];
   pendingInvitations: YouBusinessInvitation[];
   recentLoans: YouBusinessLoan[];
@@ -258,8 +260,10 @@ export const youApi = {
   getState: () => api.get<YouState>('/you/state'),
   createBusiness: (data: { name: string; typeKey: string; capital: number; description?: string; location?: string }) =>
     api.post<{ business: YouBusiness }>('/you/businesses', data),
-  runBusinessAction: (businessId: string, actionKey: 'invite' | 'loan' | 'invest', data?: Record<string, unknown>) =>
+  runBusinessAction: (businessId: string, actionKey: 'invite' | 'loan' | 'invest' | 'deposit' | 'withdraw', data?: Record<string, unknown>) =>
     api.post<{ result: Record<string, unknown> }>(`/you/businesses/${businessId}/actions/${actionKey}`, data ?? {}),
+  respondToBusinessLoan: (loanId: string, decision: 'accept' | 'reject') =>
+    api.post<{ result: { id: string; status: string; decidedAt: string | null } }>(`/you/loans/${loanId}/respond`, { decision }),
   createRelationship: (targetUserId: string) =>
     api.post<{ relationship: YouRelationship }>('/you/relationships', { targetUserId }),
   proposeMarriage: (relationshipId: string, message?: string) =>
@@ -1650,6 +1654,7 @@ export const maintenanceApi = {
     referralEnabled?: boolean;
     duelMatchmakingEnabled?: boolean;
     defaultLandingPage?: string;
+    youLogoAdminOnly?: boolean;
   }>('/maintenance'),
 };
 

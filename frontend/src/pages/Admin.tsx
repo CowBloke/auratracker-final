@@ -97,6 +97,7 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
 };
 
 const ANNOUNCEMENT_MAX_LENGTH = 120;
+const YOU_LOGO_ADMIN_ONLY_SETTING_KEY = 'you_logo_admin_only';
 const ADMIN_ARCHIVED_REGISTRATIONS_STORAGE_KEY = 'admin_archived_registrations';
 const ROLE_LABELS = {
   USER: 'membre',
@@ -1087,9 +1088,11 @@ export default function Admin() {
   const [loginMessage, setLoginMessage] = useState('');
   const [loginRegisterCtaEnabled, setLoginRegisterCtaEnabled] = useState(true);
   const [defaultLandingPage, setDefaultLandingPage] = useState(DEFAULT_LANDING_PAGE);
+  const [youLogoAdminOnly, setYouLogoAdminOnly] = useState(false);
   const [savingLoginMessage, setSavingLoginMessage] = useState(false);
   const [savingLoginRegisterCta, setSavingLoginRegisterCta] = useState(false);
   const [savingDefaultLandingPage, setSavingDefaultLandingPage] = useState(false);
+  const [savingYouLogoAdminOnly, setSavingYouLogoAdminOnly] = useState(false);
   const [updatePopups, setUpdatePopups] = useState<AdminUpdatePopup[]>([]);
   const [loadingUpdatePopups, setLoadingUpdatePopups] = useState(false);
   const [savingUpdatePopup, setSavingUpdatePopup] = useState(false);
@@ -1999,6 +2002,7 @@ export default function Admin() {
       setLoginMessage(res.data.settings.login_message || '');
       setLoginRegisterCtaEnabled(res.data.settings.login_register_cta_enabled !== 'false');
       setDefaultLandingPage(normalizeDefaultLandingPage(res.data.settings[DEFAULT_LANDING_PAGE_KEY]));
+      setYouLogoAdminOnly(res.data.settings[YOU_LOGO_ADMIN_ONLY_SETTING_KEY] === 'true');
 
       if (res.data.settings.blocked_pages) {
         try {
@@ -2311,6 +2315,23 @@ export default function Admin() {
       showMessage('error', 'Erreur lors de la sauvegarde de la page principale');
     } finally {
       setSavingDefaultLandingPage(false);
+    }
+  };
+
+  const saveYouLogoAdminOnly = async (value: boolean) => {
+    const previousValue = youLogoAdminOnly;
+    try {
+      setYouLogoAdminOnly(value);
+      setSavingYouLogoAdminOnly(true);
+      await adminApi.updateSetting(YOU_LOGO_ADMIN_ONLY_SETTING_KEY, value ? 'true' : 'false');
+      showMessage('success', value ? 'Accès logo→Moi réservé aux admins' : 'Accès logo→Moi autorisé pour tous');
+      refreshFeatures();
+    } catch (error) {
+      console.error('Failed to save you logo admin only setting:', error);
+      setYouLogoAdminOnly(previousValue);
+      showMessage('error', 'Erreur lors de la sauvegarde');
+    } finally {
+      setSavingYouLogoAdminOnly(false);
     }
   };
 
@@ -4419,6 +4440,20 @@ export default function Admin() {
                     {savingDefaultLandingPage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                   </Button>
                 </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                <div>
+                  <div className="text-sm font-medium">Logo sidebar → accès à Moi réservé aux admins</div>
+                  <div className="text-xs text-muted-foreground">
+                    Quand activé, seul un admin peut ouvrir la section Moi en cliquant sur le logo en haut à gauche.
+                  </div>
+                </div>
+                <Switch
+                  checked={youLogoAdminOnly}
+                  onCheckedChange={saveYouLogoAdminOnly}
+                  disabled={savingYouLogoAdminOnly}
+                />
               </div>
 
               <div className="flex items-center justify-between gap-4 px-4 py-3.5">

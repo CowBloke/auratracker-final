@@ -1,6 +1,7 @@
-import { prisma, io } from '../../server.js';
+import { prisma } from '../../server.js';
 import { createNotification } from '../../utils/notifications.js';
 import { BUSINESS_TYPES, BUSINESS_TYPE_MAP, INVESTMENT_RISK_RANGES, type BusinessActionKey, type InvestmentRiskLevel } from './config.js';
+import { debitSharedMoney, emitSharedBalanceUpdates, ensureSharedMoneyAvailable } from '../../utils/sharedBalance.js';
 
 const USER_PREVIEW_SELECT = {
   id: true,
@@ -69,14 +70,6 @@ function isBusinessParticipant(userId: string, business: { ownerId: string }) {
   return business.ownerId === userId;
 }
 
-function emitBalanceUpdate(userId: string, aura: bigint | number | string, money: number) {
-  io.emit('economy:balance-update', {
-    userId,
-    aura,
-    money,
-  });
-}
-
 function serializeBusiness(business: any, viewerId: string) {
   const type = BUSINESS_TYPE_MAP.get(business.typeKey);
   const ownerKind = business.ownerId === viewerId ? 'you' : 'player';
@@ -96,6 +89,7 @@ function serializeBusiness(business: any, viewerId: string) {
     foundedLabel: business.createdAt.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
     hiring: business.hiring,
     startingCapital: business.startingCapital,
+    treasuryMoney: business.treasuryMoney,
     monthlyRevenue: business.monthlyRevenue,
     monthlyExpenses: business.monthlyExpenses,
     satisfaction: business.satisfaction,
@@ -120,6 +114,7 @@ function serializeBusiness(business: any, viewerId: string) {
       termMonths: loan.termMonths,
       interestRate: loan.interestRate,
       status: loan.status,
+      decidedAt: loan.decidedAt ? loan.decidedAt.toISOString() : null,
       createdAt: loan.createdAt.toISOString(),
       borrower: loan.borrower,
     })),
@@ -234,25 +229,14 @@ export async function createBusiness(userId: string, input: { name: string; type
     throw new Error('BUSINESS_CAPITAL_TOO_LOW');
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { id: true, username: true, money: true, aura: true },
-  });
-
-  if (!user) {
-    throw new Error('USER_NOT_FOUND');
-  }
-
-  if (user.money < input.capital) {
+  const hasSharedMoney = await ensureSharedMoneyAvailable(prisma, userId, input.capital);
+  if (!hasSharedMoney) {
     throw new Error('INSUFFICIENT_MONEY');
   }
 
-  const [, business] = await prisma.$transaction([
-    prisma.user.update({
-      where: { id: userId },
-      data: { money: { decrement: input.capital } },
-    }),
-    prisma.business.create({
+  const business = await prisma.$transaction(async (tx) => {
+    await debitSharedMoney(tx, userId, input.capital);
+    return tx.business.create({
       data: {
         ownerId: userId,
         name,
@@ -260,6 +244,7 @@ export async function createBusiness(userId: string, input: { name: string; type
         description: input.description?.trim() || type.description,
         location: input.location?.trim() || 'Quartier joueur',
         startingCapital: input.capital,
+        treasuryMoney: input.capital,
         monthlyRevenue: type.monthlyRevenue,
         monthlyExpenses: type.monthlyExpenses,
         satisfaction: type.satisfaction,
@@ -267,17 +252,10 @@ export async function createBusiness(userId: string, input: { name: string; type
         hiring: true,
       },
       include: BUSINESS_BASE_INCLUDE,
-    }),
-  ]);
-
-  const updatedUser = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { aura: true, money: true },
+    });
   });
 
-  if (updatedUser) {
-    emitBalanceUpdate(userId, updatedUser.aura, updatedUser.money);
-  }
+  await emitSharedBalanceUpdates(prisma, userId);
 
   return serializeBusiness(business, userId);
 }
@@ -387,64 +365,211 @@ async function handleLoanAction(userId: string, business: any, input: { amount: 
     throw new Error('USER_NOT_FOUND');
   }
 
-  if (owner.money < amount) {
-    throw new Error('BUSINESS_OWNER_FUNDS_TOO_LOW');
-  }
-
   const interestRate = 4;
 
-  const [, updatedBorrower, updatedOwner] = await prisma.$transaction([
-    prisma.businessLoan.create({
-      data: {
-        businessId: business.id,
-        borrowerId: userId,
-        amount,
-        termMonths: durationMonths,
-        interestRate,
-      },
-    }),
-    prisma.user.update({
-      where: { id: borrower.id },
-      data: { money: { increment: amount } },
-      select: { id: true, aura: true, money: true },
-    }),
-    prisma.user.update({
-      where: { id: owner.id },
-      data: { money: { decrement: amount } },
-      select: { id: true, aura: true, money: true },
-    }),
-  ]);
-
-  emitBalanceUpdate(updatedBorrower.id, updatedBorrower.aura, updatedBorrower.money);
-  emitBalanceUpdate(updatedOwner.id, updatedOwner.aura, updatedOwner.money);
+  const loan = await prisma.businessLoan.create({
+    data: {
+      businessId: business.id,
+      borrowerId: userId,
+      amount,
+      termMonths: durationMonths,
+      interestRate,
+      status: 'PENDING',
+    },
+  });
 
   await Promise.allSettled([
     createNotification({
+      userId: owner.id,
+      type: 'SYSTEM',
+      title: 'Nouvelle demande de pret',
+      body: `${borrower.username} demande ${amount.toLocaleString('fr-FR')} money via ${business.name}.`,
+      link: '/you?tab=travail',
+      icon: 'credit-card',
+    }),
+    createNotification({
       userId: borrower.id,
+      type: 'SYSTEM',
+      title: 'Demande de pret envoyee',
+      body: `Ta demande de ${amount.toLocaleString('fr-FR')} money attend la validation de ${owner.username}.`,
+      link: '/you?tab=explore',
+      icon: 'landmark',
+    }),
+  ]);
+
+  return {
+    id: loan.id,
+    amount,
+    durationMonths,
+    interestRate,
+    status: loan.status,
+  };
+}
+
+async function handleDepositAction(userId: string, business: any, input: { amount: number }) {
+  if (!isBusinessParticipant(userId, business)) {
+    throw new Error('BUSINESS_DEPOSIT_FORBIDDEN');
+  }
+
+  const amount = Number(input.amount);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error('INVALID_DEPOSIT_AMOUNT');
+  }
+
+  const hasSharedMoney = await ensureSharedMoneyAvailable(prisma, userId, amount);
+  if (!hasSharedMoney) {
+    throw new Error('INSUFFICIENT_MONEY');
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await debitSharedMoney(tx, userId, amount);
+    await tx.business.update({
+      where: { id: business.id },
+      data: { treasuryMoney: { increment: amount } },
+    });
+  });
+
+  await emitSharedBalanceUpdates(prisma, userId);
+
+  return { amount };
+}
+
+async function handleWithdrawAction(userId: string, business: any, input: { amount: number }) {
+  if (!isBusinessParticipant(userId, business)) {
+    throw new Error('BUSINESS_WITHDRAW_FORBIDDEN');
+  }
+
+  const amount = Number(input.amount);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error('INVALID_WITHDRAW_AMOUNT');
+  }
+
+  if (business.treasuryMoney < amount) {
+    throw new Error('BUSINESS_TREASURY_TOO_LOW');
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.business.update({
+      where: { id: business.id },
+      data: { treasuryMoney: { decrement: amount } },
+    });
+    await tx.user.update({
+      where: { id: userId },
+      data: { money: { increment: amount } },
+    });
+  });
+
+  await emitSharedBalanceUpdates(prisma, userId);
+
+  return { amount };
+}
+
+export async function respondToBusinessLoan(userId: string, loanId: string, decision: 'accept' | 'reject') {
+  const loan = await prisma.businessLoan.findUnique({
+    where: { id: loanId },
+    include: {
+      borrower: { select: USER_PREVIEW_SELECT },
+      business: {
+        include: {
+          owner: { select: USER_PREVIEW_SELECT },
+        },
+      },
+    },
+  });
+
+  if (!loan) {
+    throw new Error('BUSINESS_LOAN_NOT_FOUND');
+  }
+
+  if (loan.business.ownerId !== userId) {
+    throw new Error('BUSINESS_LOAN_REVIEW_FORBIDDEN');
+  }
+
+  if (loan.status !== 'PENDING') {
+    throw new Error('BUSINESS_LOAN_ALREADY_DECIDED');
+  }
+
+  const now = new Date();
+
+  if (decision === 'reject') {
+    const rejected = await prisma.businessLoan.update({
+      where: { id: loan.id },
+      data: {
+        status: 'REJECTED',
+        decidedAt: now,
+      },
+    });
+
+    await createNotification({
+      userId: loan.borrowerId,
+      type: 'SYSTEM',
+      title: 'Pret refuse',
+      body: `${loan.business.name} a refuse ta demande de pret.`,
+      link: '/you?tab=explore',
+      icon: 'credit-card',
+    });
+
+    return {
+      id: rejected.id,
+      status: rejected.status,
+      decidedAt: rejected.decidedAt?.toISOString() ?? null,
+    };
+  }
+
+  if (loan.business.treasuryMoney < loan.amount) {
+    throw new Error('BUSINESS_TREASURY_TOO_LOW');
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    const updatedLoan = await tx.businessLoan.update({
+      where: { id: loan.id },
+      data: {
+        status: 'ACTIVE',
+        decidedAt: now,
+      },
+    });
+
+    await tx.business.update({
+      where: { id: loan.businessId },
+      data: { treasuryMoney: { decrement: loan.amount } },
+    });
+
+    await tx.user.update({
+      where: { id: loan.borrowerId },
+      data: { money: { increment: loan.amount } },
+    });
+
+    return updatedLoan;
+  });
+
+  await Promise.all([
+    emitSharedBalanceUpdates(prisma, loan.borrowerId),
+    emitSharedBalanceUpdates(prisma, userId),
+  ]);
+
+  await Promise.allSettled([
+    createNotification({
+      userId: loan.borrowerId,
       type: 'MONEY_RECEIVED',
-      title: 'Pret valide',
-      body: `${amount.toLocaleString('fr-FR')} money recu depuis ${business.name}.`,
+      title: 'Pret accepte',
+      body: `${loan.amount.toLocaleString('fr-FR')} money recu depuis ${loan.business.name}.`,
       link: '/you?tab=explore',
       icon: 'landmark',
     }),
     createNotification({
-      userId: owner.id,
+      userId,
       type: 'SYSTEM',
       title: 'Pret accorde',
-      body: `${borrower.username} a emprunte ${amount.toLocaleString('fr-FR')} money via ${business.name}.`,
+      body: `${loan.borrower.username} a recu ${loan.amount.toLocaleString('fr-FR')} money depuis ${loan.business.name}.`,
       link: '/you?tab=travail',
       icon: 'credit-card',
     }),
   ]);
 
   return {
-    amount,
-    durationMonths,
-    interestRate,
-    newBalance: {
-      money: updatedBorrower.money,
-      aura: updatedBorrower.aura,
-    },
+    id: result.id,
+    status: result.status,
+    decidedAt: result.decidedAt?.toISOString() ?? now.toISOString(),
   };
 }
 
@@ -476,12 +601,14 @@ async function handleInvestAction(userId: string, business: any, input: { amount
     throw new Error('USER_NOT_FOUND');
   }
 
-  if (investor.money < amount) {
+  const hasSharedMoney = await ensureSharedMoneyAvailable(prisma, userId, amount);
+  if (!hasSharedMoney) {
     throw new Error('INSUFFICIENT_MONEY');
   }
 
-  const [, updatedInvestor, updatedOwner] = await prisma.$transaction([
-    prisma.businessInvestment.create({
+  await prisma.$transaction(async (tx) => {
+    await debitSharedMoney(tx, userId, amount);
+    await tx.businessInvestment.create({
       data: {
         businessId: business.id,
         investorId: investor.id,
@@ -490,21 +617,14 @@ async function handleInvestAction(userId: string, business: any, input: { amount
         expectedReturnMin: riskRange.min,
         expectedReturnMax: riskRange.max,
       },
-    }),
-    prisma.user.update({
-      where: { id: investor.id },
-      data: { money: { decrement: amount } },
-      select: { id: true, aura: true, money: true },
-    }),
-    prisma.user.update({
-      where: { id: owner.id },
-      data: { money: { increment: amount } },
-      select: { id: true, aura: true, money: true },
-    }),
-  ]);
+    });
+    await tx.business.update({
+      where: { id: business.id },
+      data: { treasuryMoney: { increment: amount } },
+    });
+  });
 
-  emitBalanceUpdate(updatedInvestor.id, updatedInvestor.aura, updatedInvestor.money);
-  emitBalanceUpdate(updatedOwner.id, updatedOwner.aura, updatedOwner.money);
+  await emitSharedBalanceUpdates(prisma, userId);
 
   await Promise.allSettled([
     createNotification({
@@ -530,10 +650,6 @@ async function handleInvestAction(userId: string, business: any, input: { amount
     riskLevel,
     expectedReturnMin: riskRange.min,
     expectedReturnMax: riskRange.max,
-    newBalance: {
-      money: updatedInvestor.money,
-      aura: updatedInvestor.aura,
-    },
   };
 }
 
@@ -541,6 +657,8 @@ const BUSINESS_ACTION_HANDLERS: Record<BusinessActionKey, (userId: string, busin
   invite: handleInviteAction,
   loan: handleLoanAction,
   invest: handleInvestAction,
+  deposit: handleDepositAction,
+  withdraw: handleWithdrawAction,
 };
 
 export async function executeBusinessAction(userId: string, businessId: string, actionKey: BusinessActionKey, input: Record<string, unknown>) {
@@ -760,6 +878,11 @@ export async function respondToMarriageProposal(userId: string, proposalId: stri
       link: '/you?tab=social',
       icon: 'heart',
     }),
+  ]);
+
+  await Promise.all([
+    emitSharedBalanceUpdates(prisma, proposal.proposerId),
+    emitSharedBalanceUpdates(prisma, proposal.recipientId),
   ]);
 
   return {

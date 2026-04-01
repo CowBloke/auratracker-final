@@ -1,4 +1,4 @@
-export type BusinessActionKey = 'invite' | 'loan' | 'invest';
+export type BusinessActionKey = 'invite' | 'loan' | 'invest' | 'deposit' | 'withdraw';
 
 export interface BusinessTypeDefinition {
   key: string;
@@ -22,7 +22,7 @@ export const BUSINESS_TYPES: BusinessTypeDefinition[] = [
     monthlyRevenue: 8400,
     monthlyExpenses: 5200,
     satisfaction: 86,
-    actions: ['invite'],
+    actions: ['invite', 'deposit', 'withdraw'],
   },
   {
     key: 'bank',
@@ -33,7 +33,7 @@ export const BUSINESS_TYPES: BusinessTypeDefinition[] = [
     monthlyRevenue: 12000,
     monthlyExpenses: 4000,
     satisfaction: 91,
-    actions: ['loan', 'invest', 'invite'],
+    actions: ['loan', 'invest', 'invite', 'deposit', 'withdraw'],
   },
   {
     key: 'agency',
@@ -44,7 +44,7 @@ export const BUSINESS_TYPES: BusinessTypeDefinition[] = [
     monthlyRevenue: 6800,
     monthlyExpenses: 3900,
     satisfaction: 82,
-    actions: ['invite'],
+    actions: ['invite', 'deposit', 'withdraw'],
   },
 ];
 
