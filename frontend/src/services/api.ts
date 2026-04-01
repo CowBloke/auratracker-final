@@ -1651,7 +1651,7 @@ export interface PolymarketBet {
   id: string;
   userId: string;
   eventId: string;
-  prediction: 'YES' | 'NO';
+  prediction: string;
   amount: number;
   payout: number | string | null;
   createdAt: string;
@@ -1663,6 +1663,8 @@ export interface PolymarketBet {
     eventDate: string;
     yesOdds: number;
     noOdds: number;
+    optionsConfig?: string | null;
+    imageUrl?: string | null;
   };
   user?: {
     id: string;

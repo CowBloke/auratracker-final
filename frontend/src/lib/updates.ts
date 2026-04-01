@@ -46,6 +46,36 @@ export type UpdateEntry = {
 
 export const UPDATE_ENTRIES: UpdateEntry[] = [
   {
+    id: '2026-04-01-polymarket-sort',
+    date: '2026-04-01',
+    title: 'Polymarket : tri, historique et corrections',
+    summary: 'Tri des événements, nouveau dashboard "Mes paris" avec stats et gains/pertes, et correction des options dans les suggestions.',
+    sections: [
+      {
+        category: 'SMALL_FEATURE',
+        items: [
+          {
+            id: '2026-04-01-polymarket-sort-1',
+            text: '**Polymarket** – Tri des événements ouverts : Plus récents, Fin proche, Plus populaires, Meilleures cotes.',
+          },
+          {
+            id: '2026-04-01-polymarket-my-bets-1',
+            text: '**Polymarket – Mes paris** – Nouveau dashboard avec stats (paris total, W/L, total misé, résultat net) et cartes détaillées par pari avec gain/perte net visible.',
+          },
+        ],
+      },
+      {
+        category: 'BUG_FIX',
+        items: [
+          {
+            id: '2026-04-01-polymarket-options-fix-1',
+            text: '**Polymarket** – Les options personnalisées suggérées par les utilisateurs sont maintenant correctement pré-remplies dans la fenêtre d\'approbation admin.',
+          },
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-03-30-hexgl-image',
     date: '2026-03-30',
     title: 'Nouveautes du hub jeux',

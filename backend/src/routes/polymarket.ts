@@ -613,6 +613,7 @@ router.get('/bets', authMiddleware, async (req: AuthRequest, res: Response) => {
           select: {
             id: true, title: true, status: true, resolution: true,
             eventDate: true, yesOdds: true, noOdds: true, optionsConfig: true,
+            imageUrl: true,
           },
         },
       },
@@ -640,6 +641,7 @@ router.get('/bets/all', authMiddleware, async (req: AuthRequest, res: Response) 
           select: {
             id: true, title: true, status: true, resolution: true,
             eventDate: true, yesOdds: true, noOdds: true, optionsConfig: true,
+            imageUrl: true,
           },
         },
       },

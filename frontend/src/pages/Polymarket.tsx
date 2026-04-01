@@ -285,6 +285,7 @@ export default function Polymarket() {
   const [allBets, setAllBets] = useState<PolymarketBet[]>([]);
   const [activeTab, setActiveTab] = useState<'events' | 'history' | 'admin'>('events');
   const [betHistoryTab, setBetHistoryTab] = useState<'my' | 'all'>('my');
+  const [sortOrder, setSortOrder] = useState<'recent' | 'ends_soon' | 'popular' | 'best_odds'>('recent');
 
   // Suggestion dialog
   const [suggestionDialogOpen, setSuggestionDialogOpen] = useState(false);
@@ -667,8 +668,34 @@ export default function Polymarket() {
   // ── Derived state ──────────────────────────────────────────────────────────
 
   const openEvents = events.filter((e) => e.status === 'OPEN');
+  const sortedOpenEvents = [...openEvents].sort((a, b) => {
+    switch (sortOrder) {
+      case 'ends_soon':
+        return new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime();
+      case 'popular':
+        return (b.totalVolume || 0) - (a.totalVolume || 0);
+      case 'best_odds': {
+        const maxA = Math.max(...getEventOptions(a).map((o) => o.odds));
+        const maxB = Math.max(...getEventOptions(b).map((o) => o.odds));
+        return maxB - maxA;
+      }
+      default:
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }
+  });
   const resolvedEvents = events.filter((e) => e.status === 'RESOLVED');
   const pendingSuggestions = suggestions.filter((s) => s.status === 'PENDING');
+
+  // Bet stats for "Mes paris"
+  const resolvedBets = bets.filter((b) => b.event?.status === 'RESOLVED');
+  const wonBets = resolvedBets.filter((b) => b.event?.resolution === b.prediction);
+  const lostBets = resolvedBets.filter((b) => b.event?.resolution !== b.prediction);
+  const pendingBets = bets.filter((b) => b.event?.status !== 'RESOLVED');
+  const totalWagered = bets.reduce((s, b) => s + b.amount, 0);
+  const totalGained = wonBets.reduce((s, b) => s + (Number(b.payout) || 0), 0);
+  const resolvedWagered = resolvedBets.reduce((s, b) => s + b.amount, 0);
+  const netPnL = totalGained - resolvedWagered;
+  const betWinRate = resolvedBets.length > 0 ? (wonBets.length / resolvedBets.length * 100) : 0;
 
   if (loading) {
     return (
@@ -706,6 +733,30 @@ export default function Polymarket() {
 
           {/* ── Events tab ── */}
           <TabsContent value="events" className={SPACING.SECTION_SPACING}>
+            {openEvents.length > 1 && (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {([
+                  { key: 'recent', label: 'Plus récents' },
+                  { key: 'ends_soon', label: 'Fin proche' },
+                  { key: 'popular', label: 'Plus populaires' },
+                  { key: 'best_odds', label: 'Meilleures cotes' },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => setSortOrder(opt.key)}
+                    className={cn(
+                      'px-3 py-1 rounded-full text-xs font-medium border transition-colors',
+                      sortOrder === opt.key
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background text-muted-foreground border-border hover:bg-muted',
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
             {openEvents.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center text-muted-foreground">
@@ -714,7 +765,7 @@ export default function Polymarket() {
               </Card>
             ) : (
               <div className="space-y-4">
-                {openEvents.map((event) => {
+                {sortedOpenEvents.map((event) => {
                   const userBet = bets.find((b) => b.eventId === event.id);
                   const canBet = !userBet && event.status === 'OPEN' && new Date(event.eventDate) > new Date();
                   const options = getEventOptions(event);
@@ -900,38 +951,167 @@ export default function Polymarket() {
                 <TabsTrigger value="my">Mes paris</TabsTrigger>
                 <TabsTrigger value="all">Tous les paris</TabsTrigger>
               </TabsList>
-              <TabsContent value={betHistoryTab} className="mt-4">
+
+              {/* ── Mes paris ── */}
+              <TabsContent value="my" className="mt-4">
+                {bets.length === 0 ? (
+                  <Card>
+                    <CardContent className="py-12 text-center text-muted-foreground">
+                      Vous n'avez pas encore de paris
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Stats summary */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="rounded-xl border p-3 space-y-1">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Paris</div>
+                        <div className="text-2xl font-bold tabular-nums">{bets.length}</div>
+                        <div className="text-xs text-muted-foreground">{pendingBets.length} en cours</div>
+                      </div>
+                      <div className="rounded-xl border p-3 space-y-1">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Résultats</div>
+                        <div className="text-2xl font-bold tabular-nums">
+                          <span className="text-green-500">{wonBets.length}W</span>
+                          <span className="text-muted-foreground mx-1 text-lg">·</span>
+                          <span className="text-red-500">{lostBets.length}L</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {resolvedBets.length > 0 ? `${betWinRate.toFixed(0)}% réussite` : 'Aucun résolu'}
+                        </div>
+                      </div>
+                      <div className="rounded-xl border p-3 space-y-1">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total misé</div>
+                        <div className="text-2xl font-bold tabular-nums">{totalWagered.toLocaleString('fr-FR')}</div>
+                        <div className="text-xs text-muted-foreground">sur {bets.length} paris</div>
+                      </div>
+                      <div className="rounded-xl border p-3 space-y-1"
+                        style={netPnL !== 0 ? {
+                          borderColor: (netPnL > 0 ? '#22c55e' : '#ef4444') + '40',
+                          background: (netPnL > 0 ? '#22c55e' : '#ef4444') + '08',
+                        } : undefined}
+                      >
+                        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Résultat net</div>
+                        <div className={cn('text-2xl font-bold tabular-nums', netPnL > 0 ? 'text-green-500' : netPnL < 0 ? 'text-red-500' : '')}>
+                          {netPnL > 0 ? '+' : ''}{netPnL.toLocaleString('fr-FR')}
+                        </div>
+                        <div className="text-xs text-muted-foreground">sur paris résolus</div>
+                      </div>
+                    </div>
+
+                    {/* Bet cards */}
+                    <div className="space-y-2">
+                      {bets.map((bet) => {
+                        const isResolved = bet.event?.status === 'RESOLVED';
+                        const isWinner = bet.event?.resolution === bet.prediction;
+                        const predOpt = bet.event ? getOptionByKey(bet.event as any, bet.prediction) : undefined;
+                        const predLabel = predOpt?.label || bet.prediction;
+                        const predColor = predOpt?.color || (bet.prediction === 'YES' ? '#22c55e' : bet.prediction === 'NO' ? '#ef4444' : '#888888');
+                        const betOdds = predOpt?.odds || (bet.prediction === 'YES' ? (bet.event?.yesOdds || 1) : (bet.event?.noOdds || 1));
+                        const payoutAmount = Number(bet.payout) || 0;
+                        const potentialPayout = Math.floor(bet.amount * betOdds);
+                        const netResult = isWinner ? payoutAmount - bet.amount : -bet.amount;
+
+                        return (
+                          <Card key={bet.id} className="overflow-hidden">
+                            <div className="flex items-stretch min-h-[72px]">
+                              {/* Color accent strip */}
+                              <div className="w-1 shrink-0" style={{ background: predColor }} />
+
+                              {/* Event image */}
+                              <div className="w-14 h-14 shrink-0 m-2.5 mr-0 rounded-lg overflow-hidden self-center">
+                                {bet.event?.imageUrl ? (
+                                  <img
+                                    src={resolveImageUrl(bet.event.imageUrl)}
+                                    alt={bet.event?.title}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full" style={{ background: predColor + '18' }} />
+                                )}
+                              </div>
+
+                              {/* Content */}
+                              <div className="flex flex-1 items-center gap-3 px-3 py-2.5 min-w-0">
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm font-semibold leading-snug truncate">
+                                    {bet.event?.title || 'Événement supprimé'}
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                    <span
+                                      className="text-xs px-2 py-0.5 rounded-full font-bold text-white"
+                                      style={{ background: predColor }}
+                                    >
+                                      {predLabel}
+                                    </span>
+                                    <span className="text-xs font-semibold tabular-nums" style={{ color: predColor }}>
+                                      {betOdds.toFixed(2)}x
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {new Date(bet.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Right: amount + result */}
+                                <div className="text-right shrink-0">
+                                  <div className="text-xs text-muted-foreground tabular-nums">
+                                    {bet.amount.toLocaleString('fr-FR')} misé
+                                  </div>
+                                  {isResolved ? (
+                                    <>
+                                      <div className={cn('text-lg font-bold tabular-nums leading-tight', isWinner ? 'text-green-500' : 'text-red-500')}>
+                                        {netResult > 0 ? '+' : ''}{netResult.toLocaleString('fr-FR')}
+                                      </div>
+                                      <div
+                                        className="text-xs font-semibold px-1.5 py-0.5 rounded"
+                                        style={{
+                                          background: isWinner ? '#22c55e18' : '#ef444418',
+                                          color: isWinner ? '#22c55e' : '#ef4444',
+                                        }}
+                                      >
+                                        {isWinner ? 'Gagné' : 'Perdu'}
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <div className="text-sm font-semibold tabular-nums" style={{ color: predColor }}>
+                                        +{(potentialPayout - bet.amount).toLocaleString('fr-FR')}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">potentiel</div>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* ── Tous les paris ── */}
+              <TabsContent value="all" className="mt-4">
                 <div className="space-y-1 max-h-[600px] overflow-y-auto">
-                  {(betHistoryTab === 'my' ? bets : allBets).length === 0 ? (
+                  {allBets.length === 0 ? (
                     <Card>
-                      <CardContent className="py-12 text-center text-muted-foreground">
-                        {betHistoryTab === 'my' ? 'Vous n\'avez pas encore de paris' : 'Aucun pari'}
-                      </CardContent>
+                      <CardContent className="py-12 text-center text-muted-foreground">Aucun pari</CardContent>
                     </Card>
                   ) : (
-                    (betHistoryTab === 'my' ? bets : allBets).map((bet) => {
+                    allBets.map((bet) => {
                       const isResolved = bet.event?.status === 'RESOLVED';
                       const isWinner = bet.event?.resolution === bet.prediction;
-
-                      // Look up option from event's optionsConfig or legacy fields
-                      const predOpt = bet.event
-                        ? getOptionByKey(bet.event as any, bet.prediction)
-                        : undefined;
+                      const predOpt = bet.event ? getOptionByKey(bet.event as any, bet.prediction) : undefined;
                       const predLabel = predOpt?.label || bet.prediction;
                       const predColor = predOpt?.color || (bet.prediction === 'YES' ? '#22c55e' : bet.prediction === 'NO' ? '#ef4444' : '#888888');
                       const betOdds = predOpt?.odds || (bet.prediction === 'YES' ? (bet.event?.yesOdds || 1) : (bet.event?.noOdds || 1));
                       const potentialPayout = Math.floor(bet.amount * betOdds);
-
                       return (
-                        <div
-                          key={bet.id}
-                          className="flex items-center justify-between py-3 border-b border-border/10"
-                        >
+                        <div key={bet.id} className="flex items-center justify-between py-3 border-b border-border/10">
                           <div className="flex items-center gap-3 flex-1">
-                            <div
-                              className="w-8 h-8 flex items-center justify-center border rounded"
-                              style={{ borderColor: predColor + '50', color: predColor }}
-                            >
+                            <div className="w-8 h-8 flex items-center justify-center border rounded" style={{ borderColor: predColor + '50', color: predColor }}>
                               {bet.prediction === 'YES' ? (
                                 <CheckCircle2 className="w-4 h-4" />
                               ) : bet.prediction === 'NO' ? (
@@ -942,19 +1122,15 @@ export default function Polymarket() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                                {betHistoryTab === 'all' && bet.user && (
+                                {bet.user && (
                                   <span className="text-sm font-medium" style={{ color: bet.user.usernameColor || undefined }}>
                                     {bet.user.username}
                                   </span>
                                 )}
                                 <span className="text-xs" style={{ color: predColor }}>{predLabel}</span>
-                                <span className="text-sm text-muted-foreground truncate">
-                                  {bet.event?.title || 'Événement supprimé'}
-                                </span>
+                                <span className="text-sm text-muted-foreground truncate">{bet.event?.title || 'Événement supprimé'}</span>
                               </div>
-                              <p className="text-xs text-muted-foreground">
-                                {new Date(bet.createdAt).toLocaleString('fr-FR')}
-                              </p>
+                              <p className="text-xs text-muted-foreground">{new Date(bet.createdAt).toLocaleString('fr-FR')}</p>
                               {isResolved && (
                                 <p className={cn('text-xs font-medium mt-1', isWinner ? 'text-green-500' : 'text-red-500')}>
                                   {isWinner ? <>Gain: {bet.payout} reçu</> : <>Perte: {bet.amount} perdu</>}
@@ -969,9 +1145,7 @@ export default function Polymarket() {
                           </div>
                           <div className="text-right shrink-0">
                             <p className="text-sm tabular-nums font-medium">{bet.amount}</p>
-                            {bet.event && (
-                              <p className="text-xs text-muted-foreground tabular-nums">@ {betOdds.toFixed(2)}x</p>
-                            )}
+                            {bet.event && <p className="text-xs text-muted-foreground tabular-nums">@ {betOdds.toFixed(2)}x</p>}
                           </div>
                         </div>
                       );
@@ -1009,7 +1183,24 @@ export default function Polymarket() {
                               <div className="text-sm text-muted-foreground">
                                 Date: {suggestion.eventDate ? new Date(suggestion.eventDate).toLocaleDateString('fr-FR') : 'Non renseignée'}
                               </div>
-                              {suggestion.suggestedYesOdds && suggestion.suggestedNoOdds ? (
+                              {suggestion.optionsConfig ? (
+                                (() => {
+                                  try {
+                                    const opts = JSON.parse(suggestion.optionsConfig) as PolymarketOption[];
+                                    return (
+                                      <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-2">
+                                        <span>Options proposées:</span>
+                                        {opts.map((opt) => (
+                                          <span key={opt.key} className="flex items-center gap-1">
+                                            <span className="w-2 h-2 rounded-full inline-block" style={{ background: opt.color }} />
+                                            {opt.label} {opt.odds.toFixed(2)}x
+                                          </span>
+                                        ))}
+                                      </div>
+                                    );
+                                  } catch { return null; }
+                                })()
+                              ) : suggestion.suggestedYesOdds && suggestion.suggestedNoOdds ? (
                                 <div className="text-sm text-muted-foreground">
                                   Cotes proposées: Oui {suggestion.suggestedYesOdds.toFixed(2)}x / Non {suggestion.suggestedNoOdds.toFixed(2)}x
                                 </div>
@@ -1020,9 +1211,25 @@ export default function Polymarket() {
                                   size="sm"
                                   onClick={() => {
                                     setSelectedSuggestion(suggestion);
-                                    setApproveMode('binary');
-                                    setApproveBinaryYes(suggestion.suggestedYesOdds?.toString() || '');
-                                    setApproveBinaryNo(suggestion.suggestedNoOdds?.toString() || '');
+                                    let prefilled = false;
+                                    if (suggestion.optionsConfig) {
+                                      try {
+                                        const opts = JSON.parse(suggestion.optionsConfig) as PolymarketOption[];
+                                        if (Array.isArray(opts) && opts.length >= 2) {
+                                          setApproveMode('custom');
+                                          setApproveCustomDrafts(opts.map((opt, i) => makeDraftOption(i, opt)));
+                                          setApproveBinaryYes('');
+                                          setApproveBinaryNo('');
+                                          prefilled = true;
+                                        }
+                                      } catch { /* fall through */ }
+                                    }
+                                    if (!prefilled) {
+                                      setApproveMode('binary');
+                                      setApproveBinaryYes(suggestion.suggestedYesOdds?.toString() || '');
+                                      setApproveBinaryNo(suggestion.suggestedNoOdds?.toString() || '');
+                                      setApproveCustomDrafts([makeDraftOption(0), makeDraftOption(1)]);
+                                    }
                                     setApproveEventDate(formatDateTimeLocal(suggestion.eventDate));
                                     setApproveDialogOpen(true);
                                   }}
