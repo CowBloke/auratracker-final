@@ -56,6 +56,7 @@ import { useFeatures } from '@/contexts/FeaturesContext';
 import { BLOCKABLE_PAGES } from '@/config/blockedPages';
 import { computeNewChangelogCount, markChangelogSeen } from '@/lib/changelog';
 import { useTheme } from '@/contexts/ThemeContext';
+import { FeatureHint } from '@/components/ui/feature-hint';
 
 interface SearchUser {
   id: string;
@@ -152,6 +153,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
 
   const isOnGames = location.pathname.startsWith('/games');
   const isOnYou = location.pathname.startsWith('/you');
+  const isOnDashboard = location.pathname === '/' || location.pathname === '/dashboard';
   const canOpenYouFromLogo = !maintenanceStatus.youLogoAdminOnly || !!user?.isAdmin;
   const [supportUnread, setSupportUnread] = useState(0);
   const [updatesUnread, setUpdatesUnread] = useState(0);
@@ -263,25 +265,38 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
     navigate(canOpenYouFromLogo ? '/you' : '/dashboard');
   };
 
+  const logoButton = (
+    <button
+      type="button"
+      onClick={handleLogoClick}
+      className="mb-4 flex h-9 w-full items-center gap-2 rounded-md px-3 text-sidebar-foreground transition-all hover:bg-sidebar-accent/50 active:scale-95 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2"
+      aria-label={isOnYou ? 'Retour au tableau de bord' : (canOpenYouFromLogo ? 'Accéder à Moi' : 'Accéder au tableau de bord')}
+    >
+      <img
+        src={theme === 'dark' ? '/aura-icon-white.svg' : '/aura-icon.svg'}
+        alt="AuraTracker"
+        className={cn('h-5 w-5 shrink-0 transition-transform group-data-[collapsible=icon]:h-4 group-data-[collapsible=icon]:w-4', isOnYou && 'scale-110 drop-shadow-[0_0_6px_rgba(139,92,246,0.6)]')}
+      />
+      <span className="truncate text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
+        {isOnYou ? 'Moi' : 'AuraTracker'}
+      </span>
+    </button>
+  );
+
   return (
     <Sidebar variant="inset" collapsible="icon" {...props}>
       <SidebarContent>
         <div className="px-3 py-4">
-          <button
-            type="button"
-            onClick={handleLogoClick}
-            className="mb-4 flex h-9 w-full items-center gap-2 rounded-md px-3 text-sidebar-foreground transition-all hover:bg-sidebar-accent/50 active:scale-95 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2"
-            aria-label={isOnYou ? 'Retour au tableau de bord' : (canOpenYouFromLogo ? 'Accéder à Moi' : 'Accéder au tableau de bord')}
-          >
-            <img
-              src={theme === 'dark' ? '/aura-icon-white.svg' : '/aura-icon.svg'}
-              alt="AuraTracker"
-              className={cn('h-5 w-5 shrink-0 transition-transform group-data-[collapsible=icon]:h-4 group-data-[collapsible=icon]:w-4', isOnYou && 'scale-110 drop-shadow-[0_0_6px_rgba(139,92,246,0.6)]')}
-            />
-            <span className="truncate text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
-              {isOnYou ? 'Moi' : 'AuraTracker'}
-            </span>
-          </button>
+          {isOnDashboard && canOpenYouFromLogo ? (
+            <FeatureHint
+              id="dashboard-you-logo-entrepreneur-relations"
+              label="Nouveau: clique sur le logo pour ouvrir le centre Entrepreneur & Relations"
+              side="bottom"
+              className="w-full"
+            >
+              {logoButton}
+            </FeatureHint>
+          ) : logoButton}
           <SidebarMenu className="space-y-1">
             <SidebarMenuItem>
               <Sheet open={isSearchOpen} onOpenChange={setIsSearchOpen}>

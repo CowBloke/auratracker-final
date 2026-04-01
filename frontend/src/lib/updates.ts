@@ -67,6 +67,7 @@ export const UPDATE_ENTRIES: UpdateEntry[] = [
           { id: '2026-04-01-you-overview-feed', text: '**Moi · Vue d\'ensemble** — Le tableau de bord est maintenant un fil d\'actualité unifié : toutes les notifications, offres d\'emploi, demandes de mariage/divorce, relations et remboursements apparaissent dans une seule liste chronologique, du plus récent au plus ancien.' },
           { id: '2026-04-01-you-v2-topbar', text: '**Moi · Interface** — Barre supérieure plus compacte, sans texte sous les icônes de compétences. Onglets Santé et Argent supprimés.' },
           { id: '2026-04-01-you-logo-admin-toggle-1', text: '**Barre laterale · Acces Moi** — Un nouveau parametre admin permet de reserver le clic sur le logo (en haut a gauche) a l ouverture de la section Moi uniquement pour les admins.' },
+          { id: '2026-04-01-you-logo-hint-entrepreneur-relations-1', text: '**Barre laterale · Indice logo** — Sur le tableau de bord, un indice visuel apparait sur le logo pour signaler l acces au centre Entrepreneur & Relations.' },
         ],
       },
       {
