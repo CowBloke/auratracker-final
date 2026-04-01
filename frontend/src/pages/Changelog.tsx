@@ -6,8 +6,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { PageShell } from '@/components/layout/page-shell';
 import { TYPOGRAPHY } from '@/lib/design-system';
-import { markUpdatesSeen } from '@/lib/updates';
-import { updatesApi, type UpdateEntry } from '@/services/api';
+import { markChangelogSeen } from '@/lib/changelog';
+import { changelogApi, type ChangelogEntry } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Bug, Sparkles, Rocket, Plus, X, Check, Bold } from 'lucide-react';
 
@@ -113,7 +113,7 @@ function AddItemForm({ entryId, category, onAdded, onCancel }: AddItemFormProps)
     if (!trimmed) return;
     setSaving(true);
     try {
-      const { data } = await updatesApi.addItem(entryId, { category, text: trimmed });
+      const { data } = await changelogApi.addItem(entryId, { category, text: trimmed });
       onAdded(data);
       setText('');
     } catch {
@@ -152,7 +152,7 @@ function AddItemForm({ entryId, category, onAdded, onCancel }: AddItemFormProps)
 }
 
 interface AddEntryFormProps {
-  onAdded: (entry: UpdateEntry) => void;
+  onAdded: (entry: ChangelogEntry) => void;
   onCancel: () => void;
 }
 
@@ -166,7 +166,7 @@ function AddEntryForm({ onAdded, onCancel }: AddEntryFormProps) {
     if (!date || !title.trim() || !summary.trim()) return;
     setSaving(true);
     try {
-      const { data } = await updatesApi.createEntry({ date, title: title.trim(), summary: summary.trim() });
+      const { data } = await changelogApi.createEntry({ date, title: title.trim(), summary: summary.trim() });
       onAdded(data);
     } catch {
       // ignore
@@ -202,20 +202,20 @@ function AddEntryForm({ onAdded, onCancel }: AddEntryFormProps) {
   );
 }
 
-export default function Updates() {
+export default function Changelog() {
   const { user } = useAuth();
   const isAdmin = user?.isAdmin ?? false;
 
-  const [entries, setEntries] = useState<UpdateEntry[]>([]);
+  const [entries, setEntries] = useState<ChangelogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [addingEntry, setAddingEntry] = useState(false);
   const [addingItem, setAddingItem] = useState<{ entryId: string; category: UpdateCategory } | null>(null);
 
   useEffect(() => {
-    updatesApi.getAll()
+    changelogApi.getAll()
       .then(({ data }) => {
         setEntries(data);
-        if (data[0]) markUpdatesSeen(data[0].id);
+        if (data[0]) markChangelogSeen(data[0].id);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -237,7 +237,7 @@ export default function Updates() {
   };
 
   const handleItemDeleted = (entryId: string, itemId: string) => {
-    updatesApi.deleteItem(entryId, itemId).catch(() => {});
+    changelogApi.deleteItem(entryId, itemId).catch(() => {});
     setEntries((prev) => prev.map((e) => {
       if (e.id !== entryId) return e;
       return {
@@ -250,11 +250,11 @@ export default function Updates() {
   };
 
   const handleEntryDeleted = (entryId: string) => {
-    updatesApi.deleteEntry(entryId).catch(() => {});
+    changelogApi.deleteEntry(entryId).catch(() => {});
     setEntries((prev) => prev.filter((e) => e.id !== entryId));
   };
 
-  const handleEntryAdded = (entry: UpdateEntry) => {
+  const handleEntryAdded = (entry: ChangelogEntry) => {
     setEntries((prev) => [entry, ...prev]);
     setAddingEntry(false);
   };

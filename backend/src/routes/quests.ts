@@ -401,6 +401,7 @@ router.post('/claim', authMiddleware, async (req: AuthRequest, res: Response) =>
         totalMoney,
         totalAura,
         claimedQuests: userQuests.length,
+        silent: true,
       },
       link: '/quests',
       icon: 'gift',

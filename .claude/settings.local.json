@@ -111,7 +111,8 @@
       "Read(//Users/viktorabe/Documents/GitHub/auratracker-final/**)",
       "Read(//Users/viktorabe/Documents/GitHub/auratracker-final/frontend/**)",
       "Read(//Users/viktorabe/Documents/GitHub/auratracker-final/backend/**)",
-      "mcp__Claude_Preview__preview_start"
+      "mcp__Claude_Preview__preview_start",
+      "Bash(grep -n \"UpdatePopup\\\\|update-popup\" /Users/viktorabe/Documents/GitHub/auratracker-final/backend/src/routes/*.ts)"
     ]
   },
   "outputStyle": "default"

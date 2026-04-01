@@ -396,6 +396,7 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
         itemName: item.name,
         quantity,
         totalPrice,
+        silent: true,
       },
       link: '/inventory',
       icon: 'shopping-bag',

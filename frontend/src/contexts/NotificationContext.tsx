@@ -162,7 +162,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           if (alreadyTracked) return current;
           return n.isRead || n.isArchived ? current : current + 1;
         });
-        toast(n.title, { description: n.body, duration: 5000 });
+        if (!n.data?.silent) toast(n.title, { description: n.body, duration: 5000 });
       });
 
       socket.on('notification:updated', (n: Notification) => {

@@ -9,6 +9,18 @@ const CATEGORIES: UpdateCategory[] = ['BIG_FEATURE', 'SMALL_FEATURE', 'BUG_FIX']
 
 const SEED_ENTRIES = [
   {
+    id: '2026-04-01-ui-toasts-fixes',
+    date: '2026-04-01',
+    title: 'Corrections UI & Notifications',
+    summary: 'Toasts unifiés sur tout le site, badge changelog rouge, fix des doublons de notifications.',
+    items: [
+      { category: 'BUG_FIX', text: '**Badge changelog** — La pastille de notifications non lues dans la sidebar passe au rouge, cohérent avec les autres badges.', order: 0 },
+      { category: 'BUG_FIX', text: '**Toasts en double** — Les achats en boutique, claims de quêtes, ouverture du pass et investissements business ne déclenchaient plus deux toasts simultanément.', order: 1 },
+      { category: 'SMALL_FEATURE', text: '**Fermer un toast** — Un bouton ✕ permet maintenant de fermer manuellement chaque toast.', order: 0 },
+      { category: 'SMALL_FEATURE', text: '**Toasts unifiés** — Tous les toasts du site (y compris la page Admin) passent par le même système visuel.', order: 1 },
+    ],
+  },
+  {
     id: '2026-03-30-chess-promotion',
     date: '2026-03-30',
     title: 'Échecs',

@@ -2071,35 +2071,35 @@ export const customBadgesApi = {
     api.post<{ success: boolean }>(`/custom-badges/${id}/reject`, { adminNote }),
 };
 
-export interface UpdateItem {
+export interface ChangelogItem {
   id: string;
   text: string;
   category: string;
 }
 
-export interface UpdateSection {
+export interface ChangelogSection {
   category: string;
   items: { id: string; text: string }[];
 }
 
-export interface UpdateEntry {
+export interface ChangelogEntry {
   id: string;
   date: string;
   title: string;
   summary: string;
-  sections: UpdateSection[];
+  sections: ChangelogSection[];
 }
 
-export const updatesApi = {
-  getAll: () => api.get<UpdateEntry[]>('/updates'),
-  getIds: () => api.get<{ ids: string[] }>('/updates/ids'),
+export const changelogApi = {
+  getAll: () => api.get<ChangelogEntry[]>('/changelog'),
+  getIds: () => api.get<{ ids: string[] }>('/changelog/ids'),
   createEntry: (data: { date: string; title: string; summary: string }) =>
-    api.post<UpdateEntry>('/updates', data),
-  deleteEntry: (id: string) => api.delete(`/updates/${id}`),
+    api.post<ChangelogEntry>('/changelog', data),
+  deleteEntry: (id: string) => api.delete(`/changelog/${id}`),
   addItem: (entryId: string, data: { category: string; text: string }) =>
-    api.post<UpdateItem>(`/updates/${entryId}/items`, data),
+    api.post<ChangelogItem>(`/changelog/${entryId}/items`, data),
   deleteItem: (entryId: string, itemId: string) =>
-    api.delete(`/updates/${entryId}/items/${itemId}`),
+    api.delete(`/changelog/${entryId}/items/${itemId}`),
 };
 
 export default api;

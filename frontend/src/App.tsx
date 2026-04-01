@@ -52,7 +52,7 @@ import ChromeDino from './pages/ChromeDino';
 import FruitNinja from './pages/FruitNinja';
 import StackTower from './pages/StackTower';
 import Support from './pages/Support';
-import Updates from './pages/Updates';
+import Changelog from './pages/Changelog';
 import QSWatermelon from './pages/QSWatermelon';
 import Polytrack from './pages/Polytrack';
 import Eaglercraft from './pages/Eaglercraft';
@@ -233,7 +233,7 @@ function App() {
         <Route path="settings" element={<Settings />} />
         <Route path="inbox" element={<Inbox />} />
         <Route path="support" element={<Support />} />
-        <Route path="updates" element={<Updates />} />
+        <Route path="changelog" element={<Changelog />} />
         <Route path="you" element={<You />} />
       </Route>
     </Routes>

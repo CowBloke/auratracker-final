@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, type PointerEvent as ReactPointerEvent } from 'react';
+import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
 import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, customBadgesApi, CustomBadgeRequest } from '../services/api';
@@ -687,7 +688,6 @@ export default function Admin() {
   const [massDeleteOpen, setMassDeleteOpen] = useState(false);
   const [massBanTargetIds, setMassBanTargetIds] = useState<string[]>([]);
   const [clearingChat, setClearingChat] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [activeTab, setActiveTab] = useState<AdminTab>('inbox');
   const [announcementOpen, setAnnouncementOpen] = useState(false);
   const [loginCommOpen, setLoginCommOpen] = useState(false);
@@ -2488,8 +2488,8 @@ export default function Admin() {
   };
 
   const showMessage = (type: 'success' | 'error', text: string) => {
-    setMessage({ type, text });
-    setTimeout(() => setMessage(null), 3000);
+    if (type === 'success') toast.success(text);
+    else toast.error(text);
   };
 
   const startEditingClan = (clan: AdminClan) => {
@@ -8496,21 +8496,6 @@ export default function Admin() {
       </div>
     </PageShell>
 
-    {/* Toast notification — outside PageShell to avoid space-y layout shift */}
-    {message && (
-      <div className={cn(
-        'fixed bottom-5 right-5 z-50 flex items-center gap-2.5 rounded-lg border px-4 py-3 text-sm shadow-lg',
-        'animate-in fade-in slide-in-from-bottom-2 duration-200',
-        message.type === 'success'
-          ? 'border-green-500/30 bg-green-500/10 text-green-400'
-          : 'border-destructive/30 bg-destructive/10 text-destructive'
-      )}>
-        {message.type === 'success'
-          ? <Check className="h-4 w-4 shrink-0" />
-          : <AlertTriangle className="h-4 w-4 shrink-0" />}
-        {message.text}
-      </div>
-    )}
     </>
   );
 }

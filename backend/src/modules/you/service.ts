@@ -520,6 +520,7 @@ async function handleInvestAction(userId: string, business: any, input: { amount
       type: 'SYSTEM',
       title: 'Investissement place',
       body: `Tu as investi ${amount.toLocaleString('fr-FR')} money dans ${business.name}.`,
+      data: { silent: true },
       link: '/you?tab=explore',
       icon: 'trending-up',
     }),

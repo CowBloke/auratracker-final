@@ -41,7 +41,7 @@ import {
 } from '@/components/ui/collapsible';
 import { NavUser } from '@/components/nav-user';
 import { cn } from '@/lib/utils';
-import { usersApi, supportApi, updatesApi } from '@/services/api';
+import { usersApi, supportApi, changelogApi } from '@/services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -54,7 +54,7 @@ import BugReportPanel from '@/components/layout/BugReportPanel';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { BLOCKABLE_PAGES } from '@/config/blockedPages';
-import { computeNewUpdatesCount, markUpdatesSeen } from '@/lib/updates';
+import { computeNewChangelogCount, markChangelogSeen } from '@/lib/changelog';
 import { useTheme } from '@/contexts/ThemeContext';
 
 interface SearchUser {
@@ -188,15 +188,15 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
 
   useEffect(() => {
     const syncUnread = () => {
-      updatesApi.getIds()
-        .then(({ data }) => setUpdatesUnread(computeNewUpdatesCount(data.ids)))
+      changelogApi.getIds()
+        .then(({ data }) => setUpdatesUnread(computeNewChangelogCount(data.ids)))
         .catch(() => {});
     };
 
-    if (location.pathname === '/updates') {
-      updatesApi.getIds()
+    if (location.pathname === '/changelog') {
+      changelogApi.getIds()
         .then(({ data }) => {
-          if (data.ids[0]) markUpdatesSeen(data.ids[0]);
+          if (data.ids[0]) markChangelogSeen(data.ids[0]);
           setUpdatesUnread(0);
         })
         .catch(() => {});
@@ -523,20 +523,20 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                isActive={location.pathname === '/updates'}
+                isActive={location.pathname === '/changelog'}
                 tooltip="Changelog"
                 className={cn(
                   'h-9 px-3 text-sm font-normal',
-                  location.pathname === '/updates'
+                  location.pathname === '/changelog'
                     ? 'text-foreground bg-muted/50'
                     : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
                 )}
               >
-                <NavLink to="/updates">
+                <NavLink to="/changelog">
                   <Megaphone className="h-4 w-4" />
                   <span className="group-data-[collapsible=icon]:hidden">Changelog</span>
                   {updatesUnread > 0 && (
-                    <span className="ml-auto inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-sky-600 text-white text-[10px] font-semibold group-data-[collapsible=icon]:hidden">
+                    <span className="ml-auto inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-semibold group-data-[collapsible=icon]:hidden">
                       {updatesUnread > 99 ? '99+' : updatesUnread}
                     </span>
                   )}

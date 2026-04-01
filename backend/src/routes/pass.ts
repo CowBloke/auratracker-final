@@ -376,6 +376,7 @@ router.post('/claim', authMiddleware, async (req: AuthRequest, res: Response) =>
           itemId: reward.item?.id ?? null,
           itemName: reward.item?.name ?? null,
         })),
+        silent: true,
       },
       link: '/pass',
       icon: 'gift',

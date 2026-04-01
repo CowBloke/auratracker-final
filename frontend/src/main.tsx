@@ -12,7 +12,6 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { FeaturesProvider } from './contexts/FeaturesContext';
 import { RewardQueueProvider } from './contexts/RewardQueueContext';
-import { Toaster } from '@/components/ui/toaster';
 import { Toaster as SonnerToaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import './index.css';
@@ -36,7 +35,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                             <App />
                           </FeaturesProvider>
                         </RewardQueueProvider>
-                        <Toaster />
                         <SonnerToaster />
                       </NotificationProvider>
                     </ChatSocketProvider>
