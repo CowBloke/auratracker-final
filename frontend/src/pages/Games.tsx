@@ -760,7 +760,7 @@ export default function Games() {
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-        <CardContent className="relative z-[11] flex h-full flex-col justify-end p-5 text-white">
+        <CardContent className="relative flex h-full flex-col justify-end p-5 text-white">
           <p className="text-xs font-medium   text-white/70">{game.type}</p>
           <h3 className={TYPOGRAPHY.H4}>{game.name}</h3>
           <p className="mt-1 text-xs text-white/85">{game.description}</p>

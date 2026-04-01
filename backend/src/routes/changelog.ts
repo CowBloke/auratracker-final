@@ -67,6 +67,7 @@ const SEED_ENTRIES = [
       { category: 'BUG_FIX', text: "**Top bar persistante** — Le layout garde maintenant toujours la barre du haut visible pendant le scroll en contraignant correctement la zone de contenu et en maintenant le header au-dessus des pages.", order: 7 },
       { category: 'BUG_FIX', text: "**Inventaire trie comme la boutique** — La page inventaire reprend maintenant le meme ordre de types que la boutique et regroupe correctement les objets par categorie dans l'onglet `Tous`.", order: 8 },
       { category: 'BUG_FIX', text: "**Inbox de bienvenue** — Un message de bienvenue est maintenant envoye automatiquement dans l'inbox lors de la premiere connexion reussie d'un compte, sans doublon aux connexions suivantes.", order: 9 },
+      { category: 'BUG_FIX', text: "**Cards de jeux cliquables** — Le calque de navigation passe maintenant au-dessus du contenu des cartes pour que tout le bloc ouvre bien le jeu au clic.", order: 10 },
       { category: 'SMALL_FEATURE', text: '**Fermer un toast** — Un bouton ✕ permet maintenant de fermer manuellement chaque toast.', order: 0 },
       { category: 'SMALL_FEATURE', text: '**Toasts unifiés** — Tous les toasts du site (y compris la page Admin) passent par le même système visuel.', order: 1 },
       { category: 'SMALL_FEATURE', text: "**Selection d'images plus claire** — Les zones d'upload affichent des formats explicitement supportes pour mieux guider les utilisateurs avant l'envoi.", order: 2 },
