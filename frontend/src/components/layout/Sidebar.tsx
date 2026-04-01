@@ -26,7 +26,6 @@ import {
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -39,7 +38,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { NavUser } from '@/components/nav-user';
 import { cn } from '@/lib/utils';
 import { usersApi, supportApi, changelogApi } from '@/services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
@@ -625,20 +623,6 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
           </SidebarMenu>
         </div>
       </SidebarContent>
-      <SidebarFooter className="border-t border-border/40">
-        {user && (
-          <NavUser
-            user={{
-              name: user.username,
-              firstName: user.firstName,
-              email: user.email || '',
-              avatar: '',
-              usernameColor: user.usernameColor,
-              profilePicture: user.profilePicture,
-            }}
-          />
-        )}
-      </SidebarFooter>
     </Sidebar>
   );
 }

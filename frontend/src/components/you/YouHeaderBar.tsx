@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Brain, Building2, Coins, Star, TrendingUp, Users, Zap } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { type YouSkill, youApi } from '@/services/api';
+import { UserAccountMenu } from '@/components/user-account-menu';
 
 type HeaderSkill = {
   key: string;
@@ -135,14 +134,9 @@ export function YouHeaderBar({ rightSlot }: { rightSlot?: React.ReactNode }) {
           </div>
           <div className="hidden items-center gap-1.5 rounded-lg bg-muted/30 px-2.5 py-1 sm:flex">
             <Coins className="h-3 w-3 text-emerald-400" />
-            <span className="text-xs font-semibold tabular-nums">{user?.money?.toLocaleString() ?? '0'} €</span>
+            <span className="text-xs font-semibold tabular-nums">{user?.money?.toLocaleString() ?? '0'} {'\u20AC'}</span>
           </div>
-          <Avatar className="h-8 w-8 shrink-0 ring-1 ring-border/50">
-            {user?.profilePicture ? <AvatarImage src={resolveImageUrl(user.profilePicture)} alt={user.username} /> : null}
-            <AvatarFallback className="bg-muted text-xs font-semibold">
-              {user?.username?.slice(0, 1).toUpperCase() ?? 'U'}
-            </AvatarFallback>
-          </Avatar>
+          <UserAccountMenu showLabel={false} />
         </div>
       </div>
     </TooltipProvider>

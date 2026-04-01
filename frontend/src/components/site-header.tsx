@@ -45,12 +45,15 @@ import {
   Eye,
   Monitor,
   Crosshair,
+  Coins,
+  Zap,
 } from 'lucide-react';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { InboxDropdown } from '@/components/inbox/InboxDropdown';
 import { PlayerHoverCard } from '@/components/ui/player-hover-card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { YouHeaderBar } from '@/components/you/YouHeaderBar';
+import { UserAccountMenu } from '@/components/user-account-menu';
 
 export function SiteHeader() {
   const { user, refreshUser } = useAuth();
@@ -416,8 +419,8 @@ export function SiteHeader() {
         </div>
       </div>
 
-        <div className="flex items-center gap-2 sm:gap-4">
-          <div className="flex items-center gap-2 sm:gap-8 text-sm">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-sm">
           {!currentParty && (
             <DropdownMenu
               onOpenChange={(open) => {
@@ -848,13 +851,16 @@ export function SiteHeader() {
             </TooltipProvider>
           )}
 
-          <div className="flex items-center gap-6 tabular-nums">
-            <span className="inline-flex items-center gap-1.5 text-foreground">
-              {user?.aura.toLocaleString()} <span className="text-muted-foreground">aura</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-foreground">
-              ${user?.money.toLocaleString()} <span className="text-muted-foreground">argent</span>
-            </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <div className="hidden items-center gap-1.5 rounded-lg bg-muted/30 px-2.5 py-1 sm:flex">
+              <Zap className="h-3 w-3 text-yellow-400" />
+              <span className="text-xs font-semibold tabular-nums">{user?.aura?.toLocaleString() ?? '0'}</span>
+            </div>
+            <div className="hidden items-center gap-1.5 rounded-lg bg-muted/30 px-2.5 py-1 sm:flex">
+              <Coins className="h-3 w-3 text-emerald-400" />
+              <span className="text-xs font-semibold tabular-nums">{user?.money?.toLocaleString() ?? '0'} {'\u20AC'}</span>
+            </div>
+            <UserAccountMenu showLabel={false} />
           </div>
         </div>
       </div>
