@@ -9,6 +9,7 @@ import { useDuelSocket } from '@/contexts/DuelSocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import {
@@ -543,39 +544,52 @@ export function SiteHeader() {
                       </div>
                     </div>
 
-                    <ScrollArea className="h-32">
-                      <div className="space-y-1 px-3 py-2">
-                        {partyMembers.map((member) => (
-                          <div key={member.userId} className="flex items-center gap-2 text-xs">
-                            <div
-                              className={cn(
-                                'h-1.5 w-1.5 rounded-full',
-                                bombPartyGame?.currentPlayerId === member.userId
-                                  ? 'bg-yellow-500'
-                                  : petitBacGame
-                                    ? (petitBacGame.players.find((p) => p.userId === member.userId)?.submitted
-                                        ? 'bg-green-500'
-                                        : 'bg-yellow-500')
-                                    : 'bg-green-500'
-                              )}
-                            />
-                            <span className={cn(member.userId === user?.id && 'font-medium')}>
-                              <PlayerHoverCard
-                                userId={member.userId}
-                                username={member.username}
-                                usernameColor={member.usernameColor}
-                              >
-                                <UsernameDisplay
-                                  username={member.username}
-                                  usernameColor={member.usernameColor}
-                                />
-                              </PlayerHoverCard>
-                              {member.isLeader && ' *'}
+                    <div className="px-3 py-2">
+                      <Accordion type="single" collapsible className="rounded-md border border-border/40 bg-muted/10 px-3">
+                        <AccordionItem value="party-users" className="border-none">
+                          <AccordionTrigger className="py-3 text-xs hover:no-underline">
+                            <span className="text-muted-foreground">
+                              Utilisateurs ({partyMembers.length})
                             </span>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
+                          </AccordionTrigger>
+                          <AccordionContent className="pb-3">
+                            <ScrollArea className="h-32 pr-2">
+                              <div className="space-y-1">
+                                {partyMembers.map((member) => (
+                                  <div key={member.userId} className="flex items-center gap-2 text-xs">
+                                    <div
+                                      className={cn(
+                                        'h-1.5 w-1.5 rounded-full',
+                                        bombPartyGame?.currentPlayerId === member.userId
+                                          ? 'bg-yellow-500'
+                                          : petitBacGame
+                                            ? (petitBacGame.players.find((p) => p.userId === member.userId)?.submitted
+                                                ? 'bg-green-500'
+                                                : 'bg-yellow-500')
+                                            : 'bg-green-500'
+                                      )}
+                                    />
+                                    <span className={cn(member.userId === user?.id && 'font-medium')}>
+                                      <PlayerHoverCard
+                                        userId={member.userId}
+                                        username={member.username}
+                                        usernameColor={member.usernameColor}
+                                      >
+                                        <UsernameDisplay
+                                          username={member.username}
+                                          usernameColor={member.usernameColor}
+                                        />
+                                      </PlayerHoverCard>
+                                      {member.isLeader && ' *'}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </ScrollArea>
+                          </AccordionContent>
+                        </AccordionItem>
+                      </Accordion>
+                    </div>
 
                     <div className="flex flex-wrap gap-2 border-t border-border/30 px-3 py-2">
                       {location.pathname !== '/party' && (

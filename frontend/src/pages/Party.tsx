@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { cn } from '@/lib/utils';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { PageShell } from '@/components/layout/page-shell';
@@ -333,42 +334,53 @@ export default function Party() {
               </div>
             </div>
 
-            {/* Members */}
-            <Card>
-              <CardContent className="p-6 space-y-0">
-                {partyMembers.map((member) => (
-                  <div
-                    key={member.userId}
-                    className={cn(
-                      "flex items-center justify-between py-4 border-b border-border/30 last:border-0",
-                      member.userId === user?.id && "bg-muted/30 -mx-6 px-6"
-                    )}
-                  >
-                    <div className="flex items-center gap-4">
-                      <span className={TYPOGRAPHY.SMALL}>
-                        <UsernameDisplay username={member.username} usernameColor={member.usernameColor} />
-                        {member.isLeader && (
-                          <span className={cn(TYPOGRAPHY.XS, "ml-2 text-muted-foreground")}>chef</span>
-                        )}
-                        {member.userId === user?.id && (
-                          <span className={cn(TYPOGRAPHY.XS, "ml-2 text-muted-foreground")}>(toi)</span>
-                        )}
-                      </span>
-                    </div>
-                    {isLeader && member.userId !== user?.id && (
-                      <Button
-                        onClick={() => kickFromParty(member.userId)}
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
+            <Accordion type="single" collapsible className="rounded-xl border border-border/50 bg-card/40 px-4">
+              <AccordionItem value="party-members" className="border-none">
+                <AccordionTrigger className="py-4 hover:no-underline">
+                  <div className="text-left">
+                    <p className={TYPOGRAPHY.SMALL}>Utilisateurs du groupe</p>
+                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
+                      {partyMembers.length} membre{partyMembers.length > 1 ? 's' : ''}
+                    </p>
                   </div>
-                ))}
-              </CardContent>
-            </Card>
+                </AccordionTrigger>
+                <AccordionContent className="pb-2">
+                  <div className="space-y-0">
+                    {partyMembers.map((member) => (
+                      <div
+                        key={member.userId}
+                        className={cn(
+                          "flex items-center justify-between rounded-lg py-3",
+                          member.userId === user?.id && "bg-muted/30 px-3"
+                        )}
+                      >
+                        <div className="flex items-center gap-4">
+                          <span className={TYPOGRAPHY.SMALL}>
+                            <UsernameDisplay username={member.username} usernameColor={member.usernameColor} />
+                            {member.isLeader && (
+                              <span className={cn(TYPOGRAPHY.XS, "ml-2 text-muted-foreground")}>chef</span>
+                            )}
+                            {member.userId === user?.id && (
+                              <span className={cn(TYPOGRAPHY.XS, "ml-2 text-muted-foreground")}>(toi)</span>
+                            )}
+                          </span>
+                        </div>
+                        {isLeader && member.userId !== user?.id && (
+                          <Button
+                            onClick={() => kickFromParty(member.userId)}
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
 
             <div className={SPACING.CARD_SPACING}>
               <h3 className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground  ")}>
@@ -611,52 +623,75 @@ export default function Party() {
               </p>
             ) : (
               <div className={SPACING.SECTION_SPACING}>
-                <div className="space-y-0">
+                <div className="space-y-3">
                   {publicParties.map((party) => {
                     const isPending = pendingJoinRequests.includes(party.id);
                     const isFull = party.memberCount >= party.maxSize;
                     const isDuel = party.maxSize === 2;
                     return (
-                      <div
+                      <Accordion
                         key={party.id}
-                        className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
+                        type="single"
+                        collapsible
+                        className="rounded-xl border border-border/40 bg-card/30 px-4"
                       >
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-3">
-                            <p className={TYPOGRAPHY.SMALL}>{party.name || (isDuel ? 'Duel sans nom' : 'Groupe sans nom')}</p>
-                            <span className={cn(TYPOGRAPHY.XS, "  text-muted-foreground")}>
-                              {isDuel ? 'Duel' : 'Groupe'}
-                            </span>
+                        <AccordionItem value={`public-party-${party.id}`} className="border-none">
+                          <div className="flex items-center gap-3 py-4">
+                            <AccordionTrigger className="flex-1 py-0 hover:no-underline">
+                              <div className="text-left">
+                                <div className="flex items-center gap-3">
+                                  <p className={TYPOGRAPHY.SMALL}>{party.name || (isDuel ? 'Duel sans nom' : 'Groupe sans nom')}</p>
+                                  <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>
+                                    {isDuel ? 'Duel' : 'Groupe'}
+                                  </span>
+                                </div>
+                                <p className={TYPOGRAPHY.XS}>
+                                  {party.memberCount}/{party.maxSize} membres · {party.isPublic ? 'publique' : 'privée'}
+                                </p>
+                              </div>
+                            </AccordionTrigger>
+                            {party.isPublic ? (
+                              <Button
+                                onClick={() => joinParty(party.id)}
+                                disabled={isFull}
+                                variant="outline"
+                                size="sm"
+                                className="shrink-0"
+                              >
+                                {isFull ? 'Pleine' : 'Rejoindre'}
+                              </Button>
+                            ) : (
+                              <Button
+                                onClick={() => requestJoinParty(party.id)}
+                                disabled={isFull || isPending}
+                                variant="outline"
+                                size="sm"
+                                className="shrink-0"
+                              >
+                                {isFull ? 'Pleine' : isPending ? 'Demande envoyée' : 'Demander'}
+                              </Button>
+                            )}
                           </div>
-                          <p className={TYPOGRAPHY.XS}>
-                            {party.memberCount}/{party.maxSize} membres · {party.isPublic ? 'publique' : 'privée'}
-                          </p>
-                          {party.members && party.members.length > 0 && (
-                            <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>
-                              {party.members.map((m) => m.username).join(', ')}
-                            </p>
-                          )}
-                        </div>
-                        {party.isPublic ? (
-                          <Button
-                            onClick={() => joinParty(party.id)}
-                            disabled={isFull}
-                            variant="outline"
-                            size="sm"
-                          >
-                            {isFull ? 'Pleine' : 'Rejoindre'}
-                          </Button>
-                        ) : (
-                          <Button
-                            onClick={() => requestJoinParty(party.id)}
-                            disabled={isFull || isPending}
-                            variant="outline"
-                            size="sm"
-                          >
-                            {isFull ? 'Pleine' : isPending ? 'Demande envoyée' : 'Demander'}
-                          </Button>
-                        )}
-                      </div>
+                          <AccordionContent className="pb-4">
+                            {party.members && party.members.length > 0 ? (
+                              <div className="space-y-2 border-t border-border/30 pt-3">
+                                {party.members.map((member) => (
+                                  <div
+                                    key={member.userId}
+                                    className="rounded-lg bg-muted/20 px-3 py-2 text-sm text-muted-foreground"
+                                  >
+                                    <UsernameDisplay username={member.username} usernameColor={member.usernameColor} />
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className={cn(TYPOGRAPHY.XS, "border-t border-border/30 pt-3 text-muted-foreground")}>
+                                Aucun utilisateur visible dans ce groupe
+                              </p>
+                            )}
+                          </AccordionContent>
+                        </AccordionItem>
+                      </Accordion>
                     );
                   })}
                 </div>

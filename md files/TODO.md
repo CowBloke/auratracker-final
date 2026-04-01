@@ -1,7 +1,5 @@
 - bienvenue
 - UI clan
-- banniere guilde
-- voir personnes dasn groupe page groupe
 - aléatoire shop skins platformes ddj
 - UI page pass
 - activité admin : ajouter temps passé : jeux

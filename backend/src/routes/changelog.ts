@@ -12,12 +12,34 @@ const CANONICAL_APRIL_FIRST_ENTRY_ID = '2026-04-01-ui-toasts-fixes';
 
 const SEED_ENTRIES = [
   {
+    id: '2026-04-01-party-dropdown-members',
+    date: '2026-04-01',
+    title: 'Groupes plus lisibles',
+    summary: "Les cartes de groupe deviennent des menus deroulants pour afficher les utilisateurs seulement quand on en a besoin.",
+    items: [
+      { category: 'SMALL_FEATURE', text: "**Page groupe** — La liste des membres du groupe actuel est maintenant repliee dans un menu deroulant 'Utilisateurs du groupe' pour alleger la page.", order: 0 },
+      { category: 'SMALL_FEATURE', text: "**Groupes ouverts** — Chaque groupe public peut maintenant etre ouvert pour voir les utilisateurs qu'il contient sans afficher toutes les listes en permanence.", order: 1 },
+      { category: 'SMALL_FEATURE', text: "**Widget groupe** — Le widget du header utilise lui aussi une section deroulante pour afficher les utilisateurs du groupe actif.", order: 2 },
+    ],
+  },
+  {
     id: '2026-04-01-clans-wording',
     date: '2026-04-01',
     title: 'Terminologie des clans',
     summary: "Le site affiche maintenant 'clan' a la place de 'guilde' dans l'interface.",
     items: [
       { category: 'SMALL_FEATURE', text: "**Terminologie unifiee** — Les libelles de navigation, statistiques, metadonnees de page et messages visibles utilisent maintenant 'clan' et 'clans' au lieu de 'guilde' et 'guildes'.", order: 0 },
+    ],
+  },
+  {
+    id: '2026-04-01-clan-banner-item',
+    date: '2026-04-01',
+    title: 'Bannière de clan',
+    summary: "Un nouvel objet de clan permet d'acheter, téléverser et afficher une bannière de clan.",
+    items: [
+      { category: 'BIG_FEATURE', text: "**Objet banniere de clan** — Un objet `CLAN_BANNER` peut maintenant etre cree depuis l'admin, achete avec la banque du clan, puis active par le chef pour televerser l'image de banniere.", order: 0 },
+      { category: 'SMALL_FEATURE', text: "**Activation guidee** — Depuis la page clan, l'objet affiche un bouton dedie au choix de l'image et ouvre directement une fenetre d'upload avec apercu.", order: 1 },
+      { category: 'SMALL_FEATURE', text: "**Affichage du clan** — La banniere televersee s'affiche en haut de la page clan quand ce clan est selectionne.", order: 2 },
     ],
   },
   {

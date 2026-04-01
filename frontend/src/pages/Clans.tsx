@@ -779,7 +779,7 @@ export default function Clans() {
     const effect = parseClanItemEffect(clanItem.item.effect);
     if (effect?.type === "CLAN_BANNER") {
       setBannerItemId(clanItem.id);
-      setBannerItemImgUrl("");
+      setBannerItemImgUrl(selectedClan.banner ?? "");
       setBannerItemDialogOpen(true);
       return;
     }
@@ -1190,7 +1190,12 @@ export default function Clans() {
                               {selectedClan.ownedItems.map((clanItem) => (
                                 <div key={clanItem.id} className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-muted/15 px-3 py-3">
                                   <div className="min-w-0">
-                                    <div className="text-sm font-medium">{clanItem.item.name} ×{clanItem.quantity}</div>
+                                    <div className="flex items-center gap-2 text-sm font-medium">
+                                      <span>{clanItem.item.name} ×{clanItem.quantity}</span>
+                                      {parseClanItemEffect(clanItem.item.effect)?.type === 'CLAN_BANNER' ? (
+                                        <Badge variant="secondary">Upload image</Badge>
+                                      ) : null}
+                                    </div>
                                     <div className="text-xs text-muted-foreground">{clanItem.item.description}</div>
                                   </div>
                                   {selectedClan.viewer.isLeader ? (
@@ -1201,7 +1206,7 @@ export default function Clans() {
                                       disabled={usingClanItemId === clanItem.id}
                                     >
                                       {usingClanItemId === clanItem.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                                      Activer
+                                      {parseClanItemEffect(clanItem.item.effect)?.type === 'CLAN_BANNER' ? 'Choisir l’image' : 'Activer'}
                                     </Button>
                                   ) : (
                                     <Badge variant="outline">Chef requis</Badge>
@@ -1956,7 +1961,7 @@ export default function Clans() {
           <DialogHeader>
             <DialogTitle>Appliquer une banniere de clan</DialogTitle>
             <DialogDescription>
-              Choisissez l'image qui sera affichee en haut du profil du clan.
+              Téléversez l'image qui sera affichée en haut de la page du clan lorsque ce clan est sélectionné.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
