@@ -86,11 +86,20 @@ app.use(cors({
   origin: config.corsOrigin,
   credentials: true,
 }));
+
+// Remove or reset Permissions-Policy header to prevent invalid features from being sent
+app.use((req, res, next) => {
+  res.removeHeader('Permissions-Policy');
+  res.setHeader('Permissions-Policy', '');
+  next();
+});
+
 app.use(express.json({ limit: '25mb' }));
 app.use('/uploads', express.static(path.resolve('uploads')));
 app.use('/api/uploads', express.static(path.resolve('uploads')));
 app.use('/polytrack', express.static(path.resolve('../frontend/public/polytrack')));
 app.use('/eaglercraft', express.static(path.resolve('../frontend/public/eaglercraft')));
+app.use('/watermelon', express.static(path.resolve('../frontend/public/watermelon')));
 
 // REST Routes
 app.use('/api/auth', authRoutes);

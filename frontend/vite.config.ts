@@ -44,7 +44,7 @@ function serveStaticGame(mountPath: string, dirName: string): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), serveStaticGame('polytrack', 'polytrack'), serveStaticGame('eaglercraft', 'eaglercraft')],
+  plugins: [react(), serveStaticGame('polytrack', 'polytrack'), serveStaticGame('eaglercraft', 'eaglercraft'), serveStaticGame('watermelon', 'watermelon')],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
