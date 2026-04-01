@@ -7,6 +7,7 @@ import {
   ClanDetail,
   ClanOwnedItem,
   ClanPumpUpMessage,
+  ClanWarParticipantStats,
   ClanSummary,
   ClanWarDefenseState,
   ClanWarGamesStatus,
@@ -115,6 +116,9 @@ const getWarDefenseSet = (war: ClanWarState, clanId: string) =>
 const getWarEnemyDefenseSet = (war: ClanWarState, clanId: string) =>
   war.attackerClan.id === clanId ? war.defenses.defender : war.defenses.attacker;
 
+const getWarParticipantStats = (war: ClanWarState, clanId: string) =>
+  war.attackerClan.id === clanId ? war.participantStats.attacker : war.participantStats.defender;
+
 
 const getAvatarFallback = (value: string) => value.trim().slice(0, 2);
 
@@ -165,6 +169,58 @@ const UpgradeRow = ({ defense }: { defense: ClanWarDefenseState }) => (
     </span>
   </div>
 );
+
+const WarMemberRow = ({
+  member,
+  showClanName = false,
+}: {
+  member: ClanWarParticipantStats;
+  showClanName?: boolean;
+}) => {
+  const didCombat = member.hasCompletedCombat;
+  const didSupport = member.hasCompletedSupport;
+
+  return (
+    <div className="rounded-2xl border border-border/50 bg-muted/15 p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={resolveImageUrl(member.user.profilePicture)} alt={member.user.username} />
+            <AvatarFallback>{getAvatarFallback(member.user.username)}</AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <div className="truncate text-sm font-medium">
+              <UsernameDisplay username={member.user.username} usernameColor={member.user.usernameColor} />
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              {showClanName ? <span>{member.clanName}</span> : null}
+              <span>{member.totalCombatPoints} pts combat</span>
+              <span>{member.fortificationLevelsAdded} niv. défense</span>
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-wrap justify-end gap-1.5">
+          <Badge variant={didCombat ? 'secondary' : 'outline'}>{didCombat ? 'Combat fait' : 'Combat manquant'}</Badge>
+          <Badge variant={didSupport ? 'secondary' : 'outline'}>{didSupport ? 'Support fait' : 'Support manquant'}</Badge>
+        </div>
+      </div>
+      <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-xl border border-border/40 bg-background/60 px-2.5 py-2">
+          Bombes: <span className="font-medium text-foreground">{member.bombRuns}</span> • {member.bombPoints} pts
+        </div>
+        <div className="rounded-xl border border-border/40 bg-background/60 px-2.5 py-2">
+          Naval: <span className="font-medium text-foreground">{member.navalShotsUsed}</span> tirs • {member.navalHits} touches
+        </div>
+        <div className="rounded-xl border border-border/40 bg-background/60 px-2.5 py-2">
+          Mémoire: <span className="font-medium text-foreground">{member.memoryRuns}</span> • {member.fortificationsUsed} renforts
+        </div>
+        <div className="rounded-xl border border-border/40 bg-background/60 px-2.5 py-2">
+          Total attaques: <span className="font-medium text-foreground">{member.attackCount}</span> • {member.attackPoints} pts
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const TAG_PRESET_COLORS = [
   '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16',
@@ -1775,6 +1831,29 @@ export default function Clans() {
                                 </div>
                               </div>
                             ) : null}
+
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <div>
+                                  <h3 className="text-sm font-medium">Participation des membres</h3>
+                                  <p className="text-xs text-muted-foreground">
+                                    Vérifie qui a déjà fait ses combats de guerre et son support défensif.
+                                  </p>
+                                </div>
+                                <Badge variant="outline">{getWarOwnSide(selectedWar, selectedClan.id).name}</Badge>
+                              </div>
+                              {getWarParticipantStats(selectedWar, selectedClan.id).length === 0 ? (
+                                <div className="rounded-2xl border border-dashed border-border/60 p-4 text-sm text-muted-foreground">
+                                  Aucune participation enregistrée pour l’instant.
+                                </div>
+                              ) : (
+                                <div className="space-y-2">
+                                  {getWarParticipantStats(selectedWar, selectedClan.id).map((member) => (
+                                    <WarMemberRow key={member.user.id} member={member} />
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           </CardContent>
                         </Card>
                       ) : (
@@ -1803,17 +1882,33 @@ export default function Clans() {
                               const isWin = war.winnerClan?.id === selectedClan.id;
                               const isDraw = !war.winnerClan;
                               return (
-                                <div key={war.id} className="flex items-start justify-between gap-3 rounded-2xl border border-border/50 bg-muted/15 p-4">
-                                  <div className="min-w-0 space-y-1">
-                                    <div className="text-sm font-medium">Contre {opponent.name}</div>
-                                    <div className="text-sm text-muted-foreground">
-                                      {formatDate(war.completedAt)} • Score final {war.attackerScore} - {war.defenderScore}
-                                      {war.winnerUser ? ` • MVP: ${war.winnerUser.username}` : ''}
+                                <div key={war.id} className="space-y-3 rounded-2xl border border-border/50 bg-muted/15 p-4">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0 space-y-1">
+                                      <div className="text-sm font-medium">Contre {opponent.name}</div>
+                                      <div className="text-sm text-muted-foreground">
+                                        {formatDate(war.completedAt)} • Score final {war.attackerScore} - {war.defenderScore}
+                                        {war.winnerUser ? ` • MVP: ${war.winnerUser.username}` : ''}
+                                      </div>
                                     </div>
+                                    <Badge variant={isDraw ? 'outline' : isWin ? 'secondary' : 'destructive'}>
+                                      {isDraw ? 'Égalité' : isWin ? 'Victoire' : 'Défaite'}
+                                    </Badge>
                                   </div>
-                                  <Badge variant={isDraw ? 'outline' : isWin ? 'secondary' : 'destructive'}>
-                                    {isDraw ? 'Égalité' : isWin ? 'Victoire' : 'Défaite'}
-                                  </Badge>
+                                  <div className="space-y-2">
+                                    <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                      Participation du clan
+                                    </div>
+                                    {getWarParticipantStats(war, selectedClan.id).length === 0 ? (
+                                      <div className="text-sm text-muted-foreground">Aucune donnée de participation.</div>
+                                    ) : (
+                                      <div className="space-y-2">
+                                        {getWarParticipantStats(war, selectedClan.id).map((member) => (
+                                          <WarMemberRow key={`${war.id}:${member.user.id}`} member={member} />
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               );
                             })

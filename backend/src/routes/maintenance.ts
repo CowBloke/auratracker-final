@@ -14,6 +14,24 @@ const REFERRAL_ENABLED_KEY = 'referral_enabled';
 const DUEL_MATCHMAKING_ENABLED_KEY = 'duel_matchmaking_enabled';
 const DEFAULT_LANDING_PAGE_KEY = 'default_landing_page';
 const YOU_LOGO_ADMIN_ONLY_KEY = 'you_logo_admin_only';
+const BETA_GAME_IDS_KEY = 'games_beta_ids';
+const NEW_GAME_IDS_KEY = 'games_new_ids';
+
+function parseStringArraySetting(rawValue?: string | null): string[] {
+  if (!rawValue) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed.filter((entry): entry is string => typeof entry === 'string');
+  } catch {
+    return [];
+  }
+}
 
 router.get('/', async (_req, res) => {
   try {
@@ -30,6 +48,8 @@ router.get('/', async (_req, res) => {
       duelMatchmakingEnabledSetting,
       defaultLandingPageSetting,
       youLogoAdminOnlySetting,
+      betaGameIdsSetting,
+      newGameIdsSetting,
     ] = await Promise.all([
       prisma.gameSettings.findUnique({ where: { key: MAINTENANCE_ENABLED_KEY } }),
       prisma.gameSettings.findUnique({ where: { key: MAINTENANCE_MESSAGE_KEY } }),
@@ -43,11 +63,15 @@ router.get('/', async (_req, res) => {
       prisma.gameSettings.findUnique({ where: { key: DUEL_MATCHMAKING_ENABLED_KEY } }),
       prisma.gameSettings.findUnique({ where: { key: DEFAULT_LANDING_PAGE_KEY } }),
       prisma.gameSettings.findUnique({ where: { key: YOU_LOGO_ADMIN_ONLY_KEY } }),
+      prisma.gameSettings.findUnique({ where: { key: BETA_GAME_IDS_KEY } }),
+      prisma.gameSettings.findUnique({ where: { key: NEW_GAME_IDS_KEY } }),
     ]);
 
     const message = messageSetting?.value ?? '';
     let pages: string[] = [];
-    let blockedPages: string[] = [];
+    const blockedPages = parseStringArraySetting(blockedPagesSetting?.value);
+    const betaGameIds = parseStringArraySetting(betaGameIdsSetting?.value);
+    const newGameIds = parseStringArraySetting(newGameIdsSetting?.value);
     
     if (pagesSetting?.value) {
       try {
@@ -57,17 +81,6 @@ router.get('/', async (_req, res) => {
         }
       } catch {
         pages = [];
-      }
-    }
-
-    if (blockedPagesSetting?.value) {
-      try {
-        const parsed = JSON.parse(blockedPagesSetting.value);
-        if (Array.isArray(parsed)) {
-          blockedPages = parsed.filter((p): p is string => typeof p === 'string');
-        }
-      } catch {
-        blockedPages = [];
       }
     }
 
@@ -96,6 +109,8 @@ router.get('/', async (_req, res) => {
       duelMatchmakingEnabled: duelMatchmakingEnabledSetting?.value !== 'false',
       defaultLandingPage: defaultLandingPageSetting?.value ?? '/dashboard',
       youLogoAdminOnly: youLogoAdminOnlySetting?.value === 'true',
+      betaGameIds,
+      newGameIds,
     });
   } catch (error) {
     console.error('Get maintenance status error:', error);

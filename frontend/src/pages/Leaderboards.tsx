@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { auraCoinApi, AuraCoinLeaderboardEntry, gamesApi, leaderboardsApi, clansApi, usersApi } from '../services/api';
-import { X, Zap, DollarSign, TrendingUp, Gem, ArrowUp, Skull, Layers, Wind, Diamond, Timer, LayoutGrid, Sparkles, TrendingDown, Flame, Gamepad2, Hash, Target, Bomb, BarChart2, Trophy, Info, ChevronDown, Bird } from 'lucide-react';
+import { X, Zap, DollarSign, TrendingUp, Gem, ArrowUp, Skull, Layers, Wind, Diamond, Timer, LayoutGrid, Sparkles, TrendingDown, Flame, Gamepad2, Hash, Target, Bomb, BarChart2, Trophy, Info, ChevronDown, Bird, Rocket } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TYPOGRAPHY } from '@/lib/design-system';
@@ -30,13 +30,13 @@ interface Ranking {
 type StatItem = { label: string; value: string; hint?: string };
 type StatSection = { title: string; items: StatItem[] };
 
-type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'doodle_jump_mort_subite' | 'game_2048' | 'flappy_bird' | 'chrome_dino' | 'snake' | 'crossy_road' | 'stack_tower' | 'geometry_dash' | 'qs_watermelon' | 'solitaire' | 'racer' | 'tetris' | 'knife_hit' | 'minesweeper' | 'fruit_ninja' | 'goyave_empire' | 'logic_lab' | 'casino' | 'casino_losses' | 'chess' | 'petit_bac' | 'puissance_4' | 'ball_arena' | 'poker' | 'battleship' | 'russian_roulette' | 'uno' | 'morpion' | 'polymarket_ratio' | 'games_played' | 'bombparty' | 'overall';
+type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'doodle_jump_mort_subite' | 'game_2048' | 'flappy_bird' | 'chrome_dino' | 'snake' | 'crossy_road' | 'stack_tower' | 'geometry_dash' | 'qs_watermelon' | 'solitaire' | 'racer' | 'hexgl' | 'tetris' | 'knife_hit' | 'minesweeper' | 'fruit_ninja' | 'goyave_empire' | 'logic_lab' | 'casino' | 'casino_losses' | 'chess' | 'petit_bac' | 'puissance_4' | 'ball_arena' | 'poker' | 'battleship' | 'russian_roulette' | 'uno' | 'morpion' | 'polymarket_ratio' | 'games_played' | 'bombparty' | 'overall';
 type View = Category | 'nombres';
 type Period = 'all' | 'monthly' | 'weekly' | 'daily';
 
 const PERIOD_CATEGORIES = new Set<Category>([
   'doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird',
-  'chrome_dino', 'solitaire', 'racer', 'tetris', 'knife_hit', 'minesweeper', 'casino',
+  'chrome_dino', 'solitaire', 'racer', 'hexgl', 'tetris', 'knife_hit', 'minesweeper', 'casino',
 ]);
 
 const PERIOD_OPTIONS: { id: Period; label: string }[] = [
@@ -64,6 +64,7 @@ const categories: { id: Category; name: string; valueLabel: string; icon: typeof
   { id: 'qs_watermelon', name: 'QS Watermelon', valueLabel: 'score', icon: Sparkles },
   { id: 'solitaire', name: 'Solitaire', valueLabel: 'score', icon: Diamond },
   { id: 'racer', name: 'Racer', valueLabel: 'temps', icon: Timer },
+  { id: 'hexgl', name: 'HexGL', valueLabel: 'temps', icon: Rocket },
   { id: 'tetris', name: 'Tetris', valueLabel: 'score', icon: LayoutGrid },
   { id: 'knife_hit', name: 'Knife Hit', valueLabel: 'score', icon: Target },
   { id: 'minesweeper', name: 'Démineur', valueLabel: 'score', icon: Bomb },
@@ -87,7 +88,7 @@ const categories: { id: Category; name: string; valueLabel: string; icon: typeof
 ];
 
 const economyCategories: Category[] = ['aura', 'money', 'total_money', 'auracoin'];
-const gameCategories: Category[] = ['doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird', 'chrome_dino', 'snake', 'crossy_road', 'stack_tower', 'geometry_dash', 'qs_watermelon', 'solitaire', 'racer', 'tetris', 'knife_hit', 'minesweeper', 'fruit_ninja', 'goyave_empire', 'logic_lab', 'casino', 'casino_losses', 'chess', 'petit_bac', 'puissance_4', 'ball_arena', 'poker', 'battleship', 'russian_roulette', 'uno', 'morpion', 'polymarket_ratio', 'bombparty', 'games_played'];
+const gameCategories: Category[] = ['doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird', 'chrome_dino', 'snake', 'crossy_road', 'stack_tower', 'geometry_dash', 'qs_watermelon', 'solitaire', 'racer', 'hexgl', 'tetris', 'knife_hit', 'minesweeper', 'fruit_ninja', 'goyave_empire', 'logic_lab', 'casino', 'casino_losses', 'chess', 'petit_bac', 'puissance_4', 'ball_arena', 'poker', 'battleship', 'russian_roulette', 'uno', 'morpion', 'polymarket_ratio', 'bombparty', 'games_played'];
 const genericGameCategories: Category[] = ['snake', 'crossy_road', 'stack_tower', 'geometry_dash', 'qs_watermelon', 'fruit_ninja', 'goyave_empire', 'logic_lab'];
 const deletableGameCategories: Partial<Record<Category, string>> = {
   doodle_jump: 'doodle_jump',
@@ -102,6 +103,7 @@ const deletableGameCategories: Partial<Record<Category, string>> = {
   qs_watermelon: 'qs_watermelon',
   solitaire: 'solitaire',
   racer: 'racer',
+  hexgl: 'hexgl',
   tetris: 'tetris',
   knife_hit: 'knife_hit',
   minesweeper: 'minesweeper',
@@ -120,7 +122,7 @@ const deletableGameCategories: Partial<Record<Category, string>> = {
   morpion: 'morpion',
 };
 
-const gamesCatalog = ['Doodle Jump', 'Démineur', '2048', 'Flappy Bird', 'Chrome Dino', 'Crossy Road', 'Tour empilée', 'Geometry Dash', 'Fruit Ninja', 'Goyave Empire', 'Sudoku', 'Casino', 'Bombe de mots', 'Poker', 'Petit Bac', 'Bataille navale', 'Solitaire', 'Racer', 'Tetris', 'Knife Hit', 'Polymarket', 'Échecs', 'Puissance 4', 'Arène des balles', 'Roulette russe', 'Uno', 'Morpion'];
+const gamesCatalog = ['Doodle Jump', 'Démineur', '2048', 'Flappy Bird', 'Chrome Dino', 'Crossy Road', 'Tour empilée', 'Geometry Dash', 'Fruit Ninja', 'Goyave Empire', 'Sudoku', 'Casino', 'Bombe de mots', 'Poker', 'Petit Bac', 'Bataille navale', 'Solitaire', 'Racer', 'HexGL', 'Tetris', 'Knife Hit', 'Polymarket', 'Échecs', 'Puissance 4', 'Arène des balles', 'Roulette russe', 'Uno', 'Morpion'];
 
 const formatNumber = (value: number, digits = 0) =>
   value.toLocaleString('fr-FR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
@@ -299,6 +301,7 @@ export default function Leaderboards() {
       case 'overall':
         return `${Math.round(numericValue).toLocaleString('fr-FR')} pts`;
       case 'racer':
+      case 'hexgl':
         return formatTime(numericValue);
       case 'polymarket_ratio': {
         const wins = ranking.wins ?? 0;
@@ -460,7 +463,7 @@ export default function Leaderboards() {
                         <ul className="space-y-0.5 text-muted-foreground/80">
                           <li>Doodle Jump, 2048, Flappy Bird</li>
                           <li>Chrome Dino, Crossy Road, Stack Tower</li>
-                          <li>Geometry Dash, QS Watermelon, Solitaire, Racer</li>
+                          <li>Geometry Dash, QS Watermelon, Solitaire, Racer, HexGL</li>
                           <li>Tetris, Knife Hit, Démineur</li>
                           <li>Fruit Ninja, Goyave Empire, Sudoku</li>
                           <li>Casino (gain max)</li>

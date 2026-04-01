@@ -23,6 +23,7 @@ interface GameLeaderboardProps {
   entries: GameLeaderboardEntry[];
   currentUserId?: string;
   personalHighScore?: number | null;
+  scoreFormatter?: (value: number) => string;
   isAdmin?: boolean;
   onDeleteScore?: (userId: string, username: string) => void;
   title?: string;
@@ -36,10 +37,11 @@ interface GameLeaderboardProps {
 function LeaderboardList({
   entries,
   currentUserId,
+  scoreFormatter,
   isAdmin,
   onDeleteScore,
   maxHeight,
-}: Pick<GameLeaderboardProps, 'entries' | 'currentUserId' | 'isAdmin' | 'onDeleteScore' | 'maxHeight'>) {
+}: Pick<GameLeaderboardProps, 'entries' | 'currentUserId' | 'scoreFormatter' | 'isAdmin' | 'onDeleteScore' | 'maxHeight'>) {
   if (entries.length === 0) {
     return (
       <p className="px-4 py-8 text-center text-sm text-muted-foreground">
@@ -99,7 +101,7 @@ function LeaderboardList({
             )}
           </span>
           <span className="font-mono text-sm tabular-nums text-muted-foreground shrink-0">
-            {entry.highScore.toLocaleString()}
+            {scoreFormatter ? scoreFormatter(entry.highScore) : entry.highScore.toLocaleString()}
           </span>
           {isAdmin && onDeleteScore && (
             <Button
@@ -122,6 +124,7 @@ export function GameLeaderboard({
   entries,
   currentUserId,
   personalHighScore,
+  scoreFormatter,
   isAdmin,
   onDeleteScore,
   title = 'Classement',
@@ -145,6 +148,7 @@ export function GameLeaderboard({
     <LeaderboardList
       entries={entries}
       currentUserId={currentUserId}
+      scoreFormatter={scoreFormatter}
       isAdmin={isAdmin}
       onDeleteScore={onDeleteScore}
       maxHeight={maxHeight}
@@ -170,10 +174,10 @@ export function GameLeaderboard({
         <p className="text-sm font-medium">{title}</p>
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <span>
-            Perso <span className="font-mono text-foreground">{recordPersonnel !== null ? recordPersonnel.toLocaleString() : '--'}</span>
+            Perso <span className="font-mono text-foreground">{recordPersonnel !== null ? (scoreFormatter ? scoreFormatter(recordPersonnel) : recordPersonnel.toLocaleString()) : '--'}</span>
           </span>
           <span>
-            Top <span className="font-mono text-foreground">{recordDuJeu !== null ? recordDuJeu.toLocaleString() : '--'}</span>
+            Top <span className="font-mono text-foreground">{recordDuJeu !== null ? (scoreFormatter ? scoreFormatter(recordDuJeu) : recordDuJeu.toLocaleString()) : '--'}</span>
           </span>
         </div>
       </div>

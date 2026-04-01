@@ -25,7 +25,7 @@ type Period = 'daily' | 'weekly' | 'monthly';
 // Game types that can be filtered by period via game_complete logs
 const PERIOD_GAME_TYPES = new Set([
   'doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird',
-  'chrome_dino', 'solitaire', 'racer', 'tetris', 'knife_hit', 'minesweeper', 'casino',
+  'chrome_dino', 'solitaire', 'racer', 'hexgl', 'tetris', 'knife_hit', 'minesweeper', 'casino',
 ]);
 
 const SCORE_GAME_CATEGORIES = {
@@ -36,6 +36,7 @@ const SCORE_GAME_CATEGORIES = {
   chrome_dino: { gameType: 'chrome_dino', order: 'desc' as const },
   solitaire: { gameType: 'solitaire', order: 'desc' as const },
   racer: { gameType: 'racer', order: 'asc' as const },
+  hexgl: { gameType: 'hexgl', order: 'asc' as const },
   tetris: { gameType: 'tetris', order: 'desc' as const },
   knife_hit: { gameType: 'knife_hit', order: 'desc' as const },
   minesweeper: { gameType: 'minesweeper', order: 'desc' as const },
@@ -166,6 +167,7 @@ type LeaderboardCategory =
   | 'chrome_dino'
   | 'solitaire'
   | 'racer'
+  | 'hexgl'
   | 'tetris'
   | 'knife_hit'
   | 'minesweeper'
@@ -199,7 +201,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
     // Period-filtered leaderboard for score-based games
     if (period && (period === 'daily' || period === 'weekly' || period === 'monthly') && PERIOD_GAME_TYPES.has(category)) {
       const periodStart = getPeriodStart(period as Period);
-      const ascending = category === 'racer';
+      const ascending = scoreCategoryConfig?.order === 'asc';
       const take = parseInt(limit as string);
       const skip = parseInt(offset as string);
       const allPeriodRankings = await getPeriodGameRankings(category, periodStart, ascending);
@@ -935,7 +937,7 @@ router.get('/user/:userId', authMiddleware, async (req: AuthRequest, res: Respon
     
     for (const stat of gameStats) {
       const betterScoreWhere =
-        stat.gameType === 'racer'
+        stat.gameType === 'racer' || stat.gameType === 'hexgl'
           ? {
               gameType: stat.gameType,
               highScore: { lt: stat.highScore },

@@ -16,6 +16,7 @@ import {
 import { serializeClanEffect } from '../utils/clanEffects.js';
 import { DEFAULT_DAILY_AURA_LIMIT } from '../utils/dailyAura.js';
 import { getSharedBalance } from '../utils/sharedBalance.js';
+import { emitNotificationCreated } from '../utils/notifications.js';
 
 const getIpAddress = (req: Request | AuthRequest): string | null => {
   const forwarded = req.headers['x-forwarded-for'];
@@ -26,6 +27,41 @@ const getIpAddress = (req: Request | AuthRequest): string | null => {
 };
 
 const router = Router();
+
+const createWelcomeInboxNotification = async (userId: string) => {
+  const sentAt = new Date();
+
+  const notification = await prisma.$transaction(async (tx) => {
+    const updatedUser = await tx.user.updateMany({
+      where: {
+        id: userId,
+        welcomeInboxSentAt: null,
+      },
+      data: {
+        welcomeInboxSentAt: sentAt,
+      },
+    });
+
+    if (updatedUser.count === 0) {
+      return null;
+    }
+
+    return tx.notification.create({
+      data: {
+        userId,
+        type: 'SYSTEM',
+        title: 'Bienvenue sur AuraTracker',
+        body: 'Ton compte est pret. Passe par ta boite de reception pour retrouver les infos importantes et les prochaines actus.',
+        link: '/inbox',
+        icon: 'crown',
+      },
+    });
+  });
+
+  if (notification) {
+    emitNotificationCreated(notification);
+  }
+};
 
 const getUserClanEffects = async (userId: string) => {
   const membership = await prisma.clanMember.findUnique({
@@ -190,6 +226,7 @@ router.post('/login', validate(loginSchema), async (req, res) => {
 
     const token = generateToken(user.id, user.email);
     const ensuredReferralCode = await ensureUserReferralCode(user.id, user.referralCode);
+    await createWelcomeInboxNotification(user.id);
 
     logAuth('login', user.id, user.username, { isAdmin: user.isAdmin, isSuperAdmin: user.isSuperAdmin }, getIpAddress(req));
 

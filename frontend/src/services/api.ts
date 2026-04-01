@@ -936,6 +936,33 @@ export interface ClanWarFortificationLog {
   createdAt: string;
 }
 
+export interface ClanWarParticipantStats {
+  user: {
+    id: string;
+    username: string;
+    usernameColor: string | null;
+    profilePicture: string | null;
+  };
+  clanId: string;
+  clanName: string;
+  attackCount: number;
+  attackPoints: number;
+  staminaSpent: number;
+  fortificationsUsed: number;
+  fortificationLevelsAdded: number;
+  fortificationDurabilityAdded: number;
+  memoryRuns: number;
+  bombRuns: number;
+  bombPoints: number;
+  navalShotsUsed: number;
+  navalHits: number;
+  navalPoints: number;
+  totalCombatPoints: number;
+  totalSupportActions: number;
+  hasCompletedCombat: boolean;
+  hasCompletedSupport: boolean;
+}
+
 export interface ClanWarState {
   id: string;
   status: 'PREPARING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
@@ -975,6 +1002,10 @@ export interface ClanWarState {
   defenses: {
     attacker: ClanWarDefenseState[];
     defender: ClanWarDefenseState[];
+  };
+  participantStats: {
+    attacker: ClanWarParticipantStats[];
+    defender: ClanWarParticipantStats[];
   };
   viewerActions: {
     staminaCap: number;
@@ -1663,6 +1694,8 @@ export const maintenanceApi = {
     duelMatchmakingEnabled?: boolean;
     defaultLandingPage?: string;
     youLogoAdminOnly?: boolean;
+    betaGameIds?: string[];
+    newGameIds?: string[];
   }>('/maintenance'),
 };
 

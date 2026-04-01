@@ -118,7 +118,6 @@ const currentWarInclude = Prisma.validator<Prisma.ClanWarInclude>()({
     orderBy: {
       createdAt: 'desc',
     },
-    take: 20,
   },
   defenses: {
     orderBy: [{ clanId: 'asc' }, { type: 'asc' }],
@@ -139,7 +138,26 @@ const currentWarInclude = Prisma.validator<Prisma.ClanWarInclude>()({
     orderBy: {
       createdAt: 'desc',
     },
-    take: 30,
+  },
+  gameLogs: {
+    include: {
+      user: {
+        select: clanLeaderSelect,
+      },
+    },
+    orderBy: {
+      playedAt: 'desc',
+    },
+  },
+  navalShots: {
+    include: {
+      user: {
+        select: clanLeaderSelect,
+      },
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
   },
 });
 
@@ -181,7 +199,6 @@ const historyWarInclude = Prisma.validator<Prisma.ClanWarInclude>()({
     orderBy: {
       createdAt: 'desc',
     },
-    take: 8,
   },
   defenses: true,
   fortifications: {
@@ -200,7 +217,26 @@ const historyWarInclude = Prisma.validator<Prisma.ClanWarInclude>()({
     orderBy: {
       createdAt: 'desc',
     },
-    take: 12,
+  },
+  gameLogs: {
+    include: {
+      user: {
+        select: clanLeaderSelect,
+      },
+    },
+    orderBy: {
+      playedAt: 'desc',
+    },
+  },
+  navalShots: {
+    include: {
+      user: {
+        select: clanLeaderSelect,
+      },
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
   },
 });
 
@@ -387,6 +423,148 @@ const mapWarScoreClan = (clan: ClanWithMembers) => ({
   ...mapClanSummary(clan),
 });
 
+const mapWarParticipantStats = (
+  war: ClanWarCurrentPayload | ClanWarHistoryPayload
+) => {
+  const memberStats = new Map<string, {
+    user: {
+      id: string;
+      username: string;
+      usernameColor: string | null;
+      profilePicture: string | null;
+    };
+    clanId: string;
+    clanName: string;
+    attackCount: number;
+    attackPoints: number;
+    staminaSpent: number;
+    fortificationsUsed: number;
+    fortificationLevelsAdded: number;
+    fortificationDurabilityAdded: number;
+    memoryRuns: number;
+    bombRuns: number;
+    bombPoints: number;
+    navalShotsUsed: number;
+    navalHits: number;
+    navalPoints: number;
+  }>();
+
+  const upsertMember = (
+    clanId: string,
+    clanName: string,
+    user: {
+      id: string;
+      username: string;
+      usernameColor: string | null;
+      profilePicture: string | null;
+    }
+  ) => {
+    const existing = memberStats.get(user.id);
+    if (existing) return existing;
+
+    const created = {
+      user,
+      clanId,
+      clanName,
+      attackCount: 0,
+      attackPoints: 0,
+      staminaSpent: 0,
+      fortificationsUsed: 0,
+      fortificationLevelsAdded: 0,
+      fortificationDurabilityAdded: 0,
+      memoryRuns: 0,
+      bombRuns: 0,
+      bombPoints: 0,
+      navalShotsUsed: 0,
+      navalHits: 0,
+      navalPoints: 0,
+    };
+    memberStats.set(user.id, created);
+    return created;
+  };
+
+  for (const member of war.attackerClan.members) {
+    upsertMember(war.attackerClan.id, war.attackerClan.name, member.user);
+  }
+
+  for (const member of war.defenderClan.members) {
+    upsertMember(war.defenderClan.id, war.defenderClan.name, member.user);
+  }
+
+  for (const attack of war.attacks) {
+    const stats = upsertMember(attack.clanId, attack.attackingClan.name, attack.user);
+    stats.attackCount += 1;
+    stats.attackPoints += attack.finalPoints;
+    stats.staminaSpent += attack.staminaCost;
+  }
+
+  for (const fortification of war.fortifications) {
+    const clanName = fortification.clanId === war.attackerClanId ? war.attackerClan.name : war.defenderClan.name;
+    const stats = upsertMember(fortification.clanId, clanName, fortification.user);
+    stats.fortificationsUsed += 1;
+    stats.fortificationLevelsAdded += fortification.levelAdded;
+    stats.fortificationDurabilityAdded += fortification.durabilityAdded;
+  }
+
+  for (const gameLog of war.gameLogs) {
+    const clanName = gameLog.clanId === war.attackerClanId ? war.attackerClan.name : war.defenderClan.name;
+    const stats = upsertMember(gameLog.clanId, clanName, gameLog.user);
+    if (gameLog.gameType === 'MEMORY') {
+      stats.memoryRuns += 1;
+    }
+    if (gameLog.gameType === 'BOMB') {
+      stats.bombRuns += 1;
+      stats.bombPoints += gameLog.pointsAwarded;
+    }
+  }
+
+  for (const shot of war.navalShots) {
+    const clanName = shot.clanId === war.attackerClanId ? war.attackerClan.name : war.defenderClan.name;
+    const stats = upsertMember(shot.clanId, clanName, shot.user);
+    stats.navalShotsUsed += 1;
+    if (shot.isHit) {
+      stats.navalHits += 1;
+    }
+    stats.navalPoints += shot.points;
+  }
+
+  const normalizeMember = (entry: typeof memberStats extends Map<string, infer T> ? T : never) => ({
+    user: entry.user,
+    clanId: entry.clanId,
+    clanName: entry.clanName,
+    attackCount: entry.attackCount,
+    attackPoints: entry.attackPoints,
+    staminaSpent: entry.staminaSpent,
+    fortificationsUsed: entry.fortificationsUsed,
+    fortificationLevelsAdded: entry.fortificationLevelsAdded,
+    fortificationDurabilityAdded: entry.fortificationDurabilityAdded,
+    memoryRuns: entry.memoryRuns,
+    bombRuns: entry.bombRuns,
+    bombPoints: entry.bombPoints,
+    navalShotsUsed: entry.navalShotsUsed,
+    navalHits: entry.navalHits,
+    navalPoints: entry.navalPoints,
+    totalCombatPoints: entry.attackPoints,
+    totalSupportActions: entry.fortificationsUsed,
+    hasCompletedCombat: entry.attackCount > 0 || entry.bombRuns > 0 || entry.navalShotsUsed > 0,
+    hasCompletedSupport: entry.memoryRuns > 0 || entry.fortificationsUsed > 0,
+  });
+
+  const members = [...memberStats.values()].map(normalizeMember);
+  const sortMembers = (items: typeof members) =>
+    [...items].sort((a, b) => {
+      if (b.totalCombatPoints !== a.totalCombatPoints) return b.totalCombatPoints - a.totalCombatPoints;
+      if (b.fortificationLevelsAdded !== a.fortificationLevelsAdded) return b.fortificationLevelsAdded - a.fortificationLevelsAdded;
+      if (b.navalHits !== a.navalHits) return b.navalHits - a.navalHits;
+      return a.user.username.localeCompare(b.user.username, 'fr');
+    });
+
+  return {
+    attacker: sortMembers(members.filter((entry) => entry.clanId === war.attackerClanId)),
+    defender: sortMembers(members.filter((entry) => entry.clanId === war.defenderClanId)),
+  };
+};
+
 const mapWar = async (
   war: ClanWarCurrentPayload | ClanWarHistoryPayload,
   viewerClanId: string | null,
@@ -405,6 +583,8 @@ const mapWar = async (
       .reduce((sum, entry) => sum + entry.staminaCost, 0);
     fortificationsUsed = war.fortifications.filter((entry) => entry.userId === viewerUserId).length;
   }
+
+  const participantStats = mapWarParticipantStats(war);
 
   return {
     id: war.id,
@@ -443,6 +623,7 @@ const mapWar = async (
       attacker: mapWarDefenseState(war, war.attackerClanId),
       defender: mapWarDefenseState(war, war.defenderClanId),
     },
+    participantStats,
     viewerActions: {
       staminaCap: CLAN_WAR_STAMINA_PER_24H,
       staminaUsed,
@@ -451,7 +632,7 @@ const mapWar = async (
       fortificationsUsed,
       fortificationsRemaining: Math.max(0, CLAN_WAR_FORTIFICATIONS_PER_MEMBER - fortificationsUsed),
     },
-    recentAttacks: war.attacks.map((attack) => ({
+    recentAttacks: war.attacks.slice(0, war.status === 'COMPLETED' ? 8 : 20).map((attack) => ({
       id: attack.id,
       attackType: attack.attackType,
       attackLabel: attackConfig[attack.attackType as AttackType]?.label ?? attack.attackType,
@@ -466,7 +647,7 @@ const mapWar = async (
       finalPoints: attack.finalPoints,
       createdAt: attack.createdAt,
     })),
-    recentFortifications: war.fortifications.map((entry) => ({
+    recentFortifications: war.fortifications.slice(0, war.status === 'COMPLETED' ? 12 : 30).map((entry) => ({
       id: entry.id,
       user: entry.user,
       clanId: entry.clanId,

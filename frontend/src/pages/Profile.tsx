@@ -47,6 +47,7 @@ const PROFILE_GAME_CATALOG = [
   { gameType: 'casino', label: 'Casino' },
   { gameType: 'solitaire', label: 'Solitaire' },
   { gameType: 'racer', label: 'Racer' },
+  { gameType: 'hexgl', label: 'HexGL' },
   { gameType: 'tetris', label: 'Tetris' },
   { gameType: 'knife_hit', label: 'Knife Hit' },
   { gameType: 'goyave_empire', label: 'Goyave Empire' },

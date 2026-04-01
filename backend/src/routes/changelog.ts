@@ -55,7 +55,7 @@ const SEED_ENTRIES = [
     id: CANONICAL_APRIL_FIRST_ENTRY_ID,
     date: '2026-04-01',
     title: 'Corrections UI & Notifications',
-    summary: "Toasts unifiés, badge changelog rouge, doublons de notifications corrigés, uploads d'images plus fiables, top bar persistante, page Pass refondue, Fruit Ninja rééquilibré, Snake ajouté au hub et inventaire trié comme la boutique.",
+    summary: "Toasts unifiés, badge changelog rouge, doublons de notifications corrigés, uploads d'images plus fiables, top bar persistante, page Pass refondue, Fruit Ninja rééquilibré, Snake ajouté au hub, inventaire trié comme la boutique et message de bienvenue envoyé à la première connexion.",
     items: [
       { category: 'BUG_FIX', text: '**Badge changelog** — La pastille de notifications non lues dans la sidebar passe au rouge, cohérent avec les autres badges.', order: 0 },
       { category: 'BUG_FIX', text: '**Toasts en double** — Les achats en boutique, claims de quêtes, ouverture du pass et investissements business ne déclenchaient plus deux toasts simultanément.', order: 1 },
@@ -66,6 +66,7 @@ const SEED_ENTRIES = [
       { category: 'BUG_FIX', text: "**Fruit Ninja reequilibre** — La difficulte monte moins brutalement: les fruits arrivent moins vite, les doubles vagues commencent plus tard et les triples vagues ne peuvent plus saturer l'ecran trop tot.", order: 6 },
       { category: 'BUG_FIX', text: "**Top bar persistante** — Le layout garde maintenant toujours la barre du haut visible pendant le scroll en contraignant correctement la zone de contenu et en maintenant le header au-dessus des pages.", order: 7 },
       { category: 'BUG_FIX', text: "**Inventaire trie comme la boutique** — La page inventaire reprend maintenant le meme ordre de types que la boutique et regroupe correctement les objets par categorie dans l'onglet `Tous`.", order: 8 },
+      { category: 'BUG_FIX', text: "**Inbox de bienvenue** — Un message de bienvenue est maintenant envoye automatiquement dans l'inbox lors de la premiere connexion reussie d'un compte, sans doublon aux connexions suivantes.", order: 9 },
       { category: 'SMALL_FEATURE', text: '**Fermer un toast** — Un bouton ✕ permet maintenant de fermer manuellement chaque toast.', order: 0 },
       { category: 'SMALL_FEATURE', text: '**Toasts unifiés** — Tous les toasts du site (y compris la page Admin) passent par le même système visuel.', order: 1 },
       { category: 'SMALL_FEATURE', text: "**Selection d'images plus claire** — Les zones d'upload affichent des formats explicitement supportes pour mieux guider les utilisateurs avant l'envoi.", order: 2 },

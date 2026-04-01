@@ -13,6 +13,8 @@ interface MaintenanceStatus {
   duelMatchmakingEnabled: boolean;
   defaultLandingPage: string;
   youLogoAdminOnly: boolean;
+  betaGameIds: string[];
+  newGameIds: string[];
 }
 
 const DEFAULT_STATUS: MaintenanceStatus = {
@@ -26,6 +28,8 @@ const DEFAULT_STATUS: MaintenanceStatus = {
   duelMatchmakingEnabled: true,
   defaultLandingPage: '/dashboard',
   youLogoAdminOnly: false,
+  betaGameIds: [],
+  newGameIds: [],
 };
 
 interface FeaturesContextValue {
@@ -58,6 +62,8 @@ export function FeaturesProvider({ children }: { children: React.ReactNode }) {
         duelMatchmakingEnabled: res.data.duelMatchmakingEnabled !== false,
         defaultLandingPage: normalizeDefaultLandingPage(res.data.defaultLandingPage),
         youLogoAdminOnly: res.data.youLogoAdminOnly === true,
+        betaGameIds: res.data.betaGameIds || [],
+        newGameIds: res.data.newGameIds || [],
       });
     } catch {
       setMaintenanceStatus(DEFAULT_STATUS);

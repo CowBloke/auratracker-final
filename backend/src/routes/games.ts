@@ -30,6 +30,7 @@ const GAME_CHAT_LABELS: Record<string, string> = {
   logic_lab: 'Sudoku',
   minesweeper: 'Minesweeper',
   fruit_ninja: 'Fruit Ninja',
+  hexgl: 'HexGL',
 };
 
 function getUtcDayStart(date = new Date()): Date {
@@ -174,6 +175,17 @@ const GAME_REWARDS = {
     ],
     dailyFirstRunReward: { money: 15, aura: 1 },
     dailyBestBonus: { money: 35, aura: 6 },
+  },
+  hexgl: {
+    minScoreForReward: 0,
+    scoreTiers: [
+      { maxTime: 75, moneyReward: 500, auraBonus: 50 },
+      { maxTime: 95, moneyReward: 220, auraBonus: 25 },
+      { maxTime: 120, moneyReward: 120, auraBonus: 12 },
+      { maxTime: 150, moneyReward: 70, auraBonus: 6 },
+      { maxTime: 210, moneyReward: 30, auraBonus: 3 },
+      { maxTime: Number.POSITIVE_INFINITY, moneyReward: 10, auraBonus: 1 },
+    ],
   },
   tetris: {
     minScoreForReward: 1000, // Minimum score to get rewards
@@ -539,6 +551,33 @@ function calculateRacerRewards(score: number, isNewHighScore: boolean, won: bool
     const timeBonus = Math.max(0, 60 - score); // Bonus decreases as time increases
     const highScoreBonus = Math.min(Math.floor(timeBonus / 5) * 5, 30);
     auraReward += highScoreBonus;
+  }
+
+  return { money: moneyReward, aura: auraReward };
+}
+
+function calculateHexGLRewards(score: number, isNewHighScore: boolean, won: boolean): { money: number; aura: number } {
+  if (!won) {
+    return { money: 0, aura: 0 };
+  }
+
+  const config = GAME_REWARDS.hexgl;
+
+  let selectedTier = config.scoreTiers[config.scoreTiers.length - 1];
+  for (let i = 0; i < config.scoreTiers.length; i++) {
+    if (score <= config.scoreTiers[i].maxTime) {
+      selectedTier = config.scoreTiers[i];
+      break;
+    }
+  }
+
+  let moneyReward = selectedTier.moneyReward;
+  let auraReward = selectedTier.auraBonus;
+
+  if (isNewHighScore) {
+    const timeBonus = Math.max(0, 140 - score);
+    moneyReward += Math.min(Math.floor(timeBonus / 10) * 8, 80);
+    auraReward += Math.min(Math.floor(timeBonus / 15), 10);
   }
 
   return { money: moneyReward, aura: auraReward };
@@ -990,17 +1029,18 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
     const previousGlobalBest = await prisma.gameStats.findFirst({
       where: {
         gameType,
-        ...(gameType === 'racer' ? { highScore: { gt: 0 } } : {}),
+        ...(gameType === 'racer' || gameType === 'hexgl' ? { highScore: { gt: 0 } } : {}),
       },
-      orderBy: { highScore: gameType === 'racer' ? 'asc' : 'desc' },
+      orderBy: { highScore: gameType === 'racer' || gameType === 'hexgl' ? 'asc' : 'desc' },
       select: {
         userId: true,
         highScore: true,
       },
     });
     
-    // For racer, lower score (time) is better, so check differently
-    const isNewHighScore = gameType === 'racer' 
+    const isTimedGame = gameType === 'racer' || gameType === 'hexgl';
+    // For timed games, lower score (time) is better.
+    const isNewHighScore = isTimedGame
       ? (!currentStats || score < currentStats.highScore || currentStats.highScore === 0)
       : (!currentStats || score > currentStats.highScore);
     // Calculate rewards
@@ -1046,6 +1086,10 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       auraReward = rewards.aura;
     } else if (gameType === 'racer') {
       const rewards = calculateRacerRewards(score, isNewHighScore, won || false);
+      moneyReward = rewards.money;
+      auraReward = rewards.aura;
+    } else if (gameType === 'hexgl') {
+      const rewards = calculateHexGLRewards(score, isNewHighScore, won || false);
       moneyReward = rewards.money;
       auraReward = rewards.aura;
     } else if (gameType === 'tetris') {
@@ -1196,7 +1240,7 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       badgeUpdateTasks.push(recheckBadgeForCondition(`GAME_HIGHSCORE_${gameType}`));
     }
 
-    const isNewGlobalRecord = gameType === 'racer'
+    const isNewGlobalRecord = isTimedGame
       ? !previousGlobalBest || previousGlobalBest.highScore === 0 || score < previousGlobalBest.highScore
       : !previousGlobalBest || score > previousGlobalBest.highScore;
 
@@ -1364,6 +1408,11 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
         await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
       }
     } else if (gameType === 'racer') {
+      await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
+      if (won) {
+        await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
+      }
+    } else if (gameType === 'hexgl') {
       await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
       if (won) {
         await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
@@ -1605,7 +1654,7 @@ router.get('/:gameType/leaderboard', authMiddleware, async (req: AuthRequest, re
 
     const rawRankings = await prisma.gameStats.findMany({
       where: { gameType, user: { isSuperAdmin: false } },
-      orderBy: { highScore: gameType === 'racer' ? 'asc' : 'desc' },
+      orderBy: { highScore: gameType === 'racer' || gameType === 'hexgl' ? 'asc' : 'desc' },
       take: parseInt(limit as string),
       include: {
         user: {

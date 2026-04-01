@@ -313,6 +313,7 @@ const GAME_TYPE_LABELS: Record<string, string> = {
   chrome_dino: 'Chrome Dino',
   snake: 'Snake',
   crossy_road: 'Crossy Road',
+  aura_coin: 'Aura Coin',
   stack_tower: 'Tour empilée',
   geometry_dash: 'Geometry Dash',
   qs_watermelon: 'QS Watermelon',
@@ -333,9 +334,17 @@ const GAME_TYPE_LABELS: Record<string, string> = {
   chess: 'Échecs',
   puissance_4: 'Puissance 4',
   ball_arena: 'Arène des balles',
+  ballarena: 'Arène des balles',
   uno: 'Uno',
   morpion: 'Morpion',
+  polytrack: 'PolyTrack',
+  eaglercraft: 'Eaglercraft',
+  subway_surfers: 'Subway Surfers Clone',
+  hexgl: 'HexGL',
+  opengd: 'OpenGD',
   russian_roulette: 'Roulette russe',
+  roulette: 'Roulette russe',
+  p4: 'Puissance 4',
   clash_village: 'Clash Village',
   nuit_blanche: 'Nuit Blanche',
 };
@@ -559,6 +568,7 @@ const GAME_TYPES = [
   { value: 'chrome_dino', label: 'Chrome Dino' },
   { value: 'snake', label: 'Snake' },
   { value: 'crossy_road', label: 'Crossy Road' },
+  { value: 'aura_coin', label: 'Aura Coin' },
   { value: 'stack_tower', label: 'Tour empilée' },
   { value: 'geometry_dash', label: 'Geometry Dash' },
   { value: 'qs_watermelon', label: 'QS Watermelon' },
@@ -579,9 +589,17 @@ const GAME_TYPES = [
   { value: 'chess', label: 'Échecs' },
   { value: 'puissance_4', label: 'Puissance 4' },
   { value: 'ball_arena', label: 'Arène des balles' },
+  { value: 'ballarena', label: 'Arène des balles (alias)' },
   { value: 'uno', label: 'Uno' },
   { value: 'morpion', label: 'Morpion' },
+  { value: 'polytrack', label: 'PolyTrack' },
+  { value: 'eaglercraft', label: 'Eaglercraft' },
+  { value: 'subway_surfers', label: 'Subway Surfers Clone' },
+  { value: 'hexgl', label: 'HexGL' },
+  { value: 'opengd', label: 'OpenGD' },
   { value: 'russian_roulette', label: 'Roulette russe' },
+  { value: 'roulette', label: 'Roulette russe (alias)' },
+  { value: 'p4', label: 'Puissance 4 (alias)' },
   { value: 'clash_village', label: 'Clash Village' },
   { value: 'nuit_blanche', label: 'Nuit Blanche' },
 ];
@@ -3033,6 +3051,11 @@ export default function Admin() {
     total: entry.total,
     ...entry.values,
   })) ?? [];
+  const platformTopGamesChartData = (platformStats?.topGames ?? []).map((entry) => ({
+    ...entry,
+    label: GAME_TYPE_LABELS[entry.gameType] ?? entry.gameType.replace(/_/g, ' '),
+  }));
+  const platformTopGamesChartHeight = Math.max(340, platformTopGamesChartData.length * 28);
 
 
   return (
@@ -6812,12 +6835,9 @@ export default function Admin() {
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
                 ) : platformStats && platformStats.topGames.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={340}>
+                  <ResponsiveContainer width="100%" height={platformTopGamesChartHeight}>
                     <BarChart
-                      data={platformStats.topGames.slice(0, 12).map((g) => ({
-                        ...g,
-                        label: GAME_TYPE_LABELS[g.gameType] ?? g.gameType.replace(/_/g, ' '),
-                      }))}
+                      data={platformTopGamesChartData}
                       layout="vertical"
                       margin={{ top: 4, right: 50, left: 0, bottom: 0 }}
                     >
@@ -6844,7 +6864,7 @@ export default function Admin() {
                         ]}
                       />
                       <Bar dataKey="totalPlayed" radius={[0, 3, 3, 0]} isAnimationActive={false}>
-                        {platformStats.topGames.slice(0, 12).map((_g, index) => (
+                        {platformTopGamesChartData.map((_g, index) => (
                           <Cell key={index} fill={ACTIVITY_BREAKDOWN_COLORS[index % ACTIVITY_BREAKDOWN_COLORS.length]} />
                         ))}
                       </Bar>

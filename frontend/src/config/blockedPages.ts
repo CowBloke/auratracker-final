@@ -15,6 +15,8 @@ export const BLOCKABLE_PAGES: BlockablePage[] = [
   { key: 'rules', path: '/rules', label: 'Règlement', category: 'Général', description: 'Règlement du site et conditions d\'utilisation.' },
   { key: 'inbox', path: '/inbox', label: 'Messagerie', category: 'Général', description: 'Centre de notifications et messages reçus.' },
   { key: 'support', path: '/support', label: 'Support', category: 'Général', description: 'Centre d\'aide — soumettez un ticket ou consultez vos échanges.' },
+  { key: 'changelog', path: '/changelog', label: 'Changelog', category: 'Général', description: 'Historique des nouveautés, annonces de version et mises à jour importantes.' },
+  { key: 'you', path: '/you', label: 'Moi', category: 'Général', description: 'Simulateur de vie AuraTracker avec travail, relations, argent et progression.' },
   { key: 'games-hub', path: '/games', label: 'Hub Jeux', category: 'Jeux', description: 'Hub centralisant l\'accès à tous les jeux disponibles.' },
   { key: 'game-2048', path: '/games/2048', label: '2048', category: 'Jeux', description: 'Jeu de puzzle — combinez des tuiles pour atteindre 2048.' },
   { key: 'game-doodle-jump', path: '/games/doodle-jump', label: 'Doodle Jump', category: 'Jeux', description: 'Jeu de plateforme — grimpez le plus haut possible.' },

@@ -111,7 +111,6 @@ const buildLogWhereClause = (query: Record<string, unknown>) => {
   return where;
 };
 
-const PAGE_BREAKDOWN_LIMIT = 6;
 const WEEKDAY_LABELS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
 
 const UPDATE_POPUP_TYPES = new Set(['UPDATE', 'CLAN_PROMPT']);
@@ -3119,7 +3118,6 @@ router.get('/activity-breakdown', authMiddleware, requireAdmin, async (req: Auth
 
     const topPages = Array.from(pageTotals.entries())
       .sort((a, b) => b[1] - a[1])
-      .slice(0, PAGE_BREAKDOWN_LIMIT)
       .map(([page, total]) => ({ page, total: roundToSingleDecimal(total) }));
     const topPageSet = new Set(topPages.map((entry) => entry.page));
 
@@ -4013,7 +4011,6 @@ router.get('/platform-stats', authMiddleware, requireAdmin, async (req: AuthRequ
         by: ['gameType'],
         _sum: { totalPlayed: true, wins: true },
         orderBy: { _sum: { totalPlayed: 'desc' } },
-        take: 15,
       }),
       prisma.bombPartyStats.aggregate({
         _sum: { totalPlayed: true, wins: true, wordsTyped: true },

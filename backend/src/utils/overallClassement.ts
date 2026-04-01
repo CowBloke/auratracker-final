@@ -195,7 +195,7 @@ export const recomputeOverallClassement = async (prisma: PrismaClient): Promise<
     }
 
     for (const [gameType, entries] of gameStatsByType.entries()) {
-      const ascending = gameType === 'racer';
+      const ascending = gameType === 'racer' || gameType === 'hexgl';
       addCategory(rankEntries(entries, ascending), entries.length);
     }
 

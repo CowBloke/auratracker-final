@@ -1,24 +1,43 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageShell } from '@/components/layout/page-shell';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveThemeImageUrl } from '@/lib/images';
 import { getGameImage } from '@/lib/game-images';
-import { gamesApi } from '@/services/api';
+import { adminApi, gamesApi } from '@/services/api';
+import { cn } from '@/lib/utils';
 
 type GamesTab = 'singleplayer' | 'multiplayer' | 'all';
 type MultiplayerTab = 'all' | 'duel' | 'party';
 type SortOption = 'default' | 'popular' | 'newest' | 'most-played';
-type Game = (typeof games)[number];
+type RewardFilter = 'all' | 'with-rewards' | 'without-rewards';
+type BetaFilter = 'all' | 'beta' | 'stable';
+type AdminCatalogSettingKey = 'games_beta_ids' | 'games_new_ids';
 
-const games = [
+type Game = {
+  id: string;
+  pageKey: string;
+  name: string;
+  description: string;
+  type: string;
+  requiresParty?: boolean;
+  emoji?: string;
+  image: string;
+  statsKeys: string[];
+  releaseRank: number;
+  hasRewards: boolean;
+};
+
+const games: Game[] = [
   {
     id: 'russian-roulette',
     pageKey: 'game-russian-roulette',
@@ -29,6 +48,7 @@ const games = [
     image: getGameImage('russian-roulette'),
     statsKeys: ['russian_roulette'],
     releaseRank: 3,
+    hasRewards: true,
   },
   {
     id: 'bomb-party',
@@ -40,6 +60,7 @@ const games = [
     image: getGameImage('bomb-party'),
     statsKeys: ['bombparty'],
     releaseRank: 12,
+    hasRewards: true,
   },
   {
     id: 'poker',
@@ -51,6 +72,7 @@ const games = [
     image: getGameImage('poker'),
     statsKeys: ['poker'],
     releaseRank: 11,
+    hasRewards: true,
   },
   {
     id: 'petit-bac',
@@ -62,6 +84,7 @@ const games = [
     image: getGameImage('petit-bac'),
     statsKeys: ['petit_bac'],
     releaseRank: 13,
+    hasRewards: true,
   },
   {
     id: 'uno',
@@ -74,6 +97,7 @@ const games = [
     image: getGameImage('uno'),
     statsKeys: ['uno'],
     releaseRank: 24,
+    hasRewards: true,
   },
   {
     id: 'bataille-navale',
@@ -85,6 +109,7 @@ const games = [
     image: getGameImage('bataille-navale'),
     statsKeys: ['battleship'],
     releaseRank: 8,
+    hasRewards: true,
   },
   {
     id: 'doodle-jump',
@@ -95,6 +120,7 @@ const games = [
     image: getGameImage('doodle-jump'),
     statsKeys: ['doodle_jump', 'doodle_jump_mort_subite'],
     releaseRank: 1,
+    hasRewards: true,
   },
   {
     id: 'logic-lab',
@@ -105,6 +131,7 @@ const games = [
     image: getGameImage('logic-lab'),
     statsKeys: ['logic_lab'],
     releaseRank: 25,
+    hasRewards: true,
   },
   {
     id: 'minesweeper',
@@ -116,6 +143,7 @@ const games = [
     image: getGameImage('minesweeper'),
     statsKeys: ['minesweeper'],
     releaseRank: 26,
+    hasRewards: true,
   },
   {
     id: 'game-2048',
@@ -126,6 +154,7 @@ const games = [
     image: getGameImage('game-2048'),
     statsKeys: ['game_2048'],
     releaseRank: 2,
+    hasRewards: true,
   },
   {
     id: 'flappy-bird',
@@ -136,6 +165,7 @@ const games = [
     image: getGameImage('flappy-bird'),
     statsKeys: ['flappy_bird'],
     releaseRank: 5,
+    hasRewards: true,
   },
   {
     id: 'chrome-dino',
@@ -147,6 +177,7 @@ const games = [
     image: getGameImage('chrome-dino'),
     statsKeys: ['chrome_dino'],
     releaseRank: 15,
+    hasRewards: true,
   },
   {
     id: 'snake',
@@ -158,6 +189,7 @@ const games = [
     image: getGameImage('snake'),
     statsKeys: ['snake'],
     releaseRank: 37,
+    hasRewards: true,
   },
   {
     id: 'stack-tower',
@@ -169,6 +201,7 @@ const games = [
     image: getGameImage('stack-tower'),
     statsKeys: ['stack_tower'],
     releaseRank: 16,
+    hasRewards: true,
   },
   {
     id: 'fruit-ninja',
@@ -180,6 +213,7 @@ const games = [
     image: getGameImage('fruit-ninja'),
     statsKeys: ['fruit_ninja'],
     releaseRank: 28,
+    hasRewards: true,
   },
   {
     id: 'qs-watermelon',
@@ -190,6 +224,7 @@ const games = [
     image: getGameImage('qs-watermelon'),
     statsKeys: ['qs_watermelon'],
     releaseRank: 17,
+    hasRewards: true,
   },
   {
     id: 'geometry-dash',
@@ -200,6 +235,7 @@ const games = [
     image: getGameImage('geometry-dash'),
     statsKeys: ['geometry_dash'],
     releaseRank: 18,
+    hasRewards: true,
   },
   {
     id: 'casino',
@@ -210,6 +246,7 @@ const games = [
     image: getGameImage('casino'),
     statsKeys: ['casino'],
     releaseRank: 6,
+    hasRewards: true,
   },
   {
     id: 'aura-coin',
@@ -220,6 +257,7 @@ const games = [
     image: getGameImage('aura-coin'),
     statsKeys: [],
     releaseRank: 7,
+    hasRewards: false,
   },
   {
     id: 'solitaire',
@@ -230,6 +268,7 @@ const games = [
     image: getGameImage('solitaire'),
     statsKeys: ['solitaire'],
     releaseRank: 9,
+    hasRewards: true,
   },
   {
     id: 'racer',
@@ -240,6 +279,7 @@ const games = [
     image: getGameImage('racer'),
     statsKeys: ['racer', 'racer_daily'],
     releaseRank: 21,
+    hasRewards: true,
   },
   {
     id: 'tetris',
@@ -250,6 +290,7 @@ const games = [
     image: getGameImage('tetris'),
     statsKeys: ['tetris'],
     releaseRank: 22,
+    hasRewards: true,
   },
   {
     id: 'knife-hit',
@@ -260,6 +301,7 @@ const games = [
     image: getGameImage('knife-hit'),
     statsKeys: ['knife_hit'],
     releaseRank: 23,
+    hasRewards: true,
   },
   {
     id: 'clash-village',
@@ -270,6 +312,7 @@ const games = [
     image: getGameImage('clash-village'),
     statsKeys: ['clash_village'],
     releaseRank: 29,
+    hasRewards: false,
   },
   {
     id: 'goyave-empire',
@@ -280,6 +323,7 @@ const games = [
     image: getGameImage('goyave-empire'),
     statsKeys: ['goyave_empire'],
     releaseRank: 30,
+    hasRewards: true,
   },
   {
     id: 'polytrack',
@@ -291,6 +335,7 @@ const games = [
     image: getGameImage('polytrack'),
     statsKeys: [],
     releaseRank: 31,
+    hasRewards: false,
   },
   {
     id: 'eaglercraft',
@@ -302,6 +347,7 @@ const games = [
     image: getGameImage('eaglercraft'),
     statsKeys: [],
     releaseRank: 32,
+    hasRewards: false,
   },
   {
     id: 'subway-surfers',
@@ -313,6 +359,7 @@ const games = [
     image: getGameImage('subway-surfers'),
     statsKeys: [],
     releaseRank: 33,
+    hasRewards: false,
   },
   {
     id: 'hexgl',
@@ -322,8 +369,9 @@ const games = [
     type: 'Arcade',
     emoji: '🚀',
     image: getGameImage('hexgl'),
-    statsKeys: [],
+    statsKeys: ['hexgl'],
     releaseRank: 34,
+    hasRewards: true,
   },
   {
     id: 'opengd',
@@ -335,6 +383,7 @@ const games = [
     image: getGameImage('opengd'),
     statsKeys: [],
     releaseRank: 35,
+    hasRewards: false,
   },
   {
     id: 'crossy-road',
@@ -346,6 +395,7 @@ const games = [
     image: getGameImage('crossy-road'),
     statsKeys: ['crossy_road'],
     releaseRank: 36,
+    hasRewards: false,
   },
   {
     id: 'puissance-quatre',
@@ -357,6 +407,7 @@ const games = [
     image: getGameImage('puissance-quatre'),
     statsKeys: ['puissance_4'],
     releaseRank: 19,
+    hasRewards: true,
   },
   {
     id: 'echecs',
@@ -368,6 +419,7 @@ const games = [
     image: getGameImage('echecs'),
     statsKeys: ['chess'],
     releaseRank: 20,
+    hasRewards: true,
   },
   {
     id: 'ball-arena',
@@ -380,6 +432,7 @@ const games = [
     image: getGameImage('ball-arena'),
     statsKeys: ['ball_arena'],
     releaseRank: 27,
+    hasRewards: true,
   },
   {
     id: 'morpion',
@@ -391,6 +444,7 @@ const games = [
     image: getGameImage('morpion'),
     statsKeys: ['morpion'],
     releaseRank: 14,
+    hasRewards: true,
   },
 ];
 
@@ -414,14 +468,25 @@ export default function Games() {
   const [activeMultiplayerTab, setActiveMultiplayerTab] = useState<MultiplayerTab>('all');
   const [sortBy, setSortBy] = useState<SortOption>('popular');
   const [searchQuery, setSearchQuery] = useState('');
+  const [rewardFilter, setRewardFilter] = useState<RewardFilter>('all');
+  const [betaFilter, setBetaFilter] = useState<BetaFilter>('all');
   const [catalogStats, setCatalogStats] = useState<{ global: Record<string, number>; personal: Record<string, number> }>({
     global: {},
     personal: {},
   });
-  const { maintenanceStatus } = useFeatures();
+  const [managedBetaGameIds, setManagedBetaGameIds] = useState<string[]>([]);
+  const [managedNewGameIds, setManagedNewGameIds] = useState<string[]>([]);
+  const [savingCatalogTag, setSavingCatalogTag] = useState<string | null>(null);
+  const { maintenanceStatus, refreshFeatures } = useFeatures();
   const { theme } = useTheme();
   const { user } = useAuth();
   const disabledPages = maintenanceStatus.disabledPages;
+  const isAdmin = Boolean(user?.isAdmin);
+
+  useEffect(() => {
+    setManagedBetaGameIds(maintenanceStatus.betaGameIds ?? []);
+    setManagedNewGameIds(maintenanceStatus.newGameIds ?? []);
+  }, [maintenanceStatus.betaGameIds, maintenanceStatus.newGameIds]);
 
   useEffect(() => {
     let cancelled = false;
@@ -447,8 +512,17 @@ export default function Games() {
   }, [user]);
 
   const visibleGames = useMemo(() => games.filter((game) => !disabledPages.includes(game.pageKey)), [disabledPages]);
+  const betaGameSet = useMemo(() => new Set(managedBetaGameIds), [managedBetaGameIds]);
+  const newGameSet = useMemo(() => new Set(managedNewGameIds), [managedNewGameIds]);
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const filterGames = (list: Game[]) => list.filter((game) => {
+    if (rewardFilter === 'with-rewards' && !game.hasRewards) return false;
+    if (rewardFilter === 'without-rewards' && game.hasRewards) return false;
+
+    const isBeta = betaGameSet.has(game.id);
+    if (betaFilter === 'beta' && !isBeta) return false;
+    if (betaFilter === 'stable' && isBeta) return false;
+
     if (!normalizedSearchQuery) return true;
 
     const searchableText = `${game.name} ${game.description} ${game.type}`.toLowerCase();
@@ -459,11 +533,14 @@ export default function Games() {
   const getPersonalPlayCount = (game: Game) =>
     game.statsKeys.reduce((total, key) => total + (catalogStats.personal[key] ?? 0), 0);
   const sortGames = (list: Game[]) => [...list].sort((a, b) => {
+    const aIsNew = newGameSet.has(a.id) ? 1 : 0;
+    const bIsNew = newGameSet.has(b.id) ? 1 : 0;
+
     if (sortBy === 'popular') {
       return getGlobalPlayCount(b) - getGlobalPlayCount(a) || b.releaseRank - a.releaseRank;
     }
     if (sortBy === 'newest') {
-      return b.releaseRank - a.releaseRank;
+      return bIsNew - aIsNew || b.releaseRank - a.releaseRank;
     }
     if (sortBy === 'most-played') {
       return getPersonalPlayCount(b) - getPersonalPlayCount(a) || getGlobalPlayCount(b) - getGlobalPlayCount(a);
@@ -471,10 +548,10 @@ export default function Games() {
     return games.findIndex((game) => game.id === a.id) - games.findIndex((game) => game.id === b.id);
   });
 
-  const multiplayerGames = useMemo(() => filterGames(sortGames(visibleGames.filter((game) => game.requiresParty))), [visibleGames, sortBy, catalogStats, normalizedSearchQuery]);
-  const soloGames = useMemo(() => filterGames(sortGames(visibleGames.filter((game) => !game.requiresParty))), [visibleGames, sortBy, catalogStats, normalizedSearchQuery]);
-  const duelGames = useMemo(() => filterGames(sortGames(visibleGames.filter((game) => game.requiresParty && game.type === 'Duel'))), [visibleGames, sortBy, catalogStats, normalizedSearchQuery]);
-  const partyGames = useMemo(() => filterGames(sortGames(visibleGames.filter((game) => game.requiresParty && game.type === 'Groupe'))), [visibleGames, sortBy, catalogStats, normalizedSearchQuery]);
+  const multiplayerGames = useMemo(() => filterGames(sortGames(visibleGames.filter((game) => game.requiresParty))), [visibleGames, sortBy, catalogStats, normalizedSearchQuery, rewardFilter, betaFilter, managedBetaGameIds, managedNewGameIds]);
+  const soloGames = useMemo(() => filterGames(sortGames(visibleGames.filter((game) => !game.requiresParty))), [visibleGames, sortBy, catalogStats, normalizedSearchQuery, rewardFilter, betaFilter, managedBetaGameIds, managedNewGameIds]);
+  const duelGames = useMemo(() => filterGames(sortGames(visibleGames.filter((game) => game.requiresParty && game.type === 'Duel'))), [visibleGames, sortBy, catalogStats, normalizedSearchQuery, rewardFilter, betaFilter, managedBetaGameIds, managedNewGameIds]);
+  const partyGames = useMemo(() => filterGames(sortGames(visibleGames.filter((game) => game.requiresParty && game.type === 'Groupe'))), [visibleGames, sortBy, catalogStats, normalizedSearchQuery, rewardFilter, betaFilter, managedBetaGameIds, managedNewGameIds]);
 
   const getGameLink = (gameId: string) => {
     if (gameId === 'russian-roulette') {
@@ -559,16 +636,118 @@ export default function Games() {
     </div>
   );
 
+  const toggleCatalogTag = async (
+    gameId: string,
+    settingKey: AdminCatalogSettingKey,
+    currentIds: string[],
+    setIds: (ids: string[]) => void,
+    label: 'bêta' | 'nouveau'
+  ) => {
+    const nextIds = currentIds.includes(gameId)
+      ? currentIds.filter((id) => id !== gameId)
+      : games.filter((game) => [...currentIds, gameId].includes(game.id)).map((game) => game.id);
+
+    try {
+      setSavingCatalogTag(`${settingKey}:${gameId}`);
+      setIds(nextIds);
+      await adminApi.updateSettings({
+        [settingKey]: JSON.stringify(nextIds),
+      });
+      await refreshFeatures();
+      toast.success(`Statut ${label} mis à jour.`);
+    } catch (error: any) {
+      setIds(currentIds);
+      toast.error(error?.response?.data?.error || `Impossible de mettre à jour le statut ${label}.`);
+    } finally {
+      setSavingCatalogTag(null);
+    }
+  };
+
+  const renderTopRightBadges = (game: Game) => {
+    const isBeta = betaGameSet.has(game.id);
+    const isNew = newGameSet.has(game.id);
+
+    if (!isBeta && !isNew) {
+      return null;
+    }
+
+    return (
+      <div className="absolute right-3 top-3 z-20 flex flex-col items-end gap-2">
+        {isNew && (
+          <span className="rounded-full border border-emerald-300/70 bg-emerald-500/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white shadow-sm">
+            Nouveau
+          </span>
+        )}
+        {isBeta && (
+          <span className="rounded-full border border-amber-200/80 bg-amber-400/95 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-950 shadow-sm">
+            Bêta
+          </span>
+        )}
+      </div>
+    );
+  };
+
+  const renderAdminControls = (game: Game) => {
+    if (!isAdmin) {
+      return renderTopRightBadges(game);
+    }
+
+    const isBeta = betaGameSet.has(game.id);
+    const isNew = newGameSet.has(game.id);
+
+    return (
+      <div className="absolute right-3 top-3 z-20 flex flex-col items-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={isNew ? 'default' : 'secondary'}
+            className={cn(
+              'h-7 rounded-full px-3 text-[10px] font-semibold uppercase tracking-[0.16em] shadow-sm',
+              isNew ? 'bg-emerald-500 text-white hover:bg-emerald-500/90' : 'bg-black/45 text-white hover:bg-black/60'
+            )}
+            disabled={savingCatalogTag === `games_new_ids:${game.id}`}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              void toggleCatalogTag(game.id, 'games_new_ids', managedNewGameIds, setManagedNewGameIds, 'nouveau');
+            }}
+          >
+            Nouveau
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={isBeta ? 'default' : 'secondary'}
+            className={cn(
+              'h-7 rounded-full px-3 text-[10px] font-semibold uppercase tracking-[0.16em] shadow-sm',
+              isBeta ? 'bg-amber-400 text-amber-950 hover:bg-amber-300' : 'bg-black/45 text-white hover:bg-black/60'
+            )}
+            disabled={savingCatalogTag === `games_beta_ids:${game.id}`}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              void toggleCatalogTag(game.id, 'games_beta_ids', managedBetaGameIds, setManagedBetaGameIds, 'bêta');
+            }}
+          >
+            Bêta
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   const renderGameCard = (game: Game) => (
-    <Link
+    <div
       key={game.id}
-      to={getGameLink(game.id)}
       className="group block"
     >
       <Card className="relative isolate aspect-square overflow-hidden transition hover:border-foreground/40 hover:shadow-md">
-        {'emoji' in game && (
+        <Link to={getGameLink(game.id)} className="absolute inset-0 z-10" aria-label={`Ouvrir ${game.name}`} />
+        {renderAdminControls(game)}
+        {game.emoji && (
           <div className="absolute inset-0 flex items-center justify-center bg-green-950/40 text-8xl">
-            {game.emoji as string}
+            {game.emoji}
           </div>
         )}
         {game.image && (
@@ -581,13 +760,16 @@ export default function Games() {
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-        <CardContent className="relative z-10 flex h-full flex-col justify-end p-5 text-white">
+        <CardContent className="relative z-[11] flex h-full flex-col justify-end p-5 text-white">
           <p className="text-xs font-medium   text-white/70">{game.type}</p>
           <h3 className={TYPOGRAPHY.H4}>{game.name}</h3>
           <p className="mt-1 text-xs text-white/85">{game.description}</p>
+          <p className="mt-3 text-[11px] font-medium text-white/70">
+            {game.hasRewards ? 'Avec récompenses' : 'Sans récompenses'}
+          </p>
         </CardContent>
       </Card>
-    </Link>
+    </div>
   );
 
   return (
@@ -620,6 +802,32 @@ export default function Games() {
                   <SelectItem value="popular">Populaire</SelectItem>
                   <SelectItem value="newest">Nouveaux</SelectItem>
                   <SelectItem value="most-played">Plus joués</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="sm:w-[220px]">
+              <Select value={rewardFilter} onValueChange={(value) => setRewardFilter(value as RewardFilter)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Récompenses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes les récompenses</SelectItem>
+                  <SelectItem value="with-rewards">Avec récompenses</SelectItem>
+                  <SelectItem value="without-rewards">Sans récompenses</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="sm:w-[180px]">
+              <Select value={betaFilter} onValueChange={(value) => setBetaFilter(value as BetaFilter)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Statut bêta" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les statuts</SelectItem>
+                  <SelectItem value="beta">Bêta</SelectItem>
+                  <SelectItem value="stable">Hors bêta</SelectItem>
                 </SelectContent>
               </Select>
             </div>
