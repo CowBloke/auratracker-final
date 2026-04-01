@@ -718,6 +718,18 @@ export default function Polymarket() {
               )}
             </TabsList>
             <div className="flex items-center gap-2">
+              {activeTab === 'events' && openEvents.length > 1 && (
+                <select
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)}
+                  className="h-11 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                >
+                  <option value="recent">Plus récents</option>
+                  <option value="ends_soon">Fin proche</option>
+                  <option value="popular">Plus populaires</option>
+                  <option value="best_odds">Meilleures cotes</option>
+                </select>
+              )}
               <Button className="h-11 px-5" onClick={() => setSuggestionDialogOpen(true)}>
                 <Plus className="h-5 w-5 mr-2" />
                 Suggérer
@@ -733,30 +745,6 @@ export default function Polymarket() {
 
           {/* ── Events tab ── */}
           <TabsContent value="events" className={SPACING.SECTION_SPACING}>
-            {openEvents.length > 1 && (
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {([
-                  { key: 'recent', label: 'Plus récents' },
-                  { key: 'ends_soon', label: 'Fin proche' },
-                  { key: 'popular', label: 'Plus populaires' },
-                  { key: 'best_odds', label: 'Meilleures cotes' },
-                ] as const).map((opt) => (
-                  <button
-                    key={opt.key}
-                    type="button"
-                    onClick={() => setSortOrder(opt.key)}
-                    className={cn(
-                      'px-3 py-1 rounded-full text-xs font-medium border transition-colors',
-                      sortOrder === opt.key
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-background text-muted-foreground border-border hover:bg-muted',
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            )}
             {openEvents.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center text-muted-foreground">
