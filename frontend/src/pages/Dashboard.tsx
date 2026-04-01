@@ -1332,6 +1332,7 @@ export default function Dashboard() {
                                   <XAxis dataKey="time" hide />
                                   <YAxis domain={['auto', 'auto']} hide />
                                   <ChartTooltip
+                                    cursor={{ stroke: 'var(--color-price)', strokeWidth: 1, strokeDasharray: '4 2' }}
                                     content={
                                       <ChartTooltipContent
                                         formatter={(v) => [`$${Number(v).toFixed(2)}`, 'Prix']}
@@ -1346,6 +1347,7 @@ export default function Dashboard() {
                                     fill="url(#acGrad)"
                                     strokeWidth={2}
                                     dot={false}
+                                    activeDot={{ r: 4, fill: 'var(--color-price)', strokeWidth: 0 }}
                                     isAnimationActive={false}
                                   />
                                 </AreaChart>

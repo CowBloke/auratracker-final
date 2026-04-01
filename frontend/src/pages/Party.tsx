@@ -631,6 +631,11 @@ export default function Party() {
                           <p className={TYPOGRAPHY.XS}>
                             {party.memberCount}/{party.maxSize} membres · {party.isPublic ? 'publique' : 'privée'}
                           </p>
+                          {party.members && party.members.length > 0 && (
+                            <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>
+                              {party.members.map((m) => m.username).join(', ')}
+                            </p>
+                          )}
                         </div>
                         {party.isPublic ? (
                           <Button

@@ -21,6 +21,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { resolveImageUrl } from '@/lib/images';
 import { PageShell } from '@/components/layout/page-shell';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 
 interface UserItem {
@@ -120,6 +121,7 @@ export default function Inventory() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<InventorySortMode>('recent');
   const [viewMode, setViewMode] = useState<InventoryViewMode>('list');
+  const [filterType, setFilterType] = useState<string>('ALL');
 
   useEffect(() => {
     if (user) {
@@ -388,9 +390,15 @@ export default function Inventory() {
     }
   };
 
+  const availableTypes = useMemo(() => {
+    const types = [...new Set(items.map((i) => i.item.type))];
+    return types.filter((t) => typeLabels[t]);
+  }, [items]);
+
   const displayedItems = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     const filtered = items.filter((userItem) => {
+      if (filterType !== 'ALL' && userItem.item.type !== filterType) return false;
       if (!query) return true;
       const searchable = [
         userItem.item.name,
@@ -417,7 +425,7 @@ export default function Inventory() {
     });
 
     return sorted;
-  }, [items, searchQuery, sortMode]);
+  }, [items, searchQuery, sortMode, filterType]);
 
   if (loading) {
     return (
@@ -433,6 +441,21 @@ export default function Inventory() {
     <PageShell>
       <div className={SPACING.PAGE_CONTENT}>
       <div className={SPACING.SECTION_SPACING}>
+
+        {availableTypes.length > 1 && (
+          <Tabs value={filterType} onValueChange={setFilterType}>
+            <TabsList className="h-auto flex-wrap border-border/60 bg-muted/20">
+              <TabsTrigger value="ALL" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
+                Tous
+              </TabsTrigger>
+              {availableTypes.map((t) => (
+                <TabsTrigger key={t} value={t} className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
+                  {typeLabels[t]}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        )}
 
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="w-full md:max-w-sm">

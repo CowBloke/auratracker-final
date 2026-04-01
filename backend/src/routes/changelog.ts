@@ -62,10 +62,6 @@ async function ensureSeeded() {
         date: entry.date,
         title: entry.title,
         summary: entry.summary,
-        items: {
-          deleteMany: {},
-          create: entry.items,
-        },
       },
     });
   }
