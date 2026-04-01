@@ -17,6 +17,8 @@
   // ── Constants ──
   const STORAGE_KEY = 'auratracker-crossy-road-best';
   const COIN_KEY = 'auratracker-crossy-road-coins';
+  const HOST_SOURCE = 'aura-crossy-road-host';
+  const GAME_SOURCE = 'aura-crossy-road';
   const TILE = 48;
   const COLS = 13;
   const HALF_COLS = Math.floor(COLS / 2);
@@ -87,6 +89,27 @@
   let swipeStart = null;
   let queuedMoves = [];
   let particles = [];
+  let hostPaused = false;
+
+  function getHostStatus() {
+    if (gameState === 'dead') return 'crashed';
+    if (gameState === 'playing') return hostPaused ? 'paused' : 'running';
+    return 'idle';
+  }
+
+  function postHostMessage(type) {
+    if (window.parent === window) return;
+    window.parent.postMessage(
+      {
+        source: GAME_SOURCE,
+        type,
+        status: getHostStatus(),
+        score,
+        highScore: bestScore,
+      },
+      window.location.origin
+    );
+  }
 
   // ── Utility ──
   function rand(a, b) { return Math.random() * (b - a) + a; }
@@ -320,6 +343,7 @@
 
   function tryMove(dir) {
     if (gameState !== 'playing') return;
+    if (hostPaused) return;
     if (queuedMoves.length >= 3) return;
     queuedMoves.push(dir);
   }
@@ -584,6 +608,8 @@
       bestScore = score;
       localStorage.setItem(STORAGE_KEY, String(bestScore));
     }
+
+    postHostMessage('game-over');
 
     // Delay showing game over
     setTimeout(() => {
@@ -1223,6 +1249,10 @@
   function update(dt) {
     elapsed += dt;
 
+    if (hostPaused) {
+      return;
+    }
+
     if (gameState === 'playing') {
       processMove();
       updatePlayer(dt);
@@ -1264,9 +1294,11 @@
 
   function startGame() {
     if (gameState === 'start') {
+      hostPaused = false;
       gameState = 'playing';
       startScreen.classList.add('hidden');
       hud.style.display = 'flex';
+      postHostMessage('state');
     }
   }
 
@@ -1282,6 +1314,7 @@
     deathAnim = null;
     queuedMoves = [];
     particles = [];
+    hostPaused = false;
 
     scoreDisplay.textContent = '0';
     coinDisplay.textContent = '0';
@@ -1290,7 +1323,39 @@
 
     ensureLanes(-6, 30);
     gameState = 'playing';
+    postHostMessage('state');
   }
+
+  window.addEventListener('message', (event) => {
+    if (event.origin !== window.location.origin) return;
+    const data = event.data;
+    if (!data || data.source !== HOST_SOURCE) return;
+
+    if (data.type === 'focus') {
+      window.focus();
+      return;
+    }
+
+    if (data.type === 'restart') {
+      restartGame();
+      return;
+    }
+
+    if (data.type === 'pause') {
+      if (gameState === 'playing') {
+        hostPaused = true;
+        postHostMessage('state');
+      }
+      return;
+    }
+
+    if (data.type === 'resume') {
+      if (gameState === 'playing') {
+        hostPaused = false;
+        postHostMessage('state');
+      }
+    }
+  });
 
   window.addEventListener('keydown', (e) => {
     const key = e.key.toLowerCase();
@@ -1374,6 +1439,7 @@
 
     hud.style.display = 'none';
     scoreDisplay.textContent = '0';
+    postHostMessage('ready');
 
     requestAnimationFrame((now) => {
       lastTime = now;

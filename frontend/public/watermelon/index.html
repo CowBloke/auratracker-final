@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="fr">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>QS Watermelon</title>
+		<link rel="stylesheet" href="./index.css" />
+	</head>
+	<body>
+		<div class="container">
+			<div class="item empty"></div>
+			<div class="item" id="game">
+				<canvas id="canvas" width="480" height="720"></canvas>
+				<div id="overlay" style="display: none">
+					<button id="playAgainButton" type="button" onclick="window.location.reload()">Rejouer</button>
+				</div>
+				<div id="floor"></div>
+			</div>
+			<div class="item empty"></div>
+			<div class="item empty"></div>
+			<div class="item">
+				<p>Clique ou touche l'ecran pour lacher un fruit.</p>
+			</div>
+		</div>
+
+		<script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
+		<script src="./index.js"></script>
+	</body>
+</html>

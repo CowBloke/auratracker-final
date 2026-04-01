@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { auraCoinApi, AuraCoinLeaderboardEntry, gamesApi, leaderboardsApi, clansApi, usersApi } from '../services/api';
-import { X, Zap, DollarSign, TrendingUp, Gem, ArrowUp, Skull, Layers, Wind, Diamond, Timer, LayoutGrid, Sparkles, TrendingDown, Flame, Gamepad2, Hash, Target, Bomb, BarChart2, Trophy, Info, ChevronDown } from 'lucide-react';
+import { X, Zap, DollarSign, TrendingUp, Gem, ArrowUp, Skull, Layers, Wind, Diamond, Timer, LayoutGrid, Sparkles, TrendingDown, Flame, Gamepad2, Hash, Target, Bomb, BarChart2, Trophy, Info, ChevronDown, Bird } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TYPOGRAPHY } from '@/lib/design-system';
@@ -30,7 +30,7 @@ interface Ranking {
 type StatItem = { label: string; value: string; hint?: string };
 type StatSection = { title: string; items: StatItem[] };
 
-type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'doodle_jump_mort_subite' | 'game_2048' | 'flappy_bird' | 'chrome_dino' | 'stack_tower' | 'geometry_dash' | 'qs_watermelon' | 'solitaire' | 'racer' | 'tetris' | 'knife_hit' | 'minesweeper' | 'fruit_ninja' | 'goyave_empire' | 'logic_lab' | 'casino' | 'casino_losses' | 'chess' | 'petit_bac' | 'puissance_4' | 'ball_arena' | 'poker' | 'battleship' | 'russian_roulette' | 'uno' | 'morpion' | 'polymarket_ratio' | 'games_played' | 'bombparty' | 'overall';
+type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'doodle_jump_mort_subite' | 'game_2048' | 'flappy_bird' | 'chrome_dino' | 'crossy_road' | 'stack_tower' | 'geometry_dash' | 'qs_watermelon' | 'solitaire' | 'racer' | 'tetris' | 'knife_hit' | 'minesweeper' | 'fruit_ninja' | 'goyave_empire' | 'logic_lab' | 'casino' | 'casino_losses' | 'chess' | 'petit_bac' | 'puissance_4' | 'ball_arena' | 'poker' | 'battleship' | 'russian_roulette' | 'uno' | 'morpion' | 'polymarket_ratio' | 'games_played' | 'bombparty' | 'overall';
 type View = Category | 'nombres';
 type Period = 'all' | 'monthly' | 'weekly' | 'daily';
 
@@ -57,6 +57,7 @@ const categories: { id: Category; name: string; valueLabel: string; icon: typeof
   { id: 'game_2048', name: '2048', valueLabel: 'score', icon: Layers },
   { id: 'flappy_bird', name: 'Flappy Bird', valueLabel: 'score', icon: Wind },
   { id: 'chrome_dino', name: 'Chrome Dino', valueLabel: 'score', icon: Gamepad2 },
+  { id: 'crossy_road', name: 'Crossy Road', valueLabel: 'score', icon: Bird },
   { id: 'stack_tower', name: 'Tour empilée', valueLabel: 'score', icon: Layers },
   { id: 'geometry_dash', name: 'Geometry Dash', valueLabel: 'score', icon: ArrowUp },
   { id: 'qs_watermelon', name: 'QS Watermelon', valueLabel: 'score', icon: Sparkles },
@@ -85,14 +86,15 @@ const categories: { id: Category; name: string; valueLabel: string; icon: typeof
 ];
 
 const economyCategories: Category[] = ['aura', 'money', 'total_money', 'auracoin'];
-const gameCategories: Category[] = ['doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird', 'chrome_dino', 'stack_tower', 'geometry_dash', 'qs_watermelon', 'solitaire', 'racer', 'tetris', 'knife_hit', 'minesweeper', 'fruit_ninja', 'goyave_empire', 'logic_lab', 'casino', 'casino_losses', 'chess', 'petit_bac', 'puissance_4', 'ball_arena', 'poker', 'battleship', 'russian_roulette', 'uno', 'morpion', 'polymarket_ratio', 'bombparty', 'games_played'];
-const genericGameCategories: Category[] = ['stack_tower', 'geometry_dash', 'qs_watermelon', 'fruit_ninja', 'goyave_empire', 'logic_lab'];
+const gameCategories: Category[] = ['doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird', 'chrome_dino', 'crossy_road', 'stack_tower', 'geometry_dash', 'qs_watermelon', 'solitaire', 'racer', 'tetris', 'knife_hit', 'minesweeper', 'fruit_ninja', 'goyave_empire', 'logic_lab', 'casino', 'casino_losses', 'chess', 'petit_bac', 'puissance_4', 'ball_arena', 'poker', 'battleship', 'russian_roulette', 'uno', 'morpion', 'polymarket_ratio', 'bombparty', 'games_played'];
+const genericGameCategories: Category[] = ['crossy_road', 'stack_tower', 'geometry_dash', 'qs_watermelon', 'fruit_ninja', 'goyave_empire', 'logic_lab'];
 const deletableGameCategories: Partial<Record<Category, string>> = {
   doodle_jump: 'doodle_jump',
   doodle_jump_mort_subite: 'doodle_jump_mort_subite',
   game_2048: 'game_2048',
   flappy_bird: 'flappy_bird',
   chrome_dino: 'chrome_dino',
+  crossy_road: 'crossy_road',
   stack_tower: 'stack_tower',
   geometry_dash: 'geometry_dash',
   qs_watermelon: 'qs_watermelon',
@@ -116,7 +118,7 @@ const deletableGameCategories: Partial<Record<Category, string>> = {
   morpion: 'morpion',
 };
 
-const gamesCatalog = ['Doodle Jump', 'Démineur', '2048', 'Flappy Bird', 'Chrome Dino', 'Tour empilée', 'Geometry Dash', 'Fruit Ninja', 'Goyave Empire', 'Sudoku', 'Casino', 'Bombe de mots', 'Poker', 'Petit Bac', 'Bataille navale', 'Solitaire', 'Racer', 'Tetris', 'Knife Hit', 'Polymarket', 'Échecs', 'Puissance 4', 'Arène des balles', 'Roulette russe', 'Uno', 'Morpion'];
+const gamesCatalog = ['Doodle Jump', 'Démineur', '2048', 'Flappy Bird', 'Chrome Dino', 'Crossy Road', 'Tour empilée', 'Geometry Dash', 'Fruit Ninja', 'Goyave Empire', 'Sudoku', 'Casino', 'Bombe de mots', 'Poker', 'Petit Bac', 'Bataille navale', 'Solitaire', 'Racer', 'Tetris', 'Knife Hit', 'Polymarket', 'Échecs', 'Puissance 4', 'Arène des balles', 'Roulette russe', 'Uno', 'Morpion'];
 
 const formatNumber = (value: number, digits = 0) =>
   value.toLocaleString('fr-FR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
@@ -455,8 +457,8 @@ export default function Leaderboards() {
                         <p className="text-foreground/70 font-medium mb-1.5">Jeux — score</p>
                         <ul className="space-y-0.5 text-muted-foreground/80">
                           <li>Doodle Jump, 2048, Flappy Bird</li>
-                          <li>Chrome Dino, Stack Tower, Geometry Dash</li>
-                          <li>QS Watermelon, Solitaire, Racer</li>
+                          <li>Chrome Dino, Crossy Road, Stack Tower</li>
+                          <li>Geometry Dash, QS Watermelon, Solitaire, Racer</li>
                           <li>Tetris, Knife Hit, Démineur</li>
                           <li>Fruit Ninja, Goyave Empire, Sudoku</li>
                           <li>Casino (gain max)</li>

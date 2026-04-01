@@ -49,6 +49,7 @@ const PROFILE_GAME_CATALOG = [
   { gameType: 'tetris', label: 'Tetris' },
   { gameType: 'knife_hit', label: 'Knife Hit' },
   { gameType: 'goyave_empire', label: 'Goyave Empire' },
+  { gameType: 'crossy_road', label: 'Crossy Road' },
   { gameType: 'puissance_4', label: 'Puissance 4' },
   { gameType: 'chess', label: 'Echecs' },
   { gameType: 'ballarena', label: 'Arène des balles' },

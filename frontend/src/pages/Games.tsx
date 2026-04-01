@@ -333,7 +333,7 @@ const games = [
     type: 'Arcade',
     emoji: '🐔',
     image: getGameImage('crossy-road'),
-    statsKeys: [],
+    statsKeys: ['crossy_road'],
     releaseRank: 36,
   },
   {

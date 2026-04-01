@@ -17,6 +17,7 @@ const GAME_CHAT_LABELS: Record<string, string> = {
   game_2048: '2048',
   flappy_bird: 'Flappy Bird',
   chrome_dino: 'Chrome Dino',
+  crossy_road: 'Crossy Road',
   stack_tower: 'Stack Tower',
   geometry_dash: 'Geometry Dash',
   qs_watermelon: 'QS Watermelon',
