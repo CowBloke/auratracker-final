@@ -56,6 +56,8 @@ const typeLabels: Record<string, string> = {
   UPGRADE: 'Amélioration',
 };
 
+const INVENTORY_TYPE_ORDER = ['COSMETIC', 'CONSUMABLE', 'UPGRADE'] as const;
+
 const PRESET_COLORS = [
   '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16',
   '#22c55e', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9',
@@ -377,19 +379,19 @@ export default function Inventory() {
       case 'BONUS_MONEY':
         return `+$${effect.value || '?'}`;
       default:
-        return humanizeUiLabel(effect.type);
+      return humanizeUiLabel(effect.type);
     }
   };
 
   const availableTypes = useMemo(() => {
-    const types = [...new Set(items.map((i) => i.item.type))];
-    return types.filter((t) => typeLabels[t]);
+    return INVENTORY_TYPE_ORDER.filter((type) =>
+      items.some((item) => item.item.type === type),
+    );
   }, [items]);
 
-  const displayedItems = useMemo(() => {
+  const filteredItems = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    const filtered = items.filter((userItem) => {
-      if (filterType !== 'ALL' && userItem.item.type !== filterType) return false;
+    return items.filter((userItem) => {
       if (!query) return true;
       const searchable = [
         userItem.item.name,
@@ -400,8 +402,10 @@ export default function Inventory() {
         .toLowerCase();
       return searchable.includes(query);
     });
+  }, [items, searchQuery]);
 
-    const sorted = [...filtered].sort((a, b) => {
+  const sortInventoryItems = (inventoryItems: UserItem[]) => {
+    return [...inventoryItems].sort((a, b) => {
       switch (sortMode) {
         case 'name':
           return a.item.name.localeCompare(b.item.name, 'fr', { sensitivity: 'base' });
@@ -414,9 +418,108 @@ export default function Inventory() {
           return new Date(b.acquiredAt).getTime() - new Date(a.acquiredAt).getTime();
       }
     });
+  };
 
-    return sorted;
-  }, [items, searchQuery, sortMode, filterType]);
+  const displayedItems = useMemo(() => {
+    const scopedItems = filterType === 'ALL'
+      ? filteredItems
+      : filteredItems.filter((userItem) => userItem.item.type === filterType);
+
+    return sortInventoryItems(scopedItems);
+  }, [filteredItems, filterType, sortMode]);
+
+  const groupedDisplayedItems = useMemo(() => {
+    if (filterType !== 'ALL') return [];
+
+    return availableTypes
+      .map((type) => ({
+        type,
+        label: typeLabels[type],
+        items: sortInventoryItems(
+          filteredItems.filter((userItem) => userItem.item.type === type),
+        ),
+      }))
+      .filter((section) => section.items.length > 0);
+  }, [availableTypes, filteredItems, filterType, sortMode]);
+
+  const renderInventoryItem = (userItem: UserItem) => {
+    const effect = parseEffect(userItem.item.effect);
+    const effectIcon = getEffectIcon(effect);
+    const effectLabel = getEffectLabel(effect);
+    const previewImageUrl = effect?.type === 'DOODLE_JUMP_SKIN' && effect.skinImageUrl
+      ? effect.skinImageUrl
+      : userItem.item.imageUrl;
+    const isDoodleJumpSkin = effect?.type === 'DOODLE_JUMP_SKIN';
+
+    return (
+      <div
+        key={userItem.id}
+        className={cn(
+          viewMode === 'list'
+            ? 'flex items-center justify-between py-6 px-6'
+            : 'flex h-full flex-col justify-between gap-3 rounded-lg border border-border/40 p-4'
+        )}
+      >
+        <div className={cn('flex gap-4 flex-1', viewMode === 'list' ? 'items-center' : 'items-start')}>
+          {previewImageUrl ? (
+            <img
+              src={resolveImageUrl(previewImageUrl)}
+              alt={userItem.item.name}
+              className={cn('object-cover rounded shrink-0', viewMode === 'list' ? 'w-14 h-14' : 'w-16 h-16')}
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          ) : (
+            <div className={cn('bg-muted/30 flex items-center justify-center rounded shrink-0', viewMode === 'list' ? 'w-14 h-14' : 'w-16 h-16')}>
+              <Package className="w-6 h-6 text-muted-foreground" />
+            </div>
+          )}
+
+          <div className="space-y-1 flex-1 min-w-0">
+            <div className={cn('flex items-center gap-4', viewMode === 'grid' && 'flex-wrap gap-2')}>
+              <h2 className={cn(TYPOGRAPHY.H5, "truncate")}>{userItem.item.name}</h2>
+              <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground   shrink-0")}>
+                {typeLabels[userItem.item.type]}
+              </span>
+              <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground shrink-0")}>
+                ×{userItem.quantity}
+              </span>
+            </div>
+            <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground", viewMode === 'list' ? 'max-w-md truncate' : 'line-clamp-3')}>
+              {userItem.item.description}
+            </p>
+            {effectLabel && (
+              <div className={cn("flex items-center gap-2", TYPOGRAPHY.XS, "text-muted-foreground/80")}>
+                {effectIcon}
+                <span>{effectLabel}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {(userItem.item.type === 'CONSUMABLE' || (userItem.item.type === 'COSMETIC' && !isDoodleJumpSkin) || userItem.item.type === 'UPGRADE' || effect?.type === 'CLAN_TAG_UNLOCK') ? (
+          <Button
+            onClick={() => handleUseItem(userItem)}
+            disabled={using === userItem.id}
+            variant="outline"
+            size="sm"
+            className={cn('shrink-0', viewMode === 'list' ? 'ml-4' : 'w-full')}
+          >
+            {using === userItem.id ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              'Utiliser'
+            )}
+          </Button>
+        ) : isDoodleJumpSkin ? (
+          <span className={cn(TYPOGRAPHY.XS, "shrink-0 text-muted-foreground", viewMode === 'list' ? 'ml-4' : '')}>
+            Sélectionnable dans Doodle Jump
+          </span>
+        ) : null}
+      </div>
+    );
+  };
 
   if (loading) {
     return (
@@ -507,93 +610,43 @@ export default function Inventory() {
             Aucun objet ne correspond à votre recherche
           </p>
         ) : (
-          <Card>
-            <CardContent className="p-0">
-              <div className={viewMode === 'list' ? 'divide-y divide-border/30' : 'p-4'}>
-                <div className={viewMode === 'grid' ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : ''}>
-                {displayedItems.map((userItem) => {
-                  const effect = parseEffect(userItem.item.effect);
-                  const effectIcon = getEffectIcon(effect);
-                  const effectLabel = getEffectLabel(effect);
-                  const previewImageUrl = effect?.type === 'DOODLE_JUMP_SKIN' && effect.skinImageUrl
-                    ? effect.skinImageUrl
-                    : userItem.item.imageUrl;
-                  const isDoodleJumpSkin = effect?.type === 'DOODLE_JUMP_SKIN';
-                  
-                  return (
-                    <div
-                      key={userItem.id}
-                      className={cn(
-                        viewMode === 'list'
-                          ? 'flex items-center justify-between py-6 px-6'
-                          : 'flex h-full flex-col justify-between gap-3 rounded-lg border border-border/40 p-4'
-                      )}
-                    >
-                      <div className={cn('flex gap-4 flex-1', viewMode === 'list' ? 'items-center' : 'items-start')}>
-                        {/* Item Image */}
-                        {previewImageUrl ? (
-                          <img 
-                            src={resolveImageUrl(previewImageUrl)} 
-                            alt={userItem.item.name}
-                            className={cn('object-cover rounded shrink-0', viewMode === 'list' ? 'w-14 h-14' : 'w-16 h-16')}
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = 'none';
-                            }}
-                          />
-                        ) : (
-                          <div className={cn('bg-muted/30 flex items-center justify-center rounded shrink-0', viewMode === 'list' ? 'w-14 h-14' : 'w-16 h-16')}>
-                            <Package className="w-6 h-6 text-muted-foreground" />
-                          </div>
-                        )}
-                        
-                        <div className="space-y-1 flex-1 min-w-0">
-                          <div className={cn('flex items-center gap-4', viewMode === 'grid' && 'flex-wrap gap-2')}>
-                            <h2 className={cn(TYPOGRAPHY.H5, "truncate")}>{userItem.item.name}</h2>
-                            <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground   shrink-0")}>
-                              {typeLabels[userItem.item.type]}
-                            </span>
-                            <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground shrink-0")}>
-                              ×{userItem.quantity}
-                            </span>
-                          </div>
-                          <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground", viewMode === 'list' ? 'max-w-md truncate' : 'line-clamp-3')}>
-                            {userItem.item.description}
-                          </p>
-                          {effectLabel && (
-                            <div className={cn("flex items-center gap-2", TYPOGRAPHY.XS, "text-muted-foreground/80")}>
-                              {effectIcon}
-                              <span>{effectLabel}</span>
-                            </div>
-                          )}
+          filterType === 'ALL' ? (
+            <div className="space-y-8">
+              {groupedDisplayedItems.map((section) => (
+                <div key={section.type} className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/90">
+                      {section.label}
+                    </h2>
+                    <div className="h-px flex-1 bg-border/70" />
+                    <span className="text-xs text-muted-foreground">
+                      {section.items.length}
+                    </span>
+                  </div>
+
+                  <Card>
+                    <CardContent className="p-0">
+                      <div className={viewMode === 'list' ? 'divide-y divide-border/30' : 'p-4'}>
+                        <div className={viewMode === 'grid' ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : ''}>
+                          {section.items.map(renderInventoryItem)}
                         </div>
                       </div>
-                      
-                      {(userItem.item.type === 'CONSUMABLE' || (userItem.item.type === 'COSMETIC' && !isDoodleJumpSkin) || userItem.item.type === 'UPGRADE' || effect?.type === 'CLAN_TAG_UNLOCK') ? (
-                        <Button
-                          onClick={() => handleUseItem(userItem)}
-                          disabled={using === userItem.id}
-                          variant="outline"
-                          size="sm"
-                          className={cn('shrink-0', viewMode === 'list' ? 'ml-4' : 'w-full')}
-                        >
-                          {using === userItem.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            'Utiliser'
-                          )}
-                        </Button>
-                      ) : isDoodleJumpSkin ? (
-                        <span className={cn(TYPOGRAPHY.XS, "shrink-0 text-muted-foreground", viewMode === 'list' ? 'ml-4' : '')}>
-                          Sélectionnable dans Doodle Jump
-                        </span>
-                      ) : null}
-                    </div>
-                  );
-                })}
+                    </CardContent>
+                  </Card>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="p-0">
+                <div className={viewMode === 'list' ? 'divide-y divide-border/30' : 'p-4'}>
+                  <div className={viewMode === 'grid' ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : ''}>
+                    {displayedItems.map(renderInventoryItem)}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )
         )}
       </div>
 

@@ -149,6 +149,17 @@ const games = [
     releaseRank: 15,
   },
   {
+    id: 'snake',
+    pageKey: 'game-snake',
+    name: 'Snake',
+    description: 'Snake modernise: combos, acceleration progressive et grille native integree a l interface Aura.',
+    type: 'Arcade',
+    emoji: '🐍',
+    image: getGameImage('snake'),
+    statsKeys: ['snake'],
+    releaseRank: 37,
+  },
+  {
     id: 'stack-tower',
     pageKey: 'game-stack-tower',
     name: 'Tour empilée',

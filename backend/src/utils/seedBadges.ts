@@ -53,6 +53,7 @@ const GAME_GRAD: Record<string, { from: string; to: string }> = {
   doodle_jump_mort_subite:  { from: '#7f1d1d', to: '#ef4444' },
   flappy_bird:              { from: '#92400e', to: '#f59e0b' },
   game_2048:                { from: '#1e3a5f', to: '#3b82f6' },
+  snake:                    { from: '#14532d', to: '#4ade80' },
   geometry_dash:            { from: '#4c1d95', to: '#8b5cf6' },
   solitaire:                { from: '#1e1b4b', to: '#6366f1' },
   racer:                    { from: '#7f1d1d', to: '#f97316' },
@@ -70,6 +71,7 @@ const GAME_ICON: Record<string, string> = {
   doodle_jump_mort_subite: '💀',
   flappy_bird:             '🐦',
   game_2048:               '🔢',
+  snake:                   '🐍',
   geometry_dash:           '📐',
   solitaire:               '🃏',
   racer:                   '🏎️',
@@ -87,6 +89,7 @@ const GAME_LABEL: Record<string, string> = {
   doodle_jump_mort_subite: 'Doodle Jump Mort Subite',
   flappy_bird:             'Flappy Bird',
   game_2048:               '2048',
+  snake:                   'Snake',
   geometry_dash:           'Geometry Dash',
   solitaire:               'Solitaire',
   racer:                   'Racer',
@@ -197,7 +200,7 @@ const MONEY_BADGES: BadgeDef[] = [
 
 const GAME_CONDITION_KEYS = [
   'doodle_jump', 'doodle_jump_mort_subite',
-  'flappy_bird', 'game_2048', 'geometry_dash',
+  'flappy_bird', 'game_2048', 'snake', 'geometry_dash',
   'solitaire', 'racer',
   'tetris', 'knife_hit', 'goyave_empire',
   'logic_lab', 'minesweeper', 'casino',

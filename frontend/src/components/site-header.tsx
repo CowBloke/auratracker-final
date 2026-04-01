@@ -362,8 +362,8 @@ export function SiteHeader() {
     return (
       <header
         className={cn(
-          'sticky top-0 z-10 flex h-14 items-center border-b px-3 sm:px-6 transition-all duration-300',
-          scrolled ? 'border-border/20 bg-background' : 'border-border/40 bg-background'
+          'sticky top-0 z-50 shrink-0 flex h-14 items-center border-b px-3 sm:px-6 transition-all duration-300',
+          scrolled ? 'border-border/20 bg-background shadow-sm' : 'border-border/40 bg-background'
         )}
       >
         <div className="flex w-full min-w-0 items-center gap-3">
@@ -378,9 +378,9 @@ export function SiteHeader() {
 
   return (
     <header className={cn(
-      "sticky top-0 z-10 flex h-14 items-center justify-between border-b px-3 sm:px-6 transition-all duration-300",
+      "sticky top-0 z-50 shrink-0 flex h-14 items-center justify-between border-b px-3 sm:px-6 transition-all duration-300",
       scrolled
-        ? "border-border/20 bg-background"
+        ? "border-border/20 bg-background shadow-sm"
         : "border-border/40 bg-background"
     )}>
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">

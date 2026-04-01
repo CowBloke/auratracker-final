@@ -42,6 +42,7 @@ const pageMatchers: Array<{ test: (path: string) => boolean; label: string; icon
   { test: (path) => path.startsWith('/games/2048'), label: '2048', icon: Gamepad2 },
   { test: (path) => path.startsWith('/games/flappy-bird'), label: 'Flappy Bird', icon: Gamepad2 },
   { test: (path) => path.startsWith('/games/chrome-dino'), label: 'Chrome Dino', icon: Gamepad2 },
+  { test: (path) => path.startsWith('/games/snake'), label: 'Snake', icon: Gamepad2 },
   { test: (path) => path.startsWith('/games/solitaire'), label: 'Solitaire', icon: Gamepad2 },
   { test: (path) => path.startsWith('/games/racer'), label: 'Racer', icon: Gamepad2 },
   { test: (path) => path.startsWith('/games/tetris'), label: 'Tetris', icon: Gamepad2 },

@@ -22,6 +22,7 @@ export const BLOCKABLE_PAGES: BlockablePage[] = [
   { key: 'game-minesweeper', path: '/games/minesweeper', label: 'Démineur', category: 'Jeux', description: 'Jeu du Démineur classique.' },
   { key: 'game-flappy-bird', path: '/games/flappy-bird', label: 'Flappy Bird', category: 'Jeux', description: 'Traversez les tuyaux sans toucher les obstacles.' },
   { key: 'game-chrome-dino', path: '/games/chrome-dino', label: 'Chrome Dino', category: 'Jeux', description: 'Le dino de Chrome — évitez les cactus le plus longtemps possible.' },
+  { key: 'game-snake', path: '/games/snake', label: 'Snake', category: 'Jeux', description: 'Snake arcade natif — mangez, allongez-vous et tenez le plus longtemps possible.' },
   { key: 'game-stack-tower', path: '/games/stack-tower', label: 'Tour empilée', category: 'Jeux', description: 'Empilez les blocs pour construire la tour la plus haute.' },
   { key: 'game-geometry-dash', path: '/games/geometry-dash', label: 'Geometry Dash', category: 'Jeux', description: 'Jeu de rythme — sautez au bon moment pour éviter les obstacles.' },
   { key: 'game-qs-watermelon', path: '/games/qs-watermelon', label: 'QS Watermelon', category: 'Jeux', description: 'Fusionnez des fruits pour créer une pastèque.' },

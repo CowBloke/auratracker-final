@@ -1,0 +1,31 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect x="64" y="64" width="384" height="384" rx="72" fill="#0A1D12" fill-opacity="0.92"/>
+  <path d="M136 232C136 188.922 170.922 154 214 154H292C335.078 154 370 188.922 370 232C370 275.078 335.078 310 292 310H218C193.699 310 174 329.699 174 354C174 378.301 193.699 398 218 398H324" stroke="url(#snake)" stroke-width="52" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="340" cy="398" r="38" fill="url(#head)"/>
+  <circle cx="328" cy="388" r="7" fill="#0D1117"/>
+  <circle cx="352" cy="388" r="7" fill="#0D1117"/>
+  <path d="M356 406C350 416 340 420 330 420" stroke="#14532D" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="146" cy="362" r="42" fill="url(#apple)"/>
+  <path d="M150 314C157.5 295 177.5 286.5 193 290" stroke="#86EFAC" stroke-width="10" stroke-linecap="round"/>
+  <path d="M135 326C144 315 155 309 166 308" stroke="#14532D" stroke-width="10" stroke-linecap="round"/>
+  <defs>
+    <linearGradient id="bg" x1="56" y1="40" x2="452" y2="468" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F3D21"/>
+      <stop offset="1" stop-color="#04110A"/>
+    </linearGradient>
+    <linearGradient id="snake" x1="136" y1="154" x2="360" y2="394" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D9F99D"/>
+      <stop offset="0.55" stop-color="#4ADE80"/>
+      <stop offset="1" stop-color="#22C55E"/>
+    </linearGradient>
+    <linearGradient id="head" x1="304" y1="360" x2="374" y2="434" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F0FDF4"/>
+      <stop offset="1" stop-color="#4ADE80"/>
+    </linearGradient>
+    <linearGradient id="apple" x1="112" y1="328" x2="184" y2="396" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FB7185"/>
+      <stop offset="1" stop-color="#FB923C"/>
+    </linearGradient>
+  </defs>
+</svg>

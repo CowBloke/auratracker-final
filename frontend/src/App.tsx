@@ -51,6 +51,7 @@ import Morpion from './pages/Morpion';
 import ChromeDino from './pages/ChromeDino';
 import FruitNinja from './pages/FruitNinja';
 import StackTower from './pages/StackTower';
+import Snake from './pages/Snake';
 import Support from './pages/Support';
 import Changelog from './pages/Changelog';
 import QSWatermelon from './pages/QSWatermelon';
@@ -186,6 +187,7 @@ function App() {
         <Route path="games/2048" element={<Game2048 />} />
         <Route path="games/flappy-bird" element={<FlappyBird />} />
         <Route path="games/chrome-dino" element={<ChromeDino />} />
+        <Route path="games/snake" element={<Snake />} />
         <Route path="games/fruit-ninja" element={<FruitNinja />} />
         <Route path="games/qs-watermelon" element={<QSWatermelon />} />
         <Route path="games/stack-tower" element={<StackTower />} />

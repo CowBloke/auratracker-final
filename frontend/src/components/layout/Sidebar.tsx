@@ -95,6 +95,7 @@ const gameItems = [
   { to: '/games/2048', label: '2048', image: getGameImage('game-2048') },
   { to: '/games/flappy-bird', label: 'Flappy Bird', image: getGameImage('flappy-bird') },
   { to: '/games/chrome-dino', label: 'Chrome Dino', image: getGameImage('chrome-dino') },
+  { to: '/games/snake', label: 'Snake', image: getGameImage('snake') },
   { to: '/games/fruit-ninja', label: 'Fruit Ninja', image: getGameImage('fruit-ninja') },
   { to: '/games/qs-watermelon', label: 'QS Watermelon', image: getGameImage('qs-watermelon') },
   { to: '/games/stack-tower', label: 'Tour empilée', image: getGameImage('stack-tower') },

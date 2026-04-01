@@ -30,7 +30,7 @@ interface Ranking {
 type StatItem = { label: string; value: string; hint?: string };
 type StatSection = { title: string; items: StatItem[] };
 
-type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'doodle_jump_mort_subite' | 'game_2048' | 'flappy_bird' | 'chrome_dino' | 'crossy_road' | 'stack_tower' | 'geometry_dash' | 'qs_watermelon' | 'solitaire' | 'racer' | 'tetris' | 'knife_hit' | 'minesweeper' | 'fruit_ninja' | 'goyave_empire' | 'logic_lab' | 'casino' | 'casino_losses' | 'chess' | 'petit_bac' | 'puissance_4' | 'ball_arena' | 'poker' | 'battleship' | 'russian_roulette' | 'uno' | 'morpion' | 'polymarket_ratio' | 'games_played' | 'bombparty' | 'overall';
+type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'doodle_jump_mort_subite' | 'game_2048' | 'flappy_bird' | 'chrome_dino' | 'snake' | 'crossy_road' | 'stack_tower' | 'geometry_dash' | 'qs_watermelon' | 'solitaire' | 'racer' | 'tetris' | 'knife_hit' | 'minesweeper' | 'fruit_ninja' | 'goyave_empire' | 'logic_lab' | 'casino' | 'casino_losses' | 'chess' | 'petit_bac' | 'puissance_4' | 'ball_arena' | 'poker' | 'battleship' | 'russian_roulette' | 'uno' | 'morpion' | 'polymarket_ratio' | 'games_played' | 'bombparty' | 'overall';
 type View = Category | 'nombres';
 type Period = 'all' | 'monthly' | 'weekly' | 'daily';
 
@@ -57,6 +57,7 @@ const categories: { id: Category; name: string; valueLabel: string; icon: typeof
   { id: 'game_2048', name: '2048', valueLabel: 'score', icon: Layers },
   { id: 'flappy_bird', name: 'Flappy Bird', valueLabel: 'score', icon: Wind },
   { id: 'chrome_dino', name: 'Chrome Dino', valueLabel: 'score', icon: Gamepad2 },
+  { id: 'snake', name: 'Snake', valueLabel: 'score', icon: Gamepad2 },
   { id: 'crossy_road', name: 'Crossy Road', valueLabel: 'score', icon: Bird },
   { id: 'stack_tower', name: 'Tour empilée', valueLabel: 'score', icon: Layers },
   { id: 'geometry_dash', name: 'Geometry Dash', valueLabel: 'score', icon: ArrowUp },
@@ -86,14 +87,15 @@ const categories: { id: Category; name: string; valueLabel: string; icon: typeof
 ];
 
 const economyCategories: Category[] = ['aura', 'money', 'total_money', 'auracoin'];
-const gameCategories: Category[] = ['doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird', 'chrome_dino', 'crossy_road', 'stack_tower', 'geometry_dash', 'qs_watermelon', 'solitaire', 'racer', 'tetris', 'knife_hit', 'minesweeper', 'fruit_ninja', 'goyave_empire', 'logic_lab', 'casino', 'casino_losses', 'chess', 'petit_bac', 'puissance_4', 'ball_arena', 'poker', 'battleship', 'russian_roulette', 'uno', 'morpion', 'polymarket_ratio', 'bombparty', 'games_played'];
-const genericGameCategories: Category[] = ['crossy_road', 'stack_tower', 'geometry_dash', 'qs_watermelon', 'fruit_ninja', 'goyave_empire', 'logic_lab'];
+const gameCategories: Category[] = ['doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird', 'chrome_dino', 'snake', 'crossy_road', 'stack_tower', 'geometry_dash', 'qs_watermelon', 'solitaire', 'racer', 'tetris', 'knife_hit', 'minesweeper', 'fruit_ninja', 'goyave_empire', 'logic_lab', 'casino', 'casino_losses', 'chess', 'petit_bac', 'puissance_4', 'ball_arena', 'poker', 'battleship', 'russian_roulette', 'uno', 'morpion', 'polymarket_ratio', 'bombparty', 'games_played'];
+const genericGameCategories: Category[] = ['snake', 'crossy_road', 'stack_tower', 'geometry_dash', 'qs_watermelon', 'fruit_ninja', 'goyave_empire', 'logic_lab'];
 const deletableGameCategories: Partial<Record<Category, string>> = {
   doodle_jump: 'doodle_jump',
   doodle_jump_mort_subite: 'doodle_jump_mort_subite',
   game_2048: 'game_2048',
   flappy_bird: 'flappy_bird',
   chrome_dino: 'chrome_dino',
+  snake: 'snake',
   crossy_road: 'crossy_road',
   stack_tower: 'stack_tower',
   geometry_dash: 'geometry_dash',

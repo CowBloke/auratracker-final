@@ -39,6 +39,7 @@ const PROFILE_GAME_CATALOG = [
   { gameType: 'game_2048', label: '2048' },
   { gameType: 'flappy_bird', label: 'Flappy Bird' },
   { gameType: 'chrome_dino', label: 'Chrome Dino' },
+  { gameType: 'snake', label: 'Snake' },
   { gameType: 'stack_tower', label: 'Tour empilée' },
   { gameType: 'fruit_ninja', label: 'Fruit Ninja' },
   { gameType: 'qs_watermelon', label: 'QS Watermelon' },

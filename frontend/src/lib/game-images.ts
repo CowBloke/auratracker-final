@@ -28,6 +28,7 @@ const GAME_IMAGE_BY_ID: Record<string, string> = {
   racer: '/images/games/racer.png',
   'russian-roulette': '/images/games/roulette.png',
   'qs-watermelon': '/images/games/watermelon.png',
+  snake: '/images/games/snake.svg',
   solitaire: '/images/games/solitaire.png',
   'stack-tower': '/images/games/stack.png',
   'subway-surfers': '/images/games/subwaysurfer.png',

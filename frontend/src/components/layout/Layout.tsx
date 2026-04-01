@@ -59,7 +59,7 @@ export default function Layout() {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const mainRef = useRef<HTMLElement>(null);
+  const mainRef = useRef<HTMLDivElement>(null);
   const keyboardShortcuts = useKeyboardShortcuts();
 
   useEffect(() => {
@@ -133,7 +133,7 @@ export default function Layout() {
 
   return (
     <ChatSidebarProvider>
-      <div className="min-h-screen bg-background flex w-full overflow-x-hidden">
+      <div className="flex h-svh w-full overflow-hidden bg-background">
         <SidebarProvider
           defaultOpen={false}
           className="!w-auto flex-1"
@@ -145,14 +145,14 @@ export default function Layout() {
           }
         >
           <AppSidebar variant="inset" />
-          <SidebarInset>
+          <SidebarInset className="min-h-0 overflow-hidden">
             <SiteHeader />
-            <div className="@container/main flex flex-1 flex-col">
-              <main ref={mainRef} className="flex-1 overflow-auto">
+            <div className="@container/main flex min-h-0 flex-1 flex-col">
+              <div ref={mainRef} className="min-h-0 flex-1 overflow-auto">
                 <div className={cn('mx-auto flex w-full flex-1 flex-col pt-6 lg:pt-8', CONTAINER.DEFAULT)}>
                   <Outlet />
                 </div>
-              </main>
+              </div>
             </div>
           </SidebarInset>
         </SidebarProvider>
