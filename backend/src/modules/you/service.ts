@@ -73,6 +73,13 @@ function isBusinessParticipant(userId: string, business: { ownerId: string }) {
 function serializeBusiness(business: any, viewerId: string) {
   const type = BUSINESS_TYPE_MAP.get(business.typeKey);
   const ownerKind = business.ownerId === viewerId ? 'you' : 'player';
+  const treasuryMoney = business.treasuryMoney;
+  const monthlyRevenue = business.typeKey === 'bank'
+    ? Math.max(0, Math.floor(treasuryMoney * 0.04))
+    : business.monthlyRevenue;
+  const monthlyExpenses = business.typeKey === 'bank'
+    ? 0
+    : business.monthlyExpenses;
 
   return {
     id: business.id,
@@ -89,9 +96,9 @@ function serializeBusiness(business: any, viewerId: string) {
     foundedLabel: business.createdAt.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
     hiring: business.hiring,
     startingCapital: business.startingCapital,
-    treasuryMoney: business.treasuryMoney,
-    monthlyRevenue: business.monthlyRevenue,
-    monthlyExpenses: business.monthlyExpenses,
+    treasuryMoney,
+    monthlyRevenue,
+    monthlyExpenses,
     satisfaction: business.satisfaction,
     memberCount: business.members.length,
     actions: type?.actions ?? [],
@@ -111,7 +118,7 @@ function serializeBusiness(business: any, viewerId: string) {
     recentLoans: business.loans.map((loan: any) => ({
       id: loan.id,
       amount: loan.amount,
-      termMonths: loan.termMonths,
+      termDays: loan.termMonths,
       interestRate: loan.interestRate,
       status: loan.status,
       decidedAt: loan.decidedAt ? loan.decidedAt.toISOString() : null,
@@ -144,7 +151,8 @@ function serializeRelationship(relationship: any, viewerId: string) {
     createdAt: relationship.createdAt.toISOString(),
     marriedAt: relationship.marriedAt ? relationship.marriedAt.toISOString() : null,
     otherUser,
-    canProposeMarriage: relationship.status !== 'MARRIED' && relationship.connectionLevel >= 70 && !pendingProposal,
+    canProposeMarriage: relationship.status === 'DATING' && relationship.connectionLevel >= 70 && !pendingProposal,
+    canDivorce: relationship.status === 'MARRIED',
     pendingProposal: pendingProposal
       ? {
           id: pendingProposal.id,
@@ -172,8 +180,10 @@ export async function getYouState(userId: string) {
 
   const relatedUserIds = new Set<string>();
   relationships.forEach((relationship) => {
-    relatedUserIds.add(relationship.userAId);
-    relatedUserIds.add(relationship.userBId);
+    if (relationship.status !== 'DIVORCED') {
+      relatedUserIds.add(relationship.userAId);
+      relatedUserIds.add(relationship.userBId);
+    }
   });
 
   const [players, ownedBusinesses, exploreBusinesses] = await Promise.all([
@@ -229,13 +239,15 @@ export async function createBusiness(userId: string, input: { name: string; type
     throw new Error('BUSINESS_CAPITAL_TOO_LOW');
   }
 
-  const hasSharedMoney = await ensureSharedMoneyAvailable(prisma, userId, input.capital);
+  const creationCost = type.creationFee;
+  const startingCapital = type.key === 'bank' ? 0 : input.capital;
+  const hasSharedMoney = await ensureSharedMoneyAvailable(prisma, userId, creationCost);
   if (!hasSharedMoney) {
     throw new Error('INSUFFICIENT_MONEY');
   }
 
   const business = await prisma.$transaction(async (tx) => {
-    await debitSharedMoney(tx, userId, input.capital);
+    await debitSharedMoney(tx, userId, creationCost);
     return tx.business.create({
       data: {
         ownerId: userId,
@@ -243,8 +255,8 @@ export async function createBusiness(userId: string, input: { name: string; type
         typeKey: type.key,
         description: input.description?.trim() || type.description,
         location: input.location?.trim() || 'Quartier joueur',
-        startingCapital: input.capital,
-        treasuryMoney: input.capital,
+        startingCapital,
+        treasuryMoney: startingCapital,
         monthlyRevenue: type.monthlyRevenue,
         monthlyExpenses: type.monthlyExpenses,
         satisfaction: type.satisfaction,
@@ -335,18 +347,18 @@ async function handleInviteAction(userId: string, business: any, input: { invite
   };
 }
 
-async function handleLoanAction(userId: string, business: any, input: { amount: number; durationMonths: number }) {
+async function handleLoanAction(userId: string, business: any, input: { amount: number; durationDays: number }) {
   if (business.ownerId === userId) {
     throw new Error('BUSINESS_LOAN_SELF_FORBIDDEN');
   }
 
   const amount = Number(input.amount);
-  const durationMonths = Number(input.durationMonths);
+  const durationDays = Number(input.durationDays);
   if (!Number.isFinite(amount) || amount < 500) {
     throw new Error('INVALID_LOAN_AMOUNT');
   }
 
-  if (!Number.isFinite(durationMonths) || durationMonths < 1) {
+  if (!Number.isFinite(durationDays) || durationDays < 1) {
     throw new Error('INVALID_LOAN_DURATION');
   }
 
@@ -372,7 +384,7 @@ async function handleLoanAction(userId: string, business: any, input: { amount: 
       businessId: business.id,
       borrowerId: userId,
       amount,
-      termMonths: durationMonths,
+      termMonths: durationDays,
       interestRate,
       status: 'PENDING',
     },
@@ -400,7 +412,7 @@ async function handleLoanAction(userId: string, business: any, input: { amount: 
   return {
     id: loan.id,
     amount,
-    durationMonths,
+    durationDays,
     interestRate,
     status: loan.status,
   };
@@ -894,4 +906,92 @@ export async function respondToMarriageProposal(userId: string, proposalId: stri
     },
     relationship: serializeRelationship(updatedRelationship, userId),
   };
+}
+
+export async function divorceRelationship(userId: string, relationshipId: string) {
+  const relationship = await prisma.relationship.findUnique({
+    where: { id: relationshipId },
+    include: RELATIONSHIP_INCLUDE,
+  });
+
+  if (!relationship) {
+    throw new Error('RELATIONSHIP_NOT_FOUND');
+  }
+
+  if (relationship.userAId !== userId && relationship.userBId !== userId) {
+    throw new Error('RELATIONSHIP_FORBIDDEN');
+  }
+
+  if (relationship.status !== 'MARRIED') {
+    throw new Error('RELATIONSHIP_NOT_MARRIED');
+  }
+
+  const updatedRelationship = await prisma.relationship.update({
+    where: { id: relationshipId },
+    data: {
+      status: 'DIVORCED',
+      marriedAt: null,
+    },
+    include: RELATIONSHIP_INCLUDE,
+  });
+
+  const otherUserId = relationship.userAId === userId ? relationship.userBId : relationship.userAId;
+
+  await Promise.allSettled([
+    createNotification({
+      userId,
+      type: 'SYSTEM',
+      title: 'Divorce enregistre',
+      body: 'La relation a ete marquee comme divorcee.',
+      link: '/you?tab=social',
+      icon: 'heart-crack',
+    }),
+    createNotification({
+      userId: otherUserId,
+      type: 'SYSTEM',
+      title: 'Divorce enregistre',
+      body: 'Votre relation a ete marquee comme divorcee.',
+      link: '/you?tab=social',
+      icon: 'heart-crack',
+    }),
+  ]);
+
+  return serializeRelationship(updatedRelationship, userId);
+}
+
+export async function deleteBusiness(adminUserId: string, businessId: string) {
+  const admin = await prisma.user.findUnique({
+    where: { id: adminUserId },
+    select: { isAdmin: true },
+  });
+
+  if (!admin?.isAdmin) {
+    throw new Error('YOU_ADMIN_ONLY');
+  }
+
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    include: {
+      owner: { select: USER_PREVIEW_SELECT },
+    },
+  });
+
+  if (!business) {
+    throw new Error('BUSINESS_NOT_FOUND');
+  }
+
+  await prisma.business.delete({
+    where: { id: businessId },
+  });
+
+  await createNotification({
+    userId: business.ownerId,
+    type: 'SYSTEM',
+    title: 'Business supprime',
+    body: `${business.name} a ete supprime par un admin.`,
+    link: '/you?tab=travail',
+    icon: 'briefcase-business',
+  });
+
+  return { id: businessId };
 }

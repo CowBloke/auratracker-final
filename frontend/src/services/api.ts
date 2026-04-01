@@ -156,6 +156,7 @@ export interface YouBusinessType {
   category: string;
   description: string;
   minCapital: number;
+  creationFee: number;
   monthlyRevenue: number;
   monthlyExpenses: number;
   satisfaction: number;
@@ -180,7 +181,7 @@ export interface YouBusinessInvitation {
 export interface YouBusinessLoan {
   id: string;
   amount: number;
-  termMonths: number;
+  termDays: number;
   interestRate: number;
   status: string;
   decidedAt: string | null;
@@ -239,12 +240,13 @@ export interface YouMarriageProposal {
 
 export interface YouRelationship {
   id: string;
-  status: 'DATING' | 'MARRIED' | string;
+  status: 'DATING' | 'MARRIED' | 'DIVORCED' | string;
   connectionLevel: number;
   createdAt: string;
   marriedAt: string | null;
   otherUser: Omit<YouPlayer, 'alreadyInRelationship'>;
   canProposeMarriage: boolean;
+  canDivorce: boolean;
   pendingProposal: YouMarriageProposal | null;
 }
 
@@ -270,6 +272,10 @@ export const youApi = {
     api.post<{ proposal: Omit<YouMarriageProposal, 'direction' | 'canRespond' | 'respondedAt'> & { respondedAt?: string | null } }>(`/you/relationships/${relationshipId}/actions/propose-marriage`, { message }),
   respondToMarriageProposal: (proposalId: string, decision: 'accept' | 'reject') =>
     api.post<{ proposal: { id: string; status: string; respondedAt: string | null }; relationship: YouRelationship }>(`/you/marriage-proposals/${proposalId}/respond`, { decision }),
+  divorceRelationship: (relationshipId: string) =>
+    api.post<{ relationship: YouRelationship }>(`/you/relationships/${relationshipId}/actions/divorce`),
+  deleteBusiness: (businessId: string) =>
+    api.delete<{ result: { id: string } }>(`/you/businesses/${businessId}`),
 };
 
 // Economy API

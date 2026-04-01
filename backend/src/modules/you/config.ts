@@ -6,6 +6,7 @@ export interface BusinessTypeDefinition {
   category: string;
   description: string;
   minCapital: number;
+  creationFee: number;
   monthlyRevenue: number;
   monthlyExpenses: number;
   satisfaction: number;
@@ -19,6 +20,7 @@ export const BUSINESS_TYPES: BusinessTypeDefinition[] = [
     category: 'Tech',
     description: 'Produits SaaS, services web et outils numeriques.',
     minCapital: 10000,
+    creationFee: 10000,
     monthlyRevenue: 8400,
     monthlyExpenses: 5200,
     satisfaction: 86,
@@ -29,9 +31,10 @@ export const BUSINESS_TYPES: BusinessTypeDefinition[] = [
     label: 'Banque',
     category: 'Finance',
     description: 'Depots, prets et services bancaires entre joueurs.',
-    minCapital: 50000,
-    monthlyRevenue: 12000,
-    monthlyExpenses: 4000,
+    minCapital: 0,
+    creationFee: 10000,
+    monthlyRevenue: 0,
+    monthlyExpenses: 0,
     satisfaction: 91,
     actions: ['loan', 'invest', 'invite', 'deposit', 'withdraw'],
   },
@@ -41,6 +44,7 @@ export const BUSINESS_TYPES: BusinessTypeDefinition[] = [
     category: 'Services',
     description: 'Campagnes, design et accompagnement business.',
     minCapital: 5000,
+    creationFee: 5000,
     monthlyRevenue: 6800,
     monthlyExpenses: 3900,
     satisfaction: 82,

@@ -1,6 +1,6 @@
 import { type ElementType, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
-import { ArrowDownCircle, ArrowUpCircle, BarChart3, Building2, Check, ChevronRight, CreditCard, Heart, Landmark, Search, TrendingUp, UserPlus, X } from 'lucide-react';
+import { ArrowDownCircle, ArrowUpCircle, BarChart3, Building2, Check, ChevronRight, CreditCard, Heart, Landmark, PiggyBank, Search, ShieldAlert, Trash2, TrendingUp, UserPlus, Wallet, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
@@ -36,6 +36,22 @@ const ACTION_META = {
 } as const;
 
 type BusinessAction = keyof typeof ACTION_META;
+
+function formatMoney(value: number) {
+  return value.toLocaleString('fr-FR');
+}
+
+function getRelationshipPill(status: YouRelationship['status']) {
+  if (status === 'MARRIED') {
+    return { label: 'Marie', color: 'bg-red-400/15 text-red-400' };
+  }
+
+  if (status === 'DIVORCED') {
+    return { label: 'Divorce', color: 'bg-slate-400/15 text-slate-300' };
+  }
+
+  return { label: 'Relation', color: 'bg-pink-400/15 text-pink-400' };
+}
 
 function canUseBusinessAction(business: YouBusiness, action: BusinessAction, userId: string) {
   if (action === 'invite' || action === 'deposit' || action === 'withdraw') {
@@ -195,12 +211,13 @@ function CreateBusinessModal({
   }, [businessTypes, open]);
 
   const selectedType = businessTypes.find((type) => type.key === typeKey) ?? businessTypes[0];
+  const isBank = selectedType?.key === 'bank';
 
   const submit = async () => {
     if (!selectedType) return;
     setSubmitting(true);
     try {
-      await withRouteError(() => youApi.createBusiness({ name, typeKey: selectedType.key, capital: Number(capital) }), 'Impossible de creer le business.');
+      await withRouteError(() => youApi.createBusiness({ name, typeKey: selectedType.key, capital: isBank ? 0 : Number(capital) }), 'Impossible de creer le business.');
       toast.success('Business cree');
       await onCreated();
       onClose();
@@ -210,7 +227,7 @@ function CreateBusinessModal({
   };
 
   return (
-    <ModalWrap open={open} onClose={onClose} title="Creer une entreprise" desc="Le capital de depart est pris sur ton argent global.">
+    <ModalWrap open={open} onClose={onClose} title="Creer une entreprise" desc={isBank ? 'La creation de la banque coute 10 000 money et la tresorerie demarre a 0.' : 'Le capital de depart est pris sur ton argent global.'}>
       <FieldRow label="Type d activite">
         <div className="space-y-3">
           {businessTypes.map((type) => {
@@ -237,7 +254,7 @@ function CreateBusinessModal({
                       <Pill label={type.category} color={active ? style.badge : 'bg-muted text-muted-foreground'} />
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">{type.description}</p>
-                    <p className="mt-3 text-[11px] font-medium text-muted-foreground">Min. {type.minCapital.toLocaleString('fr-FR')} money</p>
+                    <p className="mt-3 text-[11px] font-medium text-muted-foreground">Frais: {type.creationFee.toLocaleString('fr-FR')} money{type.minCapital > 0 ? ` · capital min. ${type.minCapital.toLocaleString('fr-FR')}` : ''}</p>
                   </div>
                 </div>
               </button>
@@ -245,10 +262,10 @@ function CreateBusinessModal({
           })}
         </div>
       </FieldRow>
-      {selectedType ? <div className="rounded-xl border border-border/40 bg-muted/10 p-4"><p className="text-sm font-medium">{selectedType.label}</p><p className="mt-1 text-xs text-muted-foreground">{selectedType.description}</p><p className="mt-2 text-[11px] text-muted-foreground">Capital mini: {selectedType.minCapital.toLocaleString('fr-FR')} money</p></div> : null}
+      {selectedType ? <div className="rounded-xl border border-border/40 bg-muted/10 p-4"><p className="text-sm font-medium">{selectedType.label}</p><p className="mt-1 text-xs text-muted-foreground">{selectedType.description}</p><p className="mt-2 text-[11px] text-muted-foreground">Frais de creation: {formatMoney(selectedType.creationFee)} money{selectedType.key === 'bank' ? ' · tresorerie initiale: 0' : ` · capital mini: ${formatMoney(selectedType.minCapital)} money`}</p></div> : null}
       <FieldRow label="Nom"><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="ex : Citizen Bank" /></FieldRow>
-      <FieldRow label="Capital de depart"><Input type="number" value={capital} onChange={(event) => setCapital(event.target.value)} min={selectedType?.minCapital ?? 0} /></FieldRow>
-      <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !selectedType || !name.trim() || Number(capital) < selectedType.minCapital}>Creer</Button></div>
+      {!isBank ? <FieldRow label="Capital de depart"><Input type="number" value={capital} onChange={(event) => setCapital(event.target.value)} min={selectedType?.minCapital ?? 0} /></FieldRow> : null}
+      <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !selectedType || !name.trim() || (!isBank && Number(capital) < selectedType.minCapital)}>Creer</Button></div>
     </ModalWrap>
   );
 }
@@ -320,15 +337,15 @@ function InvitePlayersModal({
 
 function LoanModal({ open, onClose, business, onSubmitted }: { open: boolean; onClose: () => void; business: YouBusiness | null; onSubmitted: () => Promise<void> }) {
   const [amount, setAmount] = useState('5000');
-  const [durationMonths, setDurationMonths] = useState('12');
+  const [durationDays, setDurationDays] = useState('30');
   const [submitting, setSubmitting] = useState(false);
-  const monthly = Math.round((Number(amount || 0) * 1.04) / Math.max(1, Number(durationMonths || 1)));
+  const dailyRepayment = Math.round((Number(amount || 0) * 1.04) / Math.max(1, Number(durationDays || 1)));
 
   const submit = async () => {
     if (!business) return;
     setSubmitting(true);
     try {
-      await withRouteError(() => youApi.runBusinessAction(business.id, 'loan', { amount: Number(amount), durationMonths: Number(durationMonths) }), 'Impossible d emprunter.');
+      await withRouteError(() => youApi.runBusinessAction(business.id, 'loan', { amount: Number(amount), durationDays: Number(durationDays) }), 'Impossible d emprunter.');
       toast.success('Demande de pret envoyee');
       await onSubmitted();
       onClose();
@@ -340,8 +357,8 @@ function LoanModal({ open, onClose, business, onSubmitted }: { open: boolean; on
   return (
     <ModalWrap open={open} onClose={onClose} title={business ? `Demander un pret · ${business.name}` : 'Demander un pret'} desc="Le proprietaire devra accepter la demande avant que le money soit debloque.">
       <FieldRow label="Montant"><Input type="number" value={amount} onChange={(event) => setAmount(event.target.value)} min={500} /></FieldRow>
-      <FieldRow label="Duree"><SelectBox value={durationMonths} onChange={setDurationMonths}>{['6', '12', '24', '36', '60'].map((value) => <option key={value} value={value}>{value} mois</option>)}</SelectBox></FieldRow>
-      <div className="grid grid-cols-2 gap-3 rounded-xl border border-border/40 bg-muted/10 p-4"><div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Mensualite</p><p className="text-lg font-bold tabular-nums">{monthly.toLocaleString('fr-FR')}</p></div><div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Total estime</p><p className="text-lg font-bold tabular-nums text-red-400">{Math.round(Number(amount || 0) * 1.04).toLocaleString('fr-FR')}</p></div></div>
+      <FieldRow label="Duree"><SelectBox value={durationDays} onChange={setDurationDays}>{['7', '14', '30', '60', '90'].map((value) => <option key={value} value={value}>{value} jours</option>)}</SelectBox></FieldRow>
+      <div className="grid grid-cols-2 gap-3 rounded-xl border border-border/40 bg-muted/10 p-4"><div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Remboursement / jour</p><p className="text-lg font-bold tabular-nums">{formatMoney(dailyRepayment)}</p></div><div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Total estime</p><p className="text-lg font-bold tabular-nums text-red-400">{formatMoney(Math.round(Number(amount || 0) * 1.04))}</p></div></div>
       <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !business}>Envoyer</Button></div>
     </ModalWrap>
   );
@@ -458,19 +475,34 @@ function MarriageModal({ open, onClose, relationships, onSubmitted }: { open: bo
   );
 }
 
-function OverviewTab({ data }: { data: YouState }) {
+function OverviewTab({ data, userId }: { data: YouState; userId: string }) {
   const latestBusinesses = data.ownedBusinesses.slice(0, 2);
   const latestRelationships = data.relationships.slice(0, 3);
+  const activeRepayments = [...data.ownedBusinesses, ...data.exploreBusinesses]
+    .flatMap((business) =>
+      business.recentLoans
+        .filter((loan) => loan.status === 'ACTIVE' && loan.borrower.id === userId)
+        .map((loan) => ({
+          businessName: business.name,
+          amount: loan.amount,
+          termDays: loan.termDays,
+          dailyRepayment: Math.round((loan.amount * (1 + loan.interestRate / 100)) / Math.max(1, loan.termDays)),
+          loanId: loan.id,
+        }))
+    )
+    .slice(0, 4);
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
       <div className="space-y-4">
         <SectionTitle>Activite business</SectionTitle>
-        <Card><CardContent className="space-y-3 px-5 py-4">{latestBusinesses.length === 0 ? <p className="text-sm text-muted-foreground">Aucun business cree pour le moment.</p> : latestBusinesses.map((business) => { const profit = business.monthlyRevenue - business.monthlyExpenses; const Icon = BUSINESS_ICON_MAP[business.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2; return <div key={business.id} className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted/30"><Icon className="h-4 w-4 text-foreground" /></div><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className="text-sm font-semibold">{business.name}</p>{business.type ? <Pill label={business.type.label} color="bg-sky-400/15 text-sky-400" /> : null}</div><p className="text-xs text-muted-foreground">{business.memberCount} membre(s) · {business.location || 'Lieu non defini'}</p></div><div className="text-right"><p className={cn('text-sm font-bold tabular-nums', profit >= 0 ? 'text-emerald-400' : 'text-red-400')}>{profit >= 0 ? '+' : ''}{profit.toLocaleString('fr-FR')}</p><p className="text-[10px] text-muted-foreground">mensuel</p></div></div>; })}</CardContent></Card>
+        <Card><CardContent className="space-y-3 px-5 py-4">{latestBusinesses.length === 0 ? <p className="text-sm text-muted-foreground">Aucun business cree pour le moment.</p> : latestBusinesses.map((business) => { const revenue = business.monthlyRevenue; const Icon = BUSINESS_ICON_MAP[business.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2; return <div key={business.id} className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted/30"><Icon className="h-4 w-4 text-foreground" /></div><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className="text-sm font-semibold">{business.name}</p>{business.type ? <Pill label={business.type.label} color="bg-sky-400/15 text-sky-400" /> : null}</div><p className="text-xs text-muted-foreground">{business.memberCount} membre(s) · {business.location || 'Lieu non defini'}</p></div><div className="text-right"><p className="text-sm font-bold tabular-nums text-emerald-400">+{formatMoney(revenue)}</p><p className="text-[10px] text-muted-foreground">revenu</p></div></div>; })}</CardContent></Card>
+        <SectionTitle>Remboursements</SectionTitle>
+        <Card><CardContent className="space-y-3 px-5 py-4">{activeRepayments.length === 0 ? <p className="text-sm text-muted-foreground">Aucun remboursement actif a suivre.</p> : activeRepayments.map((loan) => <div key={loan.loanId} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3"><div className="flex items-center justify-between gap-3"><div><p className="text-sm font-semibold">{loan.businessName}</p><p className="text-xs text-muted-foreground">{formatMoney(loan.amount)} money sur {loan.termDays} jours</p></div><div className="text-right"><p className="text-sm font-bold tabular-nums text-amber-400">{formatMoney(loan.dailyRepayment)}</p><p className="text-[10px] text-muted-foreground">par jour</p></div></div></div>)}</CardContent></Card>
       </div>
       <div className="space-y-4">
         <SectionTitle>Relations</SectionTitle>
-        <Card><CardContent className="space-y-3 px-5 py-4">{latestRelationships.length === 0 ? <p className="text-sm text-muted-foreground">Aucune relation active pour le moment.</p> : latestRelationships.map((relationship) => <div key={relationship.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3"><div className="flex items-center gap-3"><UserAvatar player={relationship.otherUser} className="h-9 w-9" /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className="text-sm font-semibold">{relationship.otherUser.username}</p><Pill label={relationship.status === 'MARRIED' ? 'Marie' : 'Relation'} color={relationship.status === 'MARRIED' ? 'bg-red-400/15 text-red-400' : 'bg-pink-400/15 text-pink-400'} /></div><p className="text-xs text-muted-foreground">{relationship.pendingProposal ? `Demande ${relationship.pendingProposal.direction === 'sent' ? 'envoyee' : 'recue'}` : 'Aucune demande en attente'}</p></div><span className="text-xs font-medium text-muted-foreground">{relationship.connectionLevel}%</span></div><div className="mt-3"><ProgressBar value={relationship.connectionLevel} color="bg-pink-400" /></div></div>)}</CardContent></Card>
+        <Card><CardContent className="space-y-3 px-5 py-4">{latestRelationships.length === 0 ? <p className="text-sm text-muted-foreground">Aucune relation active pour le moment.</p> : latestRelationships.map((relationship) => { const pill = getRelationshipPill(relationship.status); return <div key={relationship.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3"><div className="flex items-center gap-3"><UserAvatar player={relationship.otherUser} className="h-9 w-9" /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className="text-sm font-semibold">{relationship.otherUser.username}</p><Pill label={pill.label} color={pill.color} /></div><p className="text-xs text-muted-foreground">{relationship.pendingProposal ? `Demande ${relationship.pendingProposal.direction === 'sent' ? 'envoyee' : 'recue'}` : 'Aucune demande en attente'}</p></div><span className="text-xs font-medium text-muted-foreground">{relationship.connectionLevel}%</span></div><div className="mt-3"><ProgressBar value={relationship.connectionLevel} color="bg-pink-400" /></div></div>; })}</CardContent></Card>
       </div>
     </div>
   );
@@ -504,7 +536,7 @@ function ManageBusinessModal({
   }, [open, business?.id]);
 
   const pendingLoans = business?.recentLoans.filter((loan) => loan.status === 'PENDING') ?? [];
-  const profit = business ? business.monthlyRevenue - business.monthlyExpenses : 0;
+  const isBank = business?.typeKey === 'bank';
 
   const runTreasuryAction = async (action: 'deposit' | 'withdraw', amount: string) => {
     if (!business) return;
@@ -536,9 +568,16 @@ function ManageBusinessModal({
     <ModalWrap open={open} onClose={onClose} title={business ? `Gerer business · ${business.name}` : 'Gerer business'} desc="Actions de gestion sur la structure selectionnee." wide>
       {business ? (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {[{ label: 'Tresorerie', value: business.treasuryMoney.toLocaleString('fr-FR') }, { label: 'Capital', value: business.startingCapital.toLocaleString('fr-FR') }, { label: 'Membres', value: String(business.memberCount) }, { label: 'Mensuel', value: `${profit >= 0 ? '+' : ''}${profit.toLocaleString('fr-FR')}` }].map((entry) => <div key={entry.label} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">{entry.label}</p><p className="mt-1 text-base font-semibold tabular-nums">{entry.value}</p></div>)}
-          </div>
+          {isBank ? (
+            <div className="rounded-3xl border border-emerald-400/25 bg-emerald-400/10 px-6 py-8 text-center">
+              <p className="text-[11px] uppercase tracking-[0.3em] text-emerald-300/80">Tresorerie</p>
+              <p className="mt-3 text-5xl font-semibold tabular-nums text-emerald-200">{formatMoney(business.treasuryMoney)}</p>
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[{ label: 'Tresorerie', value: formatMoney(business.treasuryMoney) }, { label: 'Membres', value: String(business.memberCount) }, { label: 'Revenue', value: `+${formatMoney(business.monthlyRevenue)}` }].map((entry) => <div key={entry.label} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">{entry.label}</p><p className="mt-1 text-base font-semibold tabular-nums">{entry.value}</p></div>)}
+            </div>
+          )}
 
           <div className="space-y-3">
             <SectionTitle>Actions business</SectionTitle>
@@ -555,7 +594,7 @@ function ManageBusinessModal({
 
           <div className="space-y-3">
             <SectionTitle>Demandes de pret</SectionTitle>
-            {pendingLoans.length === 0 ? <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4 text-sm text-muted-foreground">Aucune demande de pret en attente.</div> : pendingLoans.map((loan) => <div key={loan.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4"><div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><div><p className="text-sm font-semibold">{loan.borrower.username}</p><p className="text-xs text-muted-foreground">{loan.amount.toLocaleString('fr-FR')} money · {loan.termMonths} mois · {loan.interestRate}% d interet</p></div><div className="flex gap-2"><Button size="sm" className="text-xs" onClick={() => void reviewLoan(loan.id, 'accept')} disabled={reviewingLoanId !== null}><Check className="mr-1.5 h-3.5 w-3.5" />Accepter</Button><Button size="sm" variant="outline" className="text-xs" onClick={() => void reviewLoan(loan.id, 'reject')} disabled={reviewingLoanId !== null}><X className="mr-1.5 h-3.5 w-3.5" />Refuser</Button></div></div></div>)}
+            {pendingLoans.length === 0 ? <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4 text-sm text-muted-foreground">Aucune demande de pret en attente.</div> : pendingLoans.map((loan) => <div key={loan.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4"><div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><div><p className="text-sm font-semibold">{loan.borrower.username}</p><p className="text-xs text-muted-foreground">{formatMoney(loan.amount)} money · {loan.termDays} jours · {loan.interestRate}% d interet</p></div><div className="flex gap-2"><Button size="sm" className="text-xs" onClick={() => void reviewLoan(loan.id, 'accept')} disabled={reviewingLoanId !== null}><Check className="mr-1.5 h-3.5 w-3.5" />Accepter</Button><Button size="sm" variant="outline" className="text-xs" onClick={() => void reviewLoan(loan.id, 'reject')} disabled={reviewingLoanId !== null}><X className="mr-1.5 h-3.5 w-3.5" />Refuser</Button></div></div></div>)}
           </div>
         </>
       ) : null}
@@ -577,7 +616,7 @@ function TravailTab({ data, players, onReload }: { data: YouState; players: YouP
         </div>
         <div className="space-y-4">
           <SectionTitle>Mes entreprises ({data.ownedBusinesses.length})</SectionTitle>
-          {data.ownedBusinesses.length === 0 ? <Card><CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">Aucune entreprise creee. Ouvre-en une depuis cette page pour utiliser ton argent reel du site.</CardContent></Card> : data.ownedBusinesses.map((business) => { const profit = business.monthlyRevenue - business.monthlyExpenses; const pendingLoans = business.recentLoans.filter((loan) => loan.status === 'PENDING').length; const Icon = BUSINESS_ICON_MAP[business.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2; return <Card key={business.id}><CardContent className="space-y-4 px-5 py-4"><div className="flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted/20"><Icon className="h-5 w-5 text-foreground" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="text-base font-semibold">{business.name}</p>{business.type ? <Pill label={business.type.label} color="bg-sky-400/15 text-sky-400" /> : null}{business.pendingInvitations.length > 0 ? <Pill label={`${business.pendingInvitations.length} invitation(s)`} color="bg-purple-400/15 text-purple-400" /> : null}{pendingLoans > 0 ? <Pill label={`${pendingLoans} pret(s) en attente`} color="bg-amber-400/15 text-amber-400" /> : null}</div><p className="mt-1 text-sm text-muted-foreground">{business.description || 'Aucune description.'}</p></div><div className="text-right"><p className={cn('text-sm font-bold tabular-nums', profit >= 0 ? 'text-emerald-400' : 'text-red-400')}>{profit >= 0 ? '+' : ''}{profit.toLocaleString('fr-FR')}</p><p className="text-[10px] text-muted-foreground">benefice mensuel</p></div></div><div className="grid grid-cols-2 gap-2 md:grid-cols-5">{[{ label: 'Tresorerie', value: business.treasuryMoney.toLocaleString('fr-FR') }, { label: 'Capital', value: business.startingCapital.toLocaleString('fr-FR') }, { label: 'Membres', value: String(business.memberCount) }, { label: 'Satisfaction', value: `${business.satisfaction}/100` }, { label: 'Lieu', value: business.location || 'n/a' }].map((entry) => <div key={entry.label} className="rounded-xl border border-border/40 bg-muted/10 px-3 py-2.5"><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">{entry.label}</p><p className="mt-1 text-sm font-medium">{entry.value}</p></div>)}</div><div className="space-y-2"><p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Equipe</p>{business.members.length === 0 ? <p className="text-sm text-muted-foreground">Aucun membre actif pour le moment.</p> : business.members.map((member) => <div key={member.id} className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3"><UserAvatar player={member.user} className="h-8 w-8" /><div className="min-w-0 flex-1"><p className="text-sm font-medium">{member.user.username}</p><p className="text-xs text-muted-foreground">{member.role} · {member.status}</p></div></div>)}</div><div className="flex justify-end"><Button size="sm" variant="outline" className="text-xs" onClick={() => setManagedBusiness(business)}>Gerer business</Button></div></CardContent></Card>; })}
+          {data.ownedBusinesses.length === 0 ? <Card><CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">Aucune entreprise creee. Ouvre-en une depuis cette page pour utiliser ton argent reel du site.</CardContent></Card> : data.ownedBusinesses.map((business) => { const Icon = BUSINESS_ICON_MAP[business.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2; return <Card key={business.id}><CardContent className="flex items-center gap-4 px-5 py-4"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted/20"><Icon className="h-5 w-5 text-foreground" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="text-base font-semibold">{business.name}</p>{business.type ? <Pill label={business.type.label} color="bg-sky-400/15 text-sky-400" /> : null}</div><p className="mt-1 text-sm text-muted-foreground">Revenue: +{formatMoney(business.monthlyRevenue)}</p></div><Button size="sm" variant="outline" className="shrink-0 text-xs" onClick={() => setManagedBusiness(business)}>Gerer business</Button></CardContent></Card>; })}
         </div>
       </div>
       <CreateBusinessModal open={createOpen} onClose={() => setCreateOpen(false)} businessTypes={data.businessTypes} onCreated={() => onReload(true)} />
@@ -599,6 +638,12 @@ function SocialTab({ data, onReload }: { data: YouState; onReload: () => Promise
     await onReload();
   };
 
+  const divorce = async (relationshipId: string) => {
+    await withRouteError(() => youApi.divorceRelationship(relationshipId), 'Impossible d enregistrer le divorce.');
+    toast.success('Divorce enregistre');
+    await onReload();
+  };
+
   return (
     <>
       <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
@@ -609,7 +654,7 @@ function SocialTab({ data, onReload }: { data: YouState; onReload: () => Promise
         </div>
         <div className="space-y-4">
           <SectionTitle>Relations ({data.relationships.length})</SectionTitle>
-          {data.relationships.length === 0 ? <Card><CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">Aucune relation en base. Cree-en une avec un vrai joueur depuis le panneau de gauche.</CardContent></Card> : data.relationships.map((relationship) => <Card key={relationship.id}><CardContent className="space-y-4 px-5 py-4"><div className="flex items-start gap-3"><UserAvatar player={relationship.otherUser} className="h-11 w-11" /><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="text-base font-semibold">{relationship.otherUser.username}</p><Pill label={relationship.status === 'MARRIED' ? 'Marie' : 'Relation'} color={relationship.status === 'MARRIED' ? 'bg-red-400/15 text-red-400' : 'bg-pink-400/15 text-pink-400'} />{relationship.pendingProposal ? <Pill label={relationship.pendingProposal.direction === 'sent' ? 'Demande envoyee' : 'Demande recue'} color="bg-amber-400/15 text-amber-400" /> : null}</div><p className="mt-1 text-sm text-muted-foreground">{relationship.otherUser.bio?.trim() || 'Aucune bio renseignee.'}</p></div><span className="text-sm font-bold tabular-nums text-pink-400">{relationship.connectionLevel}%</span></div><div className="space-y-1"><div className="flex justify-between text-[11px] text-muted-foreground"><span>Connexion</span><span>{relationship.status === 'MARRIED' ? 'Statut finalise' : 'Evolution active'}</span></div><ProgressBar value={relationship.connectionLevel} color="bg-pink-400" /></div>{relationship.pendingProposal ? <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-xs text-muted-foreground">{relationship.pendingProposal.direction === 'sent' ? 'Ta demande en mariage est en attente.' : 'Une demande en mariage attend ta reponse.'}</div> : null}</CardContent></Card>)}
+          {data.relationships.length === 0 ? <Card><CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">Aucune relation en base. Cree-en une avec un vrai joueur depuis le panneau de gauche.</CardContent></Card> : data.relationships.map((relationship) => { const pill = getRelationshipPill(relationship.status); return <Card key={relationship.id}><CardContent className="space-y-4 px-5 py-4"><div className="flex items-start gap-3"><UserAvatar player={relationship.otherUser} className="h-11 w-11" /><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="text-base font-semibold">{relationship.otherUser.username}</p><Pill label={pill.label} color={pill.color} />{relationship.pendingProposal ? <Pill label={relationship.pendingProposal.direction === 'sent' ? 'Demande envoyee' : 'Demande recue'} color="bg-amber-400/15 text-amber-400" /> : null}</div><p className="mt-1 text-sm text-muted-foreground">{relationship.otherUser.bio?.trim() || 'Aucune bio renseignee.'}</p></div><span className="text-sm font-bold tabular-nums text-pink-400">{relationship.connectionLevel}%</span></div><div className="space-y-1"><div className="flex justify-between text-[11px] text-muted-foreground"><span>Connexion</span><span>{relationship.status === 'MARRIED' ? 'Statut finalise' : relationship.status === 'DIVORCED' ? 'Relation terminee' : 'Evolution active'}</span></div><ProgressBar value={relationship.connectionLevel} color="bg-pink-400" /></div>{relationship.pendingProposal ? <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-xs text-muted-foreground">{relationship.pendingProposal.direction === 'sent' ? 'Ta demande en mariage est en attente.' : 'Une demande en mariage attend ta reponse.'}</div> : null}{relationship.canDivorce ? <div className="flex justify-end"><Button size="sm" variant="outline" className="text-xs text-red-300" onClick={() => void divorce(relationship.id)}>Divorcer</Button></div> : null}</CardContent></Card>; })}
         </div>
       </div>
       <MeetModal open={meetOpen} onClose={() => setMeetOpen(false)} players={data.players} onSubmitted={onReload} />
@@ -618,11 +663,23 @@ function SocialTab({ data, onReload }: { data: YouState; onReload: () => Promise
   );
 }
 
-function FilterButton({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
-  return <button type="button" onClick={onClick} className={cn('w-full rounded-lg border px-3 py-2 text-left text-xs font-medium transition-colors', active ? 'border-foreground bg-foreground text-background' : 'border-border/40 bg-muted/10 text-muted-foreground hover:bg-muted/20 hover:text-foreground')}>{label}</button>;
+function FilterButton({
+  active,
+  label,
+  icon: Icon,
+  onClick,
+  colorClass,
+}: {
+  active: boolean;
+  label: string;
+  icon: ElementType;
+  onClick: () => void;
+  colorClass: string;
+}) {
+  return <button type="button" onClick={onClick} className={cn('flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-xs font-medium transition-colors', active ? `${colorClass} border-transparent text-white` : 'border-border/40 bg-muted/10 text-muted-foreground hover:bg-muted/20 hover:text-foreground')}><Icon className="h-3.5 w-3.5" /><span>{label}</span></button>;
 }
 
-function ExploreTab({ data, players, userId, onReload }: { data: YouState; players: YouPlayer[]; userId: string; onReload: (refreshBalance?: boolean) => Promise<void> }) {
+function ExploreTab({ data, players, userId, isAdmin, onReload }: { data: YouState; players: YouPlayer[]; userId: string; isAdmin: boolean; onReload: (refreshBalance?: boolean) => Promise<void> }) {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
   const [ownerFilter, setOwnerFilter] = useState<'all' | 'you' | 'player'>('all');
@@ -657,18 +714,25 @@ function ExploreTab({ data, players, userId, onReload }: { data: YouState; playe
     if (action === 'invest') setInvestBusiness(business);
   };
 
+  const deleteSelectedBusiness = async () => {
+    if (!selectedBusiness || !isAdmin) return;
+    await withRouteError(() => youApi.deleteBusiness(selectedBusiness.id), 'Impossible de supprimer le business.');
+    toast.success('Business supprime');
+    await onReload();
+  };
+
   return (
     <>
-      <div className="grid gap-5 xl:grid-cols-[240px_minmax(0,1fr)_360px]">
+      <div className="grid gap-5 xl:grid-cols-[190px_minmax(0,1fr)_360px]">
         <div className="space-y-4">
-          <Card><CardContent className="space-y-4 px-5 py-4"><div className="flex items-center gap-2"><Search className="h-4 w-4 text-muted-foreground" /><p className="text-sm font-semibold">Filtres</p></div><div className="space-y-2"><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Categorie</p><div className="space-y-1.5">{categories.map((entry) => <FilterButton key={entry} active={category === entry} label={entry === 'all' ? 'Toutes' : entry} onClick={() => setCategory(entry)} />)}</div></div><div className="space-y-2"><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Proprietaire</p><div className="space-y-1.5"><FilterButton active={ownerFilter === 'all'} label="Tous" onClick={() => setOwnerFilter('all')} /><FilterButton active={ownerFilter === 'you'} label="Mes businesses" onClick={() => setOwnerFilter('you')} /><FilterButton active={ownerFilter === 'player'} label="Autres joueurs" onClick={() => setOwnerFilter('player')} /></div></div></CardContent></Card>
+          <Card><CardContent className="space-y-4 px-4 py-4"><div className="flex items-center gap-2"><Search className="h-4 w-4 text-muted-foreground" /><p className="text-sm font-semibold">Filtres</p></div><div className="space-y-2"><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Categorie</p><div className="space-y-1.5">{categories.map((entry) => <FilterButton key={entry} active={category === entry} label={entry === 'all' ? 'Toutes' : entry} icon={entry === 'all' ? Wallet : entry === 'Finance' ? Landmark : entry === 'Tech' ? Building2 : BarChart3} colorClass={entry === 'Finance' ? 'bg-emerald-500' : entry === 'Tech' ? 'bg-sky-500' : entry === 'Services' ? 'bg-violet-500' : 'bg-slate-600'} onClick={() => setCategory(entry)} />)}</div></div><div className="space-y-2"><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Proprietaire</p><div className="space-y-1.5"><FilterButton active={ownerFilter === 'all'} label="Tous" icon={Wallet} colorClass="bg-slate-600" onClick={() => setOwnerFilter('all')} /><FilterButton active={ownerFilter === 'you'} label="Mes businesses" icon={PiggyBank} colorClass="bg-purple-500" onClick={() => setOwnerFilter('you')} /><FilterButton active={ownerFilter === 'player'} label="Autres joueurs" icon={UserPlus} colorClass="bg-amber-500" onClick={() => setOwnerFilter('player')} /></div></div></CardContent></Card>
         </div>
         <div className="space-y-4">
           <Card><CardContent className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center"><div className="relative flex-1"><Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/50" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Rechercher un business ou un joueur..." className="pl-9" /></div><div className="text-xs text-muted-foreground">{filteredBusinesses.length} resultat{filteredBusinesses.length > 1 ? 's' : ''}</div></CardContent></Card>
           <Card><CardContent className="p-0"><div className="divide-y divide-border/30">{filteredBusinesses.map((business) => { const Icon = BUSINESS_ICON_MAP[business.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2; const selected = business.id === selectedBusiness?.id; const profit = business.monthlyRevenue - business.monthlyExpenses; return <button key={business.id} type="button" onClick={() => setSelectedBusinessId(business.id)} className={cn('w-full px-5 py-4 text-left transition-colors', selected ? 'bg-muted/25' : 'hover:bg-muted/15')}><div className="flex items-start gap-3"><div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted/20"><Icon className="h-4 w-4 text-foreground" /></div><div className="min-w-0 flex-1 space-y-1.5"><div className="flex flex-wrap items-center gap-2"><p className="text-sm font-semibold">{business.name}</p>{business.type ? <Pill label={business.type.label} color="bg-sky-400/15 text-sky-400" /> : null}{business.ownerId === userId ? <Pill label="A toi" color="bg-purple-400/15 text-purple-400" /> : null}</div><p className="text-xs text-muted-foreground">par {business.owner.username} · {business.location || 'Lieu non defini'}</p><p className="line-clamp-2 text-xs text-muted-foreground">{business.description || 'Aucune description.'}</p></div><div className="text-right"><p className={cn('text-sm font-bold tabular-nums', profit >= 0 ? 'text-emerald-400' : 'text-red-400')}>{profit >= 0 ? '+' : ''}{profit.toLocaleString('fr-FR')}</p><p className="text-[10px] text-muted-foreground">{business.satisfaction}/100</p></div></div></button>; })}{filteredBusinesses.length === 0 ? <p className="px-5 py-10 text-center text-sm text-muted-foreground">Aucun business ne correspond a tes filtres.</p> : null}</div></CardContent></Card>
         </div>
         <div className="space-y-4">
-          {selectedBusiness ? <><Card><CardContent className="space-y-4 px-5 py-4"><div className="flex items-start gap-3"><UserAvatar player={selectedBusiness.owner} className="h-11 w-11" /><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="text-base font-semibold">{selectedBusiness.name}</p>{selectedBusiness.verified ? <Pill label="Verifie" color="bg-emerald-400/15 text-emerald-400" /> : null}</div><p className="mt-1 text-sm text-muted-foreground">{selectedBusiness.description || 'Aucune description.'}</p></div></div><div className="grid grid-cols-2 gap-2">{[{ label: 'Proprietaire', value: selectedBusiness.owner.username }, { label: 'Fondation', value: selectedBusiness.foundedLabel }, { label: 'Lieu', value: selectedBusiness.location || 'n/a' }, { label: 'Satisfaction', value: `${selectedBusiness.satisfaction}/100` }].map((entry) => <div key={entry.label} className="rounded-xl border border-border/40 bg-muted/10 px-3 py-2.5"><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">{entry.label}</p><p className="mt-1 text-sm font-medium">{entry.value}</p></div>)}</div></CardContent></Card><Card><CardContent className="space-y-3 px-5 py-4"><SectionTitle>Actions utilisateur</SectionTitle>{visibleActions.length === 0 ? <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4 text-sm text-muted-foreground">{selectedBusiness.ownerId === userId ? 'Les actions de gestion se trouvent dans l onglet travail via le bouton Gerer business.' : 'Aucune action disponible pour ce business.'}</div> : <div className="space-y-2">{visibleActions.map((action) => { const meta = ACTION_META[action as BusinessAction]; const Icon = meta.icon; const [toneBg, toneText] = meta.tone.split(' '); return <button key={action} type="button" onClick={() => onAction(selectedBusiness, action as BusinessAction)} className="flex w-full items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-left transition-colors hover:bg-muted/20"><div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', toneBg)}><Icon className={cn('h-4 w-4', toneText)} /></div><div className="min-w-0 flex-1"><p className="text-sm font-medium">{meta.label}</p><p className="text-xs text-muted-foreground">{meta.help}</p></div><ChevronRight className="h-4 w-4 text-muted-foreground/40" /></button>; })}</div>}</CardContent></Card></> : <Card><CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">Selectionne un business pour voir ses details.</CardContent></Card>}
+          {selectedBusiness ? <><Card><CardContent className="space-y-4 px-5 py-4"><div className="flex items-start gap-3"><UserAvatar player={selectedBusiness.owner} className="h-11 w-11" /><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="text-base font-semibold">{selectedBusiness.name}</p>{selectedBusiness.verified ? <Pill label="Verifie" color="bg-emerald-400/15 text-emerald-400" /> : null}</div><p className="mt-1 text-sm text-muted-foreground">{selectedBusiness.description || 'Aucune description.'}</p></div></div><div className="grid grid-cols-2 gap-2">{[{ label: 'Proprietaire', value: selectedBusiness.owner.username }, { label: 'Fondation', value: selectedBusiness.foundedLabel }, { label: 'Lieu', value: selectedBusiness.location || 'n/a' }, { label: 'Satisfaction', value: `${selectedBusiness.satisfaction}/100` }].map((entry) => <div key={entry.label} className="rounded-xl border border-border/40 bg-muted/10 px-3 py-2.5"><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">{entry.label}</p><p className="mt-1 text-sm font-medium">{entry.value}</p></div>)}</div>{isAdmin ? <Button size="sm" variant="outline" className="w-full justify-start border-red-400/30 text-red-300 hover:bg-red-500/10" onClick={() => void deleteSelectedBusiness()}><Trash2 className="mr-2 h-4 w-4" />Supprimer ce business</Button> : null}</CardContent></Card><Card><CardContent className="space-y-3 px-5 py-4"><SectionTitle>Actions utilisateur</SectionTitle>{visibleActions.length === 0 ? <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4 text-sm text-muted-foreground">{selectedBusiness.ownerId === userId ? 'Les actions de gestion se trouvent dans l onglet travail via le bouton Gerer business.' : 'Aucune action disponible pour ce business.'}</div> : <div className="space-y-2">{visibleActions.map((action) => { const meta = ACTION_META[action as BusinessAction]; const Icon = meta.icon; const [toneBg, toneText] = meta.tone.split(' '); return <button key={action} type="button" onClick={() => onAction(selectedBusiness, action as BusinessAction)} className="flex w-full items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-left transition-colors hover:bg-muted/20"><div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', toneBg)}><Icon className={cn('h-4 w-4', toneText)} /></div><div className="min-w-0 flex-1"><p className="text-sm font-medium">{meta.label}</p><p className="text-xs text-muted-foreground">{meta.help}</p></div><ChevronRight className="h-4 w-4 text-muted-foreground/40" /></button>; })}</div>}{isAdmin ? <div className="rounded-xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-xs text-amber-100"><div className="flex items-start gap-2"><ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" /><p>Mode admin actif: tu peux supprimer un business directement depuis cette fiche.</p></div></div> : null}</CardContent></Card></> : <Card><CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">Selectionne un business pour voir ses details.</CardContent></Card>}
         </div>
       </div>
       <InvitePlayersModal open={Boolean(inviteBusiness)} onClose={() => setInviteBusiness(null)} business={inviteBusiness} players={players} onSubmitted={() => onReload()} />
@@ -714,7 +778,7 @@ export default function You() {
 
   return (
     <div className="animate-in space-y-6 fade-in pb-8 duration-300">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {currentTab !== 'travail' ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[{ label: 'Money partage', value: user.money.toLocaleString('fr-FR') }, { label: 'Aura partagee', value: user.aura.toLocaleString('fr-FR') }, { label: 'Businesses', value: String(data.ownedBusinesses.length) }, { label: 'Relations', value: String(data.relationships.length) }].map((entry) => (
           <Card key={entry.label} className="min-w-0 overflow-hidden">
             <CardContent className="min-w-0 px-5 py-4">
@@ -723,11 +787,11 @@ export default function You() {
             </CardContent>
           </Card>
         ))}
-      </div>
-      {currentTab === 'overview' ? <OverviewTab data={data} /> : null}
+      </div> : null}
+      {currentTab === 'overview' ? <OverviewTab data={data} userId={user.id} /> : null}
       {currentTab === 'travail' ? <TravailTab data={data} players={data.players} onReload={loadState} /> : null}
       {currentTab === 'social' ? <SocialTab data={data} onReload={() => loadState()} /> : null}
-      {currentTab === 'explore' ? <ExploreTab data={data} players={data.players} userId={user.id} onReload={loadState} /> : null}
+      {currentTab === 'explore' ? <ExploreTab data={data} players={data.players} userId={user.id} isAdmin={Boolean(user.isAdmin)} onReload={loadState} /> : null}
     </div>
   );
 }

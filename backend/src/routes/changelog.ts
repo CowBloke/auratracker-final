@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
+import { createNotification } from '../utils/notifications.js';
 
 const router = Router();
 
@@ -48,39 +49,42 @@ const SEED_ENTRIES = [
 ];
 
 async function ensureSeeded() {
+  const existingEntriesCount = await prisma.updateEntry.count();
+  if (existingEntriesCount > 0) {
+    return;
+  }
+
   for (const entry of SEED_ENTRIES) {
-    await prisma.updateEntry.upsert({
-      where: { id: entry.id },
-      create: {
+    await prisma.updateEntry.create({
+      data: {
         id: entry.id,
         date: entry.date,
         title: entry.title,
         summary: entry.summary,
         items: { create: entry.items },
       },
-      update: {
-        date: entry.date,
-        title: entry.title,
-        summary: entry.summary,
-      },
     });
   }
 }
 
-function groupItems(items: { id: string; category: string; text: string; order: number }[]) {
-  const map: Record<string, { id: string; text: string }[]> = {
-    BIG_FEATURE: [],
-    SMALL_FEATURE: [],
-    BUG_FIX: [],
-  };
-  for (const item of [...items].sort((a, b) => a.order - b.order)) {
-    if (map[item.category]) {
-      map[item.category].push({ id: item.id, text: item.text });
-    }
-  }
-  return CATEGORIES
-    .filter((cat) => map[cat].length > 0)
-    .map((cat) => ({ category: cat, items: map[cat] }));
+async function notifyNewChangelogEntry(entry: { id: string; title: string; summary: string }) {
+  const approvedUsers = await prisma.user.findMany({
+    where: { isApproved: true },
+    select: { id: true },
+  });
+
+  await Promise.all(
+    approvedUsers.map((user) =>
+      createNotification({
+        userId: user.id,
+        type: 'SYSTEM',
+        title: `Nouvelle mise a jour: ${entry.title}`,
+        body: entry.summary,
+        link: '/changelog',
+        icon: 'megaphone',
+      })
+    )
+  );
 }
 
 const requireAdmin = (req: AuthRequest, res: Response, next: Function) => {
@@ -94,7 +98,7 @@ const requireAdmin = (req: AuthRequest, res: Response, next: Function) => {
 router.get('/', async (_req, res: Response) => {
   await ensureSeeded();
   const entries = await prisma.updateEntry.findMany({
-    orderBy: { date: 'desc' },
+    orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
     include: { items: true },
   });
   return res.json(entries.map((e) => ({
@@ -110,7 +114,7 @@ router.get('/', async (_req, res: Response) => {
 router.get('/ids', async (_req, res: Response) => {
   await ensureSeeded();
   const entries = await prisma.updateEntry.findMany({
-    orderBy: { date: 'desc' },
+    orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
     select: { id: true },
   });
   return res.json({ ids: entries.map((e) => e.id) });
@@ -122,10 +126,20 @@ router.post('/', authMiddleware, requireAdmin, async (req: AuthRequest, res: Res
   if (!date || !title || !summary) {
     return res.status(400).json({ error: 'date, title et summary sont requis' });
   }
+
   const entry = await prisma.updateEntry.create({
     data: { date, title, summary },
     include: { items: true },
   });
+
+  void notifyNewChangelogEntry({
+    id: entry.id,
+    title: entry.title,
+    summary: entry.summary,
+  }).catch((error) => {
+    console.error('Failed to send changelog notifications:', error);
+  });
+
   return res.status(201).json({ id: entry.id, date: entry.date, title: entry.title, summary: entry.summary, sections: [] });
 });
 
@@ -162,5 +176,21 @@ router.delete('/:entryId/items/:itemId', authMiddleware, requireAdmin, async (re
   await prisma.updateItem.delete({ where: { id: itemId } });
   return res.json({ success: true });
 });
+function groupItems(items: { id: string; category: string; text: string; order: number }[]) {
+  const map: Record<string, { id: string; text: string }[]> = {
+    BIG_FEATURE: [],
+    SMALL_FEATURE: [],
+    BUG_FIX: [],
+  };
+  for (const item of [...items].sort((a, b) => a.order - b.order)) {
+    if (map[item.category]) {
+      map[item.category].push({ id: item.id, text: item.text });
+    }
+  }
+  return CATEGORIES
+    .filter((cat) => map[cat].length > 0)
+    .map((cat) => ({ category: cat, items: map[cat] }));
+}
+
 
 export default router;

@@ -9,6 +9,7 @@ import { TYPOGRAPHY } from '@/lib/design-system';
 import { markChangelogSeen } from '@/lib/changelog';
 import { changelogApi, type ChangelogEntry } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 import { Bug, Sparkles, Rocket, Plus, X, Check, Bold } from 'lucide-react';
 
 type UpdateCategory = 'BIG_FEATURE' | 'SMALL_FEATURE' | 'BUG_FIX';
@@ -116,8 +117,9 @@ function AddItemForm({ entryId, category, onAdded, onCancel }: AddItemFormProps)
       const { data } = await changelogApi.addItem(entryId, { category, text: trimmed });
       onAdded(data);
       setText('');
+      toast.success('Ligne ajoutee au changelog.');
     } catch {
-      // ignore
+      toast.error('Impossible d’ajouter cette ligne.');
     } finally {
       setSaving(false);
     }
@@ -168,8 +170,9 @@ function AddEntryForm({ onAdded, onCancel }: AddEntryFormProps) {
     try {
       const { data } = await changelogApi.createEntry({ date, title: title.trim(), summary: summary.trim() });
       onAdded(data);
+      toast.success('Entree de changelog creee.');
     } catch {
-      // ignore
+      toast.error('Impossible de creer cette entree.');
     } finally {
       setSaving(false);
     }
@@ -236,22 +239,32 @@ export default function Changelog() {
     setAddingItem(null);
   };
 
-  const handleItemDeleted = (entryId: string, itemId: string) => {
-    changelogApi.deleteItem(entryId, itemId).catch(() => {});
-    setEntries((prev) => prev.map((e) => {
-      if (e.id !== entryId) return e;
-      return {
-        ...e,
-        sections: e.sections
-          .map((s) => ({ ...s, items: s.items.filter((i) => i.id !== itemId) }))
-          .filter((s) => s.items.length > 0),
-      };
-    }));
+  const handleItemDeleted = async (entryId: string, itemId: string) => {
+    try {
+      await changelogApi.deleteItem(entryId, itemId);
+      setEntries((prev) => prev.map((e) => {
+        if (e.id !== entryId) return e;
+        return {
+          ...e,
+          sections: e.sections
+            .map((s) => ({ ...s, items: s.items.filter((i) => i.id !== itemId) }))
+            .filter((s) => s.items.length > 0),
+        };
+      }));
+      toast.success('Ligne supprimee du changelog.');
+    } catch {
+      toast.error('Impossible de supprimer cette ligne.');
+    }
   };
 
-  const handleEntryDeleted = (entryId: string) => {
-    changelogApi.deleteEntry(entryId).catch(() => {});
-    setEntries((prev) => prev.filter((e) => e.id !== entryId));
+  const handleEntryDeleted = async (entryId: string) => {
+    try {
+      await changelogApi.deleteEntry(entryId);
+      setEntries((prev) => prev.filter((e) => e.id !== entryId));
+      toast.success('Entree de changelog supprimee.');
+    } catch {
+      toast.error('Impossible de supprimer cette entree.');
+    }
   };
 
   const handleEntryAdded = (entry: ChangelogEntry) => {
@@ -312,6 +325,16 @@ export default function Changelog() {
                         <span className="text-xl font-semibold tracking-tight capitalize">
                           {dateLabel}
                         </span>
+                        {isAdmin && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); void handleEntryDeleted(entry.id); }}
+                            className="ml-auto text-muted-foreground/40 hover:text-destructive transition-colors"
+                            title="Supprimer cette entrée"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
                         {counts.BIG_FEATURE > 0 && (
                           <Badge variant="outline" className={`gap-1.5 text-xs ${categoryMeta.BIG_FEATURE.badgeClass}`}>
                             <Rocket className="h-3 w-3" />{counts.BIG_FEATURE}
@@ -327,16 +350,6 @@ export default function Changelog() {
                             <Bug className="h-3 w-3" />{counts.BUG_FIX}
                           </Badge>
                         )}
-                        {isAdmin && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleEntryDeleted(entry.id); }}
-                            className="ml-auto text-muted-foreground/40 hover:text-destructive transition-colors"
-                            title="Supprimer cette entrée"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        )}
-                      </div>
                       <p className={TYPOGRAPHY.PAGE_DESCRIPTION}>{entry.summary}</p>
                     </div>
                   </AccordionTrigger>
@@ -371,7 +384,7 @@ export default function Changelog() {
                                     <span className="flex-1">{renderItem(item.text)}</span>
                                     {isAdmin && (
                                       <button
-                                        onClick={() => handleItemDeleted(entry.id, item.id)}
+                                        onClick={() => void handleItemDeleted(entry.id, item.id)}
                                         className="shrink-0 opacity-0 group-hover:opacity-100 text-muted-foreground/40 hover:text-destructive transition-all mt-[3px]"
                                       >
                                         <X className="h-3 w-3" />

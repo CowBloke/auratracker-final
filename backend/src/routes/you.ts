@@ -4,6 +4,8 @@ import { prisma } from '../server.js';
 import {
   createBusiness,
   createRelationship,
+  deleteBusiness,
+  divorceRelationship,
   executeBusinessAction,
   getYouState,
   proposeMarriage,
@@ -47,6 +49,7 @@ const ERROR_STATUS: Record<string, number> = {
   RELATIONSHIP_FORBIDDEN: 403,
   RELATIONSHIP_ALREADY_MARRIED: 400,
   RELATIONSHIP_LEVEL_TOO_LOW: 400,
+  RELATIONSHIP_NOT_MARRIED: 400,
   MARRIAGE_PROPOSAL_ALREADY_PENDING: 400,
   MARRIAGE_PROPOSAL_NOT_FOUND: 404,
   MARRIAGE_PROPOSAL_FORBIDDEN: 403,
@@ -86,6 +89,7 @@ const ERROR_MESSAGE: Record<string, string> = {
   RELATIONSHIP_FORBIDDEN: 'Action non autorisee sur cette relation.',
   RELATIONSHIP_ALREADY_MARRIED: 'Cette relation est deja marquee comme mariee.',
   RELATIONSHIP_LEVEL_TOO_LOW: 'Le niveau de relation doit etre au moins de 70 pour un mariage.',
+  RELATIONSHIP_NOT_MARRIED: 'Cette relation n est pas marquee comme mariee.',
   MARRIAGE_PROPOSAL_ALREADY_PENDING: 'Une demande en mariage est deja en attente.',
   MARRIAGE_PROPOSAL_NOT_FOUND: 'Demande en mariage introuvable.',
   MARRIAGE_PROPOSAL_FORBIDDEN: 'Tu ne peux pas repondre a cette demande.',
@@ -191,6 +195,24 @@ router.post('/marriage-proposals/:proposalId/respond', authMiddleware, requireYo
     res.json(result);
   } catch (error) {
     handleRouteError(error, res, 'Respond marriage proposal error');
+  }
+});
+
+router.post('/relationships/:relationshipId/actions/divorce', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const relationship = await divorceRelationship(req.user!.id, req.params.relationshipId);
+    res.json({ relationship });
+  } catch (error) {
+    handleRouteError(error, res, 'Divorce relationship error');
+  }
+});
+
+router.delete('/businesses/:businessId', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await deleteBusiness(req.user!.id, req.params.businessId);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Delete business error');
   }
 });
 
