@@ -10,6 +10,15 @@ const CATEGORIES: UpdateCategory[] = ['BIG_FEATURE', 'SMALL_FEATURE', 'BUG_FIX']
 const LEGACY_IMAGE_UPLOAD_ENTRY_ID = '2026-04-01-image-upload-reliability';
 const CANONICAL_APRIL_FIRST_ENTRY_ID = '2026-04-01-ui-toasts-fixes';
 
+type EntryWithItems = {
+  id: string;
+  date: string;
+  title: string;
+  summary: string;
+  createdAt: Date;
+  items: { id: string; category: string; text: string; order: number }[];
+};
+
 const SEED_ENTRIES = [
   {
     id: '2026-04-01-party-dropdown-members',
@@ -46,13 +55,14 @@ const SEED_ENTRIES = [
     id: CANONICAL_APRIL_FIRST_ENTRY_ID,
     date: '2026-04-01',
     title: 'Corrections UI & Notifications',
-    summary: "Toasts unifiés, badge changelog rouge, doublons de notifications corrigés et uploads d'images plus fiables.",
+    summary: "Toasts unifiés, badge changelog rouge, doublons de notifications corrigés, uploads d'images plus fiables et changelog fusionné par date.",
     items: [
       { category: 'BUG_FIX', text: '**Badge changelog** — La pastille de notifications non lues dans la sidebar passe au rouge, cohérent avec les autres badges.', order: 0 },
       { category: 'BUG_FIX', text: '**Toasts en double** — Les achats en boutique, claims de quêtes, ouverture du pass et investissements business ne déclenchaient plus deux toasts simultanément.', order: 1 },
       { category: 'BUG_FIX', text: "**Formats d'image mieux geres** — Les uploads acceptent maintenant aussi l'AVIF et reconnaissent mieux certains MIME types courants comme `image/jpg`.", order: 2 },
       { category: 'BUG_FIX', text: "**Uploads d'images plus robustes** — La validation et l'ecriture des images sont centralisees cote serveur pour eviter les comportements differents selon la page ou le type d'upload.", order: 3 },
       { category: 'BUG_FIX', text: "**Conversion automatique d'images** — Sur les navigateurs compatibles, certains formats comme HEIC/HEIF ou SVG sont convertis automatiquement vers un format supporte avant envoi.", order: 4 },
+      { category: 'BUG_FIX', text: "**Une carte par jour** — Le backend fusionne les entrees de changelog ayant la meme date et evite maintenant la creation de doublons sur une meme journee.", order: 5 },
       { category: 'SMALL_FEATURE', text: '**Fermer un toast** — Un bouton ✕ permet maintenant de fermer manuellement chaque toast.', order: 0 },
       { category: 'SMALL_FEATURE', text: '**Toasts unifiés** — Tous les toasts du site (y compris la page Admin) passent par le même système visuel.', order: 1 },
       { category: 'SMALL_FEATURE', text: "**Selection d'images plus claire** — Les zones d'upload affichent des formats explicitement supportes pour mieux guider les utilisateurs avant l'envoi.", order: 2 },
@@ -84,6 +94,68 @@ const SEED_ENTRIES = [
     ],
   },
 ];
+
+async function mergeDuplicateEntriesByDate() {
+  const entries = await prisma.updateEntry.findMany({
+    include: { items: true },
+    orderBy: [{ createdAt: 'asc' }],
+  });
+
+  const entriesByDate = new Map<string, EntryWithItems[]>();
+  for (const entry of entries) {
+    const group = entriesByDate.get(entry.date);
+    if (group) {
+      group.push(entry);
+    } else {
+      entriesByDate.set(entry.date, [entry]);
+    }
+  }
+
+  for (const sameDateEntries of entriesByDate.values()) {
+    if (sameDateEntries.length <= 1) {
+      continue;
+    }
+
+    const [entryToKeep, ...entriesToDelete] = sameDateEntries;
+    const existingKeys = new Set(entryToKeep.items.map((item) => `${item.category}:${item.text}`));
+    const maxOrderByCategory = new Map<string, number>();
+
+    for (const item of entryToKeep.items) {
+      const current = maxOrderByCategory.get(item.category) ?? -1;
+      maxOrderByCategory.set(item.category, Math.max(current, item.order));
+    }
+
+    const itemsToCreate: { entryId: string; category: string; text: string; order: number }[] = [];
+
+    for (const duplicateEntry of entriesToDelete) {
+      for (const item of duplicateEntry.items) {
+        const key = `${item.category}:${item.text}`;
+        if (existingKeys.has(key)) {
+          continue;
+        }
+
+        const nextOrder = (maxOrderByCategory.get(item.category) ?? -1) + 1;
+        maxOrderByCategory.set(item.category, nextOrder);
+        existingKeys.add(key);
+
+        itemsToCreate.push({
+          entryId: entryToKeep.id,
+          category: item.category,
+          text: item.text,
+          order: nextOrder,
+        });
+      }
+    }
+
+    if (itemsToCreate.length > 0) {
+      await prisma.updateItem.createMany({ data: itemsToCreate });
+    }
+
+    await prisma.updateEntry.deleteMany({
+      where: { id: { in: entriesToDelete.map((entry) => entry.id) } },
+    });
+  }
+}
 
 async function ensureSeeded() {
   const canonicalEntry = SEED_ENTRIES.find((entry) => entry.id === CANONICAL_APRIL_FIRST_ENTRY_ID);
@@ -122,28 +194,73 @@ async function ensureSeeded() {
 
   const existingEntries = await prisma.updateEntry.findMany({
     include: { items: true },
+    orderBy: [{ createdAt: 'asc' }],
   });
   const existingEntriesById = new Map(existingEntries.map((entry) => [entry.id, entry]));
+  const existingEntriesByDate = new Map<string, EntryWithItems>();
+  for (const entry of existingEntries) {
+    if (!existingEntriesByDate.has(entry.date)) {
+      existingEntriesByDate.set(entry.date, entry);
+    }
+  }
+
+  const itemKeysByEntryId = new Map<string, Set<string>>();
+  for (const entry of existingEntries) {
+    itemKeysByEntryId.set(
+      entry.id,
+      new Set(entry.items.map((item) => `${item.category}:${item.text}`))
+    );
+  }
 
   for (const entry of SEED_ENTRIES) {
     const existingEntry = existingEntriesById.get(entry.id);
 
     if (!existingEntry) {
-      await prisma.updateEntry.create({
-        data: {
-          id: entry.id,
-          date: entry.date,
-          title: entry.title,
-          summary: entry.summary,
-          items: { create: entry.items },
-        },
-      });
+      const existingForDate = existingEntriesByDate.get(entry.date);
+
+      if (!existingForDate) {
+        const createdEntry = await prisma.updateEntry.create({
+          data: {
+            id: entry.id,
+            date: entry.date,
+            title: entry.title,
+            summary: entry.summary,
+            items: { create: entry.items },
+          },
+          include: { items: true },
+        });
+
+        existingEntriesById.set(entry.id, createdEntry);
+        existingEntriesByDate.set(entry.date, createdEntry);
+        itemKeysByEntryId.set(
+          entry.id,
+          new Set(entry.items.map((item) => `${item.category}:${item.text}`))
+        );
+      } else {
+        const existingItemKeys = itemKeysByEntryId.get(existingForDate.id) ?? new Set<string>();
+        const missingItems = entry.items.filter((item) => !existingItemKeys.has(`${item.category}:${item.text}`));
+
+        if (missingItems.length > 0) {
+          await prisma.updateItem.createMany({
+            data: missingItems.map((item) => ({
+              entryId: existingForDate.id,
+              category: item.category,
+              text: item.text,
+              order: item.order,
+            })),
+          });
+
+          for (const item of missingItems) {
+            existingItemKeys.add(`${item.category}:${item.text}`);
+          }
+          itemKeysByEntryId.set(existingForDate.id, existingItemKeys);
+        }
+      }
+
       continue;
     }
 
-    const existingItemKeys = new Set(
-      existingEntry.items.map((item) => `${item.category}:${item.text}`)
-    );
+    const existingItemKeys = itemKeysByEntryId.get(existingEntry.id) ?? new Set<string>();
     const missingItems = entry.items.filter((item) => !existingItemKeys.has(`${item.category}:${item.text}`));
 
     if (existingEntry.date !== entry.date || existingEntry.title !== entry.title || existingEntry.summary !== entry.summary) {
@@ -166,8 +283,15 @@ async function ensureSeeded() {
           order: item.order,
         })),
       });
+
+      for (const item of missingItems) {
+        existingItemKeys.add(`${item.category}:${item.text}`);
+      }
+      itemKeysByEntryId.set(existingEntry.id, existingItemKeys);
     }
   }
+
+  await mergeDuplicateEntriesByDate();
 }
 
 async function notifyNewChangelogEntry(entry: { id: string; title: string; summary: string }) {
@@ -228,6 +352,22 @@ router.post('/', authMiddleware, requireAdmin, async (req: AuthRequest, res: Res
   const { date, title, summary } = req.body as { date?: string; title?: string; summary?: string };
   if (!date || !title || !summary) {
     return res.status(400).json({ error: 'date, title et summary sont requis' });
+  }
+
+  const existingEntryForDate = await prisma.updateEntry.findFirst({
+    where: { date },
+    orderBy: [{ createdAt: 'asc' }],
+    include: { items: true },
+  });
+
+  if (existingEntryForDate) {
+    return res.status(200).json({
+      id: existingEntryForDate.id,
+      date: existingEntryForDate.date,
+      title: existingEntryForDate.title,
+      summary: existingEntryForDate.summary,
+      sections: groupItems(existingEntryForDate.items),
+    });
   }
 
   const entry = await prisma.updateEntry.create({

@@ -1,6 +1,13 @@
 ## Changelog Rule
 
-After completing any feature, fix, or visible change, add an entry directly to `SEED_ENTRIES` in `backend/src/routes/changelog.ts`. The entry is automatically synced to the DB on next server start via `ensureSeeded()`. Structure:
+After completing any feature, fix, or visible change, update `SEED_ENTRIES` in `backend/src/routes/changelog.ts`.
+
+Important: keep one changelog card per day.
+- First, find whether an entry with the same `date` already exists.
+- If it exists, append new lines to its `items` array (and optionally refine `summary`).
+- Create a brand new entry only when no entry exists for that date.
+
+Entries are automatically synced to the DB on next server start via `ensureSeeded()`. Structure:
 
 ```ts
 {
@@ -16,4 +23,6 @@ After completing any feature, fix, or visible change, add an entry directly to `
 },
 ```
 
-Categories: `BIG_FEATURE` (grandes fonctionnalités), `SMALL_FEATURE` (petites améliorations), `BUG_FIX` (correctifs). Add the new entry at the top of the array. File: `backend/src/routes/changelog.ts`.
+Categories: `BIG_FEATURE` (grandes fonctionnalités), `SMALL_FEATURE` (petites améliorations), `BUG_FIX` (correctifs).
+
+If you create a new date entry, add it at the top of the array. File: `backend/src/routes/changelog.ts`.
