@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type ComponentType, type UIEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  Archive,
   BadgeCheck,
   BadgeX,
   Bell,
@@ -13,7 +12,6 @@ import {
   DollarSign,
   ExternalLink,
   Gamepad2,
-  Inbox,
   Info,
   Megaphone,
   MessageSquare,
@@ -29,6 +27,7 @@ import {
   TrendingDown,
   TrendingUp,
   Trophy,
+  Trash2,
   UserMinus,
   Users,
   X,
@@ -59,6 +58,25 @@ const TYPE_ICON: Record<string, ComponentType<{ className?: string }>> = {
   PARTY_INVITE: Sword,
   ADMIN: Megaphone,
   SYSTEM: Info,
+};
+
+const TYPE_COLOR: Record<string, { bg: string; text: string }> = {
+  AURA_RECEIVED:      { bg: 'bg-amber-500/15',   text: 'text-amber-500' },
+  MONEY_RECEIVED:     { bg: 'bg-emerald-500/15',  text: 'text-emerald-500' },
+  ITEM_RECEIVED:      { bg: 'bg-blue-500/15',     text: 'text-blue-500' },
+  CLAN_JOIN_REQUEST:  { bg: 'bg-violet-500/15',   text: 'text-violet-500' },
+  CLAN_JOIN_ACCEPTED: { bg: 'bg-emerald-500/15',  text: 'text-emerald-500' },
+  CLAN_JOIN_REJECTED: { bg: 'bg-red-500/15',      text: 'text-red-500' },
+  CLAN_WAR_DECLARED:  { bg: 'bg-orange-500/15',   text: 'text-orange-500' },
+  CLAN_WAR_COMPLETED: { bg: 'bg-blue-500/15',     text: 'text-blue-500' },
+  CLAN_WAR_WON:       { bg: 'bg-amber-500/15',    text: 'text-amber-500' },
+  CLAN_WAR_LOST:      { bg: 'bg-red-500/15',      text: 'text-red-500' },
+  QUEST_COMPLETED:    { bg: 'bg-purple-500/15',   text: 'text-purple-500' },
+  POLYMARKET_WIN:     { bg: 'bg-emerald-500/15',  text: 'text-emerald-500' },
+  POLYMARKET_LOSS:    { bg: 'bg-red-500/15',      text: 'text-red-500' },
+  PARTY_INVITE:       { bg: 'bg-orange-500/15',   text: 'text-orange-500' },
+  ADMIN:              { bg: 'bg-rose-500/15',      text: 'text-rose-500' },
+  SYSTEM:             { bg: 'bg-sky-500/15',       text: 'text-sky-500' },
 };
 
 const ICON_NAME_MAP: Record<string, ComponentType<{ className?: string }>> = {
@@ -94,19 +112,6 @@ const ICON_NAME_MAP: Record<string, ComponentType<{ className?: string }>> = {
   landmark: Building2,
   'credit-card': DollarSign,
 };
-
-const TONE_MAP: Record<string, { shell: string; iconWrap: string; icon: string }> = {
-  default: {
-    shell: 'border-border/50 bg-background/95 dark:bg-card/95',
-    iconWrap: 'border border-border/50 bg-muted/25',
-    icon: 'text-muted-foreground',
-  },
-};
-
-function getNotificationTone(notification: Notification) {
-  void notification;
-  return TONE_MAP.default;
-}
 
 function getBusinessInvitationId(notification: Notification) {
   const invitationId = notification.data?.invitationId;
@@ -145,122 +150,75 @@ function NotificationCard({
 }) {
   const ago = formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true, locale: fr });
   const ResolvedIcon = (notification.icon && ICON_NAME_MAP[notification.icon]) || TYPE_ICON[notification.type] || Bell;
-  const tone = getNotificationTone(notification);
+  const color = TYPE_COLOR[notification.type] ?? { bg: 'bg-muted/30', text: 'text-muted-foreground' };
   const isUnread = !notification.isRead;
   const isInvite = isBusinessInvitation(notification);
-
-  const actionButtonClass = 'h-8 rounded-full border border-border/60 bg-background px-3 text-[11px] font-medium text-muted-foreground shadow-none transition-colors hover:bg-muted/60 hover:text-foreground';
-  const primaryButtonClass = 'h-8 rounded-full border border-border/60 bg-foreground px-3 text-[11px] font-medium text-background shadow-none transition-colors hover:opacity-90 dark:bg-foreground dark:text-background';
 
   return (
     <article
       className={cn(
-        'relative overflow-hidden rounded-2xl border p-4 shadow-none transition-colors duration-200',
-        tone.shell,
-        notification.link && 'cursor-pointer hover:bg-muted/35',
-        isUnread && 'bg-muted/[0.32]'
+        'group relative flex items-start gap-2.5 rounded-xl px-3 py-2.5 transition-colors duration-150',
+        isUnread ? 'bg-muted/30' : 'hover:bg-muted/15',
+        notification.link && 'cursor-pointer',
       )}
       onClick={() => {
         if (!notification.link) return;
         void onNavigate(notification);
       }}
     >
-      <div className="relative flex items-start gap-3">
-        <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-full', tone.iconWrap)}>
-          <ResolvedIcon className={cn('h-5 w-5', tone.icon)} />
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-medium leading-tight text-foreground">{notification.title}</p>
-              <p className="mt-1 line-clamp-3 text-xs leading-5 text-muted-foreground">{notification.body}</p>
-            </div>
-
-            <div className="flex items-center gap-2 pl-1">
-              {isUnread ? <span className="h-1.5 w-1.5 rounded-full bg-foreground/70" /> : null}
-              <span className="shrink-0 text-[10px] font-medium text-muted-foreground/70">{ago}</span>
-            </div>
-          </div>
-
-          <div className="mt-3 flex flex-wrap items-center gap-2" onClick={(event) => event.stopPropagation()}>
-            {isInvite ? (
-              <>
-                <Button
-                  type="button"
-                  size="sm"
-                  className={primaryButtonClass}
-                  disabled={actingKey !== null}
-                  onClick={() => void onAcceptBusinessInvite(notification)}
-                >
-                  <Check className="mr-1.5 h-3.5 w-3.5" />
-                  {actingKey === `${notification.id}:accept` ? 'Acceptation…' : 'Accepter'}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className={actionButtonClass}
-                  disabled={actingKey !== null}
-                  onClick={() => void onDeclineBusinessInvite(notification)}
-                >
-                  <X className="mr-1.5 h-3.5 w-3.5" />
-                  {actingKey === `${notification.id}:decline` ? 'Refus…' : 'Refuser'}
-                </Button>
-                {notification.link ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className={actionButtonClass}
-                    disabled={actingKey !== null}
-                    onClick={() => void onNavigate(notification)}
-                  >
-                    <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                    Voir
-                  </Button>
-                ) : null}
-              </>
-            ) : notification.link ? (
-              <>
-                <Button
-                  type="button"
-                  size="sm"
-                  className={primaryButtonClass}
-                  disabled={actingKey !== null}
-                  onClick={() => void onNavigate(notification)}
-                >
-                  <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                  Ouvrir
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className={actionButtonClass}
-                  disabled={actingKey !== null}
-                  onClick={() => void onDismiss(notification)}
-                >
-                  <Archive className="mr-1.5 h-3.5 w-3.5" />
-                  {actingKey === `${notification.id}:dismiss` ? 'Retrait…' : 'Lu et retirer'}
-                </Button>
-              </>
-            ) : (
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className={actionButtonClass}
-                disabled={actingKey !== null}
-                onClick={() => void onDismiss(notification)}
-              >
-                <Archive className="mr-1.5 h-3.5 w-3.5" />
-                {actingKey === `${notification.id}:dismiss` ? 'Retrait…' : 'Lu et retirer'}
-              </Button>
-            )}
-          </div>
-        </div>
+      {/* Colorful icon */}
+      <div className={cn('mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full', color.bg)}>
+        <ResolvedIcon className={cn('h-4 w-4', color.text)} />
       </div>
+
+      {/* Content */}
+      <div className="min-w-0 flex-1 pr-5">
+        <div className="flex items-center gap-1.5">
+          {isUnread && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/70" />}
+          <p className="truncate text-[12px] font-semibold leading-tight text-foreground">{notification.title}</p>
+          <span className="ml-auto shrink-0 text-[10px] text-muted-foreground/50">{ago}</span>
+        </div>
+        <p className="mt-0.5 line-clamp-1 text-[11px] leading-4 text-muted-foreground">{notification.body}</p>
+
+        {isInvite && (
+          <div className="mt-2 flex gap-1.5" onClick={(e) => e.stopPropagation()}>
+            <Button
+              type="button"
+              size="sm"
+              disabled={actingKey !== null}
+              onClick={() => void onAcceptBusinessInvite(notification)}
+              className="h-6 rounded-full px-2.5 text-[10px] font-medium"
+            >
+              <Check className="mr-1 h-3 w-3" />
+              {actingKey === `${notification.id}:accept` ? '…' : 'Accepter'}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={actingKey !== null}
+              onClick={() => void onDeclineBusinessInvite(notification)}
+              className="h-6 rounded-full px-2.5 text-[10px] font-medium"
+            >
+              <X className="mr-1 h-3 w-3" />
+              {actingKey === `${notification.id}:decline` ? '…' : 'Refuser'}
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Dismiss button (visible on hover) */}
+      <button
+        type="button"
+        className="absolute right-2 top-2.5 rounded-full p-0.5 text-muted-foreground/40 opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100"
+        onClick={(e) => {
+          e.stopPropagation();
+          void onDismiss(notification);
+        }}
+        title="Retirer"
+      >
+        <X className="h-3 w-3" />
+      </button>
     </article>
   );
 }
@@ -268,6 +226,7 @@ function NotificationCard({
 export function InboxDropdown() {
   const [open, setOpen] = useState(false);
   const [actingKey, setActingKey] = useState<string | null>(null);
+  const [dismissingAll, setDismissingAll] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const {
@@ -278,6 +237,7 @@ export function InboxDropdown() {
     fetchNotifications,
     markRead,
     markAllRead,
+    archiveAllRead,
     dismissNotification,
   } = useNotifications();
 
@@ -295,9 +255,7 @@ export function InboxDropdown() {
     const actionKey = `${notification.id}:dismiss`;
     setActingKey(actionKey);
     try {
-      if (!notification.isRead) {
-        await markRead(notification.id);
-      }
+      if (!notification.isRead) await markRead(notification.id);
       await dismissNotification(notification.id);
     } finally {
       setActingKey(null);
@@ -305,12 +263,20 @@ export function InboxDropdown() {
   };
 
   const handleNavigate = async (notification: Notification) => {
-    if (!notification.isRead) {
-      await markRead(notification.id);
-    }
+    if (!notification.isRead) await markRead(notification.id);
     if (notification.link) {
       setOpen(false);
       navigate(notification.link);
+    }
+  };
+
+  const handleDismissAll = async () => {
+    setDismissingAll(true);
+    try {
+      await markAllRead();
+      await archiveAllRead();
+    } finally {
+      setDismissingAll(false);
     }
   };
 
@@ -328,17 +294,9 @@ export function InboxDropdown() {
         () => youApi.respondToBusinessInvitation(invitationId, decision),
         "Impossible de repondre a l'invitation."
       );
-
-      if (!notification.isRead) {
-        await markRead(notification.id);
-      }
+      if (!notification.isRead) await markRead(notification.id);
       await dismissNotification(notification.id);
-
-      toast.success(
-        decision === 'accept'
-          ? 'Invitation acceptee.'
-          : 'Invitation refusee.'
-      );
+      toast.success(decision === 'accept' ? 'Invitation acceptee.' : 'Invitation refusee.');
     } finally {
       setActingKey(null);
     }
@@ -371,55 +329,70 @@ export function InboxDropdown() {
       </Button>
 
       {open ? (
-        <div className="absolute right-0 top-full z-50 mt-3 w-[25rem] max-w-[calc(100vw-1rem)] overflow-hidden rounded-[1.5rem] border border-border/60 bg-background/95 shadow-xl backdrop-blur-xl dark:bg-card/95">
-          <div className="border-b border-border/50 px-4 pb-3 pt-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-muted/30 text-foreground">
-                    <Inbox className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">Boîte de réception</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {unreadCount > 0 ? `${unreadCount} notification${unreadCount > 1 ? 's' : ''} à traiter` : 'Tout est lu'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {unreadCount > 0 ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => void markAllRead()}
-                  className="h-8 rounded-full border border-border/60 bg-background px-3 text-[11px] font-medium text-muted-foreground shadow-none hover:bg-muted/60 hover:text-foreground"
-                >
-                  <CheckCheck className="mr-1.5 h-3.5 w-3.5" />
-                  Tout lire
-                </Button>
-              ) : null}
+        <div className="absolute right-0 top-full z-50 mt-3 w-[22rem] max-w-[calc(100vw-1rem)] overflow-hidden rounded-2xl border border-border/60 bg-background/95 shadow-xl backdrop-blur-xl dark:bg-card/95">
+          {/* Header */}
+          <div className="flex items-center justify-between gap-2 border-b border-border/50 px-4 py-2.5">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-foreground">Boîte de réception</span>
+              {unreadCount > 0 && (
+                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-[9px] font-bold text-background">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              {notifications.length > 0 && (
+                <>
+                  {unreadCount > 0 && (
+                    <button
+                      type="button"
+                      title="Tout marquer comme lu"
+                      onClick={() => void markAllRead()}
+                      className="rounded-md p-1.5 text-muted-foreground/60 transition-colors hover:bg-muted/60 hover:text-foreground"
+                    >
+                      <CheckCheck className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    title="Tout effacer"
+                    disabled={dismissingAll}
+                    onClick={() => void handleDismissAll()}
+                    className="rounded-md p-1.5 text-muted-foreground/60 transition-colors hover:bg-muted/60 hover:text-foreground disabled:opacity-40"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </>
+              )}
+              <Link
+                to="/inbox"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+              >
+                Voir tout
+                <ExternalLink className="h-3 w-3" />
+              </Link>
             </div>
           </div>
 
-          <div className="max-h-[min(32rem,70vh)] overflow-y-auto px-3 py-3" onScroll={handleScroll}>
+          {/* List */}
+          <div className="max-h-[min(28rem,65vh)] overflow-y-auto px-2 py-2" onScroll={handleScroll}>
             {loading && notifications.length === 0 ? (
-              <div className="flex items-center justify-center py-10 text-xs text-muted-foreground">
+              <div className="flex items-center justify-center py-8 text-xs text-muted-foreground">
                 Chargement…
               </div>
             ) : notifications.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 py-10 text-center text-xs text-muted-foreground">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full border border-border/50 bg-muted/20">
-                  <Bell className="h-6 w-6 opacity-40" />
+              <div className="flex flex-col items-center gap-3 py-10 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/30">
+                  <Bell className="h-5 w-5 text-muted-foreground/40" />
                 </div>
                 <div>
-                  <p className="font-medium text-foreground">Aucune notification</p>
-                  <p className="mt-1">Les nouvelles alertes apparaîtront ici.</p>
+                  <p className="text-xs font-medium text-foreground">Aucune notification</p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">Les nouvelles alertes apparaîtront ici.</p>
                 </div>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-0.5">
                 {notifications.map((notification) => (
                   <NotificationCard
                     key={notification.id}
@@ -431,23 +404,11 @@ export function InboxDropdown() {
                     onDeclineBusinessInvite={(entry) => handleBusinessInvitationDecision(entry, 'reject')}
                   />
                 ))}
-
                 {loading && notifications.length > 0 ? (
-                  <div className="pb-2 text-center text-[11px] text-muted-foreground">Chargement des notifications…</div>
+                  <p className="pb-1 pt-2 text-center text-[10px] text-muted-foreground">Chargement…</p>
                 ) : null}
               </div>
             )}
-          </div>
-
-          <div className="border-t border-border/50 px-4 py-3">
-            <Link
-              to="/inbox"
-              onClick={() => setOpen(false)}
-              className="flex w-full items-center justify-center gap-2 rounded-full border border-border/60 bg-background px-4 py-2 text-xs font-medium text-muted-foreground shadow-none transition-colors hover:bg-muted/60 hover:text-foreground"
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-              Voir toutes les notifications
-            </Link>
           </div>
         </div>
       ) : null}

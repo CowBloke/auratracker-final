@@ -4,6 +4,7 @@ import { checkQuestProgress } from '../routes/quests.js';
 import { logGame } from '../utils/logger.js';
 import { recheckBadgeForCondition } from '../utils/badgeAwards.js';
 import { getActiveClanMoneyBoostPercentsForUsers } from '../utils/clanEffects.js';
+import { emitSharedBalanceUpdatesForUserIds } from '../utils/sharedBalance.js';
 import { readBombPartyDictionaryWords, resolveBombPartyLanguageFile } from '../utils/bombpartyDictionary.js';
 import { getBombPartyLanguageSetting, getBombPartyThreeLetterStartRound, getBombPartyWppSettings } from '../utils/bombpartySettings.js';
 
@@ -908,19 +909,12 @@ async function endGame(game: BombPartyGame, io: Server) {
       // Update user balance
       const reward = rewards[player.userId];
       if (reward.aura > 0 || reward.money > 0) {
-        const updatedUser = await prisma.user.update({
+        await prisma.user.update({
           where: { id: player.userId },
           data: {
             aura: { increment: reward.aura },
             money: { increment: reward.money },
           },
-        });
-
-        // Emit balance update
-        io.emit('economy:balance-update', {
-          userId: player.userId,
-          aura: updatedUser.aura,
-          money: updatedUser.money,
         });
       }
 
@@ -934,6 +928,13 @@ async function endGame(game: BombPartyGame, io: Server) {
       console.error('Failed to update stats for player:', player.userId, error);
     }
   }
+
+  await emitSharedBalanceUpdatesForUserIds(
+    prisma,
+    Object.entries(rewards)
+      .filter(([, reward]) => reward.aura > 0 || reward.money > 0)
+      .map(([userId]) => userId)
+  );
 
   // Recalculate BombParty champion badge immediately (non-blocking)
   if (winner) {

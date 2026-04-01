@@ -3,6 +3,7 @@ import { prisma } from '../server.js';
 import { checkQuestProgress } from '../routes/quests.js';
 import { logGame } from '../utils/logger.js';
 import { getActiveClanMoneyBoostPercentsForUsers } from '../utils/clanEffects.js';
+import { emitSharedBalanceUpdatesForUserIds } from '../utils/sharedBalance.js';
 import { duelPartyIds, deleteDuelParty } from './duelParties.js';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -358,17 +359,15 @@ async function endGame(game: UnoGame, io: Server, winnerId: string) {
       data: { aura: { increment: resolvedWinReward.aura }, money: { increment: resolvedWinReward.money } },
       select: { id: true, aura: true, money: true },
     });
-    io.emit('economy:balance-update', { userId: updatedWinner.id, aura: updatedWinner.aura, money: updatedWinner.money });
-
     for (const other of others) {
       const resolvedLossReward = { ...lossReward, money: resolveMoneyReward(other.userId, lossReward.money) };
-      const u = await prisma.user.update({
+      await prisma.user.update({
         where: { id: other.userId },
         data: { money: { increment: resolvedLossReward.money } },
-        select: { id: true, aura: true, money: true },
       });
-      io.emit('economy:balance-update', { userId: u.id, aura: u.aura, money: u.money });
     }
+
+    await emitSharedBalanceUpdatesForUserIds(prisma, [updatedWinner.id, ...others.map((player) => player.userId)]);
 
     await checkQuestProgress(winnerId, 'PLAY_GAMES', 1);
     await checkQuestProgress(winnerId, 'WIN_GAMES', 1);

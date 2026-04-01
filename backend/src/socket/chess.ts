@@ -5,6 +5,7 @@ import { checkQuestProgress } from '../routes/quests.js';
 import { logGame } from '../utils/logger.js';
 import { recheckBadgeForCondition } from '../utils/badgeAwards.js';
 import { getActiveClanMoneyBoostPercentsForUsers } from '../utils/clanEffects.js';
+import { emitSharedBalanceUpdatesForUserIds } from '../utils/sharedBalance.js';
 import { duelPartyIds, deleteDuelParty } from './duelParties.js';
 import { AI_PLAYER_ID, AI_PLAYER_NAMES, AI_MOVE_DELAY_MS, aiPartyInfos, getAIChessMove, type AIDifficulty } from './aiGameState.js';
 
@@ -318,8 +319,10 @@ async function endGame(game: ChessGame, io: Server, winnerId: string | null, res
         }) : null,
       ]);
 
-      if (updatedWinner) io.emit('economy:balance-update', { userId: updatedWinner.id, aura: updatedWinner.aura, money: updatedWinner.money });
-      if (updatedLoser) io.emit('economy:balance-update', { userId: updatedLoser.id, aura: updatedLoser.aura, money: updatedLoser.money });
+      await emitSharedBalanceUpdatesForUserIds(
+        prisma,
+        [updatedWinner?.id, updatedLoser?.id].filter((id): id is string => Boolean(id))
+      );
 
       if (winnerIsHuman) {
         await checkQuestProgress(winner.userId, 'PLAY_GAMES', 1);
@@ -375,9 +378,7 @@ async function endGame(game: ChessGame, io: Server, winnerId: string | null, res
         )
       );
 
-      for (const updatedPlayer of updatedPlayers) {
-        io.emit('economy:balance-update', { userId: updatedPlayer.id, aura: updatedPlayer.aura, money: updatedPlayer.money });
-      }
+      await emitSharedBalanceUpdatesForUserIds(prisma, updatedPlayers.map((player) => player.id));
 
       for (const player of humanPlayers) {
         await checkQuestProgress(player.userId, 'PLAY_GAMES', 1);

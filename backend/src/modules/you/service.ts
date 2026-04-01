@@ -17,7 +17,12 @@ import {
   type InvestmentRiskLevel,
   type YouSkillKey,
 } from './config.js';
-import { debitSharedMoney, emitSharedBalanceUpdates, ensureSharedMoneyAvailable } from '../../utils/sharedBalance.js';
+import {
+  debitSharedMoney,
+  emitSharedBalanceUpdates,
+  emitSharedBalanceUpdatesForUserIds,
+  ensureSharedMoneyAvailable,
+} from '../../utils/sharedBalance.js';
 
 const USER_PREVIEW_SELECT = {
   id: true,
@@ -1793,8 +1798,7 @@ export async function suspectCheating(userId: string, relationshipId: string) {
       icon: 'heart-crack',
     });
 
-    io.to(`user:${userId}`).emit('economy:balance-update', { userId, money: totalMoney });
-    io.to(`user:${accusedId}`).emit('economy:balance-update', { userId: accusedId, money: 0 });
+    await emitSharedBalanceUpdatesForUserIds(prisma, [userId, accusedId]);
 
     return { correct: true };
   }
@@ -1848,8 +1852,7 @@ export async function respondToCourtCase(userId: string, accusationId: string, d
     icon: 'gavel',
   });
 
-  io.to(`user:${userId}`).emit('economy:balance-update', { userId, money: totalMoney });
-  io.to(`user:${accusation.accuserId}`).emit('economy:balance-update', { userId: accusation.accuserId, money: 0 });
+  await emitSharedBalanceUpdatesForUserIds(prisma, [userId, accusation.accuserId]);
 
   return { decision: 'court' };
 }

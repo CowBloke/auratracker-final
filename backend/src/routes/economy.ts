@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { prisma, io } from '../server.js';
+import { prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { validate, transferSchema } from '../middleware/validation.js';
 import { logEconomy } from '../utils/logger.js';
