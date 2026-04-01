@@ -5,6 +5,7 @@ import { validate, transferSchema } from '../middleware/validation.js';
 import { logEconomy } from '../utils/logger.js';
 import { createNotification } from '../utils/notifications.js';
 import { syncUserDailyAuraState } from '../utils/dailyAura.js';
+import { getSharedBalance } from '../utils/sharedBalance.js';
 
 const router = Router();
 
@@ -239,19 +240,18 @@ router.get('/balance/:userId', authMiddleware, async (req: AuthRequest, res: Res
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: {
-        aura: true,
-        money: true,
-      },
+      select: { id: true },
     });
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    const sharedBalance = await getSharedBalance(prisma, userId);
+
     res.json({
-      aura: Number(user.aura),
-      money: user.money,
+      aura: Number(sharedBalance.aura),
+      money: sharedBalance.money,
     });
   } catch (error) {
     console.error('Get balance error:', error);

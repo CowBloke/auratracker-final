@@ -15,6 +15,7 @@ import {
 } from '../utils/referrals.js';
 import { serializeClanEffect } from '../utils/clanEffects.js';
 import { DEFAULT_DAILY_AURA_LIMIT } from '../utils/dailyAura.js';
+import { getSharedBalance } from '../utils/sharedBalance.js';
 
 const getIpAddress = (req: Request | AuthRequest): string | null => {
   const forwarded = req.headers['x-forwarded-for'];
@@ -192,7 +193,10 @@ router.post('/login', validate(loginSchema), async (req, res) => {
 
     logAuth('login', user.id, user.username, { isAdmin: user.isAdmin, isSuperAdmin: user.isSuperAdmin }, getIpAddress(req));
 
-    const clanEffects = await getUserClanEffects(user.id);
+    const [clanEffects, sharedBalance] = await Promise.all([
+      getUserClanEffects(user.id),
+      getSharedBalance(prisma, user.id),
+    ]);
 
     res.json({
       user: {
@@ -202,8 +206,8 @@ router.post('/login', validate(loginSchema), async (req, res) => {
         schoolLevel: user.schoolLevel,
         classLetter: user.classLetter,
         email: user.email,
-        aura: user.aura,
-        money: user.money,
+        aura: Number(sharedBalance.aura),
+        money: sharedBalance.money,
         isAdmin: user.isAdmin,
         isSuperAdmin: user.isSuperAdmin,
         usernameColor: user.usernameColor,
@@ -268,8 +272,19 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
       user.referralCode = await ensureUserReferralCode(user.id, user.referralCode);
     }
 
-    const clanEffects = user ? await getUserClanEffects(user.id) : [];
-    res.json({ user: user ? { ...user, clanEffects } : null });
+    const [clanEffects, sharedBalance] = user
+      ? await Promise.all([getUserClanEffects(user.id), getSharedBalance(prisma, user.id)])
+      : [[], null];
+    res.json({
+      user: user
+        ? {
+            ...user,
+            aura: sharedBalance ? Number(sharedBalance.aura) : user.aura,
+            money: sharedBalance?.money ?? user.money,
+            clanEffects,
+          }
+        : null,
+    });
   } catch (error) {
     console.error('Get me error:', error);
     res.status(500).json({ error: 'Failed to get user' });

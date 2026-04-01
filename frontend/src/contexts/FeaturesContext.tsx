@@ -12,6 +12,7 @@ interface MaintenanceStatus {
   referralEnabled: boolean;
   duelMatchmakingEnabled: boolean;
   defaultLandingPage: string;
+  youLogoAdminOnly: boolean;
 }
 
 const DEFAULT_STATUS: MaintenanceStatus = {
@@ -24,6 +25,7 @@ const DEFAULT_STATUS: MaintenanceStatus = {
   referralEnabled: true,
   duelMatchmakingEnabled: true,
   defaultLandingPage: '/dashboard',
+  youLogoAdminOnly: false,
 };
 
 interface FeaturesContextValue {
@@ -55,6 +57,7 @@ export function FeaturesProvider({ children }: { children: React.ReactNode }) {
         referralEnabled: res.data.referralEnabled !== false,
         duelMatchmakingEnabled: res.data.duelMatchmakingEnabled !== false,
         defaultLandingPage: normalizeDefaultLandingPage(res.data.defaultLandingPage),
+        youLogoAdminOnly: res.data.youLogoAdminOnly === true,
       });
     } catch {
       setMaintenanceStatus(DEFAULT_STATUS);

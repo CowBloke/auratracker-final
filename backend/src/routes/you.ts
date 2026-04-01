@@ -1,22 +1,26 @@
 import { Router, type Response } from 'express';
 import { authMiddleware, type AuthRequest } from '../middleware/auth.js';
+import { prisma } from '../server.js';
 import {
   createBusiness,
   createRelationship,
   executeBusinessAction,
   getYouState,
   proposeMarriage,
+  respondToBusinessLoan,
   respondToMarriageProposal,
 } from '../modules/you/service.js';
 import type { BusinessActionKey } from '../modules/you/config.js';
 
 const router = Router();
+const YOU_LOGO_ADMIN_ONLY_KEY = 'you_logo_admin_only';
 
 const ERROR_STATUS: Record<string, number> = {
   INVALID_BUSINESS_TYPE: 400,
   INVALID_BUSINESS_NAME: 400,
   BUSINESS_CAPITAL_TOO_LOW: 400,
   INSUFFICIENT_MONEY: 400,
+  INSUFFICIENT_SHARED_MONEY: 400,
   USER_NOT_FOUND: 404,
   BUSINESS_NOT_FOUND: 404,
   BUSINESS_ACTION_UNAVAILABLE: 400,
@@ -26,7 +30,14 @@ const ERROR_STATUS: Record<string, number> = {
   BUSINESS_LOAN_SELF_FORBIDDEN: 400,
   INVALID_LOAN_AMOUNT: 400,
   INVALID_LOAN_DURATION: 400,
-  BUSINESS_OWNER_FUNDS_TOO_LOW: 400,
+  BUSINESS_DEPOSIT_FORBIDDEN: 403,
+  INVALID_DEPOSIT_AMOUNT: 400,
+  BUSINESS_WITHDRAW_FORBIDDEN: 403,
+  INVALID_WITHDRAW_AMOUNT: 400,
+  BUSINESS_TREASURY_TOO_LOW: 400,
+  BUSINESS_LOAN_NOT_FOUND: 404,
+  BUSINESS_LOAN_REVIEW_FORBIDDEN: 403,
+  BUSINESS_LOAN_ALREADY_DECIDED: 400,
   BUSINESS_INVEST_SELF_FORBIDDEN: 400,
   INVALID_INVEST_AMOUNT: 400,
   RELATIONSHIP_SELF_FORBIDDEN: 400,
@@ -40,6 +51,7 @@ const ERROR_STATUS: Record<string, number> = {
   MARRIAGE_PROPOSAL_NOT_FOUND: 404,
   MARRIAGE_PROPOSAL_FORBIDDEN: 403,
   MARRIAGE_PROPOSAL_ALREADY_RESOLVED: 400,
+  YOU_ADMIN_ONLY: 403,
 };
 
 const ERROR_MESSAGE: Record<string, string> = {
@@ -47,6 +59,7 @@ const ERROR_MESSAGE: Record<string, string> = {
   INVALID_BUSINESS_NAME: 'Le nom du business est trop court.',
   BUSINESS_CAPITAL_TOO_LOW: 'Le capital de depart est trop faible pour ce type de business.',
   INSUFFICIENT_MONEY: 'Tu n as pas assez de money pour cette action.',
+  INSUFFICIENT_SHARED_MONEY: 'Ton foyer n a pas assez de money pour cette action.',
   USER_NOT_FOUND: 'Utilisateur introuvable.',
   BUSINESS_NOT_FOUND: 'Business introuvable.',
   BUSINESS_ACTION_UNAVAILABLE: 'Cette action n est pas disponible pour ce business.',
@@ -56,7 +69,14 @@ const ERROR_MESSAGE: Record<string, string> = {
   BUSINESS_LOAN_SELF_FORBIDDEN: 'Tu ne peux pas emprunter a ton propre business.',
   INVALID_LOAN_AMOUNT: 'Montant d emprunt invalide.',
   INVALID_LOAN_DURATION: 'Duree d emprunt invalide.',
-  BUSINESS_OWNER_FUNDS_TOO_LOW: 'Le proprietaire n a pas assez de liquidites pour ce pret.',
+  BUSINESS_DEPOSIT_FORBIDDEN: 'Seul le proprietaire peut deposer du money dans ce business.',
+  INVALID_DEPOSIT_AMOUNT: 'Montant de depot invalide.',
+  BUSINESS_WITHDRAW_FORBIDDEN: 'Seul le proprietaire peut retirer du money de ce business.',
+  INVALID_WITHDRAW_AMOUNT: 'Montant de retrait invalide.',
+  BUSINESS_TREASURY_TOO_LOW: 'La tresorerie du business est insuffisante.',
+  BUSINESS_LOAN_NOT_FOUND: 'Demande de pret introuvable.',
+  BUSINESS_LOAN_REVIEW_FORBIDDEN: 'Tu ne peux pas traiter cette demande de pret.',
+  BUSINESS_LOAN_ALREADY_DECIDED: 'Cette demande de pret a deja ete traitee.',
   BUSINESS_INVEST_SELF_FORBIDDEN: 'Tu ne peux pas investir dans ton propre business via cette action.',
   INVALID_INVEST_AMOUNT: 'Montant d investissement invalide.',
   RELATIONSHIP_SELF_FORBIDDEN: 'Tu ne peux pas creer une relation avec toi-meme.',
@@ -70,7 +90,24 @@ const ERROR_MESSAGE: Record<string, string> = {
   MARRIAGE_PROPOSAL_NOT_FOUND: 'Demande en mariage introuvable.',
   MARRIAGE_PROPOSAL_FORBIDDEN: 'Tu ne peux pas repondre a cette demande.',
   MARRIAGE_PROPOSAL_ALREADY_RESOLVED: 'Cette demande a deja ete traitee.',
+  YOU_ADMIN_ONLY: 'Cette section est reservee aux admins.',
 };
+
+async function requireYouAccess(req: AuthRequest, res: Response, next: () => void) {
+  try {
+    const setting = await prisma.gameSettings.findUnique({ where: { key: YOU_LOGO_ADMIN_ONLY_KEY } });
+    const adminOnlyEnabled = setting?.value === 'true';
+
+    if (adminOnlyEnabled && !req.user?.isAdmin) {
+      return res.status(403).json({ error: ERROR_MESSAGE.YOU_ADMIN_ONLY, code: 'YOU_ADMIN_ONLY' });
+    }
+
+    next();
+  } catch (error) {
+    console.error('YOU access check error:', error);
+    res.status(500).json({ error: 'Erreur interne.', code: 'UNKNOWN' });
+  }
+}
 
 function handleRouteError(error: unknown, res: Response, logLabel: string) {
   const code = error instanceof Error ? error.message : 'UNKNOWN';
@@ -84,7 +121,7 @@ function handleRouteError(error: unknown, res: Response, logLabel: string) {
   res.status(status).json({ error: message, code });
 }
 
-router.get('/state', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.get('/state', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
     const state = await getYouState(req.user!.id);
     res.json(state);
@@ -93,7 +130,7 @@ router.get('/state', authMiddleware, async (req: AuthRequest, res: Response) => 
   }
 });
 
-router.post('/businesses', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.post('/businesses', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
     const business = await createBusiness(req.user!.id, {
       name: String(req.body?.name ?? ''),
@@ -109,7 +146,7 @@ router.post('/businesses', authMiddleware, async (req: AuthRequest, res: Respons
   }
 });
 
-router.post('/businesses/:businessId/actions/:actionKey', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.post('/businesses/:businessId/actions/:actionKey', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
     const actionKey = req.params.actionKey as BusinessActionKey;
     const result = await executeBusinessAction(req.user!.id, req.params.businessId, actionKey, req.body ?? {});
@@ -119,7 +156,17 @@ router.post('/businesses/:businessId/actions/:actionKey', authMiddleware, async 
   }
 });
 
-router.post('/relationships', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.post('/loans/:loanId/respond', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const decision = req.body?.decision === 'accept' ? 'accept' : 'reject';
+    const result = await respondToBusinessLoan(req.user!.id, req.params.loanId, decision);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Respond business loan error');
+  }
+});
+
+router.post('/relationships', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
     const relationship = await createRelationship(req.user!.id, String(req.body?.targetUserId ?? ''));
     res.status(201).json({ relationship });
@@ -128,7 +175,7 @@ router.post('/relationships', authMiddleware, async (req: AuthRequest, res: Resp
   }
 });
 
-router.post('/relationships/:relationshipId/actions/propose-marriage', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.post('/relationships/:relationshipId/actions/propose-marriage', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
     const proposal = await proposeMarriage(req.user!.id, req.params.relationshipId, typeof req.body?.message === 'string' ? req.body.message : undefined);
     res.status(201).json({ proposal });
@@ -137,7 +184,7 @@ router.post('/relationships/:relationshipId/actions/propose-marriage', authMiddl
   }
 });
 
-router.post('/marriage-proposals/:proposalId/respond', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.post('/marriage-proposals/:proposalId/respond', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
     const decision = req.body?.decision === 'accept' ? 'accept' : 'reject';
     const result = await respondToMarriageProposal(req.user!.id, req.params.proposalId, decision);

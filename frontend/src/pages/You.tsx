@@ -1,8 +1,9 @@
 import { type ElementType, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { BarChart3, Building2, ChevronRight, CreditCard, Heart, Landmark, Search, TrendingUp, UserPlus } from 'lucide-react';
+import { Navigate, useSearchParams } from 'react-router-dom';
+import { ArrowDownCircle, ArrowUpCircle, BarChart3, Building2, Check, ChevronRight, CreditCard, Heart, Landmark, Search, TrendingUp, UserPlus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeatures } from '@/contexts/FeaturesContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -20,11 +21,33 @@ const BUSINESS_ICON_MAP = {
   agency: BarChart3,
 } as const;
 
+const BUSINESS_STYLE_MAP = {
+  startup: { card: 'border-sky-400/30 bg-sky-400/10', badge: 'bg-sky-400/15 text-sky-400', iconWrap: 'bg-sky-400/15', icon: 'text-sky-400' },
+  bank: { card: 'border-emerald-400/30 bg-emerald-400/10', badge: 'bg-emerald-400/15 text-emerald-400', iconWrap: 'bg-emerald-400/15', icon: 'text-emerald-400' },
+  agency: { card: 'border-violet-400/30 bg-violet-400/10', badge: 'bg-violet-400/15 text-violet-400', iconWrap: 'bg-violet-400/15', icon: 'text-violet-400' },
+} as const;
+
 const ACTION_META = {
   invite: { label: 'Inviter des joueurs', help: 'Envoyer des invitations de recrutement.', icon: UserPlus, tone: 'bg-purple-400/15 text-purple-400' },
-  loan: { label: 'Emprunter', help: 'Recevoir un pret directement du joueur proprietaire.', icon: CreditCard, tone: 'bg-amber-400/15 text-amber-400' },
-  invest: { label: 'Investir', help: 'Transferer du money vers le business d un autre joueur.', icon: TrendingUp, tone: 'bg-sky-400/15 text-sky-400' },
+  loan: { label: 'Demander un pret', help: 'Envoyer une demande de pret au proprietaire du business.', icon: CreditCard, tone: 'bg-amber-400/15 text-amber-400' },
+  invest: { label: 'Investir', help: 'Transferer du money vers la tresorerie d un autre joueur.', icon: TrendingUp, tone: 'bg-sky-400/15 text-sky-400' },
+  deposit: { label: 'Deposer', help: 'Envoyer ton money partage dans la tresorerie du business.', icon: ArrowDownCircle, tone: 'bg-emerald-400/15 text-emerald-400' },
+  withdraw: { label: 'Retirer', help: 'Sortir du money de la tresorerie vers ton solde partage.', icon: ArrowUpCircle, tone: 'bg-red-400/15 text-red-400' },
 } as const;
+
+type BusinessAction = keyof typeof ACTION_META;
+
+function canUseBusinessAction(business: YouBusiness, action: BusinessAction, userId: string) {
+  if (action === 'invite' || action === 'deposit' || action === 'withdraw') {
+    return business.ownerId === userId;
+  }
+
+  if (action === 'loan' || action === 'invest') {
+    return business.ownerId !== userId;
+  }
+
+  return false;
+}
 
 function Pill({ label, color }: { label: string; color: string }) {
   return <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium', color)}>{label}</span>;
@@ -189,13 +212,38 @@ function CreateBusinessModal({
   return (
     <ModalWrap open={open} onClose={onClose} title="Creer une entreprise" desc="Le capital de depart est pris sur ton argent global.">
       <FieldRow label="Type d activite">
-        <SelectBox value={typeKey} onChange={(value) => {
-          setTypeKey(value);
-          const nextType = businessTypes.find((type) => type.key === value);
-          if (nextType) setCapital(String(nextType.minCapital));
-        }}>
-          {businessTypes.map((type) => <option key={type.key} value={type.key}>{type.label} · {type.category}</option>)}
-        </SelectBox>
+        <div className="space-y-3">
+          {businessTypes.map((type) => {
+            const Icon = BUSINESS_ICON_MAP[type.key as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
+            const style = BUSINESS_STYLE_MAP[type.key as keyof typeof BUSINESS_STYLE_MAP] ?? { card: 'border-border/40 bg-muted/10', badge: 'bg-muted text-muted-foreground', iconWrap: 'bg-muted/20', icon: 'text-foreground' };
+            const active = type.key === typeKey;
+            return (
+              <button
+                key={type.key}
+                type="button"
+                onClick={() => {
+                  setTypeKey(type.key);
+                  setCapital(String(type.minCapital));
+                }}
+                className={cn('w-full rounded-2xl border px-4 py-4 text-left transition-all', active ? style.card : 'border-border/40 bg-muted/10 hover:bg-muted/20')}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', active ? style.iconWrap : 'bg-muted/20')}>
+                    <Icon className={cn('h-5 w-5', active ? style.icon : 'text-foreground')} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-semibold">{type.label}</p>
+                      <Pill label={type.category} color={active ? style.badge : 'bg-muted text-muted-foreground'} />
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">{type.description}</p>
+                    <p className="mt-3 text-[11px] font-medium text-muted-foreground">Min. {type.minCapital.toLocaleString('fr-FR')} money</p>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </FieldRow>
       {selectedType ? <div className="rounded-xl border border-border/40 bg-muted/10 p-4"><p className="text-sm font-medium">{selectedType.label}</p><p className="mt-1 text-xs text-muted-foreground">{selectedType.description}</p><p className="mt-2 text-[11px] text-muted-foreground">Capital mini: {selectedType.minCapital.toLocaleString('fr-FR')} money</p></div> : null}
       <FieldRow label="Nom"><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="ex : Citizen Bank" /></FieldRow>
@@ -281,7 +329,7 @@ function LoanModal({ open, onClose, business, onSubmitted }: { open: boolean; on
     setSubmitting(true);
     try {
       await withRouteError(() => youApi.runBusinessAction(business.id, 'loan', { amount: Number(amount), durationMonths: Number(durationMonths) }), 'Impossible d emprunter.');
-      toast.success('Pret accorde');
+      toast.success('Demande de pret envoyee');
       await onSubmitted();
       onClose();
     } finally {
@@ -290,11 +338,11 @@ function LoanModal({ open, onClose, business, onSubmitted }: { open: boolean; on
   };
 
   return (
-    <ModalWrap open={open} onClose={onClose} title={business ? `Emprunter · ${business.name}` : 'Emprunter'} desc="Le montant est transfere du proprietaire vers ton solde global.">
+    <ModalWrap open={open} onClose={onClose} title={business ? `Demander un pret · ${business.name}` : 'Demander un pret'} desc="Le proprietaire devra accepter la demande avant que le money soit debloque.">
       <FieldRow label="Montant"><Input type="number" value={amount} onChange={(event) => setAmount(event.target.value)} min={500} /></FieldRow>
       <FieldRow label="Duree"><SelectBox value={durationMonths} onChange={setDurationMonths}>{['6', '12', '24', '36', '60'].map((value) => <option key={value} value={value}>{value} mois</option>)}</SelectBox></FieldRow>
       <div className="grid grid-cols-2 gap-3 rounded-xl border border-border/40 bg-muted/10 p-4"><div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Mensualite</p><p className="text-lg font-bold tabular-nums">{monthly.toLocaleString('fr-FR')}</p></div><div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Total estime</p><p className="text-lg font-bold tabular-nums text-red-400">{Math.round(Number(amount || 0) * 1.04).toLocaleString('fr-FR')}</p></div></div>
-      <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !business}>Confirmer</Button></div>
+      <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !business}>Envoyer</Button></div>
     </ModalWrap>
   );
 }
@@ -320,7 +368,7 @@ function InvestModal({ open, onClose, business, onSubmitted }: { open: boolean; 
   };
 
   return (
-    <ModalWrap open={open} onClose={onClose} title={business ? `Investir · ${business.name}` : 'Investir'} desc="Le money est retire de ton solde global puis credite au proprietaire.">
+    <ModalWrap open={open} onClose={onClose} title={business ? `Investir · ${business.name}` : 'Investir'} desc="Le money est retire de ton solde partage puis credite a la tresorerie du business.">
       <FieldRow label="Montant"><Input type="number" value={amount} onChange={(event) => setAmount(event.target.value)} min={100} /></FieldRow>
       <FieldRow label="Risque"><SelectBox value={riskLevel} onChange={(value) => setRiskLevel(value as 'low' | 'medium' | 'high')}><option value="low">Faible risque</option><option value="medium">Risque modere</option><option value="high">Risque eleve</option></SelectBox></FieldRow>
       <div className="grid grid-cols-3 gap-2 rounded-xl border border-border/40 bg-muted/10 p-3 text-center"><div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Risque</p><p className={cn('text-sm font-bold', selected.color)}>{selected.label}</p></div><div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Min</p><p className={cn('text-sm font-bold', selected.color)}>+{selected.min}%</p></div><div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Max</p><p className={cn('text-sm font-bold', selected.color)}>+{selected.max}%</p></div></div>
@@ -428,9 +476,97 @@ function OverviewTab({ data }: { data: YouState }) {
   );
 }
 
+function ManageBusinessModal({
+  open,
+  onClose,
+  business,
+  onInviteRequested,
+  onSubmitted,
+}: {
+  open: boolean;
+  onClose: () => void;
+  business: YouBusiness | null;
+  onInviteRequested: (business: YouBusiness) => void;
+  onSubmitted: (refreshBalance?: boolean) => Promise<void>;
+}) {
+  const [depositAmount, setDepositAmount] = useState('1000');
+  const [withdrawAmount, setWithdrawAmount] = useState('1000');
+  const [activeTreasuryAction, setActiveTreasuryAction] = useState<'deposit' | 'withdraw' | null>(null);
+  const [reviewingLoanId, setReviewingLoanId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setDepositAmount('1000');
+      setWithdrawAmount('1000');
+      setActiveTreasuryAction(null);
+      setReviewingLoanId(null);
+    }
+  }, [open, business?.id]);
+
+  const pendingLoans = business?.recentLoans.filter((loan) => loan.status === 'PENDING') ?? [];
+  const profit = business ? business.monthlyRevenue - business.monthlyExpenses : 0;
+
+  const runTreasuryAction = async (action: 'deposit' | 'withdraw', amount: string) => {
+    if (!business) return;
+    setActiveTreasuryAction(action);
+    try {
+      await withRouteError(
+        () => youApi.runBusinessAction(business.id, action, { amount: Number(amount) }),
+        action === 'deposit' ? 'Impossible de deposer dans la tresorerie.' : 'Impossible de retirer de la tresorerie.'
+      );
+      toast.success(action === 'deposit' ? 'Depot enregistre' : 'Retrait enregistre');
+      await onSubmitted(true);
+    } finally {
+      setActiveTreasuryAction(null);
+    }
+  };
+
+  const reviewLoan = async (loanId: string, decision: 'accept' | 'reject') => {
+    setReviewingLoanId(loanId);
+    try {
+      await withRouteError(() => youApi.respondToBusinessLoan(loanId, decision), 'Impossible de traiter la demande de pret.');
+      toast.success(decision === 'accept' ? 'Pret accepte' : 'Pret refuse');
+      await onSubmitted(true);
+    } finally {
+      setReviewingLoanId(null);
+    }
+  };
+
+  return (
+    <ModalWrap open={open} onClose={onClose} title={business ? `Gerer business · ${business.name}` : 'Gerer business'} desc="Actions de gestion sur la structure selectionnee." wide>
+      {business ? (
+        <>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {[{ label: 'Tresorerie', value: business.treasuryMoney.toLocaleString('fr-FR') }, { label: 'Capital', value: business.startingCapital.toLocaleString('fr-FR') }, { label: 'Membres', value: String(business.memberCount) }, { label: 'Mensuel', value: `${profit >= 0 ? '+' : ''}${profit.toLocaleString('fr-FR')}` }].map((entry) => <div key={entry.label} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">{entry.label}</p><p className="mt-1 text-base font-semibold tabular-nums">{entry.value}</p></div>)}
+          </div>
+
+          <div className="space-y-3">
+            <SectionTitle>Actions business</SectionTitle>
+            <div className="grid gap-3 md:grid-cols-2">
+              {business.actions.includes('deposit') ? (
+                <Card><CardContent className="space-y-3 px-4 py-4"><div className="flex items-center gap-3"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-400/15"><ArrowDownCircle className="h-4 w-4 text-emerald-400" /></div><div><p className="text-sm font-semibold">Deposer dans la tresorerie</p><p className="text-xs text-muted-foreground">Transfert depuis ton money partage.</p></div></div><div className="flex gap-2"><Input type="number" value={depositAmount} onChange={(event) => setDepositAmount(event.target.value)} min={1} /><Button size="sm" onClick={() => void runTreasuryAction('deposit', depositAmount)} disabled={activeTreasuryAction !== null || Number(depositAmount) <= 0}>Deposer</Button></div></CardContent></Card>
+              ) : null}
+              {business.actions.includes('withdraw') ? (
+                <Card><CardContent className="space-y-3 px-4 py-4"><div className="flex items-center gap-3"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-400/15"><ArrowUpCircle className="h-4 w-4 text-red-400" /></div><div><p className="text-sm font-semibold">Retirer de la tresorerie</p><p className="text-xs text-muted-foreground">Retour vers ton money partage.</p></div></div><div className="flex gap-2"><Input type="number" value={withdrawAmount} onChange={(event) => setWithdrawAmount(event.target.value)} min={1} /><Button size="sm" variant="outline" onClick={() => void runTreasuryAction('withdraw', withdrawAmount)} disabled={activeTreasuryAction !== null || Number(withdrawAmount) <= 0}>Retirer</Button></div></CardContent></Card>
+              ) : null}
+            </div>
+            {business.actions.includes('invite') ? <div className="flex justify-start"><Button size="sm" variant="outline" className="text-xs" onClick={() => { onClose(); onInviteRequested(business); }}><UserPlus className="mr-1.5 h-3.5 w-3.5" />Inviter des joueurs</Button></div> : null}
+          </div>
+
+          <div className="space-y-3">
+            <SectionTitle>Demandes de pret</SectionTitle>
+            {pendingLoans.length === 0 ? <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4 text-sm text-muted-foreground">Aucune demande de pret en attente.</div> : pendingLoans.map((loan) => <div key={loan.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4"><div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><div><p className="text-sm font-semibold">{loan.borrower.username}</p><p className="text-xs text-muted-foreground">{loan.amount.toLocaleString('fr-FR')} money · {loan.termMonths} mois · {loan.interestRate}% d interet</p></div><div className="flex gap-2"><Button size="sm" className="text-xs" onClick={() => void reviewLoan(loan.id, 'accept')} disabled={reviewingLoanId !== null}><Check className="mr-1.5 h-3.5 w-3.5" />Accepter</Button><Button size="sm" variant="outline" className="text-xs" onClick={() => void reviewLoan(loan.id, 'reject')} disabled={reviewingLoanId !== null}><X className="mr-1.5 h-3.5 w-3.5" />Refuser</Button></div></div></div>)}
+          </div>
+        </>
+      ) : null}
+    </ModalWrap>
+  );
+}
+
 function TravailTab({ data, players, onReload }: { data: YouState; players: YouPlayer[]; onReload: (refreshBalance?: boolean) => Promise<void> }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [inviteBusiness, setInviteBusiness] = useState<YouBusiness | null>(null);
+  const [managedBusiness, setManagedBusiness] = useState<YouBusiness | null>(null);
 
   return (
     <>
@@ -441,11 +577,12 @@ function TravailTab({ data, players, onReload }: { data: YouState; players: YouP
         </div>
         <div className="space-y-4">
           <SectionTitle>Mes entreprises ({data.ownedBusinesses.length})</SectionTitle>
-          {data.ownedBusinesses.length === 0 ? <Card><CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">Aucune entreprise creee. Ouvre-en une depuis cette page pour utiliser ton argent reel du site.</CardContent></Card> : data.ownedBusinesses.map((business) => { const profit = business.monthlyRevenue - business.monthlyExpenses; const Icon = BUSINESS_ICON_MAP[business.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2; return <Card key={business.id}><CardContent className="space-y-4 px-5 py-4"><div className="flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted/20"><Icon className="h-5 w-5 text-foreground" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="text-base font-semibold">{business.name}</p>{business.type ? <Pill label={business.type.label} color="bg-sky-400/15 text-sky-400" /> : null}{business.pendingInvitations.length > 0 ? <Pill label={`${business.pendingInvitations.length} invitation(s)`} color="bg-purple-400/15 text-purple-400" /> : null}</div><p className="mt-1 text-sm text-muted-foreground">{business.description || 'Aucune description.'}</p></div><div className="text-right"><p className={cn('text-sm font-bold tabular-nums', profit >= 0 ? 'text-emerald-400' : 'text-red-400')}>{profit >= 0 ? '+' : ''}{profit.toLocaleString('fr-FR')}</p><p className="text-[10px] text-muted-foreground">benefice mensuel</p></div></div><div className="grid grid-cols-2 gap-2 md:grid-cols-4">{[{ label: 'Capital', value: business.startingCapital.toLocaleString('fr-FR') }, { label: 'Membres', value: String(business.memberCount) }, { label: 'Satisfaction', value: `${business.satisfaction}/100` }, { label: 'Lieu', value: business.location || 'n/a' }].map((entry) => <div key={entry.label} className="rounded-xl border border-border/40 bg-muted/10 px-3 py-2.5"><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">{entry.label}</p><p className="mt-1 text-sm font-medium">{entry.value}</p></div>)}</div><div className="space-y-2"><p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Equipe</p>{business.members.length === 0 ? <p className="text-sm text-muted-foreground">Aucun membre actif pour le moment.</p> : business.members.map((member) => <div key={member.id} className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3"><UserAvatar player={member.user} className="h-8 w-8" /><div className="min-w-0 flex-1"><p className="text-sm font-medium">{member.user.username}</p><p className="text-xs text-muted-foreground">{member.role} · {member.status}</p></div></div>)}</div>{business.recentLoans.length > 0 ? <div className="space-y-2"><p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Prets recents</p>{business.recentLoans.map((loan) => <div key={loan.id} className="flex items-center justify-between rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-sm"><span>{loan.borrower.username}</span><span>{loan.amount.toLocaleString('fr-FR')} · {loan.termMonths} mois</span></div>)}</div> : null}<div className="flex justify-end"><Button size="sm" variant="outline" className="text-xs" onClick={() => setInviteBusiness(business)}><UserPlus className="mr-1.5 h-3.5 w-3.5" />Inviter des joueurs</Button></div></CardContent></Card>; })}
+          {data.ownedBusinesses.length === 0 ? <Card><CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">Aucune entreprise creee. Ouvre-en une depuis cette page pour utiliser ton argent reel du site.</CardContent></Card> : data.ownedBusinesses.map((business) => { const profit = business.monthlyRevenue - business.monthlyExpenses; const pendingLoans = business.recentLoans.filter((loan) => loan.status === 'PENDING').length; const Icon = BUSINESS_ICON_MAP[business.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2; return <Card key={business.id}><CardContent className="space-y-4 px-5 py-4"><div className="flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted/20"><Icon className="h-5 w-5 text-foreground" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="text-base font-semibold">{business.name}</p>{business.type ? <Pill label={business.type.label} color="bg-sky-400/15 text-sky-400" /> : null}{business.pendingInvitations.length > 0 ? <Pill label={`${business.pendingInvitations.length} invitation(s)`} color="bg-purple-400/15 text-purple-400" /> : null}{pendingLoans > 0 ? <Pill label={`${pendingLoans} pret(s) en attente`} color="bg-amber-400/15 text-amber-400" /> : null}</div><p className="mt-1 text-sm text-muted-foreground">{business.description || 'Aucune description.'}</p></div><div className="text-right"><p className={cn('text-sm font-bold tabular-nums', profit >= 0 ? 'text-emerald-400' : 'text-red-400')}>{profit >= 0 ? '+' : ''}{profit.toLocaleString('fr-FR')}</p><p className="text-[10px] text-muted-foreground">benefice mensuel</p></div></div><div className="grid grid-cols-2 gap-2 md:grid-cols-5">{[{ label: 'Tresorerie', value: business.treasuryMoney.toLocaleString('fr-FR') }, { label: 'Capital', value: business.startingCapital.toLocaleString('fr-FR') }, { label: 'Membres', value: String(business.memberCount) }, { label: 'Satisfaction', value: `${business.satisfaction}/100` }, { label: 'Lieu', value: business.location || 'n/a' }].map((entry) => <div key={entry.label} className="rounded-xl border border-border/40 bg-muted/10 px-3 py-2.5"><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">{entry.label}</p><p className="mt-1 text-sm font-medium">{entry.value}</p></div>)}</div><div className="space-y-2"><p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Equipe</p>{business.members.length === 0 ? <p className="text-sm text-muted-foreground">Aucun membre actif pour le moment.</p> : business.members.map((member) => <div key={member.id} className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3"><UserAvatar player={member.user} className="h-8 w-8" /><div className="min-w-0 flex-1"><p className="text-sm font-medium">{member.user.username}</p><p className="text-xs text-muted-foreground">{member.role} · {member.status}</p></div></div>)}</div><div className="flex justify-end"><Button size="sm" variant="outline" className="text-xs" onClick={() => setManagedBusiness(business)}>Gerer business</Button></div></CardContent></Card>; })}
         </div>
       </div>
       <CreateBusinessModal open={createOpen} onClose={() => setCreateOpen(false)} businessTypes={data.businessTypes} onCreated={() => onReload(true)} />
       <InvitePlayersModal open={Boolean(inviteBusiness)} onClose={() => setInviteBusiness(null)} business={inviteBusiness} players={players} onSubmitted={() => onReload()} />
+      <ManageBusinessModal open={Boolean(managedBusiness)} onClose={() => setManagedBusiness(null)} business={managedBusiness} onInviteRequested={setInviteBusiness} onSubmitted={onReload} />
     </>
   );
 }
@@ -512,8 +649,9 @@ function ExploreTab({ data, players, userId, onReload }: { data: YouState; playe
   }, [filteredBusinesses, selectedBusinessId]);
 
   const selectedBusiness = filteredBusinesses.find((business) => business.id === selectedBusinessId) ?? filteredBusinesses[0] ?? null;
+  const visibleActions = selectedBusiness ? selectedBusiness.actions.filter((action) => canUseBusinessAction(selectedBusiness, action as BusinessAction, userId)) : [];
 
-  const onAction = (business: YouBusiness, action: 'invite' | 'loan' | 'invest') => {
+  const onAction = (business: YouBusiness, action: BusinessAction) => {
     if (action === 'invite') setInviteBusiness(business);
     if (action === 'loan') setLoanBusiness(business);
     if (action === 'invest') setInvestBusiness(business);
@@ -530,7 +668,7 @@ function ExploreTab({ data, players, userId, onReload }: { data: YouState; playe
           <Card><CardContent className="p-0"><div className="divide-y divide-border/30">{filteredBusinesses.map((business) => { const Icon = BUSINESS_ICON_MAP[business.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2; const selected = business.id === selectedBusiness?.id; const profit = business.monthlyRevenue - business.monthlyExpenses; return <button key={business.id} type="button" onClick={() => setSelectedBusinessId(business.id)} className={cn('w-full px-5 py-4 text-left transition-colors', selected ? 'bg-muted/25' : 'hover:bg-muted/15')}><div className="flex items-start gap-3"><div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted/20"><Icon className="h-4 w-4 text-foreground" /></div><div className="min-w-0 flex-1 space-y-1.5"><div className="flex flex-wrap items-center gap-2"><p className="text-sm font-semibold">{business.name}</p>{business.type ? <Pill label={business.type.label} color="bg-sky-400/15 text-sky-400" /> : null}{business.ownerId === userId ? <Pill label="A toi" color="bg-purple-400/15 text-purple-400" /> : null}</div><p className="text-xs text-muted-foreground">par {business.owner.username} · {business.location || 'Lieu non defini'}</p><p className="line-clamp-2 text-xs text-muted-foreground">{business.description || 'Aucune description.'}</p></div><div className="text-right"><p className={cn('text-sm font-bold tabular-nums', profit >= 0 ? 'text-emerald-400' : 'text-red-400')}>{profit >= 0 ? '+' : ''}{profit.toLocaleString('fr-FR')}</p><p className="text-[10px] text-muted-foreground">{business.satisfaction}/100</p></div></div></button>; })}{filteredBusinesses.length === 0 ? <p className="px-5 py-10 text-center text-sm text-muted-foreground">Aucun business ne correspond a tes filtres.</p> : null}</div></CardContent></Card>
         </div>
         <div className="space-y-4">
-          {selectedBusiness ? <><Card><CardContent className="space-y-4 px-5 py-4"><div className="flex items-start gap-3"><UserAvatar player={selectedBusiness.owner} className="h-11 w-11" /><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="text-base font-semibold">{selectedBusiness.name}</p>{selectedBusiness.verified ? <Pill label="Verifie" color="bg-emerald-400/15 text-emerald-400" /> : null}</div><p className="mt-1 text-sm text-muted-foreground">{selectedBusiness.description || 'Aucune description.'}</p></div></div><div className="grid grid-cols-2 gap-2">{[{ label: 'Proprietaire', value: selectedBusiness.owner.username }, { label: 'Fondation', value: selectedBusiness.foundedLabel }, { label: 'Lieu', value: selectedBusiness.location || 'n/a' }, { label: 'Satisfaction', value: `${selectedBusiness.satisfaction}/100` }].map((entry) => <div key={entry.label} className="rounded-xl border border-border/40 bg-muted/10 px-3 py-2.5"><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">{entry.label}</p><p className="mt-1 text-sm font-medium">{entry.value}</p></div>)}</div></CardContent></Card><Card><CardContent className="space-y-3 px-5 py-4"><SectionTitle>Actions disponibles</SectionTitle><div className="space-y-2">{selectedBusiness.actions.map((action) => { const meta = ACTION_META[action]; const Icon = meta.icon; const disabled = action === 'invite' && selectedBusiness.ownerId !== userId; const [toneBg, toneText] = meta.tone.split(' '); return <button key={action} type="button" disabled={disabled} onClick={() => onAction(selectedBusiness, action)} className={cn('flex w-full items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-left transition-colors', disabled ? 'cursor-not-allowed opacity-40' : 'hover:bg-muted/20')}><div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', toneBg)}><Icon className={cn('h-4 w-4', toneText)} /></div><div className="min-w-0 flex-1"><p className="text-sm font-medium">{meta.label}</p><p className="text-xs text-muted-foreground">{meta.help}</p></div><ChevronRight className="h-4 w-4 text-muted-foreground/40" /></button>; })}</div></CardContent></Card></> : <Card><CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">Selectionne un business pour voir ses details.</CardContent></Card>}
+          {selectedBusiness ? <><Card><CardContent className="space-y-4 px-5 py-4"><div className="flex items-start gap-3"><UserAvatar player={selectedBusiness.owner} className="h-11 w-11" /><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="text-base font-semibold">{selectedBusiness.name}</p>{selectedBusiness.verified ? <Pill label="Verifie" color="bg-emerald-400/15 text-emerald-400" /> : null}</div><p className="mt-1 text-sm text-muted-foreground">{selectedBusiness.description || 'Aucune description.'}</p></div></div><div className="grid grid-cols-2 gap-2">{[{ label: 'Proprietaire', value: selectedBusiness.owner.username }, { label: 'Fondation', value: selectedBusiness.foundedLabel }, { label: 'Lieu', value: selectedBusiness.location || 'n/a' }, { label: 'Satisfaction', value: `${selectedBusiness.satisfaction}/100` }].map((entry) => <div key={entry.label} className="rounded-xl border border-border/40 bg-muted/10 px-3 py-2.5"><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">{entry.label}</p><p className="mt-1 text-sm font-medium">{entry.value}</p></div>)}</div></CardContent></Card><Card><CardContent className="space-y-3 px-5 py-4"><SectionTitle>Actions utilisateur</SectionTitle>{visibleActions.length === 0 ? <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4 text-sm text-muted-foreground">{selectedBusiness.ownerId === userId ? 'Les actions de gestion se trouvent dans l onglet travail via le bouton Gerer business.' : 'Aucune action disponible pour ce business.'}</div> : <div className="space-y-2">{visibleActions.map((action) => { const meta = ACTION_META[action as BusinessAction]; const Icon = meta.icon; const [toneBg, toneText] = meta.tone.split(' '); return <button key={action} type="button" onClick={() => onAction(selectedBusiness, action as BusinessAction)} className="flex w-full items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-left transition-colors hover:bg-muted/20"><div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', toneBg)}><Icon className={cn('h-4 w-4', toneText)} /></div><div className="min-w-0 flex-1"><p className="text-sm font-medium">{meta.label}</p><p className="text-xs text-muted-foreground">{meta.help}</p></div><ChevronRight className="h-4 w-4 text-muted-foreground/40" /></button>; })}</div>}</CardContent></Card></> : <Card><CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">Selectionne un business pour voir ses details.</CardContent></Card>}
         </div>
       </div>
       <InvitePlayersModal open={Boolean(inviteBusiness)} onClose={() => setInviteBusiness(null)} business={inviteBusiness} players={players} onSubmitted={() => onReload()} />
@@ -543,6 +681,7 @@ function ExploreTab({ data, players, userId, onReload }: { data: YouState; playe
 export default function You() {
   const [params] = useSearchParams();
   const { user, refreshUser } = useAuth();
+  const { maintenanceStatus } = useFeatures();
   const [data, setData] = useState<YouState | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -566,13 +705,24 @@ export default function You() {
   const tab = params.get('tab');
   const currentTab = tab === 'travail' || tab === 'social' || tab === 'explore' ? tab : 'overview';
 
+  if (maintenanceStatus.youLogoAdminOnly && !user?.isAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   if (loading && !data) return <div className="space-y-4"><Card><CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">Chargement du hub YOU...</CardContent></Card></div>;
   if (!data || !user) return <div className="space-y-4"><Card><CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">Impossible de charger les donnees YOU.</CardContent></Card></div>;
 
   return (
     <div className="animate-in space-y-6 fade-in pb-8 duration-300">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {[{ label: 'Money partage', value: user.money.toLocaleString('fr-FR') }, { label: 'Aura partagee', value: user.aura.toLocaleString('fr-FR') }, { label: 'Businesses', value: String(data.ownedBusinesses.length) }, { label: 'Relations', value: String(data.relationships.length) }].map((entry) => <Card key={entry.label}><CardContent className="px-5 py-4"><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">{entry.label}</p><p className="mt-1 text-2xl font-semibold tabular-nums">{entry.value}</p></CardContent></Card>)}
+        {[{ label: 'Money partage', value: user.money.toLocaleString('fr-FR') }, { label: 'Aura partagee', value: user.aura.toLocaleString('fr-FR') }, { label: 'Businesses', value: String(data.ownedBusinesses.length) }, { label: 'Relations', value: String(data.relationships.length) }].map((entry) => (
+          <Card key={entry.label} className="min-w-0 overflow-hidden">
+            <CardContent className="min-w-0 px-5 py-4">
+              <p className="truncate text-[10px] uppercase tracking-wider text-muted-foreground/60">{entry.label}</p>
+              <p className="mt-1 truncate text-2xl font-semibold tabular-nums">{entry.value}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
       {currentTab === 'overview' ? <OverviewTab data={data} /> : null}
       {currentTab === 'travail' ? <TravailTab data={data} players={data.players} onReload={loadState} /> : null}

@@ -382,6 +382,7 @@ model Business {
   verified        Boolean  @default(false)
   hiring          Boolean  @default(true)
   startingCapital Int
+  treasuryMoney   Int      @default(0)
   monthlyRevenue  Int      @default(0)
   monthlyExpenses Int      @default(0)
   satisfaction    Int      @default(70)
@@ -442,7 +443,8 @@ model BusinessLoan {
   amount       Int
   termMonths   Int
   interestRate Float
-  status       String   @default("ACTIVE")
+  status       String   @default("PENDING")
+  decidedAt    DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

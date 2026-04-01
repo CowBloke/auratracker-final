@@ -32,6 +32,7 @@ const DUEL_MATCHMAKING_ENABLED_SETTING_KEY = 'duel_matchmaking_enabled';
 const CLASH_ATTACK_COOLDOWN_MINUTES_KEY = 'clash_attack_cooldown_minutes';
 const DAILY_AURA_DISTRIBUTION_LIMIT_KEY = DAILY_AURA_LIMIT_SETTING_KEY;
 const DEFAULT_LANDING_PAGE_SETTING_KEY = 'default_landing_page';
+const YOU_LOGO_ADMIN_ONLY_SETTING_KEY = 'you_logo_admin_only';
 const ALLOWED_DEFAULT_LANDING_PAGES = new Set([
   '/dashboard',
   '/games',
@@ -2386,6 +2387,10 @@ router.put('/settings/:key', authMiddleware, requireAdmin, async (req: AuthReque
       return res.status(400).json({ error: 'Invalid default landing page selection' });
     }
 
+    if (key === YOU_LOGO_ADMIN_ONLY_SETTING_KEY && !['true', 'false'].includes(normalizedValue)) {
+      return res.status(400).json({ error: 'You logo admin only must be true or false' });
+    }
+
     const setting = await prisma.gameSettings.upsert({
       where: { key },
       create: { key, value: normalizedValue },
@@ -2515,6 +2520,11 @@ router.put('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, r
 
       if (key === DEFAULT_LANDING_PAGE_SETTING_KEY && !ALLOWED_DEFAULT_LANDING_PAGES.has(normalizedValue)) {
         errors.push(`${key}: Invalid default landing page selection`);
+        continue;
+      }
+
+      if (key === YOU_LOGO_ADMIN_ONLY_SETTING_KEY && !['true', 'false'].includes(normalizedValue)) {
+        errors.push(`${key}: You logo admin only must be true or false`);
         continue;
       }
 
