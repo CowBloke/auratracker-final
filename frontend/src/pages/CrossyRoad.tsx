@@ -20,6 +20,7 @@ const GAME_SRC = '/crossy-road/index.html';
 const GAME_TYPE = 'crossy_road';
 const HOST_SOURCE = 'aura-crossy-road-host';
 const GAME_SOURCE = 'aura-crossy-road';
+const DUPLICATE_SCORE_WINDOW_MS = 1500;
 
 type RunnerStatus = 'idle' | 'running' | 'paused' | 'crashed';
 
@@ -37,7 +38,7 @@ export default function CrossyRoad() {
   const { user, refreshUser } = useAuth();
   const { containerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const lastSubmittedScoreRef = useRef<number | null>(null);
+  const lastSubmitAttemptRef = useRef<{ score: number; at: number } | null>(null);
 
   const [sessionKey, setSessionKey] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -99,9 +100,15 @@ export default function CrossyRoad() {
 
   const submitScore = useCallback(async (score: number) => {
     if (!Number.isFinite(score) || score <= 0) return;
-    if (lastSubmittedScoreRef.current === score) return;
+    const now = Date.now();
+    const lastAttempt = lastSubmitAttemptRef.current;
 
-    lastSubmittedScoreRef.current = score;
+    // Ignore near-instant duplicate events from the same game-over frame.
+    if (lastAttempt && lastAttempt.score === score && now - lastAttempt.at < DUPLICATE_SCORE_WINDOW_MS) {
+      return;
+    }
+
+    lastSubmitAttemptRef.current = { score, at: now };
 
     const maxAttempts = 3;
     let lastError: unknown = null;
@@ -127,7 +134,6 @@ export default function CrossyRoad() {
       }
     }
 
-    lastSubmittedScoreRef.current = null;
     console.error('Failed to submit crossy road score after retries:', lastError);
     toast('Run non comptabilise', {
       description: "La recompense n'a pas pu etre enregistree. Rejoue une run dans quelques secondes.",
@@ -136,7 +142,6 @@ export default function CrossyRoad() {
   }, [fetchLeaderboard, refreshUser]);
 
   const restartSession = () => {
-    lastSubmittedScoreRef.current = null;
     setIsPaused(false);
     setStatus('running');
     postToGame('restart');
@@ -144,7 +149,6 @@ export default function CrossyRoad() {
   };
 
   const hardReloadSession = () => {
-    lastSubmittedScoreRef.current = null;
     setIsPaused(false);
     setStatus('idle');
     setSessionKey((prev) => prev + 1);

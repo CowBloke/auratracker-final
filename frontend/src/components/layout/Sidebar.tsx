@@ -21,6 +21,7 @@ import {
   Bug,
   MessageCircle,
   Megaphone,
+  Briefcase,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -116,6 +117,13 @@ const gameItems = [
   { to: '/games/morpion', label: 'Morpion', image: getGameImage('morpion') },
 ];
 
+const youNavItems = [
+  { tab: null,         label: 'Vue d\'ensemble', icon: LayoutDashboard },
+  { tab: 'travail',   label: 'Travail',          icon: Briefcase       },
+  { tab: 'social',    label: 'Social',           icon: Users           },
+  { tab: 'explore',   label: 'Explore',          icon: BarChart3       },
+];
+
 function GameSidebarIcon({ src, alt }: { src: string; alt: string }) {
   return (
     <img
@@ -142,6 +150,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   };
 
   const isOnGames = location.pathname.startsWith('/games');
+  const isOnYou = location.pathname.startsWith('/you');
   const [supportUnread, setSupportUnread] = useState(0);
   const [updatesUnread, setUpdatesUnread] = useState(0);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -248,20 +257,21 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
     <Sidebar variant="inset" collapsible="icon" {...props}>
       <SidebarContent>
         <div className="px-3 py-4">
-          <NavLink
-            to="/dashboard"
-            className="mb-4 flex w-full h-10 items-center gap-3 rounded-md px-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent/50 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
-            aria-label="AuraTracker"
+          <button
+            type="button"
+            onClick={() => navigate(isOnYou ? '/dashboard' : '/you')}
+            className="mb-4 flex w-full h-10 items-center gap-3 rounded-md px-3 text-sidebar-foreground transition-all hover:bg-sidebar-accent/50 active:scale-95 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+            aria-label={isOnYou ? 'Retour au tableau de bord' : 'Accéder à Moi'}
           >
             <img
               src={theme === 'dark' ? '/aura-icon-white.svg' : '/aura-icon.svg'}
               alt="AuraTracker"
-              className="h-7 w-7 shrink-0"
+              className={cn('h-7 w-7 shrink-0 transition-transform', isOnYou && 'scale-110 drop-shadow-[0_0_6px_rgba(139,92,246,0.6)]')}
             />
             <span className="truncate text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
-              AuraTracker
+              {isOnYou ? 'Moi' : 'AuraTracker'}
             </span>
-          </NavLink>
+          </button>
           <SidebarMenu className="space-y-1">
             <SidebarMenuItem>
               <Sheet open={isSearchOpen} onOpenChange={setIsSearchOpen}>
@@ -334,8 +344,38 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
               </Sheet>
             </SidebarMenuItem>
 
+            {/* You section nav */}
+            {isOnYou && youNavItems.map(({ tab, label, icon: Icon }) => {
+              const href = tab ? `/you?tab=${tab}` : '/you';
+              const params = new URLSearchParams(location.search);
+              const currentTab = params.get('tab') ?? 'overview';
+              const isActive = tab === null
+                ? currentTab === 'overview' && location.pathname === '/you'
+                : currentTab === tab;
+              return (
+                <SidebarMenuItem key={label}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive}
+                    tooltip={label}
+                    className={cn(
+                      'h-9 px-3 text-sm font-normal',
+                      isActive
+                        ? 'text-foreground bg-muted/50'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
+                    )}
+                  >
+                    <NavLink to={href}>
+                      <Icon className="h-4 w-4" />
+                      <span className="group-data-[collapsible=icon]:hidden">{label}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              );
+            })}
+
             {/* Dashboard */}
-            {!isDisabled('/') && <SidebarMenuItem>
+            {!isOnYou && !isDisabled('/') && <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
                 isActive={location.pathname === '/' || location.pathname === '/dashboard'}
@@ -353,6 +393,8 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                 </NavLink>
               </SidebarMenuButton>
             </SidebarMenuItem>}
+
+            {!isOnYou && (<>
 
             {/* Games with accordion */}
             {!isDisabled('/games') && (
@@ -554,6 +596,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                 </SidebarMenuItem>
               );
             })}
+            </>)}
           </SidebarMenu>
         </div>
       </SidebarContent>

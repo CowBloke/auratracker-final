@@ -29,6 +29,7 @@ import {
 import {
   Tabs, TabsContent, TabsList, TabsTrigger,
 } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -719,16 +720,17 @@ export default function Polymarket() {
             </TabsList>
             <div className="flex items-center gap-2">
               {activeTab === 'events' && openEvents.length > 1 && (
-                <select
-                  value={sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)}
-                  className="h-11 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                >
-                  <option value="recent">Plus récents</option>
-                  <option value="ends_soon">Fin proche</option>
-                  <option value="popular">Plus populaires</option>
-                  <option value="best_odds">Meilleures cotes</option>
-                </select>
+                <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as typeof sortOrder)}>
+                  <SelectTrigger className="h-11 w-44">
+                    <SelectValue placeholder="Trier" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="recent">Plus récents</SelectItem>
+                    <SelectItem value="ends_soon">Fin proche</SelectItem>
+                    <SelectItem value="popular">Plus populaires</SelectItem>
+                    <SelectItem value="best_odds">Meilleures cotes</SelectItem>
+                  </SelectContent>
+                </Select>
               )}
               <Button className="h-11 px-5" onClick={() => setSuggestionDialogOpen(true)}>
                 <Plus className="h-5 w-5 mr-2" />

@@ -1,0 +1,773 @@
+import { prisma, io } from '../../server.js';
+import { createNotification } from '../../utils/notifications.js';
+import { BUSINESS_TYPES, BUSINESS_TYPE_MAP, INVESTMENT_RISK_RANGES, type BusinessActionKey, type InvestmentRiskLevel } from './config.js';
+
+const USER_PREVIEW_SELECT = {
+  id: true,
+  username: true,
+  firstName: true,
+  profilePicture: true,
+  bio: true,
+  aura: true,
+  money: true,
+} as const;
+
+const BUSINESS_BASE_INCLUDE = {
+  owner: { select: USER_PREVIEW_SELECT },
+  members: {
+    orderBy: { createdAt: 'asc' as const },
+    include: {
+      user: {
+        select: USER_PREVIEW_SELECT,
+      },
+    },
+  },
+  invitations: {
+    where: { status: 'PENDING' },
+    orderBy: { createdAt: 'desc' as const },
+    include: {
+      invitee: {
+        select: USER_PREVIEW_SELECT,
+      },
+    },
+  },
+  loans: {
+    orderBy: { createdAt: 'desc' as const },
+    take: 8,
+    include: {
+      borrower: {
+        select: USER_PREVIEW_SELECT,
+      },
+    },
+  },
+  investments: {
+    orderBy: { createdAt: 'desc' as const },
+    take: 8,
+    include: {
+      investor: {
+        select: USER_PREVIEW_SELECT,
+      },
+    },
+  },
+} as const;
+
+const RELATIONSHIP_INCLUDE = {
+  userA: { select: USER_PREVIEW_SELECT },
+  userB: { select: USER_PREVIEW_SELECT },
+  marriageProposals: {
+    orderBy: { createdAt: 'desc' as const },
+  },
+} as const;
+
+function getCanonicalPair(userIdA: string, userIdB: string) {
+  return userIdA < userIdB
+    ? { userAId: userIdA, userBId: userIdB }
+    : { userAId: userIdB, userBId: userIdA };
+}
+
+function isBusinessParticipant(userId: string, business: { ownerId: string }) {
+  return business.ownerId === userId;
+}
+
+function emitBalanceUpdate(userId: string, aura: bigint | number | string, money: number) {
+  io.emit('economy:balance-update', {
+    userId,
+    aura,
+    money,
+  });
+}
+
+function serializeBusiness(business: any, viewerId: string) {
+  const type = BUSINESS_TYPE_MAP.get(business.typeKey);
+  const ownerKind = business.ownerId === viewerId ? 'you' : 'player';
+
+  return {
+    id: business.id,
+    name: business.name,
+    typeKey: business.typeKey,
+    type: type ?? null,
+    ownerId: business.ownerId,
+    owner: business.owner,
+    ownerKind,
+    verified: business.verified,
+    description: business.description,
+    location: business.location,
+    foundedAt: business.createdAt.toISOString(),
+    foundedLabel: business.createdAt.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
+    hiring: business.hiring,
+    startingCapital: business.startingCapital,
+    monthlyRevenue: business.monthlyRevenue,
+    monthlyExpenses: business.monthlyExpenses,
+    satisfaction: business.satisfaction,
+    memberCount: business.members.length,
+    actions: type?.actions ?? [],
+    members: business.members.map((member: any) => ({
+      id: member.id,
+      role: member.role,
+      status: member.status,
+      user: member.user,
+    })),
+    pendingInvitations: business.invitations.map((invite: any) => ({
+      id: invite.id,
+      role: invite.role,
+      status: invite.status,
+      createdAt: invite.createdAt.toISOString(),
+      invitee: invite.invitee,
+    })),
+    recentLoans: business.loans.map((loan: any) => ({
+      id: loan.id,
+      amount: loan.amount,
+      termMonths: loan.termMonths,
+      interestRate: loan.interestRate,
+      status: loan.status,
+      createdAt: loan.createdAt.toISOString(),
+      borrower: loan.borrower,
+    })),
+    recentInvestments: business.investments.map((investment: any) => ({
+      id: investment.id,
+      amount: investment.amount,
+      riskLevel: investment.riskLevel,
+      expectedReturnMin: investment.expectedReturnMin,
+      expectedReturnMax: investment.expectedReturnMax,
+      createdAt: investment.createdAt.toISOString(),
+      investor: investment.investor,
+    })),
+  };
+}
+
+function serializeRelationship(relationship: any, viewerId: string) {
+  const otherUser = relationship.userAId === viewerId ? relationship.userB : relationship.userA;
+  const pendingProposal = relationship.marriageProposals.find((proposal: any) => proposal.status === 'PENDING') ?? null;
+  const pendingProposalDirection = pendingProposal
+    ? (pendingProposal.proposerId === viewerId ? 'sent' : 'received')
+    : null;
+
+  return {
+    id: relationship.id,
+    status: relationship.status,
+    connectionLevel: relationship.connectionLevel,
+    createdAt: relationship.createdAt.toISOString(),
+    marriedAt: relationship.marriedAt ? relationship.marriedAt.toISOString() : null,
+    otherUser,
+    canProposeMarriage: relationship.status !== 'MARRIED' && relationship.connectionLevel >= 70 && !pendingProposal,
+    pendingProposal: pendingProposal
+      ? {
+          id: pendingProposal.id,
+          proposerId: pendingProposal.proposerId,
+          recipientId: pendingProposal.recipientId,
+          status: pendingProposal.status,
+          message: pendingProposal.message,
+          createdAt: pendingProposal.createdAt.toISOString(),
+          respondedAt: pendingProposal.respondedAt ? pendingProposal.respondedAt.toISOString() : null,
+          direction: pendingProposalDirection,
+          canRespond: pendingProposal.recipientId === viewerId,
+        }
+      : null,
+  };
+}
+
+export async function getYouState(userId: string) {
+  const relationships = await prisma.relationship.findMany({
+    where: {
+      OR: [{ userAId: userId }, { userBId: userId }],
+    },
+    include: RELATIONSHIP_INCLUDE,
+    orderBy: [{ status: 'asc' }, { updatedAt: 'desc' }],
+  });
+
+  const relatedUserIds = new Set<string>();
+  relationships.forEach((relationship) => {
+    relatedUserIds.add(relationship.userAId);
+    relatedUserIds.add(relationship.userBId);
+  });
+
+  const [players, ownedBusinesses, exploreBusinesses] = await Promise.all([
+    prisma.user.findMany({
+      where: {
+        isApproved: true,
+        id: { not: userId },
+      },
+      select: USER_PREVIEW_SELECT,
+      orderBy: [{ aura: 'desc' }, { username: 'asc' }],
+    }),
+    prisma.business.findMany({
+      where: { ownerId: userId },
+      include: BUSINESS_BASE_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.business.findMany({
+      where: {
+        ownerId: { not: userId },
+        owner: {
+          isApproved: true,
+        },
+      },
+      include: BUSINESS_BASE_INCLUDE,
+      orderBy: [{ verified: 'desc' }, { createdAt: 'desc' }],
+    }),
+  ]);
+
+  return {
+    businessTypes: BUSINESS_TYPES,
+    players: players.map((player) => ({
+      ...player,
+      alreadyInRelationship: relatedUserIds.has(player.id),
+    })),
+    relationships: relationships.map((relationship) => serializeRelationship(relationship, userId)),
+    ownedBusinesses: ownedBusinesses.map((business) => serializeBusiness(business, userId)),
+    exploreBusinesses: exploreBusinesses.map((business) => serializeBusiness(business, userId)),
+  };
+}
+
+export async function createBusiness(userId: string, input: { name: string; typeKey: string; capital: number; description?: string; location?: string }) {
+  const type = BUSINESS_TYPE_MAP.get(input.typeKey);
+  if (!type) {
+    throw new Error('INVALID_BUSINESS_TYPE');
+  }
+
+  const name = input.name.trim();
+  if (name.length < 3) {
+    throw new Error('INVALID_BUSINESS_NAME');
+  }
+
+  if (input.capital < type.minCapital) {
+    throw new Error('BUSINESS_CAPITAL_TOO_LOW');
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, username: true, money: true, aura: true },
+  });
+
+  if (!user) {
+    throw new Error('USER_NOT_FOUND');
+  }
+
+  if (user.money < input.capital) {
+    throw new Error('INSUFFICIENT_MONEY');
+  }
+
+  const [, business] = await prisma.$transaction([
+    prisma.user.update({
+      where: { id: userId },
+      data: { money: { decrement: input.capital } },
+    }),
+    prisma.business.create({
+      data: {
+        ownerId: userId,
+        name,
+        typeKey: type.key,
+        description: input.description?.trim() || type.description,
+        location: input.location?.trim() || 'Quartier joueur',
+        startingCapital: input.capital,
+        monthlyRevenue: type.monthlyRevenue,
+        monthlyExpenses: type.monthlyExpenses,
+        satisfaction: type.satisfaction,
+        verified: false,
+        hiring: true,
+      },
+      include: BUSINESS_BASE_INCLUDE,
+    }),
+  ]);
+
+  const updatedUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { aura: true, money: true },
+  });
+
+  if (updatedUser) {
+    emitBalanceUpdate(userId, updatedUser.aura, updatedUser.money);
+  }
+
+  return serializeBusiness(business, userId);
+}
+
+async function handleInviteAction(userId: string, business: any, input: { inviteeIds: string[]; role: string }) {
+  if (!isBusinessParticipant(userId, business)) {
+    throw new Error('BUSINESS_INVITE_FORBIDDEN');
+  }
+
+  const inviteeIds = Array.from(new Set((input.inviteeIds || []).filter((inviteeId) => inviteeId && inviteeId !== userId)));
+  if (inviteeIds.length === 0) {
+    throw new Error('INVITEE_REQUIRED');
+  }
+
+  const approvedInvitees = await prisma.user.findMany({
+    where: {
+      id: { in: inviteeIds },
+      isApproved: true,
+    },
+    select: { id: true, username: true },
+  });
+
+  const existingMembers = await prisma.businessMember.findMany({
+    where: {
+      businessId: business.id,
+      userId: { in: inviteeIds },
+    },
+    select: { userId: true },
+  });
+
+  const existingInvitations = await prisma.businessInvitation.findMany({
+    where: {
+      businessId: business.id,
+      inviteeId: { in: inviteeIds },
+      status: 'PENDING',
+    },
+    select: { inviteeId: true },
+  });
+
+  const memberIds = new Set(existingMembers.map((member) => member.userId));
+  const pendingIds = new Set(existingInvitations.map((invite) => invite.inviteeId));
+
+  const creatableInvitees = approvedInvitees.filter((invitee) => !memberIds.has(invitee.id) && !pendingIds.has(invitee.id));
+
+  if (creatableInvitees.length === 0) {
+    throw new Error('NO_NEW_INVITATIONS');
+  }
+
+  await Promise.all(
+    creatableInvitees.map((invitee) =>
+      prisma.businessInvitation.create({
+        data: {
+          businessId: business.id,
+          inviterId: userId,
+          inviteeId: invitee.id,
+          role: input.role || 'employee',
+        },
+      })
+    )
+  );
+
+  await Promise.allSettled(
+    creatableInvitees.map((invitee) =>
+      createNotification({
+        userId: invitee.id,
+        type: 'SYSTEM',
+        title: 'Invitation business',
+        body: `${business.owner.username} t'invite a rejoindre ${business.name} comme ${input.role || 'employee'}.`,
+        link: '/you?tab=travail',
+        icon: 'briefcase-business',
+      })
+    )
+  );
+
+  return {
+    invited: creatableInvitees.length,
+  };
+}
+
+async function handleLoanAction(userId: string, business: any, input: { amount: number; durationMonths: number }) {
+  if (business.ownerId === userId) {
+    throw new Error('BUSINESS_LOAN_SELF_FORBIDDEN');
+  }
+
+  const amount = Number(input.amount);
+  const durationMonths = Number(input.durationMonths);
+  if (!Number.isFinite(amount) || amount < 500) {
+    throw new Error('INVALID_LOAN_AMOUNT');
+  }
+
+  if (!Number.isFinite(durationMonths) || durationMonths < 1) {
+    throw new Error('INVALID_LOAN_DURATION');
+  }
+
+  const [borrower, owner] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, username: true, aura: true, money: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: business.ownerId },
+      select: { id: true, username: true, aura: true, money: true },
+    }),
+  ]);
+
+  if (!borrower || !owner) {
+    throw new Error('USER_NOT_FOUND');
+  }
+
+  if (owner.money < amount) {
+    throw new Error('BUSINESS_OWNER_FUNDS_TOO_LOW');
+  }
+
+  const interestRate = 4;
+
+  const [, updatedBorrower, updatedOwner] = await prisma.$transaction([
+    prisma.businessLoan.create({
+      data: {
+        businessId: business.id,
+        borrowerId: userId,
+        amount,
+        termMonths: durationMonths,
+        interestRate,
+      },
+    }),
+    prisma.user.update({
+      where: { id: borrower.id },
+      data: { money: { increment: amount } },
+      select: { id: true, aura: true, money: true },
+    }),
+    prisma.user.update({
+      where: { id: owner.id },
+      data: { money: { decrement: amount } },
+      select: { id: true, aura: true, money: true },
+    }),
+  ]);
+
+  emitBalanceUpdate(updatedBorrower.id, updatedBorrower.aura, updatedBorrower.money);
+  emitBalanceUpdate(updatedOwner.id, updatedOwner.aura, updatedOwner.money);
+
+  await Promise.allSettled([
+    createNotification({
+      userId: borrower.id,
+      type: 'MONEY_RECEIVED',
+      title: 'Pret valide',
+      body: `${amount.toLocaleString('fr-FR')} money recu depuis ${business.name}.`,
+      link: '/you?tab=explore',
+      icon: 'landmark',
+    }),
+    createNotification({
+      userId: owner.id,
+      type: 'SYSTEM',
+      title: 'Pret accorde',
+      body: `${borrower.username} a emprunte ${amount.toLocaleString('fr-FR')} money via ${business.name}.`,
+      link: '/you?tab=travail',
+      icon: 'credit-card',
+    }),
+  ]);
+
+  return {
+    amount,
+    durationMonths,
+    interestRate,
+    newBalance: {
+      money: updatedBorrower.money,
+      aura: updatedBorrower.aura,
+    },
+  };
+}
+
+async function handleInvestAction(userId: string, business: any, input: { amount: number; riskLevel: InvestmentRiskLevel }) {
+  if (business.ownerId === userId) {
+    throw new Error('BUSINESS_INVEST_SELF_FORBIDDEN');
+  }
+
+  const amount = Number(input.amount);
+  const riskLevel = input.riskLevel in INVESTMENT_RISK_RANGES ? input.riskLevel : 'medium';
+  const riskRange = INVESTMENT_RISK_RANGES[riskLevel];
+
+  if (!Number.isFinite(amount) || amount < 100) {
+    throw new Error('INVALID_INVEST_AMOUNT');
+  }
+
+  const [investor, owner] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, username: true, aura: true, money: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: business.ownerId },
+      select: { id: true, username: true, aura: true, money: true },
+    }),
+  ]);
+
+  if (!investor || !owner) {
+    throw new Error('USER_NOT_FOUND');
+  }
+
+  if (investor.money < amount) {
+    throw new Error('INSUFFICIENT_MONEY');
+  }
+
+  const [, updatedInvestor, updatedOwner] = await prisma.$transaction([
+    prisma.businessInvestment.create({
+      data: {
+        businessId: business.id,
+        investorId: investor.id,
+        amount,
+        riskLevel,
+        expectedReturnMin: riskRange.min,
+        expectedReturnMax: riskRange.max,
+      },
+    }),
+    prisma.user.update({
+      where: { id: investor.id },
+      data: { money: { decrement: amount } },
+      select: { id: true, aura: true, money: true },
+    }),
+    prisma.user.update({
+      where: { id: owner.id },
+      data: { money: { increment: amount } },
+      select: { id: true, aura: true, money: true },
+    }),
+  ]);
+
+  emitBalanceUpdate(updatedInvestor.id, updatedInvestor.aura, updatedInvestor.money);
+  emitBalanceUpdate(updatedOwner.id, updatedOwner.aura, updatedOwner.money);
+
+  await Promise.allSettled([
+    createNotification({
+      userId: owner.id,
+      type: 'MONEY_RECEIVED',
+      title: 'Nouvel investissement',
+      body: `${investor.username} a investi ${amount.toLocaleString('fr-FR')} money dans ${business.name}.`,
+      link: '/you?tab=travail',
+      icon: 'trending-up',
+    }),
+    createNotification({
+      userId: investor.id,
+      type: 'SYSTEM',
+      title: 'Investissement place',
+      body: `Tu as investi ${amount.toLocaleString('fr-FR')} money dans ${business.name}.`,
+      link: '/you?tab=explore',
+      icon: 'trending-up',
+    }),
+  ]);
+
+  return {
+    amount,
+    riskLevel,
+    expectedReturnMin: riskRange.min,
+    expectedReturnMax: riskRange.max,
+    newBalance: {
+      money: updatedInvestor.money,
+      aura: updatedInvestor.aura,
+    },
+  };
+}
+
+const BUSINESS_ACTION_HANDLERS: Record<BusinessActionKey, (userId: string, business: any, input: any) => Promise<any>> = {
+  invite: handleInviteAction,
+  loan: handleLoanAction,
+  invest: handleInvestAction,
+};
+
+export async function executeBusinessAction(userId: string, businessId: string, actionKey: BusinessActionKey, input: Record<string, unknown>) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    include: {
+      ...BUSINESS_BASE_INCLUDE,
+      owner: {
+        select: USER_PREVIEW_SELECT,
+      },
+    },
+  });
+
+  if (!business) {
+    throw new Error('BUSINESS_NOT_FOUND');
+  }
+
+  const type = BUSINESS_TYPE_MAP.get(business.typeKey);
+  if (!type || !type.actions.includes(actionKey)) {
+    throw new Error('BUSINESS_ACTION_UNAVAILABLE');
+  }
+
+  const handler = BUSINESS_ACTION_HANDLERS[actionKey];
+  return handler(userId, business, input);
+}
+
+export async function createRelationship(userId: string, targetUserId: string) {
+  if (userId === targetUserId) {
+    throw new Error('RELATIONSHIP_SELF_FORBIDDEN');
+  }
+
+  const target = await prisma.user.findUnique({
+    where: { id: targetUserId },
+    select: { id: true, username: true, isApproved: true },
+  });
+
+  if (!target?.isApproved) {
+    throw new Error('TARGET_NOT_FOUND');
+  }
+
+  const pair = getCanonicalPair(userId, targetUserId);
+  const existing = await prisma.relationship.findUnique({
+    where: {
+      userAId_userBId: pair,
+    },
+    include: RELATIONSHIP_INCLUDE,
+  });
+
+  if (existing) {
+    throw new Error('RELATIONSHIP_ALREADY_EXISTS');
+  }
+
+  const relationship = await prisma.relationship.create({
+    data: {
+      ...pair,
+      initiatedById: userId,
+      connectionLevel: 72,
+    },
+    include: RELATIONSHIP_INCLUDE,
+  });
+
+  await createNotification({
+    userId: targetUserId,
+    type: 'SYSTEM',
+    title: 'Nouvelle relation',
+    body: `${relationship.userAId === userId ? relationship.userA.username : relationship.userB.username} t'a ajoute dans ses relations.`,
+    link: '/you?tab=social',
+    icon: 'heart',
+  });
+
+  return serializeRelationship(relationship, userId);
+}
+
+export async function proposeMarriage(userId: string, relationshipId: string, message?: string) {
+  const relationship = await prisma.relationship.findUnique({
+    where: { id: relationshipId },
+    include: RELATIONSHIP_INCLUDE,
+  });
+
+  if (!relationship) {
+    throw new Error('RELATIONSHIP_NOT_FOUND');
+  }
+
+  if (relationship.userAId !== userId && relationship.userBId !== userId) {
+    throw new Error('RELATIONSHIP_FORBIDDEN');
+  }
+
+  if (relationship.status === 'MARRIED') {
+    throw new Error('RELATIONSHIP_ALREADY_MARRIED');
+  }
+
+  if (relationship.connectionLevel < 70) {
+    throw new Error('RELATIONSHIP_LEVEL_TOO_LOW');
+  }
+
+  const pending = relationship.marriageProposals.find((proposal: any) => proposal.status === 'PENDING');
+  if (pending) {
+    throw new Error('MARRIAGE_PROPOSAL_ALREADY_PENDING');
+  }
+
+  const recipientId = relationship.userAId === userId ? relationship.userBId : relationship.userAId;
+  const proposer = relationship.userAId === userId ? relationship.userA : relationship.userB;
+
+  const proposal = await prisma.marriageProposal.create({
+    data: {
+      relationshipId: relationship.id,
+      proposerId: userId,
+      recipientId,
+      message: message?.trim() || null,
+    },
+  });
+
+  await createNotification({
+    userId: recipientId,
+    type: 'SYSTEM',
+    title: 'Demande en mariage',
+    body: `${proposer.username} t'a demande en mariage.`,
+    link: '/you?tab=social',
+    icon: 'heart',
+  });
+
+  return {
+    id: proposal.id,
+    relationshipId: proposal.relationshipId,
+    proposerId: proposal.proposerId,
+    recipientId: proposal.recipientId,
+    message: proposal.message,
+    status: proposal.status,
+    createdAt: proposal.createdAt.toISOString(),
+  };
+}
+
+export async function respondToMarriageProposal(userId: string, proposalId: string, decision: 'accept' | 'reject') {
+  const proposal = await prisma.marriageProposal.findUnique({
+    where: { id: proposalId },
+    include: {
+      relationship: {
+        include: RELATIONSHIP_INCLUDE,
+      },
+    },
+  });
+
+  if (!proposal) {
+    throw new Error('MARRIAGE_PROPOSAL_NOT_FOUND');
+  }
+
+  if (proposal.recipientId !== userId) {
+    throw new Error('MARRIAGE_PROPOSAL_FORBIDDEN');
+  }
+
+  if (proposal.status !== 'PENDING') {
+    throw new Error('MARRIAGE_PROPOSAL_ALREADY_RESOLVED');
+  }
+
+  const now = new Date();
+
+  if (decision === 'reject') {
+    const rejectedProposal = await prisma.marriageProposal.update({
+      where: { id: proposalId },
+      data: {
+        status: 'REJECTED',
+        respondedAt: now,
+      },
+    });
+
+    await createNotification({
+      userId: proposal.proposerId,
+      type: 'SYSTEM',
+      title: 'Demande refusee',
+      body: 'Ta demande en mariage a ete refusee.',
+      link: '/you?tab=social',
+      icon: 'heart-crack',
+    });
+
+    return {
+      proposal: {
+        id: rejectedProposal.id,
+        status: rejectedProposal.status,
+        respondedAt: rejectedProposal.respondedAt?.toISOString() ?? null,
+      },
+      relationship: serializeRelationship(proposal.relationship, userId),
+    };
+  }
+
+  const [acceptedProposal, updatedRelationship] = await prisma.$transaction([
+    prisma.marriageProposal.update({
+      where: { id: proposalId },
+      data: {
+        status: 'ACCEPTED',
+        respondedAt: now,
+      },
+    }),
+    prisma.relationship.update({
+      where: { id: proposal.relationshipId },
+      data: {
+        status: 'MARRIED',
+        marriedAt: now,
+      },
+      include: RELATIONSHIP_INCLUDE,
+    }),
+  ]);
+
+  await Promise.allSettled([
+    createNotification({
+      userId: proposal.proposerId,
+      type: 'SYSTEM',
+      title: 'Mariage accepte',
+      body: 'Ta demande en mariage a ete acceptee.',
+      link: '/you?tab=social',
+      icon: 'heart',
+    }),
+    createNotification({
+      userId,
+      type: 'SYSTEM',
+      title: 'Mariage valide',
+      body: 'Votre relation est maintenant marquee comme mariee.',
+      link: '/you?tab=social',
+      icon: 'heart',
+    }),
+  ]);
+
+  return {
+    proposal: {
+      id: acceptedProposal.id,
+      status: acceptedProposal.status,
+      respondedAt: acceptedProposal.respondedAt?.toISOString() ?? null,
+    },
+    relationship: serializeRelationship(updatedRelationship, userId),
+  };
+}

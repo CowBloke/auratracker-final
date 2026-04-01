@@ -60,6 +60,7 @@ import SubwaySurfers from './pages/SubwaySurfers';
 import HexGL from './pages/HexGL';
 import OpenGD from './pages/OpenGD';
 import CrossyRoad from './pages/CrossyRoad';
+import You from './pages/You';
 import { BLOCKABLE_PAGES } from './config/blockedPages';
 import { useFeatures } from './contexts/FeaturesContext';
 
@@ -233,6 +234,7 @@ function App() {
         <Route path="inbox" element={<Inbox />} />
         <Route path="support" element={<Support />} />
         <Route path="updates" element={<Updates />} />
+        <Route path="you" element={<You />} />
       </Route>
     </Routes>
   );

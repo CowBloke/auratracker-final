@@ -5,6 +5,7 @@ export interface PageMeta {
 }
 
 const STATIC_PAGE_META: Record<string, PageMeta> = {
+  '/you': { title: 'Moi', description: 'Simulateur de vie — traits, travail, famille, argent et relations.' },
   '/': { title: 'Tableau de bord', description: "Vue d'ensemble de ton activité et des parties en direct." },
   '/dashboard': { title: 'Tableau de bord', description: "Vue d'ensemble de ton activité et des parties en direct." },
   '/games': { title: 'Jeux', description: 'Catalogue des jeux solo, multi et quotidiens.' },

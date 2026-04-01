@@ -49,6 +49,7 @@ import { UsernameDisplay } from '@/components/ui/username-display';
 import { InboxDropdown } from '@/components/inbox/InboxDropdown';
 import { PlayerHoverCard } from '@/components/ui/player-hover-card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { YouHeaderBar } from '@/components/you/YouHeaderBar';
 
 export function SiteHeader() {
   const { user, refreshUser } = useAuth();
@@ -187,6 +188,7 @@ export function SiteHeader() {
   }, [location.pathname]);
 
   const clanEffects = user?.clanEffects ?? [];
+  const isYouPage = location.pathname.startsWith('/you');
   const formatRemaining = (target: string | null) => {
     if (!target) return '0m';
     const diff = new Date(target).getTime() - now;
@@ -199,6 +201,179 @@ export function SiteHeader() {
     if (minutes > 0) return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
     return `${seconds}s`;
   };
+
+  const onlineUsersControl = (
+    <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
+        <div className={`h-1.5 w-1.5 rounded-full ${connected ? 'bg-green-500' : 'bg-muted-foreground'}`} />
+        <span className="hidden sm:inline text-muted-foreground">
+          {connected ? 'online' : 'offline'}
+        </span>
+      </div>
+      <div className="relative">
+        <Collapsible
+          open={showUsers}
+          onOpenChange={(open) => {
+            setShowUsers(open);
+            if (open) {
+              requestOnlineUsers();
+              requestDoodleSpectateSessions();
+              requestChessSpectateSessions();
+            }
+          }}
+        >
+          <CollapsibleTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-auto gap-1 px-0 py-0 text-sm text-muted-foreground hover:text-foreground"
+            >
+              <span className="text-green-500">{onlineCount}<span className="hidden sm:inline"> connectés</span></span>
+              {showUsers ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="absolute right-0 top-full z-50 mt-2 w-64">
+            <div className="rounded-md border border-border/60 bg-background/95 shadow-lg">
+              <ScrollArea className="h-48">
+                <div className="space-y-1 px-3 py-2">
+                  {onlineUsers.map((u) => (
+                    <div key={u.userId} className="flex items-center gap-2 py-1 text-sm text-muted-foreground">
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          setShowUsers(false);
+                          navigate(`/profile/${u.userId}`);
+                        }}
+                        variant="ghost"
+                        className="h-auto min-w-0 flex-1 justify-start gap-2 px-0 py-1 text-left transition-colors hover:bg-transparent hover:text-foreground"
+                      >
+                        {u.profilePicture ? (
+                          <img
+                            src={resolveImageUrl(u.profilePicture)}
+                            alt={u.username}
+                            className="h-4 w-4 rounded-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="h-1 w-1 rounded-full bg-foreground/50" />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <span className="flex items-center gap-1.5">
+                            <PlayerHoverCard
+                              userId={u.userId}
+                              username={u.username}
+                              usernameColor={u.usernameColor}
+                              profilePicture={u.profilePicture}
+                            >
+                              <UsernameDisplay
+                                username={u.username}
+                                usernameColor={u.usernameColor}
+                                className="block"
+                              />
+                            </PlayerHoverCard>
+                          </span>
+                          {(() => {
+                            const pageMeta = getPageMeta(u.currentPage);
+                            const PageIcon = pageMeta.icon;
+                            return (
+                              <span className="flex items-center gap-1 text-[10px] text-muted-foreground/80">
+                                <PageIcon className="h-3 w-3" />
+                                <span className="truncate">{pageMeta.label}</span>
+                                {canViewConnectedStatus && (
+                                  <>
+                                    <Monitor className="ml-1 h-3 w-3" />
+                                    <span>{u.isPageActive ? 'sur page' : 'arriere-plan'}</span>
+                                  </>
+                                )}
+                              </span>
+                            );
+                          })()}
+                        </div>
+                      </Button>
+                      {(() => {
+                        const session = doodleSpectateSessionMap.get(u.userId);
+                        const canSpectate = Boolean(
+                          session &&
+                            u.userId !== user?.id &&
+                            u.currentPage?.startsWith('/games/doodle-jump')
+                        );
+                        if (canSpectate && session) {
+                          return (
+                            <Button
+                              type="button"
+                              onClick={() => {
+                                setShowUsers(false);
+                                navigate('/games/doodle-jump', {
+                                  state: { spectateHostUserId: u.userId },
+                                });
+                              }}
+                              variant="outline"
+                              size="sm"
+                              className="h-7 gap-1 px-2 text-[10px]"
+                              title={`Spectate ${u.username}`}
+                            >
+                              <Eye className="h-3 w-3" />
+                              <span className="tabular-nums">{session.spectatorCount}</span>
+                            </Button>
+                          );
+                        }
+
+                        const chessSession = chessSpectateSessionMap.get(u.userId);
+                        const canSpectateChess = Boolean(
+                          chessSession &&
+                            u.userId !== user?.id &&
+                            u.currentPage?.startsWith('/games/echecs')
+                        );
+                        if (!canSpectateChess || !chessSession) return null;
+                        return (
+                          <Button
+                            type="button"
+                            onClick={() => {
+                              setShowUsers(false);
+                              navigate('/games/echecs', {
+                                state: { spectatePartyId: chessSession.partyId },
+                              });
+                            }}
+                            variant="outline"
+                            size="sm"
+                            className="h-7 gap-1 px-2 text-[10px]"
+                            title={`Spectate ${u.username}`}
+                          >
+                            <Eye className="h-3 w-3" />
+                            <span className="tabular-nums">{chessSession.spectatorCount}</span>
+                          </Button>
+                        );
+                      })()}
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
+    </div>
+  );
+
+  if (isYouPage) {
+    return (
+      <header
+        className={cn(
+          'sticky top-0 z-10 flex h-14 items-center border-b px-3 sm:px-6 transition-all duration-300',
+          scrolled ? 'border-border/20 bg-background' : 'border-border/40 bg-background'
+        )}
+      >
+        <div className="flex w-full min-w-0 items-center gap-3">
+          <SidebarTrigger className="flex-shrink-0 text-muted-foreground hover:text-foreground" />
+          <div className="min-w-0 flex-1">
+            <YouHeaderBar rightSlot={<div className="flex items-center gap-2">{onlineUsersControl}<InboxDropdown /></div>} />
+          </div>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header className={cn(

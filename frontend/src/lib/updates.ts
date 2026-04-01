@@ -46,6 +46,55 @@ export type UpdateEntry = {
 
 export const UPDATE_ENTRIES: UpdateEntry[] = [
   {
+    id: '2026-04-01-you-v2',
+    date: '2026-04-01',
+    title: 'Section Moi — compétences, entreprises et services',
+    summary: 'Refonte de la section Moi : compétences dans la barre du haut, gestion multi-entreprise, onglet Services & Argent fusionné, onglet Santé supprimé.',
+    sections: [
+      {
+        category: 'BIG_FEATURE',
+        items: [
+          { id: '2026-04-01-you-v2-skills',    text: '**Moi · Compétences** — La barre supérieure affiche désormais 5 compétences (Affaires, Social, Intelligence, Charisme, Finance) avec niveau, XP et déblocages visibles au survol.' },
+          { id: '2026-04-01-you-v2-multibiz',  text: '**Moi · Travail** — Gestion multi-entreprise et multi-emploi : chaque entreprise possédée est affichable et contrôlable. Les banques ont un tableau de bord dédié (demandes de prêt, taux d\'intérêt).' },
+          { id: '2026-04-01-you-v2-bizpicker', text: '**Moi · Créateur d\'entreprise** — La liste des types d\'entreprises est réorganisée par catégorie (1 par ligne) avec description du fonctionnement et mode de contrôle.' },
+          { id: '2026-04-01-you-v2-services',  text: '**Moi · Services & Argent** — L\'onglet Services absorbe désormais toutes les finances (solde, revenus, dépenses, banque principale, emprunt, investissement).' },
+        ],
+      },
+      {
+        category: 'SMALL_FEATURE',
+        items: [
+          { id: '2026-04-01-you-v2-topbar', text: '**Moi · Interface** — Barre supérieure plus compacte, sans texte sous les icônes de compétences. Onglets Santé et Argent supprimés.' },
+        ],
+      },
+    ],
+  },
+  {
+    id: '2026-04-01-you-section',
+    date: '2026-04-01',
+    title: 'Section Moi et fiabilite Crossy Road',
+    summary: 'Une nouvelle section "Moi" accessible depuis le logo, et un enregistrement de score Crossy Road plus fiable.',
+    sections: [
+      {
+        category: 'BIG_FEATURE',
+        items: [
+          {
+            id: '2026-04-01-you-section-1',
+            text: '**Moi** - Nouvelle section accessible en cliquant sur le logo AuraTracker : simulateur de vie avec tableau de bord, traits (bonheur, popularite, sante, intelligence, charisme, richesse), et onglets Travail, Famille, Argent, Relations, Sante.',
+          },
+        ],
+      },
+      {
+        category: 'BUG_FIX',
+        items: [
+          {
+            id: '2026-04-01-crossy-road-score-save-1',
+            text: '**Crossy Road** - Les scores de fin de run se sauvegardent de facon plus fiable, y compris quand deux parties consecutives finissent avec le meme score.',
+          },
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-03-30-hexgl-image',
     date: '2026-03-30',
     title: 'Nouveautes du hub jeux',

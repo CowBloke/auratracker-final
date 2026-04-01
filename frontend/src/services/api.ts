@@ -139,6 +139,135 @@ export interface SocialUser {
   social?: SocialRelationship & Partial<SocialStats>;
 }
 
+export interface YouPlayer {
+  id: string;
+  username: string;
+  firstName?: string | null;
+  profilePicture?: string | null;
+  bio?: string | null;
+  aura: number | string;
+  money: number;
+  alreadyInRelationship: boolean;
+}
+
+export interface YouBusinessType {
+  key: string;
+  label: string;
+  category: string;
+  description: string;
+  minCapital: number;
+  monthlyRevenue: number;
+  monthlyExpenses: number;
+  satisfaction: number;
+  actions: Array<'invite' | 'loan' | 'invest'>;
+}
+
+export interface YouBusinessMember {
+  id: string;
+  role: string;
+  status: string;
+  user: Omit<YouPlayer, 'alreadyInRelationship'>;
+}
+
+export interface YouBusinessInvitation {
+  id: string;
+  role: string;
+  status: string;
+  createdAt: string;
+  invitee: Omit<YouPlayer, 'alreadyInRelationship'>;
+}
+
+export interface YouBusinessLoan {
+  id: string;
+  amount: number;
+  termMonths: number;
+  interestRate: number;
+  status: string;
+  createdAt: string;
+  borrower: Omit<YouPlayer, 'alreadyInRelationship'>;
+}
+
+export interface YouBusinessInvestment {
+  id: string;
+  amount: number;
+  riskLevel: 'low' | 'medium' | 'high' | string;
+  expectedReturnMin: number;
+  expectedReturnMax: number;
+  createdAt: string;
+  investor: Omit<YouPlayer, 'alreadyInRelationship'>;
+}
+
+export interface YouBusiness {
+  id: string;
+  name: string;
+  typeKey: string;
+  type: YouBusinessType | null;
+  ownerId: string;
+  owner: Omit<YouPlayer, 'alreadyInRelationship'>;
+  ownerKind: 'you' | 'player';
+  verified: boolean;
+  description: string | null;
+  location: string | null;
+  foundedAt: string;
+  foundedLabel: string;
+  hiring: boolean;
+  startingCapital: number;
+  monthlyRevenue: number;
+  monthlyExpenses: number;
+  satisfaction: number;
+  memberCount: number;
+  actions: Array<'invite' | 'loan' | 'invest'>;
+  members: YouBusinessMember[];
+  pendingInvitations: YouBusinessInvitation[];
+  recentLoans: YouBusinessLoan[];
+  recentInvestments: YouBusinessInvestment[];
+}
+
+export interface YouMarriageProposal {
+  id: string;
+  proposerId: string;
+  recipientId: string;
+  status: string;
+  message: string | null;
+  createdAt: string;
+  respondedAt: string | null;
+  direction: 'sent' | 'received';
+  canRespond: boolean;
+}
+
+export interface YouRelationship {
+  id: string;
+  status: 'DATING' | 'MARRIED' | string;
+  connectionLevel: number;
+  createdAt: string;
+  marriedAt: string | null;
+  otherUser: Omit<YouPlayer, 'alreadyInRelationship'>;
+  canProposeMarriage: boolean;
+  pendingProposal: YouMarriageProposal | null;
+}
+
+export interface YouState {
+  businessTypes: YouBusinessType[];
+  players: YouPlayer[];
+  relationships: YouRelationship[];
+  ownedBusinesses: YouBusiness[];
+  exploreBusinesses: YouBusiness[];
+}
+
+export const youApi = {
+  getState: () => api.get<YouState>('/you/state'),
+  createBusiness: (data: { name: string; typeKey: string; capital: number; description?: string; location?: string }) =>
+    api.post<{ business: YouBusiness }>('/you/businesses', data),
+  runBusinessAction: (businessId: string, actionKey: 'invite' | 'loan' | 'invest', data?: Record<string, unknown>) =>
+    api.post<{ result: Record<string, unknown> }>(`/you/businesses/${businessId}/actions/${actionKey}`, data ?? {}),
+  createRelationship: (targetUserId: string) =>
+    api.post<{ relationship: YouRelationship }>('/you/relationships', { targetUserId }),
+  proposeMarriage: (relationshipId: string, message?: string) =>
+    api.post<{ proposal: Omit<YouMarriageProposal, 'direction' | 'canRespond' | 'respondedAt'> & { respondedAt?: string | null } }>(`/you/relationships/${relationshipId}/actions/propose-marriage`, { message }),
+  respondToMarriageProposal: (proposalId: string, decision: 'accept' | 'reject') =>
+    api.post<{ proposal: { id: string; status: string; respondedAt: string | null }; relationship: YouRelationship }>(`/you/marriage-proposals/${proposalId}/respond`, { decision }),
+};
+
 // Economy API
 export interface AuraTransferEntry {
   id: string;

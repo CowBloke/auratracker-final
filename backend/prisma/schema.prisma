@@ -52,6 +52,17 @@ model User {
   chatReactions         ChatReaction[]
   following             UserFollow[]              @relation("UserFollowing")
   followers             UserFollow[]              @relation("UserFollowers")
+  ownedBusinesses       Business[]               @relation("BusinessOwner")
+  businessMemberships   BusinessMember[]
+  sentBusinessInvitations BusinessInvitation[]   @relation("BusinessInvitationSender")
+  receivedBusinessInvitations BusinessInvitation[] @relation("BusinessInvitationRecipient")
+  borrowedBusinessLoans BusinessLoan[]
+  businessInvestments   BusinessInvestment[]
+  initiatedRelationships Relationship[]          @relation("RelationshipInitiatedBy")
+  relationshipSideA     Relationship[]           @relation("RelationshipUserA")
+  relationshipSideB     Relationship[]           @relation("RelationshipUserB")
+  sentMarriageProposals MarriageProposal[]       @relation("MarriageProposalSender")
+  receivedMarriageProposals MarriageProposal[]   @relation("MarriageProposalRecipient")
   auraCoinTransactions  AuraCoinTransaction[]
   auraCoinPositions     AuraCoinPosition[]
   bugReports            BugReport[]
@@ -359,6 +370,145 @@ model UserFollow {
   @@unique([followerId, followingId])
   @@index([followerId, createdAt])
   @@index([followingId, createdAt])
+}
+
+model Business {
+  id              String   @id @default(uuid())
+  ownerId         String
+  name            String
+  typeKey         String
+  description     String?
+  location        String?
+  verified        Boolean  @default(false)
+  hiring          Boolean  @default(true)
+  startingCapital Int
+  monthlyRevenue  Int      @default(0)
+  monthlyExpenses Int      @default(0)
+  satisfaction    Int      @default(70)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  owner       User                 @relation("BusinessOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members     BusinessMember[]
+  invitations BusinessInvitation[]
+  loans       BusinessLoan[]
+  investments BusinessInvestment[]
+
+  @@index([ownerId])
+  @@index([typeKey, createdAt])
+  @@index([hiring])
+}
+
+model BusinessMember {
+  id         String   @id @default(uuid())
+  businessId String
+  userId     String
+  role       String
+  status     String   @default("ACTIVE")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, userId])
+  @@index([userId, status])
+}
+
+model BusinessInvitation {
+  id          String   @id @default(uuid())
+  businessId  String
+  inviterId   String
+  inviteeId   String
+  role        String
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  respondedAt DateTime?
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  inviter  User     @relation("BusinessInvitationSender", fields: [inviterId], references: [id], onDelete: Cascade)
+  invitee  User     @relation("BusinessInvitationRecipient", fields: [inviteeId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, inviteeId])
+  @@index([inviteeId, status])
+  @@index([businessId, status])
+}
+
+model BusinessLoan {
+  id           String   @id @default(uuid())
+  businessId   String
+  borrowerId   String
+  amount       Int
+  termMonths   Int
+  interestRate Float
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  borrower User     @relation(fields: [borrowerId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, createdAt])
+  @@index([borrowerId, status])
+}
+
+model BusinessInvestment {
+  id                String   @id @default(uuid())
+  businessId        String
+  investorId        String
+  amount            Int
+  riskLevel         String
+  expectedReturnMin Int
+  expectedReturnMax Int
+  createdAt         DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  investor User     @relation(fields: [investorId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, createdAt])
+  @@index([investorId, createdAt])
+}
+
+model Relationship {
+  id              String   @id @default(uuid())
+  userAId         String
+  userBId         String
+  initiatedById   String
+  status          String   @default("DATING")
+  connectionLevel Int      @default(55)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  marriedAt       DateTime?
+
+  userA            User               @relation("RelationshipUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB            User               @relation("RelationshipUserB", fields: [userBId], references: [id], onDelete: Cascade)
+  initiatedBy      User               @relation("RelationshipInitiatedBy", fields: [initiatedById], references: [id], onDelete: Cascade)
+  marriageProposals MarriageProposal[]
+
+  @@unique([userAId, userBId])
+  @@index([status, connectionLevel])
+  @@index([userAId])
+  @@index([userBId])
+}
+
+model MarriageProposal {
+  id             String   @id @default(uuid())
+  relationshipId String
+  proposerId     String
+  recipientId    String
+  message        String?
+  status         String   @default("PENDING")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  respondedAt    DateTime?
+
+  relationship Relationship @relation(fields: [relationshipId], references: [id], onDelete: Cascade)
+  proposer     User         @relation("MarriageProposalSender", fields: [proposerId], references: [id], onDelete: Cascade)
+  recipient    User         @relation("MarriageProposalRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([relationshipId, status])
+  @@index([recipientId, status])
 }
 
 // Clan System

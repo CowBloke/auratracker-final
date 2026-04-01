@@ -38,6 +38,7 @@ import supportRoutes from './routes/support.js';
 import clashRoutes from './routes/clash.js';
 import polytrackRoutes from './routes/polytrack.js';
 import updatesRoutes from './routes/updates.js';
+import youRoutes from './routes/you.js';
 
 // Socket handlers
 import { setupChatHandlers, startOnlineCountBroadcast, startOnlineSnapshotRecording } from './socket/chat.js';
@@ -126,6 +127,7 @@ app.use('/api/support', supportRoutes);
 app.use('/api/clash', clashRoutes);
 app.use('/api/polytrack', polytrackRoutes);
 app.use('/api/updates', updatesRoutes);
+app.use('/api/you', youRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
