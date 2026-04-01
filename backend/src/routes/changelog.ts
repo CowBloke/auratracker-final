@@ -55,7 +55,7 @@ const SEED_ENTRIES = [
     id: CANONICAL_APRIL_FIRST_ENTRY_ID,
     date: '2026-04-01',
     title: 'Corrections UI & Notifications',
-    summary: "Toasts unifiés, badge changelog rouge, doublons de notifications corrigés, uploads d'images plus fiables, top bar persistante, page Pass refondue, Fruit Ninja rééquilibré, Snake ajouté au hub, inventaire trié comme la boutique et message de bienvenue envoyé à la première connexion.",
+    summary: "Toasts unifiés, badge changelog rouge, doublons de notifications corrigés, uploads d'images plus fiables, top bar persistante, page Pass refondue, Fruit Ninja rééquilibré, Snake ajouté au hub, HexGL intégré au catalogue jeux et nouveaux filtres du hub jeux.",
     items: [
       { category: 'BUG_FIX', text: '**Badge changelog** — La pastille de notifications non lues dans la sidebar passe au rouge, cohérent avec les autres badges.', order: 0 },
       { category: 'BUG_FIX', text: '**Toasts en double** — Les achats en boutique, claims de quêtes, ouverture du pass et investissements business ne déclenchaient plus deux toasts simultanément.', order: 1 },
@@ -71,7 +71,12 @@ const SEED_ENTRIES = [
       { category: 'SMALL_FEATURE', text: '**Toasts unifiés** — Tous les toasts du site (y compris la page Admin) passent par le même système visuel.', order: 1 },
       { category: 'SMALL_FEATURE', text: "**Selection d'images plus claire** — Les zones d'upload affichent des formats explicitement supportes pour mieux guider les utilisateurs avant l'envoi.", order: 2 },
       { category: 'SMALL_FEATURE', text: '**Page Pass refondue** — L’interface de la page Pass a ete entierement retravaillee pour retrouver la meme direction visuelle que le reste du site, avec un hero plus propre, des cartes plus coherentes et une meilleure mise en avant des recompenses.', order: 3 },
+      { category: 'SMALL_FEATURE', text: "**Filtres du hub jeux** — La page Jeux propose maintenant des filtres pour les recompenses et les jeux beta, avec des controles admin pour gerer le catalogue.", order: 4 },
+      { category: 'SMALL_FEATURE', text: "**Classements HexGL** — La page Classements affiche maintenant la categorie HexGL avec ses statistiques associees.", order: 5 },
+      { category: 'SMALL_FEATURE', text: "**Profil mis a jour** — HexGL apparait aussi dans le catalogue de jeux du profil.", order: 6 },
+      { category: 'SMALL_FEATURE', text: "**Stats de clan** — Les statistiques de participants aux guerres de clans sont maintenant exposees pour alimenter les vues concernees.", order: 7 },
       { category: 'BIG_FEATURE', text: '**Snake dans le hub jeux** — Un nouveau Snake natif a ete ajoute avec interface coherente, plein ecran, pause, difficultes, classement, recompenses et integration complete dans le catalogue, la sidebar et les profils.', order: 4 },
+      { category: 'BIG_FEATURE', text: '**HexGL dans le hub jeux** — HexGL est maintenant integre au catalogue jeux avec statistiques, soumission des scores et classement dedie.', order: 5 },
     ],
   },
   {
