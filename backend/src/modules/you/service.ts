@@ -1,6 +1,22 @@
 import { prisma } from '../../server.js';
 import { createNotification } from '../../utils/notifications.js';
-import { BUSINESS_TYPES, BUSINESS_TYPE_MAP, INVESTMENT_RISK_RANGES, type BusinessActionKey, type InvestmentRiskLevel } from './config.js';
+import {
+  BUSINESS_TYPES,
+  BUSINESS_TYPE_MAP,
+  INVESTMENT_RISK_RANGES,
+  STARTUP_PRODUCTS,
+  STARTUP_PRODUCT_MAX_LEVEL,
+  YOU_SKILLS,
+  YOU_SKILL_MAP,
+  YOU_SKILL_MAX_LEVEL,
+  YOU_SKILL_XP_PER_LEVEL,
+  getStartupProductRevenue,
+  getStartupResearchCost,
+  getStartupResearchDurationMinutes,
+  type BusinessActionKey,
+  type InvestmentRiskLevel,
+  type YouSkillKey,
+} from './config.js';
 import { debitSharedMoney, emitSharedBalanceUpdates, ensureSharedMoneyAvailable } from '../../utils/sharedBalance.js';
 
 const USER_PREVIEW_SELECT = {
@@ -50,6 +66,9 @@ const BUSINESS_BASE_INCLUDE = {
       },
     },
   },
+  startupProducts: {
+    orderBy: { slotIndex: 'asc' as const },
+  },
 } as const;
 
 const RELATIONSHIP_INCLUDE = {
@@ -58,7 +77,16 @@ const RELATIONSHIP_INCLUDE = {
   marriageProposals: {
     orderBy: { createdAt: 'desc' as const },
   },
+  divorceProposals: {
+    orderBy: { createdAt: 'desc' as const },
+  },
 } as const;
+
+const USER_SKILL_DEFAULTS = YOU_SKILLS.map((skill) => ({
+  key: skill.key,
+  level: 1,
+  xp: 0,
+}));
 
 function getCanonicalPair(userIdA: string, userIdB: string) {
   return userIdA < userIdB
@@ -70,12 +98,131 @@ function isBusinessParticipant(userId: string, business: { ownerId: string }) {
   return business.ownerId === userId;
 }
 
+async function ensureUserSkills(userId: string) {
+  await Promise.all(
+    USER_SKILL_DEFAULTS.map((skill) =>
+      prisma.userSkill.upsert({
+        where: {
+          userId_key: {
+            userId,
+            key: skill.key,
+          },
+        },
+        update: {},
+        create: {
+          userId,
+          key: skill.key,
+          level: skill.level,
+          xp: skill.xp,
+        },
+      })
+    )
+  );
+}
+
+function serializeSkill(skill: { key: string; level: number; xp: number }) {
+  const definition = YOU_SKILL_MAP.get(skill.key as YouSkillKey);
+  if (!definition) {
+    return null;
+  }
+
+  const level = Math.max(1, Math.min(YOU_SKILL_MAX_LEVEL, skill.level));
+  const xp = level >= YOU_SKILL_MAX_LEVEL
+    ? YOU_SKILL_XP_PER_LEVEL
+    : Math.max(0, Math.min(YOU_SKILL_XP_PER_LEVEL, skill.xp));
+  const trainingCost = definition.trainingCost * level;
+
+  return {
+    key: definition.key,
+    label: definition.label,
+    color: definition.color,
+    description: definition.description,
+    level,
+    xp,
+    maxXp: YOU_SKILL_XP_PER_LEVEL,
+    trainingCost,
+    canTrain: level < YOU_SKILL_MAX_LEVEL,
+    unlocks: definition.unlocks,
+  };
+}
+
+function getBusinessSlots(skills: Array<{ key: string; level: number }>) {
+  const affairesSkill = skills.find((skill) => skill.key === 'affaires');
+  return Math.max(1, affairesSkill?.level ?? 1);
+}
+
+async function ensureStartupProducts(businessId: string) {
+  await Promise.all(
+    STARTUP_PRODUCTS.map((product) =>
+      prisma.businessStartupProduct.upsert({
+        where: {
+          businessId_slotIndex: {
+            businessId,
+            slotIndex: product.slotIndex,
+          },
+        },
+        update: {},
+        create: {
+          businessId,
+          slotIndex: product.slotIndex,
+          name: product.name,
+        },
+      })
+    )
+  );
+}
+
+function serializeStartupProduct(product: any) {
+  const now = Date.now();
+  const researchEndsAt = product.researchEndsAt ? new Date(product.researchEndsAt).toISOString() : null;
+  const researchStartedAt = product.researchStartedAt ? new Date(product.researchStartedAt).toISOString() : null;
+  const isResearchActive = Boolean(product.activeResearchLevel && product.researchEndsAt && new Date(product.researchEndsAt).getTime() > now);
+  const canDeploy = Boolean(product.activeResearchLevel && product.researchEndsAt && new Date(product.researchEndsAt).getTime() <= now);
+  const nextLevel = product.activeResearchLevel ?? (product.deployedLevel + 1);
+  const nextLevelCapped = Math.min(nextLevel, STARTUP_PRODUCT_MAX_LEVEL);
+  const progressPercent = product.researchStartedAt && product.researchEndsAt
+    ? Math.max(
+        0,
+        Math.min(
+          100,
+          Math.round(
+            ((now - new Date(product.researchStartedAt).getTime()) / Math.max(1, new Date(product.researchEndsAt).getTime() - new Date(product.researchStartedAt).getTime())) * 100
+          )
+        )
+      )
+    : 0;
+
+  return {
+    id: product.id,
+    slotIndex: product.slotIndex,
+    name: product.name,
+    deployedLevel: product.deployedLevel,
+    currentRevenue: getStartupProductRevenue(product.deployedLevel),
+    isResearchActive,
+    canDeploy,
+    activeResearchLevel: product.activeResearchLevel,
+    researchStartedAt,
+    researchEndsAt,
+    researchCost: product.researchCost ?? (product.deployedLevel >= STARTUP_PRODUCT_MAX_LEVEL ? null : getStartupResearchCost(nextLevelCapped)),
+    nextResearchCost: product.deployedLevel >= STARTUP_PRODUCT_MAX_LEVEL || product.activeResearchLevel ? null : getStartupResearchCost(nextLevelCapped),
+    nextResearchDurationMinutes: product.deployedLevel >= STARTUP_PRODUCT_MAX_LEVEL || product.activeResearchLevel ? null : getStartupResearchDurationMinutes(nextLevelCapped),
+    progressPercent,
+    canStartResearch: !product.activeResearchLevel && product.deployedLevel < STARTUP_PRODUCT_MAX_LEVEL,
+    isMaxLevel: product.deployedLevel >= STARTUP_PRODUCT_MAX_LEVEL,
+  };
+}
+
 function serializeBusiness(business: any, viewerId: string) {
   const type = BUSINESS_TYPE_MAP.get(business.typeKey);
   const ownerKind = business.ownerId === viewerId ? 'you' : 'player';
   const treasuryMoney = business.treasuryMoney;
+  const startupProducts = business.typeKey === 'startup'
+    ? business.startupProducts.map((product: any) => serializeStartupProduct(product))
+    : [];
   const monthlyRevenue = business.typeKey === 'bank'
     ? Math.max(0, Math.floor(treasuryMoney * 0.04))
+    : business.typeKey === 'startup'
+      ? startupProducts.reduce((total: number, product: any) => total + product.currentRevenue, 0)
     : business.monthlyRevenue;
   const monthlyExpenses = business.typeKey === 'bank'
     ? 0
@@ -134,15 +281,21 @@ function serializeBusiness(business: any, viewerId: string) {
       createdAt: investment.createdAt.toISOString(),
       investor: investment.investor,
     })),
+    startupProducts,
   };
 }
 
 function serializeRelationship(relationship: any, viewerId: string) {
   const otherUser = relationship.userAId === viewerId ? relationship.userB : relationship.userA;
-  const pendingProposal = relationship.marriageProposals.find((proposal: any) => proposal.status === 'PENDING') ?? null;
-  const pendingProposalDirection = pendingProposal
-    ? (pendingProposal.proposerId === viewerId ? 'sent' : 'received')
+  const pendingMarriageProposal = relationship.marriageProposals.find((proposal: any) => proposal.status === 'PENDING') ?? null;
+  const pendingMarriageProposalDirection = pendingMarriageProposal
+    ? (pendingMarriageProposal.proposerId === viewerId ? 'sent' : 'received')
     : null;
+  const pendingDivorceProposal = relationship.divorceProposals.find((proposal: any) => proposal.status === 'PENDING') ?? null;
+  const pendingDivorceProposalDirection = pendingDivorceProposal
+    ? (pendingDivorceProposal.proposerId === viewerId ? 'sent' : 'received')
+    : null;
+  const canRequestDivorce = relationship.status === 'MARRIED' && !pendingDivorceProposal;
 
   return {
     id: relationship.id,
@@ -151,25 +304,40 @@ function serializeRelationship(relationship: any, viewerId: string) {
     createdAt: relationship.createdAt.toISOString(),
     marriedAt: relationship.marriedAt ? relationship.marriedAt.toISOString() : null,
     otherUser,
-    canProposeMarriage: relationship.status === 'DATING' && relationship.connectionLevel >= 70 && !pendingProposal,
-    canDivorce: relationship.status === 'MARRIED',
-    pendingProposal: pendingProposal
+    canProposeMarriage: relationship.status === 'DATING' && relationship.connectionLevel >= 70 && !pendingMarriageProposal,
+    canDivorce: canRequestDivorce,
+    pendingProposal: pendingMarriageProposal
       ? {
-          id: pendingProposal.id,
-          proposerId: pendingProposal.proposerId,
-          recipientId: pendingProposal.recipientId,
-          status: pendingProposal.status,
-          message: pendingProposal.message,
-          createdAt: pendingProposal.createdAt.toISOString(),
-          respondedAt: pendingProposal.respondedAt ? pendingProposal.respondedAt.toISOString() : null,
-          direction: pendingProposalDirection,
-          canRespond: pendingProposal.recipientId === viewerId,
+          id: pendingMarriageProposal.id,
+          proposerId: pendingMarriageProposal.proposerId,
+          recipientId: pendingMarriageProposal.recipientId,
+          status: pendingMarriageProposal.status,
+          message: pendingMarriageProposal.message,
+          createdAt: pendingMarriageProposal.createdAt.toISOString(),
+          respondedAt: pendingMarriageProposal.respondedAt ? pendingMarriageProposal.respondedAt.toISOString() : null,
+          direction: pendingMarriageProposalDirection,
+          canRespond: pendingMarriageProposal.recipientId === viewerId,
+        }
+      : null,
+    pendingDivorceProposal: pendingDivorceProposal
+      ? {
+          id: pendingDivorceProposal.id,
+          proposerId: pendingDivorceProposal.proposerId,
+          recipientId: pendingDivorceProposal.recipientId,
+          status: pendingDivorceProposal.status,
+          message: pendingDivorceProposal.message,
+          createdAt: pendingDivorceProposal.createdAt.toISOString(),
+          respondedAt: pendingDivorceProposal.respondedAt ? pendingDivorceProposal.respondedAt.toISOString() : null,
+          direction: pendingDivorceProposalDirection,
+          canRespond: pendingDivorceProposal.recipientId === viewerId,
         }
       : null,
   };
 }
 
 export async function getYouState(userId: string) {
+  await ensureUserSkills(userId);
+
   const relationships = await prisma.relationship.findMany({
     where: {
       OR: [{ userAId: userId }, { userBId: userId }],
@@ -186,7 +354,7 @@ export async function getYouState(userId: string) {
     }
   });
 
-  const [players, ownedBusinesses, exploreBusinesses] = await Promise.all([
+  const [players, ownedBusinesses, exploreBusinesses, pendingInvitations, skills] = await Promise.all([
     prisma.user.findMany({
       where: {
         isApproved: true,
@@ -210,21 +378,164 @@ export async function getYouState(userId: string) {
       include: BUSINESS_BASE_INCLUDE,
       orderBy: [{ verified: 'desc' }, { createdAt: 'desc' }],
     }),
+    prisma.businessInvitation.findMany({
+      where: {
+        inviteeId: userId,
+        status: 'PENDING',
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        business: {
+          include: {
+            owner: { select: USER_PREVIEW_SELECT },
+          },
+        },
+        inviter: {
+          select: USER_PREVIEW_SELECT,
+        },
+      },
+    }),
+    prisma.userSkill.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+    }),
   ]);
+
+  const startupBusinessIds = [...ownedBusinesses, ...exploreBusinesses]
+    .filter((business) => business.typeKey === 'startup')
+    .map((business) => business.id);
+
+  if (startupBusinessIds.length > 0) {
+    await Promise.all(startupBusinessIds.map((businessId) => ensureStartupProducts(businessId)));
+  }
+
+  const [ownedBusinessesWithProducts, exploreBusinessesWithProducts] = startupBusinessIds.length > 0
+    ? await Promise.all([
+        prisma.business.findMany({
+          where: { id: { in: ownedBusinesses.map((business) => business.id) } },
+          include: BUSINESS_BASE_INCLUDE,
+          orderBy: { createdAt: 'desc' },
+        }),
+        prisma.business.findMany({
+          where: { id: { in: exploreBusinesses.map((business) => business.id) } },
+          include: BUSINESS_BASE_INCLUDE,
+          orderBy: [{ verified: 'desc' }, { createdAt: 'desc' }],
+        }),
+      ])
+    : [ownedBusinesses, exploreBusinesses];
+
+  const serializedSkills = skills
+    .map((skill) => serializeSkill(skill))
+    .filter((skill): skill is NonNullable<typeof skill> => Boolean(skill));
+  const businessSlots = getBusinessSlots(skills);
 
   return {
     businessTypes: BUSINESS_TYPES,
+    skills: serializedSkills,
+    businessSlots,
     players: players.map((player) => ({
       ...player,
       alreadyInRelationship: relatedUserIds.has(player.id),
     })),
+    jobOffers: pendingInvitations.map((invitation) => ({
+      id: invitation.id,
+      role: invitation.role,
+      createdAt: invitation.createdAt.toISOString(),
+      inviter: invitation.inviter,
+      business: {
+        id: invitation.business.id,
+        name: invitation.business.name,
+        typeKey: invitation.business.typeKey,
+        owner: invitation.business.owner,
+      },
+    })),
     relationships: relationships.map((relationship) => serializeRelationship(relationship, userId)),
-    ownedBusinesses: ownedBusinesses.map((business) => serializeBusiness(business, userId)),
-    exploreBusinesses: exploreBusinesses.map((business) => serializeBusiness(business, userId)),
+    ownedBusinesses: ownedBusinessesWithProducts.map((business) => serializeBusiness(business, userId)),
+    exploreBusinesses: exploreBusinessesWithProducts.map((business) => serializeBusiness(business, userId)),
   };
 }
 
+export async function getYouSkills(userId: string) {
+  await ensureUserSkills(userId);
+  const skills = await prisma.userSkill.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  return skills
+    .map((skill) => serializeSkill(skill))
+    .filter((skill): skill is NonNullable<typeof skill> => Boolean(skill));
+}
+
+export async function trainUserSkill(userId: string, skillKey: string) {
+  const definition = YOU_SKILL_MAP.get(skillKey as YouSkillKey);
+  if (!definition) {
+    throw new Error('INVALID_SKILL_KEY');
+  }
+
+  await ensureUserSkills(userId);
+
+  const existingSkill = await prisma.userSkill.findUnique({
+    where: {
+      userId_key: {
+        userId,
+        key: definition.key,
+      },
+    },
+  });
+
+  if (!existingSkill) {
+    throw new Error('INVALID_SKILL_KEY');
+  }
+
+  if (existingSkill.level >= YOU_SKILL_MAX_LEVEL) {
+    throw new Error('SKILL_ALREADY_MAXED');
+  }
+
+  const trainingCost = definition.trainingCost * existingSkill.level;
+  const hasSharedMoney = await ensureSharedMoneyAvailable(prisma, userId, trainingCost);
+  if (!hasSharedMoney) {
+    throw new Error('INSUFFICIENT_MONEY');
+  }
+
+  const skill = await prisma.$transaction(async (tx) => {
+    await debitSharedMoney(tx, userId, trainingCost);
+
+    let nextLevel = existingSkill.level;
+    let nextXp = existingSkill.xp + definition.xpPerTraining;
+
+    while (nextLevel < YOU_SKILL_MAX_LEVEL && nextXp >= YOU_SKILL_XP_PER_LEVEL) {
+      nextXp -= YOU_SKILL_XP_PER_LEVEL;
+      nextLevel += 1;
+    }
+
+    if (nextLevel >= YOU_SKILL_MAX_LEVEL) {
+      nextLevel = YOU_SKILL_MAX_LEVEL;
+      nextXp = YOU_SKILL_XP_PER_LEVEL;
+    }
+
+    return tx.userSkill.update({
+      where: { id: existingSkill.id },
+      data: {
+        level: nextLevel,
+        xp: nextXp,
+      },
+    });
+  });
+
+  await emitSharedBalanceUpdates(prisma, userId);
+
+  const serialized = serializeSkill(skill);
+  if (!serialized) {
+    throw new Error('INVALID_SKILL_KEY');
+  }
+
+  return serialized;
+}
+
 export async function createBusiness(userId: string, input: { name: string; typeKey: string; capital: number; description?: string; location?: string }) {
+  await ensureUserSkills(userId);
+
   const type = BUSINESS_TYPE_MAP.get(input.typeKey);
   if (!type) {
     throw new Error('INVALID_BUSINESS_TYPE');
@@ -241,6 +552,20 @@ export async function createBusiness(userId: string, input: { name: string; type
 
   const creationCost = type.creationFee;
   const startingCapital = type.key === 'bank' ? 0 : input.capital;
+  const [skills, ownedBusinessCount] = await Promise.all([
+    prisma.userSkill.findMany({
+      where: { userId },
+      select: { key: true, level: true },
+    }),
+    prisma.business.count({
+      where: { ownerId: userId },
+    }),
+  ]);
+  const businessSlots = getBusinessSlots(skills);
+  if (ownedBusinessCount >= businessSlots) {
+    throw new Error('BUSINESS_SLOT_LIMIT_REACHED');
+  }
+
   const hasSharedMoney = await ensureSharedMoneyAvailable(prisma, userId, creationCost);
   if (!hasSharedMoney) {
     throw new Error('INSUFFICIENT_MONEY');
@@ -248,7 +573,7 @@ export async function createBusiness(userId: string, input: { name: string; type
 
   const business = await prisma.$transaction(async (tx) => {
     await debitSharedMoney(tx, userId, creationCost);
-    return tx.business.create({
+    const createdBusiness = await tx.business.create({
       data: {
         ownerId: userId,
         name,
@@ -263,6 +588,24 @@ export async function createBusiness(userId: string, input: { name: string; type
         verified: false,
         hiring: true,
       },
+    });
+
+    if (type.key === 'startup') {
+      await Promise.all(
+        STARTUP_PRODUCTS.map((product) =>
+          tx.businessStartupProduct.create({
+            data: {
+              businessId: createdBusiness.id,
+              slotIndex: product.slotIndex,
+              name: product.name,
+            },
+          })
+        )
+      );
+    }
+
+    return tx.business.findUniqueOrThrow({
+      where: { id: createdBusiness.id },
       include: BUSINESS_BASE_INCLUDE,
     });
   });
@@ -483,6 +826,129 @@ async function handleWithdrawAction(userId: string, business: any, input: { amou
   await emitSharedBalanceUpdates(prisma, userId);
 
   return { amount };
+}
+
+async function handleStartResearchAction(userId: string, business: any, input: { slotIndex: number }) {
+  if (!isBusinessParticipant(userId, business)) {
+    throw new Error('BUSINESS_RESEARCH_FORBIDDEN');
+  }
+
+  if (business.typeKey !== 'startup') {
+    throw new Error('BUSINESS_RESEARCH_UNAVAILABLE');
+  }
+
+  const slotIndex = Number(input.slotIndex);
+  if (!Number.isInteger(slotIndex) || slotIndex < 1 || slotIndex > STARTUP_PRODUCTS.length) {
+    throw new Error('INVALID_STARTUP_PRODUCT_SLOT');
+  }
+
+  await ensureStartupProducts(business.id);
+
+  const product = await prisma.businessStartupProduct.findUnique({
+    where: {
+      businessId_slotIndex: {
+        businessId: business.id,
+        slotIndex,
+      },
+    },
+  });
+
+  if (!product) {
+    throw new Error('INVALID_STARTUP_PRODUCT_SLOT');
+  }
+
+  if (product.activeResearchLevel && product.researchEndsAt && new Date(product.researchEndsAt).getTime() > Date.now()) {
+    throw new Error('STARTUP_RESEARCH_ALREADY_RUNNING');
+  }
+
+  if (product.activeResearchLevel && product.researchEndsAt && new Date(product.researchEndsAt).getTime() <= Date.now()) {
+    throw new Error('STARTUP_RESEARCH_READY_TO_DEPLOY');
+  }
+
+  if (product.deployedLevel >= STARTUP_PRODUCT_MAX_LEVEL) {
+    throw new Error('STARTUP_PRODUCT_MAXED');
+  }
+
+  const nextLevel = product.deployedLevel + 1;
+  const researchCost = getStartupResearchCost(nextLevel);
+  const hasSharedMoney = await ensureSharedMoneyAvailable(prisma, userId, researchCost);
+  if (!hasSharedMoney) {
+    throw new Error('INSUFFICIENT_MONEY');
+  }
+
+  const startedAt = new Date();
+  const endsAt = new Date(startedAt.getTime() + getStartupResearchDurationMinutes(nextLevel) * 60 * 1000);
+
+  await prisma.$transaction(async (tx) => {
+    await debitSharedMoney(tx, userId, researchCost);
+    await tx.businessStartupProduct.update({
+      where: { id: product.id },
+      data: {
+        activeResearchLevel: nextLevel,
+        researchStartedAt: startedAt,
+        researchEndsAt: endsAt,
+        researchCost,
+      },
+    });
+  });
+
+  await emitSharedBalanceUpdates(prisma, userId);
+
+  return {
+    slotIndex,
+    nextLevel,
+    researchCost,
+    researchStartedAt: startedAt.toISOString(),
+    researchEndsAt: endsAt.toISOString(),
+  };
+}
+
+async function handleDeployProductAction(userId: string, business: any, input: { slotIndex: number }) {
+  if (!isBusinessParticipant(userId, business)) {
+    throw new Error('BUSINESS_RESEARCH_FORBIDDEN');
+  }
+
+  if (business.typeKey !== 'startup') {
+    throw new Error('BUSINESS_RESEARCH_UNAVAILABLE');
+  }
+
+  const slotIndex = Number(input.slotIndex);
+  if (!Number.isInteger(slotIndex) || slotIndex < 1 || slotIndex > STARTUP_PRODUCTS.length) {
+    throw new Error('INVALID_STARTUP_PRODUCT_SLOT');
+  }
+
+  const product = await prisma.businessStartupProduct.findUnique({
+    where: {
+      businessId_slotIndex: {
+        businessId: business.id,
+        slotIndex,
+      },
+    },
+  });
+
+  if (!product || !product.activeResearchLevel || !product.researchEndsAt) {
+    throw new Error('STARTUP_RESEARCH_NOT_READY');
+  }
+
+  if (new Date(product.researchEndsAt).getTime() > Date.now()) {
+    throw new Error('STARTUP_RESEARCH_NOT_READY');
+  }
+
+  const deployed = await prisma.businessStartupProduct.update({
+    where: { id: product.id },
+    data: {
+      deployedLevel: product.activeResearchLevel,
+      activeResearchLevel: null,
+      researchStartedAt: null,
+      researchEndsAt: null,
+      researchCost: null,
+    },
+  });
+
+  return {
+    slotIndex: deployed.slotIndex,
+    deployedLevel: deployed.deployedLevel,
+  };
 }
 
 export async function respondToBusinessLoan(userId: string, loanId: string, decision: 'accept' | 'reject') {
@@ -788,6 +1254,8 @@ const BUSINESS_ACTION_HANDLERS: Record<BusinessActionKey, (userId: string, busin
   invest: handleInvestAction,
   deposit: handleDepositAction,
   withdraw: handleWithdrawAction,
+  start_research: handleStartResearchAction,
+  deploy_product: handleDeployProductAction,
 };
 
 export async function executeBusinessAction(userId: string, businessId: string, actionKey: BusinessActionKey, input: Record<string, unknown>) {
@@ -837,7 +1305,30 @@ export async function createRelationship(userId: string, targetUserId: string) {
   });
 
   if (existing) {
-    throw new Error('RELATIONSHIP_ALREADY_EXISTS');
+    if (existing.status !== 'DIVORCED') {
+      throw new Error('RELATIONSHIP_ALREADY_EXISTS');
+    }
+
+    const revivedRelationship = await prisma.relationship.update({
+      where: { id: existing.id },
+      data: {
+        status: 'DATING',
+        marriedAt: null,
+        connectionLevel: Math.max(existing.connectionLevel, 72),
+      },
+      include: RELATIONSHIP_INCLUDE,
+    });
+
+    await createNotification({
+      userId: targetUserId,
+      type: 'SYSTEM',
+      title: 'Relation reprise',
+      body: `${revivedRelationship.userAId === userId ? revivedRelationship.userA.username : revivedRelationship.userB.username} relance votre relation.`,
+      link: '/you?tab=social',
+      icon: 'heart',
+    });
+
+    return serializeRelationship(revivedRelationship, userId);
   }
 
   const relationship = await prisma.relationship.create({
@@ -1024,7 +1515,7 @@ export async function respondToMarriageProposal(userId: string, proposalId: stri
   };
 }
 
-export async function divorceRelationship(userId: string, relationshipId: string) {
+export async function divorceRelationship(userId: string, relationshipId: string, message?: string) {
   const relationship = await prisma.relationship.findUnique({
     where: { id: relationshipId },
     include: RELATIONSHIP_INCLUDE,
@@ -1042,49 +1533,146 @@ export async function divorceRelationship(userId: string, relationshipId: string
     throw new Error('RELATIONSHIP_NOT_MARRIED');
   }
 
-  const updatedRelationship = await prisma.relationship.update({
-    where: { id: relationshipId },
-    data: {
-      status: 'DIVORCED',
-      marriedAt: null,
-    },
-    include: RELATIONSHIP_INCLUDE,
-  });
+  const existingProposal = relationship.divorceProposals.find((proposal: any) => proposal.status === 'PENDING');
+  if (existingProposal) {
+    throw new Error('DIVORCE_PROPOSAL_ALREADY_PENDING');
+  }
 
-  const otherUserId = relationship.userAId === userId ? relationship.userBId : relationship.userAId;
+  const recipientId = relationship.userAId === userId ? relationship.userBId : relationship.userAId;
+  const proposer = relationship.userAId === userId ? relationship.userA : relationship.userB;
+
+  const proposal = await prisma.divorceProposal.create({
+    data: {
+      relationshipId: relationship.id,
+      proposerId: userId,
+      recipientId,
+      message: message?.trim() || null,
+    },
+  });
 
   await Promise.allSettled([
     createNotification({
-      userId,
+      userId: recipientId,
       type: 'SYSTEM',
-      title: 'Divorce enregistre',
-      body: 'La relation a ete marquee comme divorcee.',
-      link: '/you?tab=social',
-      icon: 'heart-crack',
-    }),
-    createNotification({
-      userId: otherUserId,
-      type: 'SYSTEM',
-      title: 'Divorce enregistre',
-      body: 'Votre relation a ete marquee comme divorcee.',
+      title: 'Demande de divorce',
+      body: `${proposer.username} souhaite valider un divorce.`,
       link: '/you?tab=social',
       icon: 'heart-crack',
     }),
   ]);
 
-  return serializeRelationship(updatedRelationship, userId);
+  return {
+    id: proposal.id,
+    relationshipId: proposal.relationshipId,
+    proposerId: proposal.proposerId,
+    recipientId: proposal.recipientId,
+    message: proposal.message,
+    status: proposal.status,
+    createdAt: proposal.createdAt.toISOString(),
+    respondedAt: proposal.respondedAt?.toISOString() ?? null,
+  };
 }
 
-export async function deleteBusiness(adminUserId: string, businessId: string) {
-  const admin = await prisma.user.findUnique({
-    where: { id: adminUserId },
-    select: { isAdmin: true },
+export async function respondToDivorceProposal(userId: string, proposalId: string, decision: 'accept' | 'reject') {
+  const proposal = await prisma.divorceProposal.findUnique({
+    where: { id: proposalId },
+    include: {
+      relationship: {
+        include: RELATIONSHIP_INCLUDE,
+      },
+    },
   });
 
-  if (!admin?.isAdmin) {
-    throw new Error('YOU_ADMIN_ONLY');
+  if (!proposal) {
+    throw new Error('DIVORCE_PROPOSAL_NOT_FOUND');
   }
 
+  if (proposal.recipientId !== userId) {
+    throw new Error('DIVORCE_PROPOSAL_FORBIDDEN');
+  }
+
+  if (proposal.status !== 'PENDING') {
+    throw new Error('DIVORCE_PROPOSAL_ALREADY_RESOLVED');
+  }
+
+  const now = new Date();
+
+  if (decision === 'reject') {
+    const rejectedProposal = await prisma.divorceProposal.update({
+      where: { id: proposalId },
+      data: {
+        status: 'REJECTED',
+        respondedAt: now,
+      },
+    });
+
+    await createNotification({
+      userId: proposal.proposerId,
+      type: 'SYSTEM',
+      title: 'Divorce refuse',
+      body: 'La demande de divorce a ete refusee.',
+      link: '/you?tab=social',
+      icon: 'heart-crack',
+    });
+
+    return {
+      proposal: {
+        id: rejectedProposal.id,
+        status: rejectedProposal.status,
+        respondedAt: rejectedProposal.respondedAt?.toISOString() ?? null,
+      },
+      relationship: serializeRelationship(proposal.relationship, userId),
+    };
+  }
+
+  const [acceptedProposal, updatedRelationship] = await prisma.$transaction([
+    prisma.divorceProposal.update({
+      where: { id: proposalId },
+      data: {
+        status: 'ACCEPTED',
+        respondedAt: now,
+      },
+    }),
+    prisma.relationship.update({
+      where: { id: proposal.relationshipId },
+      data: {
+        status: 'DIVORCED',
+        marriedAt: null,
+      },
+      include: RELATIONSHIP_INCLUDE,
+    }),
+  ]);
+
+  await Promise.allSettled([
+    createNotification({
+      userId: proposal.proposerId,
+      type: 'SYSTEM',
+      title: 'Divorce accepte',
+      body: 'Le divorce a ete valide par les deux personnes.',
+      link: '/you?tab=social',
+      icon: 'heart-crack',
+    }),
+    createNotification({
+      userId,
+      type: 'SYSTEM',
+      title: 'Divorce valide',
+      body: 'Votre relation est maintenant marquee comme divorcee.',
+      link: '/you?tab=social',
+      icon: 'heart-crack',
+    }),
+  ]);
+
+  return {
+    proposal: {
+      id: acceptedProposal.id,
+      status: acceptedProposal.status,
+      respondedAt: acceptedProposal.respondedAt?.toISOString() ?? null,
+    },
+    relationship: serializeRelationship(updatedRelationship, userId),
+  };
+}
+
+export async function deleteBusiness(requestUserId: string, businessId: string) {
   const business = await prisma.business.findUnique({
     where: { id: businessId },
     include: {
@@ -1096,18 +1684,31 @@ export async function deleteBusiness(adminUserId: string, businessId: string) {
     throw new Error('BUSINESS_NOT_FOUND');
   }
 
+  const requester = await prisma.user.findUnique({
+    where: { id: requestUserId },
+    select: { isAdmin: true },
+  });
+  const isOwner = business.ownerId === requestUserId;
+  const isAdmin = Boolean(requester?.isAdmin);
+
+  if (!isOwner && !isAdmin) {
+    throw new Error('BUSINESS_LIQUIDATION_FORBIDDEN');
+  }
+
   await prisma.business.delete({
     where: { id: businessId },
   });
 
-  await createNotification({
-    userId: business.ownerId,
-    type: 'SYSTEM',
-    title: 'Business supprime',
-    body: `${business.name} a ete supprime par un admin.`,
-    link: '/you?tab=travail',
-    icon: 'briefcase-business',
-  });
+  if (isAdmin && !isOwner) {
+    await createNotification({
+      userId: business.ownerId,
+      type: 'SYSTEM',
+      title: 'Business supprime',
+      body: `${business.name} a ete supprime par un admin.`,
+      link: '/you?tab=travail',
+      icon: 'briefcase-business',
+    });
+  }
 
   return { id: businessId };
 }

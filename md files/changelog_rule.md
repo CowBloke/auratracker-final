@@ -1,6 +1,6 @@
 ## Changelog Rule
 
-After completing any feature, fix, or visible change, update `SEED_ENTRIES` in `backend/src/routes/changelog.ts`.
+Update `SEED_ENTRIES` in `backend/src/routes/changelog.ts` only when you intentionally want to publish a product update card.
 
 Important: keep one changelog card per day.
 - First, find whether an entry with the same `date` already exists.

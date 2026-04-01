@@ -1,0 +1,22 @@
+import { ArrowDownCircle, ArrowUpCircle, BarChart3, Building2, CreditCard, Landmark, TrendingUp, UserPlus } from 'lucide-react';
+import { type BusinessAction } from './types';
+
+export const BUSINESS_ICON_MAP = {
+  startup: Building2,
+  bank: Landmark,
+  agency: BarChart3,
+} as const;
+
+export const BUSINESS_STYLE_MAP = {
+  startup: { card: 'border-sky-400/30 bg-sky-400/10', badge: 'bg-sky-400/15 text-sky-400', iconWrap: 'bg-sky-400/15', icon: 'text-sky-400' },
+  bank: { card: 'border-emerald-400/30 bg-emerald-400/10', badge: 'bg-emerald-400/15 text-emerald-400', iconWrap: 'bg-emerald-400/15', icon: 'text-emerald-400' },
+  agency: { card: 'border-violet-400/30 bg-violet-400/10', badge: 'bg-violet-400/15 text-violet-400', iconWrap: 'bg-violet-400/15', icon: 'text-violet-400' },
+} as const;
+
+export const ACTION_META: Record<BusinessAction, { label: string; help: string; icon: typeof UserPlus; tone: string }> = {
+  invite: { label: 'Inviter des joueurs', help: 'Envoyer des invitations de recrutement.', icon: UserPlus, tone: 'bg-purple-400/15 text-purple-400' },
+  loan: { label: 'Demander un pret', help: 'Envoyer une demande de pret au proprietaire du business.', icon: CreditCard, tone: 'bg-amber-400/15 text-amber-400' },
+  invest: { label: 'Investir', help: 'Transferer du money vers la tresorerie d un autre joueur.', icon: TrendingUp, tone: 'bg-sky-400/15 text-sky-400' },
+  deposit: { label: 'Deposer', help: 'Envoyer ton money partage dans la tresorerie du business.', icon: ArrowDownCircle, tone: 'bg-emerald-400/15 text-emerald-400' },
+  withdraw: { label: 'Retirer', help: 'Sortir du money de la tresorerie vers ton solde partage.', icon: ArrowUpCircle, tone: 'bg-red-400/15 text-red-400' },
+};

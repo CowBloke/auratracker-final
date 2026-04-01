@@ -112,7 +112,7 @@ VITE_SOCKET_URL - Socket.io URL (auto-set by environment)
 
 ## Changelog Rule
 
-After completing any feature, fix, or visible change, add an entry directly to `SEED_ENTRIES` in `backend/src/routes/updates.ts`. The entry is automatically synced to the DB on next server start via `ensureSeeded()`. Structure:
+Add an entry to `SEED_ENTRIES` in `backend/src/routes/changelog.ts` only when you want to publish a product update card. Entries are automatically synced to the DB on next server start via `ensureSeeded()`. Structure:
 
 ```ts
 {

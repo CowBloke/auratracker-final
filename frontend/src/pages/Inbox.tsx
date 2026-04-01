@@ -1,67 +1,66 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  Archive,
+  BadgeCheck,
+  BadgeX,
   Bell,
   CheckCheck,
-  Crown,
-  Star,
-  Package,
-  Users,
-  Zap,
-  DollarSign,
-  Megaphone,
-  TrendingUp,
-  TrendingDown,
-  Sword,
-  Info,
-  Archive,
-  Inbox,
-  Eye,
-  ShoppingBag,
   Coins,
+  Crown,
+  DollarSign,
+  Eye,
   Gamepad2,
+  Inbox,
+  Info,
+  Megaphone,
   MessageSquare,
-  ThumbsUp,
-  ThumbsDown,
-  Trophy,
+  Package,
   Shield,
   ShieldCheck,
   ShieldX,
-  BadgeCheck,
-  BadgeX,
+  ShoppingBag,
+  Star,
+  Sword,
+  ThumbsDown,
+  ThumbsUp,
+  TrendingDown,
+  TrendingUp,
+  Trophy,
   UserMinus,
   UserRoundPlus,
+  Users,
+  Zap,
 } from 'lucide-react';
+import { format, formatDistanceToNow } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { PageHeader, PageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
-import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { useNotifications } from '@/contexts/NotificationContext';
+import { cn } from '@/lib/utils';
 import { type Notification } from '@/services/api';
-import { formatDistanceToNow, format } from 'date-fns';
-import { fr } from 'date-fns/locale';
 
-// ── Icon / colour maps ──────────────────────────────────────────────────────
 const TYPE_ICON: Record<string, React.FC<{ className?: string }>> = {
-  AURA_RECEIVED:      ({ className }) => <Star className={className} />,
-  MONEY_RECEIVED:     ({ className }) => <DollarSign className={className} />,
-  ITEM_RECEIVED:      ({ className }) => <Package className={className} />,
-  CLAN_MESSAGE:       ({ className }) => <MessageSquare className={className} />,
-  CLAN_JOIN_REQUEST:  ({ className }) => <Users className={className} />,
+  AURA_RECEIVED: ({ className }) => <Star className={className} />,
+  MONEY_RECEIVED: ({ className }) => <DollarSign className={className} />,
+  ITEM_RECEIVED: ({ className }) => <Package className={className} />,
+  CLAN_MESSAGE: ({ className }) => <MessageSquare className={className} />,
+  CLAN_JOIN_REQUEST: ({ className }) => <Users className={className} />,
   CLAN_JOIN_ACCEPTED: ({ className }) => <Users className={className} />,
   CLAN_JOIN_REJECTED: ({ className }) => <Users className={className} />,
-  CLAN_WAR_DECLARED:  ({ className }) => <Sword className={className} />,
+  CLAN_WAR_DECLARED: ({ className }) => <Sword className={className} />,
   CLAN_WAR_COMPLETED: ({ className }) => <Shield className={className} />,
-  CLAN_WAR_WON:       ({ className }) => <Trophy className={className} />,
-  CLAN_WAR_LOST:      ({ className }) => <ShieldX className={className} />,
-  QUEST_COMPLETED:    ({ className }) => <Zap className={className} />,
-  POLYMARKET_WIN:     ({ className }) => <TrendingUp className={className} />,
-  POLYMARKET_LOSS:    ({ className }) => <TrendingDown className={className} />,
-  PARTY_INVITE:       ({ className }) => <Sword className={className} />,
-  SOCIAL_FOLLOW:      ({ className }) => <UserRoundPlus className={className} />,
-  SOCIAL_CONNECTION:  ({ className }) => <Users className={className} />,
-  ADMIN:              ({ className }) => <Megaphone className={className} />,
-  SYSTEM:             ({ className }) => <Info className={className} />,
+  CLAN_WAR_WON: ({ className }) => <Trophy className={className} />,
+  CLAN_WAR_LOST: ({ className }) => <ShieldX className={className} />,
+  QUEST_COMPLETED: ({ className }) => <Zap className={className} />,
+  POLYMARKET_WIN: ({ className }) => <TrendingUp className={className} />,
+  POLYMARKET_LOSS: ({ className }) => <TrendingDown className={className} />,
+  PARTY_INVITE: ({ className }) => <Sword className={className} />,
+  SOCIAL_FOLLOW: ({ className }) => <UserRoundPlus className={className} />,
+  SOCIAL_CONNECTION: ({ className }) => <Users className={className} />,
+  ADMIN: ({ className }) => <Megaphone className={className} />,
+  SYSTEM: ({ className }) => <Info className={className} />,
 };
 
 const ICON_NAME_MAP: Record<string, React.FC<{ className?: string }>> = {
@@ -95,50 +94,68 @@ const ICON_NAME_MAP: Record<string, React.FC<{ className?: string }>> = {
   'user-round-pen': ({ className }) => <Users className={className} />,
 };
 
-// ── Sidebar categories ──────────────────────────────────────────────────────
-const CLAN_TYPES = ['CLAN_MESSAGE', 'CLAN_JOIN_REQUEST', 'CLAN_JOIN_ACCEPTED', 'CLAN_JOIN_REJECTED', 'CLAN_WAR_DECLARED', 'CLAN_WAR_COMPLETED', 'CLAN_WAR_WON', 'CLAN_WAR_LOST'];
+const CLAN_TYPES = [
+  'CLAN_MESSAGE',
+  'CLAN_JOIN_REQUEST',
+  'CLAN_JOIN_ACCEPTED',
+  'CLAN_JOIN_REJECTED',
+  'CLAN_WAR_DECLARED',
+  'CLAN_WAR_COMPLETED',
+  'CLAN_WAR_WON',
+  'CLAN_WAR_LOST',
+];
 const POLY_TYPES = ['POLYMARKET_WIN', 'POLYMARKET_LOSS'];
-const SYS_TYPES  = ['ADMIN', 'SYSTEM'];
+const SYS_TYPES = ['ADMIN', 'SYSTEM'];
 
 const CATEGORIES = [
-  { id: 'all',        label: 'Tout',       Icon: Inbox,      types: null },
-  { id: 'unread',     label: 'Non lus',    Icon: Eye,        types: null },
-  { id: 'aura',       label: 'Aura',       Icon: Star,       types: ['AURA_RECEIVED'] },
-  { id: 'clans',      label: 'Clans',      Icon: Users,      types: CLAN_TYPES },
-  { id: 'social',     label: 'Social',     Icon: MessageSquare, types: ['SOCIAL_FOLLOW', 'SOCIAL_CONNECTION'] },
-  { id: 'quetes',     label: 'Quêtes',     Icon: Zap,        types: ['QUEST_COMPLETED'] },
+  { id: 'all', label: 'Tout', Icon: Inbox, types: null },
+  { id: 'unread', label: 'Non lus', Icon: Eye, types: null },
+  { id: 'aura', label: 'Aura', Icon: Star, types: ['AURA_RECEIVED'] },
+  { id: 'clans', label: 'Clans', Icon: Users, types: CLAN_TYPES },
+  { id: 'social', label: 'Social', Icon: MessageSquare, types: ['SOCIAL_FOLLOW', 'SOCIAL_CONNECTION'] },
+  { id: 'quetes', label: 'Quetes', Icon: Zap, types: ['QUEST_COMPLETED'] },
   { id: 'polymarket', label: 'Polymarket', Icon: TrendingUp, types: POLY_TYPES },
-  { id: 'systeme',    label: 'Système',    Icon: Info,       types: SYS_TYPES },
-  { id: 'archived',   label: 'Archivé',    Icon: Archive,    types: null },
+  { id: 'systeme', label: 'Systeme', Icon: Info, types: SYS_TYPES },
+  { id: 'archived', label: 'Archive', Icon: Archive, types: null },
 ] as const;
 
 type CategoryId = (typeof CATEGORIES)[number]['id'];
 
 function filterNotifications(notifications: Notification[], id: CategoryId): Notification[] {
-  const cat = CATEGORIES.find((c) => c.id === id);
+  const cat = CATEGORIES.find((category) => category.id === id);
   if (!cat || id === 'all') return notifications;
-  if (id === 'unread') return notifications.filter((n) => !n.isRead);
+  if (id === 'unread') return notifications.filter((notification) => !notification.isRead);
   if (id === 'polymarket') {
-    return notifications.filter((n) =>
-      POLY_TYPES.includes(n.type)
-      || n.link === '/polymarket'
-      || n.link === '/games/polymarket'
-      || (n.icon !== null && ['chart-no-axes-column', 'chart-candlestick', 'chart-no-axes-column-increasing', 'trending-up', 'trending-down', 'badge-check', 'badge-x'].includes(n.icon))
+    return notifications.filter((notification) =>
+      POLY_TYPES.includes(notification.type)
+      || notification.link === '/polymarket'
+      || notification.link === '/games/polymarket'
+      || (
+        notification.icon !== null
+        && [
+          'chart-no-axes-column',
+          'chart-candlestick',
+          'chart-no-axes-column-increasing',
+          'trending-up',
+          'trending-down',
+          'badge-check',
+          'badge-x',
+        ].includes(notification.icon)
+      )
     );
   }
-  if (cat.types) return notifications.filter((n) => (cat.types as readonly string[]).includes(n.type));
+  if (cat.types) return notifications.filter((notification) => (cat.types as readonly string[]).includes(notification.type));
   return notifications;
 }
 
-// ── Notification row ────────────────────────────────────────────────────────
 function NotificationRow({
-  n,
+  notification,
   onRead,
   onArchive,
   onUnarchive,
   isArchiveView,
 }: {
-  n: Notification;
+  notification: Notification;
   onRead: (id: string) => void;
   onArchive: (id: string) => void;
   onUnarchive: (id: string) => void;
@@ -146,78 +163,91 @@ function NotificationRow({
 }) {
   const navigate = useNavigate();
   const IconComp = (
-    (n.icon && ICON_NAME_MAP[n.icon])
-    || TYPE_ICON[n.type]
-    || (({ className }) => <Bell className={className} />)
+    (notification.icon && ICON_NAME_MAP[notification.icon])
+    || TYPE_ICON[notification.type]
+    || (({ className }: { className?: string }) => <Bell className={className} />)
   );
 
-  const date = new Date(n.createdAt);
+  const date = new Date(notification.createdAt);
   const isToday = Date.now() - date.getTime() < 24 * 60 * 60 * 1000;
-  const dateStr = isToday
+  const dateLabel = isToday
     ? formatDistanceToNow(date, { addSuffix: false, locale: fr })
     : format(date, 'dd MMM', { locale: fr });
 
   const handleClick = () => {
-    if (!n.isRead) onRead(n.id);
-    if (n.link) navigate(n.link);
+    if (!notification.isRead) onRead(notification.id);
+    if (notification.link) navigate(notification.link);
   };
 
   return (
     <div
       onClick={handleClick}
       className={cn(
-        'group flex items-center gap-3 border-b border-border/30 px-3 py-2.5 transition-colors last:border-b-0',
-        !n.isRead && !isArchiveView && 'bg-primary/[0.04]',
-        n.link && 'cursor-pointer hover:bg-muted/50'
+        'group flex items-start gap-3 border-b border-border/40 px-4 py-3 transition-colors last:border-b-0 sm:px-5',
+        !notification.isRead && !isArchiveView && 'bg-muted/[0.32]',
+        notification.link && 'cursor-pointer hover:bg-muted/45'
       )}
     >
-      {/* Unread dot */}
-      <div className="flex w-2 shrink-0 justify-center">
-        {!n.isRead && !isArchiveView && <span className="h-2 w-2 rounded-full bg-primary" />}
+      <div className="flex w-2 shrink-0 justify-center pt-1.5">
+        {!notification.isRead && !isArchiveView ? <span className="h-1.5 w-1.5 rounded-full bg-foreground/70" /> : null}
       </div>
 
-      {/* Type icon */}
-      <IconComp className="h-4 w-4 shrink-0 text-muted-foreground" />
-
-      {/* Title · body */}
-      <div className="min-w-0 flex-1 overflow-hidden">
-        <span className={cn('text-sm', !n.isRead && !isArchiveView ? 'font-semibold text-foreground' : 'font-normal text-muted-foreground')}>
-          {n.title}
-        </span>
-        <span className="mx-1.5 text-sm text-muted-foreground/40">·</span>
-        <span className="truncate text-sm text-muted-foreground">{n.body}</span>
+      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/50 bg-muted/20 text-muted-foreground">
+        <IconComp className="h-3.5 w-3.5" />
       </div>
 
-      {/* Date */}
-      <span className="shrink-0 text-xs text-muted-foreground/60 tabular-nums">{dateStr}</span>
+      <div className="min-w-0 flex-1 space-y-1 overflow-hidden">
+        <div className="flex items-start justify-between gap-3">
+          <span className={cn('text-sm leading-5', !notification.isRead && !isArchiveView ? 'font-medium text-foreground' : 'text-foreground/88')}>
+            {notification.title}
+          </span>
+          <span className="shrink-0 pt-0.5 text-[11px] tabular-nums text-muted-foreground/70">{dateLabel}</span>
+        </div>
+        <p className="truncate text-sm leading-5 text-muted-foreground">{notification.body}</p>
+      </div>
 
-      {/* Hover actions */}
-      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-        {!n.isRead && !isArchiveView && (
+      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+        {!notification.isRead && !isArchiveView ? (
           <Button
-            type="button" size="icon" variant="ghost"
-            className="h-6 w-6 text-muted-foreground hover:text-foreground"
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
             title="Marquer comme lu"
-            onClick={(e) => { e.stopPropagation(); onRead(n.id); }}
+            onClick={(event) => {
+              event.stopPropagation();
+              onRead(notification.id);
+            }}
           >
             <CheckCheck className="h-3 w-3" />
           </Button>
-        )}
+        ) : null}
+
         {isArchiveView ? (
           <Button
-            type="button" size="icon" variant="ghost"
-            className="h-6 w-6 text-muted-foreground hover:text-foreground"
-            title="Désarchiver"
-            onClick={(e) => { e.stopPropagation(); onUnarchive(n.id); }}
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+            title="Desarchiver"
+            onClick={(event) => {
+              event.stopPropagation();
+              onUnarchive(notification.id);
+            }}
           >
             <Inbox className="h-3 w-3" />
           </Button>
         ) : (
           <Button
-            type="button" size="icon" variant="ghost"
-            className="h-6 w-6 text-muted-foreground hover:text-foreground"
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
             title="Archiver"
-            onClick={(e) => { e.stopPropagation(); onArchive(n.id); }}
+            onClick={(event) => {
+              event.stopPropagation();
+              onArchive(notification.id);
+            }}
           >
             <Archive className="h-3 w-3" />
           </Button>
@@ -227,7 +257,6 @@ function NotificationRow({
   );
 }
 
-// ── Page ────────────────────────────────────────────────────────────────────
 export default function InboxPage() {
   const [activeCategory, setActiveCategory] = useState<CategoryId>('all');
 
@@ -250,111 +279,116 @@ export default function InboxPage() {
 
   const isArchiveView = activeCategory === 'archived';
 
-  // Load archived on first switch to that tab
   useEffect(() => {
     if (isArchiveView) fetchArchived({ reset: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isArchiveView]);
+  }, [fetchArchived, isArchiveView]);
 
-  const filtered = useMemo(() => {
+  const filteredNotifications = useMemo(() => {
     if (isArchiveView) return archivedNotifications;
     return filterNotifications(notifications, activeCategory);
-  }, [isArchiveView, notifications, archivedNotifications, activeCategory]);
+  }, [activeCategory, archivedNotifications, isArchiveView, notifications]);
 
-  // Per-category unread counts for sidebar badges
-  const catCounts = useMemo(() => {
-    const unread = notifications.filter((n) => !n.isRead);
+  const categoryCounts = useMemo(() => {
+    const unreadNotifications = notifications.filter((notification) => !notification.isRead);
+
     return {
-      all:        unread.length,
-      unread:     unread.length,
-      aura:       unread.filter((n) => n.type === 'AURA_RECEIVED').length,
-      clans:      unread.filter((n) => CLAN_TYPES.includes(n.type)).length,
-      quetes:     unread.filter((n) => n.type === 'QUEST_COMPLETED').length,
-      polymarket: unread.filter((n) => POLY_TYPES.includes(n.type)).length,
-      systeme:    unread.filter((n) => SYS_TYPES.includes(n.type)).length,
-      archived:   0,
+      all: unreadNotifications.length,
+      unread: unreadNotifications.length,
+      aura: unreadNotifications.filter((notification) => notification.type === 'AURA_RECEIVED').length,
+      clans: unreadNotifications.filter((notification) => CLAN_TYPES.includes(notification.type)).length,
+      social: unreadNotifications.filter((notification) => ['SOCIAL_FOLLOW', 'SOCIAL_CONNECTION'].includes(notification.type)).length,
+      quetes: unreadNotifications.filter((notification) => notification.type === 'QUEST_COMPLETED').length,
+      polymarket: unreadNotifications.filter((notification) => POLY_TYPES.includes(notification.type)).length,
+      systeme: unreadNotifications.filter((notification) => SYS_TYPES.includes(notification.type)).length,
+      archived: 0,
     } as Record<CategoryId, number>;
   }, [notifications]);
 
-  return (
-    <div className={cn('w-full', SPACING.PAGE_BODY_PADDING, SPACING.PAGE_SPACING)}>
+  const description = isArchiveView
+    ? `${archivedNotifications.length} message${archivedNotifications.length !== 1 ? 's' : ''} archive${archivedNotifications.length !== 1 ? 's' : ''}`
+    : unreadCount > 0
+      ? `${unreadCount} notification${unreadCount > 1 ? 's' : ''} non lue${unreadCount > 1 ? 's' : ''}`
+      : 'Tout est a jour';
 
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className={TYPOGRAPHY.PAGE_DESCRIPTION}>
-          {isArchiveView
-            ? `${archivedNotifications.length} message${archivedNotifications.length !== 1 ? 's' : ''} archivé${archivedNotifications.length !== 1 ? 's' : ''}`
-            : unreadCount > 0
-              ? `${unreadCount} notification${unreadCount > 1 ? 's' : ''} non lue${unreadCount > 1 ? 's' : ''}`
-              : 'Tout est à jour'}
-        </p>
-        {!isArchiveView && (
-          <div className="flex flex-wrap items-center gap-2">
-            {unreadCount > 0 && (
-              <Button variant="outline" size="sm" onClick={markAllRead} className="gap-1.5">
+  return (
+    <PageShell className="w-full">
+      <PageHeader
+        title="Inbox"
+        description={description}
+        actions={!isArchiveView ? (
+          <>
+            {unreadCount > 0 ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={markAllRead}
+                className="gap-1.5 border-border/60 bg-background shadow-none"
+              >
                 <CheckCheck className="h-3.5 w-3.5" />
                 Tout marquer comme lu
               </Button>
-            )}
-            <Button variant="outline" size="sm" onClick={archiveAllRead} className="gap-1.5 text-muted-foreground">
+            ) : null}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={archiveAllRead}
+              className="gap-1.5 border-border/60 bg-background text-muted-foreground shadow-none hover:text-foreground"
+            >
               <Archive className="h-3.5 w-3.5" />
               Archiver les lus
             </Button>
-          </div>
-        )}
-      </div>
+          </>
+        ) : undefined}
+      />
 
-      {/* Main card */}
-      <Card className="overflow-hidden p-0">
-        <div className="flex min-h-[400px]">
+      <Card className="overflow-hidden border-border/50 bg-background p-0 shadow-none">
+        <div className="flex min-h-[420px] flex-col md:flex-row">
+          <div className="shrink-0 border-b border-border/40 bg-muted/10 p-2 md:w-48 md:border-b-0 md:border-r">
+            {CATEGORIES.map((category) => {
+              const count = categoryCounts[category.id] ?? 0;
+              const isActive = activeCategory === category.id;
 
-          {/* ── Left sidebar ─────────────────────────────────────────── */}
-          <div className="w-40 shrink-0 border-r border-border/40 p-1.5 space-y-0.5">
-            {CATEGORIES.map((cat) => {
-              const count = catCounts[cat.id] ?? 0;
-              const isActive = activeCategory === cat.id;
               return (
                 <button
-                  key={cat.id}
-                  onClick={() => setActiveCategory(cat.id)}
+                  key={category.id}
+                  onClick={() => setActiveCategory(category.id)}
                   className={cn(
-                    'w-full flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors text-left',
+                    'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors',
                     isActive
-                      ? 'bg-accent text-accent-foreground font-medium'
-                      : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+                      ? 'bg-background text-foreground'
+                      : 'text-muted-foreground hover:bg-background/70 hover:text-foreground'
                   )}
                 >
-                  <cat.Icon className="h-3.5 w-3.5 shrink-0" />
-                  <span className="flex-1 truncate">{cat.label}</span>
-                  {count > 0 && (
-                    <span className="text-[10px] font-semibold bg-primary/15 text-primary rounded px-1 shrink-0">
+                  <category.Icon className="h-3.5 w-3.5 shrink-0" />
+                  <span className="flex-1 truncate">{category.label}</span>
+                  {count > 0 ? (
+                    <span className="shrink-0 rounded-full bg-foreground/5 px-1.5 py-0.5 text-[10px] font-medium text-foreground/70">
                       {count}
                     </span>
-                  )}
+                  ) : null}
                 </button>
               );
             })}
           </div>
 
-          {/* ── Content ──────────────────────────────────────────────── */}
-          <div className="flex-1 min-w-0 flex flex-col">
-            {(isArchiveView ? loadingArchived : loading) && filtered.length === 0 ? (
+          <div className="flex min-w-0 flex-1 flex-col">
+            {(isArchiveView ? loadingArchived : loading) && filteredNotifications.length === 0 ? (
               <div className="flex flex-1 items-center justify-center py-16">
-                <p className={TYPOGRAPHY.MUTED}>Chargement…</p>
+                <p className="text-sm text-muted-foreground">Chargement...</p>
               </div>
-            ) : filtered.length === 0 ? (
+            ) : filteredNotifications.length === 0 ? (
               <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16">
                 {isArchiveView ? <Archive className="h-8 w-8 text-muted-foreground/30" /> : <Bell className="h-8 w-8 text-muted-foreground/30" />}
-                <p className={TYPOGRAPHY.MUTED}>
-                  {isArchiveView ? 'Aucun message archivé' : 'Aucune notification'}
+                <p className="text-sm text-muted-foreground">
+                  {isArchiveView ? 'Aucun message archive' : 'Aucune notification'}
                 </p>
               </div>
             ) : (
               <>
-                {filtered.map((n) => (
+                {filteredNotifications.map((notification) => (
                   <NotificationRow
-                    key={n.id}
-                    n={n}
+                    key={notification.id}
+                    notification={notification}
                     onRead={markRead}
                     onArchive={archiveNotification}
                     onUnarchive={unarchiveNotification}
@@ -362,23 +396,29 @@ export default function InboxPage() {
                   />
                 ))}
 
-                {/* Load more */}
-                {(isArchiveView ? hasMoreArchived : hasMore) && (
-                  <div className="flex justify-center p-4">
+                {(isArchiveView ? hasMoreArchived : hasMore) ? (
+                  <div className="flex justify-center border-t border-border/40 p-4">
                     <Button
-                      variant="outline" size="sm"
-                      onClick={() => isArchiveView ? fetchArchived() : fetchNotifications()}
+                      variant="outline"
+                      size="sm"
+                      className="border-border/60 bg-background shadow-none"
+                      onClick={() => {
+                        if (isArchiveView) {
+                          fetchArchived();
+                          return;
+                        }
+                        fetchNotifications();
+                      }}
                     >
                       Charger plus
                     </Button>
                   </div>
-                )}
+                ) : null}
               </>
             )}
           </div>
         </div>
       </Card>
-
-    </div>
+    </PageShell>
   );
 }

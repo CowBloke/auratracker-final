@@ -160,7 +160,20 @@ export interface YouBusinessType {
   monthlyRevenue: number;
   monthlyExpenses: number;
   satisfaction: number;
-  actions: Array<'invite' | 'loan' | 'invest' | 'deposit' | 'withdraw'>;
+  actions: Array<'invite' | 'loan' | 'invest' | 'deposit' | 'withdraw' | 'start_research' | 'deploy_product'>;
+}
+
+export interface YouSkill {
+  key: 'affaires' | 'social' | 'intelligence' | 'charisme' | 'finance' | string;
+  label: string;
+  color: 'emerald' | 'purple' | 'sky' | 'pink' | 'amber';
+  description: string;
+  level: number;
+  xp: number;
+  maxXp: number;
+  trainingCost: number;
+  canTrain: boolean;
+  unlocks: string[];
 }
 
 export interface YouBusinessMember {
@@ -199,6 +212,25 @@ export interface YouBusinessInvestment {
   investor: Omit<YouPlayer, 'alreadyInRelationship'>;
 }
 
+export interface YouStartupProduct {
+  id: string;
+  slotIndex: number;
+  name: string;
+  deployedLevel: number;
+  currentRevenue: number;
+  isResearchActive: boolean;
+  canDeploy: boolean;
+  activeResearchLevel: number | null;
+  researchStartedAt: string | null;
+  researchEndsAt: string | null;
+  researchCost: number | null;
+  nextResearchCost: number | null;
+  nextResearchDurationMinutes: number | null;
+  progressPercent: number;
+  canStartResearch: boolean;
+  isMaxLevel: boolean;
+}
+
 export interface YouBusiness {
   id: string;
   name: string;
@@ -219,14 +251,27 @@ export interface YouBusiness {
   monthlyExpenses: number;
   satisfaction: number;
   memberCount: number;
-  actions: Array<'invite' | 'loan' | 'invest' | 'deposit' | 'withdraw'>;
+  actions: Array<'invite' | 'loan' | 'invest' | 'deposit' | 'withdraw' | 'start_research' | 'deploy_product'>;
   members: YouBusinessMember[];
   pendingInvitations: YouBusinessInvitation[];
   recentLoans: YouBusinessLoan[];
   recentInvestments: YouBusinessInvestment[];
+  startupProducts: YouStartupProduct[];
 }
 
 export interface YouMarriageProposal {
+  id: string;
+  proposerId: string;
+  recipientId: string;
+  status: string;
+  message: string | null;
+  createdAt: string;
+  respondedAt: string | null;
+  direction: 'sent' | 'received';
+  canRespond: boolean;
+}
+
+export interface YouDivorceProposal {
   id: string;
   proposerId: string;
   recipientId: string;
@@ -248,11 +293,28 @@ export interface YouRelationship {
   canProposeMarriage: boolean;
   canDivorce: boolean;
   pendingProposal: YouMarriageProposal | null;
+  pendingDivorceProposal: YouDivorceProposal | null;
+}
+
+export interface YouJobOffer {
+  id: string;
+  role: string;
+  createdAt: string;
+  inviter: Omit<YouPlayer, 'alreadyInRelationship'>;
+  business: {
+    id: string;
+    name: string;
+    typeKey: string;
+    owner: Omit<YouPlayer, 'alreadyInRelationship'>;
+  };
 }
 
 export interface YouState {
+  skills: YouSkill[];
+  businessSlots: number;
   businessTypes: YouBusinessType[];
   players: YouPlayer[];
+  jobOffers: YouJobOffer[];
   relationships: YouRelationship[];
   ownedBusinesses: YouBusiness[];
   exploreBusinesses: YouBusiness[];
@@ -260,9 +322,12 @@ export interface YouState {
 
 export const youApi = {
   getState: () => api.get<YouState>('/you/state'),
+  getSkills: () => api.get<{ skills: YouSkill[] }>('/you/skills'),
+  trainSkill: (skillKey: string) =>
+    api.post<{ skill: YouSkill }>(`/you/skills/${skillKey}/train`),
   createBusiness: (data: { name: string; typeKey: string; capital: number; description?: string; location?: string }) =>
     api.post<{ business: YouBusiness }>('/you/businesses', data),
-  runBusinessAction: (businessId: string, actionKey: 'invite' | 'loan' | 'invest' | 'deposit' | 'withdraw', data?: Record<string, unknown>) =>
+  runBusinessAction: (businessId: string, actionKey: 'invite' | 'loan' | 'invest' | 'deposit' | 'withdraw' | 'start_research' | 'deploy_product', data?: Record<string, unknown>) =>
     api.post<{ result: Record<string, unknown> }>(`/you/businesses/${businessId}/actions/${actionKey}`, data ?? {}),
   respondToBusinessInvitation: (invitationId: string, decision: 'accept' | 'reject') =>
     api.post<{ result: { id: string; status: string; respondedAt: string | null } }>(`/you/business-invitations/${invitationId}/respond`, { decision }),
@@ -274,8 +339,10 @@ export const youApi = {
     api.post<{ proposal: Omit<YouMarriageProposal, 'direction' | 'canRespond' | 'respondedAt'> & { respondedAt?: string | null } }>(`/you/relationships/${relationshipId}/actions/propose-marriage`, { message }),
   respondToMarriageProposal: (proposalId: string, decision: 'accept' | 'reject') =>
     api.post<{ proposal: { id: string; status: string; respondedAt: string | null }; relationship: YouRelationship }>(`/you/marriage-proposals/${proposalId}/respond`, { decision }),
-  divorceRelationship: (relationshipId: string) =>
-    api.post<{ relationship: YouRelationship }>(`/you/relationships/${relationshipId}/actions/divorce`),
+  divorceRelationship: (relationshipId: string, message?: string) =>
+    api.post<{ proposal: { id: string; status: string; createdAt: string; respondedAt: string | null } }>(`/you/relationships/${relationshipId}/actions/divorce`, { message }),
+  respondToDivorceProposal: (proposalId: string, decision: 'accept' | 'reject') =>
+    api.post<{ proposal: { id: string; status: string; respondedAt: string | null }; relationship: YouRelationship }>(`/you/divorce-proposals/${proposalId}/respond`, { decision }),
   deleteBusiness: (businessId: string) =>
     api.delete<{ result: { id: string } }>(`/you/businesses/${businessId}`),
 };

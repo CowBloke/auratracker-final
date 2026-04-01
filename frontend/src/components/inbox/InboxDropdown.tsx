@@ -96,45 +96,16 @@ const ICON_NAME_MAP: Record<string, ComponentType<{ className?: string }>> = {
 };
 
 const TONE_MAP: Record<string, { shell: string; iconWrap: string; icon: string }> = {
-  money: {
-    shell: 'border-emerald-200/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.95),rgba(236,253,245,0.92))] dark:border-emerald-500/20 dark:bg-[linear-gradient(135deg,rgba(15,23,42,0.96),rgba(6,95,70,0.24))]',
-    iconWrap: 'bg-emerald-500/12 dark:bg-emerald-400/12',
-    icon: 'text-emerald-600 dark:text-emerald-300',
-  },
-  violet: {
-    shell: 'border-violet-200/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.95),rgba(245,243,255,0.92))] dark:border-violet-500/20 dark:bg-[linear-gradient(135deg,rgba(15,23,42,0.96),rgba(76,29,149,0.24))]',
-    iconWrap: 'bg-violet-500/12 dark:bg-violet-400/12',
-    icon: 'text-violet-600 dark:text-violet-300',
-  },
-  amber: {
-    shell: 'border-amber-200/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.95),rgba(255,251,235,0.94))] dark:border-amber-500/20 dark:bg-[linear-gradient(135deg,rgba(15,23,42,0.96),rgba(146,64,14,0.24))]',
-    iconWrap: 'bg-amber-500/12 dark:bg-amber-400/12',
-    icon: 'text-amber-600 dark:text-amber-300',
-  },
-  blue: {
-    shell: 'border-sky-200/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.95),rgba(240,249,255,0.94))] dark:border-sky-500/20 dark:bg-[linear-gradient(135deg,rgba(15,23,42,0.96),rgba(12,74,110,0.24))]',
-    iconWrap: 'bg-sky-500/12 dark:bg-sky-400/12',
-    icon: 'text-sky-600 dark:text-sky-300',
-  },
-  rose: {
-    shell: 'border-rose-200/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.95),rgba(255,241,242,0.94))] dark:border-rose-500/20 dark:bg-[linear-gradient(135deg,rgba(15,23,42,0.96),rgba(159,18,57,0.24))]',
-    iconWrap: 'bg-rose-500/12 dark:bg-rose-400/12',
-    icon: 'text-rose-600 dark:text-rose-300',
-  },
-  slate: {
-    shell: 'border-slate-200/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(248,250,252,0.94))] dark:border-white/10 dark:bg-[linear-gradient(135deg,rgba(15,23,42,0.97),rgba(30,41,59,0.94))]',
-    iconWrap: 'bg-slate-500/10 dark:bg-slate-400/10',
-    icon: 'text-slate-600 dark:text-slate-300',
+  default: {
+    shell: 'border-border/50 bg-background/95 dark:bg-card/95',
+    iconWrap: 'border border-border/50 bg-muted/25',
+    icon: 'text-muted-foreground',
   },
 };
 
 function getNotificationTone(notification: Notification) {
-  if (notification.type === 'MONEY_RECEIVED' || notification.icon === 'dollar-sign' || notification.icon === 'coins') return TONE_MAP.money;
-  if (notification.type === 'AURA_RECEIVED' || notification.icon === 'star' || notification.icon === 'crown') return TONE_MAP.violet;
-  if (notification.icon === 'briefcase-business' || notification.icon === 'landmark' || notification.title.toLowerCase().includes('business')) return TONE_MAP.amber;
-  if (notification.type === 'POLYMARKET_WIN' || notification.type === 'POLYMARKET_LOSS') return TONE_MAP.blue;
-  if (notification.type === 'ADMIN') return TONE_MAP.rose;
-  return TONE_MAP.slate;
+  void notification;
+  return TONE_MAP.default;
 }
 
 function getBusinessInvitationId(notification: Notification) {
@@ -178,39 +149,37 @@ function NotificationCard({
   const isUnread = !notification.isRead;
   const isInvite = isBusinessInvitation(notification);
 
-  const actionButtonClass = 'h-8 rounded-full border border-white/60 bg-white/70 px-3 text-[11px] font-medium text-slate-700 shadow-sm transition-colors hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-slate-100 dark:hover:bg-white/10';
-  const primaryButtonClass = 'h-8 rounded-full bg-slate-900 px-3 text-[11px] font-medium text-white shadow-sm transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200';
+  const actionButtonClass = 'h-8 rounded-full border border-border/60 bg-background px-3 text-[11px] font-medium text-muted-foreground shadow-none transition-colors hover:bg-muted/60 hover:text-foreground';
+  const primaryButtonClass = 'h-8 rounded-full border border-border/60 bg-foreground px-3 text-[11px] font-medium text-background shadow-none transition-colors hover:opacity-90 dark:bg-foreground dark:text-background';
 
   return (
     <article
       className={cn(
-        'relative overflow-hidden rounded-[1.35rem] border p-4 shadow-[0_18px_50px_-28px_rgba(15,23,42,0.45)] transition-transform duration-200',
+        'relative overflow-hidden rounded-2xl border p-4 shadow-none transition-colors duration-200',
         tone.shell,
-        notification.link && 'cursor-pointer hover:-translate-y-0.5',
-        isUnread && 'ring-1 ring-white/40 dark:ring-white/8'
+        notification.link && 'cursor-pointer hover:bg-muted/35',
+        isUnread && 'bg-muted/[0.32]'
       )}
       onClick={() => {
         if (!notification.link) return;
         void onNavigate(notification);
       }}
     >
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.55),transparent_70%)] dark:bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_70%)]" />
-
       <div className="relative flex items-start gap-3">
-        <div className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl', tone.iconWrap)}>
+        <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-full', tone.iconWrap)}>
           <ResolvedIcon className={cn('h-5 w-5', tone.icon)} />
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-sm font-semibold leading-tight text-slate-900 dark:text-white">{notification.title}</p>
-              <p className="mt-1 line-clamp-3 text-xs leading-5 text-slate-600 dark:text-slate-300">{notification.body}</p>
+              <p className="text-sm font-medium leading-tight text-foreground">{notification.title}</p>
+              <p className="mt-1 line-clamp-3 text-xs leading-5 text-muted-foreground">{notification.body}</p>
             </div>
 
             <div className="flex items-center gap-2 pl-1">
-              {isUnread ? <span className="h-2.5 w-2.5 rounded-full bg-sky-500 shadow-[0_0_0_4px_rgba(14,165,233,0.12)]" /> : null}
-              <span className="shrink-0 text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">{ago}</span>
+              {isUnread ? <span className="h-1.5 w-1.5 rounded-full bg-foreground/70" /> : null}
+              <span className="shrink-0 text-[10px] font-medium text-muted-foreground/70">{ago}</span>
             </div>
           </div>
 
@@ -395,24 +364,24 @@ export function InboxDropdown() {
       >
         <Bell className="h-4 w-4" />
         {unreadCount > 0 ? (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-[9px] font-bold text-background">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         ) : null}
       </Button>
 
       {open ? (
-        <div className="absolute right-0 top-full z-50 mt-3 w-[25rem] max-w-[calc(100vw-1rem)] overflow-hidden rounded-[1.9rem] border border-white/50 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(244,247,251,0.94))] shadow-[0_28px_100px_-32px_rgba(15,23,42,0.7)] backdrop-blur-2xl dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.95),rgba(2,6,23,0.98))]">
-          <div className="border-b border-slate-200/70 px-4 pb-3 pt-4 dark:border-white/10">
+        <div className="absolute right-0 top-full z-50 mt-3 w-[25rem] max-w-[calc(100vw-1rem)] overflow-hidden rounded-[1.5rem] border border-border/60 bg-background/95 shadow-xl backdrop-blur-xl dark:bg-card/95">
+          <div className="border-b border-border/50 px-4 pb-3 pt-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-900 text-white dark:bg-white dark:text-slate-950">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-muted/30 text-foreground">
                     <Inbox className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-slate-900 dark:text-white">Boîte de réception</p>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    <p className="text-sm font-semibold text-foreground">Boîte de réception</p>
+                    <p className="text-[11px] text-muted-foreground">
                       {unreadCount > 0 ? `${unreadCount} notification${unreadCount > 1 ? 's' : ''} à traiter` : 'Tout est lu'}
                     </p>
                   </div>
@@ -425,7 +394,7 @@ export function InboxDropdown() {
                   variant="ghost"
                   size="sm"
                   onClick={() => void markAllRead()}
-                  className="h-8 rounded-full border border-white/60 bg-white/70 px-3 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-slate-100 dark:hover:bg-white/10"
+                  className="h-8 rounded-full border border-border/60 bg-background px-3 text-[11px] font-medium text-muted-foreground shadow-none hover:bg-muted/60 hover:text-foreground"
                 >
                   <CheckCheck className="mr-1.5 h-3.5 w-3.5" />
                   Tout lire
@@ -436,16 +405,16 @@ export function InboxDropdown() {
 
           <div className="max-h-[min(32rem,70vh)] overflow-y-auto px-3 py-3" onScroll={handleScroll}>
             {loading && notifications.length === 0 ? (
-              <div className="flex items-center justify-center py-10 text-xs text-slate-500 dark:text-slate-400">
+              <div className="flex items-center justify-center py-10 text-xs text-muted-foreground">
                 Chargement…
               </div>
             ) : notifications.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 py-10 text-center text-xs text-slate-500 dark:text-slate-400">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-900/5 dark:bg-white/5">
+              <div className="flex flex-col items-center gap-3 py-10 text-center text-xs text-muted-foreground">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full border border-border/50 bg-muted/20">
                   <Bell className="h-6 w-6 opacity-40" />
                 </div>
                 <div>
-                  <p className="font-medium text-slate-700 dark:text-slate-200">Aucune notification</p>
+                  <p className="font-medium text-foreground">Aucune notification</p>
                   <p className="mt-1">Les nouvelles alertes apparaîtront ici.</p>
                 </div>
               </div>
@@ -464,17 +433,17 @@ export function InboxDropdown() {
                 ))}
 
                 {loading && notifications.length > 0 ? (
-                  <div className="pb-2 text-center text-[11px] text-slate-500 dark:text-slate-400">Chargement des notifications…</div>
+                  <div className="pb-2 text-center text-[11px] text-muted-foreground">Chargement des notifications…</div>
                 ) : null}
               </div>
             )}
           </div>
 
-          <div className="border-t border-slate-200/70 px-4 py-3 dark:border-white/10">
+          <div className="border-t border-border/50 px-4 py-3">
             <Link
               to="/inbox"
               onClick={() => setOpen(false)}
-              className="flex w-full items-center justify-center gap-2 rounded-full border border-white/60 bg-white/70 px-4 py-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-slate-100 dark:hover:bg-white/10"
+              className="flex w-full items-center justify-center gap-2 rounded-full border border-border/60 bg-background px-4 py-2 text-xs font-medium text-muted-foreground shadow-none transition-colors hover:bg-muted/60 hover:text-foreground"
             >
               <ExternalLink className="h-3.5 w-3.5" />
               Voir toutes les notifications

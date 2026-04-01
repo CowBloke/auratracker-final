@@ -7,11 +7,14 @@ import {
   deleteBusiness,
   divorceRelationship,
   executeBusinessAction,
+  getYouSkills,
   getYouState,
   proposeMarriage,
   respondToBusinessInvitation,
   respondToBusinessLoan,
+  respondToDivorceProposal,
   respondToMarriageProposal,
+  trainUserSkill,
 } from '../modules/you/service.js';
 import type { BusinessActionKey } from '../modules/you/config.js';
 
@@ -24,8 +27,12 @@ const ERROR_STATUS: Record<string, number> = {
   BUSINESS_CAPITAL_TOO_LOW: 400,
   INSUFFICIENT_MONEY: 400,
   INSUFFICIENT_SHARED_MONEY: 400,
+  INVALID_SKILL_KEY: 400,
+  SKILL_ALREADY_MAXED: 400,
   USER_NOT_FOUND: 404,
   BUSINESS_NOT_FOUND: 404,
+  BUSINESS_SLOT_LIMIT_REACHED: 400,
+  BUSINESS_LIQUIDATION_FORBIDDEN: 403,
   BUSINESS_ACTION_UNAVAILABLE: 400,
   BUSINESS_INVITE_FORBIDDEN: 403,
   INVITEE_REQUIRED: 400,
@@ -46,6 +53,13 @@ const ERROR_STATUS: Record<string, number> = {
   BUSINESS_INVITATION_ALREADY_RESOLVED: 400,
   BUSINESS_INVEST_SELF_FORBIDDEN: 400,
   INVALID_INVEST_AMOUNT: 400,
+  BUSINESS_RESEARCH_FORBIDDEN: 403,
+  BUSINESS_RESEARCH_UNAVAILABLE: 400,
+  INVALID_STARTUP_PRODUCT_SLOT: 400,
+  STARTUP_RESEARCH_ALREADY_RUNNING: 400,
+  STARTUP_RESEARCH_READY_TO_DEPLOY: 400,
+  STARTUP_RESEARCH_NOT_READY: 400,
+  STARTUP_PRODUCT_MAXED: 400,
   RELATIONSHIP_SELF_FORBIDDEN: 400,
   TARGET_NOT_FOUND: 404,
   RELATIONSHIP_ALREADY_EXISTS: 400,
@@ -58,6 +72,10 @@ const ERROR_STATUS: Record<string, number> = {
   MARRIAGE_PROPOSAL_NOT_FOUND: 404,
   MARRIAGE_PROPOSAL_FORBIDDEN: 403,
   MARRIAGE_PROPOSAL_ALREADY_RESOLVED: 400,
+  DIVORCE_PROPOSAL_ALREADY_PENDING: 400,
+  DIVORCE_PROPOSAL_NOT_FOUND: 404,
+  DIVORCE_PROPOSAL_FORBIDDEN: 403,
+  DIVORCE_PROPOSAL_ALREADY_RESOLVED: 400,
   YOU_ADMIN_ONLY: 403,
 };
 
@@ -67,8 +85,12 @@ const ERROR_MESSAGE: Record<string, string> = {
   BUSINESS_CAPITAL_TOO_LOW: 'Le capital de depart est trop faible pour ce type de business.',
   INSUFFICIENT_MONEY: 'Tu n as pas assez de money pour cette action.',
   INSUFFICIENT_SHARED_MONEY: 'Ton foyer n a pas assez de money pour cette action.',
+  INVALID_SKILL_KEY: 'Competence inconnue.',
+  SKILL_ALREADY_MAXED: 'Cette competence est deja au niveau maximum.',
   USER_NOT_FOUND: 'Utilisateur introuvable.',
   BUSINESS_NOT_FOUND: 'Business introuvable.',
+  BUSINESS_SLOT_LIMIT_REACHED: 'Tu as deja atteint ton nombre maximum de business.',
+  BUSINESS_LIQUIDATION_FORBIDDEN: 'Tu ne peux pas liquider ce business.',
   BUSINESS_ACTION_UNAVAILABLE: 'Cette action n est pas disponible pour ce business.',
   BUSINESS_INVITE_FORBIDDEN: 'Seul le proprietaire peut inviter des joueurs.',
   INVITEE_REQUIRED: 'Choisis au moins un joueur a inviter.',
@@ -89,6 +111,13 @@ const ERROR_MESSAGE: Record<string, string> = {
   BUSINESS_INVITATION_ALREADY_RESOLVED: 'Cette invitation a deja ete traitee.',
   BUSINESS_INVEST_SELF_FORBIDDEN: 'Tu ne peux pas investir dans ton propre business via cette action.',
   INVALID_INVEST_AMOUNT: 'Montant d investissement invalide.',
+  BUSINESS_RESEARCH_FORBIDDEN: 'Tu ne peux pas lancer cette recherche sur ce business.',
+  BUSINESS_RESEARCH_UNAVAILABLE: 'Cette action de recherche est reservee aux startups tech.',
+  INVALID_STARTUP_PRODUCT_SLOT: 'Produit startup invalide.',
+  STARTUP_RESEARCH_ALREADY_RUNNING: 'Une recherche est deja en cours sur ce produit.',
+  STARTUP_RESEARCH_READY_TO_DEPLOY: 'Cette recherche est terminee. Deploie le produit avant de recommencer.',
+  STARTUP_RESEARCH_NOT_READY: 'La recherche n est pas encore terminee.',
+  STARTUP_PRODUCT_MAXED: 'Ce produit a deja atteint le niveau maximum.',
   RELATIONSHIP_SELF_FORBIDDEN: 'Tu ne peux pas creer une relation avec toi-meme.',
   TARGET_NOT_FOUND: 'Le joueur cible est introuvable.',
   RELATIONSHIP_ALREADY_EXISTS: 'Cette relation existe deja.',
@@ -101,6 +130,10 @@ const ERROR_MESSAGE: Record<string, string> = {
   MARRIAGE_PROPOSAL_NOT_FOUND: 'Demande en mariage introuvable.',
   MARRIAGE_PROPOSAL_FORBIDDEN: 'Tu ne peux pas repondre a cette demande.',
   MARRIAGE_PROPOSAL_ALREADY_RESOLVED: 'Cette demande a deja ete traitee.',
+  DIVORCE_PROPOSAL_ALREADY_PENDING: 'Une demande de divorce est deja en attente.',
+  DIVORCE_PROPOSAL_NOT_FOUND: 'Demande de divorce introuvable.',
+  DIVORCE_PROPOSAL_FORBIDDEN: 'Tu ne peux pas repondre a cette demande de divorce.',
+  DIVORCE_PROPOSAL_ALREADY_RESOLVED: 'Cette demande de divorce a deja ete traitee.',
   YOU_ADMIN_ONLY: 'Cette section est reservee aux admins.',
 };
 
@@ -138,6 +171,24 @@ router.get('/state', authMiddleware, requireYouAccess, async (req: AuthRequest, 
     res.json(state);
   } catch (error) {
     handleRouteError(error, res, 'Get YOU state error');
+  }
+});
+
+router.get('/skills', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const skills = await getYouSkills(req.user!.id);
+    res.json({ skills });
+  } catch (error) {
+    handleRouteError(error, res, 'Get YOU skills error');
+  }
+});
+
+router.post('/skills/:skillKey/train', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const skill = await trainUserSkill(req.user!.id, req.params.skillKey);
+    res.json({ skill });
+  } catch (error) {
+    handleRouteError(error, res, 'Train YOU skill error');
   }
 });
 
@@ -217,10 +268,24 @@ router.post('/marriage-proposals/:proposalId/respond', authMiddleware, requireYo
 
 router.post('/relationships/:relationshipId/actions/divorce', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
-    const relationship = await divorceRelationship(req.user!.id, req.params.relationshipId);
-    res.json({ relationship });
+    const proposal = await divorceRelationship(
+      req.user!.id,
+      req.params.relationshipId,
+      typeof req.body?.message === 'string' ? req.body.message : undefined
+    );
+    res.json({ proposal });
   } catch (error) {
     handleRouteError(error, res, 'Divorce relationship error');
+  }
+});
+
+router.post('/divorce-proposals/:proposalId/respond', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const decision = req.body?.decision === 'accept' ? 'accept' : 'reject';
+    const result = await respondToDivorceProposal(req.user!.id, req.params.proposalId, decision);
+    res.json(result);
+  } catch (error) {
+    handleRouteError(error, res, 'Respond divorce proposal error');
   }
 });
 

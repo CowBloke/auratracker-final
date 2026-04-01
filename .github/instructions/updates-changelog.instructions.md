@@ -1,18 +1,18 @@
 ---
-description: "Use when completing any product-visible change, feature, or bug fix in this repository. Enforces mandatory changelog entries in backend/src/routes/changelog.ts before considering a task complete."
-name: "Mandatory Updates Changelog"
-applyTo: "**"
+description: "Reference format for changelog entries in backend/src/routes/changelog.ts when a changelog update is requested."
+name: "Changelog Entry Format"
+applyTo: "backend/src/routes/changelog.ts"
 ---
-## Changelog Rule
+## Changelog Format
 
-After completing any feature, fix, or visible change, update `SEED_ENTRIES` in `backend/src/routes/changelog.ts`.
+Use this format only when a changelog update is explicitly requested.
 
-Important: keep one changelog card per day.
+Recommended: keep one changelog card per day.
 - First, find whether an entry with the same `date` already exists.
 - If it exists, append new lines to its `items` array (and optionally refine `summary`).
 - Create a brand new entry only when no entry exists for that date.
 
-Entries are automatically synced to the DB on next server start via `ensureSeeded()`. Structure:
+Entries are synced to the DB on next server start via `ensureSeeded()`. Structure:
 
 ```ts
 {

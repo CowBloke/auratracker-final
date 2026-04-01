@@ -1,11 +1,14 @@
+import { useEffect, useState } from 'react';
 import { Brain, Building2, Coins, Star, TrendingUp, Users, Zap } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { type YouSkill, youApi } from '@/services/api';
 
-type YouSkill = {
+type HeaderSkill = {
+  key: string;
   icon: typeof Brain;
   label: string;
   level: number;
@@ -16,58 +19,13 @@ type YouSkill = {
   unlocks: string[];
 };
 
-const YOU_SKILLS: YouSkill[] = [
-  {
-    icon: Building2,
-    label: 'Affaires',
-    level: 3,
-    xp: 45,
-    maxXp: 100,
-    color: 'emerald',
-    desc: "Gestion d'entreprise et commerce.",
-    unlocks: ['Posseder jusqu a 4 entreprises au niv.5', 'Secteurs Finance & Luxe debloques au niv.8', 'Recrutement VIP au niv.10'],
-  },
-  {
-    icon: Users,
-    label: 'Social',
-    level: 5,
-    xp: 72,
-    maxXp: 100,
-    color: 'purple',
-    desc: 'Relations et influence sociale.',
-    unlocks: ['+1 ami max par niveau', 'Negociation salariale facilitee au niv.7', 'Acces aux cercles VIP au niv.9'],
-  },
-  {
-    icon: Brain,
-    label: 'Intelligence',
-    level: 4,
-    xp: 60,
-    maxXp: 100,
-    color: 'sky',
-    desc: 'Apprentissage et adaptabilite.',
-    unlocks: ["Meilleures offres d'emploi au niv.5", 'Formation acceleree (+50% XP) au niv.7', 'Postes de direction au niv.10'],
-  },
-  {
-    icon: Star,
-    label: 'Charisme',
-    level: 2,
-    xp: 30,
-    maxXp: 100,
-    color: 'pink',
-    desc: 'Persuasion et magnetisme.',
-    unlocks: ['+10% salaire negocie au niv.4', 'Partenariats commerciaux au niv.6', 'Campagnes de communication au niv.9'],
-  },
-  {
-    icon: TrendingUp,
-    label: 'Finance',
-    level: 6,
-    xp: 88,
-    maxXp: 100,
-    color: 'amber',
-    desc: 'Investissements et epargne.',
-    unlocks: ['+0.5% rendement/niveau', 'Acces aux fonds premium au niv.7', 'Trading a effet de levier au niv.10'],
-  },
-];
+const SKILL_ICON_MAP = {
+  affaires: Building2,
+  social: Users,
+  intelligence: Brain,
+  charisme: Star,
+  finance: TrendingUp,
+} satisfies Record<string, typeof Brain>;
 
 const SKILL_THEME = {
   emerald: { ring: 'ring-emerald-400/40', bg: 'bg-emerald-400/15', icon: 'text-emerald-400', text: 'text-emerald-400', bar: 'bg-emerald-400' },
@@ -75,9 +33,9 @@ const SKILL_THEME = {
   sky: { ring: 'ring-sky-400/40', bg: 'bg-sky-400/15', icon: 'text-sky-400', text: 'text-sky-400', bar: 'bg-sky-400' },
   pink: { ring: 'ring-pink-400/40', bg: 'bg-pink-400/15', icon: 'text-pink-400', text: 'text-pink-400', bar: 'bg-pink-400' },
   amber: { ring: 'ring-amber-400/40', bg: 'bg-amber-400/15', icon: 'text-amber-400', text: 'text-amber-400', bar: 'bg-amber-400' },
-} satisfies Record<YouSkill['color'], { ring: string; bg: string; icon: string; text: string; bar: string }>;
+} satisfies Record<HeaderSkill['color'], { ring: string; bg: string; icon: string; text: string; bar: string }>;
 
-function SkillBadge({ icon: Icon, label, level, xp, maxXp, color, desc, unlocks }: YouSkill) {
+function SkillBadge({ icon: Icon, label, level, xp, maxXp, color, desc, unlocks }: HeaderSkill) {
   const theme = SKILL_THEME[color];
   const progress = Math.min(100, Math.round((xp / maxXp) * 100));
 
@@ -122,13 +80,50 @@ function SkillBadge({ icon: Icon, label, level, xp, maxXp, color, desc, unlocks 
 
 export function YouHeaderBar({ rightSlot }: { rightSlot?: React.ReactNode }) {
   const { user } = useAuth();
+  const [skills, setSkills] = useState<HeaderSkill[]>([]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadSkills = async () => {
+      try {
+        const response = await youApi.getSkills();
+        if (!active) return;
+        setSkills(response.data.skills.map((skill: YouSkill) => ({
+          key: skill.key,
+          icon: SKILL_ICON_MAP[skill.key as keyof typeof SKILL_ICON_MAP] ?? Brain,
+          label: skill.label,
+          level: skill.level,
+          xp: skill.xp,
+          maxXp: skill.maxXp,
+          color: skill.color,
+          desc: skill.description,
+          unlocks: skill.unlocks,
+        })));
+      } catch {
+        if (!active) return;
+        setSkills([]);
+      }
+    };
+
+    const reloadSkills = () => {
+      void loadSkills();
+    };
+
+    void loadSkills();
+    window.addEventListener('you:skills-updated', reloadSkills);
+    return () => {
+      active = false;
+      window.removeEventListener('you:skills-updated', reloadSkills);
+    };
+  }, []);
 
   return (
     <TooltipProvider delayDuration={80}>
       <div className="flex w-full items-center justify-between gap-3">
         <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden py-1 pl-1 sm:gap-3 sm:pl-2">
-          {YOU_SKILLS.map((skill) => (
-            <SkillBadge key={skill.label} {...skill} />
+          {skills.map((skill) => (
+            <SkillBadge key={skill.key} icon={skill.icon} label={skill.label} level={skill.level} xp={skill.xp} maxXp={skill.maxXp} color={skill.color} desc={skill.desc} unlocks={skill.unlocks} />
           ))}
         </div>
 
