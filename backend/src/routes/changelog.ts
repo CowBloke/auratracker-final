@@ -55,7 +55,7 @@ const SEED_ENTRIES = [
     id: CANONICAL_APRIL_FIRST_ENTRY_ID,
     date: '2026-04-01',
     title: 'Corrections UI & Notifications',
-    summary: "Toasts unifiés, badge changelog rouge, doublons de notifications corrigés, uploads d'images plus fiables et changelog fusionné par date.",
+    summary: "Toasts unifiés, badge changelog rouge, doublons de notifications corrigés, uploads d'images plus fiables, changelog fusionné par date, page Pass refondue et Fruit Ninja rééquilibré.",
     items: [
       { category: 'BUG_FIX', text: '**Badge changelog** — La pastille de notifications non lues dans la sidebar passe au rouge, cohérent avec les autres badges.', order: 0 },
       { category: 'BUG_FIX', text: '**Toasts en double** — Les achats en boutique, claims de quêtes, ouverture du pass et investissements business ne déclenchaient plus deux toasts simultanément.', order: 1 },
@@ -63,9 +63,11 @@ const SEED_ENTRIES = [
       { category: 'BUG_FIX', text: "**Uploads d'images plus robustes** — La validation et l'ecriture des images sont centralisees cote serveur pour eviter les comportements differents selon la page ou le type d'upload.", order: 3 },
       { category: 'BUG_FIX', text: "**Conversion automatique d'images** — Sur les navigateurs compatibles, certains formats comme HEIC/HEIF ou SVG sont convertis automatiquement vers un format supporte avant envoi.", order: 4 },
       { category: 'BUG_FIX', text: "**Une carte par jour** — Le backend fusionne les entrees de changelog ayant la meme date et evite maintenant la creation de doublons sur une meme journee.", order: 5 },
+      { category: 'BUG_FIX', text: "**Fruit Ninja reequilibre** — La difficulte monte moins brutalement: les fruits arrivent moins vite, les doubles vagues commencent plus tard et les triples vagues ne peuvent plus saturer l'ecran trop tot.", order: 6 },
       { category: 'SMALL_FEATURE', text: '**Fermer un toast** — Un bouton ✕ permet maintenant de fermer manuellement chaque toast.', order: 0 },
       { category: 'SMALL_FEATURE', text: '**Toasts unifiés** — Tous les toasts du site (y compris la page Admin) passent par le même système visuel.', order: 1 },
       { category: 'SMALL_FEATURE', text: "**Selection d'images plus claire** — Les zones d'upload affichent des formats explicitement supportes pour mieux guider les utilisateurs avant l'envoi.", order: 2 },
+      { category: 'SMALL_FEATURE', text: '**Page Pass refondue** — L’interface de la page Pass a ete entierement retravaillee pour retrouver la meme direction visuelle que le reste du site, avec un hero plus propre, des cartes plus coherentes et une meilleure mise en avant des recompenses.', order: 3 },
     ],
   },
   {

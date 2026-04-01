@@ -24,9 +24,13 @@ const MIN_SLICE_SPEED = 3;
 const COMBO_TIMEOUT_MS = 1400;
 const TRAIL_DURATION_MS = 110;
 const MAX_ACTIVE_FRUITS = 12;
+const SOFT_MAX_ACTIVE_FRUITS = 6;
 const MAX_PARTICLES = 160;
 const WOOD_PLANK_MIN_WIDTH = 60;
 const WOOD_PLANK_MAX_WIDTH = 96;
+const BASE_SPAWN_INTERVAL_MS = 1900;
+const MIN_SPAWN_INTERVAL_MS = 850;
+const SPAWN_ACCEL_PER_POINT = 0.28;
 
 const FRUIT_DATA = [
   { emoji: '🍉', color: '#e03030', juice: '#ff5555' },
@@ -644,12 +648,15 @@ export default function FruitNinja() {
     if (shakeAmtRef.current > 0) shakeAmtRef.current = Math.max(0, shakeAmtRef.current - dt);
 
     // Spawn
-    const spawnInt = Math.max(500, 1900 - scoreRef.current * 0.75);
+    const activeFlyingFruits = fruitsRef.current.filter((f) => f.state === 'flying').length;
+    const spawnInt = Math.max(MIN_SPAWN_INTERVAL_MS, BASE_SPAWN_INTERVAL_MS - scoreRef.current * SPAWN_ACCEL_PER_POINT);
     if (timestamp - lastSpawnRef.current > spawnInt) {
-      const multiSpawnChance = scoreRef.current > 80
-        ? Math.min(0.65, 0.12 + scoreRef.current / 1100)
+      const canMultiSpawn = activeFlyingFruits < SOFT_MAX_ACTIVE_FRUITS;
+      const multiSpawnChance = canMultiSpawn && scoreRef.current > 140
+        ? Math.min(0.38, 0.08 + scoreRef.current / 2600)
         : 0;
-      const batch = scoreRef.current > 400 && Math.random() < 0.22
+      const canTripleSpawn = activeFlyingFruits <= 2;
+      const batch = canTripleSpawn && scoreRef.current > 900 && Math.random() < 0.08
         ? 3
         : Math.random() < multiSpawnChance
           ? 2
