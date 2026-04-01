@@ -46,32 +46,6 @@ export type UpdateEntry = {
 
 export const UPDATE_ENTRIES: UpdateEntry[] = [
   {
-    id: '2026-04-01-qs-watermelon-white-screen-fix',
-    date: '2026-04-01',
-    title: 'Correctifs jeux',
-    summary: 'Crossy Road a maintenant son classement et QS Watermelon se relance correctement sans ecran blanc.',
-    sections: [
-      {
-        category: 'SMALL_FEATURE',
-        items: [
-          {
-            id: '2026-04-01-crossy-road-leaderboard-1',
-            text: '**Crossy Road** - Tes runs comptent maintenant dans un classement dedie avec ton record personnel affiche directement sur la page du jeu.',
-          },
-        ],
-      },
-      {
-        category: 'BUG_FIX',
-        items: [
-          {
-            id: '2026-04-01-qs-watermelon-white-screen-1',
-            text: '**QS Watermelon** - Le jeu s\'ouvre a nouveau correctement dans le hub, sans ecran blanc au lancement.',
-          },
-        ],
-      },
-    ],
-  },
-  {
     id: '2026-03-30-hexgl-image',
     date: '2026-03-30',
     title: 'Nouveautes du hub jeux',

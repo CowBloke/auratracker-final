@@ -1,0 +1,1749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aura Life — Kai Morrow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #070b18;
+  --bg-s1: #0a0f1e;
+  --bg-s2: #0e1528;
+  --bg-s3: #121a30;
+  --bg-card: #111828;
+  --bg-card2: #161f35;
+  --border: rgba(255,255,255,0.055);
+  --gold: #d4a017;
+  --gold-l: #f0b940;
+  --gold-d: rgba(212,160,23,0.18);
+  --gold-glow: 0 0 20px rgba(212,160,23,0.15);
+  --coral: #e05252;
+  --coral-d: rgba(224,82,82,0.18);
+  --green: #52c97a;
+  --green-d: rgba(82,201,122,0.18);
+  --blue: #4a90c4;
+  --blue-d: rgba(74,144,196,0.18);
+  --purple: #9b7fe8;
+  --txt: #ddd8cc;
+  --txt2: #7a80a0;
+  --txt3: #3e4660;
+  --serif: 'Cormorant Garamond', Georgia, serif;
+  --sans: 'Barlow', sans-serif;
+  --cond: 'Barlow Condensed', sans-serif;
+  --sb: 220px;
+  --rad: 6px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:var(--sans);
+  background:var(--bg);
+  color:var(--txt);
+  font-size:13px;
+  line-height:1.5;
+}
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E") repeat;
+  opacity:0.025;
+  mix-blend-mode:overlay;
+}
+
+/* === SCROLLBAR === */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px}
+::-webkit-scrollbar-thumb:hover{background:rgba(212,160,23,0.3)}
+
+/* === APP LAYOUT === */
+.app{display:flex;height:100vh;overflow:hidden}
+
+/* === SIDEBAR === */
+.sidebar{
+  width:var(--sb);flex-shrink:0;
+  height:100vh;overflow-y:auto;
+  background:var(--bg-s1);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;gap:0;
+  position:relative;
+}
+.sidebar::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:200px;
+  background:radial-gradient(ellipse at 50% 0%, rgba(212,160,23,0.08) 0%, transparent 70%);
+  pointer-events:none;
+}
+
+.sb-profile{padding:20px 16px 16px;text-align:center;position:relative}
+.sb-avatar{
+  width:64px;height:64px;border-radius:50%;
+  background:linear-gradient(135deg, var(--bg-s3) 0%, var(--bg-card2) 100%);
+  border:1.5px solid rgba(212,160,23,0.3);
+  display:flex;align-items:center;justify-content:center;
+  font-size:28px;margin:0 auto 10px;
+  box-shadow:0 0 24px rgba(212,160,23,0.12);
+  position:relative;
+}
+.sb-avatar-ring{
+  position:absolute;inset:-4px;border-radius:50%;
+  border:1px solid rgba(212,160,23,0.15);
+  animation:ring-pulse 3s ease-in-out infinite;
+}
+@keyframes ring-pulse{
+  0%,100%{opacity:0.5;transform:scale(1)}
+  50%{opacity:1;transform:scale(1.03)}
+}
+.sb-name{font-family:var(--serif);font-size:18px;font-weight:500;color:var(--txt);letter-spacing:0.02em;line-height:1.2}
+.sb-name em{font-style:italic;font-weight:300;color:var(--txt2)}
+.sb-meta{margin-top:4px;font-family:var(--cond);font-size:11px;font-weight:400;color:var(--txt2);letter-spacing:0.1em;text-transform:uppercase}
+.sb-housing{
+  display:inline-flex;align-items:center;gap:4px;
+  margin-top:6px;padding:3px 8px;
+  background:rgba(212,160,23,0.1);border:1px solid rgba(212,160,23,0.25);
+  border-radius:20px;font-family:var(--cond);font-size:10px;
+  font-weight:600;color:var(--gold);letter-spacing:0.08em;text-transform:uppercase;
+}
+
+.sb-divider{height:1px;background:var(--border);margin:0 16px}
+
+/* STAT BARS */
+.sb-stats{padding:12px 16px;display:flex;flex-direction:column;gap:8px}
+.stat-row{position:relative;cursor:default}
+.stat-label{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:4px;
+}
+.stat-label-name{
+  font-family:var(--cond);font-size:10px;font-weight:600;
+  letter-spacing:0.1em;text-transform:uppercase;color:var(--txt2);
+}
+.stat-label-val{
+  font-family:var(--cond);font-size:11px;font-weight:500;color:var(--txt);
+  display:flex;align-items:center;gap:4px;
+}
+.trend{font-size:9px}
+.trend-up{color:var(--green)}
+.trend-dn{color:var(--coral)}
+.trend-flat{color:var(--txt3)}
+
+.stat-track{
+  height:4px;background:rgba(255,255,255,0.06);
+  border-radius:2px;overflow:hidden;
+  position:relative;
+}
+.stat-fill{
+  height:100%;border-radius:2px;
+  transition:width 0.8s cubic-bezier(0.4,0,0.2,1);
+  position:relative;
+}
+.stat-fill::after{
+  content:'';position:absolute;right:0;top:0;bottom:0;width:4px;
+  background:inherit;filter:brightness(1.8);border-radius:2px;
+  box-shadow:0 0 8px currentColor;
+}
+.stat-money .stat-fill{background:linear-gradient(90deg, var(--gold-d), var(--gold));box-shadow:0 0 6px rgba(212,160,23,0.3)}
+.stat-happiness .stat-fill{background:linear-gradient(90deg, rgba(82,201,122,0.5), var(--green))}
+.stat-energy .stat-fill{background:linear-gradient(90deg, rgba(74,144,196,0.5), var(--blue))}
+.stat-aura .stat-fill{background:linear-gradient(90deg, rgba(155,127,232,0.5), var(--purple))}
+.stat-stress .stat-fill{background:linear-gradient(90deg, rgba(224,82,82,0.4), var(--coral))}
+
+/* TOOLTIP */
+.tooltip{
+  position:fixed;z-index:1000;
+  background:var(--bg-s3);border:1px solid var(--border);
+  border-radius:var(--rad);padding:8px 10px;
+  font-family:var(--cond);font-size:11px;color:var(--txt);
+  pointer-events:none;opacity:0;transition:opacity 0.15s;
+  max-width:180px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.5);
+}
+.tooltip.visible{opacity:1}
+.tooltip-row{display:flex;justify-content:space-between;gap:12px;margin-bottom:2px}
+.tooltip-row:last-child{margin-bottom:0}
+.tooltip-pos{color:var(--green)}
+.tooltip-neg{color:var(--coral)}
+
+/* CURRENT JOB WIDGET */
+.sb-job{
+  padding:12px 16px;
+  border-top:1px solid var(--border);
+}
+.sb-job-header{
+  font-family:var(--cond);font-size:9px;font-weight:700;letter-spacing:0.12em;
+  text-transform:uppercase;color:var(--txt3);margin-bottom:8px;
+}
+.sb-job-title{
+  font-family:var(--serif);font-size:14px;font-weight:500;color:var(--txt);
+  line-height:1.2;margin-bottom:2px;
+}
+.sb-job-employer{
+  font-family:var(--cond);font-size:11px;color:var(--txt2);margin-bottom:8px;
+}
+.perf-bar{height:3px;background:rgba(255,255,255,0.06);border-radius:2px;margin-bottom:3px;overflow:hidden}
+.perf-fill{height:100%;background:linear-gradient(90deg, var(--gold-d), var(--gold));transition:width 0.6s ease}
+.perf-label{display:flex;justify-content:space-between;font-family:var(--cond);font-size:10px;color:var(--txt2)}
+
+.btn-shift{
+  width:100%;margin-top:8px;padding:7px 12px;
+  background:linear-gradient(135deg, rgba(212,160,23,0.15) 0%, rgba(212,160,23,0.08) 100%);
+  border:1px solid rgba(212,160,23,0.35);border-radius:var(--rad);
+  color:var(--gold);font-family:var(--cond);font-size:11px;font-weight:600;
+  letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;
+  transition:all 0.2s;
+  position:relative;overflow:hidden;
+}
+.btn-shift:hover:not(:disabled){
+  background:rgba(212,160,23,0.2);border-color:rgba(212,160,23,0.6);
+  box-shadow:0 0 16px rgba(212,160,23,0.2);
+}
+.btn-shift:disabled{
+  opacity:0.5;cursor:not-allowed;
+  background:rgba(255,255,255,0.03);border-color:rgba(255,255,255,0.1);color:var(--txt2);
+}
+.btn-shift.pulse-anim::after{
+  content:'';position:absolute;inset:0;
+  background:rgba(212,160,23,0.3);
+  animation:btn-pulse 0.4s ease-out forwards;
+}
+@keyframes btn-pulse{0%{opacity:1}100%{opacity:0;transform:scale(1.05)}}
+
+/* RELATIONSHIP SLOT */
+.sb-rel{
+  padding:12px 16px;
+  border-top:1px solid var(--border);
+  margin-top:auto;
+}
+.sb-rel-header{
+  font-family:var(--cond);font-size:9px;font-weight:700;letter-spacing:0.12em;
+  text-transform:uppercase;color:var(--txt3);margin-bottom:8px;
+}
+.sb-rel-card{
+  display:flex;align-items:center;gap:8px;
+  padding:8px;background:var(--bg-s2);border-radius:var(--rad);
+  border:1px solid var(--border);
+}
+.sb-rel-emoji{font-size:20px;line-height:1;flex-shrink:0}
+.sb-rel-info{flex:1;min-width:0}
+.sb-rel-name{font-family:var(--serif);font-size:13px;font-weight:500;color:var(--txt)}
+.sb-rel-status{
+  font-family:var(--cond);font-size:9px;font-weight:600;letter-spacing:0.08em;
+  text-transform:uppercase;margin-bottom:4px;
+}
+.status-close-friend{color:#f0b940}
+.status-friend{color:var(--blue)}
+.status-acquaintance{color:var(--txt2)}
+.status-partner{color:var(--purple)}
+.xp-bar{height:2px;background:rgba(255,255,255,0.06);border-radius:1px;overflow:hidden}
+.xp-fill{height:100%;background:var(--gold);transition:width 0.6s ease}
+
+/* === MAIN === */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+
+/* HEADER BAR */
+.header{
+  padding:14px 24px;
+  background:var(--bg-s1);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:0;
+  flex-shrink:0;
+}
+.header-brand{
+  font-family:var(--serif);font-style:italic;font-size:20px;font-weight:300;
+  color:var(--gold-l);letter-spacing:0.04em;margin-right:24px;
+}
+.tab-bar{display:flex;gap:0;border-bottom:none;flex:1}
+.tab-btn{
+  padding:6px 16px;
+  background:none;border:none;cursor:pointer;
+  font-family:var(--cond);font-size:12px;font-weight:600;letter-spacing:0.08em;
+  text-transform:uppercase;color:var(--txt2);
+  position:relative;transition:color 0.2s;
+  border-bottom:2px solid transparent;
+}
+.tab-btn:hover{color:var(--txt)}
+.tab-btn.active{color:var(--gold-l);border-bottom-color:var(--gold)}
+.header-score{
+  margin-left:auto;font-family:var(--cond);font-size:11px;color:var(--txt2);
+  display:flex;align-items:center;gap:6px;
+}
+.header-score-num{
+  font-family:var(--serif);font-size:16px;font-weight:500;color:var(--gold-l);
+}
+
+/* TAB CONTENT */
+.tab-content{flex:1;overflow-y:auto;display:none}
+.tab-content.active{display:block}
+.tab-inner{padding:24px;max-width:1100px}
+
+/* === OVERVIEW === */
+.life-score-hero{
+  text-align:center;padding:28px 0 20px;
+  position:relative;
+}
+.life-score-label{
+  font-family:var(--cond);font-size:11px;font-weight:600;letter-spacing:0.15em;
+  text-transform:uppercase;color:var(--txt2);margin-bottom:6px;
+}
+.life-score-num{
+  font-family:var(--serif);font-size:72px;font-weight:300;
+  background:linear-gradient(135deg, var(--gold-l) 0%, var(--gold) 50%, #b8850e 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  line-height:1;letter-spacing:-0.02em;
+}
+.life-score-max{
+  font-family:var(--cond);font-size:13px;color:var(--txt3);margin-top:4px;
+}
+.life-score-bar{
+  width:200px;height:2px;background:var(--border);
+  border-radius:1px;margin:12px auto 0;overflow:hidden;
+}
+.life-score-bar-fill{
+  height:100%;background:linear-gradient(90deg, var(--gold-d), var(--gold-l));
+  transition:width 1.5s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* SPARKLINES GRID */
+.sparklines-grid{
+  display:grid;grid-template-columns:repeat(5,1fr);gap:12px;
+  margin-bottom:20px;
+}
+.sparkline-card{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--rad);
+  padding:10px 12px;
+  transition:border-color 0.2s;
+}
+.sparkline-card:hover{border-color:rgba(255,255,255,0.12)}
+.sparkline-name{
+  font-family:var(--cond);font-size:10px;font-weight:600;letter-spacing:0.1em;
+  text-transform:uppercase;color:var(--txt2);margin-bottom:6px;
+}
+.sparkline-val{
+  font-family:var(--serif);font-size:18px;font-weight:500;color:var(--txt);
+  line-height:1;margin-bottom:6px;
+}
+.sparkline-svg{display:block}
+.sparkline-delta{
+  font-family:var(--cond);font-size:10px;font-weight:600;margin-top:4px;
+}
+
+/* BOTTOM GRID */
+.overview-bottom{display:grid;grid-template-columns:1fr 280px;gap:16px;margin-top:4px}
+
+/* EVENTS FEED */
+.panel{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--rad);overflow:hidden}
+.panel-head{
+  padding:10px 14px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.panel-title{
+  font-family:var(--cond);font-size:10px;font-weight:700;letter-spacing:0.12em;
+  text-transform:uppercase;color:var(--txt2);
+}
+.events-list{max-height:240px;overflow-y:auto}
+.event-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 14px;border-bottom:1px solid rgba(255,255,255,0.03);
+  animation:slide-in-top 0.4s ease-out both;
+}
+.event-item:last-child{border-bottom:none}
+@keyframes slide-in-top{
+  from{opacity:0;transform:translateY(-8px)}
+  to{opacity:1;transform:translateY(0)}
+}
+.event-icon{font-size:14px;flex-shrink:0;width:20px;text-align:center}
+.event-text{flex:1;font-size:12px;color:var(--txt)}
+.event-time{font-family:var(--cond);font-size:10px;color:var(--txt3)}
+.delta-badge{
+  font-family:var(--cond);font-size:10px;font-weight:600;
+  padding:2px 7px;border-radius:20px;flex-shrink:0;
+}
+.delta-pos{background:var(--green-d);color:var(--green)}
+.delta-neg{background:var(--coral-d);color:var(--coral)}
+.delta-mix{background:rgba(212,160,23,0.15);color:var(--gold)}
+
+/* TODAY'S ACTIONS */
+.actions-list{padding:8px}
+.action-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 8px;border-radius:4px;
+  transition:background 0.15s;cursor:pointer;
+  margin-bottom:2px;
+}
+.action-item:last-child{margin-bottom:0}
+.action-item:hover:not(.cooldown){background:rgba(255,255,255,0.03)}
+.action-item.cooldown{opacity:0.45;cursor:not-allowed}
+.action-left{display:flex;align-items:center;gap:8px}
+.action-icon{font-size:14px;width:22px;text-align:center}
+.action-name{font-size:12px;color:var(--txt)}
+.action-cost{
+  font-family:var(--cond);font-size:10px;color:var(--txt2);margin-top:1px;
+}
+.action-right{display:flex;align-items:center;gap:8px}
+.cooldown-timer{
+  font-family:var(--cond);font-size:10px;font-weight:600;
+  color:var(--txt3);background:rgba(255,255,255,0.04);
+  padding:2px 6px;border-radius:3px;
+}
+.btn-action{
+  padding:3px 10px;
+  background:rgba(255,255,255,0.04);border:1px solid var(--border);
+  border-radius:4px;color:var(--txt2);
+  font-family:var(--cond);font-size:10px;font-weight:600;letter-spacing:0.06em;
+  text-transform:uppercase;cursor:pointer;transition:all 0.15s;
+}
+.btn-action:hover{background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.15);color:var(--txt)}
+
+/* === CAREER === */
+.career-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.active-job-card{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--rad);
+  padding:20px;position:relative;overflow:hidden;
+}
+.active-job-card::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 80% 20%, rgba(212,160,23,0.05) 0%, transparent 60%);
+  pointer-events:none;
+}
+.job-card-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:3px 8px;background:rgba(212,160,23,0.1);border:1px solid rgba(212,160,23,0.25);
+  border-radius:20px;font-family:var(--cond);font-size:9px;font-weight:700;
+  color:var(--gold);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:10px;
+}
+.job-card-title{font-family:var(--serif);font-size:22px;font-weight:500;color:var(--txt);line-height:1.2;margin-bottom:4px}
+.job-card-employer{font-family:var(--cond);font-size:13px;color:var(--txt2);margin-bottom:14px}
+.job-stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.job-stat{background:var(--bg-s2);border-radius:4px;padding:8px 10px}
+.job-stat-val{font-family:var(--serif);font-size:18px;font-weight:500;color:var(--gold-l)}
+.job-stat-label{font-family:var(--cond);font-size:10px;color:var(--txt2);letter-spacing:0.06em}
+
+.gauge-container{display:flex;align-items:center;gap:16px}
+.radial-gauge-wrap{flex-shrink:0}
+.gauge-info{flex:1}
+.gauge-label{font-family:var(--cond);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--txt2);margin-bottom:4px}
+.gauge-desc{font-size:12px;color:var(--txt);margin-bottom:6px}
+.promotion-banner{
+  padding:6px 10px;background:rgba(212,160,23,0.1);border:1px solid rgba(212,160,23,0.3);
+  border-radius:4px;font-family:var(--cond);font-size:10px;font-weight:600;color:var(--gold);
+  letter-spacing:0.06em;cursor:pointer;transition:all 0.2s;
+}
+.promotion-banner:hover{background:rgba(212,160,23,0.2)}
+
+/* JOBS GRID */
+.jobs-grid-label{
+  font-family:var(--cond);font-size:10px;font-weight:700;letter-spacing:0.12em;
+  text-transform:uppercase;color:var(--txt2);margin-bottom:12px;
+}
+.jobs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+.job-card{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--rad);
+  padding:14px;position:relative;transition:border-color 0.2s,transform 0.2s;
+}
+.job-card:hover:not(.locked){border-color:rgba(212,160,23,0.25);transform:translateY(-1px)}
+.job-card.locked{filter:opacity(0.7)}
+.job-card-locked-overlay{
+  position:absolute;inset:0;background:rgba(7,11,24,0.3);
+  border-radius:var(--rad);display:flex;align-items:center;justify-content:center;
+  font-size:20px;
+}
+.jc-title{font-family:var(--serif);font-size:15px;font-weight:500;color:var(--txt);margin-bottom:2px}
+.jc-employer{font-family:var(--cond);font-size:11px;color:var(--txt2);margin-bottom:8px}
+.jc-salary{font-family:var(--serif);font-size:17px;color:var(--gold-l);font-weight:500;margin-bottom:8px}
+.jc-skills{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}
+.skill-pill{
+  padding:2px 7px;border-radius:12px;
+  font-family:var(--cond);font-size:9px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;
+}
+.skill-met{background:var(--green-d);color:var(--green);border:1px solid rgba(82,201,122,0.25)}
+.skill-unmet{background:var(--coral-d);color:var(--coral);border:1px solid rgba(224,82,82,0.2)}
+.btn-apply{
+  width:100%;padding:6px;background:rgba(255,255,255,0.04);
+  border:1px solid var(--border);border-radius:4px;
+  color:var(--txt2);font-family:var(--cond);font-size:10px;font-weight:600;
+  letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;
+  transition:all 0.2s;
+}
+.btn-apply:hover:not(:disabled){
+  background:rgba(212,160,23,0.1);border-color:rgba(212,160,23,0.3);color:var(--gold);
+}
+.btn-apply:disabled{opacity:0.4;cursor:not-allowed}
+
+/* SKILL TREE */
+.skill-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.skill-node{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--rad);
+  padding:12px 8px;text-align:center;transition:all 0.2s;cursor:default;
+}
+.skill-node:hover{border-color:rgba(155,127,232,0.3);transform:translateY(-1px)}
+.skill-emoji{font-size:18px;margin-bottom:6px}
+.skill-node-name{font-family:var(--cond);font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--txt2);margin-bottom:6px}
+.skill-level{font-family:var(--serif);font-size:16px;font-weight:500;color:var(--purple)}
+.skill-xp-track{height:2px;background:rgba(255,255,255,0.06);border-radius:1px;margin-top:4px;overflow:hidden}
+.skill-xp-fill{height:100%;background:var(--purple);transition:width 0.6s ease}
+
+/* === FINANCES === */
+.net-worth-card{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--rad);
+  padding:20px 24px;margin-bottom:16px;
+  display:flex;align-items:center;gap:24px;
+  position:relative;overflow:hidden;
+}
+.net-worth-card::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 0% 50%, rgba(212,160,23,0.06) 0%, transparent 50%);
+  pointer-events:none;
+}
+.nw-label{font-family:var(--cond);font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--txt2);margin-bottom:4px}
+.nw-val{font-family:var(--serif);font-size:42px;font-weight:300;color:var(--gold-l);line-height:1}
+.nw-trend{font-family:var(--cond);font-size:12px;margin-top:4px}
+.nw-breakdown{display:flex;gap:24px;margin-left:auto}
+.nw-item{text-align:right}
+.nw-item-val{font-family:var(--serif);font-size:18px;font-weight:500}
+.nw-item-label{font-family:var(--cond);font-size:10px;color:var(--txt2);letter-spacing:0.06em}
+
+.finances-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+
+/* LOANS */
+.loan-item{
+  padding:12px 14px;border-bottom:1px solid var(--border);
+}
+.loan-item:last-child{border-bottom:none}
+.loan-item.overdue .loan-track{animation:overdue-pulse 1.5s ease-in-out infinite}
+@keyframes overdue-pulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(224,82,82,0)}
+  50%{box-shadow:0 0 0 3px rgba(224,82,82,0.2)}
+}
+.loan-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.loan-name{font-family:var(--serif);font-size:14px;font-weight:500;color:var(--txt)}
+.loan-rate{font-family:var(--cond);font-size:10px;padding:2px 7px;border-radius:12px;background:var(--coral-d);color:var(--coral);font-weight:600}
+.loan-amounts{display:flex;justify-content:space-between;font-family:var(--cond);font-size:11px;color:var(--txt2);margin-bottom:6px}
+.loan-remaining{color:var(--txt);font-weight:600}
+.loan-track{height:4px;background:rgba(255,255,255,0.06);border-radius:2px;margin-bottom:8px;overflow:hidden;border-radius:2px}
+.loan-fill{height:100%;background:linear-gradient(90deg, var(--coral-d), var(--coral));transition:width 0.6s ease}
+.loan-item.overdue .loan-fill{background:linear-gradient(90deg, rgba(224,82,82,0.6), var(--coral))}
+.loan-footer{display:flex;align-items:center;justify-content:space-between}
+.loan-due{font-family:var(--cond);font-size:10px;color:var(--txt2)}
+.loan-due.overdue-text{color:var(--coral);font-weight:600}
+.btn-repay{
+  padding:4px 12px;background:rgba(224,82,82,0.1);border:1px solid rgba(224,82,82,0.25);
+  border-radius:4px;color:var(--coral);font-family:var(--cond);font-size:10px;
+  font-weight:600;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;
+  transition:all 0.2s;
+}
+.btn-repay:hover{background:rgba(224,82,82,0.2);border-color:rgba(224,82,82,0.4)}
+.btn-borrow{
+  width:calc(100% - 28px);margin:10px 14px;padding:8px;
+  background:rgba(74,144,196,0.1);border:1px solid rgba(74,144,196,0.25);
+  border-radius:var(--rad);color:var(--blue);
+  font-family:var(--cond);font-size:11px;font-weight:600;
+  letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;transition:all 0.2s;
+}
+.btn-borrow:hover{background:rgba(74,144,196,0.2);border-color:rgba(74,144,196,0.4)}
+
+/* INVESTMENTS */
+.investment-item{
+  padding:12px 14px;display:flex;align-items:center;gap:12px;
+  border-bottom:1px solid var(--border);
+}
+.investment-item:last-child{border-bottom:none}
+.inv-name{font-family:var(--serif);font-size:14px;font-weight:500;color:var(--txt)}
+.inv-symbol{font-family:var(--cond);font-size:10px;color:var(--txt2);letter-spacing:0.06em}
+.inv-val{font-family:var(--serif);font-size:16px;font-weight:500;color:var(--txt);margin-left:auto}
+.inv-change{font-family:var(--cond);font-size:11px;font-weight:600}
+.inv-change.pos{color:var(--green)}
+.inv-change.neg{color:var(--coral)}
+.inv-actions{display:flex;gap:4px;margin-left:8px}
+.btn-inv{
+  padding:3px 8px;border-radius:4px;font-family:var(--cond);
+  font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;
+  transition:all 0.15s;
+}
+.btn-buy{background:var(--green-d);border:1px solid rgba(82,201,122,0.2);color:var(--green)}
+.btn-buy:hover{background:rgba(82,201,122,0.25)}
+.btn-sell{background:var(--coral-d);border:1px solid rgba(224,82,82,0.2);color:var(--coral)}
+.btn-sell:hover{background:rgba(224,82,82,0.25)}
+
+/* HOUSING TRACK */
+.housing-track{
+  display:flex;align-items:center;padding:16px 20px;gap:0;
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--rad);
+}
+.housing-tier{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  flex:1;position:relative;cursor:default;
+}
+.housing-tier:not(:last-child)::after{
+  content:'';position:absolute;top:18px;left:50%;right:-50%;
+  height:2px;background:var(--border);z-index:0;
+}
+.housing-tier.done:not(:last-child)::after{background:rgba(212,160,23,0.3)}
+.housing-tier.current:not(:last-child)::after{background:rgba(212,160,23,0.15)}
+.h-icon{
+  width:36px;height:36px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;position:relative;z-index:1;
+  background:var(--bg-s2);border:1px solid var(--border);
+  transition:all 0.2s;
+}
+.housing-tier.done .h-icon{
+  background:rgba(212,160,23,0.12);border-color:rgba(212,160,23,0.4);
+  box-shadow:0 0 12px rgba(212,160,23,0.15);
+}
+.housing-tier.current .h-icon{
+  background:rgba(212,160,23,0.18);border-color:rgba(212,160,23,0.6);
+  box-shadow:0 0 20px rgba(212,160,23,0.25);
+  animation:ht-pulse 2.5s ease-in-out infinite;
+}
+@keyframes ht-pulse{
+  0%,100%{box-shadow:0 0 12px rgba(212,160,23,0.2),0 0 0 0 rgba(212,160,23,0)}
+  50%{box-shadow:0 0 20px rgba(212,160,23,0.3),0 0 0 6px rgba(212,160,23,0.08)}
+}
+.housing-tier.future .h-icon{opacity:0.3}
+.h-name{font-family:var(--cond);font-size:9px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--txt2)}
+.housing-tier.done .h-name{color:var(--gold)}
+.housing-tier.current .h-name{color:var(--gold-l)}
+.h-cost{font-family:var(--cond);font-size:10px;color:var(--txt3)}
+.housing-tier.current .h-cost{color:var(--green);font-weight:600}
+.housing-tier:hover.future .h-icon{opacity:0.6}
+.btn-upgrade-ht{
+  padding:3px 10px;background:rgba(82,201,122,0.1);
+  border:1px solid rgba(82,201,122,0.25);border-radius:4px;
+  color:var(--green);font-family:var(--cond);font-size:9px;font-weight:700;
+  letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;transition:all 0.2s;
+}
+.btn-upgrade-ht:hover{background:rgba(82,201,122,0.2)}
+
+/* === RELATIONSHIPS === */
+.npc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.npc-card{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--rad);
+  padding:16px;transition:all 0.2s;
+  position:relative;overflow:hidden;
+}
+.npc-card:hover{border-color:rgba(155,127,232,0.25);transform:translateY(-1px)}
+.npc-card::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 0%, rgba(155,127,232,0.04) 0%, transparent 60%);
+  pointer-events:none;
+}
+.npc-avatar{font-size:32px;margin-bottom:10px;display:block}
+.npc-name{font-family:var(--serif);font-size:16px;font-weight:500;color:var(--txt);margin-bottom:2px}
+.npc-role{font-family:var(--cond);font-size:10px;color:var(--txt2);letter-spacing:0.06em;margin-bottom:8px}
+.npc-status-badge{
+  display:inline-block;padding:2px 8px;border-radius:12px;
+  font-family:var(--cond);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;
+  margin-bottom:8px;
+}
+.npc-xp-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.npc-xp-val{font-family:var(--cond);font-size:10px;color:var(--txt2);flex-shrink:0}
+.npc-xp-track{flex:1;height:3px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden}
+.npc-xp-fill{height:100%;transition:width 0.6s ease}
+.cf-fill{background:linear-gradient(90deg, rgba(240,185,64,0.5),var(--gold-l))}
+.f-fill{background:linear-gradient(90deg, rgba(74,144,196,0.5),var(--blue))}
+.a-fill{background:rgba(122,128,160,0.5)}
+.p-fill{background:linear-gradient(90deg, rgba(155,127,232,0.5),var(--purple))}
+.btn-interact{
+  width:100%;padding:6px;background:rgba(155,127,232,0.08);
+  border:1px solid rgba(155,127,232,0.2);border-radius:4px;
+  color:var(--purple);font-family:var(--cond);font-size:10px;
+  font-weight:600;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;
+  transition:all 0.2s;
+}
+.btn-interact:hover{background:rgba(155,127,232,0.18);border-color:rgba(155,127,232,0.35)}
+.energy-cost{font-size:9px;opacity:0.8}
+
+/* FRIENDS PANEL */
+.friend-item{
+  display:flex;align-items:center;gap:12px;padding:10px 14px;
+  border-bottom:1px solid var(--border);
+}
+.friend-item:last-child{border-bottom:none}
+.friend-avatar{
+  width:32px;height:32px;border-radius:50%;
+  background:var(--bg-s3);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;font-size:14px;
+}
+.friend-name{font-family:var(--serif);font-size:13px;font-weight:500;color:var(--txt)}
+.friend-activity{font-family:var(--cond);font-size:10px;color:var(--txt2)}
+.btn-play{
+  margin-left:auto;padding:4px 10px;background:rgba(74,144,196,0.1);
+  border:1px solid rgba(74,144,196,0.25);border-radius:4px;
+  color:var(--blue);font-family:var(--cond);font-size:9px;
+  font-weight:700;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;
+  transition:all 0.2s;
+}
+.btn-play:hover{background:rgba(74,144,196,0.2)}
+
+/* REL EVENTS TICKER */
+.rel-ticker{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--rad);
+  overflow:hidden;
+}
+.ticker-item{
+  display:flex;align-items:center;gap:10px;padding:10px 14px;
+  border-bottom:1px solid rgba(255,255,255,0.03);
+}
+.ticker-item:last-child{border-bottom:none}
+.ticker-icon{font-size:14px;flex-shrink:0}
+.ticker-text{font-size:12px;color:var(--txt)}
+.ticker-time{font-family:var(--cond);font-size:10px;color:var(--txt3);margin-left:auto}
+
+/* === MODAL === */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(7,11,24,0.85);z-index:100;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity 0.2s;
+  backdrop-filter:blur(4px);
+}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{
+  background:var(--bg-s2);border:1px solid var(--border);border-radius:8px;
+  padding:24px;width:320px;
+  transform:translateY(8px);transition:transform 0.2s;
+  box-shadow:0 24px 64px rgba(0,0,0,0.6);
+}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-title{
+  font-family:var(--serif);font-size:20px;font-weight:500;color:var(--txt);
+  margin-bottom:4px;
+}
+.modal-subtitle{font-family:var(--cond);font-size:11px;color:var(--txt2);margin-bottom:16px}
+.modal-input-row{margin-bottom:16px}
+.modal-label{font-family:var(--cond);font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--txt2);margin-bottom:6px}
+.modal-input{
+  width:100%;padding:10px 12px;background:var(--bg-s3);border:1px solid var(--border);
+  border-radius:var(--rad);color:var(--txt);font-family:var(--serif);font-size:16px;
+  outline:none;transition:border-color 0.2s;
+}
+.modal-input:focus{border-color:rgba(74,144,196,0.5)}
+.modal-btns{display:flex;gap:8px}
+.btn-modal-cancel{
+  flex:1;padding:8px;background:rgba(255,255,255,0.04);border:1px solid var(--border);
+  border-radius:var(--rad);color:var(--txt2);font-family:var(--cond);font-size:11px;
+  font-weight:600;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;transition:all 0.2s;
+}
+.btn-modal-cancel:hover{background:rgba(255,255,255,0.08)}
+.btn-modal-confirm{
+  flex:1;padding:8px;background:rgba(74,144,196,0.15);border:1px solid rgba(74,144,196,0.3);
+  border-radius:var(--rad);color:var(--blue);font-family:var(--cond);font-size:11px;
+  font-weight:600;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;transition:all 0.2s;
+}
+.btn-modal-confirm:hover{background:rgba(74,144,196,0.25)}
+
+/* RESPONSIVE */
+@media(max-width:1000px){
+  :root{--sb:190px}
+  .sparklines-grid{grid-template-columns:repeat(3,1fr)}
+  .career-grid{grid-template-columns:1fr}
+  .jobs-grid{grid-template-columns:repeat(2,1fr)}
+  .skill-grid{grid-template-columns:repeat(3,1fr)}
+  .finances-grid{grid-template-columns:1fr}
+  .npc-grid{grid-template-columns:repeat(2,1fr)}
+}
+
+/* UTILITY */
+.section-label{
+  font-family:var(--cond);font-size:10px;font-weight:700;letter-spacing:0.12em;
+  text-transform:uppercase;color:var(--txt2);margin-bottom:12px;
+}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.mt-4{margin-top:4px}
+.mt-8{margin-top:8px}
+.mt-16{margin-top:16px}
+.mt-20{margin-top:20px}
+.fade-in{animation:fade-in 0.5s ease both}
+@keyframes fade-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-profile">
+      <div class="sb-avatar" id="sb-avatar">
+        🧑‍💻
+        <div class="sb-avatar-ring"></div>
+      </div>
+      <div class="sb-name">Kai <em>Morrow</em></div>
+      <div class="sb-meta">Age 24 &nbsp;·&nbsp; Character</div>
+      <div class="sb-housing">🏢 Apartment</div>
+    </div>
+
+    <div class="sb-divider"></div>
+
+    <div class="sb-stats" id="sb-stats">
+      <!-- rendered by JS -->
+    </div>
+
+    <div class="sb-divider"></div>
+
+    <div class="sb-job">
+      <div class="sb-job-header">Current Job</div>
+      <div class="sb-job-title" id="sb-job-title">Junior Developer</div>
+      <div class="sb-job-employer" id="sb-job-employer">NexaTech</div>
+      <div class="perf-bar"><div class="perf-fill" id="sb-perf-fill" style="width:68%"></div></div>
+      <div class="perf-label">
+        <span>Performance</span>
+        <span id="sb-perf-val">68 / 100</span>
+      </div>
+      <button class="btn-shift" id="btn-work-shift">Work Shift</button>
+    </div>
+
+    <div class="sb-rel">
+      <div class="sb-rel-header">Active Bond</div>
+      <div class="sb-rel-card">
+        <div class="sb-rel-emoji">👩</div>
+        <div class="sb-rel-info">
+          <div class="sb-rel-name">Vera</div>
+          <div class="sb-rel-status status-close-friend">Close Friend</div>
+          <div class="xp-bar"><div class="xp-fill" style="width:75%"></div></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="header">
+      <div class="header-brand">Aura Life</div>
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="overview">Overview</button>
+        <button class="tab-btn" data-tab="career">Career</button>
+        <button class="tab-btn" data-tab="finances">Finances</button>
+        <button class="tab-btn" data-tab="relationships">Relationships</button>
+      </div>
+      <div class="header-score">
+        Life Score &nbsp;
+        <span class="header-score-num" id="header-score-num">—</span>
+      </div>
+    </div>
+
+    <!-- OVERVIEW -->
+    <div class="tab-content active" id="tab-overview">
+      <div class="tab-inner">
+        <div class="life-score-hero fade-in">
+          <div class="life-score-label">Life Score</div>
+          <div class="life-score-num" id="life-score-num">0</div>
+          <div class="life-score-max" id="life-score-max">/ 3,500</div>
+          <div class="life-score-bar"><div class="life-score-bar-fill" id="life-score-bar" style="width:0%"></div></div>
+        </div>
+
+        <div class="sparklines-grid fade-in" id="sparklines-grid">
+          <!-- rendered by JS -->
+        </div>
+
+        <div class="overview-bottom">
+          <!-- Recent Events -->
+          <div class="panel fade-in">
+            <div class="panel-head">
+              <div class="panel-title">Recent Events</div>
+              <div style="font-family:var(--cond);font-size:10px;color:var(--txt3)">Last 48h</div>
+            </div>
+            <div class="events-list" id="events-list">
+              <!-- rendered by JS -->
+            </div>
+          </div>
+
+          <!-- Today's Actions -->
+          <div class="panel fade-in">
+            <div class="panel-head">
+              <div class="panel-title">Today's Actions</div>
+            </div>
+            <div class="actions-list" id="actions-list">
+              <!-- rendered by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CAREER -->
+    <div class="tab-content" id="tab-career">
+      <div class="tab-inner">
+        <div class="career-grid fade-in">
+          <!-- Active job -->
+          <div class="active-job-card">
+            <div class="job-card-badge">● Active Position</div>
+            <div class="job-card-title">Junior Developer</div>
+            <div class="job-card-employer">NexaTech Corp</div>
+            <div class="job-stats">
+              <div class="job-stat">
+                <div class="job-stat-val">$350</div>
+                <div class="job-stat-label">Per Shift</div>
+              </div>
+              <div class="job-stat">
+                <div class="job-stat-val">23</div>
+                <div class="job-stat-label">Shifts Worked</div>
+              </div>
+            </div>
+            <div class="gauge-container">
+              <div class="radial-gauge-wrap" id="perf-gauge">
+                <!-- SVG injected by JS -->
+              </div>
+              <div class="gauge-info">
+                <div class="gauge-label">Performance</div>
+                <div class="gauge-desc">Good standing. Keep working consistent shifts to unlock promotion.</div>
+                <div class="promotion-banner" id="promotion-btn" style="display:none">
+                  🌟 Promotion Available — Claim Now
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Skill tree on career right side -->
+          <div class="panel">
+            <div class="panel-head">
+              <div class="panel-title">Skill Tree</div>
+              <div style="font-family:var(--cond);font-size:10px;color:var(--txt3)">6 Skills</div>
+            </div>
+            <div style="padding:12px">
+              <div class="skill-grid" id="skill-grid">
+                <!-- rendered by JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="jobs-grid-label">Available Positions</div>
+        <div class="jobs-grid" id="jobs-grid">
+          <!-- rendered by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- FINANCES -->
+    <div class="tab-content" id="tab-finances">
+      <div class="tab-inner">
+        <div class="net-worth-card fade-in">
+          <div>
+            <div class="nw-label">Net Worth</div>
+            <div class="nw-val">$3,120</div>
+            <div class="nw-trend" style="color:var(--coral)">▼ $342 debt outstanding</div>
+          </div>
+          <div class="nw-breakdown">
+            <div class="nw-item">
+              <div class="nw-item-val" style="color:var(--gold-l)">$4,200</div>
+              <div class="nw-item-label">Cash Balance</div>
+            </div>
+            <div class="nw-item">
+              <div class="nw-item-val" style="color:var(--coral)">−$2,100</div>
+              <div class="nw-item-label">Total Debt</div>
+            </div>
+            <div class="nw-item">
+              <div class="nw-item-val" style="color:var(--green)">$425</div>
+              <div class="nw-item-label">Investments</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="finances-grid fade-in">
+          <div class="panel">
+            <div class="panel-head">
+              <div class="panel-title">Active Loans</div>
+              <span style="font-family:var(--cond);font-size:10px;padding:2px 8px;background:var(--coral-d);color:var(--coral);border-radius:12px">2 Active</span>
+            </div>
+            <div id="loans-list">
+              <!-- rendered by JS -->
+            </div>
+            <button class="btn-borrow" id="btn-borrow">+ Borrow Money</button>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <div class="panel-title">Investments</div>
+              <span style="font-family:var(--cond);font-size:10px;color:var(--green)">▲ Portfolio</span>
+            </div>
+            <div id="investments-list">
+              <!-- rendered by JS -->
+            </div>
+            <div style="padding:8px 14px;border-top:1px solid var(--border)">
+              <div id="inv-chart">
+                <!-- SVG injected by JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-label mt-20">Housing Path</div>
+        <div class="housing-track fade-in" id="housing-track">
+          <!-- rendered by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- RELATIONSHIPS -->
+    <div class="tab-content" id="tab-relationships">
+      <div class="tab-inner">
+        <div class="section-label">NPC Roster</div>
+        <div class="npc-grid fade-in" id="npc-grid">
+          <!-- rendered by JS -->
+        </div>
+
+        <div class="section-label">Friends</div>
+        <div class="panel fade-in" style="margin-bottom:16px">
+          <div class="panel-head">
+            <div class="panel-title">Real Connections</div>
+            <span style="font-family:var(--cond);font-size:10px;color:var(--txt3)">2 Friends</span>
+          </div>
+          <div id="friends-list">
+            <!-- rendered by JS -->
+          </div>
+        </div>
+
+        <div class="section-label">Relationship Events</div>
+        <div class="rel-ticker fade-in" id="rel-ticker">
+          <!-- rendered by JS -->
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- BORROW MODAL -->
+<div class="modal-overlay" id="borrow-modal-overlay">
+  <div class="modal">
+    <div class="modal-title">Borrow Money</div>
+    <div class="modal-subtitle">Current balance: $4,200 · Max loan: $21,000</div>
+    <div class="modal-input-row">
+      <div class="modal-label">Loan Amount</div>
+      <input class="modal-input" type="number" id="borrow-amount" placeholder="500" min="100" max="21000" value="500">
+    </div>
+    <div style="font-family:var(--cond);font-size:11px;color:var(--txt2);margin-bottom:14px;padding:8px;background:var(--bg-s3);border-radius:4px">
+      Interest Rate: <span style="color:var(--coral);font-weight:600">5% / cycle</span> &nbsp;·&nbsp;
+      Compounded daily
+    </div>
+    <div class="modal-btns">
+      <button class="btn-modal-cancel" id="borrow-cancel">Cancel</button>
+      <button class="btn-modal-confirm" id="borrow-confirm">Borrow</button>
+    </div>
+  </div>
+</div>
+
+<!-- REPAY MODAL -->
+<div class="modal-overlay" id="repay-modal-overlay">
+  <div class="modal">
+    <div class="modal-title">Repay Loan</div>
+    <div class="modal-subtitle" id="repay-modal-subtitle"></div>
+    <div class="modal-input-row">
+      <div class="modal-label">Amount to Repay</div>
+      <input class="modal-input" type="number" id="repay-amount" placeholder="100" min="1">
+    </div>
+    <div class="modal-btns">
+      <button class="btn-modal-cancel" id="repay-cancel">Cancel</button>
+      <button class="btn-modal-confirm" id="repay-confirm" style="background:rgba(224,82,82,0.15);border-color:rgba(224,82,82,0.3);color:var(--coral)">Repay</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOOLTIP -->
+<div class="tooltip" id="global-tooltip"></div>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const STATE = {
+  player: { name: 'Kai Morrow', age: 24, housing: 'Apartment', housingIdx: 1 },
+  stats: {
+    money:     { current: 4200, max: 50000, trend: 1,  label: 'Money',     fmt: '$4,200', tooltipItems: ['+$350 shift earned', '+$120 windfall', '−$34 loan interest'] },
+    happiness: { current: 67,   max: 100,   trend: 0,  label: 'Happiness', fmt: '67',     tooltipItems: ['+8 from relationship', '−5 from low energy', '−3 loan stress'] },
+    energy:    { current: 45,   max: 100,   trend: -1, label: 'Energy',    fmt: '45',     tooltipItems: ['−25 from 3 shifts', '+30 from rest', 'Natural decay −5'] },
+    aura:      { current: 82,   max: 100,   trend: 1,  label: 'Aura',      fmt: '82',     tooltipItems: ['+10 from housing bonus', '+4 quest reward', '−2 passive decay'] },
+    stress:    { current: 33,   max: 100,   trend: 0,  label: 'Stress',    fmt: '33',     tooltipItems: ['+10 from outstanding debt', '+5 from loan interest', '−12 from rest'] },
+  },
+  job: { title: 'Junior Developer', employer: 'NexaTech', salary: 350, performance: 68, shifts: 23, promotionEligible: false },
+  sparklines: {
+    money:     [3800, 3950, 4100, 3900, 4050, 4200, 4200],
+    happiness: [72, 68, 70, 65, 67, 68, 67],
+    energy:    [80, 60, 75, 40, 50, 45, 45],
+    aura:      [78, 79, 80, 81, 82, 82, 82],
+    stress:    [28, 32, 30, 35, 33, 32, 33],
+  },
+  events: [
+    { icon: '💼', text: 'Completed a shift at NexaTech', delta: '+$350', type: 'pos', time: '2h ago' },
+    { icon: '💸', text: 'Loan interest applied to Tech Gear Loan', delta: '−$34', type: 'neg', time: '5h ago' },
+    { icon: '💛', text: 'Vera leveled up to Close Friend', delta: '+8 XP', type: 'mix', time: 'Yesterday' },
+    { icon: '🎲', text: 'Random windfall — found money on the street', delta: '+$120', type: 'pos', time: 'Yesterday' },
+    { icon: '😴', text: 'Rested, energy recovered', delta: '+30 Energy', type: 'pos', time: '2d ago' },
+    { icon: '📉', text: 'Happiness dropped from low energy', delta: '−5 HP', type: 'neg', time: '2d ago' },
+  ],
+  actions: [
+    { icon: '💼', name: 'Work Shift', cost: '−15 Energy', cooldownKey: 'shift', cooldownSecs: 0, actionId: 'work' },
+    { icon: '😴', name: 'Rest', cost: '+30 Energy', cooldownKey: 'rest', cooldownSecs: 0, actionId: 'rest' },
+    { icon: '📚', name: 'Study', cost: '−10 Energy, +XP', cooldownKey: 'study', cooldownSecs: 3600, actionId: 'study' },
+    { icon: '🤝', name: 'Interact with NPC', cost: '−8 Energy', cooldownKey: 'interact', cooldownSecs: 0, actionId: 'interact' },
+    { icon: '📈', name: 'Check Investments', cost: 'Free', cooldownKey: 'invest', cooldownSecs: 0, actionId: 'invest' },
+  ],
+  loans: [
+    { id: 1, name: 'Quick Cash', principal: 2000, remaining: 1420, rate: 5, due: 'Apr 3, 2026', overdue: false },
+    { id: 2, name: 'Tech Gear Loan', principal: 800, remaining: 680, rate: 3, due: 'Apr 1, 2026', overdue: true },
+  ],
+  investments: [
+    { name: 'AuraCoin', symbol: 'ARC', amount: 10, value: 245, change: 3.2, chart: [180, 195, 210, 200, 225, 235, 245] },
+    { name: 'NexaTech Stocks', symbol: 'NTX', amount: 5, value: 180, change: -1.5, chart: [200, 195, 190, 185, 188, 182, 180] },
+  ],
+  housing: [
+    { name: 'Cardboard Box', emoji: '📦', cost: null, state: 'done' },
+    { name: 'Apartment', emoji: '🏢', cost: null, state: 'current' },
+    { name: 'Condo', emoji: '🏙️', cost: 20000, state: 'future' },
+    { name: 'Penthouse', emoji: '🌆', cost: 75000, state: 'future' },
+    { name: 'Mansion', emoji: '🏰', cost: 200000, state: 'future' },
+  ],
+  npcs: [
+    { id: 1, name: 'Vera', role: 'Mentor', emoji: '👩', status: 'Close Friend', xp: 75, maxXp: 100, type: 'cf', energyCost: 8 },
+    { id: 2, name: 'Dex', role: 'Rival', emoji: '🧑', status: 'Friend', xp: 42, maxXp: 100, type: 'f', energyCost: 8 },
+    { id: 3, name: 'Mira', role: 'Romantic Interest', emoji: '👩‍🦱', status: 'Acquaintance', xp: 15, maxXp: 100, type: 'a', energyCost: 6 },
+    { id: 4, name: 'Colt', role: 'Coworker', emoji: '🧔', status: 'Friend', xp: 38, maxXp: 100, type: 'f', energyCost: 6 },
+    { id: 5, name: 'Lin', role: 'Neighbor', emoji: '👩‍🦰', status: 'Acquaintance', xp: 8, maxXp: 100, type: 'a', energyCost: 5 },
+    { id: 6, name: 'Sage', role: 'Mentor', emoji: '🧓', status: 'Friend', xp: 55, maxXp: 100, type: 'f', energyCost: 10 },
+  ],
+  friends: [
+    { name: 'r/xKira', avatar: '🌸', activity: '24 shared sessions', id: 1 },
+    { name: 'NullByte99', avatar: '🤖', activity: '11 shared sessions', id: 2 },
+  ],
+  relEvents: [
+    { icon: '💛', text: 'Had a deep conversation with Vera. Relationship deepened.', time: '2h ago' },
+    { icon: '⚔️', text: 'Dex challenged you to a duel. Rivalry intensified.', time: 'Yesterday' },
+    { icon: '🌸', text: 'Mira smiled at you in the hallway. +2 XP.', time: '2d ago' },
+  ],
+  skills: [
+    { name: 'Communication', level: 3, xp: 60, icon: '💬', maxLevel: 10 },
+    { name: 'Technical', level: 4, xp: 45, icon: '⚙️', maxLevel: 10 },
+    { name: 'Physical', level: 1, xp: 20, icon: '💪', maxLevel: 10 },
+    { name: 'Creative', level: 2, xp: 80, icon: '🎨', maxLevel: 10 },
+    { name: 'Finance', level: 2, xp: 30, icon: '📊', maxLevel: 10 },
+    { name: 'Social', level: 3, xp: 55, icon: '🤝', maxLevel: 10 },
+  ],
+  availableJobs: [
+    { title: 'Senior Developer', employer: 'CyberCore', salary: 650, skills: [{ name: 'Technical', need: 5 }, { name: 'Communication', need: 4 }] },
+    { title: 'UX Designer', employer: 'Pixel Studio', salary: 420, skills: [{ name: 'Creative', need: 3 }] },
+    { title: 'Data Analyst', employer: 'DataFlow', salary: 480, skills: [{ name: 'Finance', need: 3 }, { name: 'Technical', need: 3 }] },
+    { title: 'Social Media Mgr', employer: 'BuzzWave', salary: 380, skills: [{ name: 'Social', need: 4 }] },
+    { title: 'Barista', employer: 'Night Brew', salary: 180, skills: [] },
+    { title: 'Fitness Trainer', employer: 'IronGym', salary: 250, skills: [{ name: 'Physical', need: 3 }] },
+  ],
+};
+
+// ============================================================
+// UTILS
+// ============================================================
+function fmt$(n) { return '$' + n.toLocaleString(); }
+function fmtPct(n) { return n.toFixed(1) + '%'; }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+function sparklineSVG(data, w, h, color, gradId) {
+  const max = Math.max(...data), min = Math.min(...data);
+  const range = (max - min) || 1;
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * w;
+    const y = h - clamp(((v - min) / range) * h, 2, h - 2);
+    return [x, y];
+  });
+  const line = pts.map((p, i) => (i === 0 ? `M${p[0]},${p[1]}` : `L${p[0]},${p[1]}`)).join(' ');
+  const area = line + ` L${w},${h} L0,${h} Z`;
+  const last = pts[pts.length - 1];
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" class="sparkline-svg">
+    <defs>
+      <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${color}" stop-opacity="0.25"/>
+        <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <path d="${area}" fill="url(#${gradId})"/>
+    <path d="${line}" stroke="${color}" stroke-width="1.5" fill="none" stroke-linejoin="round"/>
+    <circle cx="${last[0]}" cy="${last[1]}" r="2.5" fill="${color}"/>
+  </svg>`;
+}
+
+function radialGaugeSVG(value, max, color) {
+  const r = 38, cx = 46, cy = 46, sw = 7;
+  const circ = 2 * Math.PI * r;
+  const prog = clamp(value / max, 0, 1) * circ * 0.75;
+  const offset = circ * 0.625;
+  return `<svg width="92" height="92" viewBox="0 0 92 92">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="${sw}" stroke-dasharray="${circ*0.75} ${circ*0.25}" stroke-dashoffset="${-offset}" stroke-linecap="round"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${sw}" stroke-dasharray="${prog} ${circ - prog}" stroke-dashoffset="${-offset}" stroke-linecap="round" style="filter:drop-shadow(0 0 4px ${color})"/>
+    <text x="${cx}" y="${cy + 5}" text-anchor="middle" fill="#ddd8cc" font-family="Cormorant Garamond,serif" font-size="20" font-weight="500">${value}</text>
+    <text x="${cx}" y="${cy + 18}" text-anchor="middle" fill="#7a80a0" font-family="Barlow Condensed,sans-serif" font-size="9" letter-spacing="1">PERF</text>
+  </svg>`;
+}
+
+function miniLineSVG(data, w, h, color) {
+  const max = Math.max(...data), min = Math.min(...data);
+  const range = (max - min) || 1;
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * w;
+    const y = h - clamp(((v - min) / range) * h, 2, h - 2);
+    return [x, y];
+  });
+  const line = pts.map((p, i) => (i === 0 ? `M${p[0]},${p[1]}` : `L${p[0]},${p[1]}`)).join(' ');
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+    <path d="${line}" stroke="${color}" stroke-width="1.5" fill="none" stroke-linejoin="round" opacity="0.7"/>
+  </svg>`;
+}
+
+// ============================================================
+// LIFE SCORE
+// ============================================================
+function calcLifeScore() {
+  const { money, happiness, aura } = STATE.stats;
+  const bestRel = Math.max(...STATE.npcs.map(n => n.xp));
+  return Math.round(
+    Math.min(money.current / 50000 * 1000, 1000) +
+    happiness.current * 8 +
+    aura.current * 10 +
+    bestRel * 7
+  );
+}
+
+function animateCounter(el, from, to, duration, fmt) {
+  const start = performance.now();
+  function step(now) {
+    const t = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - t, 3);
+    const v = Math.round(from + (to - from) * ease);
+    el.textContent = fmt ? fmt(v) : v.toLocaleString();
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// ============================================================
+// RENDER SIDEBAR STATS
+// ============================================================
+const statColors = {
+  money: 'var(--gold)', happiness: 'var(--green)',
+  energy: 'var(--blue)', aura: 'var(--purple)', stress: 'var(--coral)'
+};
+const trendArrows = { 1: ['↑', 'trend-up'], 0: ['→', 'trend-flat'], '-1': ['↓', 'trend-dn'] };
+
+function renderSidebarStats() {
+  const container = document.getElementById('sb-stats');
+  container.innerHTML = Object.entries(STATE.stats).map(([key, s]) => {
+    const pct = (s.current / s.max) * 100;
+    const [arrow, cls] = trendArrows[s.trend];
+    return `<div class="stat-row stat-${key}" data-stat="${key}">
+      <div class="stat-label">
+        <span class="stat-label-name">${s.label}</span>
+        <span class="stat-label-val">
+          ${s.fmt}
+          <span class="trend ${cls}">${arrow}</span>
+        </span>
+      </div>
+      <div class="stat-track">
+        <div class="stat-fill" style="width:${pct}%"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Tooltip binding
+  document.querySelectorAll('.stat-row').forEach(row => {
+    const key = row.dataset.stat;
+    const s = STATE.stats[key];
+    row.addEventListener('mouseenter', e => showTooltip(e, s.tooltipItems));
+    row.addEventListener('mousemove', e => moveTooltip(e));
+    row.addEventListener('mouseleave', hideTooltip);
+  });
+}
+
+// ============================================================
+// TOOLTIP
+// ============================================================
+const tooltip = document.getElementById('global-tooltip');
+function showTooltip(e, items) {
+  tooltip.innerHTML = items.map(item => {
+    const isPos = item.startsWith('+');
+    const isNeg = item.startsWith('−') || item.startsWith('-');
+    const cls = isPos ? 'tooltip-pos' : isNeg ? 'tooltip-neg' : '';
+    const [label, ...rest] = item.split(' ');
+    return `<div class="tooltip-row"><span class="${cls}">${label}</span><span style="color:var(--txt2)">${rest.join(' ')}</span></div>`;
+  }).join('');
+  tooltip.classList.add('visible');
+  moveTooltip(e);
+}
+function moveTooltip(e) {
+  const x = e.clientX + 14, y = e.clientY - 10;
+  tooltip.style.left = Math.min(x, window.innerWidth - 200) + 'px';
+  tooltip.style.top = y + 'px';
+}
+function hideTooltip() { tooltip.classList.remove('visible'); }
+
+// ============================================================
+// RENDER OVERVIEW
+// ============================================================
+const sparklineMeta = {
+  money:     { label: 'Money',     val: '$4,200', color: 'var(--gold)',   delta: '+$150', dpos: true },
+  happiness: { label: 'Happiness', val: '67',     color: 'var(--green)',  delta: '−5', dpos: false },
+  energy:    { label: 'Energy',    val: '45',     color: 'var(--blue)',   delta: '−35', dpos: false },
+  aura:      { label: 'Aura',      val: '82',     color: 'var(--purple)', delta: '+4', dpos: true },
+  stress:    { label: 'Stress',    val: '33',     color: 'var(--coral)',  delta: '+5', dpos: false },
+};
+
+function renderSparklines() {
+  const grid = document.getElementById('sparklines-grid');
+  grid.innerHTML = Object.entries(sparklineMeta).map(([key, m]) => {
+    const data = STATE.sparklines[key];
+    const svg = sparklineSVG(data, 140, 36, m.color, `sg-${key}`);
+    const dClass = m.dpos ? 'delta-pos' : 'delta-neg';
+    const dStyle = m.dpos ? 'color:var(--green)' : 'color:var(--coral)';
+    return `<div class="sparkline-card">
+      <div class="sparkline-name">${m.label}</div>
+      <div class="sparkline-val">${m.val}</div>
+      ${svg}
+      <div class="sparkline-delta" style="${dStyle}">${m.delta} · 7d</div>
+    </div>`;
+  }).join('');
+}
+
+function renderEventsFeed() {
+  const list = document.getElementById('events-list');
+  list.innerHTML = STATE.events.map((e, i) => {
+    const badgeCls = e.type === 'pos' ? 'delta-pos' : e.type === 'neg' ? 'delta-neg' : 'delta-mix';
+    return `<div class="event-item" style="animation-delay:${i * 0.06}s">
+      <span class="event-icon">${e.icon}</span>
+      <span class="event-text">${e.text}</span>
+      <span class="event-time">${e.time}</span>
+      <span class="delta-badge ${badgeCls}">${e.delta}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderActions() {
+  const list = document.getElementById('actions-list');
+  list.innerHTML = STATE.actions.map(a => {
+    const onCd = a.cooldownSecs > 0;
+    const mm = String(Math.floor(a.cooldownSecs / 60)).padStart(2, '0');
+    const ss = String(a.cooldownSecs % 60).padStart(2, '0');
+    return `<div class="action-item${onCd ? ' cooldown' : ''}">
+      <div class="action-left">
+        <span class="action-icon">${a.icon}</span>
+        <div>
+          <div class="action-name">${a.name}</div>
+          <div class="action-cost">${a.cost}</div>
+        </div>
+      </div>
+      <div class="action-right">
+        ${onCd ? `<span class="cooldown-timer">${mm}:${ss}</span>` : `<button class="btn-action" onclick="triggerAction('${a.actionId}')">Do It</button>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// RENDER CAREER
+// ============================================================
+function renderCareer() {
+  // Radial gauge
+  document.getElementById('perf-gauge').innerHTML = radialGaugeSVG(68, 100, '#d4a017');
+
+  // Skill grid
+  const sg = document.getElementById('skill-grid');
+  sg.innerHTML = STATE.skills.map(s => `
+    <div class="skill-node">
+      <div class="skill-emoji">${s.icon}</div>
+      <div class="skill-node-name">${s.name}</div>
+      <div class="skill-level">Lv ${s.level}</div>
+      <div class="skill-xp-track"><div class="skill-xp-fill" style="width:${s.xp}%"></div></div>
+    </div>`).join('');
+
+  // Jobs grid
+  const skillMap = {};
+  STATE.skills.forEach(s => skillMap[s.name] = s.level);
+  const jg = document.getElementById('jobs-grid');
+  jg.innerHTML = STATE.availableJobs.map(job => {
+    const skillsHTML = job.skills.map(req => {
+      const met = (skillMap[req.name] || 0) >= req.need;
+      return `<span class="skill-pill ${met ? 'skill-met' : 'skill-unmet'}">${req.name} ${req.need}${met ? ' ✓' : ' ✗'}</span>`;
+    }).join('');
+    const locked = job.skills.some(req => (skillMap[req.name] || 0) < req.need);
+    return `<div class="job-card${locked ? ' locked' : ''}">
+      ${locked ? '<div class="job-card-locked-overlay">🔒</div>' : ''}
+      <div class="jc-title">${job.title}</div>
+      <div class="jc-employer">${job.employer}</div>
+      <div class="jc-salary">${fmt$(job.salary)}<span style="font-family:var(--cond);font-size:11px;color:var(--txt2)">/shift</span></div>
+      <div class="jc-skills">${skillsHTML || '<span style="font-family:var(--cond);font-size:10px;color:var(--txt2)">No requirements</span>'}</div>
+      <button class="btn-apply" ${locked ? 'disabled' : ''} onclick="applyForJob('${job.title}')">
+        ${locked ? 'Skills Needed' : 'Apply'}
+      </button>
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// RENDER FINANCES
+// ============================================================
+function renderFinances() {
+  // Loans
+  const ll = document.getElementById('loans-list');
+  ll.innerHTML = STATE.loans.map(loan => {
+    const pct = ((loan.principal - loan.remaining) / loan.principal) * 100;
+    return `<div class="loan-item${loan.overdue ? ' overdue' : ''}">
+      <div class="loan-header">
+        <div class="loan-name">${loan.name}</div>
+        <span class="loan-rate">${loan.rate}% interest</span>
+      </div>
+      <div class="loan-amounts">
+        <span>Principal: ${fmt$(loan.principal)}</span>
+        <span class="loan-remaining">Remaining: ${fmt$(loan.remaining)}</span>
+      </div>
+      <div class="loan-track"><div class="loan-fill" style="width:${100 - pct}%"></div></div>
+      <div class="loan-footer">
+        <span class="loan-due${loan.overdue ? ' overdue-text' : ''}">Due: ${loan.due}${loan.overdue ? ' ⚠ OVERDUE' : ''}</span>
+        <button class="btn-repay" onclick="openRepayModal(${loan.id})">Repay</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Investments
+  const il = document.getElementById('investments-list');
+  il.innerHTML = STATE.investments.map(inv => {
+    const pos = inv.change >= 0;
+    return `<div class="investment-item">
+      <div>
+        <div class="inv-name">${inv.name}</div>
+        <div class="inv-symbol">${inv.symbol} · ×${inv.amount}</div>
+      </div>
+      <div class="inv-change ${pos ? 'pos' : 'neg'}">${pos ? '▲' : '▼'} ${Math.abs(inv.change)}%</div>
+      <div class="inv-val">${fmt$(inv.value)}</div>
+      <div class="inv-actions">
+        <button class="btn-inv btn-buy" onclick="showToast('Bought 1 ${inv.symbol}')">Buy</button>
+        <button class="btn-inv btn-sell" onclick="showToast('Sold 1 ${inv.symbol}')">Sell</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Investment chart
+  const combined = STATE.investments[0].chart.map((v, i) => v + STATE.investments[1].chart[i]);
+  document.getElementById('inv-chart').innerHTML = `
+    <div style="font-family:var(--cond);font-size:10px;color:var(--txt2);margin-bottom:4px">Portfolio 7d</div>
+    ${miniLineSVG(combined, 300, 40, '#52c97a')}`;
+
+  // Housing track
+  const ht = document.getElementById('housing-track');
+  ht.innerHTML = STATE.housing.map((h, i) => {
+    const isCurrent = h.state === 'current';
+    const isDone = h.state === 'done';
+    const isFuture = h.state === 'future';
+    const nextCost = isFuture ? fmt$(h.cost) : isCurrent ? 'Owned' : '✓';
+    return `<div class="housing-tier ${h.state}">
+      <div class="h-icon">${h.emoji}</div>
+      <div class="h-name">${h.name}</div>
+      <div class="h-cost">${nextCost}</div>
+      ${isCurrent ? `<button class="btn-upgrade-ht" style="margin-top:4px;font-size:8px;padding:2px 8px" onclick="upgradeHousing()">Upgrade →</button>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// RENDER RELATIONSHIPS
+// ============================================================
+const statusStyleMap = {
+  cf: { cls: 'status-close-friend', bg: 'rgba(240,185,64,0.1)', border: 'rgba(240,185,64,0.25)', color: 'var(--gold-l)', fill: 'cf-fill' },
+  f:  { cls: 'status-friend',       bg: 'rgba(74,144,196,0.1)', border: 'rgba(74,144,196,0.25)', color: 'var(--blue)',   fill: 'f-fill' },
+  a:  { cls: 'status-acquaintance', bg: 'rgba(122,128,160,0.1)',border: 'rgba(122,128,160,0.2)', color: 'var(--txt2)',   fill: 'a-fill' },
+  p:  { cls: 'status-partner',      bg: 'rgba(155,127,232,0.1)',border: 'rgba(155,127,232,0.25)',color: 'var(--purple)', fill: 'p-fill' },
+};
+
+function renderRelationships() {
+  const npcGrid = document.getElementById('npc-grid');
+  npcGrid.innerHTML = STATE.npcs.map(npc => {
+    const st = statusStyleMap[npc.type];
+    return `<div class="npc-card">
+      <span class="npc-avatar">${npc.emoji}</span>
+      <div class="npc-name">${npc.name}</div>
+      <div class="npc-role">${npc.role}</div>
+      <div class="npc-status-badge" style="background:${st.bg};border:1px solid ${st.border};color:${st.color}">${npc.status}</div>
+      <div class="npc-xp-row">
+        <span class="npc-xp-val">${npc.xp}/${npc.maxXp} XP</span>
+        <div class="npc-xp-track">
+          <div class="npc-xp-fill ${st.fill}" style="width:${npc.xp}%"></div>
+        </div>
+      </div>
+      <button class="btn-interact" onclick="interactNPC(${npc.id}, '${npc.name}')">
+        Interact <span class="energy-cost">(−${npc.energyCost}⚡)</span>
+      </button>
+    </div>`;
+  }).join('');
+
+  const fl = document.getElementById('friends-list');
+  fl.innerHTML = STATE.friends.map(f => `
+    <div class="friend-item">
+      <div class="friend-avatar">${f.avatar}</div>
+      <div>
+        <div class="friend-name">${f.name}</div>
+        <div class="friend-activity">${f.activity}</div>
+      </div>
+      <button class="btn-play" onclick="showToast('Inviting ${f.name} to play...')">Play Together</button>
+    </div>`).join('');
+
+  const rt = document.getElementById('rel-ticker');
+  rt.innerHTML = STATE.relEvents.map(e => `
+    <div class="ticker-item">
+      <span class="ticker-icon">${e.icon}</span>
+      <span class="ticker-text">${e.text}</span>
+      <span class="ticker-time">${e.time}</span>
+    </div>`).join('');
+}
+
+// ============================================================
+// TABS
+// ============================================================
+function initTabs() {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+}
+
+// ============================================================
+// WORK SHIFT COOLDOWN
+// ============================================================
+let shiftCooldown = 0;
+let shiftTimer = null;
+
+function initWorkShift() {
+  const btn = document.getElementById('btn-work-shift');
+  btn.addEventListener('click', () => {
+    if (shiftCooldown > 0) return;
+    // Pulse animation
+    btn.classList.add('pulse-anim');
+    setTimeout(() => btn.classList.remove('pulse-anim'), 500);
+    // Start cooldown (30s for demo)
+    shiftCooldown = 30;
+    startShiftCooldown();
+    // Update stat: earn money, spend energy
+    STATE.stats.money.current += 350;
+    STATE.stats.money.fmt = fmt$(STATE.stats.money.current);
+    STATE.stats.energy.current = Math.max(0, STATE.stats.energy.current - 15);
+    STATE.stats.energy.fmt = String(STATE.stats.energy.current);
+    renderSidebarStats();
+    // Add event
+    STATE.events.unshift({ icon: '💼', text: 'Completed a shift — good performance!', delta: '+$350', type: 'pos', time: 'Just now' });
+    STATE.events = STATE.events.slice(0, 6);
+    renderEventsFeed();
+    updateLifeScore();
+    showToast('Shift complete! +$350 earned.');
+  });
+}
+
+function startShiftCooldown() {
+  const btn = document.getElementById('btn-work-shift');
+  btn.disabled = true;
+  clearInterval(shiftTimer);
+  shiftTimer = setInterval(() => {
+    shiftCooldown--;
+    if (shiftCooldown <= 0) {
+      clearInterval(shiftTimer);
+      btn.disabled = false;
+      btn.textContent = 'Work Shift';
+      shiftCooldown = 0;
+    } else {
+      const mm = String(Math.floor(shiftCooldown / 60)).padStart(2, '0');
+      const ss = String(shiftCooldown % 60).padStart(2, '0');
+      btn.textContent = `Cooldown ${mm}:${ss}`;
+    }
+  }, 1000);
+}
+
+// ============================================================
+// ACTION COOLDOWNS
+// ============================================================
+const actionCooldowns = {};
+function triggerAction(id) {
+  const action = STATE.actions.find(a => a.actionId === id);
+  if (!action) return;
+  if (id === 'work') {
+    document.getElementById('btn-work-shift').click();
+    return;
+  }
+  const toasts = {
+    rest: 'Rested — +30 Energy recovered.',
+    study: 'Studying... +XP gained.',
+    interact: 'You interacted with an NPC.',
+    invest: 'Portfolio checked — looking healthy.',
+  };
+  showToast(toasts[id] || 'Action complete.');
+  if (id === 'rest') {
+    STATE.stats.energy.current = Math.min(100, STATE.stats.energy.current + 30);
+    STATE.stats.energy.fmt = String(STATE.stats.energy.current);
+    renderSidebarStats();
+  }
+}
+
+// ============================================================
+// MODAL SYSTEM
+// ============================================================
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+document.getElementById('btn-borrow').addEventListener('click', () => openModal('borrow-modal-overlay'));
+document.getElementById('borrow-cancel').addEventListener('click', () => closeModal('borrow-modal-overlay'));
+document.getElementById('borrow-confirm').addEventListener('click', () => {
+  const amount = parseInt(document.getElementById('borrow-amount').value) || 0;
+  if (amount < 100 || amount > 21000) { showToast('Enter an amount between $100 and $21,000.'); return; }
+  STATE.stats.money.current += amount;
+  STATE.stats.money.fmt = fmt$(STATE.stats.money.current);
+  STATE.loans.push({ id: Date.now(), name: 'New Loan', principal: amount, remaining: amount, rate: 5, due: 'May 1, 2026', overdue: false });
+  renderSidebarStats();
+  renderFinances();
+  closeModal('borrow-modal-overlay');
+  showToast(`Borrowed ${fmt$(amount)} — funds added to balance.`);
+});
+
+let currentRepayLoanId = null;
+function openRepayModal(loanId) {
+  currentRepayLoanId = loanId;
+  const loan = STATE.loans.find(l => l.id === loanId);
+  if (!loan) return;
+  document.getElementById('repay-modal-subtitle').textContent = `${loan.name} — Remaining: ${fmt$(loan.remaining)}`;
+  document.getElementById('repay-amount').value = Math.min(loan.remaining, 100);
+  openModal('repay-modal-overlay');
+}
+document.getElementById('repay-cancel').addEventListener('click', () => closeModal('repay-modal-overlay'));
+document.getElementById('repay-confirm').addEventListener('click', () => {
+  const amount = parseInt(document.getElementById('repay-amount').value) || 0;
+  const loan = STATE.loans.find(l => l.id === currentRepayLoanId);
+  if (!loan || amount <= 0) return;
+  const pay = Math.min(amount, loan.remaining, STATE.stats.money.current);
+  loan.remaining = Math.max(0, loan.remaining - pay);
+  STATE.stats.money.current -= pay;
+  STATE.stats.money.fmt = fmt$(STATE.stats.money.current);
+  if (loan.remaining === 0) {
+    STATE.loans = STATE.loans.filter(l => l.id !== currentRepayLoanId);
+    showToast(`Loan fully repaid! 🎉`);
+  } else {
+    showToast(`Repaid ${fmt$(pay)} — ${fmt$(loan.remaining)} remaining.`);
+  }
+  renderSidebarStats();
+  renderFinances();
+  closeModal('repay-modal-overlay');
+});
+
+// Click overlay to close
+['borrow-modal-overlay', 'repay-modal-overlay'].forEach(id => {
+  document.getElementById(id).addEventListener('click', e => {
+    if (e.target === document.getElementById(id)) closeModal(id);
+  });
+});
+
+// ============================================================
+// INTERACTIONS
+// ============================================================
+function applyForJob(title) {
+  showToast(`Application sent to ${title}! Results in 24h.`);
+}
+function interactNPC(id, name) {
+  const npc = STATE.npcs.find(n => n.id === id);
+  if (!npc) return;
+  if (STATE.stats.energy.current < npc.energyCost) {
+    showToast(`Not enough energy! Need ${npc.energyCost}⚡.`); return;
+  }
+  STATE.stats.energy.current = Math.max(0, STATE.stats.energy.current - npc.energyCost);
+  STATE.stats.energy.fmt = String(STATE.stats.energy.current);
+  npc.xp = Math.min(npc.maxXp, npc.xp + Math.max(1, Math.floor(20 / (1 + npc.xp * 0.1))));
+  renderSidebarStats();
+  renderRelationships();
+  showToast(`Interacted with ${name}! +${Math.max(1, Math.floor(20 / (1 + npc.xp * 0.1)))} XP.`);
+}
+function upgradeHousing() {
+  const next = STATE.housing.find(h => h.state === 'future');
+  if (!next) { showToast('Already at max housing tier!'); return; }
+  if (STATE.stats.money.current < next.cost) {
+    showToast(`Need ${fmt$(next.cost)} to upgrade. You have ${fmt$(STATE.stats.money.current)}.`); return;
+  }
+  STATE.stats.money.current -= next.cost;
+  STATE.stats.money.fmt = fmt$(STATE.stats.money.current);
+  const curr = STATE.housing.find(h => h.state === 'current');
+  if (curr) curr.state = 'done';
+  next.state = 'current';
+  renderSidebarStats();
+  renderFinances();
+  showToast(`Welcome to your new ${next.name}! 🎉`);
+}
+
+// ============================================================
+// LIFE SCORE ANIMATION
+// ============================================================
+function updateLifeScore() {
+  const score = calcLifeScore();
+  const numEl = document.getElementById('life-score-num');
+  const barEl = document.getElementById('life-score-bar');
+  const headerEl = document.getElementById('header-score-num');
+  const pct = (score / 3500) * 100;
+  barEl.style.width = pct + '%';
+  headerEl.textContent = score.toLocaleString();
+  return score;
+}
+
+function animateLifeScore() {
+  const score = updateLifeScore();
+  const numEl = document.getElementById('life-score-num');
+  animateCounter(numEl, 0, score, 1800);
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+let toastEl = null;
+let toastTimeout = null;
+function showToast(msg) {
+  if (!toastEl) {
+    toastEl = document.createElement('div');
+    toastEl.style.cssText = `
+      position:fixed;bottom:24px;right:24px;z-index:500;
+      background:var(--bg-s3);border:1px solid var(--border);
+      border-left:3px solid var(--gold);border-radius:6px;
+      padding:10px 16px;font-family:var(--cond);font-size:12px;
+      color:var(--txt);box-shadow:0 8px 32px rgba(0,0,0,0.5);
+      max-width:280px;transition:opacity 0.3s,transform 0.3s;
+      transform:translateY(0);
+    `;
+    document.body.appendChild(toastEl);
+  }
+  toastEl.textContent = msg;
+  toastEl.style.opacity = '1';
+  toastEl.style.transform = 'translateY(0)';
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => {
+    toastEl.style.opacity = '0';
+    toastEl.style.transform = 'translateY(8px)';
+  }, 3000);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  renderSidebarStats();
+  renderSparklines();
+  renderEventsFeed();
+  renderActions();
+  renderCareer();
+  renderFinances();
+  renderRelationships();
+  initTabs();
+  initWorkShift();
+  // Animate life score after short delay for drama
+  setTimeout(animateLifeScore, 300);
+  // Animate stat bars in
+  setTimeout(() => {
+    document.querySelectorAll('.stat-fill').forEach(el => {
+      const w = el.style.width;
+      el.style.width = '0%';
+      requestAnimationFrame(() => requestAnimationFrame(() => el.style.width = w));
+    });
+  }, 100);
+});
+</script>
+</body>
+</html>
